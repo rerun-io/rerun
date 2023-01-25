@@ -177,7 +177,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rr.log_obb(
-            f"world/objects/{bbox.id}",
+            f"world/objects/box-{bbox.id}",
             bbox.scale,
             bbox.translation,
             rot.as_quat(),
@@ -206,11 +206,11 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"world/camera/video/objects/{obj_ann.object_id}", keypoint_pos2s)
+                log_projected_bbox(f"world/camera/video/obj-annotations/annotation-{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
                     rr.log_point(
-                        f"world/camera/video/objects/{obj_ann.object_id}/{id}",
+                        f"world/camera/video/obj-annotations/annotation-{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
                     )

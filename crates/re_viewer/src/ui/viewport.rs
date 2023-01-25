@@ -113,10 +113,11 @@ impl Viewport {
                 SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
             {
                 let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
+                let preferred_navigation_mode =
+                    scene_spatial.preferred_navigation_mode(&space_info.path);
 
                 if category == ViewCategory::Spatial
-                    && scene_spatial.preferred_navigation_mode(&space_info.path)
-                        == SpatialNavigationMode::TwoD
+                    && preferred_navigation_mode == SpatialNavigationMode::TwoD
                     && scene_spatial.ui.images.len() > 1
                 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
@@ -181,7 +182,7 @@ impl Viewport {
                         category,
                         space_info,
                         &obj_paths,
-                        scene_spatial.preferred_navigation_mode(&space_info.path),
+                        preferred_navigation_mode,
                         transforms.clone(),
                     );
                     blueprint.add_space_view(space_view);
@@ -310,7 +311,7 @@ impl Viewport {
         space_view_id: &SpaceViewId,
         space_view_visible: bool,
     ) {
-        let Some(group) = data_blueprint_tree.get_group(group_handle) else {
+        let Some(group) = data_blueprint_tree.group(group_handle) else {
             debug_assert!(false, "Invalid group handle in blueprint group tree");
             return;
         };
@@ -337,7 +338,7 @@ impl Viewport {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
+            let Some(child_group) = data_blueprint_tree.group_mut(*child_group_handle) else {
                 debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
                 continue;
             };
@@ -467,13 +468,15 @@ impl Viewport {
             // nothing to show
         } else if num_space_views == 1 {
             let space_view_id = *tree.tabs().next().unwrap();
+            let highlights = ctx
+                .selection_state()
+                .highlights_for_space_view(space_view_id, &self.space_views);
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
-
             let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
             let frame = ctx.re_ui.hovering_frame();
@@ -482,13 +485,15 @@ impl Viewport {
                 help_text_ui(ui, space_view);
             });
         } else if let Some(space_view_id) = self.maximized {
+            let highlights = ctx
+                .selection_state()
+                .highlights_for_space_view(space_view_id, &self.space_views);
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
-
             let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
             let frame = ctx.re_ui.hovering_frame();
@@ -536,8 +541,9 @@ impl Viewport {
     ) {
         #![allow(clippy::collapsible_if)]
 
-        // TODO(emilk): use a proper icon instead. Requires some egui changes so that an icon button can open a menu.
-        ui.menu_button("➕", |ui| {
+        let icon_image = ctx.re_ui.icon_image(&re_ui::icons::ADD);
+        let texture_id = icon_image.texture_id(ui.ctx());
+        ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
             let all_categories = enumset::EnumSet::<ViewCategory>::all();
@@ -589,6 +595,19 @@ impl Viewport {
         .response
         .on_hover_text("Add new space view.");
     }
+
+    pub fn space_views_containing_obj_path(&self, path: &ObjPath) -> Vec<SpaceViewId> {
+        self.space_views
+            .iter()
+            .filter_map(|(space_view_id, space_view)| {
+                if space_view.data_blueprint.contains_object(path) {
+                    Some(*space_view_id)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
@@ -623,13 +642,17 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
         crate::profile_function!();
 
+        let highlights = self
+            .ctx
+            .selection_state()
+            .highlights_for_space_view(*space_view_id, self.space_views);
         let space_view = self
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
         let response = ui
-            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view))
+            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights))
             .response;
 
         // Show buttons for maximize and space view options:
@@ -722,6 +745,7 @@ fn space_view_ui(
     ui: &mut egui::Ui,
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
+    space_view_highlights: &SpaceViewHighlights,
 ) {
     let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
@@ -737,7 +761,13 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, reference_space_info, latest_at);
+    space_view.scene_ui(
+        ctx,
+        ui,
+        reference_space_info,
+        latest_at,
+        space_view_highlights,
+    );
 }
 
 // ----------------------------------------------------------------------------

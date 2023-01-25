@@ -9,11 +9,11 @@ use egui::{Key, KeyboardShortcut, Modifiers};
 pub enum Command {
     // Listed in the order they show up in the command palette by default!
     #[cfg(not(target_arch = "wasm32"))]
+    Open,
+    #[cfg(not(target_arch = "wasm32"))]
     Save,
     #[cfg(not(target_arch = "wasm32"))]
     SaveSelection,
-    #[cfg(not(target_arch = "wasm32"))]
-    Open,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -62,7 +62,7 @@ impl Command {
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Open => ("Open", "Open a Rerun Data File (.rrd)"),
+            Command::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Command::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -94,10 +94,9 @@ impl Command {
 
             Command::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             Command::SelectionNext => ("Next selection", "Go to next selection"),
-            Command::ToggleCommandPalette => (
-                "Toggle command palette",
-                "Toggle the command palette window",
-            ),
+            Command::ToggleCommandPalette => {
+                ("Command palette…", "Toggle the command palette window")
+            }
 
             Command::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
@@ -168,20 +167,21 @@ impl Command {
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Command> {
         use strum::IntoEnumIterator as _;
 
-        let anything_has_focus = egui_ctx.memory().focus().is_some();
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
         if anything_has_focus {
             return None; // e.g. we're typing in a TextField
         }
 
-        let mut input = egui_ctx.input_mut();
-        for command in Command::iter() {
-            if let Some(kb_shortcut) = command.kb_shortcut() {
-                if input.consume_shortcut(&kb_shortcut) {
-                    return Some(command);
+        egui_ctx.input_mut(|input| {
+            for command in Command::iter() {
+                if let Some(kb_shortcut) = command.kb_shortcut() {
+                    if input.consume_shortcut(&kb_shortcut) {
+                        return Some(command);
+                    }
                 }
             }
-        }
-        None
+            None
+        })
     }
 
     /// Show this command as a menu-button.

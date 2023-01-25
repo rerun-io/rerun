@@ -63,19 +63,44 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
     let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
 
+    egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
+    egui_style.visuals.button_frame = true;
+    egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
     egui_style.visuals.widgets.inactive.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
-    egui_style.visuals.widgets.hovered.bg_fill =
-        get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
+    {
+        // Background colors for menu buttons etc:
+        // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
+        let hovered_color = Color32::from_gray(20); // TODO(emilk): change the content of the design_tokens.json origin instead
+        egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
+        egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
+        egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
+        egui_style.visuals.widgets.active.bg_fill = hovered_color;
+        egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
+        egui_style.visuals.widgets.open.bg_fill = hovered_color;
+    }
+
+    {
+        // Turn off strokes around buttons:
+        egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
+        egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
+        egui_style.visuals.widgets.active.bg_stroke = Default::default();
+        egui_style.visuals.widgets.open.bg_stroke = Default::default();
+    }
+
+    {
+        // Expand hovered and active button frames:
+        egui_style.visuals.widgets.hovered.expansion = 2.0;
+        egui_style.visuals.widgets.active.expansion = 2.0;
+        egui_style.visuals.widgets.open.expansion = 2.0;
+    }
 
     let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
-
-    egui_style.visuals.button_frame = false;
 
     egui_style.visuals.widgets.noninteractive.fg_stroke.color = subudued; // non-interactive text
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
@@ -105,6 +130,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.faint_bg_color = Color32::from_additive_luminance(8);
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
+
+    egui_style.spacing.combo_width = 8.0; // minium width of ComboBox - keep them small, with the down-arrow close.
 
     ctx.set_style(egui_style);
 

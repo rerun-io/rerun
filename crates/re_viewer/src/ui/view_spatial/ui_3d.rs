@@ -106,14 +106,14 @@ impl View3DState {
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
-                -response.ctx.input().stable_dt.at_most(0.1) * 150.0,
+                -response.ctx.input(|i| i.stable_dt).at_most(0.1) * 150.0,
                 0.0,
             ));
             response.ctx.request_repaint();
         }
 
         if let Some(cam_interpolation) = &mut self.eye_interpolation {
-            cam_interpolation.elapsed_time += response.ctx.input().stable_dt.at_most(0.1);
+            cam_interpolation.elapsed_time += response.ctx.input(|i| i.stable_dt).at_most(0.1);
 
             let t = cam_interpolation.elapsed_time / cam_interpolation.target_time;
             let t = t.clamp(0.0, 1.0);
@@ -318,7 +318,7 @@ pub fn view_3d(
     let eye = orbit_eye.to_eye();
 
     if did_interact_with_eye {
-        state.state_3d.last_eye_interact_time = ui.input().time;
+        state.state_3d.last_eye_interact_time = ui.input(|i| i.time);
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
     }
@@ -389,7 +389,7 @@ pub fn view_3d(
             } else {
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_id_button(ui, &instance_id);
+                    ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
                     instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
@@ -453,7 +453,7 @@ pub fn view_3d(
 
     {
         let orbit_center_alpha = egui::remap_clamp(
-            ui.input().time - state.state_3d.last_eye_interact_time,
+            ui.input(|i| i.time) - state.state_3d.last_eye_interact_time,
             0.0..=0.4,
             0.7..=0.0,
         ) as f32;
@@ -530,12 +530,14 @@ fn paint_view(
 
             let font_id = egui::TextStyle::Monospace.resolve(ui.style());
 
-            let galley = ui.fonts().layout(
-                (*label.text).to_owned(),
-                font_id,
-                ui.style().visuals.text_color(),
-                100.0,
-            );
+            let galley = ui.fonts(|fonts| {
+                fonts.layout(
+                    (*label.text).to_owned(),
+                    font_id,
+                    ui.style().visuals.text_color(),
+                    100.0,
+                )
+            });
 
             let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
                 egui::pos2(pos_in_ui.x, pos_in_ui.y),

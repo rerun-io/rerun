@@ -135,23 +135,11 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
-
-        ui.separator();
-
-        ctx.rec_cfg
-            .time_ctrl
-            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
-
-        ui.separator();
+            .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
         {
-            let time_range_width = 400.0;
             let mut time_range_rect = ui.available_rect_before_wrap();
-            time_range_rect.max.x = f32::min(
-                time_range_rect.max.x - 220.0, // save space for current time and help button,
-                time_range_rect.min.x + time_range_width,
-            );
+            time_range_rect.max.x -= 220.0; // save space for current time
 
             if time_range_rect.width() > 50.0 {
                 let time_ranges_ui =
@@ -349,8 +337,9 @@ impl TimePanel {
         if !tree
             .prefix_times
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
+            && tree.timeless_msgs.is_empty()
         {
-            return; // ignore objects that have no data for the current timeline
+            return; // ignore objects that have no data for the current timeline and no timeless data.
         }
 
         // The last part of the the path component
@@ -368,7 +357,7 @@ impl TimePanel {
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &tree.path))
+            .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
             .body(|ui| {
                 self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
@@ -399,26 +388,29 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            if let Some(messages_over_time) =
-                tree.prefix_times.get(ctx.rec_cfg.time_ctrl.timeline())
-            {
-                show_data_over_time(
-                    ctx,
-                    time_area_response,
-                    time_area_painter,
-                    ui,
-                    messages_over_time,
-                    full_width_rect,
-                    &self.time_ranges_ui,
-                    Some(Selection::Instance(
-                        None,
-                        InstanceId {
-                            obj_path: tree.path.clone(),
-                            instance_index: None,
-                        },
-                    )),
-                );
-            }
+            let empty_messages_over_time = BTreeMap::default();
+            let messages_over_time = tree
+                .prefix_times
+                .get(ctx.rec_cfg.time_ctrl.timeline())
+                .unwrap_or(&empty_messages_over_time);
+
+            show_data_over_time(
+                ctx,
+                time_area_response,
+                time_area_painter,
+                ui,
+                &tree.timeless_msgs,
+                messages_over_time,
+                full_width_rect,
+                &self.time_ranges_ui,
+                Some(Selection::Instance(
+                    None,
+                    InstanceId {
+                        obj_path: tree.path.clone(),
+                        instance_index: None,
+                    },
+                )),
+            );
         }
     }
 
@@ -446,7 +438,9 @@ impl TimePanel {
             let indent = ui.spacing().indent;
 
             for (field_name, data) in &tree.fields {
-                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline()) {
+                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline())
+                    && data.timeless_msgs.is_empty()
+                {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
@@ -500,22 +494,24 @@ impl TimePanel {
                 }
 
                 // show the data in the time area:
-
                 if is_visible {
-                    if let Some(messages_over_time) =
-                        data.times.get(ctx.rec_cfg.time_ctrl.timeline())
-                    {
-                        show_data_over_time(
-                            ctx,
-                            time_area_response,
-                            time_area_painter,
-                            ui,
-                            messages_over_time,
-                            full_width_rect,
-                            &self.time_ranges_ui,
-                            Some(Selection::DataPath(data_path)),
-                        );
-                    }
+                    let empty_messages_over_time = BTreeMap::default();
+                    let messages_over_time = data
+                        .times
+                        .get(ctx.rec_cfg.time_ctrl.timeline())
+                        .unwrap_or(&empty_messages_over_time);
+
+                    show_data_over_time(
+                        ctx,
+                        time_area_response,
+                        time_area_painter,
+                        ui,
+                        &data.timeless_msgs,
+                        messages_over_time,
+                        full_width_rect,
+                        &self.time_ranges_ui,
+                        Some(Selection::DataPath(data_path)),
+                    );
                 }
             }
         }
@@ -525,19 +521,12 @@ impl TimePanel {
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ctx.rec_cfg
         .time_ctrl
-        .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
+        .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
-    ui.separator();
-
-    ctx.rec_cfg
-        .time_ctrl
-        .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+    current_time_ui(ctx, ui);
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         help_button(ui);
-        ui.centered_and_justified(|ui| {
-            current_time_ui(ctx, ui);
-        });
     });
 }
 
@@ -567,6 +556,7 @@ fn show_data_over_time(
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
+    timeless_msgs: &BTreeSet<MsgId>,
     messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
@@ -586,7 +576,7 @@ fn show_data_over_time(
     let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f32::INFINITY);
     let max_stretch_length_in_time = 1.0 / points_per_time as f64; // TODO(emilk)
 
-    let pointer_pos = ui.input().pointer.hover_pos();
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
     let hovered_color = ui.visuals().widgets.hovered.text_color();
     let inactive_color = if is_selected {
@@ -669,8 +659,8 @@ fn show_data_over_time(
 
     let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
-    for (&time, msg_ids) in
-        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
+    for (&time, msg_ids) in std::iter::once((&TimeInt::BEGINNING, timeless_msgs))
+        .chain(messages_over_time.range(visible_time_range.min..=visible_time_range.max))
     {
         if msg_ids.is_empty() {
             continue;
@@ -725,7 +715,7 @@ fn show_data_over_time(
                 ctx.rec_cfg.time_ctrl.set_time(hovered_time);
                 ctx.rec_cfg.time_ctrl.pause();
             }
-        } else if !ui.ctx().memory().is_anything_being_dragged() {
+        } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
             show_msg_ids_tooltip(ctx, ui.ctx(), &hovered_messages);
         }
     }
@@ -757,21 +747,38 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
 fn initialize_time_ranges_ui(
     ctx: &mut ViewerContext<'_>,
     time_x_range: RangeInclusive<f32>,
-    time_view: Option<TimeView>,
+    mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
     crate::profile_function!();
+
+    // If there's any timeless data, add the "beginning range" that contains timeless data.
+    let mut time_range = if !ctx.log_db.timeless_msgs().is_empty() {
+        vec![TimeRange {
+            min: TimeInt::BEGINNING,
+            max: TimeInt::BEGINNING,
+        }]
+    } else {
+        Vec::new()
+    };
+
     if let Some(times) = ctx
         .log_db
         .times_per_timeline()
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
-        let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));
-
-        TimeRangesUi::new(time_x_range, time_view, &timeline_axis.ranges)
-    } else {
-        Default::default()
+        time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
+        time_range.extend(timeline_axis.ranges);
     }
+
+    TimeRangesUi::new(
+        time_x_range,
+        time_view.unwrap_or(TimeView {
+            min: TimeReal::from(0),
+            time_spanned: 1.0,
+        }),
+        &time_range,
+    )
 }
 
 fn paint_time_ranges_and_ticks(
@@ -950,7 +957,7 @@ fn interact_with_streams_rect(
     full_rect: &Rect,
     streams_rect: &Rect,
 ) -> egui::Response {
-    let pointer_pos = ui.input().pointer.hover_pos();
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
     let mut delta_x = 0.0;
     let mut zoom_factor = 1.0;
@@ -960,8 +967,10 @@ fn interact_with_streams_rect(
     let full_rect_hovered =
         pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
     if full_rect_hovered {
-        delta_x += ui.input().scroll_delta.x;
-        zoom_factor *= ui.input().zoom_delta_2d().x;
+        ui.input(|input| {
+            delta_x += input.scroll_delta.x;
+            zoom_factor *= input.zoom_delta_2d().x;
+        });
     }
 
     // We only check for drags in the streams rect,
@@ -974,7 +983,7 @@ fn interact_with_streams_rect(
     );
     if response.dragged_by(PointerButton::Primary) {
         delta_x += response.drag_delta().x;
-        ui.output().cursor_icon = CursorIcon::AllScroll;
+        ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
     }
     if response.dragged_by(PointerButton::Secondary) {
         zoom_factor *= (response.drag_delta().y * 0.01).exp();
@@ -1071,7 +1080,7 @@ fn loop_selection_ui(
 
     let is_active = time_ctrl.looping == Looping::Selection;
 
-    let pointer_pos = ui.input().pointer.hover_pos();
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_pointer_in_timeline =
         pointer_pos.map_or(false, |pointer_pos| timeline_rect.contains(pointer_pos));
 
@@ -1145,7 +1154,7 @@ fn loop_selection_ui(
                     .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
 
                 // Use "smart_aim" to find a natural length of the time interval
-                let aim_radius = ui.input().aim_radius();
+                let aim_radius = ui.input(|i| i.aim_radius());
                 use egui::emath::smart_aim::best_in_range_f64;
 
                 if left_response.dragged() {
@@ -1165,7 +1174,7 @@ fn loop_selection_ui(
 
                         if selected_range.min > selected_range.max {
                             std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                            ui.memory().set_dragged_id(right_edge_id);
+                            ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
                         }
 
                         time_ctrl.set_loop_selection(selected_range);
@@ -1190,7 +1199,7 @@ fn loop_selection_ui(
 
                         if selected_range.min > selected_range.max {
                             std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                            ui.memory().set_dragged_id(left_edge_id);
+                            ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
                         }
 
                         time_ctrl.set_loop_selection(selected_range);
@@ -1212,8 +1221,9 @@ fn loop_selection_ui(
                         let min_x = time_ranges_ui.x_from_time(selected_range.min)?;
                         let max_x = time_ranges_ui.x_from_time(selected_range.max)?;
 
-                        let min_x = min_x + ui.input().pointer.delta().x;
-                        let max_x = max_x + ui.input().pointer.delta().x;
+                        let pointer_delta = ui.input(|i| i.pointer.delta());
+                        let min_x = min_x + pointer_delta.x;
+                        let max_x = max_x + pointer_delta.x;
 
                         let min_time = time_ranges_ui.time_from_x(min_x)?;
                         let max_time = time_ranges_ui.time_from_x(max_x)?;
@@ -1230,7 +1240,7 @@ fn loop_selection_ui(
                         }
 
                         time_ctrl.set_loop_selection(new_range);
-                        if ui.input().pointer.is_moving() {
+                        if ui.input(|i| i.pointer.is_moving()) {
                             time_ctrl.looping = Looping::Selection;
                         }
                         Some(())
@@ -1242,16 +1252,15 @@ fn loop_selection_ui(
 
     // Start new selection?
     if let Some(pointer_pos) = pointer_pos {
-        let is_anything_being_dragged = ui.memory().is_anything_being_dragged();
+        let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
         if is_pointer_in_timeline
             && !is_anything_being_dragged
-            && ui.input().pointer.primary_down()
-            && ui.input().modifiers.shift_only()
+            && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
                 time_ctrl.looping = Looping::Selection;
-                ui.memory().set_dragged_id(right_edge_id);
+                ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
             }
         }
     }
@@ -1339,7 +1348,7 @@ fn time_marker_ui(
 ) {
     // timeline_rect: top part with the second ticks and time marker
 
-    let pointer_pos = ui.input().pointer.hover_pos();
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
     // ------------------------------------------------
 
@@ -1349,9 +1358,9 @@ fn time_marker_ui(
 
     let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
 
-    let is_hovering_the_loop_selection = ui.output().cursor_icon != CursorIcon::Default; // A kind of hacky proxy
+    let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
 
-    let is_anything_being_dragged = ui.memory().is_anything_being_dragged();
+    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
 
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
@@ -1379,9 +1388,9 @@ fn time_marker_ui(
             }
 
             let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.bg_stroke
+                ui.style().visuals.widgets.active.fg_stroke
             } else if is_hovering {
-                ui.style().visuals.widgets.hovered.bg_stroke
+                ui.style().visuals.widgets.hovered.fg_stroke
             } else {
                 ui.visuals().widgets.inactive.fg_stroke
             };
@@ -1409,11 +1418,11 @@ fn time_marker_ui(
                 timeline_rect.top()..=ui.max_rect().bottom(),
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
-            ui.output().cursor_icon = timeline_cursor_icon; // preview!
+            ui.ctx().set_cursor_icon(timeline_cursor_icon); // preview!
         }
 
         // Click to move time here:
-        if ui.input().pointer.primary_down()
+        if ui.input(|i| i.pointer.primary_down())
             && is_pointer_in_timeline_rect
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection
@@ -1422,7 +1431,7 @@ fn time_marker_ui(
                 let time = time_ranges_ui.clamp_time(time);
                 time_ctrl.set_time(time);
                 time_ctrl.pause();
-                ui.memory().set_dragged_id(time_drag_id);
+                ui.memory_mut(|mem| mem.set_dragged_id(time_drag_id));
             }
         }
     }
@@ -1840,7 +1849,7 @@ fn paint_time_range_ticks(
             }
 
             paint_ticks(
-                &ui.fonts(),
+                ui.ctx(),
                 ui.visuals().dark_mode,
                 &font_id,
                 rect,
@@ -1855,7 +1864,7 @@ fn paint_time_range_ticks(
                 i * 10
             }
             paint_ticks(
-                &ui.fonts(),
+                ui.ctx(),
                 ui.visuals().dark_mode,
                 &font_id,
                 rect,
@@ -1870,7 +1879,7 @@ fn paint_time_range_ticks(
 
 #[allow(clippy::too_many_arguments)]
 fn paint_ticks(
-    fonts: &egui::epaint::Fonts,
+    egui_ctx: &egui::Context,
     dark_mode: bool,
     font_id: &egui::FontId,
     canvas: &Rect,
@@ -1976,14 +1985,16 @@ fn paint_ticks(
                 let text = format_tick(current_time);
                 let text_x = line_x + 4.0;
 
-                shapes.push(egui::Shape::text(
-                    fonts,
-                    pos2(text_x, lerp(canvas.y_range(), 0.5)),
-                    Align2::LEFT_CENTER,
-                    &text,
-                    font_id.clone(),
-                    text_color,
-                ));
+                egui_ctx.fonts(|fonts| {
+                    shapes.push(egui::Shape::text(
+                        fonts,
+                        pos2(text_x, lerp(canvas.y_range(), 0.5)),
+                        Align2::LEFT_CENTER,
+                        &text,
+                        font_id.clone(),
+                        text_color,
+                    ));
+                });
             }
         }
 

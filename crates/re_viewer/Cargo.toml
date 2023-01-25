@@ -18,10 +18,14 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = []
+default = ["analytics"]
+
+## Enable telemetry using our analytics SDK.
+analytics = ["dep:re_analytics", "dep:sha2"]
 
 
 [dependencies]
+# Internal
 re_arrow_store = { path = "../re_arrow_store" }
 re_data_store = { path = "../re_data_store", features = ["serde"] }
 re_error = { path = "../re_error" }
@@ -41,7 +45,11 @@ re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ui = { path = "../re_ui" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
+# Internal (optional)
+re_analytics = { path = "../re_analytics", optional = true }
 
+
+# External
 ahash = "0.8"
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
@@ -82,6 +90,8 @@ smallvec = { version = "1.10", features = ["serde"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu.workspace = true
+# External (optional)
+sha2 = { version = "0.10", optional = true }
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

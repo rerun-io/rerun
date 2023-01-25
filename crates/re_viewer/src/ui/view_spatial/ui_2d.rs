@@ -106,7 +106,7 @@ impl View2DState {
         available_size: Vec2,
     ) {
         // Determine if we are zooming
-        let zoom_delta = response.ctx.input().zoom_delta();
+        let zoom_delta = response.ctx.input(|i| i.zoom_delta());
         let hovered_zoom = if response.hovered() && zoom_delta != 1.0 {
             Some(zoom_delta)
         } else {
@@ -141,7 +141,7 @@ impl View2DState {
                     let new_scale = scale * input_zoom;
 
                     // Adjust for mouse location while executing zoom
-                    if let Some(hover_pos) = response.ctx.input().pointer.hover_pos() {
+                    if let Some(hover_pos) = response.ctx.input(|i| i.pointer.hover_pos()) {
                         let zoom_loc = ui_to_space.transform_pos(hover_pos);
 
                         // Space-units under the cursor will shift based on distance from center
@@ -423,7 +423,7 @@ fn view_2d_scrollable(
             } else {
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_id_button(ui, &instance_id);
+                    ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
                     instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
@@ -479,22 +479,24 @@ fn create_labels(
         };
 
         let font_id = TextStyle::Body.resolve(parent_ui.style());
-        let galley = parent_ui.fonts().layout_job({
-            egui::text::LayoutJob {
-                sections: vec![egui::text::LayoutSection {
-                    leading_space: 0.0,
-                    byte_range: 0..label.text.len(),
-                    format: TextFormat::simple(font_id, label.color),
-                }],
-                text: label.text.clone(),
-                wrap: TextWrapping {
-                    max_width: wrap_width,
+        let galley = parent_ui.fonts(|fonts| {
+            fonts.layout_job({
+                egui::text::LayoutJob {
+                    sections: vec![egui::text::LayoutSection {
+                        leading_space: 0.0,
+                        byte_range: 0..label.text.len(),
+                        format: TextFormat::simple(font_id, label.color),
+                    }],
+                    text: label.text.clone(),
+                    wrap: TextWrapping {
+                        max_width: wrap_width,
+                        ..Default::default()
+                    },
+                    break_on_newline: true,
+                    halign: Align::Center,
                     ..Default::default()
-                },
-                break_on_newline: true,
-                halign: Align::Center,
-                ..Default::default()
-            }
+                }
+            })
         });
 
         let text_rect =
@@ -607,7 +609,8 @@ fn show_projections_from_3d_space(
 
                     let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
-                    let galley = ui.fonts().layout_no_wrap(text, font_id, Color32::WHITE);
+                    let galley =
+                        ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, Color32::WHITE));
                     let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
                         pos_in_ui + vec2(0.0, 5.0),
                         galley.size(),

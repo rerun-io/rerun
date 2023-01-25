@@ -46,57 +46,65 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
-    /// Show a obj path and make it selectable.
-    pub fn obj_path_button(&mut self, ui: &mut egui::Ui, obj_path: &ObjPath) -> egui::Response {
-        self.obj_path_button_to(ui, obj_path.to_string(), obj_path)
+    /// Show an obj path and make it selectable.
+    pub fn obj_path_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        space_view_id: Option<SpaceViewId>,
+        obj_path: &ObjPath,
+    ) -> egui::Response {
+        self.instance_id_button_to(
+            ui,
+            space_view_id,
+            &InstanceId::new(obj_path.clone(), None),
+            obj_path.to_string(),
+        )
     }
 
-    /// Show an object path and make it selectable.
+    /// Show an obj path and make it selectable.
     pub fn obj_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
-        text: impl Into<egui::WidgetText>,
+        space_view_id: Option<SpaceViewId>,
         obj_path: &ObjPath,
+        text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Selection::Instance(
-            None,
-            InstanceId {
-                obj_path: obj_path.clone(),
-                instance_index: None,
-            },
-        );
-        let response = ui
-            .selectable_label(self.selection().contains(&selection), text)
-            .on_hover_ui(|ui| {
-                ui.strong("Object");
-                ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, crate::ui::Preview::Large);
-            });
-        self.cursor_interact_with_selectable(response, selection)
+        self.instance_id_button_to(
+            ui,
+            space_view_id,
+            &InstanceId::new(obj_path.clone(), None),
+            text,
+        )
     }
 
-    /// Show a instance id and make it selectable.
+    /// Show an instance id and make it selectable.
     pub fn instance_id_button(
         &mut self,
         ui: &mut egui::Ui,
+        space_view_id: Option<SpaceViewId>,
         instance_id: &InstanceId,
     ) -> egui::Response {
-        self.instance_id_button_to(ui, instance_id.to_string(), instance_id)
+        self.instance_id_button_to(ui, space_view_id, instance_id, instance_id.to_string())
     }
 
     /// Show an instance id and make it selectable.
     pub fn instance_id_button_to(
         &mut self,
         ui: &mut egui::Ui,
-        text: impl Into<egui::WidgetText>,
+        space_view_id: Option<SpaceViewId>,
         instance_id: &InstanceId,
+        text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
+        let selection = Selection::Instance(space_view_id, instance_id.clone());
+        let subtype_string = match instance_id.instance_index {
+            Some(_) => "Object Instance",
+            None => "Object",
+        };
         // TODO(emilk): common hover-effect of all buttons for the same instance_id!
-        let selection = Selection::Instance(None, instance_id.clone());
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
-                ui.strong("Object Instance");
+                ui.strong(subtype_string);
                 ui.label(format!("Path: {instance_id}"));
                 instance_id.data_ui(self, ui, crate::ui::Preview::Large);
             });
@@ -233,7 +241,7 @@ impl<'a> ViewerContext<'a> {
     pub fn select_hovered_on_click(&mut self, response: &egui::Response) {
         if response.clicked() {
             let hovered = self.rec_cfg.selection_state.hovered().clone();
-            if response.ctx.input().modifiers.command {
+            if response.ctx.input(|i| i.modifiers.command) {
                 self.rec_cfg
                     .selection_state
                     .toggle_selection(hovered.into_iter());

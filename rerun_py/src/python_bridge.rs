@@ -292,8 +292,20 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn init(application_id: String) {
-    global_session().set_application_id(ApplicationId(application_id));
+fn init(application_id: String, application_path: Option<PathBuf>) {
+    // The sentinel file we use to identify the official examples directory.
+    const SENTINEL_FILENAME: &str = ".rerun_examples";
+    let is_official_example = application_path.map_or(false, |mut path| {
+        // more than 4 layers would be really pushing it
+        for _ in 0..4 {
+            path.pop(); // first iteration is always a file path in our examples
+            if path.join(SENTINEL_FILENAME).exists() {
+                return true;
+            }
+        }
+        false
+    });
+    global_session().set_application_id(ApplicationId(application_id), is_official_example);
 }
 
 #[pyfunction]
@@ -2004,12 +2016,18 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn log_arrow_msg(obj_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
-    let mut session = global_session();
+    let obj_path = {
+        let session = global_session();
+        let obj_path = parse_obj_path(obj_path)?;
+        session.arrow_prefix_obj_path(obj_path)
+    };
 
-    let obj_path = parse_obj_path(obj_path)?;
-    let obj_path = session.arrow_prefix_obj_path(obj_path);
-
+    // It's important that we don't hold the session lock while building our arrow component.
+    // the API we call to back through pyarrow temporarily releases the GIL, which can cause
+    // cause a deadlock.
     let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(timeless))?;
+
+    let mut session = global_session();
     session.send(msg);
 
     Ok(())

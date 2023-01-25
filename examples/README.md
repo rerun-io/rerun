@@ -18,8 +18,6 @@ You can also install all dependencies needed to run all examples with:
 pip install -r examples/requirements.txt
 ```
 
-> Note: The `stable_diffusion` example requires installing `diffusers` and `transformers` directly from main. To install run `pip install -U -r examples/stable_diffusion/requirements.txt`.
-
 ## Contributions welcome
 Feel free to open a PR to add a new example!
 

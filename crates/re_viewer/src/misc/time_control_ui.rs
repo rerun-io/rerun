@@ -6,16 +6,27 @@ use re_log_types::TimeType;
 use super::time_control::{Looping, TimeControl};
 
 impl TimeControl {
-    pub fn timeline_selector_ui(
+    pub fn time_control_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
+        self.play_pause_ui(re_ui, times_per_timeline, ui);
+        self.timeline_selector_ui(times_per_timeline, ui);
+        self.playback_speed_ui(ui);
+        self.fps_ui(ui);
+    }
+
+    fn timeline_selector_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
         self.select_a_valid_timeline(times_per_timeline);
 
         egui::ComboBox::from_id_source("timeline")
             .selected_text(self.timeline().name().as_str())
             .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.set_min_width(64.0);
+
                 for timeline in times_per_timeline.timelines() {
                     if ui
                         .selectable_label(timeline == self.timeline(), timeline.name().as_str())
@@ -25,12 +36,14 @@ impl TimeControl {
                     }
                 }
             });
+    }
 
+    fn fps_ui(&mut self, ui: &mut egui::Ui) {
         if self.time_type() == TimeType::Sequence {
             if let Some(mut fps) = self.fps() {
                 ui.add(
                     egui::DragValue::new(&mut fps)
-                        .prefix("FPS: ")
+                        .suffix(" FPS")
                         .speed(1)
                         .clamp_range(0.0..=f32::INFINITY),
                 )
@@ -40,7 +53,7 @@ impl TimeControl {
         }
     }
 
-    pub fn play_pause_ui(
+    fn play_pause_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
         times_per_timeline: &TimesPerTimeline,
@@ -50,7 +63,6 @@ impl TimeControl {
         self.pause_button_ui(re_ui, ui);
         self.step_time_button_ui(re_ui, ui, times_per_timeline);
         self.loop_button_ui(re_ui, ui);
-        self.playback_speed_ui(ui);
     }
 
     fn play_button_ui(

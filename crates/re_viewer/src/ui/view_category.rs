@@ -114,6 +114,8 @@ pub fn categorize_arrow_obj_path(
     log_db: &LogDb,
     obj_path: &ObjPath,
 ) -> ViewCategorySet {
+    crate::profile_function!();
+
     log_db
         .obj_db
         .arrow_store
