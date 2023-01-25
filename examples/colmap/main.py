@@ -4,18 +4,18 @@
 """
 import io
 import os
+import zipfile
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Final
-from argparse import ArgumentParser
-import zipfile
 
-import rerun as rr
 import numpy as np
 import numpy.typing as npt
 import requests
+from read_write_model import Camera, read_model
 from tqdm import tqdm
 
-from read_write_model import read_model, Camera
+import rerun as rr
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
@@ -80,7 +80,7 @@ def main(parser: ArgumentParser) -> None:
     args = parser.parse_args()
 
     dataset_path = get_downloaded_dataset_path()
-    # TODO: Read cameras and points3D up front but make a generator version of the read_images_bin function
+    print("Loading sparse colmap reconstruction")
     cameras, images, points3D = read_model(dataset_path / "sparse")
 
     rr.init("colmap", spawn_and_connect=True)
@@ -89,23 +89,22 @@ def main(parser: ArgumentParser) -> None:
     # Filter out noisy points
     filtered = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    for image in sorted(images.values(), key=lambda im: im.name):
-        img_seq = int(image.name[0:4])
+    for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
+        frame_idx = int(image.name[0:4])  # COLMAP sets image ids that don't match the original video frame
         quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
-        camera_from_world = (image.tvec, quat_xyzw)
+        camera_from_world = (image.tvec, quat_xyzw)  # COLMAP's camera transform is "camera from world"
         camera = cameras[image.camera_id]
         intrinsics = intrinsics_for_camera(camera)
 
         visible_points = [filtered.get(id) for id in image.point3D_ids if id != -1]
         visible_points = [point for point in visible_points if point is not None]
 
-        rr.set_time_sequence("img_seq", img_seq)
+        rr.set_time_sequence("frame", frame_idx)
 
-        points = [point.xyz for point in visible_points]
-        point_colors = [point.rgb for point in visible_points]
+        points = [point.xyz for point in visible_points]  # type: ignore[union-attr]
+        point_colors = [point.rgb for point in visible_points]  # type: ignore[union-attr]
         rr.log_points(f"world/points", points, colors=point_colors)
 
-        # Camera transform is "world to camera"
         rr.log_rigid3(
             f"world/camera",
             child_from_parent=camera_from_world,

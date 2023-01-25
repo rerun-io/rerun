@@ -4,6 +4,7 @@ Common definitions and frameworks for building runnable tools with Rerun.
 
 import argparse
 import logging
+
 import decorators
 from decorators import FuncDecorator
 

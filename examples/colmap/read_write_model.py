@@ -1,3 +1,6 @@
+# This file is adapted from
+# https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
+
 # Copyright (c) 2023, ETH Zurich and UNC Chapel Hill.
 # All rights reserved.
 #
@@ -29,13 +32,16 @@
 #
 # Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
-import os
-import collections
-from pathlib import Path
-import numpy as np
-import struct
-import argparse
+#  type: ignore
 
+import argparse
+import collections
+import os
+import struct
+from pathlib import Path
+from typing import Iterable, Mapping
+
+import numpy as np
 
 CameraModel = collections.namedtuple("CameraModel", ["model_id", "model_name", "num_params"])
 Camera = collections.namedtuple("Camera", ["id", "model", "width", "height", "params"])
@@ -117,7 +123,7 @@ def read_cameras_text(path: Path):
     return cameras
 
 
-def read_cameras_binary(path_to_model_file: Path):
+def read_cameras_binary(path_to_model_file: Path) -> Mapping[int, Camera]:
     """
     see: src/base/reconstruction.cc
         void Reconstruction::WriteCamerasBinary(const std::string& path)
@@ -213,7 +219,7 @@ def read_images_text(path: Path):
     return images
 
 
-def read_images_binary(path_to_model_file: Path):
+def read_images_binary(path_to_model_file: Path) -> Mapping[int, Image]:
     """
     see: src/base/reconstruction.cc
         void Reconstruction::ReadImagesBinary(const std::string& path)
@@ -327,7 +333,7 @@ def read_points3D_text(path):
     return points3D
 
 
-def read_points3D_binary(path_to_model_file: Path):
+def read_points3D_binary(path_to_model_file: Path) -> Mapping[int, Point3D]:
     """
     see: src/base/reconstruction.cc
         void Reconstruction::ReadPoints3DBinary(const std::string& path)
