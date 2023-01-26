@@ -125,6 +125,8 @@ pub fn categorize_arrow_obj_path(
         .fold(ViewCategorySet::default(), |mut set, component| {
             if component == TextEntry::name() {
                 set.insert(ViewCategory::Text);
+            } else if component == Scalar::name() {
+                set.insert(ViewCategory::TimeSeries);
             } else if component == Point2D::name()
                 || component == Point3D::name()
                 || component == Rect2D::name()
