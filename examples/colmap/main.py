@@ -73,13 +73,14 @@ def download_with_progress(url: str) -> io.BytesIO:
     return zip_file
 
 
-def read_and_log_sparse_reconstruction(dataset_path: Path) -> None:
+def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) -> None:
     print("Reading sparse COLMAP reconstruction")
-    cameras, images, points3D = read_model(dataset_path / "sparse")
+    cameras, images, points3D = read_model(dataset_path / "sparse", ext=".bin")
     print("Building visualization by logging to Rerun")
 
-    # Filter out noisy points
-    filtered_points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
+    if filter_output:
+        # Filter out noisy points
+        points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
     rr.log_view_coordinates("world", up="-Y", timeless=True)
 
@@ -91,14 +92,19 @@ def read_and_log_sparse_reconstruction(dataset_path: Path) -> None:
         camera = cameras[image.camera_id]
         intrinsics = intrinsics_for_camera(camera)
 
-        visible_points = [filtered_points3D.get(id) for id in image.point3D_ids if id != -1]
-        visible_points = [point for point in visible_points if point is not None]
+        unique_valid_3d_ids = set(id for id in image.point3D_ids if id != -1 and points3D.get(id) is not None)
+        sorted_3d_ids = sorted(unique_valid_3d_ids)
+
+        visible_points = [points3D[id] for id in sorted_3d_ids]
+
+        if filter_output and len(visible_points) < 500:
+            continue
 
         rr.set_time_sequence("frame", frame_idx)
 
         points = [point.xyz for point in visible_points]  # type: ignore[union-attr]
         point_colors = [point.rgb for point in visible_points]  # type: ignore[union-attr]
-        rr.log_points(f"world/points", points, colors=point_colors)
+        rr.log_points(f"world/points", points, identifiers=sorted_3d_ids, colors=point_colors)
 
         rr.log_rigid3(
             f"world/camera",
@@ -131,6 +137,7 @@ def main() -> None:
         action="store_true",
         help="Serve a web viewer (WARNING: experimental feature)",
     )
+    parser.add_argument("--unfiltered", action="store_true", help="If set, we don't filter away any noisy data.")
     args = parser.parse_args()
 
     rr.init("colmap")
@@ -147,7 +154,7 @@ def main() -> None:
 
     dataset_path = get_downloaded_dataset_path()
 
-    read_and_log_sparse_reconstruction(dataset_path)
+    read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered)
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
