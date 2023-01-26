@@ -196,7 +196,8 @@ impl Viewport {
                     &mut properties.visible,
                     |ui| {
                         let name = path.iter().last().unwrap().to_string();
-                        ctx.data_blueprint_button_to(ui, name, *space_view_id, path);
+                        let label = format!("🔹 {}", name);
+                        ctx.data_blueprint_button_to(ui, label, *space_view_id, path);
                     },
                 );
 
