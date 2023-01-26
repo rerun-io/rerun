@@ -58,7 +58,7 @@ def get_downloaded_dataset_path() -> Path:
 
 def download_with_progress(url: str) -> io.BytesIO:
     """Download file with tqdm progress bar."""
-    chunk_size = 8192
+    chunk_size = 1024 * 1024
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
     with tqdm(
