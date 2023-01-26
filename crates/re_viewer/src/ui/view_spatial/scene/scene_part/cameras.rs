@@ -1,7 +1,7 @@
-use re_data_store::{query_transform, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
-    IndexHash, Pinhole, Transform, ViewCoordinates,
+    Pinhole, Transform, ViewCoordinates,
 };
 use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;

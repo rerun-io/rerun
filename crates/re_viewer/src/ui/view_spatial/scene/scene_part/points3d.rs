@@ -3,11 +3,10 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
@@ -20,10 +19,7 @@ use crate::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, Keypoints},
-            Label3D, SceneSpatial,
-        },
+        view_spatial::{scene::Keypoints, Label3D, SceneSpatial},
         Annotations, DefaultColor,
     },
 };

@@ -4,11 +4,10 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
@@ -18,10 +17,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, AnyTensor},
-            Image, SceneSpatial,
-        },
+        view_spatial::{scene::AnyTensor, Image, SceneSpatial},
         Annotations, DefaultColor,
     },
 };

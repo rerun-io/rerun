@@ -1,9 +1,9 @@
 use glam::Mat4;
-use re_data_store::{query::visit_type_data_3, FieldName, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Label, Radius},
     msg_bundle::Component,
-    Arrow3D, IndexHash, MsgId, ObjectType,
+    Arrow3D,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
@@ -13,7 +13,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{scene::instance_hash_if_interactive, SceneSpatial},
+        view_spatial::SceneSpatial,
         DefaultColor,
     },
 };

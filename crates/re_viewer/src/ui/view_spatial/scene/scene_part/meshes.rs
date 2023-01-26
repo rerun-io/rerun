@@ -1,11 +1,11 @@
 use egui::Color32;
 use glam::Mat4;
 
-use re_data_store::{query::visit_type_data_1, FieldName, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance},
     msg_bundle::Component,
-    IndexHash, Mesh3D, MsgId, ObjectType,
+    Mesh3D,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 
@@ -14,9 +14,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::instance_hash_if_interactive, MeshSource, MeshSourceData, SceneSpatial,
-        },
+        view_spatial::{MeshSource, MeshSourceData, SceneSpatial},
         DefaultColor,
     },
 };

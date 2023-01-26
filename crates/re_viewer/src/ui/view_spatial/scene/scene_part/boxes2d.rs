@@ -1,9 +1,8 @@
 use glam::Mat4;
-use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
@@ -13,7 +12,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{scene::instance_hash_if_interactive, Label2D, Label2DTarget, SceneSpatial},
+        view_spatial::{Label2D, Label2DTarget, SceneSpatial},
         DefaultColor,
     },
 };

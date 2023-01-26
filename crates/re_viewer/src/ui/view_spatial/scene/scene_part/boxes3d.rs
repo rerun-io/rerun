@@ -1,10 +1,9 @@
-use glam::{Mat4, Vec3};
+use glam::Mat4;
 
-use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{Box3D, ClassId, ColorRGBA, Instance, Label, Quaternion, Radius, Vec3D},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
@@ -14,7 +13,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{scene::instance_hash_if_interactive, Label3D, SceneSpatial},
+        view_spatial::{Label3D, SceneSpatial},
         DefaultColor,
     },
 };
