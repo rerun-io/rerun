@@ -28,8 +28,6 @@ use crate::{
 
 use super::ScenePart;
 
-pub struct ImagesPartClassic;
-
 fn push_tensor_texture<T: AsDynamicImage>(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
@@ -63,100 +61,6 @@ fn push_tensor_texture<T: AsDynamicImage>(
                 depth_offset: -1,
             });
         scene.primitives.textured_rectangles_ids.push(instance_hash);
-    }
-}
-
-impl ScenePart for ImagesPartClassic {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformCache,
-        highlights: &SpaceViewHighlights,
-    ) {
-        crate::profile_scope!("ImagesPartClassic");
-
-        for (_obj_type, obj_path, time_query, obj_store) in
-            query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
-        {
-            scene.num_logged_2d_objects += 1;
-
-            let properties = query.obj_props.get(obj_path);
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
-                continue;
-            };
-
-            let visitor = |instance_index: Option<&IndexHash>,
-                           _time: i64,
-                           _msg_id: &MsgId,
-                           tensor: &re_log_types::ClassicTensor,
-                           color: Option<&[u8; 4]>,
-                           meter: Option<&f32>| {
-                if !tensor.is_shaped_like_an_image() {
-                    return;
-                }
-
-                let instance_hash =
-                    instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-
-                let annotations = scene.annotation_map.find(obj_path);
-                let color = annotations
-                    .class_description(None)
-                    .annotation_info()
-                    .color(color, DefaultColor::OpaqueWhite);
-
-                let highlight = highlights
-                    .object_highlight(instance_hash.obj_path_hash)
-                    .index_highlight(instance_hash.instance_index_hash);
-                if highlight.any() {
-                    let mut color = SceneSpatial::HOVER_COLOR;
-                    let mut radius = Size::new_points(1.0);
-                    SceneSpatial::apply_hover_and_selection_effect(
-                        &mut radius,
-                        &mut color,
-                        highlight,
-                    );
-
-                    let rect =
-                        glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
-                    scene
-                        .primitives
-                        .line_strips
-                        .batch("image outlines")
-                        .world_from_obj(world_from_obj)
-                        .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
-                        .color(color)
-                        .radius(Size::new_points(1.0));
-                }
-
-                push_tensor_texture(
-                    scene,
-                    ctx,
-                    &annotations,
-                    world_from_obj,
-                    instance_hash,
-                    tensor,
-                    color.into(),
-                );
-
-                scene.ui.images.push(Image {
-                    instance_hash,
-                    tensor: AnyTensor::ClassicTensor(tensor.clone()),
-                    meter: meter.copied(),
-                    annotations,
-                });
-            };
-            visit_type_data_2(
-                obj_store,
-                &FieldName::from("tensor"),
-                &time_query,
-                ("color", "meter"),
-                visitor,
-            );
-        }
-
-        handle_image_layering(scene);
     }
 }
 

@@ -20,60 +20,6 @@ use crate::{
 
 use super::ScenePart;
 
-/// `ScenePart` for classic data path
-pub struct CamerasPartClassic;
-
-impl ScenePart for CamerasPartClassic {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformCache,
-        highlights: &SpaceViewHighlights,
-    ) {
-        crate::profile_scope!("CamerasPartClassic");
-
-        // Atypical query. But gone soon anyways once everything is Arrow driven (where this isn't as special!)
-        for (obj_path, props) in query.iter_entities() {
-            // TODO(andreas): What about time ranges? See also https://github.com/rerun-io/rerun/issues/723
-            let query_time = ctx.rec_cfg.time_ctrl.time_i64();
-            let Some(Transform::Pinhole(pinhole)) = query_transform(
-                    &ctx.log_db.obj_db,
-                    &query.timeline,
-                    obj_path,
-                    query_time) else {
-                continue;
-            };
-            let instance_hash = {
-                if props.interactive {
-                    InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            };
-            let object_highlight = highlights.object_highlight(obj_path.hash());
-
-            let view_coordinates = determine_view_coordinates(
-                &ctx.log_db.obj_db,
-                &ctx.rec_cfg.time_ctrl,
-                obj_path.clone(),
-            );
-
-            CamerasPart::visit_instance(
-                scene,
-                obj_path,
-                &props,
-                transforms,
-                instance_hash,
-                pinhole,
-                view_coordinates,
-                object_highlight,
-            );
-        }
-    }
-}
-
 /// Determine the view coordinates (i.e.) the axis semantics.
 ///
 /// The recommended way to log this is on the object holding the extrinsic camera properties

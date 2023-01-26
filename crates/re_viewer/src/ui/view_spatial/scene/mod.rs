@@ -172,34 +172,21 @@ impl SceneSpatial {
         self.annotation_map.load(ctx, query);
 
         let parts: Vec<&dyn ScenePart> = vec![
-            &scene_part::Points3DPartClassic,
             &scene_part::Points3DPart { max_labels: 10 },
             // --
-            &scene_part::Boxes3DPartClassic,
             &scene_part::Boxes3DPart,
-            &scene_part::Lines3DPartClassic,
             &scene_part::Lines3DPart,
-            &scene_part::Arrows3DPartClassic,
             &scene_part::Arrows3DPart,
-            &scene_part::MeshPartClassic,
             &scene_part::MeshPart,
-            &scene_part::ImagesPartClassic,
             &scene_part::ImagesPart,
             // --
-            &scene_part::Boxes2DPartClassic,
             &scene_part::Boxes2DPart,
             // --
-            &scene_part::LineSegments2DPartClassic,
-            // Note: Lines2DPart handles both Segments and LinesPaths now since
-            // they are unified on the logging-side. No need for
-            // LineSegmentsPart in Arrow. Lines2DClassic, likewise was never
-            // exposed through the SDK, which only allows for 3d LinePaths.
+            // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
             &scene_part::Lines2DPart,
-            &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
             // ---
             &scene_part::CamerasPart,
-            &scene_part::CamerasPartClassic,
         ];
 
         for part in parts {
