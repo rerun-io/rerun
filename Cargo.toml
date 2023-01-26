@@ -67,14 +67,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-01-27 - add ability to disable the vertical line in indented blocks (e.g. our blurprint panel tree)
-ecolor = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
-eframe = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
-egui = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
-emath = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
-epaint = { git = "https://github.com/emilk/egui", rev = "fe7ff6626652d2da6c1fa63b7b75131cd9d664ab" }
+# 2023-01-27 - highlight widgets
+ecolor = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
+eframe = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
+egui = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
+emath = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
+epaint = { git = "https://github.com/emilk/egui", rev = "c72bdb77b575983cdb9c5e5163985f973674b411" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
