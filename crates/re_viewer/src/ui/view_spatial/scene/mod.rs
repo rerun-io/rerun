@@ -3,15 +3,16 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, KeypointId, Tensor}, IndexHash, MeshId,
+    field_types::{ClassId, KeypointId, Tensor},
+    IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{
-        mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight,
-        SelectionHighlight, SpaceViewHighlights, ViewerContext,
+        mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight, SelectionHighlight,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::{
         annotations::{auto_color, AnnotationMap},
