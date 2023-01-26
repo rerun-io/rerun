@@ -193,8 +193,8 @@ impl TransformCache {
             }
             let child_transform = query_transform(obj_db, timeline, &child_tree.path, query_time);
 
+            let mut encountered_pinhole = encountered_pinhole;
             let reference_from_child = if let Some(child_transform) = child_transform {
-                let mut encountered_pinhole = encountered_pinhole;
                 match child_transform {
                     re_log_types::Transform::Rigid3(rigid) => {
                         reference_from_obj * rigid.parent_from_child().to_mat4()
@@ -266,7 +266,7 @@ impl TransformCache {
     }
 
     /// Returns why (if actually) a path isn't reachable.
-    pub fn unreachable_reason(&self, obj_path: &ObjPath) -> Option<UnreachableTransformReason> {
+    pub fn unreachable_reason(&self, _obj_path: &ObjPath) -> Option<UnreachableTransformReason> {
         // TODO:
         None
     }

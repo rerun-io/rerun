@@ -11,7 +11,7 @@ use crate::{
     misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        transform_cache::TransformCache,
         view_spatial::{Label2D, Label2DTarget, SceneSpatial},
         DefaultColor,
     },

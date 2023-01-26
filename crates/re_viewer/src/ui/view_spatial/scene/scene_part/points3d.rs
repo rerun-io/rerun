@@ -18,7 +18,7 @@ use crate::{
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        transform_cache::TransformCache,
         view_spatial::{scene::Keypoints, Label3D, SceneSpatial},
         Annotations, DefaultColor,
     },

@@ -11,9 +11,7 @@ use re_renderer::{renderer::LineStripFlags, Size};
 use crate::{
     misc::{SpaceViewHighlights, ViewerContext},
     ui::{
-        scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::SceneSpatial,
+        scene::SceneQuery, transform_cache::TransformCache, view_spatial::SceneSpatial,
         DefaultColor,
     },
 };

@@ -11,9 +11,7 @@ use re_renderer::Size;
 use crate::{
     misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
     ui::{
-        scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::SceneSpatial,
+        scene::SceneQuery, transform_cache::TransformCache, view_spatial::SceneSpatial,
         DefaultColor,
     },
 };

@@ -13,7 +13,7 @@ use crate::{
     misc::{SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        transform_cache::TransformCache,
         view_spatial::{MeshSource, MeshSourceData, SceneSpatial},
         DefaultColor,
     },

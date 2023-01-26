@@ -16,7 +16,7 @@ use crate::{
     misc::{caches::AsDynamicImage, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        transform_cache::TransformCache,
         view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },
