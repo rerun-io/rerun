@@ -1,4 +1,4 @@
-use crate::misc::{space_info::SpacesInfo, ViewerContext};
+use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 
 use super::viewport::Viewport;
 
@@ -28,7 +28,7 @@ impl Blueprint {
     pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
+        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
         self.viewport.on_frame_start(ctx, &spaces_info);
 
@@ -55,7 +55,7 @@ impl Blueprint {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) {
         let panel = egui::SidePanel::left("blueprint_panel")
             .resizable(true)
@@ -93,7 +93,7 @@ impl Blueprint {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) {
         if ctx
             .re_ui

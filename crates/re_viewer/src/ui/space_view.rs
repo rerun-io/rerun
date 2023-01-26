@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 
 use crate::{
     misc::{
-        space_info::{SpaceInfo, SpacesInfo},
+        space_info::{SpaceInfo, SpaceInfoCollection},
         SpaceViewHighlights, ViewerContext,
     },
     ui::transform_cache::TransformCache,
@@ -146,7 +146,11 @@ impl SpaceView {
         groups
     }
 
-    pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+    pub fn on_frame_start(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
+    ) {
         self.data_blueprint.on_frame_start();
 
         let Some(space_info) =  spaces_info.get(&self.space_path) else {
@@ -231,7 +235,8 @@ impl SpaceView {
         })
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
-                let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
+                let spaces_info =
+                    SpaceInfoCollection::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
                 let transforms = TransformCache::determine_transforms(
                     &ctx.log_db.obj_db,
                     &ctx.rec_cfg.time_ctrl,
@@ -247,7 +252,7 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         tree: &ObjectTree,
         transforms: &TransformCache,
     ) {
@@ -273,7 +278,7 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         name: &str,
         tree: &ObjectTree,
         transforms: &TransformCache,
@@ -334,7 +339,7 @@ impl SpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         path: &ObjPath,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         name: &str,
     ) {
         let mut is_space_info = false;

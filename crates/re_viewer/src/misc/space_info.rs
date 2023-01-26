@@ -43,7 +43,7 @@ impl SpaceInfo {
     /// Invokes visitor for `self` and all descendents recursively.
     pub fn visit_descendants(
         &self,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         visitor: &mut impl FnMut(&SpaceInfo),
     ) {
         visitor(self);
@@ -60,7 +60,7 @@ impl SpaceInfo {
     /// In other words, everything that [`Self::visit_descendants`] doesn't visit plus `self`.
     pub fn visit_non_descendants(
         &self,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         visitor: &mut impl FnMut(&SpaceInfo),
     ) {
         visitor(self);
@@ -79,7 +79,10 @@ impl SpaceInfo {
         }
     }
 
-    pub fn parent<'a>(&self, spaces_info: &'a SpacesInfo) -> Option<(&'a SpaceInfo, &Transform)> {
+    pub fn parent<'a>(
+        &self,
+        spaces_info: &'a SpaceInfoCollection,
+    ) -> Option<(&'a SpaceInfo, &Transform)> {
         self.parent.as_ref().and_then(|(parent_path, transform)| {
             spaces_info.get(parent_path).map(|space| (space, transform))
         })
@@ -96,11 +99,11 @@ impl SpaceInfo {
 /// For every child of the root there is a space info.
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
 #[derive(Default)]
-pub struct SpacesInfo {
+pub struct SpaceInfoCollection {
     spaces: BTreeMap<ObjPath, SpaceInfo>,
 }
 
-impl SpacesInfo {
+impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
     pub fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
@@ -110,7 +113,7 @@ impl SpacesInfo {
             obj_db: &ObjDb,
             timeline: &Timeline,
             query_time: Option<i64>,
-            spaces_info: &mut SpacesInfo,
+            spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
