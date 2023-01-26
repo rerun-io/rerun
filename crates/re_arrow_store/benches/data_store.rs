@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::array::{Array, StructArray};
+use arrow2::array::{Array, UnionArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
@@ -53,7 +53,7 @@ fn latest_at_batch(c: &mut Criterion) {
                     .as_ref()
                     .unwrap()
                     .as_any()
-                    .downcast_ref::<StructArray>()
+                    .downcast_ref::<UnionArray>()
                     .unwrap();
                 assert_eq!(NUM_RECTS as usize, rects.len());
             });
@@ -119,7 +119,7 @@ fn range_batch(c: &mut Criterion) {
                         .as_ref()
                         .unwrap()
                         .as_any()
-                        .downcast_ref::<StructArray>()
+                        .downcast_ref::<UnionArray>()
                         .unwrap();
                     assert_eq!(NUM_RECTS as usize, rects.len());
                 }
