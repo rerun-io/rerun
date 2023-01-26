@@ -54,6 +54,11 @@ def rerun_shutdown() -> None:
 
 atexit.register(rerun_shutdown)
 
+
+def unregister_shutdown() -> None:
+    atexit.unregister(rerun_shutdown)
+
+
 # -----------------------------------------------------------------------------
 
 
