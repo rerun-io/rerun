@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
@@ -6,6 +7,8 @@ use std::{
 
 use directories_next::ProjectDirs;
 use uuid::Uuid;
+
+use crate::Property;
 
 // ---
 
@@ -34,6 +37,9 @@ pub struct Config {
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
 
+    #[serde(rename = "metadata", default)]
+    pub metadata: HashMap<String, Property>,
+
     /// The path of the config file.
     #[serde(rename = "config_file_path")]
     pub config_file_path: PathBuf,
@@ -61,6 +67,7 @@ impl Config {
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config {
                 analytics_id: Uuid::new_v4().to_string(),
                 analytics_enabled: true,
+                metadata: Default::default(),
                 session_id: Uuid::new_v4(),
                 is_first_run: true,
                 config_file_path: config_path,
