@@ -260,19 +260,28 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            for space_view_candidate in Self::default_created_space_views(ctx, spaces_info) {
-                // Take this space view, but only if it doesn't exist yet.
-                //
-                // Checking the root path alone is not enough since we may come up with new kind of default-populations!
-                // However, once a space view was edited (added/removed new objects), we can no longer do a direct comparison though.
-                if !self.space_views.values().any(|existing_view| {
-                    existing_view.space_path == space_view_candidate.space_path
-                        && (!existing_view.allow_auto_adding_more_object
-                            || existing_view.data_blueprint.object_paths()
-                                == space_view_candidate.data_blueprint.object_paths())
-                }) {
-                    self.add_space_view(space_view_candidate);
+            'candidate: for space_view_candidate in
+                Self::default_created_space_views(ctx, spaces_info)
+            {
+                for existing_view in self.space_views.values() {
+                    if existing_view.space_path == space_view_candidate.space_path {
+                        if !existing_view.allow_auto_adding_more_object {
+                            // User edited a space view with the same name. Don't add anything!
+                            continue 'candidate;
+                        }
+
+                        if space_view_candidate
+                            .data_blueprint
+                            .object_paths()
+                            .is_subset(existing_view.data_blueprint.object_paths())
+                        {
+                            // This space view wouldn't add anything we haven't already
+                            continue 'candidate;
+                        }
+                    }
                 }
+
+                self.add_space_view(space_view_candidate);
             }
         }
     }
