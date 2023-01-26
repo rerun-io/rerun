@@ -380,8 +380,9 @@ impl Viewport {
 
         for space_info in spaces_info.iter() {
             let transforms = TransformCache::determine_transforms(
-                spaces_info,
-                space_info,
+                &ctx.log_db.obj_db,
+                &ctx.rec_cfg.time_ctrl,
+                &space_info.path,
                 &ObjectsProperties::default(),
             );
             for (category, obj_paths) in

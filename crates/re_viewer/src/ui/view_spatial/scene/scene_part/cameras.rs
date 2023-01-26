@@ -13,7 +13,7 @@ use crate::{
     },
     ui::{
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        transform_cache::TransformCache,
         view_spatial::{SceneSpatial, SpaceCamera3D},
     },
 };
@@ -73,8 +73,7 @@ impl CamerasPart {
         let parent_path = obj_path
             .parent()
             .expect("root path can't be part of scene query");
-        let ReferenceFromObjTransform::Reachable(world_from_parent) =
-            transforms.reference_from_obj(&parent_path) else {
+        let Some(world_from_parent) = transforms.reference_from_obj(&parent_path) else {
                 return;
             };
 

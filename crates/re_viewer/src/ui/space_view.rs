@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     data_blueprint::DataBlueprintTree,
-    transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
+    transform_cache::UnreachableTransformReason,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self},
@@ -64,12 +64,6 @@ pub struct SpaceView {
 
     /// Set to `false` the first time the user messes around with the list of queried objects.
     pub allow_auto_adding_more_object: bool,
-
-    /// Transforms seen last frame, renewed every frame.
-    /// TODO(andreas): This should probably live on `SpacesInfo` and created there lazily?
-    ///                 See also [#741](https://github.com/rerun-io/rerun/issues/741)
-    #[serde(skip)]
-    cached_transforms: TransformCache,
 }
 
 impl SpaceView {
@@ -104,7 +98,6 @@ impl SpaceView {
             view_state: ViewState::default(),
             category,
             allow_auto_adding_more_object: true,
-            cached_transforms: TransformCache::default(),
         }
     }
 
@@ -160,20 +153,18 @@ impl SpaceView {
             return;
         };
 
-        self.cached_transforms = TransformCache::determine_transforms(
-            spaces_info,
-            space_info,
+        // TODO: remove
+        let cached_transforms = TransformCache::determine_transforms(
+            &ctx.log_db.obj_db,
+            &ctx.rec_cfg.time_ctrl,
+            &self.space_path,
             self.data_blueprint.data_blueprints_projected(),
         );
 
         if self.allow_auto_adding_more_object {
             // Add objects that have been logged since we were created
-            let queried_objects = Self::default_queried_objects(
-                ctx,
-                space_info,
-                self.category,
-                &self.cached_transforms,
-            );
+            let queried_objects =
+                Self::default_queried_objects(ctx, space_info, self.category, &cached_transforms);
             self.data_blueprint
                 .insert_objects_according_to_hierarchy(queried_objects, &self.space_path);
         }
@@ -241,14 +232,13 @@ impl SpaceView {
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-                if let Some(reference_space) = spaces_info.get(&self.space_path) {
-                    let transforms = TransformCache::determine_transforms(
-                        &spaces_info,
-                        reference_space,
-                        self.data_blueprint.data_blueprints_projected(),
-                    );
-                    self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
-                }
+                let transforms = TransformCache::determine_transforms(
+                    &ctx.log_db.obj_db,
+                    &ctx.rec_cfg.time_ctrl,
+                    &self.space_path,
+                    self.data_blueprint.data_blueprints_projected(),
+                );
+                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
             }
         });
     }
@@ -288,8 +278,8 @@ impl SpaceView {
         tree: &ObjectTree,
         transforms: &TransformCache,
     ) {
-        let unreachable_reason = match transforms.reference_from_obj(&tree.path) {
-            ReferenceFromObjTransform::Unreachable(reason) => Some(match reason {
+        let unreachable_reason = transforms.unreachable_reason(&tree.path).
+            map(|reason| match reason {
                 // Should never happen
                 UnreachableTransformReason::Unconnected =>
                      "No object path connection from this space view.",
@@ -299,9 +289,7 @@ impl SpaceView {
                     "Can't display objects that are connected via an unknown transform to this space.",
                 UnreachableTransformReason::InversePinholeCameraWithoutResolution =>
                     "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
-                }),
-            ReferenceFromObjTransform::Reachable(_) => None,
-        };
+            });
         let response = if tree.is_leaf() {
             ui.horizontal(|ui| {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
@@ -444,8 +432,14 @@ impl SpaceView {
             }
 
             ViewCategory::Spatial => {
+                let transforms = TransformCache::determine_transforms(
+                    &ctx.log_db.obj_db,
+                    &ctx.rec_cfg.time_ctrl,
+                    &self.space_path,
+                    self.data_blueprint.data_blueprints_projected(),
+                );
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(ctx, &query, &self.cached_transforms, highlights);
+                scene.load_objects(ctx, &query, &transforms, highlights);
                 self.view_state.ui_spatial(
                     ctx,
                     ui,

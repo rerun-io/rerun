@@ -93,7 +93,7 @@ impl ScenePart for MeshPart {
         crate::profile_scope!("MeshPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 
