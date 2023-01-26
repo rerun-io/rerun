@@ -157,20 +157,18 @@ impl TextureManager2D {
         let mut data = creation_desc.data;
         let mut padded_rows_copy_if_necessary = Vec::new();
 
-        if bytes_per_row_aligned != bytes_per_row_unaligned {
+        if bytes_per_row_aligned > bytes_per_row_unaligned {
             crate::profile_scope!("pad");
-            let num_padding_bytes_per_row = bytes_per_row_aligned - bytes_per_row_unaligned;
-            padded_rows_copy_if_necessary.extend(
-                creation_desc
-                    .data
-                    .chunks_exact(bytes_per_row_unaligned as usize)
-                    .flat_map(|unpadded_row| {
-                        unpadded_row
-                            .iter()
-                            .cloned()
-                            .chain(std::iter::repeat(0).take(num_padding_bytes_per_row as usize))
-                    }),
-            );
+            padded_rows_copy_if_necessary.resize((size.height * bytes_per_row_aligned) as usize, 0);
+            for y in 0..size.height {
+                let src_index = (y * bytes_per_row_unaligned) as usize;
+                let dst_index = (y * bytes_per_row_aligned) as usize;
+                let num_bytes = bytes_per_row_unaligned as usize;
+                let src_range = src_index..(src_index + num_bytes);
+                let dst_range = dst_index..(dst_index + num_bytes);
+                padded_rows_copy_if_necessary[dst_range]
+                    .copy_from_slice(&creation_desc.data[src_range]);
+            }
 
             data = &padded_rows_copy_if_necessary[..];
         };
