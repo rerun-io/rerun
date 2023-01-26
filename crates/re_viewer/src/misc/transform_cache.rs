@@ -99,6 +99,15 @@ impl TransformCache {
         while let Some(parent_tree) = parent_tree_stack.pop() {
             let parent_transform = query_transform(obj_db, timeline, &parent_tree.path, query_time);
 
+            // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
+            if parent_tree.path.is_root() {
+                transforms.first_unreachable_parent = Some((
+                    parent_tree.path.clone(),
+                    UnreachableTransformReason::Unconnected,
+                ));
+                break;
+            }
+
             if let Some(parent_transform) = parent_transform {
                 reference_from_ancestor = match parent_transform {
                     re_log_types::Transform::Rigid3(rigid) => {

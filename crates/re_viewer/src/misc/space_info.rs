@@ -41,20 +41,6 @@ impl SpaceInfo {
         }
     }
 
-    /// Invokes visitor for `self` and all descendents recursively.
-    pub fn visit_descendants(
-        &self,
-        spaces_info: &SpaceInfoCollection,
-        visitor: &mut impl FnMut(&SpaceInfo),
-    ) {
-        visitor(self);
-        for child_path in self.child_spaces.keys() {
-            if let Some(child_space) = spaces_info.get(child_path) {
-                child_space.visit_descendants(spaces_info, visitor);
-            }
-        }
-    }
-
     /// Invokes visitor for `self` and all descendents that are reachable with a valid transform recursively.
     ///
     /// Keep in mind that transforms are the newest on the currently choosen timeline.
@@ -100,40 +86,6 @@ impl SpaceInfo {
         }
 
         visit_descendants_with_reachable_transform_recursively(self, spaces_info, false, visitor);
-    }
-
-    /// Invokes visitor for `self` and all connected nodes that are not descendants.
-    ///
-    /// I.e. all parents and their children in turn, except the children of `self`.
-    /// In other words, everything that [`Self::visit_descendants`] doesn't visit plus `self`.
-    pub fn visit_non_descendants(
-        &self,
-        spaces_info: &SpaceInfoCollection,
-        visitor: &mut impl FnMut(&SpaceInfo),
-    ) {
-        visitor(self);
-
-        if let Some((parent_space, _)) = &self.parent(spaces_info) {
-            for sibling_path in parent_space.child_spaces.keys() {
-                if *sibling_path == self.path {
-                    continue;
-                }
-                if let Some(child_space) = spaces_info.get(sibling_path) {
-                    child_space.visit_descendants(spaces_info, visitor);
-                }
-
-                parent_space.visit_non_descendants(spaces_info, visitor);
-            }
-        }
-    }
-
-    pub fn parent<'a>(
-        &self,
-        spaces_info: &'a SpaceInfoCollection,
-    ) -> Option<(&'a SpaceInfo, &Transform)> {
-        self.parent.as_ref().and_then(|(parent_path, transform)| {
-            spaces_info.get(parent_path).map(|space| (space, transform))
-        })
     }
 
     pub fn parent_transform(&self) -> Option<&Transform> {
@@ -232,11 +184,23 @@ impl SpaceInfoCollection {
         self.spaces.get(path)
     }
 
+    pub fn get_first_parent_with_info(&self, path: &ObjPath) -> Option<&SpaceInfo> {
+        let mut path = path.clone();
+        while let Some(parent) = path.parent() {
+            let space_info = self.get(&path);
+            if space_info.is_some() {
+                return space_info;
+            }
+            path = parent;
+        }
+        None
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &SpaceInfo> {
         self.spaces.values()
     }
 
-    /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to`)
+    /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to_reference`)
     ///
     /// For how, you nee to check [`crate::ui::TransformCache`]!
     /// Note that in any individual frame objects may or may not be reachable.
@@ -244,11 +208,80 @@ impl SpaceInfoCollection {
     pub fn is_reachable_by_transform(
         &self,
         from: &ObjPath,
-        to: &ObjPath,
+        to_reference: &ObjPath,
     ) -> Result<(), UnreachableTransformReason> {
         crate::profile_function!();
 
-        // TODO:
+        // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
+        if from.iter().next() != to_reference.iter().next() {
+            return Err(UnreachableTransformReason::Unconnected);
+        }
+
+        // Get closest space infos for the given object paths.
+        let Some(mut from_space) = self.get_first_parent_with_info(from) else {
+            re_log::warn_once!("{} not part of space infos", from);
+            return Err(UnreachableTransformReason::Unconnected);
+        };
+        let Some(mut to_reference_space) = self.get_first_parent_with_info(to_reference) else {
+            re_log::warn_once!("{} not part of space infos", to_reference);
+            return Err(UnreachableTransformReason::Unconnected);
+        };
+
+        // If this is not true, the path we're querying, `from`, is outside of the tree the reference node.
+        // Note that this means that all transforms on the way are inversed!
+        let from_is_child_of_reference = from.is_descendant_of(to_reference);
+
+        // Reachability is (mostly) commutative!
+        // This means we can simply walk from the lower node to the parent until we're on the same node
+        // If we haven't encountered any obstacles, we're fine!
+        let mut encountered_pinhole = false;
+        while from_space.path != to_reference_space.path {
+            let parent = if from_is_child_of_reference {
+                &from_space.parent
+            } else {
+                &to_reference_space.parent
+            };
+
+            if let Some((parent_path, transform)) = parent {
+                match transform {
+                    Transform::Unknown => {
+                        return Err(UnreachableTransformReason::UnknownTransform);
+                    }
+                    Transform::Rigid3(_) => {}
+                    Transform::Pinhole(pinhole) => {
+                        if encountered_pinhole {
+                            return Err(UnreachableTransformReason::NestedPinholeCameras);
+                        }
+                        encountered_pinhole = true;
+
+                        if pinhole.resolution.is_none() && !from_is_child_of_reference {
+                            return Err(
+                                UnreachableTransformReason::InversePinholeCameraWithoutResolution,
+                            );
+                        }
+                    }
+                }
+
+                let Some(parent_space) = self.get(parent_path) else {
+                    re_log::warn_once!("{} not part of space infos", parent_path);
+                    return Err(UnreachableTransformReason::Unconnected);
+                };
+
+                if from_is_child_of_reference {
+                    from_space = parent_space;
+                } else {
+                    to_reference_space = parent_space;
+                };
+            } else {
+                re_log::warn_once!(
+                    "No space info connection between {} and {}",
+                    from,
+                    to_reference
+                );
+                return Err(UnreachableTransformReason::Unconnected);
+            }
+        }
+
         Ok(())
     }
 }
