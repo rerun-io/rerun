@@ -7,7 +7,7 @@ use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
-use super::{TimeControl, UnreachableTransformReason};
+use super::{TimeControl, UnreachableTransform};
 
 /// Information about one "space".
 ///
@@ -209,22 +209,22 @@ impl SpaceInfoCollection {
         &self,
         from: &ObjPath,
         to_reference: &ObjPath,
-    ) -> Result<(), UnreachableTransformReason> {
+    ) -> Result<(), UnreachableTransform> {
         crate::profile_function!();
 
         // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
         if from.iter().next() != to_reference.iter().next() {
-            return Err(UnreachableTransformReason::Unconnected);
+            return Err(UnreachableTransform::Unconnected);
         }
 
         // Get closest space infos for the given object paths.
         let Some(mut from_space) = self.get_first_parent_with_info(from) else {
             re_log::warn_once!("{} not part of space infos", from);
-            return Err(UnreachableTransformReason::Unconnected);
+            return Err(UnreachableTransform::Unconnected);
         };
         let Some(mut to_reference_space) = self.get_first_parent_with_info(to_reference) else {
             re_log::warn_once!("{} not part of space infos", to_reference);
-            return Err(UnreachableTransformReason::Unconnected);
+            return Err(UnreachableTransform::Unconnected);
         };
 
         // If this is not true, the path we're querying, `from`, is outside of the tree the reference node.
@@ -243,28 +243,27 @@ impl SpaceInfoCollection {
             };
 
             if let Some((parent_path, transform)) = parent {
+                // See also `inverse_transform_at` and `transform_at` in `transform_cache.rs`
                 match transform {
-                    Transform::Unknown => {
-                        return Err(UnreachableTransformReason::UnknownTransform);
-                    }
-                    Transform::Rigid3(_) => {}
+                    Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
+                    Transform::Rigid3(_) => Ok(()),
                     Transform::Pinhole(pinhole) => {
                         if encountered_pinhole {
-                            return Err(UnreachableTransformReason::NestedPinholeCameras);
-                        }
-                        encountered_pinhole = true;
-
-                        if pinhole.resolution.is_none() && !from_is_child_of_reference {
-                            return Err(
-                                UnreachableTransformReason::InversePinholeCameraWithoutResolution,
-                            );
+                            Err(UnreachableTransform::NestedPinholeCameras)
+                        } else {
+                            encountered_pinhole = true;
+                            if pinhole.resolution.is_none() && !from_is_child_of_reference {
+                                Err(UnreachableTransform::InversePinholeCameraWithoutResolution)
+                            } else {
+                                Ok(())
+                            }
                         }
                     }
-                }
+                }?;
 
                 let Some(parent_space) = self.get(parent_path) else {
                     re_log::warn_once!("{} not part of space infos", parent_path);
-                    return Err(UnreachableTransformReason::Unconnected);
+                    return Err(UnreachableTransform::Unconnected);
                 };
 
                 if from_is_child_of_reference {
@@ -278,7 +277,7 @@ impl SpaceInfoCollection {
                     from,
                     to_reference
                 );
-                return Err(UnreachableTransformReason::Unconnected);
+                return Err(UnreachableTransform::Unconnected);
             }
         }
 

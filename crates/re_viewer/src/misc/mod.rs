@@ -29,7 +29,7 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
     SelectionHighlight, SelectionState, SpaceViewHighlights,
 };
-pub use transform_cache::{TransformCache, UnreachableTransformReason};
+pub use transform_cache::{TransformCache, UnreachableTransform};
 
 // ----------------------------------------------------------------------------
 

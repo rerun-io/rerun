@@ -5,7 +5,7 @@ use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpaceInfoCollection},
-        SpaceViewHighlights, TransformCache, UnreachableTransformReason, ViewerContext,
+        SpaceViewHighlights, TransformCache, UnreachableTransform, ViewerContext,
     },
     ui::view_category::categorize_obj_path,
 };
@@ -268,13 +268,13 @@ impl SpaceView {
         let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.root_path).map_err
             (|reason| match reason {
                 // Should never happen
-                UnreachableTransformReason::Unconnected =>
+                UnreachableTransform::Unconnected =>
                      "No object path connection from this space view.",
-                UnreachableTransformReason::NestedPinholeCameras =>
+                UnreachableTransform::NestedPinholeCameras =>
                     "Can't display objects under nested pinhole cameras.",
-                UnreachableTransformReason::UnknownTransform =>
+                UnreachableTransform::UnknownTransform =>
                     "Can't display objects that are connected via an unknown transform to this space.",
-                UnreachableTransformReason::InversePinholeCameraWithoutResolution =>
+                UnreachableTransform::InversePinholeCameraWithoutResolution =>
                     "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
             }).err();
         let response = if tree.is_leaf() {
