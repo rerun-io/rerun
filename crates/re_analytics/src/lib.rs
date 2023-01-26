@@ -75,11 +75,12 @@ const DISCLAIMER: &str = "
     help the Rerun team improve the library.
 
     Summary:
-    - The data you log to Rerun, such as point clouds, images, or text logs,
+    - We only collect high level events about the features used within the Rerun Viewer.
+    - The actual data you log to Rerun, such as point clouds, images, or text logs,
       will never be collected.
-    - Usage data we do collect will be sent to and stored on servers within the EU.
     - We don't log IP addresses.
-    - We don't log your user name, file paths, or any personal identifiable data
+    - We don't log your user name, file paths, or any personal identifiable data.
+    - Usage data we do collect will be sent to and stored on servers within the EU.
     - For more details and instructions on how to opt out,
       run: `rerun analytics details` or `python -m rerun analytics details`.
 
