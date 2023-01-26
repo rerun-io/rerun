@@ -2,7 +2,8 @@ use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
 use re_log_types::{
     field_types::{
-        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Tensor, TensorTrait, TextEntry,
+        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
+        TextEntry,
     },
     msg_bundle::Component,
     Arrow3D, DataPath, Mesh3D, Transform,

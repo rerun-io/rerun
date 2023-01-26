@@ -148,7 +148,7 @@ impl ArrowDeserialize for TensorId {
 ///     ),
 /// );
 /// ```
-#[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
     U8(Vec<u8>),
@@ -296,7 +296,7 @@ pub enum TensorDataMeaning {
 ///     ])
 /// );
 /// ```
-#[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
     /// Unique identifier for the tensor
     pub tensor_id: TensorId,
