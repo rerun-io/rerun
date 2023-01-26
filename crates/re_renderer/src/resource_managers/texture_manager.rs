@@ -158,6 +158,7 @@ impl TextureManager2D {
         let mut padded_rows_copy_if_necessary = Vec::new();
 
         if bytes_per_row_aligned != bytes_per_row_unaligned {
+            crate::profile_scope!("pad");
             let num_padding_bytes_per_row = bytes_per_row_aligned - bytes_per_row_unaligned;
             padded_rows_copy_if_necessary.extend(
                 creation_desc
@@ -176,6 +177,7 @@ impl TextureManager2D {
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
+        crate::profile_scope!("write_texture");
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &texture.texture,
