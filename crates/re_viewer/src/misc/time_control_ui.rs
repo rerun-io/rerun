@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use re_data_store::TimesPerTimeline;
 use re_log_types::TimeType;
 
-use super::time_control::{Looping, TimeControl};
+use super::time_control::{Looping, PlayState, TimeControl};
 
 impl TimeControl {
     pub fn time_control_ui(
@@ -60,6 +60,7 @@ impl TimeControl {
         ui: &mut egui::Ui,
     ) {
         self.play_button_ui(re_ui, ui, times_per_timeline);
+        self.follow_button_ui(re_ui, ui, times_per_timeline);
         self.pause_button_ui(re_ui, ui);
         self.step_time_button_ui(re_ui, ui, times_per_timeline);
         self.loop_button_ui(re_ui, ui);
@@ -71,18 +72,39 @@ impl TimeControl {
         ui: &mut egui::Ui,
         times_per_timeline: &TimesPerTimeline,
     ) {
+        let is_playing = self.play_state() == PlayState::Playing;
         if re_ui
-            .large_button_selected(ui, &re_ui::icons::PLAY, self.is_playing())
+            .large_button_selected(ui, &re_ui::icons::PLAY, is_playing)
             .on_hover_text(format!("Play.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
-            self.play(times_per_timeline);
+            self.set_play_state(times_per_timeline, PlayState::Playing);
+        }
+    }
+
+    fn follow_button_ui(
+        &mut self,
+        re_ui: &re_ui::ReUi,
+        ui: &mut egui::Ui,
+        times_per_timeline: &TimesPerTimeline,
+    ) {
+        let is_following = self.play_state() == PlayState::Following;
+        if re_ui
+            .large_button_selected(ui, &re_ui::icons::FOLLOW, is_following)
+            .on_hover_text(format!(
+                "Follow latest data.{}",
+                toggle_playback_text(ui.ctx())
+            ))
+            .clicked()
+        {
+            self.set_play_state(times_per_timeline, PlayState::Following);
         }
     }
 
     fn pause_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+        let is_paused = self.play_state() == PlayState::Paused;
         if re_ui
-            .large_button_selected(ui, &re_ui::icons::PAUSE, !self.is_playing())
+            .large_button_selected(ui, &re_ui::icons::PAUSE, is_paused)
             .on_hover_text(format!("Pause.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
@@ -118,14 +140,14 @@ impl TimeControl {
 
         ui.scope(|ui| {
             // Loop-button cycles between states:
-            match self.looping {
+            match self.looping() {
                 Looping::Off => {
                     if re_ui
                         .large_button_selected(ui, icon, false)
                         .on_hover_text("Looping is off")
                         .clicked()
                     {
-                        self.looping = Looping::All;
+                        self.set_looping(Looping::All);
                     }
                 }
                 Looping::All => {
@@ -134,7 +156,7 @@ impl TimeControl {
                         .on_hover_text("Looping entire recording")
                         .clicked()
                     {
-                        self.looping = Looping::Selection;
+                        self.set_looping(Looping::Selection);
                     }
                 }
                 Looping::Selection => {
@@ -145,7 +167,7 @@ impl TimeControl {
                         .on_hover_text("Looping selection")
                         .clicked()
                     {
-                        self.looping = Looping::Off;
+                        self.set_looping(Looping::Off);
                     }
                 }
             }
