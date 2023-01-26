@@ -40,7 +40,7 @@ pub struct SpaceView {
     pub id: SpaceViewId,
     pub name: String,
 
-    /// Everything under this root is shown in the space view.
+    /// Everything under this root *can* be shown in the space view.
     pub root_path: ObjPath,
 
     /// The "anchor point" of this space view.
