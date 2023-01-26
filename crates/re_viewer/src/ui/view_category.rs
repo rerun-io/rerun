@@ -47,6 +47,9 @@ impl ViewCategory {
 
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
+// TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered
+// all possible `ViewCategory` values, or you're in for a bad time..!
+
 pub fn categorize_obj_path(
     timeline: &Timeline,
     log_db: &LogDb,
