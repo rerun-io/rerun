@@ -13,9 +13,15 @@ struct QuitMsg;
 
 /// Sent to prematurely quit (before flushing).
 #[derive(Debug, PartialEq, Eq)]
-enum TcpQuitMsg {
+enum InterruptMsg {
+    /// Switch to a mode where we drop messages if disconnected.
+    ///
+    /// Sending this before a flush ensures we won't get stuck trying to send
+    /// messages to a closed endpoint, but we will still send all messages to an open endpoint.
     DropIfDisconnected,
-    Immediate,
+
+    /// Quite immediately, dropping any unsent message.
+    Quit,
 }
 
 enum MsgMsg {
@@ -38,7 +44,7 @@ pub struct Client {
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,
     encode_quit_tx: Sender<QuitMsg>,
-    send_quit_tx: Sender<TcpQuitMsg>,
+    send_quit_tx: Sender<InterruptMsg>,
     drop_quit_tx: Sender<QuitMsg>,
     encode_join: Option<JoinHandle<()>>,
     send_join: Option<JoinHandle<()>>,
@@ -123,8 +129,14 @@ impl Client {
         }
     }
 
+    /// Switch to a mode where we drop messages if disconnected.
+    ///
+    /// Calling this before a flush (or drop) ensures we won't get stuck trying to send
+    /// messages to a closed endpoint, but we will still send all messages to an open endpoint.
     pub fn drop_if_disconnected(&mut self) {
-        self.send_quit_tx.send(TcpQuitMsg::DropIfDisconnected).ok();
+        self.send_quit_tx
+            .send(InterruptMsg::DropIfDisconnected)
+            .ok();
     }
 
     fn send_msg_msg(&mut self, msg: MsgMsg) {
@@ -140,7 +152,7 @@ impl Drop for Client {
         self.send(LogMsg::Goodbye(MsgId::random()));
         self.flush();
         self.encode_quit_tx.send(QuitMsg).ok();
-        self.send_quit_tx.send(TcpQuitMsg::Immediate).ok();
+        self.send_quit_tx.send(InterruptMsg::Quit).ok();
         self.drop_quit_tx.send(QuitMsg).ok();
         self.encode_join.take().map(|j| j.join().ok());
         self.send_join.take().map(|j| j.join().ok());
@@ -207,7 +219,7 @@ fn msg_encode(
 fn tcp_sender(
     addr: SocketAddr,
     packet_rx: &Receiver<PacketMsg>,
-    quit_rx: &Receiver<TcpQuitMsg>,
+    quit_rx: &Receiver<InterruptMsg>,
     flushed_tx: &Sender<FlushedMsg>,
 ) {
     let mut tcp_client = crate::tcp_client::TcpClient::new(addr);
@@ -222,8 +234,8 @@ fn tcp_sender(
                     match packet_msg {
                         PacketMsg::Packet(packet) => {
                             match send_until_success(&mut tcp_client, drop_if_disconnected, &packet, quit_rx) {
-                                Some(TcpQuitMsg::Immediate) => {return;}
-                                Some(TcpQuitMsg::DropIfDisconnected) => {
+                                Some(InterruptMsg::Quit) => {return;}
+                                Some(InterruptMsg::DropIfDisconnected) => {
                                     drop_if_disconnected = true;
                                 }
                                 None => {}
@@ -246,7 +258,7 @@ fn tcp_sender(
             recv(quit_rx) -> quit_msg => { match quit_msg {
                 // Don't terminate on receiving a `DropIfDisconnected`. It's a soft-quit that allows
                 // us to flush the pipeline.
-                Ok(TcpQuitMsg::DropIfDisconnected) => {
+                Ok(InterruptMsg::DropIfDisconnected) => {
                     drop_if_disconnected = true;
                 }
                 _ => return,
@@ -259,8 +271,8 @@ fn send_until_success(
     tcp_client: &mut crate::tcp_client::TcpClient,
     drop_if_disconnected: bool,
     packet: &[u8],
-    quit_rx: &Receiver<TcpQuitMsg>,
-) -> Option<TcpQuitMsg> {
+    quit_rx: &Receiver<InterruptMsg>,
+) -> Option<InterruptMsg> {
     // Early exit if tcp_client is disconnected
     if drop_if_disconnected && !tcp_client.is_connected() {
         re_log::debug_once!("Dropping messages because we're disconnected.");
@@ -280,20 +292,17 @@ fn send_until_success(
         loop {
             select! {
                 recv(quit_rx) -> _quit_msg => {
-                    return Some(_quit_msg.unwrap_or(TcpQuitMsg::Immediate));
+                    re_log::debug_once!("Dropping messages because we're disconnected or quitting.");
+                    return Some(_quit_msg.unwrap_or(InterruptMsg::Quit));
                 }
                 default(std::time::Duration::from_millis(sleep_ms)) => {
                     if let Err(new_err) = tcp_client.send(packet) {
-                        const MAX_SLEEP : u64 = 3000;
+                        const MAX_SLEEP_MS : u64 = 3000;
 
-                        if drop_if_disconnected {
-                            re_log::debug_once!("Dropping messages because we're disconnected.");
-                            return None;
-                        }
-                        sleep_ms = (sleep_ms * 2).min(MAX_SLEEP);
+                        sleep_ms = (sleep_ms * 2).min(MAX_SLEEP_MS);
 
                         // Only produce subsequent warnings once we've saturated the back-off
-                        if sleep_ms == MAX_SLEEP && new_err.to_string() != err.to_string() {
+                        if sleep_ms == MAX_SLEEP_MS && new_err.to_string() != err.to_string() {
                                 re_log::warn!("Still failing to send message: {err}");
                         }
                     } else {
