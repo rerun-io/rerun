@@ -21,7 +21,7 @@ pub struct TransformCache {
     unreachable_paths: Vec<(ObjPath, UnreachableTransform)>,
 
     /// The first parent of reference_path that is no longer reachable.
-    first_unreachable_parent: Option<(ObjPath, UnreachableTransform)>,
+    first_unreachable_parent: (ObjPath, UnreachableTransform),
 }
 
 #[derive(Clone, Copy)]
@@ -54,7 +54,7 @@ impl TransformCache {
             reference_path: root_path.clone(),
             reference_from_obj_per_object: Default::default(),
             unreachable_paths: Default::default(),
-            first_unreachable_parent: None,
+            first_unreachable_parent: (ObjPath::root(), UnreachableTransform::Unconnected),
         };
 
         // Find the object path tree for the root.
@@ -97,7 +97,7 @@ impl TransformCache {
             // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
             if parent_tree.path.is_root() {
                 transforms.first_unreachable_parent =
-                    Some((parent_tree.path.clone(), UnreachableTransform::Unconnected));
+                    (parent_tree.path.clone(), UnreachableTransform::Unconnected);
                 break;
             }
 
@@ -112,7 +112,7 @@ impl TransformCache {
             ) {
                 Err(unreachable_reason) => {
                     transforms.first_unreachable_parent =
-                        Some((parent_tree.path.clone(), unreachable_reason));
+                        (parent_tree.path.clone(), unreachable_reason);
                     break;
                 }
                 Ok(None) => {}
