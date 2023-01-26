@@ -61,8 +61,8 @@ impl TransformCache {
         let mut parent_tree_stack = Vec::new();
         let mut tree_at_root_path = &obj_db.tree;
         'outer: while &tree_at_root_path.path != root_path {
-            for (_, child_tree) in &tree_at_root_path.children {
-                if root_path.is_descendant_of(&child_tree.path) {
+            for child_tree in tree_at_root_path.children.values() {
+                if root_path == &child_tree.path || root_path.is_descendant_of(&child_tree.path) {
                     parent_tree_stack.push(tree_at_root_path);
                     tree_at_root_path = child_tree;
                     continue 'outer;
