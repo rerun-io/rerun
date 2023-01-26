@@ -17,7 +17,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{scene::AnyTensor, Image, SceneSpatial},
+        view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },
 };
@@ -193,7 +193,7 @@ impl ImagesPart {
 
                 scene.ui.images.push(Image {
                     instance_hash,
-                    tensor: AnyTensor::ArrowTensor(tensor),
+                    tensor,
                     meter,
                     annotations,
                 });

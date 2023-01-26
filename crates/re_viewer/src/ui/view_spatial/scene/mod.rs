@@ -3,15 +3,14 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, KeypointId, Tensor},
-    ClassicTensor, IndexHash, MeshId,
+    field_types::{ClassId, KeypointId, Tensor}, IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{
-        caches::AsDynamicImage, mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight,
+        mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight,
         SelectionHighlight, SpaceViewHighlights, ViewerContext,
     },
     ui::{
@@ -59,24 +58,10 @@ pub struct MeshSource {
     pub additive_tint: Color32,
 }
 
-pub enum AnyTensor {
-    ClassicTensor(ClassicTensor),
-    ArrowTensor(Tensor),
-}
-
-impl AnyTensor {
-    pub fn as_ref(&self) -> &(dyn AsDynamicImage) {
-        match self {
-            Self::ClassicTensor(t) => t,
-            Self::ArrowTensor(t) => t,
-        }
-    }
-}
-
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: AnyTensor,
+    pub tensor: Tensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have

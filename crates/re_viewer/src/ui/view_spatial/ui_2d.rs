@@ -5,6 +5,7 @@ use egui::{
 };
 use macaw::IsoTransform;
 use re_data_store::ObjPath;
+use re_log_types::field_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
@@ -372,7 +373,7 @@ fn view_2d_scrollable(
             response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
                 if let Some(meter) = image.meter {
-                    if let Some(raw_value) = image.tensor.as_ref().get(&[
+                    if let Some(raw_value) = image.tensor.get(&[
                         pointer_pos_space.y.round() as _,
                         pointer_pos_space.x.round() as _,
                     ]) {
@@ -392,12 +393,12 @@ fn view_2d_scrollable(
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                image.tensor.as_ref(),
+                                &image.tensor,
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.as_ref().shape() {
+                            if let [h, w, ..] = image.tensor.shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
