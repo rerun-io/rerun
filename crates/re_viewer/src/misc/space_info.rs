@@ -202,7 +202,7 @@ impl SpaceInfoCollection {
 
     /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to_reference`)
     ///
-    /// For how, you nee to check [`crate::ui::TransformCache`]!
+    /// For how, you nee to check [`crate::misc::TransformCache`]!
     /// Note that in any individual frame objects may or may not be reachable.
     /// [`SpaceInfoCollection`] only answers about the time point it is queried for.
     pub fn is_reachable_by_transform(

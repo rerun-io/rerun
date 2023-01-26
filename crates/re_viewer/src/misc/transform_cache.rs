@@ -190,7 +190,7 @@ impl TransformCache {
 
     /// Retrieves the transform of on object from its local system to the space of the reference.
     ///
-    /// Only returns None if the path is not reachable. Use [`unreachable_reason`] to determine why.
+    /// Returns None if the path is not reachable.
     pub fn reference_from_obj(&self, obj_path: &ObjPath) -> Option<macaw::Mat4> {
         self.reference_from_obj_per_object.get(obj_path).cloned()
     }
