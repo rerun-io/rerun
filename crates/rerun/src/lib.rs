@@ -145,13 +145,12 @@ where
 
 #[cfg(all(feature = "analytics"))]
 fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
-    let analytics = re_analytics::Analytics::new(std::time::Duration::from_secs(2))?;
     match cmd {
         #[allow(clippy::unit_arg)]
         AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
         AnalyticsCommands::Clear => re_analytics::cli::clear(),
         AnalyticsCommands::Email { email } => {
-            re_analytics::cli::set(&analytics, [("email".to_owned(), email.clone().into())])
+            re_analytics::cli::set([("email".to_owned(), email.clone().into())])
         }
         AnalyticsCommands::Enable => re_analytics::cli::opt(true),
         AnalyticsCommands::Disable => re_analytics::cli::opt(false),

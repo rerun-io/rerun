@@ -126,7 +126,7 @@ impl Analytics {
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
         if let Some(pipeline) = pipeline.as_ref() {
-            pipeline.record(Event::update_metadata());
+            pipeline.record(Event::update_metadata(config.metadata.clone()));
         }
 
         Ok(Self {

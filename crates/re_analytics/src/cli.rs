@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use crate::{Analytics, AnalyticsError, Config, ConfigError, Event, Property};
+use crate::{AnalyticsError, Config, ConfigError, Property};
+
 // ---
 
 #[derive(thiserror::Error, Debug)]
@@ -48,18 +49,10 @@ pub fn clear() -> Result<(), CliError> {
     Ok(())
 }
 
-pub fn set(
-    analytics: &Analytics,
-    props: impl IntoIterator<Item = (String, Property)>,
-) -> Result<(), CliError> {
-    let mut event = Event::update("set_extra".into());
-    for (name, value) in props {
-        event = event.with_prop(name.into(), value);
-    }
-
-    analytics.record(event);
-
-    Ok(())
+pub fn set(props: impl IntoIterator<Item = (String, Property)>) -> Result<(), CliError> {
+    let mut config = Config::load()?;
+    config.metadata.extend(props);
+    config.save().map_err(Into::into)
 }
 
 pub fn opt(enabled: bool) -> Result<(), CliError> {

@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
 use uuid::Uuid;
+
+use crate::Property;
 
 // ---
 
@@ -26,6 +30,9 @@ pub struct Config {
     /// A unique ID for this session.
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
+
+    #[serde(rename = "metadata", default)]
+    pub metadata: HashMap<String, Property>,
 }
 
 impl Config {
