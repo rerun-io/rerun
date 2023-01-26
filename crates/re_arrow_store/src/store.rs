@@ -299,6 +299,8 @@ impl DataStore {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         // Row indices should be continuous across all index tables.
         if self.gc_id == 0 {
             let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
@@ -547,6 +549,8 @@ impl PersistentIndexTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         let Self {
             ent_path: _,
             cluster_key,
@@ -583,6 +587,8 @@ impl PersistentIndexTable {
     }
 
     pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
+        puffin::profile_function!();
+
         self.indices
             .iter()
             .map(|(name, index)| {
@@ -780,6 +786,8 @@ impl IndexTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         // No two buckets should ever overlap time-range-wise.
         {
             let time_ranges = self
@@ -905,6 +913,8 @@ impl IndexBucket {
 
     /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
     pub fn times(&self) -> (String, Int64Array) {
+        puffin::profile_function!();
+
         let times = Int64Array::from_vec(self.indices.read().times.clone());
         let logical_type = match self.timeline.typ() {
             re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
@@ -915,6 +925,8 @@ impl IndexBucket {
 
     /// Returns a Vec each of (name, array) for each index in the bucket
     pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
+        puffin::profile_function!();
+
         self.indices
             .read()
             .indices
@@ -937,6 +949,8 @@ impl IndexBucket {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         let IndexBucketIndices {
             is_sorted: _,
             time_range: _,
@@ -1064,6 +1078,8 @@ impl PersistentComponentTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         // All chunks should always be dense
         {
             for chunk in &self.chunks {
@@ -1215,6 +1231,8 @@ impl ComponentTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         // No two buckets should ever overlap row-range-wise.
         {
             let row_ranges = self
@@ -1356,6 +1374,8 @@ impl ComponentBucket {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        puffin::profile_function!();
+
         // All chunks should always be dense
         {
             for chunk in &self.chunks {
