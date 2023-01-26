@@ -406,7 +406,8 @@ impl Viewport {
         let mut space_views = Vec::new();
 
         for space_view_candidate in Self::all_possible_space_views(ctx, spaces_info) {
-            let Some(space_info) = spaces_info.get(&space_view_candidate.space_path)  else {
+            let Some(space_info) = spaces_info.get(&space_view_candidate.space_path) else {
+                // Should never happen.
                 continue;
             };
 
