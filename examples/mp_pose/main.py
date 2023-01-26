@@ -22,7 +22,7 @@ DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
 
 
-def track_pose(video_path: str) -> None:
+def track_pose(video_path: str, segment: bool) -> None:
     mp_pose = mp.solutions.pose
 
     rr.log_annotation_context(
@@ -33,10 +33,14 @@ def track_pose(video_path: str) -> None:
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         ),
     )
+    # Use a separate annotation context for the segmentation mask.
+    rr.log_annotation_context(
+        "video/mask", [AnnotationInfo(label="Background", id=0), AnnotationInfo(label="Person", id=1, color=(0, 0, 0))]
+    )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 
     with closing(VideoSource(video_path)) as video_source:
-        with mp_pose.Pose() as pose:
+        with mp_pose.Pose(enable_segmentation=segment) as pose:
             for bgr_frame in video_source.stream_bgr():
 
                 rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
@@ -51,6 +55,10 @@ def track_pose(video_path: str) -> None:
 
                 landmark_positions_3d = read_landmark_positions_3d(results)
                 rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
+
+                segmentation_mask = results.segmentation_mask
+                if segmentation_mask is not None:
+                    rr.log_segmentation_image("video/mask", segmentation_mask)
 
 
 def read_landmark_positions_2d(
@@ -140,6 +148,7 @@ def main() -> None:
     )
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
+    parser.add_argument("--no-segment", action="store_true", help="Don't run person segmentation.")
 
     rr.init("mp_pose")
 
@@ -157,7 +166,7 @@ def main() -> None:
     elif args.save is None and not args.headless:
         rr.spawn_and_connect()
 
-    track_pose(video_path)
+    track_pose(video_path, segment=not args.no_segment)
 
     if args.save is not None:
         rr.save(args.save)
