@@ -73,7 +73,7 @@ struct Args {
 #[derive(Debug, Clone, Subcommand)]
 enum Commands {
     /// Configure the behaviour of our analytics.
-    #[cfg(all(feature = "analytics", debug_assertions))]
+    #[cfg(all(feature = "analytics"))]
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 }
@@ -87,6 +87,8 @@ pub enum AnalyticsCommands {
     /// This will remove all pending data that hasn't yet been sent to our servers, as well as
     /// reset your analytics ID.
     Clear,
+    /// Associate an email address with the current user.
+    Email { email: String },
     /// Enable analytics.
     Enable,
     /// Disable analytics.
@@ -113,9 +115,9 @@ where
 
     let res = if let Some(commands) = &args.commands {
         match commands {
-            #[cfg(all(feature = "analytics", debug_assertions))]
+            #[cfg(all(feature = "analytics"))]
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
-            #[cfg(not(all(feature = "analytics", debug_assertions)))]
+            #[cfg(not(all(feature = "analytics")))]
             _ => Ok(()),
         }
     } else {
@@ -141,12 +143,16 @@ where
     }
 }
 
-#[cfg(all(feature = "analytics", debug_assertions))]
+#[cfg(all(feature = "analytics"))]
 fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
+    let analytics = re_analytics::Analytics::new(std::time::Duration::from_secs(2))?;
     match cmd {
         #[allow(clippy::unit_arg)]
         AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
         AnalyticsCommands::Clear => re_analytics::cli::clear(),
+        AnalyticsCommands::Email { email } => {
+            re_analytics::cli::set(&analytics, [("email".to_owned(), email.clone().into())])
+        }
         AnalyticsCommands::Enable => re_analytics::cli::opt(true),
         AnalyticsCommands::Disable => re_analytics::cli::opt(false),
         AnalyticsCommands::Config => re_analytics::cli::print_config(),

@@ -16,8 +16,9 @@ use re_log_types::{
 };
 
 use crate::{
-    misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeView,
-    ViewerContext,
+    misc::time_control::{Looping, PlayState},
+    time_axis::TimelineAxis,
+    Selection, TimeControl, TimeView, ViewerContext,
 };
 
 use super::{data_ui::DataUi, Blueprint};
@@ -1069,16 +1070,13 @@ fn loop_selection_ui(
         }
     }
 
-    if time_ctrl.loop_selection().is_none() && time_ctrl.looping == Looping::Selection {
-        time_ctrl.looping = Looping::Off;
+    if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
+        time_ctrl.set_looping(Looping::Off);
     }
-
-    // TODO(emilk): click to toggle on/off
-    // when off, you cannot modify, just drag out a new one.
 
     let selection_color = re_ui::ReUi::loop_selection_color();
 
-    let is_active = time_ctrl.looping == Looping::Selection;
+    let is_active = time_ctrl.looping() == Looping::Selection;
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_pointer_in_timeline =
@@ -1178,7 +1176,7 @@ fn loop_selection_ui(
                         }
 
                         time_ctrl.set_loop_selection(selected_range);
-                        time_ctrl.looping = Looping::Selection;
+                        time_ctrl.set_looping(Looping::Selection);
                     }
                 }
 
@@ -1203,16 +1201,16 @@ fn loop_selection_ui(
                         }
 
                         time_ctrl.set_loop_selection(selected_range);
-                        time_ctrl.looping = Looping::Selection;
+                        time_ctrl.set_looping(Looping::Selection);
                     }
                 }
 
                 if middle_response.clicked() {
                     // Click to toggle looping
-                    if time_ctrl.looping == Looping::Selection {
-                        time_ctrl.looping = Looping::Off;
+                    if time_ctrl.looping() == Looping::Selection {
+                        time_ctrl.set_looping(Looping::Off);
                     } else {
-                        time_ctrl.looping = Looping::Selection;
+                        time_ctrl.set_looping(Looping::Selection);
                     }
                 }
 
@@ -1241,7 +1239,7 @@ fn loop_selection_ui(
 
                         time_ctrl.set_loop_selection(new_range);
                         if ui.input(|i| i.pointer.is_moving()) {
-                            time_ctrl.looping = Looping::Selection;
+                            time_ctrl.set_looping(Looping::Selection);
                         }
                         Some(())
                     })();
@@ -1259,7 +1257,7 @@ fn loop_selection_ui(
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
-                time_ctrl.looping = Looping::Selection;
+                time_ctrl.set_looping(Looping::Selection);
                 ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
             }
         }
@@ -1667,7 +1665,7 @@ impl TimeRangesUi {
 
     // Make sure playback time doesn't get stuck between non-continuos regions:
     fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
-        if !ctx.rec_cfg.time_ctrl.is_playing() {
+        if ctx.rec_cfg.time_ctrl.play_state() != PlayState::Playing {
             return;
         }
 
