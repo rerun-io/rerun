@@ -2,20 +2,16 @@ use std::collections::BTreeMap;
 
 use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
 
-use nohash_hasher::IntSet;
-
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpaceInfoCollection},
-        SpaceViewHighlights, ViewerContext,
+        SpaceViewHighlights, TransformCache, UnreachableTransformReason, ViewerContext,
     },
-    ui::transform_cache::TransformCache,
     ui::view_category::categorize_obj_path,
 };
 
 use super::{
     data_blueprint::DataBlueprintTree,
-    transform_cache::UnreachableTransformReason,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self},
@@ -70,7 +66,7 @@ impl SpaceView {
     pub fn new(
         category: ViewCategory,
         space_info: &SpaceInfo,
-        queried_objects: &IntSet<ObjPath>,
+        queried_objects: &[ObjPath],
     ) -> Self {
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
@@ -79,8 +75,7 @@ impl SpaceView {
 
         let name = if queried_objects.len() == 1 {
             // a single object in this space-view - name the space after it
-            let obj_path = queried_objects.iter().next().unwrap();
-            obj_path.to_string()
+            queried_objects[0].to_string()
         } else {
             space_info.path.to_string()
         };
@@ -104,45 +99,55 @@ impl SpaceView {
     /// List of objects a space view queries by default for a given category.
     ///
     /// These are all objects in the given space which have the requested category and are reachable by a transform.
-    pub fn default_queried_objects<'a>(
-        ctx: &'a ViewerContext<'_>,
-        space_info: &'a SpaceInfo,
+    pub fn default_queried_objects(
+        ctx: &ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
+        space_info: &SpaceInfo,
         category: ViewCategory,
-        // TODO(andreas): Can we do this without `TransformCache` and just `SpacesInfo`?
-        //                  Needed right now because the later can't determine reachability, but this is fairly expensive.
-        transforms: &'a TransformCache,
-    ) -> impl Iterator<Item = &'a ObjPath> + 'a {
+    ) -> Vec<ObjPath> {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
-        transforms
-            .objects_with_reachable_transform()
-            .filter(move |obj_path| {
-                (*obj_path == &space_info.path || obj_path.is_descendant_of(&space_info.path))
-                    && categorize_obj_path(timeline, log_db, obj_path).contains(category)
-            })
+
+        let mut objects = Vec::new();
+
+        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
+            objects.extend(
+                space_info
+                    .descendants_without_transform
+                    .iter()
+                    .filter(|obj_path| {
+                        categorize_obj_path(timeline, log_db, obj_path).contains(category)
+                    })
+                    .cloned(),
+            );
+        });
+
+        objects
     }
 
     /// List of objects a space view queries by default for all any possible category.
     pub fn default_queried_objects_by_category(
         ctx: &ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
-        // TODO(andreas): Can we do this without `TransformCache` and just `SpacesInfo`?
-        //                  Needed right now because the later can't determine reachability, but this is fairly expensive.
-        transforms: &TransformCache,
-    ) -> BTreeMap<ViewCategory, IntSet<ObjPath>> {
+    ) -> BTreeMap<ViewCategory, Vec<ObjPath>> {
+        crate::profile_function!();
+
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
 
-        let mut groups: BTreeMap<ViewCategory, IntSet<ObjPath>> = Default::default();
-        for obj_path in transforms.objects_with_reachable_transform() {
-            if obj_path == &space_info.path || obj_path.is_descendant_of(&space_info.path) {
+        let mut groups: BTreeMap<ViewCategory, Vec<ObjPath>> = BTreeMap::default();
+
+        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
+            for obj_path in &space_info.descendants_without_transform {
                 for category in categorize_obj_path(timeline, log_db, obj_path) {
-                    groups.entry(category).or_default().insert(obj_path.clone());
+                    groups.entry(category).or_default().push(obj_path.clone());
                 }
             }
-        }
+        });
+
         groups
     }
 
@@ -157,20 +162,12 @@ impl SpaceView {
             return;
         };
 
-        // TODO: remove
-        let cached_transforms = TransformCache::determine_transforms(
-            &ctx.log_db.obj_db,
-            &ctx.rec_cfg.time_ctrl,
-            &self.space_path,
-            self.data_blueprint.data_blueprints_projected(),
-        );
-
         if self.allow_auto_adding_more_object {
             // Add objects that have been logged since we were created
             let queried_objects =
-                Self::default_queried_objects(ctx, space_info, self.category, &cached_transforms);
+                Self::default_queried_objects(ctx, spaces_info, space_info, self.category);
             self.data_blueprint
-                .insert_objects_according_to_hierarchy(queried_objects, &self.space_path);
+                .insert_objects_according_to_hierarchy(queried_objects.iter(), &self.space_path);
         }
     }
 
@@ -237,13 +234,7 @@ impl SpaceView {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info =
                     SpaceInfoCollection::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-                let transforms = TransformCache::determine_transforms(
-                    &ctx.log_db.obj_db,
-                    &ctx.rec_cfg.time_ctrl,
-                    &self.space_path,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
-                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
+                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree);
             }
         });
     }
@@ -254,7 +245,6 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
         tree: &ObjectTree,
-        transforms: &TransformCache,
     ) {
         if tree.children.is_empty() {
             ui.weak("(nothing)");
@@ -262,14 +252,7 @@ impl SpaceView {
         }
 
         for (path_comp, child_tree) in &tree.children {
-            self.obj_tree_ui(
-                ctx,
-                ui,
-                spaces_info,
-                &path_comp.to_string(),
-                child_tree,
-                transforms,
-            );
+            self.obj_tree_ui(ctx, ui, spaces_info, &path_comp.to_string(), child_tree);
         }
     }
 
@@ -281,10 +264,9 @@ impl SpaceView {
         spaces_info: &SpaceInfoCollection,
         name: &str,
         tree: &ObjectTree,
-        transforms: &TransformCache,
     ) {
-        let unreachable_reason = transforms.unreachable_reason(&tree.path).
-            map(|reason| match reason {
+        let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.root_path).map_err
+            (|reason| match reason {
                 // Should never happen
                 UnreachableTransformReason::Unconnected =>
                      "No object path connection from this space view.",
@@ -294,7 +276,7 @@ impl SpaceView {
                     "Can't display objects that are connected via an unknown transform to this space.",
                 UnreachableTransformReason::InversePinholeCameraWithoutResolution =>
                     "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
-            });
+            }).err();
         let response = if tree.is_leaf() {
             ui.horizontal(|ui| {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
@@ -324,7 +306,7 @@ impl SpaceView {
                 });
             })
             .body(|ui| {
-                self.obj_tree_children_ui(ctx, ui, spaces_info, tree, transforms);
+                self.obj_tree_children_ui(ctx, ui, spaces_info, tree);
             })
             .0
         };

@@ -7,11 +7,12 @@ use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
-use super::TimeControl;
+use super::{TimeControl, UnreachableTransformReason};
 
 /// Information about one "space".
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects.
+/// ⚠️ Transforms used for this are latest known, i.e. the "right most location in the timeline" ⚠️
 pub struct SpaceInfo {
     pub path: ObjPath,
 
@@ -52,6 +53,53 @@ impl SpaceInfo {
                 child_space.visit_descendants(spaces_info, visitor);
             }
         }
+    }
+
+    /// Invokes visitor for `self` and all descendents that are reachable with a valid transform recursively.
+    ///
+    /// Keep in mind that transforms are the newest on the currently choosen timeline.
+    pub fn visit_descendants_with_reachable_transform(
+        &self,
+        spaces_info: &SpaceInfoCollection,
+        visitor: &mut impl FnMut(&SpaceInfo),
+    ) {
+        fn visit_descendants_with_reachable_transform_recursively(
+            space_info: &SpaceInfo,
+            space_info_collection: &SpaceInfoCollection,
+            encountered_pinhole: bool,
+            visitor: &mut impl FnMut(&SpaceInfo),
+        ) {
+            visitor(space_info);
+
+            for (child_path, transform) in &space_info.child_spaces {
+                let Some(child_space) = space_info_collection.get(child_path) else {
+                    // should never happen.
+                    continue;
+                };
+
+                let is_pinhole = match transform {
+                    Transform::Unknown => {
+                        continue;
+                    }
+                    Transform::Rigid3(_) => false,
+                    Transform::Pinhole(_) => {
+                        // Don't allow nested pinhole
+                        if encountered_pinhole {
+                            continue;
+                        }
+                        true
+                    }
+                };
+                visit_descendants_with_reachable_transform_recursively(
+                    child_space,
+                    space_info_collection,
+                    is_pinhole,
+                    visitor,
+                );
+            }
+        }
+
+        visit_descendants_with_reachable_transform_recursively(self, spaces_info, false, visitor);
     }
 
     /// Invokes visitor for `self` and all connected nodes that are not descendants.
@@ -112,12 +160,11 @@ impl SpaceInfoCollection {
         fn add_children(
             obj_db: &ObjDb,
             timeline: &Timeline,
-            query_time: Option<i64>,
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
-            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
+            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, None) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -133,7 +180,6 @@ impl SpaceInfoCollection {
                     add_children(
                         obj_db,
                         timeline,
-                        query_time,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
@@ -149,20 +195,14 @@ impl SpaceInfoCollection {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(
-                        obj_db,
-                        timeline,
-                        query_time,
-                        spaces_info,
-                        parent_space,
-                        child_tree,
-                    );
+                    add_children(obj_db, timeline, spaces_info, parent_space, child_tree);
                 }
             }
         }
 
+        // TODO(andreas): Should we be somehow independent of which timeline is choosen?
+        //                  Use log time timeline maybe?
         let timeline = time_ctrl.timeline();
-        let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
 
         let mut spaces_info = Self::default();
 
@@ -177,14 +217,7 @@ impl SpaceInfoCollection {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(
-                obj_db,
-                timeline,
-                query_time,
-                &mut spaces_info,
-                &mut space_info,
-                tree,
-            );
+            add_children(obj_db, timeline, &mut spaces_info, &mut space_info, tree);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
@@ -201,6 +234,22 @@ impl SpaceInfoCollection {
 
     pub fn iter(&self) -> impl Iterator<Item = &SpaceInfo> {
         self.spaces.values()
+    }
+
+    /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to`)
+    ///
+    /// For how, you nee to check [`crate::ui::TransformCache`]!
+    /// Note that in any individual frame objects may or may not be reachable.
+    /// [`SpaceInfoCollection`] only answers about the time point it is queried for.
+    pub fn is_reachable_by_transform(
+        &self,
+        from: &ObjPath,
+        to: &ObjPath,
+    ) -> Result<(), UnreachableTransformReason> {
+        crate::profile_function!();
+
+        // TODO:
+        Ok(())
     }
 }
 

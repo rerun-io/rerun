@@ -13,10 +13,9 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{caches::AsDynamicImage, SpaceViewHighlights, ViewerContext},
+    misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::TransformCache,
         view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },

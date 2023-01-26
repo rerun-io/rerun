@@ -11,6 +11,7 @@ use crate::misc::TimeControl;
 #[derive(Clone)]
 pub struct TransformCache {
     /// All transforms provided are relative to this reference path.
+    #[allow(dead_code)]
     reference_path: ObjPath,
 
     /// Alll reachable objects.
@@ -33,15 +34,6 @@ pub enum UnreachableTransformReason {
     InversePinholeCameraWithoutResolution,
     /// Unknown transform between this and the reference space.
     UnknownTransform,
-}
-
-#[derive(Clone)]
-pub enum ReferenceFromObjTransform {
-    /// On the path from the given object to the reference is an obstacle.
-    Unreachable(UnreachableTransformReason),
-
-    /// We're able to transform this object into the reference space.
-    Reachable(glam::Mat4),
 }
 
 impl TransformCache {
@@ -73,7 +65,7 @@ impl TransformCache {
                 if root_path.is_descendant_of(&child_tree.path) {
                     parent_tree_stack.push(tree_at_root_path);
                     tree_at_root_path = child_tree;
-                    break 'outer;
+                    continue 'outer;
                 }
             }
             // Should never reach this
@@ -187,7 +179,7 @@ impl TransformCache {
         self.reference_from_obj_per_object
             .insert(tree.path.clone(), reference_from_obj);
 
-        for (_, child_tree) in &tree.children {
+        for child_tree in tree.children.values() {
             if Some(&child_tree.path) == skipped_child_path {
                 continue;
             }
@@ -265,13 +257,11 @@ impl TransformCache {
         self.reference_from_obj_per_object.get(obj_path).cloned()
     }
 
-    /// Returns why (if actually) a path isn't reachable.
-    pub fn unreachable_reason(&self, _obj_path: &ObjPath) -> Option<UnreachableTransformReason> {
-        // TODO:
-        None
-    }
-
-    pub fn objects_with_reachable_transform(&self) -> impl Iterator<Item = &ObjPath> {
-        self.reference_from_obj_per_object.keys()
-    }
+    // This method isn't currently implemented, but we might need it in the future.
+    // All the necessary data on why a subtree isn't reachable is already stored.
+    //
+    // Returns why (if actually) a path isn't reachable.
+    // pub fn unreachable_reason(&self, _obj_path: &ObjPath) -> Option<UnreachableTransformReason> {
+    //     None
+    // }
 }

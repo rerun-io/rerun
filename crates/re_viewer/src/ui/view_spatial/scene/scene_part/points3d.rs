@@ -13,12 +13,12 @@ use re_renderer::Size;
 
 use crate::{
     misc::{
-        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext,
+        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        TransformCache, ViewerContext,
     },
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
-        transform_cache::TransformCache,
         view_spatial::{scene::Keypoints, Label3D, SceneSpatial},
         Annotations, DefaultColor,
     },

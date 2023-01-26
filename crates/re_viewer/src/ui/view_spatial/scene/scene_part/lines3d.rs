@@ -9,11 +9,8 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
-    ui::{
-        scene::SceneQuery, transform_cache::TransformCache, view_spatial::SceneSpatial,
-        DefaultColor,
-    },
+    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
 use super::ScenePart;

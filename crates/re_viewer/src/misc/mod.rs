@@ -7,6 +7,7 @@ pub(crate) mod space_info;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
+mod transform_cache;
 mod viewer_context;
 
 pub use caches::Caches;
@@ -28,6 +29,7 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
     SelectionHighlight, SelectionState, SpaceViewHighlights,
 };
+pub use transform_cache::{TransformCache, UnreachableTransformReason};
 
 // ----------------------------------------------------------------------------
 

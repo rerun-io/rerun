@@ -10,10 +10,9 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 
 use crate::{
-    misc::{SpaceViewHighlights, ViewerContext},
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::TransformCache,
         view_spatial::{MeshSource, MeshSourceData, SceneSpatial},
         DefaultColor,
     },

@@ -9,11 +9,10 @@ use re_renderer::renderer::LineStripFlags;
 use crate::{
     misc::{
         space_info::query_view_coordinates, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
-        ViewerContext,
+        TransformCache, ViewerContext,
     },
     ui::{
         scene::SceneQuery,
-        transform_cache::TransformCache,
         view_spatial::{SceneSpatial, SpaceCamera3D},
     },
 };

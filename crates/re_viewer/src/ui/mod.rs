@@ -6,7 +6,6 @@ mod scene;
 mod selection_history;
 mod selection_history_ui;
 mod space_view;
-mod transform_cache;
 mod view_bar_chart;
 mod view_category;
 mod view_tensor;

@@ -7,14 +7,13 @@ use std::collections::BTreeSet;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
+use re_data_store::{ObjPath, TimeInt};
 use re_log_types::field_types::{Tensor, TensorTrait};
 
 use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
 
 use super::{
     data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
-    transform_cache::TransformCache,
     view_category::ViewCategory,
     SpaceView, SpaceViewId,
 };
@@ -383,14 +382,8 @@ impl Viewport {
         let mut space_views = Vec::new();
 
         for space_info in spaces_info.iter() {
-            let transforms = TransformCache::determine_transforms(
-                &ctx.log_db.obj_db,
-                &ctx.rec_cfg.time_ctrl,
-                &space_info.path,
-                &ObjectsProperties::default(),
-            );
             for (category, obj_paths) in
-                SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+                SpaceView::default_queried_objects_by_category(ctx, spaces_info, space_info)
             {
                 space_views.push(SpaceView::new(category, space_info, &obj_paths));
             }

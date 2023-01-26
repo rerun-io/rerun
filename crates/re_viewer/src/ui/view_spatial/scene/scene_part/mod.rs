@@ -1,8 +1,8 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
 use crate::{
-    misc::{SpaceViewHighlights, ViewerContext},
-    ui::{scene::SceneQuery, transform_cache::TransformCache},
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
+    ui::scene::SceneQuery,
 };
 
 use super::SceneSpatial;
