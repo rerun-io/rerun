@@ -2,6 +2,10 @@
 
 use egui::util::hash;
 
+use re_data_store::ObjPath as EntityPath;
+use re_log::warn_once;
+use re_log_types::field_types::{self, Instance};
+
 use crate::{misc::ViewerContext, ui::annotations::auto_color};
 
 use super::SceneBarChart;
@@ -50,6 +54,73 @@ pub(crate) fn view_bar_chart(
                     .name(instance_id.to_string())
                     .color(color),
                 );
+            }
+
+            fn create_bar_chart<N: Into<f64>>(
+                ent_path: &EntityPath,
+                instance: &Instance,
+                values: impl Iterator<Item = N>,
+            ) -> BarChart {
+                let color = auto_color(hash((ent_path, instance)) as _);
+                let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
+                BarChart::new(
+                    values
+                        .enumerate()
+                        .map(|(i, value)| {
+                            Bar::new(i as f64 + 0.5, value.into())
+                                .width(0.95)
+                                .name(format!("{ent_path}[#{instance}] #{i}"))
+                                .fill(fill)
+                                .stroke(egui::Stroke::NONE)
+                        })
+                        .collect(),
+                )
+                .name(format!("{ent_path}[#{instance}]"))
+                .color(color)
+            }
+
+            for ((ent_path, instance), tensor) in &scene.charts_arrow {
+                let chart = match &tensor.data {
+                    field_types::TensorData::U8(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::U16(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::U32(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::U64(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied().map(|v| v as f64))
+                    }
+                    field_types::TensorData::I8(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::I16(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::I32(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::I64(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied().map(|v| v as f64))
+                    }
+                    field_types::TensorData::F32(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::F64(data) => {
+                        create_bar_chart(ent_path, instance, data.iter().copied())
+                    }
+                    field_types::TensorData::JPEG(_) => {
+                        warn_once!(
+                            "trying to display JPEG data as a bar chart ({:?})",
+                            ent_path
+                        );
+                        continue;
+                    }
+                };
+
+                plot_ui.bar_chart(chart);
             }
         })
         .response
