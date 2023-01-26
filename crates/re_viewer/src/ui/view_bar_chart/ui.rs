@@ -32,30 +32,6 @@ pub(crate) fn view_bar_chart(
         .legend(Legend::default())
         .clamp_grid(true)
         .show(ui, |plot_ui| {
-            for (instance_id, bar_chart_values) in &scene.charts {
-                let color = auto_color(hash(instance_id) as _);
-                let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
-
-                plot_ui.bar_chart(
-                    BarChart::new(
-                        bar_chart_values
-                            .values
-                            .iter()
-                            .enumerate()
-                            .map(|(i, value)| {
-                                Bar::new(i as f64 + 0.5, *value)
-                                    .width(0.95)
-                                    .name(format!("{instance_id} #{i}"))
-                                    .fill(fill)
-                                    .stroke(egui::Stroke::NONE)
-                            })
-                            .collect(),
-                    )
-                    .name(instance_id.to_string())
-                    .color(color),
-                );
-            }
-
             fn create_bar_chart<N: Into<f64>>(
                 ent_path: &EntityPath,
                 instance: &Instance,
@@ -79,7 +55,7 @@ pub(crate) fn view_bar_chart(
                 .color(color)
             }
 
-            for ((ent_path, instance), tensor) in &scene.charts_arrow {
+            for ((ent_path, instance), tensor) in &scene.charts {
                 let chart = match &tensor.data {
                     field_types::TensorData::U8(data) => {
                         create_bar_chart(ent_path, instance, data.iter().copied())
