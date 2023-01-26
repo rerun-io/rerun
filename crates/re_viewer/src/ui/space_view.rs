@@ -18,7 +18,7 @@ use super::{
     transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
     view_bar_chart,
     view_category::ViewCategory,
-    view_spatial::{self, SpatialNavigationMode},
+    view_spatial::{self},
     view_tensor, view_text, view_time_series,
 };
 
@@ -77,15 +77,7 @@ impl SpaceView {
         category: ViewCategory,
         space_info: &SpaceInfo,
         queried_objects: &IntSet<ObjPath>,
-        default_spatial_navigation_mode: SpatialNavigationMode,
-        initial_transforms: TransformCache,
     ) -> Self {
-        let mut view_state = ViewState::default();
-
-        if category == ViewCategory::Spatial {
-            view_state.state_spatial.nav_mode = default_spatial_navigation_mode;
-        }
-
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
             |c| ObjPath::from(vec![c.to_owned()]),
@@ -101,7 +93,7 @@ impl SpaceView {
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_objects_according_to_hierarchy(queried_objects, &space_info.path);
+            .insert_objects_according_to_hierarchy(queried_objects.iter(), &space_info.path);
 
         Self {
             name,
@@ -109,48 +101,42 @@ impl SpaceView {
             root_path,
             space_path: space_info.path.clone(),
             data_blueprint: data_blueprint_tree,
-            view_state,
+            view_state: ViewState::default(),
             category,
             allow_auto_adding_more_object: true,
-            cached_transforms: initial_transforms,
+            cached_transforms: TransformCache::default(),
         }
     }
 
     /// List of objects a space view queries by default for a given category.
     ///
     /// These are all objects in the given space which have the requested category and are reachable by a transform.
-    pub fn default_queried_objects(
-        ctx: &ViewerContext<'_>,
+    pub fn default_queried_objects<'a>(
+        ctx: &'a ViewerContext<'_>,
+        space_info: &'a SpaceInfo,
         category: ViewCategory,
-        space_info: &SpaceInfo,
-        spaces_info: &SpacesInfo,
-        transforms: &TransformCache,
-    ) -> IntSet<ObjPath> {
+        // TODO(andreas): Can we do this without `TransformCache` and just `SpacesInfo`?
+        //                  Needed right now because the later can't determine reachability, but this is fairly expensive.
+        transforms: &'a TransformCache,
+    ) -> impl Iterator<Item = &'a ObjPath> + 'a {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
-
-        let mut objects = IntSet::default();
-        space_info.visit_descendants(spaces_info, &mut |space| {
-            objects.extend(
-                space
-                    .descendants_without_transform
-                    .iter()
-                    .filter(|obj_path| {
-                        transforms.reference_from_obj(obj_path).is_reachable()
-                            && categorize_obj_path(timeline, log_db, obj_path).contains(category)
-                    })
-                    .cloned(),
-            );
-        });
-        objects
+        transforms
+            .objects_with_reachable_transform()
+            .filter(move |obj_path| {
+                (*obj_path == &space_info.path || obj_path.is_descendant_of(&space_info.path))
+                    && categorize_obj_path(timeline, log_db, obj_path).contains(category)
+            })
     }
 
     /// List of objects a space view queries by default for all any possible category.
     pub fn default_queried_objects_by_category(
         ctx: &ViewerContext<'_>,
         space_info: &SpaceInfo,
+        // TODO(andreas): Can we do this without `TransformCache` and just `SpacesInfo`?
+        //                  Needed right now because the later can't determine reachability, but this is fairly expensive.
         transforms: &TransformCache,
     ) -> BTreeMap<ViewCategory, IntSet<ObjPath>> {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
@@ -184,13 +170,12 @@ impl SpaceView {
             // Add objects that have been logged since we were created
             let queried_objects = Self::default_queried_objects(
                 ctx,
-                self.category,
                 space_info,
-                spaces_info,
+                self.category,
                 &self.cached_transforms,
             );
             self.data_blueprint
-                .insert_objects_according_to_hierarchy(&queried_objects, &self.space_path);
+                .insert_objects_according_to_hierarchy(queried_objects, &self.space_path);
         }
     }
 
@@ -398,7 +383,7 @@ impl SpaceView {
             // Can't add things we already added.
 
             // Insert the object itself and all its children as far as they haven't been added yet
-            let mut objects = IntSet::default();
+            let mut objects = Vec::new();
             obj_tree
                 .subtree(path)
                 .unwrap()
@@ -406,7 +391,7 @@ impl SpaceView {
                     if has_visualization_for_category(ctx, self.category, path)
                         && !self.data_blueprint.contains_object(path)
                     {
-                        objects.insert(path.clone());
+                        objects.push(path.clone());
                     }
                 });
 
@@ -415,7 +400,7 @@ impl SpaceView {
             let response = ui.button("➕");
             if response.clicked() {
                 self.data_blueprint
-                    .insert_objects_according_to_hierarchy(&objects, &self.space_path);
+                    .insert_objects_according_to_hierarchy(objects.iter(), &self.space_path);
                 self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")
