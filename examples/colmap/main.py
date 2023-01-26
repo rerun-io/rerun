@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Example of using Rerun to log and visualize the output of COLMAP's sparse reconstruction."""
+import io
+import os
+import zipfile
+from argparse import ArgumentParser
+from pathlib import Path
+from typing import Any, Final
+
+import numpy as np
+import numpy.typing as npt
+import requests
+from read_write_model import Camera, read_model
+from tqdm import tqdm
+
+import rerun as rr
+
+DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
+DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
+DATASET_NAME: Final = "colmap_rusty_car"
+DATASET_URL: Final = f"{DATASET_URL_BASE}/{DATASET_NAME}.zip"
+
+
+def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
+    """Convert a colmap camera to a pinhole camera intrinsics matrix."""
+    return np.vstack(
+        [
+            np.hstack(
+                [
+                    # Focal length is in [:2]
+                    np.diag(camera.params[:2]),
+                    # Principle point is in [2:]
+                    np.vstack(camera.params[2:]),
+                ]
+            ),
+            [0, 0, 1],
+        ]
+    )
+
+
+def get_downloaded_dataset_path() -> Path:
+    recording_dir = DATASET_DIR / DATASET_NAME
+    if recording_dir.exists():
+        return recording_dir
+
+    os.makedirs(DATASET_DIR, exist_ok=True)
+
+    zip_file = download_with_progress(DATASET_URL)
+
+    with zipfile.ZipFile(zip_file) as zip_ref:
+        progress = tqdm(zip_ref.infolist(), "Extracting dataset", total=len(zip_ref.infolist()), unit="files")
+        for file in progress:
+            zip_ref.extract(file, DATASET_DIR)
+            progress.update()
+
+    return recording_dir
+
+
+def download_with_progress(url: str) -> io.BytesIO:
+    """Download file with tqdm progress bar."""
+    chunk_size = 1024 * 1024
+    resp = requests.get(url, stream=True)
+    total_size = int(resp.headers.get("content-length", 0))
+    with tqdm(
+        desc=f"Downloading dataset", total=total_size, unit="B", unit_scale=True, unit_divisor=chunk_size
+    ) as progress:
+        zip_file = io.BytesIO()
+        for data in resp.iter_content(chunk_size):
+            zip_file.write(data)
+            progress.update(len(data))
+
+    zip_file.seek(0)
+    return zip_file
+
+
+def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) -> None:
+    print("Reading sparse COLMAP reconstruction")
+    cameras, images, points3D = read_model(dataset_path / "sparse", ext=".bin")
+    print("Building visualization by logging to Rerun")
+
+    if filter_output:
+        # Filter out noisy points
+        points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
+
+    rr.log_view_coordinates("world", up="-Y", timeless=True)
+
+    # Iterate through images (video frames) logging data related to each frame.
+    for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
+        frame_idx = int(image.name[0:4])  # COLMAP sets image ids that don't match the original video frame
+        quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
+        camera_from_world = (image.tvec, quat_xyzw)  # COLMAP's camera transform is "camera from world"
+        camera = cameras[image.camera_id]
+        intrinsics = intrinsics_for_camera(camera)
+
+        unique_valid_3d_ids = set(id for id in image.point3D_ids if id != -1 and points3D.get(id) is not None)
+        sorted_3d_ids = sorted(unique_valid_3d_ids)
+
+        visible_points = [points3D[id] for id in sorted_3d_ids]
+
+        if filter_output and len(visible_points) < 500:
+            continue
+
+        rr.set_time_sequence("frame", frame_idx)
+
+        points = [point.xyz for point in visible_points]  # type: ignore[union-attr]
+        point_colors = [point.rgb for point in visible_points]  # type: ignore[union-attr]
+        rr.log_points(f"world/points", points, identifiers=sorted_3d_ids, colors=point_colors)
+
+        rr.log_rigid3(
+            f"world/camera",
+            child_from_parent=camera_from_world,
+            xyz="RDF",  # X=Right, Y=Down, Z=Forward
+        )
+
+        # Log camera intrinsics
+        rr.log_pinhole(
+            f"world/camera/image",
+            child_from_parent=intrinsics,
+            width=camera.width,
+            height=camera.height,
+        )
+
+        rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
+
+        rr.log_points(f"world/camera/image/keypoints", image.xys)
+
+
+def main() -> None:
+    parser = ArgumentParser(description="Visualize the output of COLMAP's sparse reconstruction on a video.")
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
+    parser.add_argument(
+        "--serve",
+        dest="serve",
+        action="store_true",
+        help="Serve a web viewer (WARNING: experimental feature)",
+    )
+    parser.add_argument("--unfiltered", action="store_true", help="If set, we don't filter away any noisy data.")
+    args = parser.parse_args()
+
+    rr.init("colmap")
+
+    if args.serve:
+        rr.serve()
+    elif args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can omit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rr.connect(args.addr)
+    elif args.save is None and not args.headless:
+        rr.spawn_and_connect()
+
+    dataset_path = get_downloaded_dataset_path()
+
+    read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered)
+
+    if args.serve:
+        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
+        try:
+            from time import sleep
+
+            sleep(100_000)
+        except:
+            pass
+    elif args.save is not None:
+        rr.save(args.save)
+
+
+if __name__ == "__main__":
+    main()
