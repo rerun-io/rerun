@@ -44,6 +44,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          save-if: ${{ github.event_name == 'push'}}
 
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
