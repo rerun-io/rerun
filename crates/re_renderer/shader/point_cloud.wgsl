@@ -18,7 +18,7 @@ var<uniform> batch: BatchUniformBuffer;
 
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
-let ENABLE_SHADING: u32 = 1u;
+const ENABLE_SHADING: u32 = 1u;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
@@ -40,7 +40,7 @@ struct PointData {
 
 // Read and unpack data at a given location
 fn read_data(idx: i32) -> PointData {
-    let coord = vec2<i32>(i32(idx % TEXTURE_SIZE), idx / TEXTURE_SIZE);
+    let coord = IVec2(i32(idx % TEXTURE_SIZE), idx / TEXTURE_SIZE);
     let position_data = textureLoad(position_data_texture, coord, 0);
     let color = textureLoad(color_texture, coord, 0);
 

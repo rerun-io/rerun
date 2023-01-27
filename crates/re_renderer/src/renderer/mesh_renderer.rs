@@ -150,14 +150,17 @@ impl MeshDrawData {
 
         let mut mesh_runs = Vec::new();
         {
-            let mut instance_buffer_staging = ctx.queue.write_buffer_with(
-                ctx.gpu_resources
-                    .buffers
-                    .get_resource(&instance_buffer)
-                    .unwrap(),
-                0,
-                instance_buffer_size.try_into().unwrap(),
-            );
+            let mut instance_buffer_staging = ctx
+                .queue
+                .write_buffer_with(
+                    ctx.gpu_resources
+                        .buffers
+                        .get_resource(&instance_buffer)
+                        .unwrap(),
+                    0,
+                    instance_buffer_size.try_into().unwrap(),
+                )
+                .unwrap(); // Fails only if mapping is bigger than buffer size.
             let instance_buffer_staging: &mut [gpu_data::InstanceData] =
                 bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 

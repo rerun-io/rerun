@@ -346,11 +346,13 @@ impl Viewport {
                 .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
-            let frame = ctx.re_ui.hovering_frame();
-            hovering_panel(ui, frame, response.rect, |ui| {
-                space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
-                help_text_ui(ui, space_view);
-            });
+            if ctx.app_options.show_spaceview_controls() {
+                let frame = ctx.re_ui.hovering_frame();
+                hovering_panel(ui, frame, response.rect, |ui| {
+                    space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+                    help_text_ui(ui, space_view);
+                });
+            }
         } else if let Some(space_view_id) = self.maximized {
             let highlights = ctx
                 .selection_state()
@@ -363,19 +365,21 @@ impl Viewport {
                 .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
-            let frame = ctx.re_ui.hovering_frame();
-            hovering_panel(ui, frame, response.rect, |ui| {
-                if ctx
-                    .re_ui
-                    .small_icon(ui, &re_ui::icons::MINIMIZE)
-                    .on_hover_text("Restore - show all spaces")
-                    .clicked()
-                {
-                    self.maximized = None;
-                }
-                space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
-                help_text_ui(ui, space_view);
-            });
+            if ctx.app_options.show_spaceview_controls() {
+                let frame = ctx.re_ui.hovering_frame();
+                hovering_panel(ui, frame, response.rect, |ui| {
+                    if ctx
+                        .re_ui
+                        .small_icon(ui, &re_ui::icons::MINIMIZE)
+                        .on_hover_text("Restore - show all spaces")
+                        .clicked()
+                    {
+                        self.maximized = None;
+                    }
+                    space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+                    help_text_ui(ui, space_view);
+                });
+            }
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
             dock_style.separator_width = 2.0;
@@ -685,31 +689,33 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights))
             .response;
 
-        // Show buttons for maximize and space view options:
-        let frame = self.ctx.re_ui.hovering_frame();
-        hovering_panel(ui, frame, response.rect, |ui| {
-            if self
-                .ctx
-                .re_ui
-                .small_icon(ui, &re_ui::icons::MAXIMIZE)
-                .on_hover_text("Maximize Space View")
-                .clicked()
-            {
-                *self.maximized = Some(*space_view_id);
-                self.ctx
-                    .set_single_selection(Selection::SpaceView(*space_view_id));
-            }
+        if self.ctx.app_options.show_spaceview_controls() {
+            // Show buttons for maximize and space view options:
+            let frame = self.ctx.re_ui.hovering_frame();
+            hovering_panel(ui, frame, response.rect, |ui| {
+                if self
+                    .ctx
+                    .re_ui
+                    .small_icon(ui, &re_ui::icons::MAXIMIZE)
+                    .on_hover_text("Maximize Space View")
+                    .clicked()
+                {
+                    *self.maximized = Some(*space_view_id);
+                    self.ctx
+                        .set_single_selection(Selection::SpaceView(*space_view_id));
+                }
 
-            space_view_options_link(
-                self.ctx,
-                self.selection_panel_expanded,
-                *space_view_id,
-                ui,
-                "⛭",
-            );
+                space_view_options_link(
+                    self.ctx,
+                    self.selection_panel_expanded,
+                    *space_view_id,
+                    ui,
+                    "⛭",
+                );
 
-            help_text_ui(ui, space_view);
-        });
+                help_text_ui(ui, space_view);
+            });
+        }
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {

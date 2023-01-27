@@ -5,13 +5,13 @@ import numpy as np
 import numpy.typing as npt
 
 
-def u8_array_to_rgba(arr: Sequence[int]) -> int:
+def u8_array_to_rgba(arr: Sequence[int]) -> np.uint32:
     """Convert an array[4] of uint8 values into a uint32."""
     red = arr[0]
     green = arr[1]
     blue = arr[2]
     alpha = arr[3] if len(arr) == 4 else 0xFF
-    return (red << 24) + (green << 16) + (blue << 8) + alpha
+    return np.uint32((red << 24) + (green << 16) + (blue << 8) + alpha)
 
 
 def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:

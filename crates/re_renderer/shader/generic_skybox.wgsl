@@ -9,13 +9,13 @@ struct VertexOutput {
 };
 
 fn skybox_dark_srgb(dir: Vec3) -> Vec3 {
-    let rgb = dir * 0.5 + vec3<f32>(0.5);
-    return vec3<f32>(0.05) + 0.20 * rgb;
+    let rgb = dir * 0.5 + Vec3(0.5);
+    return Vec3(0.05) + 0.20 * rgb;
 }
 
 fn skybox_light_srgb(dir: Vec3) -> Vec3 {
-    let rgb = dir * 0.5 + vec3<f32>(0.5);
-    return vec3<f32>(0.85) + 0.15 * rgb;
+    let rgb = dir * 0.5 + Vec3(0.5);
+    return Vec3(0.85) + 0.15 * rgb;
 }
 
 @fragment
