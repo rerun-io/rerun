@@ -13,12 +13,12 @@ use re_renderer::Size;
 
 use crate::{
     misc::{
-        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext,
+        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        TransformCache, ViewerContext,
     },
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{scene::Keypoints, Label3D, SceneSpatial},
         Annotations, DefaultColor,
     },
@@ -221,7 +221,7 @@ impl ScenePart for Points3DPart {
         crate::profile_scope!("Points3DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
             let object_highlight = highlights.object_highlight(ent_path.hash());

@@ -7,14 +7,13 @@ use std::collections::BTreeSet;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
+use re_data_store::{ObjPath, TimeInt};
 use re_log_types::field_types::{Tensor, TensorTrait};
 
-use crate::misc::{space_info::SpacesInfo, Selection, SpaceViewHighlights, ViewerContext};
+use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
 
 use super::{
     data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
-    transform_cache::TransformCache,
     view_category::ViewCategory,
     SpaceView, SpaceViewId,
 };
@@ -52,7 +51,7 @@ pub struct Viewport {
 
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
-    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
+    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
@@ -262,7 +261,11 @@ impl Viewport {
         id
     }
 
-    pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+    pub fn on_frame_start(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
+    ) {
         crate::profile_function!();
 
         for space_view in self.space_views.values_mut() {
@@ -305,7 +308,7 @@ impl Viewport {
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         selection_panel_expanded: &mut bool,
     ) {
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
@@ -396,20 +399,15 @@ impl Viewport {
 
     fn all_possible_space_views(
         ctx: &ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) -> Vec<SpaceView> {
         crate::profile_function!();
 
         let mut space_views = Vec::new();
 
         for space_info in spaces_info.iter() {
-            let transforms = TransformCache::determine_transforms(
-                spaces_info,
-                space_info,
-                &ObjectsProperties::default(),
-            );
             for (category, obj_paths) in
-                SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+                SpaceView::default_queried_objects_by_category(ctx, spaces_info, space_info)
             {
                 space_views.push(SpaceView::new(category, space_info, &obj_paths));
             }
@@ -420,7 +418,7 @@ impl Viewport {
 
     fn default_created_space_views(
         ctx: &ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) -> Vec<SpaceView> {
         crate::profile_function!();
 
@@ -517,7 +515,7 @@ impl Viewport {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) {
         #![allow(clippy::collapsible_if)]
 
@@ -626,7 +624,7 @@ fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> eg
 
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
-    spaces_info: &'a SpacesInfo,
+    spaces_info: &'a SpaceInfoCollection,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
     maximized: &'a mut Option<SpaceViewId>,
     selection_panel_expanded: &'a mut bool,
@@ -739,7 +737,7 @@ fn hovering_panel(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpacesInfo,
+    spaces_info: &SpaceInfoCollection,
     space_view: &mut SpaceView,
     space_view_highlights: &SpaceViewHighlights,
 ) {

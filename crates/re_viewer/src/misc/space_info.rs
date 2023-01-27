@@ -7,11 +7,14 @@ use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
-use super::TimeControl;
+use super::UnreachableTransform;
 
 /// Information about one "space".
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects.
+/// ⚠️ Transforms used for this are latest known, i.e. the "right most location in the timeline" ⚠️
+///
+/// Expected to be recreated every frame (or whenever new data is available).
 pub struct SpaceInfo {
     pub path: ObjPath,
 
@@ -40,49 +43,51 @@ impl SpaceInfo {
         }
     }
 
-    /// Invokes visitor for `self` and all descendents recursively.
-    pub fn visit_descendants(
-        &self,
-        spaces_info: &SpacesInfo,
-        visitor: &mut impl FnMut(&SpaceInfo),
-    ) {
-        visitor(self);
-        for child_path in self.child_spaces.keys() {
-            if let Some(child_space) = spaces_info.get(child_path) {
-                child_space.visit_descendants(spaces_info, visitor);
-            }
-        }
-    }
-
-    /// Invokes visitor for `self` and all connected nodes that are not descendants.
+    /// Invokes visitor for `self` and all descendents that are reachable with a valid transform recursively.
     ///
-    /// I.e. all parents and their children in turn, except the children of `self`.
-    /// In other words, everything that [`Self::visit_descendants`] doesn't visit plus `self`.
-    pub fn visit_non_descendants(
+    /// Keep in mind that transforms are the newest on the currently choosen timeline.
+    pub fn visit_descendants_with_reachable_transform(
         &self,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         visitor: &mut impl FnMut(&SpaceInfo),
     ) {
-        visitor(self);
+        fn visit_descendants_with_reachable_transform_recursively(
+            space_info: &SpaceInfo,
+            space_info_collection: &SpaceInfoCollection,
+            encountered_pinhole: bool,
+            visitor: &mut impl FnMut(&SpaceInfo),
+        ) {
+            visitor(space_info);
 
-        if let Some((parent_space, _)) = &self.parent(spaces_info) {
-            for sibling_path in parent_space.child_spaces.keys() {
-                if *sibling_path == self.path {
+            for (child_path, transform) in &space_info.child_spaces {
+                let Some(child_space) = space_info_collection.get(child_path) else {
+                    re_log::warn_once!("Child space info {} not part of space info collection", child_path);
                     continue;
-                }
-                if let Some(child_space) = spaces_info.get(sibling_path) {
-                    child_space.visit_descendants(spaces_info, visitor);
-                }
+                };
 
-                parent_space.visit_non_descendants(spaces_info, visitor);
+                let is_pinhole = match transform {
+                    Transform::Unknown => {
+                        continue;
+                    }
+                    Transform::Rigid3(_) => false,
+                    Transform::Pinhole(_) => {
+                        // Don't allow nested pinhole
+                        if encountered_pinhole {
+                            continue;
+                        }
+                        true
+                    }
+                };
+                visit_descendants_with_reachable_transform_recursively(
+                    child_space,
+                    space_info_collection,
+                    is_pinhole,
+                    visitor,
+                );
             }
         }
-    }
 
-    pub fn parent<'a>(&self, spaces_info: &'a SpacesInfo) -> Option<(&'a SpaceInfo, &Transform)> {
-        self.parent.as_ref().and_then(|(parent_path, transform)| {
-            spaces_info.get(parent_path).map(|space| (space, transform))
-        })
+        visit_descendants_with_reachable_transform_recursively(self, spaces_info, false, visitor);
     }
 
     pub fn parent_transform(&self) -> Option<&Transform> {
@@ -95,26 +100,27 @@ impl SpaceInfo {
 /// This is gathered by analyzing the transform hierarchy of the objects:
 /// For every child of the root there is a space info.
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
+///
+/// Expected to be recreated every frame (or whenever new data is available).
 #[derive(Default)]
-pub struct SpacesInfo {
+pub struct SpaceInfoCollection {
     spaces: BTreeMap<ObjPath, SpaceInfo>,
 }
 
-impl SpacesInfo {
+impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    pub fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
+    pub fn new(obj_db: &ObjDb) -> Self {
         crate::profile_function!();
 
         fn add_children(
             obj_db: &ObjDb,
-            timeline: &Timeline,
-            query_time: Option<i64>,
-            spaces_info: &mut SpacesInfo,
+            spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
+            query: &LatestAtQuery,
         ) {
-            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
+            if let Some(transform) = query_transform(obj_db, &tree.path, query) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -129,11 +135,10 @@ impl SpacesInfo {
                 for child_tree in tree.children.values() {
                     add_children(
                         obj_db,
-                        timeline,
-                        query_time,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
+                        query,
                     );
                 }
                 spaces_info
@@ -146,27 +151,22 @@ impl SpacesInfo {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(
-                        obj_db,
-                        timeline,
-                        query_time,
-                        spaces_info,
-                        parent_space,
-                        child_tree,
-                    );
+                    add_children(obj_db, spaces_info, parent_space, child_tree, query);
                 }
             }
         }
 
-        let timeline = time_ctrl.timeline();
-        let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
+        // Use "right most"/latest available data.
+        let timeline = Timeline::log_time();
+        let query_time = TimeInt::MAX;
+        let query = LatestAtQuery::new(timeline, query_time);
 
         let mut spaces_info = Self::default();
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(obj_db, timeline, &tree.path, None).is_some() {
+            if query_transform(obj_db, &tree.path, &query).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -174,19 +174,12 @@ impl SpacesInfo {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(
-                obj_db,
-                timeline,
-                query_time,
-                &mut spaces_info,
-                &mut space_info,
-                tree,
-            );
+            add_children(obj_db, &mut spaces_info, &mut space_info, tree, &query);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
+            space_info.coordinates = query_view_coordinates(obj_db, obj_path, &query);
         }
 
         spaces_info
@@ -196,47 +189,119 @@ impl SpacesInfo {
         self.spaces.get(path)
     }
 
+    pub fn get_first_parent_with_info(&self, path: &ObjPath) -> Option<&SpaceInfo> {
+        let mut path = path.clone();
+        while let Some(parent) = path.parent() {
+            let space_info = self.get(&path);
+            if space_info.is_some() {
+                return space_info;
+            }
+            path = parent;
+        }
+        None
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &SpaceInfo> {
         self.spaces.values()
+    }
+
+    /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to_reference`)
+    ///
+    /// For how, you need to check [`crate::misc::TransformCache`]!
+    /// Note that in any individual frame, objects may or may not be reachable.
+    ///
+    /// If `from` and `to_reference` are not under the same root branch, they are regarded as [`UnreachableTransform::Unconnected`]
+    pub fn is_reachable_by_transform(
+        &self,
+        from: &ObjPath,
+        to_reference: &ObjPath,
+    ) -> Result<(), UnreachableTransform> {
+        crate::profile_function!();
+
+        // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
+        if from.iter().next() != to_reference.iter().next() {
+            return Err(UnreachableTransform::Unconnected);
+        }
+
+        // Get closest space infos for the given object paths.
+        let Some(mut from_space) = self.get_first_parent_with_info(from) else {
+            re_log::warn_once!("{} not part of space infos", from);
+            return Err(UnreachableTransform::Unconnected);
+        };
+        let Some(mut to_reference_space) = self.get_first_parent_with_info(to_reference) else {
+            re_log::warn_once!("{} not part of space infos", to_reference);
+            return Err(UnreachableTransform::Unconnected);
+        };
+
+        // If this is not true, the path we're querying, `from`, is outside of the tree the reference node.
+        // Note that this means that all transforms on the way are inversed!
+        let from_is_child_of_reference = from.is_descendant_of(to_reference);
+
+        // Reachability is (mostly) commutative!
+        // This means we can simply walk from the lower node to the parent until we're on the same node
+        // If we haven't encountered any obstacles, we're fine!
+        let mut encountered_pinhole = false;
+        while from_space.path != to_reference_space.path {
+            let parent = if from_is_child_of_reference {
+                &from_space.parent
+            } else {
+                &to_reference_space.parent
+            };
+
+            if let Some((parent_path, transform)) = parent {
+                // Matches the connectedness requirements in `inverse_transform_at`/`transform_at` in `transform_cache.rs`
+                match transform {
+                    Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
+                    Transform::Rigid3(_) => Ok(()),
+                    Transform::Pinhole(pinhole) => {
+                        if encountered_pinhole {
+                            Err(UnreachableTransform::NestedPinholeCameras)
+                        } else {
+                            encountered_pinhole = true;
+                            if pinhole.resolution.is_none() && !from_is_child_of_reference {
+                                Err(UnreachableTransform::InversePinholeCameraWithoutResolution)
+                            } else {
+                                Ok(())
+                            }
+                        }
+                    }
+                }?;
+
+                let Some(parent_space) = self.get(parent_path) else {
+                    re_log::warn_once!("{} not part of space infos", parent_path);
+                    return Err(UnreachableTransform::Unconnected);
+                };
+
+                if from_is_child_of_reference {
+                    from_space = parent_space;
+                } else {
+                    to_reference_space = parent_space;
+                };
+            } else {
+                re_log::warn_once!(
+                    "No space info connection between {} and {}",
+                    from,
+                    to_reference
+                );
+                return Err(UnreachableTransform::Unconnected);
+            }
+        }
+
+        Ok(())
     }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the `_view_coordinates` meta-field of the given object.
-fn query_view_coordinates_classic(
+pub fn query_view_coordinates(
     obj_db: &ObjDb,
-    time_ctrl: &TimeControl,
-    obj_path: &ObjPath,
-) -> Option<re_log_types::ViewCoordinates> {
-    let timeline = time_ctrl.timeline();
-
-    let store = obj_db.store.get(timeline)?;
-
-    let field_store = store
-        .get(obj_path)?
-        .get(&re_data_store::FieldName::from("_view_coordinates"))?;
-
-    // `_view_coordinates` is only allowed to be stored in a mono-field.
-    let mono_field_store = field_store
-        .get_mono::<re_log_types::ViewCoordinates>()
-        .ok()?;
-
-    mono_field_store
-        .latest_at(&TimeInt::MAX.as_i64())
-        .map(|(_time, _msg_id, system)| *system)
-}
-
-fn query_view_coordinates_arrow(
-    obj_db: &ObjDb,
-    time_ctrl: &TimeControl,
     ent_path: &ObjPath,
+    query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
     let arrow_store = &obj_db.arrow_store;
-    let query = LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::MAX);
 
     let entity_view =
-        query_entity_with_primary::<ViewCoordinates>(arrow_store, &query, ent_path, &[]).ok()?;
+        query_entity_with_primary::<ViewCoordinates>(arrow_store, query, ent_path, &[]).ok()?;
 
     let mut iter = entity_view.iter_primary().ok()?;
 
@@ -247,13 +312,4 @@ fn query_view_coordinates_arrow(
     }
 
     view_coords
-}
-
-pub fn query_view_coordinates(
-    obj_db: &ObjDb,
-    time_ctrl: &TimeControl,
-    obj_path: &ObjPath,
-) -> Option<re_log_types::ViewCoordinates> {
-    query_view_coordinates_classic(obj_db, time_ctrl, obj_path)
-        .or_else(|| query_view_coordinates_arrow(obj_db, time_ctrl, obj_path))
 }

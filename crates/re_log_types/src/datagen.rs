@@ -42,7 +42,7 @@ pub fn build_some_point2d(len: usize) -> Vec<field_types::Point2D> {
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`crate::TimePoint`].
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
-    (Timeline::new("log_time", TimeType::Time), log_time.into())
+    (Timeline::log_time(), log_time.into())
 }
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`crate::TimePoint`].

@@ -10,10 +10,9 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 
 use crate::{
-    misc::{SpaceViewHighlights, ViewerContext},
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{MeshSource, MeshSourceData, SceneSpatial},
         DefaultColor,
     },
@@ -93,7 +92,7 @@ impl ScenePart for MeshPart {
         crate::profile_scope!("MeshPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 
