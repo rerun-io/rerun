@@ -41,4 +41,4 @@ jobs:
 
       - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages ${{github.ref_name}} latest
+          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages -u ${{github.ref_name}} latest
