@@ -127,17 +127,20 @@ pub struct PointCloudVertex {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
-    #[error("Current maximum number of points supported for a point cloud is {max}, passed were {num_points}")]
-    TooManyPoints { max: u32, num_points: u32 },
-
     #[error("Size of vertex & color array was not equal")]
     NumberOfColorsNotEqualNumberOfVertices,
-
-    #[error("Number of points covered by batches exceeds total number of points.")]
-    BatchesAddressMorePointsThanPassed,
 }
 
+/// Textures are 2D since 1D textures are very limited in size (8k typically).
+/// Need to keep this value in sync with `point_cloud.wgsl`!
+const DATA_TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20mb, ~1mio points
+
 impl PointCloudDrawData {
+    /// Maximum number of vertices per [`PointCloudDrawData`].
+    ///
+    /// TODO(#957): Get rid of this limit!.
+    pub const MAX_NUM_POINTS: usize = (DATA_TEXTURE_SIZE * DATA_TEXTURE_SIZE) as usize;
+
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
@@ -178,40 +181,44 @@ impl PointCloudDrawData {
             batches
         };
 
-        // Textures are 2D since 1D textures are very limited in size (8k typically).
-        // Need to keep this value in sync with point_cloud.wgsl!
-        const TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20mb, ~1mio points
-
         // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
-            TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
+            DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
         static_assertions::const_assert_eq!(
-            TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32
+            DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
 
-        // TODO(andreas) split up point cloud into several textures when that happens.
-        if vertices.len() > (TEXTURE_SIZE * TEXTURE_SIZE) as usize {
-            return Err(PointCloudDrawDataError::TooManyPoints {
-                max: TEXTURE_SIZE * TEXTURE_SIZE,
-                num_points: vertices.len() as _,
-            });
-        }
         if vertices.len() != colors.len() {
             return Err(PointCloudDrawDataError::NumberOfColorsNotEqualNumberOfVertices);
         }
+
+        let (vertices, colors) = if vertices.len() >= Self::MAX_NUM_POINTS {
+            re_log::error_once!(
+                "Reached maximum number of supported points. Clamping down to {}, passed were {}.
+ See also https://github.com/rerun-io/rerun/issues/957",
+                Self::MAX_NUM_POINTS,
+                vertices.len()
+            );
+            (
+                &vertices[..Self::MAX_NUM_POINTS - 1],
+                &colors[..Self::MAX_NUM_POINTS - 1],
+            )
+        } else {
+            (vertices, colors)
+        };
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawData!
         let position_data_texture_desc = TextureDesc {
             label: "point cloud position data".into(),
             size: wgpu::Extent3d {
-                width: TEXTURE_SIZE,
-                height: TEXTURE_SIZE,
+                width: DATA_TEXTURE_SIZE,
+                height: DATA_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -238,7 +245,8 @@ impl PointCloudDrawData {
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-        let num_points_written = wgpu::util::align_to(vertices.len() as u32, TEXTURE_SIZE) as usize;
+        let num_points_written =
+            wgpu::util::align_to(vertices.len() as u32, DATA_TEXTURE_SIZE) as usize;
         let num_points_zeroed = num_points_written - vertices.len();
         let position_and_size_staging = {
             crate::profile_scope!("collect_pos_size");
@@ -263,8 +271,8 @@ impl PointCloudDrawData {
 
         // Upload data from staging buffers to gpu.
         let size = wgpu::Extent3d {
-            width: TEXTURE_SIZE,
-            height: num_points_written as u32 / TEXTURE_SIZE,
+            width: DATA_TEXTURE_SIZE,
+            height: num_points_written as u32 / DATA_TEXTURE_SIZE,
             depth_or_array_layers: 1,
         };
 
@@ -286,7 +294,7 @@ impl PointCloudDrawData {
                 wgpu::ImageDataLayout {
                     offset: 0,
                     bytes_per_row: NonZeroU32::new(
-                        TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
+                        DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
                     ),
                     rows_per_image: None,
                 },
@@ -312,7 +320,7 @@ impl PointCloudDrawData {
                 wgpu::ImageDataLayout {
                     offset: 0,
                     bytes_per_row: NonZeroU32::new(
-                        TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32,
+                        DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32,
                     ),
                     rows_per_image: None,
                 },
@@ -391,17 +399,21 @@ impl PointCloudDrawData {
                     &ctx.gpu_resources.samplers,
                 );
 
+                let point_vertex_range_end = (start_point_for_next_batch + batch_info.point_count)
+                    .min(Self::MAX_NUM_POINTS as u32);
+
                 batches_internal.push(PointCloudBatch {
                     bind_group,
                     vertex_range: (start_point_for_next_batch * 6)
                         ..((start_point_for_next_batch + batch_info.point_count) * 6),
                 });
 
-                start_point_for_next_batch += batch_info.point_count;
-            }
+                start_point_for_next_batch = point_vertex_range_end;
 
-            if start_point_for_next_batch > vertices.len() as u32 {
-                return Err(PointCloudDrawDataError::BatchesAddressMorePointsThanPassed);
+                // Should happen only if the number of vertices was clamped.
+                if start_point_for_next_batch >= vertices.len() as u32 {
+                    break;
+                }
             }
         }
 

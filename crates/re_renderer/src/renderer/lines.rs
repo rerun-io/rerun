@@ -260,23 +260,30 @@ impl Default for LineStripInfo {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum LineDrawDataError {
-    #[error("Too many line strips! The maximum is {max} but passed were {num_strips}.")]
-    TooManyStrips { max: u32, num_strips: u32 },
-
-    #[error("Too many line segments! The maximum number of positions is {max} but specified were {num_segments}")]
-    TooManySegments { max: u32, num_segments: u32 },
-
     #[error("Line vertex refers to unknown line strip.")]
     InvalidStripIndex,
-
-    #[error("Number of vertices consumed by batches exceeds total number of vertices.")]
-    BatchesAddressMoreVerticesThanPassed,
 
     #[error("A resource failed to resolve.")]
     PoolError(#[from] PoolError),
 }
 
+// Textures are 2D since 1D textures are very limited in size (8k typically).
+// Need to keep these values in sync with lines.wgsl!
+const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 PositionDatas
+const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5mb, 65536 line strips
+
 impl LineDrawData {
+    /// Total maximum number of line vertices per [`LineDrawData`].
+    ///
+    /// TODO(#957): Get rid of this limit!.
+    pub const MAX_NUM_VERTICES: usize =
+        (POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 2) as usize; // Subtract sentinels
+
+    /// Total maximum number of line strips per [`LineDrawData`].
+    ///
+    /// TODO(#957): Get rid of this limit!.
+    pub const MAX_NUM_STRIPS: usize = (LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE) as usize;
+
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
     /// Try to bundle all line strips into a single draw data instance whenever possible.
@@ -314,11 +321,6 @@ impl LineDrawData {
             batches
         };
 
-        // Textures are 2D since 1D textures are very limited in size (8k typically).
-        // Need to keep these values in sync with lines.wgsl!
-        const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4mb, 262144 PositionDatas
-        const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5mb, 65536 line strips
-
         // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
             POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32
@@ -331,28 +333,31 @@ impl LineDrawData {
             0
         );
 
+        let vertices = if vertices.len() >= Self::MAX_NUM_VERTICES {
+            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}.
+ See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
+            &vertices[..Self::MAX_NUM_VERTICES]
+        } else {
+            vertices
+        };
+        let strips = if strips.len() > Self::MAX_NUM_STRIPS {
+            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. This may lead to rendering artifacts.
+ See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_STRIPS, strips.len());
+            &strips[..Self::MAX_NUM_STRIPS]
+        } else {
+            // Can only check for strip index validity if we haven't clamped the strips!
+            if vertices
+                .iter()
+                .any(|v| v.strip_index >= strips.len() as u32)
+            {
+                return Err(LineDrawDataError::InvalidStripIndex);
+            }
+            strips
+        };
+
         let num_strips = strips.len() as u32;
         // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
         let num_segments = vertices.len() as u32 + 2;
-
-        // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
-        if num_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
-            return Err(LineDrawDataError::TooManyStrips {
-                max: LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
-                num_strips,
-            });
-        }
-        // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
-        //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-        if num_segments >= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE {
-            return Err(LineDrawDataError::TooManySegments {
-                max: POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
-                num_segments,
-            });
-        }
-        if vertices.iter().any(|v| v.strip_index >= num_strips) {
-            return Err(LineDrawDataError::InvalidStripIndex);
-        }
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
@@ -519,8 +524,9 @@ impl LineDrawData {
             for (i, batch_info) in batches.iter().enumerate() {
                 // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
                 let offset = i * allocation_size_per_uniform_buffer as usize;
-                let line_vertex_range_end =
-                    start_vertex_for_next_batch + batch_info.line_vertex_count;
+                let line_vertex_range_end = (start_vertex_for_next_batch
+                    + batch_info.line_vertex_count)
+                    .min(Self::MAX_NUM_VERTICES as u32);
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
@@ -555,10 +561,11 @@ impl LineDrawData {
                 });
 
                 start_vertex_for_next_batch = line_vertex_range_end;
-            }
 
-            if start_vertex_for_next_batch > vertices.len() as u32 {
-                return Err(LineDrawDataError::BatchesAddressMoreVerticesThanPassed);
+                // Should happen only if the number of vertices was clamped.
+                if start_vertex_for_next_batch >= vertices.len() as u32 {
+                    break;
+                }
             }
         }
 
