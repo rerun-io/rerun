@@ -581,28 +581,34 @@ fn blueprint_row_with_visibility_button(
     }
 
     // Make the button span the whole width to make it easier to click:
-    ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-        ui.style_mut().wrap = Some(false);
+    let button_response = ui
+        .with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+            ui.style_mut().wrap = Some(false);
 
-        // Turn off the background color of hovered buttons.
-        // Why? Because we add a manual hover-effect later.
-        // Why? Because we want that hover-effect to also include the visibility button.
-        let visuals = ui.visuals_mut();
-        visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.open.weak_bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.open.bg_fill = egui::Color32::TRANSPARENT;
+            // Turn off the background color of hovered buttons.
+            // Why? Because we add a manual hover-effect later.
+            // Why? Because we want that hover-effect even when only the visibility button is hovered.
+            let visuals = ui.visuals_mut();
+            visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.open.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.open.bg_fill = egui::Color32::TRANSPARENT;
 
-        add_content(ui);
-    });
+            add_content(ui)
+        })
+        .inner;
 
     if hovered {
         // Highlight the row:
+        let hover_rect = button_response
+            .rect
+            .expand(ui.visuals().widgets.open.expansion); // match selection
+
         // TODO(emilk): paint behind when https://github.com/emilk/egui/issues/1516 is done
         ui.painter()
-            .rect_filled(row_rect, 2.0, egui::Color32::WHITE.gamma_multiply(0.15));
+            .rect_filled(hover_rect, 2.0, egui::Color32::WHITE.gamma_multiply(0.15));
 
         visibility_button(ui, enabled, visible).changed()
     } else {
