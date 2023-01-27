@@ -595,6 +595,18 @@ fn blueprint_row_with_visibility_button(
             visuals.widgets.open.weak_bg_fill = egui::Color32::TRANSPARENT;
             visuals.widgets.open.bg_fill = egui::Color32::TRANSPARENT;
 
+            if ui
+                .interact(ui.max_rect(), ui.id(), egui::Sense::hover())
+                .hovered()
+            {
+                // Clip the main button so that the visibility button has room to cover it.
+                // Ideally we would only clip the button _text_, not the button background, but that's not possible.
+                let mut clip_rect = ui.max_rect();
+                let visibility_button_width = 16.0;
+                clip_rect.max.x -= visibility_button_width;
+                ui.set_clip_rect(clip_rect);
+            }
+
             add_content(ui)
         })
         .inner;
@@ -624,39 +636,21 @@ fn blueprint_row_with_visibility_button(
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     // Just put the button on top of the existing ui:
-
-    let visibility_button_width = 16.0;
-
-    let rect = {
-        let mut rect = ui.max_rect();
-        rect.min.x = rect.max.x - visibility_button_width;
-        rect
-    };
-
-    // Make sure we get a solid background.
-    // Painting the widget on top of the underlying button text looks bad.
-    let visuals = ui.visuals().widgets.hovered; // if we are visible, it is because we are hovered
-                                                // One little visual bug lurks here: if the main button is selected, we should use the selection fill color here.
-                                                // A nicer way to implement this would be to clip the main button ui if hovered.
-    ui.painter().rect_filled(
-        rect.expand(visuals.expansion),
-        visuals.rounding,
-        visuals.bg_fill,
+    let mut ui = ui.child_ui(
+        ui.max_rect(),
+        egui::Layout::right_to_left(egui::Align::Center),
     );
 
-    ui.allocate_ui_at_rect(rect, |ui| {
-        ui.set_enabled(enabled);
+    ui.set_enabled(enabled);
 
-        if enabled {
-            ui.add(re_ui::toggle_switch(visible))
-        } else {
-            let mut always_false = false;
-            ui.add(re_ui::toggle_switch(&mut always_false))
-        }
-        .on_hover_text("Toggle visibility")
-        .on_disabled_hover_text("A parent is invisible")
-    })
-    .inner
+    if enabled {
+        ui.add(re_ui::toggle_switch(visible))
+    } else {
+        let mut always_false = false;
+        ui.add(re_ui::toggle_switch(&mut always_false))
+    }
+    .on_hover_text("Toggle visibility")
+    .on_disabled_hover_text("A parent is invisible")
 }
 
 // ----------------------------------------------------------------------------
