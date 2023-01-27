@@ -70,9 +70,12 @@ impl ComponentWithInstances {
             });
         }
 
-        Ok(arrow_array_deserialize_iterator::<Option<C>>(
-            self.values.as_ref(),
-        )?)
+        let now = std::time::Instant::now();
+        let iter = arrow_array_deserialize_iterator::<Option<C>>(self.values.as_ref())?;
+        let iter = iter.collect::<Vec<_>>();
+        eprintln!("took {:?}", now.elapsed());
+
+        Ok(iter.into_iter())
     }
 
     /// Look up the value that corresponds to a given `Instance` and convert to `Component`

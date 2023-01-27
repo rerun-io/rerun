@@ -42,6 +42,7 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+arrow2_convert.workspace = true
 criterion = "0.4"
 itertools = "0.10"
 mimalloc = "0.1"

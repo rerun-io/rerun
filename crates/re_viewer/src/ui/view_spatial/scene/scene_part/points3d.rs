@@ -156,54 +156,52 @@ impl Points3DPart {
             entity_view
                 .iter_primary()?
                 .filter_map(|pt| pt.map(glam::Vec3::from))
-                .collect::<Vec<_>>()
+            // .collect::<Vec<_>>()
         };
 
-        let (annotation_infos, keypoints) = Self::process_annotations(
-            query,
-            entity_view,
-            &annotations,
-            point_positions.as_slice(),
-        )?;
+        // let (annotation_infos, keypoints) = Self::process_annotations(
+        //     query,
+        //     entity_view,
+        //     &annotations,
+        //     point_positions.as_slice(),
+        // )?;
 
         let instance_hashes = {
             crate::profile_scope!("instance_hashes");
-            entity_view
-                .iter_instances()?
-                .map(|instance| {
-                    if properties.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
-                })
-                .collect::<Vec<_>>()
+            entity_view.iter_instances()?.map(|instance| {
+                if properties.interactive {
+                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                } else {
+                    InstanceIdHash::NONE
+                }
+            })
+            // .collect::<Vec<_>>()
         };
 
-        let highlights = {
-            crate::profile_scope!("highlights");
-            instance_hashes
-                .iter()
-                .map(|hash| object_highlight.index_highlight(hash.instance_index_hash))
-                .collect::<Vec<_>>()
-        };
+        // let highlights = {
+        //     crate::profile_scope!("highlights");
+        //     instance_hashes
+        //         .iter()
+        //         .map(|hash| object_highlight.index_highlight(hash.instance_index_hash))
+        //         .collect::<Vec<_>>()
+        // };
 
-        let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
+        // let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
 
-        let radii = Self::process_radii(entity_view, &highlights)?;
-        let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
+        // let radii = Self::process_radii(entity_view, &highlights)?;
+        // let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
-        if show_labels && instance_hashes.len() <= self.max_labels {
-            scene.ui.labels_3d.extend(labels);
-        }
+        // if show_labels && instance_hashes.len() <= self.max_labels {
+        //     scene.ui.labels_3d.extend(labels);
+        // }
 
         point_batch
-            .add_points(point_positions.into_iter())
-            .colors(colors)
-            .radii(radii)
-            .user_data(instance_hashes.into_iter());
+            .add_points(point_positions)
+            // .colors(colors)
+            // .radii(radii)
+            .user_data(instance_hashes);
 
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
+        // scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
 
         Ok(())
     }

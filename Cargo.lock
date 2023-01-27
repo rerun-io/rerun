@@ -3886,6 +3886,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "chrono",
  "criterion",
  "document-features",
