@@ -325,7 +325,7 @@ pub fn view_3d(
 
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
     for camera in &scene.space_cameras {
-        if ctx.options.show_camera_axes_in_3d {
+        if ctx.app_options.show_camera_axes_in_3d {
             let transform = camera.world_from_cam();
             let axis_length =
                 eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;

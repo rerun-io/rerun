@@ -17,7 +17,7 @@ use re_smart_channel::Receiver;
 use re_ui::Command;
 
 use crate::{
-    misc::{Caches, Options, RecordingConfig, ViewerContext},
+    misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
 };
 
@@ -757,7 +757,7 @@ enum PanelSelection {
 #[serde(default)]
 struct AppState {
     /// Global options for the whole viewer.
-    options: Options,
+    app_options: AppOptions,
 
     /// Things that need caching.
     #[serde(skip)]
@@ -795,7 +795,7 @@ impl AppState {
         crate::profile_function!();
 
         let Self {
-            options,
+            app_options: options,
             cache,
             selected_rec_id,
             recording_configs,
@@ -816,7 +816,7 @@ impl AppState {
             });
 
         let mut ctx = ViewerContext {
-            options,
+            app_options: options,
             cache,
             component_ui_registry,
             log_db,
@@ -951,7 +951,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
 
         #[cfg(debug_assertions)]
         ui.menu_button("Debug", |ui| {
-            debug_menu(ui);
+            debug_menu(&mut app.state.app_options, ui);
         });
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -970,7 +970,7 @@ fn top_bar_ui(
 ) {
     rerun_menu_button_ui(ui, frame, app);
 
-    if cfg!(debug_assertions) {
+    if app.state.app_options.show_dev_controls() {
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
@@ -1021,11 +1021,13 @@ fn top_bar_ui(
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
-            ui.vertical_centered(|ui| {
-                ui.style_mut().wrap = Some(false);
-                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
-                egui::warn_if_debug_build(ui);
-            });
+            if app.state.app_options.show_dev_controls() {
+                ui.vertical_centered(|ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
+                    egui::warn_if_debug_build(ui);
+                });
+            }
         }
     });
 }
@@ -1081,7 +1083,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
         // empty queue == unreliable latency
         let latency_sec = rx.latency_ns() as f32 / 1e9;
         if queue_len > 0
-            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
+            && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
         {
             // we use this to avoid flicker
             app.latest_queue_interest = instant::Instant::now();
@@ -1099,7 +1101,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
                     "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
-                if latency_sec < app.state.options.warn_latency {
+                if latency_sec < app.state.app_options.warn_latency {
                     ui.weak(text).on_hover_text(hover_text);
                 } else {
                     ui.label(app.re_ui.warning_text(text))
@@ -1309,8 +1311,18 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu(ui: &mut egui::Ui) {
+fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
+
+    if ui
+        .checkbox(&mut options.debug.extra_clean_ui, "Extra clean UI")
+        .on_hover_text("Make the UI a bit cleaner for screen recordings etc")
+        .clicked()
+    {
+        ui.close_menu();
+    }
+
+    ui.separator();
 
     #[allow(clippy::manual_assert)]
     if ui.button("panic!").clicked() {
