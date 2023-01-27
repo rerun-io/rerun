@@ -3,11 +3,9 @@ use crate::{
     ViewerContext,
 };
 use re_arrow_store::TimeRange;
-use re_data_store::{query::visit_type_data_4, FieldName, TimeQuery};
 use re_log_types::{
     field_types::{self, Instance},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
 };
 use re_query::{range_entity_with_primary, QueryError};
 
@@ -73,71 +71,9 @@ impl SceneTimeSeries {
         self.annotation_map.load(ctx, query);
 
         self.load_scalars(ctx, query);
-
-        self.load_scalars_arrow(ctx, query);
     }
 
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-
-        for (_obj_type, obj_path, _time_query, obj_store) in
-            query.iter_object_stores(ctx.log_db, &[ObjectType::Scalar])
-        {
-            let mut points = Vec::new();
-            let annotations = self.annotation_map.find(obj_path);
-            let default_color = DefaultColor::ObjPath(obj_path);
-
-            visit_type_data_4(
-                obj_store,
-                &FieldName::from("scalar"),
-                &TimeQuery::EVERYTHING,
-                ("label", "color", "radius", "scattered"),
-                |_instance_index: Option<&IndexHash>,
-                 time: i64,
-                 _msg_id: &MsgId,
-                 value: &f64,
-                 label: Option<&String>,
-                 color: Option<&[u8; 4]>,
-                 radius: Option<&f32>,
-                 scattered: Option<&bool>| {
-                    // TODO(andreas): Support object path
-                    let annotation_info = annotations.class_description(None).annotation_info();
-                    let color = annotation_info.color(color, default_color);
-                    let label = annotation_info.label(label);
-
-                    points.push(PlotPoint {
-                        time,
-                        value: *value,
-                        attrs: PlotPointAttrs {
-                            label,
-                            color,
-                            radius: radius.copied().unwrap_or(1.0),
-                            scattered: *scattered.unwrap_or(&false),
-                        },
-                    });
-                },
-            );
-            points.sort_by_key(|s| s.time);
-
-            if points.is_empty() {
-                continue;
-            }
-
-            // If all points within a line share the label (and it isn't `None`), then we use it
-            // as the whole line label for the plot legend.
-            // Otherwise, we just use the object path as-is.
-            let same_label = |points: &[PlotPoint]| {
-                let label = points[0].attrs.label.as_ref();
-                (label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label))
-                    .then(|| label.cloned().unwrap())
-            };
-            let line_label = same_label(&points).unwrap_or_else(|| obj_path.to_string());
-
-            self.add_line_segments(&line_label, points);
-        }
-    }
-
-    fn load_scalars_arrow(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let store = &ctx.log_db.obj_db.arrow_store;
