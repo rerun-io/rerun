@@ -3,7 +3,7 @@ name: Release Tag
 on:
   push:
     tags:
-      - *.*.* # on release tag
+      - "*.*.*" # on release tag
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
