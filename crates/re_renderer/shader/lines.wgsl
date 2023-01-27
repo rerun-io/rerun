@@ -81,7 +81,7 @@ fn read_strip_data(idx: u32) -> LineStripData {
 }
 
 struct PositionData {
-    pos: vec3<f32>,
+    pos: Vec3,
     strip_index: u32,
 }
 
@@ -248,5 +248,5 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         shading = max(0.2, 1.0 - relative_distance_to_center_sq) * 0.9;
     }
 
-    return vec4<f32>(in.color.rgb * shading, coverage);
+    return Vec4(in.color.rgb * shading, coverage);
 }

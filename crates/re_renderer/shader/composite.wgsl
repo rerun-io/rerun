@@ -17,7 +17,7 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     // but are about the location of the texel in the target texture.
     var input = textureSample(input_texture, nearest_sampler, in.texcoord).rgb;
     // TODO(andreas): Do something meaningful with values above 1
-    input = clamp(input, vec3<f32>(0.0), vec3<f32>(1.0));
+    input = clamp(input, ZERO, ONE);
 
     // Convert to srgb - this is necessary since the final eframe output does *not* have an srgb format.
     // Note that the input here is assumed to be linear - if the input texture was an srgb texture it would have been converted on load.
