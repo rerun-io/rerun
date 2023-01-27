@@ -119,7 +119,9 @@ impl Viewport {
         ui: &mut egui::Ui,
         space_view_id: &SpaceViewId,
     ) {
-        let space_view = self.space_views.get_mut(space_view_id).unwrap(); // TODO: emil - no unwrap
+        let Some(space_view) = self.space_views.get_mut(space_view_id) else {
+            re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
+        };
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let root_group = space_view.data_blueprint.root_group();
