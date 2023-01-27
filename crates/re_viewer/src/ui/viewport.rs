@@ -564,12 +564,6 @@ fn blueprint_row_with_visibility_button(
     visible: &mut bool,
     add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
 ) -> bool {
-    let row_rect = ui.max_rect().expand2(ui.spacing().item_spacing * 0.5);
-
-    let hovered = ui
-        .input(|i| i.pointer.hover_pos())
-        .map_or(false, |pointer| row_rect.contains(pointer));
-
     if !*visible || !enabled {
         // Dim the appearance of things added by `add_content`:
         let widget_visuals = &mut ui.visuals_mut().widgets;
@@ -600,7 +594,13 @@ fn blueprint_row_with_visibility_button(
         })
         .inner;
 
-    if hovered {
+    let row_rect = ui.max_rect().expand2(ui.spacing().item_spacing * 0.5);
+
+    let row_hovered = ui
+        .interact(row_rect, ui.id(), egui::Sense::hover())
+        .hovered();
+
+    if row_hovered {
         // Highlight the row:
         let hover_rect = button_response
             .rect
