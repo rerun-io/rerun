@@ -254,7 +254,7 @@ impl<'a> ViewerContext<'a> {
         response: egui::Response,
         selectable: Selection,
     ) -> egui::Response {
-        let is_item_hovered = self.hovered().contains(&selectable);
+        let is_item_hovered = self.selection_state().is_highlighted(&selectable);
 
         if response.hovered() {
             self.rec_cfg
