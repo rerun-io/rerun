@@ -577,6 +577,8 @@ fn blueprint_row_with_visibility_button(
         dim_color(&mut widget_visuals.inactive.fg_stroke.color);
     }
 
+    let where_to_add_hover_rect = ui.painter().add(egui::Shape::Noop);
+
     // Make the main button span the whole width to make it easier to click:
     let main_button_response = ui
         .with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
@@ -607,11 +609,12 @@ fn blueprint_row_with_visibility_button(
         let visibility_button_changed = visibility_button(ui, enabled, visible).changed();
 
         // Highlight the row:
-        let hover_rect = main_button_rect.expand(ui.visuals().widgets.hovered.expansion);
-
-        // TODO(emilk): paint behind when https://github.com/emilk/egui/issues/1516 is done
-        ui.painter()
-            .rect_filled(hover_rect, 2.0, egui::Color32::WHITE.gamma_multiply(0.15));
+        let visuals = ui.visuals().widgets.hovered;
+        let hover_rect = main_button_rect.expand(visuals.expansion);
+        ui.painter().set(
+            where_to_add_hover_rect,
+            egui::Shape::rect_filled(hover_rect, visuals.rounding, visuals.bg_fill),
+        );
 
         visibility_button_changed
     } else {
@@ -632,8 +635,14 @@ fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> eg
 
     // Make sure we get a solid background.
     // Painting the widget on top of the underlying button text looks bad.
-    ui.painter()
-        .rect_filled(rect.expand(4.0), 0.0, ui.style().visuals.panel_fill);
+    let visuals = ui.visuals().widgets.hovered; // if we are visible, it is because we are hovered
+                                                // One little visual bug lurks here: if the main button is selected, we should use the selection fill color here.
+                                                // A nicer way to implement this would be to clip the main button ui if hovered.
+    ui.painter().rect_filled(
+        rect.expand(visuals.expansion),
+        visuals.rounding,
+        visuals.bg_fill,
+    );
 
     ui.allocate_ui_at_rect(rect, |ui| {
         ui.set_enabled(enabled);
