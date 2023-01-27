@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point2D, Radius},
     msg_bundle::Component,
@@ -57,13 +57,8 @@ impl Points2DPart {
                        label: Option<Label>,
                        class_id: Option<ClassId>,
                        keypoint_id: Option<KeypointId>| {
-            let instance_hash = instance_hash_for_picking(
-                ent_path,
-                instance,
-                &entity_view,
-                &props,
-                object_highlight,
-            );
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
             let pos: glam::Vec2 = pos.into();
 

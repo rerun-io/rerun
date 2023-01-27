@@ -147,8 +147,8 @@ impl ImagesPart {
                 let instance_hash = instance_hash_for_picking(
                     ent_path,
                     instance,
-                    &entity_view,
-                    &properties,
+                    entity_view,
+                    properties,
                     object_highlight,
                 );
 

@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, LineStrip3D, Radius},
     msg_bundle::Component,
@@ -43,13 +43,8 @@ impl Lines3DPart {
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let instance_hash = instance_hash_for_picking(
-                ent_path,
-                instance,
-                &entity_view,
-                &props,
-                object_highlight,
-            );
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
             let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
 

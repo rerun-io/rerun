@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{Box3D, ClassId, ColorRGBA, Instance, Label, Quaternion, Radius, Vec3D},
     msg_bundle::Component,
@@ -49,13 +49,8 @@ impl Boxes3DPart {
                        radius: Option<Radius>,
                        label: Option<Label>,
                        class_id: Option<ClassId>| {
-            let instance_hash = instance_hash_for_picking(
-                ent_path,
-                instance,
-                &entity_view,
-                &props,
-                object_highlight,
-            );
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
             let class_description = annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();

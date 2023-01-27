@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,

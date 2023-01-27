@@ -43,13 +43,8 @@ impl Lines2DPart {
                        strip: LineStrip2D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let instance_hash = instance_hash_for_picking(
-                ent_path,
-                instance,
-                &entity_view,
-                &props,
-                object_highlight,
-            );
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();

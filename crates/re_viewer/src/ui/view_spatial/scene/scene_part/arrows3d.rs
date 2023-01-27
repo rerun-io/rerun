@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Label, Radius},
     msg_bundle::Component,
@@ -46,13 +46,8 @@ impl Arrows3DPart {
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
-            let instance_hash = instance_hash_for_picking(
-                ent_path,
-                instance,
-                &entity_view,
-                &props,
-                object_highlight,
-            );
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
             // TODO(andreas): support labels
             // TODO(andreas): support class ids for arrows
