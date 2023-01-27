@@ -72,9 +72,9 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
     {
-        // Background colors for menu buttons etc:
+        // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
         // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
-        let hovered_color = Color32::from_gray(20); // TODO(emilk): change the content of the design_tokens.json origin instead
+        let hovered_color = Color32::from_gray(64); // TODO(emilk): change the content of the design_tokens.json origin instead
         egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
         egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
         egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
