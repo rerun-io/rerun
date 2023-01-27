@@ -1,9 +1,15 @@
 use arrow2::array::Array;
+use arrow2::array::FixedSizeListArray;
+use arrow2::array::Float32Array;
+use arrow2::array::ListArray;
+use arrow2::datatypes::DataType;
+use arrow2::offset::Offsets;
 use arrow2_convert::deserialize::*;
 use arrow2_convert::serialize::*;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use re_log_types::field_types::FixedSizeArrayField;
+use re_log_types::msg_bundle::wrap_in_listarray;
 use re_log_types::msg_bundle::Component;
 
 #[derive(Clone, Copy, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
@@ -51,6 +57,7 @@ fn main() {
 
         let now = std::time::Instant::now();
         let arr: Box<dyn Array> = points.try_into_arrow().unwrap();
+        dbg!(arr.data_type());
         eprintln!(
             "serialized {} arrow struct points in {:?}",
             arr.len(),
@@ -98,5 +105,43 @@ fn main() {
             //     eprintln!("step 2 ({N2}) in {:?}", re_log_types::field_types::STEP2);
             // }
         }
+    }
+
+    eprintln!("---");
+
+    {
+        let data = vec![[42.0, 420.0, 4200.0]; N];
+
+        let now = std::time::Instant::now();
+        let arr = {
+            let array_flattened =
+                Float32Array::from_vec(data.into_iter().flatten().collect()).boxed();
+
+            FixedSizeListArray::new(
+                FixedSizeListArray::default_datatype(DataType::Float32, 3),
+                array_flattened,
+                None,
+            )
+            .boxed()
+        };
+        dbg!(arr.data_type());
+        eprintln!(
+            "serialized {} primitive arrow points in {:?}",
+            arr.len(),
+            now.elapsed()
+        );
+
+        let list = arr.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
+        let iter = list.iter();
+
+        let now = std::time::Instant::now();
+        let mut count = 0usize;
+        for p in iter {
+            count += 1;
+        }
+        eprintln!(
+            "iterated {count} primitive arrow points in {:?}",
+            now.elapsed()
+        );
     }
 }
