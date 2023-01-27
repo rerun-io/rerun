@@ -121,6 +121,7 @@ impl Viewport {
     ) {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
+            return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
