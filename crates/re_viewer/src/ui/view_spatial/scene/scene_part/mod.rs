@@ -17,19 +17,17 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod segments2d;
 
-pub(crate) use arrows3d::{Arrows3DPart, Arrows3DPartClassic};
-pub(crate) use boxes2d::{Boxes2DPart, Boxes2DPartClassic};
-pub(crate) use boxes3d::{Boxes3DPart, Boxes3DPartClassic};
-pub(crate) use cameras::{CamerasPart, CamerasPartClassic};
-pub(crate) use images::{ImagesPart, ImagesPartClassic};
+pub(crate) use arrows3d::Arrows3DPart;
+pub(crate) use boxes2d::Boxes2DPart;
+pub(crate) use boxes3d::Boxes3DPart;
+pub(crate) use cameras::CamerasPart;
+pub(crate) use images::ImagesPart;
 pub(crate) use lines2d::Lines2DPart;
-pub(crate) use lines3d::{Lines3DPart, Lines3DPartClassic};
-pub(crate) use meshes::{MeshPart, MeshPartClassic};
-pub(crate) use points2d::{Points2DPart, Points2DPartClassic};
-pub(crate) use points3d::{Points3DPart, Points3DPartClassic};
-pub(crate) use segments2d::LineSegments2DPartClassic;
+pub(crate) use lines3d::Lines3DPart;
+pub(crate) use meshes::MeshPart;
+pub(crate) use points2d::Points2DPart;
+pub(crate) use points3d::Points3DPart;
 
 pub trait ScenePart {
     fn load(

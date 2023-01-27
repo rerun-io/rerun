@@ -1,9 +1,8 @@
 use glam::Mat4;
-use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
@@ -13,99 +12,12 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{scene::instance_hash_if_interactive, Label2D, Label2DTarget, SceneSpatial},
+        view_spatial::{Label2D, Label2DTarget, SceneSpatial},
         DefaultColor,
     },
 };
 
 use super::ScenePart;
-
-/// `ScenePart` for classic data path
-pub struct Boxes2DPartClassic;
-
-impl ScenePart for Boxes2DPartClassic {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformCache,
-        highlights: &SpaceViewHighlights,
-    ) {
-        crate::profile_scope!("Boxes2DPartClassic");
-
-        for (_obj_type, obj_path, time_query, obj_store) in
-            query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
-        {
-            scene.num_logged_2d_objects += 1;
-
-            let properties = query.obj_props.get(obj_path);
-            let annotations = scene.annotation_map.find(obj_path);
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
-                continue;
-            };
-            let object_highlight = highlights.object_highlight(obj_path.hash());
-
-            let mut line_batch = scene
-                .primitives
-                .line_strips
-                .batch("2d box")
-                .world_from_obj(world_from_obj);
-
-            let visitor = |instance_index: Option<&IndexHash>,
-                           _time: i64,
-                           _msg_id: &MsgId,
-                           bbox: &re_log_types::BBox2D,
-                           color: Option<&[u8; 4]>,
-                           stroke_width: Option<&f32>,
-                           label: Option<&String>,
-                           class_id: Option<&i32>| {
-                let instance_hash =
-                    instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-
-                let annotation_info = annotations
-                    .class_description(class_id.map(|i| ClassId(*i as _)))
-                    .annotation_info();
-                let mut color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
-                let mut radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w * 0.5));
-                let label = annotation_info.label(label);
-
-                SceneSpatial::apply_hover_and_selection_effect(
-                    &mut radius,
-                    &mut color,
-                    object_highlight.index_highlight(instance_hash.instance_index_hash),
-                );
-
-                line_batch
-                    .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-                    .color(color)
-                    .radius(radius)
-                    .user_data(instance_hash);
-
-                if let Some(label) = label {
-                    scene.ui.labels_2d.push(Label2D {
-                        text: label,
-                        color,
-                        target: Label2DTarget::Rect(egui::Rect::from_min_max(
-                            bbox.min.into(),
-                            bbox.max.into(),
-                        )),
-                        labled_instance: instance_hash,
-                    });
-                }
-            };
-
-            visit_type_data_4(
-                obj_store,
-                &FieldName::from("bbox"),
-                &time_query,
-                ("color", "stroke_width", "label", "class_id"),
-                visitor,
-            );
-        }
-    }
-}
-
 pub struct Boxes2DPart;
 
 impl Boxes2DPart {

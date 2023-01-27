@@ -1,9 +1,9 @@
 use glam::Mat4;
-use re_data_store::{query::visit_type_data_3, FieldName, InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Label, Radius},
     msg_bundle::Component,
-    Arrow3D, IndexHash, MsgId, ObjectType,
+    Arrow3D,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
@@ -13,100 +13,12 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{scene::instance_hash_if_interactive, SceneSpatial},
+        view_spatial::SceneSpatial,
         DefaultColor,
     },
 };
 
 use super::ScenePart;
-
-pub struct Arrows3DPartClassic;
-
-impl ScenePart for Arrows3DPartClassic {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformCache,
-        highlights: &SpaceViewHighlights,
-    ) {
-        crate::profile_scope!("Arrows3DPart");
-
-        for (_obj_type, obj_path, time_query, obj_store) in
-            query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
-        {
-            scene.num_logged_3d_objects += 1;
-
-            let annotations = scene.annotation_map.find(obj_path);
-            let default_color = DefaultColor::ObjPath(obj_path);
-            let properties = query.obj_props.get(obj_path);
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
-                continue;
-            };
-
-            let object_highlight = highlights.object_highlight(obj_path.hash());
-
-            let mut line_batch = scene
-                .primitives
-                .line_strips
-                .batch("arrows")
-                .world_from_obj(world_from_obj);
-
-            let visitor = |instance_index: Option<&IndexHash>,
-                           _time: i64,
-                           _msg_id: &MsgId,
-                           arrow: &re_log_types::Arrow3D,
-                           color: Option<&[u8; 4]>,
-                           width_scale: Option<&f32>,
-                           _label: Option<&String>| {
-                // TODO(andreas): support labels
-                let instance_hash =
-                    instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-
-                let width = width_scale.copied().unwrap_or(1.0);
-
-                // TODO(andreas): support class ids for arrows
-                let annotation_info = annotations.class_description(None).annotation_info();
-                let mut color = annotation_info.color(color, default_color);
-                //let label = annotation_info.label(label);
-
-                let width_scale = Some(width);
-
-                let re_log_types::Arrow3D { origin, vector } = arrow;
-
-                let width_scale = width_scale.unwrap_or(1.0);
-                let vector = glam::Vec3::from(*vector);
-                let origin = glam::Vec3::from(*origin);
-
-                let mut radius = Size::new_scene(width_scale * 0.5);
-                let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
-                let vector_len = vector.length();
-                let end = origin + vector * ((vector_len - tip_length) / vector_len);
-
-                SceneSpatial::apply_hover_and_selection_effect(
-                    &mut radius,
-                    &mut color,
-                    object_highlight.index_highlight(instance_hash.instance_index_hash),
-                );
-
-                line_batch
-                    .add_segment(origin, end)
-                    .radius(radius)
-                    .color(color)
-                    .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
-                    .user_data(instance_hash);
-            };
-            visit_type_data_3(
-                obj_store,
-                &FieldName::from("arrow3d"),
-                &time_query,
-                ("color", "width_scale", "label"),
-                visitor,
-            );
-        }
-    }
-}
 
 pub struct Arrows3DPart;
 

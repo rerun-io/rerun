@@ -98,4 +98,8 @@ impl TcpClient {
         }
         re_log::trace!("TCP stream flushed.");
     }
+
+    pub fn is_connected(&self) -> bool {
+        self.stream.is_some()
+    }
 }

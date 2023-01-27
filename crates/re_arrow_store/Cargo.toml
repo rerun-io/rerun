@@ -34,9 +34,12 @@ indent = "0.1"
 itertools = "0.10"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
-puffin.workspace = true
 static_assertions = "1.1"
 thiserror.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true
 
 # Optional
 polars-core = { workspace = true, optional = true, features = [

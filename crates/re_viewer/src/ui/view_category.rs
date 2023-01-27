@@ -2,7 +2,8 @@ use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
 use re_log_types::{
     field_types::{
-        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Tensor, TensorTrait, TextEntry,
+        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
+        TextEntry,
     },
     msg_bundle::Component,
     Arrow3D, DataPath, Mesh3D, Transform,
@@ -45,6 +46,9 @@ impl ViewCategory {
 }
 
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
+
+// TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered
+// all possible `ViewCategory` values, or you're in for a bad time..!
 
 pub fn categorize_obj_path(
     timeline: &Timeline,
@@ -125,6 +129,8 @@ pub fn categorize_arrow_obj_path(
         .fold(ViewCategorySet::default(), |mut set, component| {
             if component == TextEntry::name() {
                 set.insert(ViewCategory::Text);
+            } else if component == Scalar::name() {
+                set.insert(ViewCategory::TimeSeries);
             } else if component == Point2D::name()
                 || component == Point3D::name()
                 || component == Rect2D::name()

@@ -4,15 +4,15 @@ use ahash::HashMap;
 use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
     field_types::{ClassId, KeypointId, Tensor},
-    ClassicTensor, IndexHash, MeshId,
+    IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{
-        caches::AsDynamicImage, mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight,
-        SelectionHighlight, SpaceViewHighlights, ViewerContext,
+        mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight, SelectionHighlight,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::{
         annotations::{auto_color, AnnotationMap},
@@ -59,24 +59,10 @@ pub struct MeshSource {
     pub additive_tint: Color32,
 }
 
-pub enum AnyTensor {
-    ClassicTensor(ClassicTensor),
-    ArrowTensor(Tensor),
-}
-
-impl AnyTensor {
-    pub fn as_ref(&self) -> &(dyn AsDynamicImage) {
-        match self {
-            Self::ClassicTensor(t) => t,
-            Self::ArrowTensor(t) => t,
-        }
-    }
-}
-
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: AnyTensor,
+    pub tensor: Tensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have
@@ -172,34 +158,21 @@ impl SceneSpatial {
         self.annotation_map.load(ctx, query);
 
         let parts: Vec<&dyn ScenePart> = vec![
-            &scene_part::Points3DPartClassic,
             &scene_part::Points3DPart { max_labels: 10 },
             // --
-            &scene_part::Boxes3DPartClassic,
             &scene_part::Boxes3DPart,
-            &scene_part::Lines3DPartClassic,
             &scene_part::Lines3DPart,
-            &scene_part::Arrows3DPartClassic,
             &scene_part::Arrows3DPart,
-            &scene_part::MeshPartClassic,
             &scene_part::MeshPart,
-            &scene_part::ImagesPartClassic,
             &scene_part::ImagesPart,
             // --
-            &scene_part::Boxes2DPartClassic,
             &scene_part::Boxes2DPart,
             // --
-            &scene_part::LineSegments2DPartClassic,
-            // Note: Lines2DPart handles both Segments and LinesPaths now since
-            // they are unified on the logging-side. No need for
-            // LineSegmentsPart in Arrow. Lines2DClassic, likewise was never
-            // exposed through the SDK, which only allows for 3d LinePaths.
+            // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
             &scene_part::Lines2DPart,
-            &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
             // ---
             &scene_part::CamerasPart,
-            &scene_part::CamerasPartClassic,
         ];
 
         for part in parts {
