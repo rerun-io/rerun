@@ -45,7 +45,7 @@ impl DataStore {
         primary_timeline: Timeline,
         primary_component: ComponentName,
     ) -> Vec<Box<dyn Array>> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.gc_id += 1;
 
