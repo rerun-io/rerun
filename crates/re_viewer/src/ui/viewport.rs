@@ -620,9 +620,13 @@ fn blueprint_row_with_visibility_button(
 
     let main_button_rect = main_button_response.rect;
 
+    // We check the same rectangle as the main button, but we will also catch hovers on the visibility button (if any).
+    // We also check `main_button_response.highlighted()` because the button might have been highlighted because
+    // what it was referring to was hovered somewhere else.
     let button_hovered = ui
         .interact(main_button_rect, ui.id(), egui::Sense::hover())
-        .hovered();
+        .hovered()
+        || main_button_response.highlighted();
 
     if button_hovered {
         let visibility_button_changed = visibility_button(ui, enabled, visible).changed();
