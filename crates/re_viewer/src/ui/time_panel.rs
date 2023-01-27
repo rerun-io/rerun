@@ -134,6 +134,8 @@ impl TimePanel {
 
     #[allow(clippy::unused_self)]
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        ui.spacing_mut().item_spacing.x = 18.0; // from figma
+
         ctx.rec_cfg
             .time_ctrl
             .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
@@ -520,6 +522,8 @@ impl TimePanel {
 }
 
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    ui.spacing_mut().item_spacing.x = 18.0; // from figma
+
     ctx.rec_cfg
         .time_ctrl
         .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
