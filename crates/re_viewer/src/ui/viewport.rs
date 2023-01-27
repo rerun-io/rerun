@@ -137,14 +137,13 @@ impl Viewport {
             let visibility_changed =
                 blueprint_row_with_visibility_button(ui, true, &mut is_space_view_visible, |ui| {
                     let label = format!("{} {}", space_view.category.icon(), space_view.name);
-                    if ctx
-                        .space_view_button_to(ui, label, *space_view_id)
-                        .clicked()
-                    {
+                    let response = ctx.space_view_button_to(ui, label, *space_view_id);
+                    if response.clicked() {
                         if let Some(tree) = self.trees.get_mut(&self.visible) {
                             focus_tab(tree, space_view_id);
                         }
                     }
+                    response
                 });
 
             if visibility_changed {
@@ -197,7 +196,7 @@ impl Viewport {
                     |ui| {
                         let name = path.iter().last().unwrap().to_string();
                         let label = format!("🔹 {}", name);
-                        ctx.data_blueprint_button_to(ui, label, *space_view_id, path);
+                        ctx.data_blueprint_button_to(ui, label, *space_view_id, path)
                     },
                 );
 
@@ -234,7 +233,7 @@ impl Viewport {
                             label,
                             *space_view_id,
                             *child_group_handle,
-                        );
+                        )
                     },
                 );
             })
@@ -551,7 +550,7 @@ fn blueprint_row_with_visibility_button(
     ui: &mut egui::Ui,
     enabled: bool,
     visible: &mut bool,
-    add_content: impl FnOnce(&mut egui::Ui),
+    add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
 ) -> bool {
     let row_rect = ui.max_rect().expand2(ui.spacing().item_spacing * 0.5);
 
