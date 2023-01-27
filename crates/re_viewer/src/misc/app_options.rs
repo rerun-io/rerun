@@ -1,7 +1,7 @@
 /// Global options for the viewer.
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct Options {
+pub struct AppOptions {
     pub show_camera_axes_in_3d: bool,
 
     pub low_latency: f32,
@@ -10,7 +10,7 @@ pub struct Options {
     pub debug: DebugOptions,
 }
 
-impl Default for Options {
+impl Default for AppOptions {
     fn default() -> Self {
         Self {
             show_camera_axes_in_3d: true,
@@ -23,7 +23,7 @@ impl Default for Options {
     }
 }
 
-impl Options {
+impl AppOptions {
     pub fn show_dev_controls(&self) -> bool {
         cfg!(debug_assertions) && !self.debug.extra_clean_ui
     }

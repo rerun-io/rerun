@@ -343,7 +343,7 @@ impl Viewport {
                 .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
-            if ctx.options.show_spaceview_controls() {
+            if ctx.app_options.show_spaceview_controls() {
                 let frame = ctx.re_ui.hovering_frame();
                 hovering_panel(ui, frame, response.rect, |ui| {
                     space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
@@ -362,7 +362,7 @@ impl Viewport {
                 .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
-            if ctx.options.show_spaceview_controls() {
+            if ctx.app_options.show_spaceview_controls() {
                 let frame = ctx.re_ui.hovering_frame();
                 hovering_panel(ui, frame, response.rect, |ui| {
                     if ctx
@@ -653,7 +653,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights))
             .response;
 
-        if self.ctx.options.show_spaceview_controls() {
+        if self.ctx.app_options.show_spaceview_controls() {
             // Show buttons for maximize and space view options:
             let frame = self.ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {

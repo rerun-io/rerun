@@ -11,7 +11,7 @@ use super::selection::{MultiSelection, Selection};
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    pub options: &'a mut super::Options,
+    pub app_options: &'a mut super::AppOptions,
 
     /// Things that need caching.
     pub cache: &'a mut super::Caches,
