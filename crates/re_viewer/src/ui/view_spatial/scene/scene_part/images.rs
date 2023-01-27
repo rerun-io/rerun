@@ -16,7 +16,7 @@ use crate::{
     misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{Image, SceneSpatial},
+        view_spatial::{scene::scene_part::instance_hash_for_picking, Image, SceneSpatial},
         Annotations, DefaultColor,
     },
 };
@@ -142,13 +142,15 @@ impl ImagesPart {
                     return Ok(());
                 }
 
-                let instance_hash = {
-                    if properties.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
-                };
+                let object_highlight = highlights.object_highlight(ent_path.hash());
+
+                let instance_hash = instance_hash_for_picking(
+                    ent_path,
+                    instance,
+                    &entity_view,
+                    &properties,
+                    object_highlight,
+                );
 
                 let annotations = scene.annotation_map.find(ent_path);
 
@@ -157,9 +159,7 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let highlight = highlights
-                    .object_highlight(instance_hash.obj_path_hash)
-                    .index_highlight(instance_hash.instance_index_hash);
+                let highlight = object_highlight.index_highlight(instance_hash.instance_index_hash);
                 if highlight.any() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,

@@ -13,7 +13,7 @@ use crate::{
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::ScenePart;
+use super::{instance_hash_for_picking, ScenePart};
 
 pub struct Lines3DPart;
 
@@ -43,13 +43,13 @@ impl Lines3DPart {
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let instance_hash = {
-                if props.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            };
+            let instance_hash = instance_hash_for_picking(
+                ent_path,
+                instance,
+                &entity_view,
+                &props,
+                object_highlight,
+            );
 
             let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
 

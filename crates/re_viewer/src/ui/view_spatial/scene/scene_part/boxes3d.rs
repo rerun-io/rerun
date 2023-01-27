@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::ScenePart;
+use super::{instance_hash_for_picking, ScenePart};
 
 pub struct Boxes3DPart;
 
@@ -49,13 +49,13 @@ impl Boxes3DPart {
                        radius: Option<Radius>,
                        label: Option<Label>,
                        class_id: Option<ClassId>| {
-            let instance_hash = {
-                if props.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            };
+            let instance_hash = instance_hash_for_picking(
+                ent_path,
+                instance,
+                &entity_view,
+                &props,
+                object_highlight,
+            );
 
             let class_description = annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();

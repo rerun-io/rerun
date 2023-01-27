@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use super::ScenePart;
+use super::{instance_hash_for_picking, ScenePart};
 
 pub struct MeshPart;
 
@@ -42,13 +42,13 @@ impl MeshPart {
 
         let visitor =
             |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
-                let instance_hash = {
-                    if props.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
-                };
+                let instance_hash = instance_hash_for_picking(
+                    ent_path,
+                    instance,
+                    &entity_view,
+                    &props,
+                    object_highlight,
+                );
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,

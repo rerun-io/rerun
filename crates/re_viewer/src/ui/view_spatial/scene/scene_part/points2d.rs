@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::ScenePart;
+use super::{instance_hash_for_picking, ScenePart};
 
 pub struct Points2DPart;
 
@@ -57,13 +57,13 @@ impl Points2DPart {
                        label: Option<Label>,
                        class_id: Option<ClassId>,
                        keypoint_id: Option<KeypointId>| {
-            let instance_hash = {
-                if props.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            };
+            let instance_hash = instance_hash_for_picking(
+                ent_path,
+                instance,
+                &entity_view,
+                &props,
+                object_highlight,
+            );
 
             let pos: glam::Vec2 = pos.into();
 

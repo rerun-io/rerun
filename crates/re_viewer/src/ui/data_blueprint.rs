@@ -175,7 +175,7 @@ impl DataBlueprintTree {
 
             let group_properties_projected =
                 parent_properties.with_child(&group.properties_individual);
-            group.properties_projected = group_properties_projected;
+            group.properties_projected = group_properties_projected.clone();
 
             for obj_path in &group.objects {
                 let projected_properties = group_properties_projected

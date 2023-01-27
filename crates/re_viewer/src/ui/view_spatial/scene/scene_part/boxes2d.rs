@@ -11,7 +11,9 @@ use crate::{
     misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{Label2D, Label2DTarget, SceneSpatial},
+        view_spatial::{
+            scene::scene_part::instance_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
+        },
         DefaultColor,
     },
 };
@@ -115,15 +117,15 @@ impl ScenePart for Boxes2DPart {
                 ],
             )
             .and_then(|entities| {
-                for entity in entities {
-                    entity.visit5(|instance, rect, color, radius, label, class_id| {
-                        let instance_hash = {
-                            if props.interactive {
-                                InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                            } else {
-                                InstanceIdHash::NONE
-                            }
-                        };
+                for entity_view in entities {
+                    entity_view.visit5(|instance, rect, color, radius, label, class_id| {
+                        let instance_hash = instance_hash_for_picking(
+                            ent_path,
+                            instance,
+                            &entity_view,
+                            &props,
+                            object_highlight,
+                        );
                         Self::visit_instance(
                             scene,
                             ent_path,

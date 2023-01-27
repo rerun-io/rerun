@@ -100,6 +100,22 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
             None => InteractionHighlight::default(),
         }
     }
+
+    pub fn any_selection_highlight(&self) -> bool {
+        match self.0 {
+            Some(object_highlight) => {
+                // TODO(andreas): Could easily pre-compute this!
+                object_highlight.overall.selection != SelectionHighlight::None
+                    || object_highlight
+                        .instances
+                        .values()
+                        .any(|instance_highlight| {
+                            instance_highlight.selection != SelectionHighlight::None
+                        })
+            }
+            None => false,
+        }
+    }
 }
 
 /// Highlights in a specific space view.

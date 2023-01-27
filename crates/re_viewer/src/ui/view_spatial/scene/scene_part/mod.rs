@@ -1,12 +1,5 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
-use crate::{
-    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
-    ui::scene::SceneQuery,
-};
-
-use super::SceneSpatial;
-
 mod arrows3d;
 mod boxes2d;
 mod boxes3d;
@@ -29,6 +22,13 @@ pub(crate) use meshes::MeshPart;
 pub(crate) use points2d::Points2DPart;
 pub(crate) use points3d::Points3DPart;
 
+use super::SceneSpatial;
+use crate::{
+    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    ui::scene::SceneQuery,
+};
+use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+
 pub trait ScenePart {
     fn load(
         &self,
@@ -38,4 +38,22 @@ pub trait ScenePart {
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
     );
+}
+
+pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
+    ent_path: &ObjPath,
+    instance: re_log_types::field_types::Instance,
+    entity_view: &re_query::EntityView<T>,
+    props: &ObjectProps,
+    object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+) -> InstanceIdHash {
+    if props.interactive {
+        if entity_view.len() == 1 || !object_highlight.any_selection_highlight() {
+            InstanceIdHash::from_path_and_index(ent_path, re_log_types::IndexHash::NONE)
+        } else {
+            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+        }
+    } else {
+        InstanceIdHash::NONE
+    }
 }

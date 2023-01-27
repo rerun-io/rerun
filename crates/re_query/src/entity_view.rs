@@ -285,6 +285,16 @@ impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
 
 impl<Primary> EntityView<Primary>
 where
+    Primary: Component,
+{
+    /// Returns the number of instances in this view.
+    pub fn len(&self) -> usize {
+        self.primary.len()
+    }
+}
+
+impl<Primary> EntityView<Primary>
+where
     Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
     Primary::ArrayType: ArrowArray,
     for<'a> &'a Primary::ArrayType: IntoIterator,
