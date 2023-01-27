@@ -28,7 +28,7 @@ Our documentation is versioned with releases and generated via [mike](https://gi
 The documentation exists as a [Github Pages](https://pages.github.com/) project which is hosted from the
 contents of the `gh-pages` branch.
 
-`mike` updates this branch with new content as part of CI and manually n release.
+`mike` updates this branch with new content as part of CI
 
 Every commit that lands to main will generate bleeding edge documentation as HEAD. Behind the scenes, a
 github action is just running:
@@ -36,14 +36,14 @@ github action is just running:
 mike deploy -F rerun_py/mkdocs.yml HEAD
 ```
 
-On release we instead deploy with a version tag:
+On release, when github sees a new tag: `X.Y.Z`, the github action will instead deploy with a version tag:
 ```
 mike deploy -F rerun_py/mkdocs.yml X.Y.Z latest
 ```
 
-You can also locally preview the publicly hosted site wth all versions, using mike:
+You can also locally preview the publicly hosted site with all versions, using mike:
 ```
-mike serve -F rerun_py/mkdocs.yml 
+mike serve -F rerun_py/mkdocs.yml
 ```
 though when locally developing docs you are better off using `mkdocs serve` as described
 above since it will handle hot-reloading for you as you edit.

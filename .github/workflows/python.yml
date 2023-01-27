@@ -157,6 +157,6 @@ jobs:
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-docs.txt"
 
-      - name: Deploy via mike
+      - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
           mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages HEAD
