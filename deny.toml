@@ -28,10 +28,11 @@ deny = [
 ]
 
 skip = [
-  { name = "ahash" },  # Popular crate + fast release schedule = lots of crates still using old versions
-  { name = "base64" }, # Too popular
-  { name = "nix" },    # Too many to protect against
-  { name = "time" },   # Too popular
+  { name = "ahash" },   # Popular crate + fast release schedule = lots of crates still using old versions
+  { name = "base64" },  # Too popular
+  { name = "nix" },     # Too many to protect against
+  { name = "time" },    # Too popular
+  { name = "windows" }, # wgpu uses newer version than rfd, which uses same on latest but isnt' released yet https://github.com/PolyMeilex/rfd
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool

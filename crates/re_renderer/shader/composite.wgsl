@@ -15,9 +15,9 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
-    let input = textureSample(input_texture, nearest_sampler, in.texcoord).rgb;
+    var input = textureSample(input_texture, nearest_sampler, in.texcoord).rgb;
     // TODO(andreas): Do something meaningful with values above 1
-    let input = clamp(input, vec3<f32>(0.0), vec3<f32>(1.0));
+    input = clamp(input, ZERO, ONE);
 
     // Convert to srgb - this is necessary since the final eframe output does *not* have an srgb format.
     // Note that the input here is assumed to be linear - if the input texture was an srgb texture it would have been converted on load.

@@ -38,7 +38,7 @@ fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
 }
 
 // Returns the camera ray direction through a given screen uv coordinates (ranging from 0 to 1, i.e. NOT ndc coordinates)
-fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> vec3<f32> {
+fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> Vec3 {
     if is_camera_orthographic() {
         return frame.camera_forward;
     }

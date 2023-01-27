@@ -506,14 +506,17 @@ impl LineDrawData {
                 },
             );
 
-            let mut staging_buffer = ctx.queue.write_buffer_with(
-                ctx.gpu_resources
-                    .buffers
-                    .get_resource(&uniform_buffers_handle)
-                    .unwrap(),
-                0,
-                NonZeroU64::new(combined_buffers_size).unwrap(),
-            );
+            let mut staging_buffer = ctx
+                .queue
+                .write_buffer_with(
+                    ctx.gpu_resources
+                        .buffers
+                        .get_resource(&uniform_buffers_handle)
+                        .unwrap(),
+                    0,
+                    NonZeroU64::new(combined_buffers_size).unwrap(),
+                )
+                .unwrap(); // Fails only if mapping is bigger than buffer size.
 
             let mut start_vertex_for_next_batch = 0;
             for (i, batch_info) in batches.iter().enumerate() {
