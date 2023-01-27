@@ -155,7 +155,12 @@ jobs:
         with:
           python-version: "3.8"
           cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-docs.txt"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
 
       - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
