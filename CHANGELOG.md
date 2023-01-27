@@ -2,13 +2,14 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
-* 2022-01-25: Depth images are now color mapped with turbo color map. [#912](https://github.com/rerun-io/rerun/pull/912)
-* 2022-01-20: Arrow Storage is now the default storage backend for rerun. Use RERUN_STORE=classic to opt out. [#822](https://github.com/rerun-io/rerun/pull/822).
-* 2022-01-19: `rerun.spawn_and_connect` - the easiest way to use Rerun [#821](https://github.com/rerun-io/rerun/pull/821).
-* 2022-01-16: Added a command palette (Ctrl-P or Cmd-P) [#656](https://github.com/rerun-io/rerun/pull/656).
-* 2022-01-13: Introduce RERUN_STORAGE environment variable to choose storage mechanism [#752](https://github.com/rerun-io/rerun/pull/752).
-* 2022-01-13: Camera/object focus in 3D views is now on double click, moving camera never clears selection now. [#744](https://github.com/rerun-io/rerun/pull/744)
-* 2022-01-11: (Re-)Introduce groupings in the blueprint. [#724](https://github.com/rerun-io/rerun/pull/724).
+* 2023-01-27: Update wgpu to 0.15. [#954](https://github.com/rerun-io/rerun/pull/954)
+* 2023-01-25: Depth images are now color mapped with turbo color map. [#912](https://github.com/rerun-io/rerun/pull/912)
+* 2023-01-20: Arrow Storage is now the default storage backend for rerun. Use RERUN_STORE=classic to opt out. [#822](https://github.com/rerun-io/rerun/pull/822).
+* 2023-01-19: `rerun.spawn_and_connect` - the easiest way to use Rerun [#821](https://github.com/rerun-io/rerun/pull/821).
+* 2023-01-16: Added a command palette (Ctrl-P or Cmd-P) [#656](https://github.com/rerun-io/rerun/pull/656).
+* 2023-01-13: Introduce RERUN_STORAGE environment variable to choose storage mechanism [#752](https://github.com/rerun-io/rerun/pull/752).
+* 2023-01-13: Camera/object focus in 3D views is now on double click, moving camera never clears selection now. [#744](https://github.com/rerun-io/rerun/pull/744)
+* 2023-01-11: (Re-)Introduce groupings in the blueprint. [#724](https://github.com/rerun-io/rerun/pull/724).
 * 2023-01-11: Fix high memory consumption & slow loading due to images being loaded twice. [#730](https://github.com/rerun-io/rerun/pull/730)
 * 2022-12-21: Allow objects under pinhole transform to be placed into 3D spaces. [#621](https://github.com/rerun-io/rerun/pull/621).
 * 2022-12-19: Add support for bar-charts. [#581](https://github.com/rerun-io/rerun/pull/581).

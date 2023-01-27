@@ -20,16 +20,16 @@ var<uniform> batch: BatchUniformBuffer;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
-let LINESTRIP_TEXTURE_SIZE: i32 = 512;
-let POSITION_DATA_TEXTURE_SIZE: i32 = 256;
+const LINESTRIP_TEXTURE_SIZE: i32 = 512;
+const POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 // Flags
 // See lines.rs#LineStripFlags
-let CAP_END_TRIANGLE: u32 = 1u;
-let CAP_END_ROUND: u32 = 2u;
-let CAP_START_TRIANGLE: u32 = 4u;
-let CAP_START_ROUND: u32 = 8u;
-let NO_COLOR_GRADIENT: u32 = 16u;
+const CAP_END_TRIANGLE: u32 = 1u;
+const CAP_END_ROUND: u32 = 2u;
+const CAP_START_TRIANGLE: u32 = 4u;
+const CAP_START_ROUND: u32 = 8u;
+const NO_COLOR_GRADIENT: u32 = 16u;
 
 // A lot of the attributes don't need to be interpolated accross triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)

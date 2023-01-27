@@ -58,7 +58,7 @@ impl SizedResourceDesc for TextureDesc {
         for mip in 0..self.size.max_mips(self.dimension) {
             let mip_size = self
                 .size
-                .mip_level_size(mip, self.dimension == wgpu::TextureDimension::D3)
+                .mip_level_size(mip, self.dimension)
                 .physical_size(self.format);
             let num_pixels = mip_size.width * mip_size.height * mip_size.depth_or_array_layers;
             let num_blocks = num_pixels as u64 / pixels_per_block;
@@ -68,21 +68,6 @@ impl SizedResourceDesc for TextureDesc {
         size_in_bytes
     }
 }
-
-impl TextureDesc {
-    fn to_wgpu_desc(&self) -> wgpu::TextureDescriptor<'_> {
-        wgpu::TextureDescriptor {
-            label: self.label.get(),
-            size: self.size,
-            mip_level_count: self.mip_level_count,
-            sample_count: self.sample_count,
-            dimension: self.dimension,
-            format: self.format,
-            usage: self.usage,
-        }
-    }
-}
-
 #[derive(Default)]
 pub struct GpuTexturePool {
     pool: DynamicResourcePool<GpuTextureHandle, TextureDesc, GpuTexture>,
@@ -94,7 +79,16 @@ impl GpuTexturePool {
     pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTextureHandleStrong {
         crate::profile_function!();
         self.pool.alloc(desc, |desc| {
-            let texture = device.create_texture(&desc.to_wgpu_desc());
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: desc.label.get(),
+                size: desc.size,
+                mip_level_count: desc.mip_level_count,
+                sample_count: desc.sample_count,
+                dimension: desc.dimension,
+                format: desc.format,
+                usage: desc.usage,
+                view_formats: &[desc.format],
+            });
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             GpuTexture {
                 texture,

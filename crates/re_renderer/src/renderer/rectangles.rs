@@ -145,14 +145,17 @@ impl RectangleDrawData {
         // Fill staging buffer in a separate loop to avoid borrow checker issues
         {
             // TODO(andreas): This should come from a staging buffer.
-            let mut staging_buffer = ctx.queue.write_buffer_with(
-                ctx.gpu_resources
-                    .buffers
-                    .get_resource(&uniform_buffer)
-                    .unwrap(),
-                0,
-                NonZeroU64::new(combined_buffers_size).unwrap(),
-            );
+            let mut staging_buffer = ctx
+                .queue
+                .write_buffer_with(
+                    ctx.gpu_resources
+                        .buffers
+                        .get_resource(&uniform_buffer)
+                        .unwrap(),
+                    0,
+                    NonZeroU64::new(combined_buffers_size).unwrap(),
+                )
+                .unwrap(); // Fails only if mapping is bigger than buffer size.
 
             for (i, rectangle) in rectangles.iter().enumerate() {
                 let offset = i * allocation_size_per_uniform_buffer as usize;

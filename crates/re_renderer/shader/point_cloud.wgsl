@@ -18,7 +18,7 @@ var<uniform> batch: BatchUniformBuffer;
 
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
-let ENABLE_SHADING: u32 = 1u;
+const ENABLE_SHADING: u32 = 1u;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997

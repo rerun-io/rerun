@@ -33,8 +33,8 @@ polars-ops = "0.26"
 puffin = "0.14"
 thiserror = "1.0"
 tokio = "1.24"
-wgpu = { version = "0.14", default-features = false }
-wgpu-core = { version = "0.14", default-features = false }
+wgpu = { version = "0.15", default-features = false }
+wgpu-core = { version = "0.15", default-features = false }
 
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
@@ -68,13 +68,13 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
 # 2023-01-25 - egui deadlock fix
-ecolor = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
-eframe = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
-egui = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
-emath = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
-epaint = { git = "https://github.com/emilk/egui", rev = "8ce0e1c5206780e76234842b94ceb0edf5bb8b75" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
+eframe = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
+egui = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
+emath = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
+epaint = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
@@ -90,6 +90,6 @@ egui-notify = { git = "https://github.com/rerun-io/egui-notify", rev = "a158c2b8
 # egui-notify = { path = "../../forks/egui-notify" }
 
 # 2023-10-12 - Alpha to coverage support for GLES
-wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
-wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
+# wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
+# wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 # wgpu = { path = "../wgpu/wgpu" }

@@ -169,14 +169,16 @@ impl GpuMesh {
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 },
             );
-            let mut staging_buffer = queue.write_buffer_with(
-                pools
-                    .buffers
-                    .get_resource(&vertex_buffer_combined)
-                    .map_err(ResourceManagerError::ResourcePoolError)?,
-                0,
-                vertex_buffer_combined_size.try_into().unwrap(),
-            );
+            let mut staging_buffer = queue
+                .write_buffer_with(
+                    pools
+                        .buffers
+                        .get_resource(&vertex_buffer_combined)
+                        .map_err(ResourceManagerError::ResourcePoolError)?,
+                    0,
+                    vertex_buffer_combined_size.try_into().unwrap(),
+                )
+                .unwrap(); // Fails only if mapping is bigger than buffer size.
             staging_buffer[..vertex_buffer_positions_size as usize]
                 .copy_from_slice(bytemuck::cast_slice(&data.vertex_positions));
             staging_buffer
@@ -195,14 +197,16 @@ impl GpuMesh {
                     usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
                 },
             );
-            let mut staging_buffer = queue.write_buffer_with(
-                pools
-                    .buffers
-                    .get_resource(&index_buffer)
-                    .map_err(ResourceManagerError::ResourcePoolError)?,
-                0,
-                index_buffer_size.try_into().unwrap(),
-            );
+            let mut staging_buffer = queue
+                .write_buffer_with(
+                    pools
+                        .buffers
+                        .get_resource(&index_buffer)
+                        .map_err(ResourceManagerError::ResourcePoolError)?,
+                    0,
+                    index_buffer_size.try_into().unwrap(),
+                )
+                .unwrap(); // Fails only if mapping is bigger than buffer size.
             staging_buffer[..index_buffer_size as usize]
                 .copy_from_slice(bytemuck::cast_slice(&data.indices));
             index_buffer
@@ -223,14 +227,16 @@ impl GpuMesh {
                 },
             );
 
-            let mut materials_staging_buffer = queue.write_buffer_with(
-                pools
-                    .buffers
-                    .get_resource(&material_uniform_buffers)
-                    .unwrap(),
-                0,
-                NonZeroU64::new(combined_buffers_size).unwrap(),
-            );
+            let mut materials_staging_buffer = queue
+                .write_buffer_with(
+                    pools
+                        .buffers
+                        .get_resource(&material_uniform_buffers)
+                        .unwrap(),
+                    0,
+                    NonZeroU64::new(combined_buffers_size).unwrap(),
+                )
+                .unwrap(); // Fails only if mapping is bigger than buffer size.
 
             let mut materials = SmallVec::with_capacity(data.materials.len());
             for (i, material) in data.materials.iter().enumerate() {
