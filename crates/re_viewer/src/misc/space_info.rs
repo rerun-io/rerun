@@ -13,6 +13,8 @@ use super::UnreachableTransform;
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects.
 /// ⚠️ Transforms used for this are latest known, i.e. the "right most location in the timeline" ⚠️
+///
+/// Expected to be recreated every frame (or whenever new data is available).
 pub struct SpaceInfo {
     pub path: ObjPath,
 
@@ -59,7 +61,7 @@ impl SpaceInfo {
 
             for (child_path, transform) in &space_info.child_spaces {
                 let Some(child_space) = space_info_collection.get(child_path) else {
-                    // should never happen.
+                    re_log::warn_once!("Child space info {} not part of space info collection", child_path);
                     continue;
                 };
 
@@ -98,6 +100,8 @@ impl SpaceInfo {
 /// This is gathered by analyzing the transform hierarchy of the objects:
 /// For every child of the root there is a space info.
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
+///
+/// Expected to be recreated every frame (or whenever new data is available).
 #[derive(Default)]
 pub struct SpaceInfoCollection {
     spaces: BTreeMap<ObjPath, SpaceInfo>,
@@ -203,9 +207,10 @@ impl SpaceInfoCollection {
 
     /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to_reference`)
     ///
-    /// For how, you nee to check [`crate::misc::TransformCache`]!
-    /// Note that in any individual frame objects may or may not be reachable.
-    /// [`SpaceInfoCollection`] only answers about the time point it is queried for.
+    /// For how, you need to check [`crate::misc::TransformCache`]!
+    /// Note that in any individual frame, objects may or may not be reachable.
+    ///
+    /// If `from` and `to_reference` are not under the same root branch, they are regarded as [`UnreachableTransform::Unconnected`]
     pub fn is_reachable_by_transform(
         &self,
         from: &ObjPath,
@@ -244,7 +249,7 @@ impl SpaceInfoCollection {
             };
 
             if let Some((parent_path, transform)) = parent {
-                // See also `inverse_transform_at` and `transform_at` in `transform_cache.rs`
+                // Matches the connectedness requirements in `inverse_transform_at`/`transform_at` in `transform_cache.rs`
                 match transform {
                     Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
                     Transform::Rigid3(_) => Ok(()),

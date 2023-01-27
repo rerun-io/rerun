@@ -4,10 +4,13 @@ use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, Objects
 
 use crate::misc::TimeControl;
 
-/// Provides transforms from an object to a chosen reference space for all elements in the scene.
+/// Provides transforms from an object to a chosen reference space for all elements in the scene
+/// for the currently selected time & timeline.
 ///
 /// The renderer then uses this reference space as its world space,
 /// making world and reference space equivalent for a given space view.
+///
+/// Should be recomputed every frame.
 #[derive(Clone)]
 pub struct TransformCache {
     /// All transforms provided are relative to this reference path.
@@ -17,8 +20,8 @@ pub struct TransformCache {
     /// Alll reachable objects.
     reference_from_obj_per_object: IntMap<ObjPath, glam::Mat4>,
 
-    /// All unreachable parents.
-    unreachable_paths: Vec<(ObjPath, UnreachableTransform)>,
+    /// All unreachable descendant paths of `reference_path`.
+    unreachable_descendants: Vec<(ObjPath, UnreachableTransform)>,
 
     /// The first parent of reference_path that is no longer reachable.
     first_unreachable_parent: (ObjPath, UnreachableTransform),
@@ -53,7 +56,7 @@ impl TransformCache {
         let mut transforms = TransformCache {
             reference_path: root_path.clone(),
             reference_from_obj_per_object: Default::default(),
-            unreachable_paths: Default::default(),
+            unreachable_descendants: Default::default(),
             first_unreachable_parent: (ObjPath::root(), UnreachableTransform::Unconnected),
         };
 
@@ -158,7 +161,7 @@ impl TransformCache {
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
-                    self.unreachable_paths
+                    self.unreachable_descendants
                         .push((child_tree.path.clone(), unreachable_reason));
                     continue;
                 }
