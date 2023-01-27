@@ -44,3 +44,25 @@ pub(crate) use self::store::{
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
 #[doc(no_inline)]
 pub use re_log_types::{TimeInt, TimeRange, TimeType, Timeline}; // for politeness sake
+
+// ---
+
+/// Native-only profiling macro for puffin.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Native-only profiling macro for puffin.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_scope!($($arg)*);
+    };
+}

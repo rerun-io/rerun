@@ -27,7 +27,7 @@ pub struct DataStoreStats {
 
 impl DataStoreStats {
     pub fn from_store(store: &DataStore) -> Self {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let total_timeless_index_rows = store.total_timeless_index_rows();
         let total_timeless_index_size_bytes = store.total_timeless_index_size_bytes();
