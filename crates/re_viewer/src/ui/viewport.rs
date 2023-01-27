@@ -577,61 +577,43 @@ fn blueprint_row_with_visibility_button(
         dim_color(&mut widget_visuals.inactive.fg_stroke.color);
     }
 
-    // We have two options here:
-    // * Paint the visibility button on top of the main button
-    //   - Looks ugly when the visibility button is on top of the text in the main button
-    //   - Could perhaps be solved by masking out the main button when hovered, but that's difficult
-    // * Always add space for the visibility button:
-    //   - Makes the panel wider than it has to be
-    //   - Makes the button selection a bit too narrow
-
-    let visibility_button_width = 16.0;
-    let button_size = ui.available_size_before_wrap() - visibility_button_width * egui::Vec2::X;
-
     // Make the main button span the whole width to make it easier to click:
     let main_button_response = ui
-        .allocate_ui_with_layout(
-            button_size,
-            egui::Layout::top_down_justified(egui::Align::LEFT),
-            |ui| {
-                ui.style_mut().wrap = Some(false);
+        .with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+            ui.style_mut().wrap = Some(false);
 
-                // Turn off the background color of hovered buttons.
-                // Why? Because we add a manual hover-effect later.
-                // Why? Because we want that hover-effect even when only the visibility button is hovered.
-                let visuals = ui.visuals_mut();
-                visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-                visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-                visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-                visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-                visuals.widgets.open.weak_bg_fill = egui::Color32::TRANSPARENT;
-                visuals.widgets.open.bg_fill = egui::Color32::TRANSPARENT;
+            // Turn off the background color of hovered buttons.
+            // Why? Because we add a manual hover-effect later.
+            // Why? Because we want that hover-effect even when only the visibility button is hovered.
+            let visuals = ui.visuals_mut();
+            visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.open.weak_bg_fill = egui::Color32::TRANSPARENT;
+            visuals.widgets.open.bg_fill = egui::Color32::TRANSPARENT;
 
-                add_content(ui)
-            },
-        )
+            add_content(ui)
+        })
         .inner;
-    let both_buttons_rect = {
-        let mut rect = main_button_response.rect;
-        rect.max.x += visibility_button_width;
-        rect
-    };
-    // Make sure we make room for both buttons in the panel:
-    ui.expand_to_include_rect(both_buttons_rect);
 
-    let row_hovered = ui
-        .interact(both_buttons_rect, ui.id(), egui::Sense::hover())
+    let main_button_rect = main_button_response.rect;
+
+    let button_hovered = ui
+        .interact(main_button_rect, ui.id(), egui::Sense::hover())
         .hovered();
 
-    if row_hovered {
+    if button_hovered {
+        let visibility_button_changed = visibility_button(ui, enabled, visible).changed();
+
         // Highlight the row:
-        let hover_rect = both_buttons_rect.expand(ui.visuals().widgets.hovered.expansion);
+        let hover_rect = main_button_rect.expand(ui.visuals().widgets.hovered.expansion);
 
         // TODO(emilk): paint behind when https://github.com/emilk/egui/issues/1516 is done
         ui.painter()
             .rect_filled(hover_rect, 2.0, egui::Color32::WHITE.gamma_multiply(0.15));
 
-        visibility_button(ui, enabled, visible).changed()
+        visibility_button_changed
     } else {
         false
     }
@@ -639,20 +621,33 @@ fn blueprint_row_with_visibility_button(
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     // Just put the button on top of the existing ui:
-    let mut ui = ui.child_ui(
-        ui.max_rect(),
-        egui::Layout::right_to_left(egui::Align::Center),
-    );
 
-    ui.set_enabled(enabled);
-    if enabled {
-        ui.add(re_ui::toggle_switch(visible))
-    } else {
-        let mut always_false = false;
-        ui.add(re_ui::toggle_switch(&mut always_false))
-    }
-    .on_hover_text("Toggle visibility")
-    .on_disabled_hover_text("A parent is invisible")
+    let visibility_button_width = 16.0;
+
+    let rect = {
+        let mut rect = ui.max_rect();
+        rect.min.x = rect.max.x - visibility_button_width;
+        rect
+    };
+
+    // Make sure we get a solid background.
+    // Painting the widget on top of the underlying button text looks bad.
+    ui.painter()
+        .rect_filled(rect.expand(4.0), 0.0, ui.style().visuals.panel_fill);
+
+    ui.allocate_ui_at_rect(rect, |ui| {
+        ui.set_enabled(enabled);
+
+        if enabled {
+            ui.add(re_ui::toggle_switch(visible))
+        } else {
+            let mut always_false = false;
+            ui.add(re_ui::toggle_switch(&mut always_false))
+        }
+        .on_hover_text("Toggle visibility")
+        .on_disabled_hover_text("A parent is invisible")
+    })
+    .inner
 }
 
 // ----------------------------------------------------------------------------
