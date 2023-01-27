@@ -162,6 +162,14 @@ jobs:
           pip install --upgrade pip
           pip install -r rerun_py/requirements-doc.txt
 
+      - name: Set up git author
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
           mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages HEAD
