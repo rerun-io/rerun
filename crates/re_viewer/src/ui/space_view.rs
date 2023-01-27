@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use re_arrow_store::Timeline;
 use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
 
 use crate::{
@@ -107,7 +108,7 @@ impl SpaceView {
     ) -> Vec<ObjPath> {
         crate::profile_function!();
 
-        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let timeline = Timeline::log_time();
         let log_db = &ctx.log_db;
 
         let mut objects = Vec::new();
@@ -135,7 +136,7 @@ impl SpaceView {
     ) -> BTreeMap<ViewCategory, Vec<ObjPath>> {
         crate::profile_function!();
 
-        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let timeline = Timeline::log_time();
         let log_db = &ctx.log_db;
 
         let mut groups: BTreeMap<ViewCategory, Vec<ObjPath>> = BTreeMap::default();
@@ -232,8 +233,7 @@ impl SpaceView {
         })
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
-                let spaces_info =
-                    SpaceInfoCollection::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
+                let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db);
                 self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree);
             }
         });
@@ -454,9 +454,8 @@ fn has_visualization_for_category(
     category: ViewCategory,
     obj_path: &ObjPath,
 ) -> bool {
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let log_db = &ctx.log_db;
-    categorize_obj_path(timeline, log_db, obj_path).contains(category)
+    categorize_obj_path(Timeline::log_time(), log_db, obj_path).contains(category)
 }
 
 // ----------------------------------------------------------------------------

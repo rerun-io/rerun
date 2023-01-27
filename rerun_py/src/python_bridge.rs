@@ -60,10 +60,7 @@ impl ThreadInfo {
 
     fn now(&self) -> TimePoint {
         let mut time_point = self.time_point.clone();
-        time_point.insert(
-            Timeline::new("log_time", TimeType::Time),
-            Time::now().into(),
-        );
+        time_point.insert(Timeline::log_time(), Time::now().into());
         time_point
     }
 

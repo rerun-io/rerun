@@ -32,7 +32,9 @@ fn determine_view_coordinates(
     mut obj_path: ObjPath,
 ) -> ViewCoordinates {
     loop {
-        if let Some(view_coordinates) = query_view_coordinates(obj_db, time_ctrl, &obj_path) {
+        if let Some(view_coordinates) =
+            query_view_coordinates(obj_db, &obj_path, &time_ctrl.current_query())
+        {
             return view_coordinates;
         }
 

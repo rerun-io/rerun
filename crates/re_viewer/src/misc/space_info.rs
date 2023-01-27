@@ -7,7 +7,7 @@ use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
-use super::{TimeControl, UnreachableTransform};
+use super::UnreachableTransform;
 
 /// Information about one "space".
 ///
@@ -106,18 +106,17 @@ pub struct SpaceInfoCollection {
 impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    pub fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
+    pub fn new(obj_db: &ObjDb) -> Self {
         crate::profile_function!();
 
         fn add_children(
             obj_db: &ObjDb,
-            timeline: &Timeline,
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
-            query_time: TimeInt,
+            query: &LatestAtQuery,
         ) {
-            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
+            if let Some(transform) = query_transform(obj_db, &tree.path, query) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -132,11 +131,10 @@ impl SpaceInfoCollection {
                 for child_tree in tree.children.values() {
                     add_children(
                         obj_db,
-                        timeline,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
-                        query_time,
+                        query,
                     );
                 }
                 spaces_info
@@ -149,30 +147,22 @@ impl SpaceInfoCollection {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(
-                        obj_db,
-                        timeline,
-                        spaces_info,
-                        parent_space,
-                        child_tree,
-                        query_time,
-                    );
+                    add_children(obj_db, spaces_info, parent_space, child_tree, query);
                 }
             }
         }
 
-        // Use log time timeline, so we prioritize by wall clock logged.
-        let timeline = time_ctrl.timeline();
-
-        // Use "right most"/latest avilable data.
+        // Use "right most"/latest available data.
+        let timeline = Timeline::log_time();
         let query_time = TimeInt::MAX;
+        let query = LatestAtQuery::new(timeline, query_time);
 
         let mut spaces_info = Self::default();
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(obj_db, timeline, &tree.path, query_time).is_some() {
+            if query_transform(obj_db, &tree.path, &query).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -180,19 +170,12 @@ impl SpaceInfoCollection {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(
-                obj_db,
-                timeline,
-                &mut spaces_info,
-                &mut space_info,
-                tree,
-                query_time,
-            );
+            add_children(obj_db, &mut spaces_info, &mut space_info, tree, &query);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
+            space_info.coordinates = query_view_coordinates(obj_db, obj_path, &query);
         }
 
         spaces_info
@@ -305,40 +288,15 @@ impl SpaceInfoCollection {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the `_view_coordinates` meta-field of the given object.
-fn query_view_coordinates_classic(
+pub fn query_view_coordinates(
     obj_db: &ObjDb,
-    time_ctrl: &TimeControl,
-    obj_path: &ObjPath,
-) -> Option<re_log_types::ViewCoordinates> {
-    let timeline = time_ctrl.timeline();
-
-    let store = obj_db.store.get(timeline)?;
-
-    let field_store = store
-        .get(obj_path)?
-        .get(&re_data_store::FieldName::from("_view_coordinates"))?;
-
-    // `_view_coordinates` is only allowed to be stored in a mono-field.
-    let mono_field_store = field_store
-        .get_mono::<re_log_types::ViewCoordinates>()
-        .ok()?;
-
-    mono_field_store
-        .latest_at(&TimeInt::MAX.as_i64())
-        .map(|(_time, _msg_id, system)| *system)
-}
-
-fn query_view_coordinates_arrow(
-    obj_db: &ObjDb,
-    time_ctrl: &TimeControl,
     ent_path: &ObjPath,
+    query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
     let arrow_store = &obj_db.arrow_store;
-    let query = LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::MAX);
 
     let entity_view =
-        query_entity_with_primary::<ViewCoordinates>(arrow_store, &query, ent_path, &[]).ok()?;
+        query_entity_with_primary::<ViewCoordinates>(arrow_store, query, ent_path, &[]).ok()?;
 
     let mut iter = entity_view.iter_primary().ok()?;
 
@@ -349,13 +307,4 @@ fn query_view_coordinates_arrow(
     }
 
     view_coords
-}
-
-pub fn query_view_coordinates(
-    obj_db: &ObjDb,
-    time_ctrl: &TimeControl,
-    obj_path: &ObjPath,
-) -> Option<re_log_types::ViewCoordinates> {
-    query_view_coordinates_classic(obj_db, time_ctrl, obj_path)
-        .or_else(|| query_view_coordinates_arrow(obj_db, time_ctrl, obj_path))
 }

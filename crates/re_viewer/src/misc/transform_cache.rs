@@ -1,5 +1,5 @@
 use nohash_hasher::IntMap;
-use re_arrow_store::{TimeInt, Timeline};
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, ObjectsProperties};
 
 use crate::misc::TimeControl;
@@ -76,15 +76,13 @@ impl TransformCache {
             return transforms;
         }
 
-        let timeline = time_ctrl.timeline();
-        let query_time = time_ctrl.time_i64().map_or(TimeInt::MAX, TimeInt::from);
+        let query = time_ctrl.current_query();
 
         // Child transforms of this space
         transforms.gather_descendants_transforms(
             current_tree,
             obj_db,
-            timeline,
-            query_time,
+            &query,
             obj_properties,
             glam::Mat4::IDENTITY,
             false,
@@ -103,13 +101,8 @@ impl TransformCache {
 
             // Note that the transform at the reference is the first that needs to be inversed to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
-            match inverse_transform_at(
-                &current_tree.path,
-                obj_db,
-                timeline,
-                query_time,
-                &mut encountered_pinhole,
-            ) {
+            match inverse_transform_at(&current_tree.path, obj_db, &query, &mut encountered_pinhole)
+            {
                 Err(unreachable_reason) => {
                     transforms.first_unreachable_parent =
                         (parent_tree.path.clone(), unreachable_reason);
@@ -125,8 +118,7 @@ impl TransformCache {
             transforms.gather_descendants_transforms(
                 parent_tree,
                 obj_db,
-                timeline,
-                query_time,
+                &query,
                 obj_properties,
                 reference_from_ancestor,
                 encountered_pinhole,
@@ -138,13 +130,11 @@ impl TransformCache {
         transforms
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
         tree: &ObjectTree,
         obj_db: &ObjDb,
-        timeline: &Timeline,
-        query_time: TimeInt,
+        query: &LatestAtQuery,
         obj_properties: &ObjectsProperties,
         reference_from_obj: glam::Mat4,
         encountered_pinhole: bool,
@@ -163,9 +153,8 @@ impl TransformCache {
             let reference_from_child = match transform_at(
                 &child_tree.path,
                 obj_db,
-                timeline,
                 obj_properties,
-                query_time,
+                query,
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
@@ -179,8 +168,7 @@ impl TransformCache {
             self.gather_descendants_transforms(
                 child_tree,
                 obj_db,
-                timeline,
-                query_time,
+                query,
                 obj_properties,
                 reference_from_child,
                 encountered_pinhole,
@@ -207,12 +195,11 @@ impl TransformCache {
 fn transform_at(
     obj_path: &ObjPath,
     obj_db: &ObjDb,
-    timeline: &Timeline,
     obj_properties: &ObjectsProperties,
-    query_time: TimeInt,
+    query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(transform) = query_transform(obj_db, timeline, obj_path, query_time) {
+    if let Some(transform) = query_transform(obj_db, obj_path, query) {
         match transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().to_mat4())),
             // If we're connected via 'unknown' it's not reachable
@@ -256,11 +243,10 @@ fn transform_at(
 fn inverse_transform_at(
     obj_path: &ObjPath,
     obj_db: &ObjDb,
-    timeline: &Timeline,
-    query_time: TimeInt,
+    query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(parent_transform) = query_transform(obj_db, timeline, obj_path, query_time) {
+    if let Some(parent_transform) = query_transform(obj_db, obj_path, query) {
         match parent_transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.child_from_parent().to_mat4())),
             // If we're connected via 'unknown', everything except whats under `parent_tree` is unreachable

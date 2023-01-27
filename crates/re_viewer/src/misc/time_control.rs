@@ -359,6 +359,14 @@ impl TimeControl {
         self.time().map(|t| t.floor().as_i64())
     }
 
+    /// Query for latest value at the currently selected time on the currently selected timeline.
+    pub fn current_query(&self) -> re_arrow_store::LatestAtQuery {
+        re_arrow_store::LatestAtQuery::new(
+            self.timeline,
+            self.time().map_or(TimeInt::MAX, |t| t.floor()),
+        )
+    }
+
     /// The current loop range, iff selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<TimeRangeF> {
         if self.looping == Looping::Selection {

@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeType};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
 use re_log::warn_once;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
@@ -456,7 +456,7 @@ impl LogDb {
         let drop_msg_ids = {
             let msg_id_chunks = self.obj_db.arrow_store.gc(
                 GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
-                Timeline::new("log_time", TimeType::Time),
+                Timeline::log_time(),
                 MsgId::name(),
             );
 

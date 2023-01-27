@@ -51,7 +51,7 @@ pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 // all possible `ViewCategory` values, or you're in for a bad time..!
 
 pub fn categorize_obj_path(
-    timeline: &Timeline,
+    timeline: Timeline,
     log_db: &LogDb,
     obj_path: &ObjPath,
 ) -> ViewCategorySet {
@@ -60,7 +60,7 @@ pub fn categorize_obj_path(
     let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path()) else {
         // If it has a transform we might want to visualize it in space
         // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
-        if query_transform(&log_db.obj_db, timeline, obj_path, TimeInt::MAX).is_some() {
+        if query_transform(&log_db.obj_db, obj_path, &LatestAtQuery::new(timeline, TimeInt::MAX)).is_some() {
             return ViewCategory::Spatial.into();
         }
 
@@ -86,7 +86,7 @@ pub fn categorize_obj_path(
             // Some sort of tensor - could be an image, a vector, or a general tensor - let's check!
             if let Some(Ok((_, re_log_types::DataVec::Tensor(tensors)))) =
                 log_db.obj_db.store.query_data_path(
-                    timeline,
+                    &timeline,
                     &re_data_store::TimeQuery::LatestAt(i64::MAX),
                     &DataPath::new(obj_path.clone(), "tensor".into()),
                 )
@@ -108,7 +108,7 @@ pub fn categorize_obj_path(
         }
 
         re_log_types::ObjectType::ArrowObject => {
-            categorize_arrow_obj_path(timeline, log_db, obj_path)
+            categorize_arrow_obj_path(&timeline, log_db, obj_path)
         }
     }
 }

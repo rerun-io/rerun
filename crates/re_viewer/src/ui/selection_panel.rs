@@ -1,4 +1,3 @@
-use re_arrow_store::TimeInt;
 use re_data_store::{query_transform, ObjPath, ObjectProps};
 use re_log_types::TimeType;
 
@@ -342,14 +341,9 @@ fn obj_props_ui(
 
     if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
         if let Some(obj_path) = obj_path {
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            let query_time = ctx
-                .rec_cfg
-                .time_ctrl
-                .time_i64()
-                .map_or(TimeInt::MAX, TimeInt::from);
+            let query = ctx.rec_cfg.time_ctrl.current_query();
             if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.obj_db, timeline, obj_path, query_time)
+                query_transform(&ctx.log_db.obj_db, obj_path, &query)
             {
                 ui.horizontal(|ui| {
                     ui.label("Image plane distance:");

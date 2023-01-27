@@ -1,4 +1,4 @@
-use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
+use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::Component,
     ObjPath, Transform,
@@ -121,9 +121,8 @@ impl ExtraQueryHistory {
 /// we check to see if it exists in the arrow storage.
 pub fn query_transform(
     obj_db: &ObjDb,
-    timeline: &Timeline,
     obj_path: &ObjPath,
-    query_time: TimeInt,
+    query: &LatestAtQuery,
 ) -> Option<Transform> {
     crate::profile_function!();
 
@@ -132,11 +131,9 @@ pub fn query_transform(
     // transforms this is easy enough.
     let arrow_store = &obj_db.arrow_store;
 
-    let query = LatestAtQuery::new(*timeline, query_time);
-
     let components = [Transform::name()];
 
-    let row_indices = arrow_store.latest_at(&query, obj_path, Transform::name(), &components)?;
+    let row_indices = arrow_store.latest_at(query, obj_path, Transform::name(), &components)?;
 
     let results = arrow_store.get(&components, &row_indices);
     let arr = results.get(0)?.as_ref()?.as_ref();

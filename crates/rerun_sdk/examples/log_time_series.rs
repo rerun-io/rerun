@@ -81,10 +81,7 @@ fn log_parabola(session: &mut Session) {
 
     for t in (0..1000).step_by(10) {
         let timepoint = TimePoint::from([
-            (
-                Timeline::new("log_time", TimeType::Time),
-                Time::now().into(),
-            ), //
+            (Timeline::log_time(), Time::now().into()), //
             (Timeline::new("frame_nr", TimeType::Sequence), t.into()),
         ]);
 
@@ -123,10 +120,7 @@ fn log_trig(session: &mut Session) {
 
     for t in 0..(TAU * 2.0 * 100.0) as i64 {
         let timepoint = TimePoint::from([
-            (
-                Timeline::new("log_time", TimeType::Time),
-                Time::now().into(),
-            ), //
+            (Timeline::log_time(), Time::now().into()), //
             (Timeline::new("frame_nr", TimeType::Sequence), t.into()),
         ]);
 
@@ -172,10 +166,7 @@ fn log_segmentation(session: &mut Session) {
 
     for t in (0..1_000).step_by(2) {
         let timepoint = TimePoint::from([
-            (
-                Timeline::new("log_time", TimeType::Time),
-                Time::now().into(),
-            ), //
+            (Timeline::log_time(), Time::now().into()), //
             (Timeline::new("frame_nr", TimeType::Sequence), t.into()),
         ]);
 
