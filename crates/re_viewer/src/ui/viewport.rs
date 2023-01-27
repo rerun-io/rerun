@@ -577,6 +577,14 @@ fn blueprint_row_with_visibility_button(
         dim_color(&mut widget_visuals.inactive.fg_stroke.color);
     }
 
+    // We have two options here:
+    // * Paint the visibility button on top of the main button
+    //   - Looks ugly when the visibility button is on top of the text in the main button
+    //   - Could perhaps be solved by masking out the main button when hovered, but that's difficult
+    // * Always add space for the visibility button:
+    //   - Makes the panel wider than it has to be
+    //   - Makes the button selection a bit too narrow
+
     let visibility_button_width = 16.0;
     let button_size = ui.available_size_before_wrap() - visibility_button_width * egui::Vec2::X;
 
@@ -608,9 +616,7 @@ fn blueprint_row_with_visibility_button(
         rect.max.x += visibility_button_width;
         rect
     };
-    // Make sure we make room for both button and visibility button.
-    // We could paint the visibility button on top of the main button, but that looks bad.
-    // This on the other hand makes the panel wider than it _looks_ like it needs to be.
+    // Make sure we make room for both buttons in the panel:
     ui.expand_to_include_rect(both_buttons_rect);
 
     let row_hovered = ui
