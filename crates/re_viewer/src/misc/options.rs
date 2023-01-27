@@ -28,7 +28,7 @@ impl Options {
         cfg!(debug_assertions) && !self.debug.extra_clean_ui
     }
 
-    pub fn spaceview_hover_controls(&self) -> bool {
+    pub fn show_spaceview_controls(&self) -> bool {
         !self.debug.extra_clean_ui
     }
 }
