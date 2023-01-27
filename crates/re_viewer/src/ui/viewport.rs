@@ -579,7 +579,7 @@ fn blueprint_row_with_visibility_button(
             let mut paint_rect = row_rect;
             paint_rect.min.x = 0.0; // fill full panel width
 
-            // TODO: paint behind when https://github.com/emilk/egui/issues/1516 is done
+            // TODO(emilk): paint behind when https://github.com/emilk/egui/issues/1516 is done
             ui.painter()
                 .rect_filled(paint_rect, 2.0, egui::Color32::WHITE.gamma_multiply(0.1));
         }
