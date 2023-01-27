@@ -12,11 +12,10 @@ use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{
         mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight, SelectionHighlight,
-        SpaceViewHighlights, ViewerContext,
+        SpaceViewHighlights, TransformCache, ViewerContext,
     },
     ui::{
         annotations::{auto_color, AnnotationMap},
-        transform_cache::TransformCache,
         Annotations, SceneQuery,
     },
 };

@@ -1,7 +1,7 @@
-use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
+use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::Component,
-    FieldName, ObjPath, Transform,
+    ObjPath, Transform,
 };
 
 use crate::log_db::ObjDb;
@@ -114,35 +114,15 @@ impl ExtraQueryHistory {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the `_transform` meta-field of the given object.
-fn query_transform_classic(
+/// Get the latest value of the transform
+///
+/// We first look for the transform in the classic storage system since that's
+/// what most users are still using. If we don't find the transform there, then
+/// we check to see if it exists in the arrow storage.
+pub fn query_transform(
     obj_db: &ObjDb,
-    timeline: &Timeline,
     obj_path: &ObjPath,
-    query_time: Option<i64>,
-) -> Option<Transform> {
-    let store = obj_db.store.get(timeline)?;
-
-    let field_store = store.get(obj_path)?.get(&FieldName::from("_transform"))?;
-    let mono_field_store = field_store.get_mono::<Transform>().ok()?;
-
-    // There is a transform, at least at _some_ time.
-    // Is there a transform _now_?
-    let latest = query_time
-        .and_then(|query_time| mono_field_store.latest_at(&query_time))
-        .map(|(_, _, transform)| transform.clone());
-
-    // If not, return an unknown transform to indicate that there is
-    // still a space-split.
-    Some(latest.unwrap_or(Transform::Unknown))
-}
-
-/// Get the latest value of the `Transform` component from arrow
-fn query_transform_arrow(
-    obj_db: &ObjDb,
-    timeline: &Timeline,
-    ent_path: &ObjPath,
-    query_time: Option<i64>,
+    query: &LatestAtQuery,
 ) -> Option<Transform> {
     crate::profile_function!();
 
@@ -151,11 +131,9 @@ fn query_transform_arrow(
     // transforms this is easy enough.
     let arrow_store = &obj_db.arrow_store;
 
-    let query = LatestAtQuery::new(*timeline, query_time.map_or(TimeInt::MAX, TimeInt::from));
-
     let components = [Transform::name()];
 
-    let row_indices = arrow_store.latest_at(&query, ent_path, Transform::name(), &components)?;
+    let row_indices = arrow_store.latest_at(query, obj_path, Transform::name(), &components)?;
 
     let results = arrow_store.get(&components, &row_indices);
     let arr = results.get(0)?.as_ref()?.as_ref();
@@ -165,23 +143,8 @@ fn query_transform_arrow(
     let transform = iter.next();
 
     if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for Transform at: {}", ent_path);
+        re_log::warn_once!("Unexpected batch for Transform at: {}", obj_path);
     }
 
     transform
-}
-
-/// Get the latest value of the transform
-///
-/// We first look for the transform in the classic storage system since that's
-/// what most users are still using. If we don't find the transform there, then
-/// we check to see if it exists in the arrow storage.
-pub fn query_transform(
-    obj_db: &ObjDb,
-    timeline: &Timeline,
-    obj_path: &ObjPath,
-    query_time: Option<i64>,
-) -> Option<Transform> {
-    query_transform_classic(obj_db, timeline, obj_path, query_time)
-        .or_else(|| query_transform_arrow(obj_db, timeline, obj_path, query_time))
 }

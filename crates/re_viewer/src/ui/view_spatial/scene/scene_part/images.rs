@@ -13,10 +13,9 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{caches::AsDynamicImage, SpaceViewHighlights, ViewerContext},
+    misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },
@@ -216,7 +215,7 @@ impl ScenePart for ImagesPart {
         crate::profile_scope!("ImagesPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 

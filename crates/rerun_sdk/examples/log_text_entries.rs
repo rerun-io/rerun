@@ -153,10 +153,7 @@ fn log_text_entries(
 ) {
     // Capture the log_time and object_path
     let time_point = TimePoint::from([
-        (
-            Timeline::new("log_time", TimeType::Time),
-            Time::now().into(),
-        ), //
+        (Timeline::log_time(), Time::now().into()),
         (Timeline::new("frame_nr", TimeType::Sequence), 42.into()),
     ]);
 

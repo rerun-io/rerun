@@ -9,13 +9,8 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
-    misc::{SpaceViewHighlights, ViewerContext},
-    ui::{
-        scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::SceneSpatial,
-        DefaultColor,
-    },
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
+    ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
 use super::ScenePart;
@@ -108,7 +103,7 @@ impl ScenePart for Arrows3DPart {
         crate::profile_scope!("Points2DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 

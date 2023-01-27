@@ -7,14 +7,13 @@ use std::collections::BTreeSet;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
+use re_data_store::{ObjPath, TimeInt};
 use re_log_types::field_types::{Tensor, TensorTrait};
 
-use crate::misc::{space_info::SpacesInfo, Selection, SpaceViewHighlights, ViewerContext};
+use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
 
 use super::{
     data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
-    transform_cache::TransformCache,
     view_category::ViewCategory,
     SpaceView, SpaceViewId,
 };
@@ -52,7 +51,7 @@ pub struct Viewport {
 
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
-    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
+    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
@@ -133,19 +132,20 @@ impl Viewport {
             default_open,
         )
         .show_header(ui, |ui| {
-            ui.label(space_view.category.icon());
-
-            if ctx
-                .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
-                .clicked()
-            {
-                if let Some(tree) = self.trees.get_mut(&self.visible) {
-                    focus_tab(tree, space_view_id);
-                }
-            }
-
             let mut is_space_view_visible = self.visible.contains(space_view_id);
-            if visibility_button(ui, true, &mut is_space_view_visible).changed() {
+            let visibility_changed =
+                blueprint_row_with_visibility_button(ui, true, &mut is_space_view_visible, |ui| {
+                    let label = format!("{} {}", space_view.category.icon(), space_view.name);
+                    let response = ctx.space_view_button_to(ui, label, *space_view_id);
+                    if response.clicked() {
+                        if let Some(tree) = self.trees.get_mut(&self.visible) {
+                            focus_tab(tree, space_view_id);
+                        }
+                    }
+                    response
+                });
+
+            if visibility_changed {
                 self.has_been_user_edited = true;
                 if is_space_view_visible {
                     self.visible.insert(*space_view_id);
@@ -187,12 +187,19 @@ impl Viewport {
 
         for path in &objects {
             ui.horizontal(|ui| {
-                let name = path.iter().last().unwrap().to_string();
-
-                ctx.data_blueprint_button_to(ui, name, *space_view_id, path);
-
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
-                if visibility_button(ui, group_is_visible, &mut properties.visible).changed() {
+                let visibility_changed = blueprint_row_with_visibility_button(
+                    ui,
+                    group_is_visible,
+                    &mut properties.visible,
+                    |ui| {
+                        let name = path.iter().last().unwrap().to_string();
+                        let label = format!("🔹 {}", name);
+                        ctx.data_blueprint_button_to(ui, label, *space_view_id, path)
+                    },
+                );
+
+                if visibility_changed {
                     data_blueprint_tree
                         .data_blueprints_individual()
                         .set(path.clone(), properties);
@@ -214,17 +221,19 @@ impl Viewport {
                 default_open,
             )
             .show_header(ui, |ui| {
-                ui.label("📁");
-                ctx.data_blueprint_group_button_to(
-                    ui,
-                    &child_group.display_name,
-                    *space_view_id,
-                    *child_group_handle,
-                );
-                visibility_button(
+                blueprint_row_with_visibility_button(
                     ui,
                     group_is_visible,
                     &mut child_group.properties_individual.visible,
+                    |ui| {
+                        let label = format!("📁 {}", child_group.display_name);
+                        ctx.data_blueprint_group_button_to(
+                            ui,
+                            label,
+                            *space_view_id,
+                            *child_group_handle,
+                        )
+                    },
                 );
             })
             .body(|ui| {
@@ -252,7 +261,11 @@ impl Viewport {
         id
     }
 
-    pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+    pub fn on_frame_start(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
+    ) {
         crate::profile_function!();
 
         for space_view in self.space_views.values_mut() {
@@ -295,7 +308,7 @@ impl Viewport {
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
         selection_panel_expanded: &mut bool,
     ) {
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
@@ -390,20 +403,15 @@ impl Viewport {
 
     fn all_possible_space_views(
         ctx: &ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) -> Vec<SpaceView> {
         crate::profile_function!();
 
         let mut space_views = Vec::new();
 
         for space_info in spaces_info.iter() {
-            let transforms = TransformCache::determine_transforms(
-                spaces_info,
-                space_info,
-                &ObjectsProperties::default(),
-            );
             for (category, obj_paths) in
-                SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+                SpaceView::default_queried_objects_by_category(ctx, spaces_info, space_info)
             {
                 space_views.push(SpaceView::new(category, space_info, &obj_paths));
             }
@@ -414,7 +422,7 @@ impl Viewport {
 
     fn default_created_space_views(
         ctx: &ViewerContext<'_>,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) -> Vec<SpaceView> {
         crate::profile_function!();
 
@@ -511,7 +519,7 @@ impl Viewport {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
+        spaces_info: &SpaceInfoCollection,
     ) {
         #![allow(clippy::collapsible_if)]
 
@@ -553,18 +561,65 @@ impl Viewport {
     }
 }
 
+/// Returns true if visibility changed
+fn blueprint_row_with_visibility_button(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    visible: &mut bool,
+    add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> bool {
+    let row_rect = ui.max_rect().expand2(ui.spacing().item_spacing * 0.5);
+
+    let hovered = ui
+        .input(|i| i.pointer.hover_pos())
+        .map_or(false, |pointer| row_rect.contains(pointer));
+
+    if !*visible || !enabled {
+        // Dim the appearance of things added by `add_content`:
+        let widget_visuals = &mut ui.visuals_mut().widgets;
+        fn dim_color(color: &mut egui::Color32) {
+            *color = color.gamma_multiply(0.5);
+        }
+        dim_color(&mut widget_visuals.noninteractive.fg_stroke.color);
+        dim_color(&mut widget_visuals.inactive.fg_stroke.color);
+    }
+
+    add_content(ui);
+
+    if hovered {
+        // TODO(emilk): enable the highlight once clicking the whole width
+        // is the same as clicking the button, i.e. the button in `add_content` is justified.
+        if false {
+            // Highlight the row:
+            let mut paint_rect = row_rect;
+            paint_rect.min.x = 0.0; // fill full panel width
+
+            // TODO(emilk): paint behind when https://github.com/emilk/egui/issues/1516 is done
+            ui.painter()
+                .rect_filled(paint_rect, 2.0, egui::Color32::WHITE.gamma_multiply(0.1));
+        }
+
+        visibility_button(ui, enabled, visible).changed()
+    } else {
+        false
+    }
+}
+
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+    use re_ui::toggle_switch;
+
     ui.add_space(16.0); // Make room for visibility button so the side bar don't become too narrow to fit it
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.set_enabled(enabled);
         if enabled {
-            ui.toggle_value(visible, "👁")
+            ui.add(toggle_switch(visible))
         } else {
             let mut always_false = false;
-            ui.toggle_value(&mut always_false, "👁")
+            ui.add(toggle_switch(&mut always_false))
         }
         .on_hover_text("Toggle visibility")
+        .on_disabled_hover_text("A parent is invisible")
     })
     .inner
 }
@@ -573,7 +628,7 @@ fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> eg
 
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
-    spaces_info: &'a SpacesInfo,
+    spaces_info: &'a SpaceInfoCollection,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
     maximized: &'a mut Option<SpaceViewId>,
     selection_panel_expanded: &'a mut bool,
@@ -688,7 +743,7 @@ fn hovering_panel(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpacesInfo,
+    spaces_info: &SpaceInfoCollection,
     space_view: &mut SpaceView,
     space_view_highlights: &SpaceViewHighlights,
 ) {

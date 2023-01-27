@@ -188,7 +188,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
     let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
+    let timeline_log_time = Timeline::log_time();
 
     // empty frame_nr
     {

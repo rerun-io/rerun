@@ -69,6 +69,12 @@ impl Timeline {
         self.typ
     }
 
+    /// The log time timeline to which all API functions will always log.
+    #[inline]
+    pub fn log_time() -> Self {
+        Timeline::new("log_time", TimeType::Time)
+    }
+
     /// Returns a formatted string of `time_range` on this `Timeline`.
     pub fn format_time_range(&self, time_range: &TimeRange) -> String {
         format!(
