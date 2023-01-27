@@ -90,7 +90,7 @@ impl DataStore {
         timeline: &Timeline,
         ent_path: &EntityPath,
     ) -> Option<Vec<ComponentName>> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -202,7 +202,7 @@ impl DataStore {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -396,7 +396,7 @@ impl DataStore {
     ) -> impl Iterator<Item = (Option<TimeInt>, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -449,7 +449,7 @@ impl DataStore {
         components: &[ComponentName; N],
         row_indices: &[Option<RowIndex>; N],
     ) -> [Option<Box<dyn Array>>; N] {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
 
@@ -481,7 +481,7 @@ impl DataStore {
     }
 
     pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.messages.get(msg_id)
     }
@@ -521,7 +521,7 @@ impl PersistentIndexTable {
         // Early-exit if this bucket is unaware of this component.
         let index = self.indices.get(&primary)?;
 
-        puffin::profile_function!();
+        crate::profile_function!();
 
         trace!(
             kind = "latest_at",
@@ -605,7 +605,7 @@ impl PersistentIndexTable {
 
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // TODO(cmc): Cloning these is obviously not great and will need to be addressed at
         // some point.
@@ -657,7 +657,7 @@ impl IndexTable {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let timeline = self.timeline;
 
@@ -699,7 +699,7 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + '_ {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let timeline = self.timeline;
 
@@ -731,7 +731,7 @@ impl IndexTable {
     /// _indexing time_, which is different from its minimum time range bound!
     /// See `IndexTable::buckets` for more information.
     pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexBucket) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
@@ -744,7 +744,7 @@ impl IndexTable {
     /// _indexing time_, which is different from its minimum time range bound!
     /// See `IndexTable::buckets` for more information.
     pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexBucket) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
@@ -765,7 +765,7 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, &IndexBucket)> {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.buckets
             .range(time_range)
@@ -786,7 +786,7 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, &IndexBucket)> {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.buckets
             .range(time_range)
@@ -808,7 +808,7 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, &mut IndexBucket)> {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.buckets
             .range_mut(time_range)
@@ -861,7 +861,7 @@ impl IndexBucket {
         // Early-exit if this bucket is unaware of this component.
         let index = indices.get(&primary)?;
 
-        puffin::profile_function!();
+        crate::profile_function!();
 
         trace!(
             kind = "latest_at",
@@ -973,7 +973,7 @@ impl IndexBucket {
 
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        puffin::profile_function!();
+        crate::profile_function!();
 
         trace!(
             kind = "range",
@@ -1071,7 +1071,7 @@ impl IndexBucketIndices {
             return;
         }
 
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let swaps = {
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
@@ -1121,7 +1121,7 @@ impl PersistentComponentTable {
     ///
     /// Panics if `row_idx` is out of bounds.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.chunks[row_idx.as_u64() as usize]
             .as_any()
@@ -1135,7 +1135,7 @@ impl PersistentComponentTable {
 
 impl ComponentTable {
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let bucket_nr = self
             .buckets
@@ -1189,7 +1189,7 @@ impl ComponentBucket {
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.

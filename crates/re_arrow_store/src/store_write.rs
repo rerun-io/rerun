@@ -81,7 +81,7 @@ impl DataStore {
             return Ok(());
         }
 
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let ent_path_hash = ent_path.hash();
         let nb_rows = components[0].value.len();
@@ -183,7 +183,7 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
             row_nr,
@@ -260,7 +260,7 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let (cluster_row_idx, cluster_len) =
             self.get_or_create_cluster_component(row_nr, cluster_comp_pos, components, time_point)?;
@@ -335,7 +335,7 @@ impl DataStore {
         components: &[ComponentBundle],
         time_point: &TimePoint,
     ) -> WriteResult<(RowIndex, usize)> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         enum ClusterData {
             Cached(RowIndex),
@@ -443,7 +443,7 @@ impl DataStore {
     }
 
     pub fn clear_msg_metadata(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.messages
             .retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
@@ -465,7 +465,7 @@ impl PersistentIndexTable {
 
     #[allow(clippy::unnecessary_wraps)]
     pub fn insert(&mut self, row_indices: &IntMap<ComponentName, RowIndex>) -> anyhow::Result<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // 2-way merge, step1: left-to-right
         //
@@ -518,7 +518,7 @@ impl IndexTable {
         time: TimeInt,
         indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // borrowck workaround
         let timeline = self.timeline;
@@ -657,7 +657,7 @@ impl IndexBucket {
         time: TimeInt,
         row_indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let mut guard = self.indices.write();
         let IndexBucketIndices {
@@ -800,7 +800,7 @@ impl IndexBucket {
             return None;
         }
 
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let timeline = *timeline;
         // Used down the line to assert that we've left everything in a sane state.
@@ -881,7 +881,7 @@ fn find_split_index(times: &TimeIndex) -> Option<usize> {
         return None; // early exit: unsplittable
     }
 
-    puffin::profile_function!();
+    crate::profile_function!();
 
     // This can never be lesser than 1 as we never split buckets smaller than 2 entries.
     let halfway_idx = times.len() / 2;
@@ -1020,7 +1020,7 @@ impl PersistentComponentTable {
     //
     // TODO(#589): support for batched row component insertions
     pub fn push(&mut self, rows_single: &dyn Array) -> RowIndex {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         debug_assert!(
             ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
@@ -1081,7 +1081,7 @@ impl ComponentTable {
         time_point: &TimePoint,
         rows_single: &dyn Array,
     ) -> RowIndex {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         debug_assert!(
             ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
@@ -1195,7 +1195,7 @@ impl ComponentBucket {
     /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
     /// ```
     pub fn push(&mut self, time_point: &TimePoint, rows_single: &dyn Array) -> u64 {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         debug_assert!(
             rows_single.len() == 1,
@@ -1227,7 +1227,7 @@ impl ComponentBucket {
     ///
     /// This is a good opportunity to run compaction and other maintenance related tasks.
     pub fn archive(&mut self) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         debug_assert!(
             !self.archived,

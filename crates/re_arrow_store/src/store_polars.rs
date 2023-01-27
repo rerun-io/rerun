@@ -21,7 +21,7 @@ impl DataStore {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self) -> DataFrame {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         const IS_TIMELESS_COL: &str = "_is_timeless";
 
@@ -130,7 +130,7 @@ impl PersistentIndexTable {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let Self {
             ent_path: _,
@@ -168,7 +168,7 @@ impl IndexBucket {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let (_, times) = self.times();
         let nb_rows = times.len();
@@ -217,7 +217,7 @@ fn insert_ids_as_series(
     nb_rows: usize,
     indices: &IntMap<ComponentName, SecondaryIndex>,
 ) -> Option<Series> {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     indices.get(&DataStore::insert_id_key()).map(|insert_ids| {
         let insert_ids = insert_ids
@@ -233,7 +233,7 @@ fn find_component_datatype(
     store: &DataStore,
     component: &ComponentName,
 ) -> Option<arrow2::datatypes::DataType> {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let timeless = store
         .timeless_components
@@ -253,7 +253,7 @@ fn component_as_series(
     component: ComponentName,
     comp_row_nrs: &[Option<RowIndex>],
 ) -> Series {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let components = &[component];
 
@@ -296,7 +296,7 @@ fn component_as_series(
 // ---
 
 fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     Series::try_from((name, data.as_ref().clean_for_polars())).unwrap_or_else(|_| {
         let errs = Utf8Array::<i32>::from(vec![Some("<ERR>"); len]);
@@ -310,7 +310,7 @@ fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
 // - followed by the entity path,
 // - and finally all components in lexical order.
 fn sort_df_columns(df: &DataFrame, store_insert_ids: bool) -> DataFrame {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let columns: Vec<_> = {
         let mut all = df.get_column_names();
