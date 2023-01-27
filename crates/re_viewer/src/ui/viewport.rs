@@ -608,7 +608,9 @@ fn blueprint_row_with_visibility_button(
         rect.max.x += visibility_button_width;
         rect
     };
-    // Make sure we make room for both button and visibility button:
+    // Make sure we make room for both button and visibility button.
+    // We could paint the visibility button on top of the main button, but that looks bad.
+    // This on the other hand makes the panel wider than it _looks_ like it needs to be.
     ui.expand_to_include_rect(both_buttons_rect);
 
     let row_hovered = ui
