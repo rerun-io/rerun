@@ -11,7 +11,7 @@ use super::selection::{MultiSelection, Selection};
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    pub options: &'a mut Options,
+    pub app_options: &'a mut super::AppOptions,
 
     /// Things that need caching.
     pub cache: &'a mut super::Caches,
@@ -302,26 +302,3 @@ pub struct RecordingConfig {
     /// Selection & hovering state.
     pub selection_state: super::SelectionState,
 }
-
-// ----------------------------------------------------------------------------
-
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Options {
-    pub show_camera_axes_in_3d: bool,
-
-    pub low_latency: f32,
-    pub warn_latency: f32,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            show_camera_axes_in_3d: true,
-
-            low_latency: 0.100,
-            warn_latency: 0.200,
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------

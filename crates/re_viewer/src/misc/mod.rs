@@ -1,3 +1,4 @@
+mod app_options;
 pub mod caches;
 pub(crate) mod color_map;
 pub(crate) mod mesh_loader;
@@ -24,12 +25,15 @@ pub(crate) mod profiler;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 
-pub use selection::{MultiSelection, Selection};
-pub use selection_state::{
-    HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
-    SelectionHighlight, SelectionState, SpaceViewHighlights,
-};
 pub use transform_cache::{TransformCache, UnreachableTransform};
+pub use {
+    app_options::*,
+    selection::{MultiSelection, Selection},
+    selection_state::{
+        HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
+        SelectionHighlight, SelectionState, SpaceViewHighlights,
+    },
+};
 
 // ----------------------------------------------------------------------------
 
