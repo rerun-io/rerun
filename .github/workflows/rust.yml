@@ -28,8 +28,6 @@ permissions:
 jobs:
   rs-benchmarks:
     name: Rust Criterion benchmarks
-    # Only run the rs-benchmarks job when a commit gets pushed to main
-    if: ${{ github.event_name == 'push' }}
 
     runs-on: ubuntu-latest-16-cores
     container:
@@ -44,8 +42,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          save-if: ${{ github.event_name == 'push'}}
 
       - name: Run benchmark
+        # Use bash shell so we get pipefail behavior with tee
+        shell: bash
         run: |
           cargo bench \
             --all-features \
@@ -57,6 +58,8 @@ jobs:
             -- --output-format=bencher | tee output.txt
 
       - name: Store benchmark result
+        # Only save the rs-benchmarks job when a commit gets pushed to main
+        if: ${{ github.event_name == 'push' }}
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
