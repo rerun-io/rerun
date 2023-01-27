@@ -7,7 +7,6 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
-use re_analytics::Property;
 use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
@@ -512,6 +511,7 @@ impl App {
                     self.state.selected_rec_id = msg.info.recording_id;
 
                     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+                    use re_analytics::Property;
                     if let Some(analytics) = self.analytics.as_mut() {
                         analytics.default_append_props_mut().extend([
                             ("application_id".into(), {
