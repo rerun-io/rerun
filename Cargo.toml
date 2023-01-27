@@ -67,7 +67,7 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-01-25 - egui deadlock fix
+# 2023-01-27 - wgpu update
 ecolor = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
 eframe = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
 egui = { git = "https://github.com/emilk/egui", rev = "ce62b61e15af391cc0da9963d5920bcbdc8a6704" }
