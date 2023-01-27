@@ -260,30 +260,35 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            'candidate: for space_view_candidate in
-                Self::default_created_space_views(ctx, spaces_info)
-            {
-                for existing_view in self.space_views.values() {
-                    if existing_view.space_path == space_view_candidate.space_path {
-                        if !existing_view.allow_auto_adding_more_object {
-                            // User edited a space view with the same name. Don't add anything!
-                            continue 'candidate;
-                        }
-
-                        if space_view_candidate
-                            .data_blueprint
-                            .object_paths()
-                            .is_subset(existing_view.data_blueprint.object_paths())
-                        {
-                            // This space view wouldn't add anything we haven't already
-                            continue 'candidate;
-                        }
-                    }
+            for space_view_candidate in Self::default_created_space_views(ctx, spaces_info) {
+                if self.should_auto_add_space_view(&space_view_candidate) {
+                    self.add_space_view(space_view_candidate);
                 }
-
-                self.add_space_view(space_view_candidate);
             }
         }
+    }
+
+    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceView) -> bool {
+        for existing_view in self.space_views.values() {
+            if existing_view.space_path == space_view_candidate.space_path {
+                if !existing_view.allow_auto_adding_more_object {
+                    // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
+                    // So let's skip that.
+                    return false;
+                }
+
+                if space_view_candidate
+                    .data_blueprint
+                    .object_paths()
+                    .is_subset(existing_view.data_blueprint.object_paths())
+                {
+                    // This space view wouldn't add anything we haven't already
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 
     pub fn viewport_ui(
