@@ -950,7 +950,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
 
         #[cfg(debug_assertions)]
         ui.menu_button("Debug", |ui| {
-            debug_menu(ui);
+            debug_menu(&mut app.state.options, ui);
         });
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -969,7 +969,7 @@ fn top_bar_ui(
 ) {
     rerun_menu_button_ui(ui, frame, app);
 
-    if cfg!(debug_assertions) {
+    if app.state.options.show_dev_controls() {
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
@@ -1020,11 +1020,13 @@ fn top_bar_ui(
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
-            ui.vertical_centered(|ui| {
-                ui.style_mut().wrap = Some(false);
-                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
-                egui::warn_if_debug_build(ui);
-            });
+            if app.state.options.show_dev_controls() {
+                ui.vertical_centered(|ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
+                    egui::warn_if_debug_build(ui);
+                });
+            }
         }
     });
 }
@@ -1308,8 +1310,16 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu(ui: &mut egui::Ui) {
+fn debug_menu(options: &mut Options, ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
+
+    if ui
+        .checkbox(&mut options.debug.extra_clean_ui, "Extra clean UI")
+        .on_hover_text("Make the UI a bit cleaner for screen recordings etc")
+        .clicked()
+    {
+        ui.close_menu();
+    }
 
     #[allow(clippy::manual_assert)]
     if ui.button("panic!").clicked() {
