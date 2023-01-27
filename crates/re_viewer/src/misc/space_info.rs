@@ -115,8 +115,9 @@ impl SpaceInfoCollection {
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
+            query_time: TimeInt,
         ) {
-            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, None) {
+            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -135,6 +136,7 @@ impl SpaceInfoCollection {
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
+                        query_time,
                     );
                 }
                 spaces_info
@@ -147,21 +149,30 @@ impl SpaceInfoCollection {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(obj_db, timeline, spaces_info, parent_space, child_tree);
+                    add_children(
+                        obj_db,
+                        timeline,
+                        spaces_info,
+                        parent_space,
+                        child_tree,
+                        query_time,
+                    );
                 }
             }
         }
 
-        // TODO(andreas): Should we be somehow independent of which timeline is choosen?
-        //                  Use log time timeline maybe?
+        // Use log time timeline, so we prioritize by wall clock logged.
         let timeline = time_ctrl.timeline();
+
+        // Use "right most"/latest avilable data.
+        let query_time = TimeInt::MAX;
 
         let mut spaces_info = Self::default();
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(obj_db, timeline, &tree.path, None).is_some() {
+            if query_transform(obj_db, timeline, &tree.path, query_time).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -169,7 +180,14 @@ impl SpaceInfoCollection {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(obj_db, timeline, &mut spaces_info, &mut space_info, tree);
+            add_children(
+                obj_db,
+                timeline,
+                &mut spaces_info,
+                &mut space_info,
+                tree,
+                query_time,
+            );
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 

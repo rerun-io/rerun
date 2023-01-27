@@ -1,5 +1,5 @@
 use nohash_hasher::IntMap;
-use re_arrow_store::Timeline;
+use re_arrow_store::{TimeInt, Timeline};
 use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, ObjectsProperties};
 
 use crate::misc::TimeControl;
@@ -77,7 +77,7 @@ impl TransformCache {
         }
 
         let timeline = time_ctrl.timeline();
-        let query_time = time_ctrl.time_i64();
+        let query_time = time_ctrl.time_i64().map_or(TimeInt::MAX, TimeInt::from);
 
         // Child transforms of this space
         transforms.gather_descendants_transforms(
@@ -144,7 +144,7 @@ impl TransformCache {
         tree: &ObjectTree,
         obj_db: &ObjDb,
         timeline: &Timeline,
-        query_time: Option<i64>,
+        query_time: TimeInt,
         obj_properties: &ObjectsProperties,
         reference_from_obj: glam::Mat4,
         encountered_pinhole: bool,
@@ -209,7 +209,7 @@ fn transform_at(
     obj_db: &ObjDb,
     timeline: &Timeline,
     obj_properties: &ObjectsProperties,
-    query_time: Option<i64>,
+    query_time: TimeInt,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
     if let Some(transform) = query_transform(obj_db, timeline, obj_path, query_time) {
@@ -257,7 +257,7 @@ fn inverse_transform_at(
     obj_path: &ObjPath,
     obj_db: &ObjDb,
     timeline: &Timeline,
-    query_time: Option<i64>,
+    query_time: TimeInt,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
     if let Some(parent_transform) = query_transform(obj_db, timeline, obj_path, query_time) {
