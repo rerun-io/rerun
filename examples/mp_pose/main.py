@@ -35,7 +35,7 @@ def track_pose(video_path: str, segment: bool) -> None:
     )
     # Use a separate annotation context for the segmentation mask.
     rr.log_annotation_context(
-        "video/mask", [AnnotationInfo(label="Background", id=0), AnnotationInfo(label="Person", id=1, color=(0, 0, 0))]
+        "video/mask", [AnnotationInfo(id=0, label="Background"), AnnotationInfo(id=1, label="Person", color=(0, 0, 0))]
     )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 
