@@ -1321,6 +1321,8 @@ fn debug_menu(options: &mut Options, ui: &mut egui::Ui) {
         ui.close_menu();
     }
 
+    ui.separator();
+
     #[allow(clippy::manual_assert)]
     if ui.button("panic!").clicked() {
         panic!("Intentional panic");
