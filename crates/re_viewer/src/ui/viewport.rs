@@ -776,9 +776,14 @@ fn hovering_panel(
     rect: egui::Rect,
     add_contents: impl FnOnce(&mut egui::Ui),
 ) {
-    let mut ui = ui.child_ui(rect, egui::Layout::top_down(egui::Align::LEFT));
-    ui.horizontal(|ui| {
-        frame.show(ui, add_contents);
+    let height = 28.0; // TODO(emilk): remove this hard-coded monstrosity
+    let mut max_rect = rect;
+    max_rect.max.y = max_rect.min.y + height;
+
+    ui.allocate_ui_at_rect(max_rect, |ui| {
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            frame.show(ui, add_contents);
+        });
     });
 }
 
