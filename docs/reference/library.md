@@ -1,5 +1,5 @@
 ---
-title: Library
+title: The Library
 order: 0
 ---
 

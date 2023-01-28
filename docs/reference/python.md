@@ -1,6 +1,6 @@
 ---
 title: Python APIs
-order: 3
+order: 5
 ---
 
 ## TODO(jleibs): This page should be a redirect to the python docs

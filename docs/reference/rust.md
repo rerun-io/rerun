@@ -1,6 +1,6 @@
 ---
 title: Rust APIs
-order: 4
+order: 6
 ---
 
 ## TODO(jleibs): This page should be a redirect to the rust docs
