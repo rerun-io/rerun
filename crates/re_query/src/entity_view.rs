@@ -287,15 +287,9 @@ impl<Primary> EntityView<Primary>
 where
     Primary: Component,
 {
-    /// Returns the number of instances in this view.
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn num_instances(&self) -> usize {
         self.primary.len()
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.primary.is_empty()
     }
 }
 

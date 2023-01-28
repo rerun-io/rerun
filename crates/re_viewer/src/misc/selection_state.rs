@@ -43,6 +43,13 @@ pub enum SelectionHighlight {
     Selection,
 }
 
+impl SelectionHighlight {
+    #[inline]
+    pub fn is_some(self) -> bool {
+        self != SelectionHighlight::None
+    }
+}
+
 /// Hover highlight, sorted from weakest to strongest.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum HoverHighlight {
@@ -54,6 +61,13 @@ pub enum HoverHighlight {
     Hovered,
 }
 
+impl HoverHighlight {
+    #[inline]
+    pub fn is_some(self) -> bool {
+        self != HoverHighlight::None
+    }
+}
+
 /// Combination of selection & hover highlight which can occur independently.
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct InteractionHighlight {
@@ -63,11 +77,13 @@ pub struct InteractionHighlight {
 
 impl InteractionHighlight {
     /// Any active highlight at all.
-    pub fn any(&self) -> bool {
-        self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
+    #[inline]
+    pub fn is_some(self) -> bool {
+        self.selection.is_some() || self.hover.is_some()
     }
 
     /// Picks the stronger selection & hover highlight from two highlight descriptions.
+    #[inline]
     pub fn max(&self, other: InteractionHighlight) -> Self {
         Self {
             selection: self.selection.max(other.selection),
@@ -105,13 +121,11 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
         match self.0 {
             Some(object_highlight) => {
                 // TODO(andreas): Could easily pre-compute this!
-                object_highlight.overall.selection != SelectionHighlight::None
+                object_highlight.overall.selection.is_some()
                     || object_highlight
                         .instances
                         .values()
-                        .any(|instance_highlight| {
-                            instance_highlight.selection != SelectionHighlight::None
-                        })
+                        .any(|instance_highlight| instance_highlight.selection.is_some())
             }
             None => false,
         }

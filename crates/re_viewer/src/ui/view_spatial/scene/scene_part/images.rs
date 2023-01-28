@@ -160,7 +160,7 @@ impl ImagesPart {
                 );
 
                 let highlight = object_highlight.index_highlight(instance_hash.instance_index_hash);
-                if highlight.any() {
+                if highlight.is_some() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,
                         highlight,

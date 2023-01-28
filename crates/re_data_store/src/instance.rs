@@ -12,7 +12,7 @@ use crate::log_db::ObjDb;
 pub struct InstanceId {
     pub obj_path: ObjPath,
 
-    /// If this a concrete instance, what instance index are we?
+    /// If this is a concrete instance, what instance index are we?
     pub instance_index: Option<Index>,
 }
 

@@ -48,7 +48,7 @@ pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
     object_highlight: OptionalSpaceViewObjectHighlight<'_>,
 ) -> InstanceIdHash {
     if props.interactive {
-        if entity_view.len() == 1 || !object_highlight.any_selection_highlight() {
+        if entity_view.num_instances() == 1 || !object_highlight.any_selection_highlight() {
             InstanceIdHash::from_path_and_index(ent_path, re_log_types::IndexHash::NONE)
         } else {
             InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
