@@ -6,7 +6,10 @@ use crate::ui::{
     DataBlueprintGroupHandle, Preview, SpaceViewId,
 };
 
-use super::selection::{MultiSelection, Selection};
+use super::{
+    selection::{MultiSelection, Selection},
+    HoverHighlight,
+};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -254,7 +257,8 @@ impl<'a> ViewerContext<'a> {
         response: egui::Response,
         selectable: Selection,
     ) -> egui::Response {
-        let is_item_hovered = self.selection_state().is_highlighted(&selectable);
+        let is_item_hovered =
+            self.selection_state().highlight_for_ui_element(&selectable) == HoverHighlight::Hovered;
 
         if response.hovered() {
             self.rec_cfg

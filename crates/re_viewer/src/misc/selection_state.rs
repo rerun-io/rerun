@@ -243,8 +243,9 @@ impl SelectionState {
         self.history.selection_ui(ui, blueprint)
     }
 
-    pub fn is_highlighted(&self, test: &Selection) -> bool {
-        self.hovered_previous_frame
+    pub fn highlight_for_ui_element(&self, test: &Selection) -> HoverHighlight {
+        let hovered = self
+            .hovered_previous_frame
             .iter()
             .any(|current| match current {
                 Selection::MsgId(_)
@@ -261,7 +262,6 @@ impl SelectionState {
                             a.is_none() || b.is_none() || a == b
                         }
 
-                        // intentionally ignore instance index
                         current_instance_id.obj_path == test_instance_id.obj_path
                             && either_none_or_same(
                                 &current_instance_id.instance_index,
@@ -272,7 +272,12 @@ impl SelectionState {
                         false
                     }
                 }
-            })
+            });
+        if hovered {
+            HoverHighlight::Hovered
+        } else {
+            HoverHighlight::None
+        }
     }
 
     pub fn highlights_for_space_view(
