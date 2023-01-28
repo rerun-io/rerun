@@ -124,8 +124,8 @@ impl ReUi {
     pub fn hovering_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();
         egui::Frame {
-            inner_margin: egui::style::Margin::same(2.0),
-            outer_margin: egui::style::Margin::same(4.0),
+            inner_margin: egui::style::Margin::symmetric(4.0, 2.0),
+            outer_margin: egui::style::Margin::same(2.0),
             rounding: Self::small_rounding().into(),
             fill: style.visuals.window_fill(),
             stroke: style.visuals.window_stroke(),

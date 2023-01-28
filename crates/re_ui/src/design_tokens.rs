@@ -128,7 +128,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // Add stripes to grids and tables?
     egui_style.visuals.striped = false;
     egui_style.visuals.indent_has_left_vline = false;
-    egui_style.spacing.indent = 14.0;
+    egui_style.spacing.button_padding = egui::Vec2::new(1.0, 1.0); // Makes the icons in the blueprint panel align
+    egui_style.spacing.indent = 14.0; // From figma
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
 
