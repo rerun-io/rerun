@@ -17,7 +17,7 @@ pub struct ObjectsProperties {
 
 impl ObjectsProperties {
     pub fn get(&self, obj_path: &ObjPath) -> ObjectProps {
-        self.props.get(obj_path).copied().unwrap_or_default()
+        self.props.get(obj_path).cloned().unwrap_or_default()
     }
 
     pub fn set(&mut self, obj_path: ObjPath, prop: ObjectProps) {
@@ -31,7 +31,7 @@ impl ObjectsProperties {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct ObjectProps {

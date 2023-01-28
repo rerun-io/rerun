@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
@@ -19,7 +19,10 @@ use crate::{
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
-        view_spatial::{scene::Keypoints, Label3D, SceneSpatial},
+        view_spatial::{
+            scene::{scene_part::instance_hash_for_picking, Keypoints},
+            Label3D, SceneSpatial,
+        },
         Annotations, DefaultColor,
     },
 };
@@ -165,17 +168,18 @@ impl Points3DPart {
             &annotations,
             point_positions.as_slice(),
         )?;
-
         let instance_hashes = {
             crate::profile_scope!("instance_hashes");
             entity_view
                 .iter_instances()?
                 .map(|instance| {
-                    if properties.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
+                    instance_hash_for_picking(
+                        ent_path,
+                        instance,
+                        entity_view,
+                        properties,
+                        object_highlight,
+                    )
                 })
                 .collect::<Vec<_>>()
         };

@@ -1,7 +1,7 @@
 use egui::Color32;
 use glam::Mat4;
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance},
     msg_bundle::Component,
@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use super::ScenePart;
+use super::{instance_hash_for_picking, ScenePart};
 
 pub struct MeshPart;
 
@@ -40,39 +40,35 @@ impl MeshPart {
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
         let object_highlight = highlights.object_highlight(ent_path.hash());
 
-        let visitor =
-            |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
-                let instance_hash = {
-                    if props.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
-                };
+        let visitor = |instance: Instance,
+                       mesh: re_log_types::Mesh3D,
+                       _color: Option<ColorRGBA>| {
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
-                let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
-                    Color32::TRANSPARENT,
-                    object_highlight.index_highlight(instance_hash.instance_index_hash),
-                );
+            let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
+                Color32::TRANSPARENT,
+                object_highlight.index_highlight(instance_hash.instance_index_hash),
+            );
 
-                if let Some(mesh) = ctx
-                    .cache
-                    .mesh
-                    .load(
-                        &ent_path.to_string(),
-                        &MeshSourceData::Mesh3D(mesh),
-                        ctx.render_ctx,
-                    )
-                    .map(|cpu_mesh| MeshSource {
-                        instance_hash,
-                        world_from_mesh: world_from_obj_affine,
-                        mesh: cpu_mesh,
-                        additive_tint,
-                    })
-                {
-                    scene.primitives.meshes.push(mesh);
-                };
+            if let Some(mesh) = ctx
+                .cache
+                .mesh
+                .load(
+                    &ent_path.to_string(),
+                    &MeshSourceData::Mesh3D(mesh),
+                    ctx.render_ctx,
+                )
+                .map(|cpu_mesh| MeshSource {
+                    instance_hash,
+                    world_from_mesh: world_from_obj_affine,
+                    mesh: cpu_mesh,
+                    additive_tint,
+                })
+            {
+                scene.primitives.meshes.push(mesh);
             };
+        };
 
         entity_view.visit2(visitor)?;
 

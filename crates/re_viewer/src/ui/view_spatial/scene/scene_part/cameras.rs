@@ -13,7 +13,7 @@ use crate::{
     },
     ui::{
         scene::SceneQuery,
-        view_spatial::{SceneSpatial, SpaceCamera3D},
+        view_spatial::{scene::scene_part::instance_hash_for_picking, SceneSpatial, SpaceCamera3D},
     },
 };
 
@@ -195,14 +195,13 @@ impl ScenePart for CamerasPart {
                         return;
                     };
                     let object_highlight = highlights.object_highlight(ent_path.hash());
-
-                    let instance_hash = {
-                        if props.interactive {
-                            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                        } else {
-                            InstanceIdHash::NONE
-                        }
-                    };
+                    let instance_hash = instance_hash_for_picking(
+                        ent_path,
+                        instance,
+                        &entity_view,
+                        &props,
+                        object_highlight,
+                    );
 
                     let view_coordinates = determine_view_coordinates(
                         &ctx.log_db.obj_db,
