@@ -67,14 +67,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-01-27 - dragvalue/sliders use proportional font
-ecolor = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
-eframe = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
-egui = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
-emath = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
-epaint = { git = "https://github.com/emilk/egui", rev = "e7c0547e23aa6139c51ecdd4bb1dc346bbcac22c" }
+# 2023-01-27 - highlight widgets
+ecolor = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+eframe = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+egui = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+emath = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+epaint = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }

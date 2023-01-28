@@ -620,13 +620,21 @@ fn blueprint_row_with_visibility_button(
 
     let main_button_rect = main_button_response.rect;
 
+    // We check the same rectangle as the main button,
+    // but we will also catch hovers on the visibility button (if any).
     let button_hovered = ui
         .interact(main_button_rect, ui.id(), egui::Sense::hover())
         .hovered();
 
-    if button_hovered {
-        let visibility_button_changed = visibility_button(ui, enabled, visible).changed();
+    let visibility_button_changed = if button_hovered {
+        visibility_button_ui(ui, enabled, visible).changed()
+    } else {
+        false
+    };
 
+    // The main button might have been highlighted because what it was referring
+    // to was hovered somewhere else, and then we also want it highlighted here.
+    if button_hovered || main_button_response.highlighted() {
         // Highlight the row:
         let visuals = ui.visuals().widgets.hovered;
         let hover_rect = main_button_rect.expand(visuals.expansion);
@@ -634,14 +642,12 @@ fn blueprint_row_with_visibility_button(
             where_to_add_hover_rect,
             egui::Shape::rect_filled(hover_rect, visuals.rounding, visuals.bg_fill),
         );
-
-        visibility_button_changed
-    } else {
-        false
     }
+
+    visibility_button_changed
 }
 
-fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     // Just put the button on top of the existing ui:
     let mut ui = ui.child_ui(
         ui.max_rect(),

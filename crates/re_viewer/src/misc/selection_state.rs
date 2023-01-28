@@ -243,6 +243,43 @@ impl SelectionState {
         self.history.selection_ui(ui, blueprint)
     }
 
+    pub fn highlight_for_ui_element(&self, test: &Selection) -> HoverHighlight {
+        let hovered = self
+            .hovered_previous_frame
+            .iter()
+            .any(|current| match current {
+                Selection::MsgId(_)
+                | Selection::DataPath(_)
+                | Selection::SpaceView(_)
+                | Selection::DataBlueprintGroup(_, _) => current == test,
+
+                Selection::Instance(current_space_view_id, current_instance_id) => {
+                    if let Selection::Instance(test_space_view_id, test_instance_id) = test {
+                        // For both space view id and instance index we want to be inclusive,
+                        // but if both are set to Some, and set to different, then we count that
+                        // as a miss.
+                        fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
+                            a.is_none() || b.is_none() || a == b
+                        }
+
+                        current_instance_id.obj_path == test_instance_id.obj_path
+                            && either_none_or_same(
+                                &current_instance_id.instance_index,
+                                &test_instance_id.instance_index,
+                            )
+                            && either_none_or_same(current_space_view_id, test_space_view_id)
+                    } else {
+                        false
+                    }
+                }
+            });
+        if hovered {
+            HoverHighlight::Hovered
+        } else {
+            HoverHighlight::None
+        }
+    }
+
     pub fn highlights_for_space_view(
         &self,
         space_view_id: SpaceViewId,
