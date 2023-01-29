@@ -267,7 +267,7 @@ impl ObjectTree {
         for (timeline, map) in &mut prefix_times.0 {
             crate::profile_scope!("prefix_times");
             if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                map.retain(|time_int, _count| cutoff_time <= time_int);
+                map.retain(|time_int, _count| cutoff_time.is_timeless() || cutoff_time <= time_int);
             }
         }
         {
