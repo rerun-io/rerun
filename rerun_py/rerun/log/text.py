@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence
 
-from rerun.log import EXP_ARROW, _normalize_colors
+from rerun.log import _normalize_colors
 
 from rerun import bindings
 
@@ -93,21 +93,17 @@ def log_text_entry(
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_text_entry(obj_path, text, level, color, timeless)
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.text_entry import TextEntryArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.text_entry import TextEntryArray
+    comps = {}
+    if text:
+        comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
+    else:
+        logging.warning(f"Null  text entry in log_text_entry('{obj_path}') will be dropped.")
 
-        comps = {}
-        if text:
-            comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
-        else:
-            logging.warning(f"Null  text entry in log_text_entry('{obj_path}') will be dropped.")
+    if color:
+        colors = _normalize_colors([color])
+        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if color:
-            colors = _normalize_colors([color])
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
-
-        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)

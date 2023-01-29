@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 from rerun.components.radius import RadiusArray
 from rerun.log import (
-    EXP_ARROW,
     Color,
     Colors,
     OptionalClassIds,
@@ -65,50 +64,37 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_point(
-            obj_path=obj_path,
-            position=position,
-            radius=radius,
-            color=color,
-            label=label,
-            class_id=class_id,
-            keypoint_id=keypoint_id,
-            timeless=timeless,
-        )
+    from rerun.components.annotation import ClassIdArray
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.label import LabelArray
+    from rerun.components.point import Point2DArray, Point3DArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.annotation import ClassIdArray
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.label import LabelArray
-        from rerun.components.point import Point2DArray, Point3DArray
+    comps = {}
 
-        comps = {}
+    if position is not None:
+        if position.shape[0] == 2:
+            comps["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
+        elif position.shape[0] == 3:
+            comps["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
+        else:
+            raise TypeError("Positions should be either 1x2 or 1x3")
 
-        if position is not None:
-            if position.shape[0] == 2:
-                comps["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
-            elif position.shape[0] == 3:
-                comps["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
-            else:
-                raise TypeError("Positions should be either 1x2 or 1x3")
+    if color:
+        colors = _normalize_colors([color])
+        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if color:
-            colors = _normalize_colors([color])
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+    if radius:
+        radii = _normalize_radii([radius])
+        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        if radius:
-            radii = _normalize_radii([radius])
-            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+    if label:
+        comps["rerun.label"] = LabelArray.new([label])
 
-        if label:
-            comps["rerun.label"] = LabelArray.new([label])
+    if class_id:
+        class_ids = _normalize_ids([class_id])
+        comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        if class_id:
-            class_ids = _normalize_ids([class_id])
-            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
-
-        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
 
 
 def log_points(
@@ -163,73 +149,58 @@ def log_points(
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
 
-    if EXP_ARROW.classic_log_gate():
-        identifiers = [] if identifiers is None else [str(s) for s in identifiers]
-        bindings.log_points(
-            obj_path=obj_path,
-            positions=positions,
-            identifiers=identifiers,
-            colors=colors,
-            radii=radii,
-            labels=labels,
-            class_ids=class_ids,
-            keypoint_ids=keypoint_ids,
-            timeless=timeless,
-        )
+    from rerun.components.annotation import ClassIdArray
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.instance import InstanceArray
+    from rerun.components.label import LabelArray
+    from rerun.components.point import Point2DArray, Point3DArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.annotation import ClassIdArray
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.instance import InstanceArray
-        from rerun.components.label import LabelArray
-        from rerun.components.point import Point2DArray, Point3DArray
+    identifiers_np = np.array((), dtype="int64")
+    if identifiers:
+        try:
+            identifiers = [int(id) for id in identifiers]
+            identifiers_np = np.array(identifiers, dtype="int64")
+        except ValueError:
+            _send_warning("Only integer identifies supported", 1)
 
-        identifiers_np = np.array((), dtype="int64")
-        if identifiers:
-            try:
-                identifiers = [int(id) for id in identifiers]
-                identifiers_np = np.array(identifiers, dtype="int64")
-            except ValueError:
-                _send_warning("Only integer identifies supported", 1)
+    # 0 = instanced, 1 = splat
+    comps = [{}, {}]  # type: ignore[var-annotated]
 
-        # 0 = instanced, 1 = splat
-        comps = [{}, {}]  # type: ignore[var-annotated]
+    if positions.any():
+        if positions.shape[1] == 2:
+            comps[0]["rerun.point2d"] = Point2DArray.from_numpy(positions)
+        elif positions.shape[1] == 3:
+            comps[0]["rerun.point3d"] = Point3DArray.from_numpy(positions)
+        else:
+            raise TypeError("Positions should be either Nx2 or Nx3")
 
-        if positions.any():
-            if positions.shape[1] == 2:
-                comps[0]["rerun.point2d"] = Point2DArray.from_numpy(positions)
-            elif positions.shape[1] == 3:
-                comps[0]["rerun.point3d"] = Point3DArray.from_numpy(positions)
-            else:
-                raise TypeError("Positions should be either Nx2 or Nx3")
+    if len(identifiers_np):
+        comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
 
-        if len(identifiers_np):
-            comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
+    if len(colors):
+        is_splat = len(colors.shape) == 1
+        if is_splat:
+            colors = colors.reshape(1, len(colors))
+        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if len(colors):
-            is_splat = len(colors.shape) == 1
-            if is_splat:
-                colors = colors.reshape(1, len(colors))
-            comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+    if len(radii):
+        is_splat = len(radii) == 1
+        comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        if len(radii):
-            is_splat = len(radii) == 1
-            comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
+    if len(labels):
+        is_splat = len(labels) == 1
+        comps[is_splat]["rerun.label"] = LabelArray.new(labels)
 
-        if len(labels):
-            is_splat = len(labels) == 1
-            comps[is_splat]["rerun.label"] = LabelArray.new(labels)
+    if len(class_ids):
+        is_splat = len(class_ids) == 1
+        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        if len(class_ids):
-            is_splat = len(class_ids) == 1
-            comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+    if len(keypoint_ids):
+        is_splat = len(keypoint_ids) == 1
+        comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-        if len(keypoint_ids):
-            is_splat = len(keypoint_ids) == 1
-            comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
 
-        bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
-
-        if comps[1]:
-            comps[1]["rerun.instance"] = InstanceArray.splat()
-            bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+    if comps[1]:
+        comps[1]["rerun.instance"] = InstanceArray.splat()
+        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)

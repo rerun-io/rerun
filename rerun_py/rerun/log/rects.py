@@ -4,14 +4,12 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import numpy.typing as npt
 from rerun.log import (
-    EXP_ARROW,
     Color,
     Colors,
     OptionalClassIds,
     _normalize_colors,
     _normalize_ids,
     _normalize_labels,
-    _to_sequence,
 )
 from rerun.log.error_utils import _send_warning
 
@@ -66,35 +64,31 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+    from rerun.components.annotation import ClassIdArray
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.label import LabelArray
+    from rerun.components.rect2d import Rect2DArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.annotation import ClassIdArray
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.label import LabelArray
-        from rerun.components.rect2d import Rect2DArray
+    if np.any(rect):  # type: ignore[arg-type]
+        rects = np.asarray([rect], dtype="float32")
+    else:
+        rects = np.zeros((0, 4), dtype="float32")
+    assert type(rects) is np.ndarray
 
-        if np.any(rect):  # type: ignore[arg-type]
-            rects = np.asarray([rect], dtype="float32")
-        else:
-            rects = np.zeros((0, 4), dtype="float32")
-        assert type(rects) is np.ndarray
+    comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
 
-        comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
+    if color:
+        colors = _normalize_colors([color])
+        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if color:
-            colors = _normalize_colors([color])
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+    if label:
+        comps["rerun.label"] = LabelArray.new([label])
 
-        if label:
-            comps["rerun.label"] = LabelArray.new([label])
+    if class_id:
+        class_ids = _normalize_ids([class_id])
+        comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        if class_id:
-            class_ids = _normalize_ids([class_id])
-            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
-
-        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
 
 
 def log_rects(
@@ -143,57 +137,43 @@ def log_rects(
     class_ids = _normalize_ids(class_ids)
     labels = _normalize_labels(labels)
 
-    if EXP_ARROW.classic_log_gate():
-        identifiers = [] if identifiers is None else [str(s) for s in identifiers]
-        bindings.log_rects(
-            obj_path=obj_path,
-            rect_format=rect_format.value,
-            identifiers=identifiers,
-            rects=rects,
-            colors=colors,
-            labels=labels,
-            class_ids=class_ids,
-            timeless=timeless,
-        )
+    from rerun.components.annotation import ClassIdArray
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.instance import InstanceArray
+    from rerun.components.label import LabelArray
+    from rerun.components.rect2d import Rect2DArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.annotation import ClassIdArray
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.instance import InstanceArray
-        from rerun.components.label import LabelArray
-        from rerun.components.rect2d import Rect2DArray
+    identifiers_np = np.array((), dtype="int64")
+    if identifiers:
+        try:
+            identifiers = [int(id) for id in identifiers]
+            identifiers_np = np.array(identifiers, dtype="int64")
+        except ValueError:
+            _send_warning("Only integer identifies supported", 1)
 
-        identifiers_np = np.array((), dtype="int64")
-        if identifiers:
-            try:
-                identifiers = [int(id) for id in identifiers]
-                identifiers_np = np.array(identifiers, dtype="int64")
-            except ValueError:
-                _send_warning("Only integer identifies supported", 1)
+    # 0 = instanced, 1 = splat
+    comps = [{}, {}]  # type: ignore[var-annotated]
+    comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
-        # 0 = instanced, 1 = splat
-        comps = [{}, {}]  # type: ignore[var-annotated]
-        comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
+    if len(identifiers_np):
+        comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
 
-        if len(identifiers_np):
-            comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
+    if len(colors):
+        is_splat = len(colors.shape) == 1
+        if is_splat:
+            colors = colors.reshape(1, len(colors))
+        comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if len(colors):
-            is_splat = len(colors.shape) == 1
-            if is_splat:
-                colors = colors.reshape(1, len(colors))
-            comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+    if len(labels):
+        is_splat = len(labels) == 1
+        comps[is_splat]["rerun.label"] = LabelArray.new(labels)
 
-        if len(labels):
-            is_splat = len(labels) == 1
-            comps[is_splat]["rerun.label"] = LabelArray.new(labels)
+    if len(class_ids):
+        is_splat = len(class_ids) == 1
+        comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        if len(class_ids):
-            is_splat = len(class_ids) == 1
-            comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
 
-        bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
-
-        if comps[1]:
-            comps[1]["rerun.instance"] = InstanceArray.splat()
-            bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+    if comps[1]:
+        comps[1]["rerun.instance"] = InstanceArray.splat()
+        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
