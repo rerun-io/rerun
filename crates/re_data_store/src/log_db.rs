@@ -101,7 +101,7 @@ impl ObjDb {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path);
+        let pending_clears = self.tree.add_data_msg(time_point, data_path);
 
         // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
         for (msg_id, time_point) in pending_clears {
@@ -146,9 +146,7 @@ impl ObjDb {
             if component.name == MsgId::name() {
                 continue;
             }
-            let pending_clears =
-                self.tree
-                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path);
+            let pending_clears = self.tree.add_data_msg(&msg_bundle.time_point, &data_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
@@ -164,7 +162,7 @@ impl ObjDb {
                 self.arrow_store.insert(&msg_bundle).ok();
 
                 // Also update the object tree with the clear-event
-                self.tree.add_data_msg(msg_id, &time_point, &data_path);
+                self.tree.add_data_msg(&time_point, &data_path);
             }
         }
 
@@ -189,7 +187,7 @@ impl ObjDb {
                         );
                         self.arrow_store.insert(&msg_bundle).ok();
                         // Also update the object tree with the clear-event
-                        self.tree.add_data_msg(msg_id, time_point, &data_path);
+                        self.tree.add_data_msg(time_point, &data_path);
                     }
                 }
             } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
@@ -206,7 +204,11 @@ impl ObjDb {
         }
     }
 
-    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn purge(
+        &mut self,
+        cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
+        drop_msg_ids: &ahash::HashSet<MsgId>,
+    ) {
         crate::profile_function!();
 
         let Self {
@@ -219,7 +221,7 @@ impl ObjDb {
 
         {
             crate::profile_scope!("tree");
-            tree.purge(drop_msg_ids);
+            tree.purge(cutoff_times, drop_msg_ids);
         }
 
         store.purge(drop_msg_ids);
@@ -430,6 +432,8 @@ impl LogDb {
                 .collect::<ahash::HashSet<_>>()
         };
 
+        let cutoff_times = self.obj_db.arrow_store.oldest_time_per_timeline();
+
         let Self {
             chronological_message_ids,
             log_messages,
@@ -438,7 +442,10 @@ impl LogDb {
             obj_db,
         } = self;
 
-        chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+        {
+            crate::profile_scope!("chronological_message_ids");
+            chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+        }
 
         {
             crate::profile_scope!("log_messages");
@@ -449,6 +456,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.purge(&drop_msg_ids);
+        obj_db.purge(&cutoff_times, &drop_msg_ids);
     }
 }

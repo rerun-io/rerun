@@ -377,6 +377,30 @@ impl DataStore {
 
         Ok(())
     }
+
+    /// The oldest time for which we have any data.
+    ///
+    /// Ignores timeless data.
+    ///
+    /// Useful to call after a gc.
+    pub fn oldest_time_per_timeline(&self) -> BTreeMap<Timeline, TimeInt> {
+        crate::profile_function!();
+
+        let mut oldest_time_per_timeline = BTreeMap::default();
+
+        for component_table in self.components.values() {
+            for bucket in &component_table.buckets {
+                for (timeline, time_range) in &bucket.time_ranges {
+                    let entry = oldest_time_per_timeline
+                        .entry(*timeline)
+                        .or_insert(TimeInt::MAX);
+                    *entry = time_range.min.min(*entry);
+                }
+            }
+        }
+
+        oldest_time_per_timeline
+    }
 }
 
 impl std::fmt::Display for DataStore {
