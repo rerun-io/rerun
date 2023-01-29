@@ -71,7 +71,7 @@ impl SelectionPanel {
                         egui::CollapsingHeader::new("Data")
                             .default_open(true)
                             .show(ui, |ui| {
-                                data_ui(ui, ctx, selection, UiVerbosity::Large, &query);
+                                selection.data_ui(ctx, ui, UiVerbosity::Large, &query);
                             });
 
                         egui::CollapsingHeader::new("Blueprint")
@@ -159,26 +159,27 @@ fn what_is_selected_ui(
     }
 }
 
-/// What is the data contained by this selection?
-fn data_ui(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    selection: &Selection,
-    verbosity: UiVerbosity,
-    query: &re_arrow_store::LatestAtQuery,
-) {
-    match selection {
-        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
-            ui.weak("(nothing)");
-        }
-        Selection::MsgId(msg_id) => {
-            msg_id.data_ui(ctx, ui, verbosity, query);
-        }
-        Selection::DataPath(data_path) => {
-            data_path.data_ui(ctx, ui, verbosity, query);
-        }
-        Selection::Instance(_, instance_id) => {
-            instance_id.data_ui(ctx, ui, verbosity, query);
+impl DataUi for Selection {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        match self {
+            Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
+                ui.weak("(nothing)");
+            }
+            Selection::MsgId(msg_id) => {
+                msg_id.data_ui(ctx, ui, verbosity, query);
+            }
+            Selection::DataPath(data_path) => {
+                data_path.data_ui(ctx, ui, verbosity, query);
+            }
+            Selection::Instance(_, instance_id) => {
+                instance_id.data_ui(ctx, ui, verbosity, query);
+            }
         }
     }
 }
