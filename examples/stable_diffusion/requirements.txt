@@ -4,8 +4,5 @@ pillow
 requests==2.28.1
 scipy
 torch>=1.13.0
-
-# Depth Guided Stable Diffusion requres commits not yet present in
-# the versions of transformers and diffusers released by December 23rd 2022
-git+https://github.com/huggingface/transformers.git@cf1a1eed70a9c1f4b25a473fdbdbc5afc88dc9da
-git+https://github.com/huggingface/diffusers.git@a66f2baeb782e091dde4e1e6394e46f169e5ba58
+diffusers>=0.12.1
+transformers>=4.26.0
