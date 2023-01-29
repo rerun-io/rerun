@@ -103,9 +103,7 @@ impl ObjDb {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        let pending_clears = self
-            .tree
-            .add_data_msg(msg_id, time_point, data_path, Some(data));
+        let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path);
 
         // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
         for (msg_id, time_point) in pending_clears {
@@ -152,7 +150,7 @@ impl ObjDb {
             }
             let pending_clears =
                 self.tree
-                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path, None);
+                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
@@ -168,8 +166,7 @@ impl ObjDb {
                 self.arrow_store.insert(&msg_bundle).ok();
 
                 // Also update the object tree with the clear-event
-                self.tree
-                    .add_data_msg(msg_id, &time_point, &data_path, None);
+                self.tree.add_data_msg(msg_id, &time_point, &data_path);
             }
         }
 
@@ -194,7 +191,7 @@ impl ObjDb {
                         );
                         self.arrow_store.insert(&msg_bundle).ok();
                         // Also update the object tree with the clear-event
-                        self.tree.add_data_msg(msg_id, time_point, &data_path, None);
+                        self.tree.add_data_msg(msg_id, time_point, &data_path);
                     }
                 }
             } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {

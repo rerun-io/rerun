@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, DataType, FieldOrComponent, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
-    TimePoint, Timeline,
+    DataPath, DataType, FieldOrComponent, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint,
+    Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -104,7 +104,6 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         data_path: &DataPath,
-        data: Option<&LoggedData>,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
@@ -121,7 +120,7 @@ impl ObjectTree {
             Default::default()
         });
 
-        fields.add(msg_id, time_point, data);
+        fields.add(msg_id, time_point);
 
         pending_clears
     }
@@ -156,25 +155,12 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.fields
                     .iter()
-                    .flat_map(|(field_name, fields)| match field_name {
-                        FieldOrComponent::Field(_) => {
-                            itertools::Either::Left(fields.per_type.iter().map(
-                                |((data_type, multi_or_mono), _)| {
-                                    (
-                                        DataPath::new_any(obj_path.clone(), *field_name),
-                                        *data_type,
-                                        *multi_or_mono,
-                                    )
-                                },
-                            ))
-                        }
-                        FieldOrComponent::Component(_) => {
-                            itertools::Either::Right(std::iter::once((
-                                DataPath::new_any(obj_path.clone(), *field_name),
-                                DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                                MonoOrMulti::Multi,
-                            )))
-                        }
+                    .map(|(field_name, _fields)| {
+                        (
+                            DataPath::new_any(obj_path.clone(), *field_name),
+                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                            MonoOrMulti::Multi,
+                        )
                     })
                     .collect_vec()
             }
@@ -200,27 +186,12 @@ impl ObjectTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.fields.iter().flat_map(|(field_name, fields)| {
-                        match field_name {
-                            FieldOrComponent::Field(_) => {
-                                itertools::Either::Left(fields.per_type.iter().map(
-                                    |((data_type, multi_or_mono), _)| {
-                                        (
-                                            DataPath::new_any(next.path.clone(), *field_name),
-                                            *data_type,
-                                            *multi_or_mono,
-                                        )
-                                    },
-                                ))
-                            }
-                            FieldOrComponent::Component(_) => {
-                                itertools::Either::Right(std::iter::once((
-                                    DataPath::new_any(next.path.clone(), *field_name),
-                                    DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                                    MonoOrMulti::Multi,
-                                )))
-                            }
-                        }
+                    results.extend(next.fields.iter().map(|(field_name, _fields)| {
+                        (
+                            DataPath::new_any(next.path.clone(), *field_name),
+                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                            MonoOrMulti::Multi,
+                        )
                     }));
                 }
                 results
@@ -340,11 +311,10 @@ pub struct DataColumns {
     pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     /// Extra book-keeping used to seed any timelines that include timeless msgs
     pub timeless_msgs: BTreeSet<MsgId>,
-    pub per_type: HashMap<(DataType, MonoOrMulti), BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
-    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: Option<&LoggedData>) {
+    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint) {
         // If the `time_point` is timeless...
         if time_point.is_timeless() {
             // Save it so that we can duplicate it into future timelines
@@ -373,18 +343,6 @@ impl DataColumns {
                     .insert(msg_id);
             }
         }
-
-        if let Some(data) = data {
-            let mono_or_multi = match data {
-                LoggedData::Null(_) | LoggedData::Single(_) => MonoOrMulti::Mono,
-                LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => MonoOrMulti::Multi,
-            };
-
-            self.per_type
-                .entry((data.data_type(), mono_or_multi))
-                .or_default()
-                .insert(msg_id);
-        }
     }
 
     pub fn populate_timeless(&mut self, time_point: &TimePoint) {
@@ -401,46 +359,9 @@ impl DataColumns {
         }
     }
 
-    pub fn summary(&self) -> String {
-        let mut summaries = vec![];
-
-        for ((typ, _), set) in &self.per_type {
-            let (stem, plur) = match typ {
-                DataType::Bool => ("bool", "s"),
-                DataType::I32 => ("integer", "s"),
-                DataType::F32 | DataType::F64 => ("scalar", "s"),
-                DataType::Color => ("color", "s"),
-                DataType::String => ("string", "s"),
-
-                DataType::Vec2 => ("2D vector", "s"),
-                DataType::BBox2D => ("2D bounding box", "es"),
-
-                DataType::Vec3 => ("3D vector", "s"),
-                DataType::Box3 => ("3D box", "es"),
-                DataType::Mesh3D => ("mesh", "es"),
-                DataType::Arrow3D => ("3D arrow", "s"),
-
-                DataType::Tensor => ("tensor", "s"),
-
-                DataType::ObjPath => ("path", "s"),
-
-                DataType::Transform => ("transform", "s"),
-                DataType::ViewCoordinates => ("coordinate system", "s"),
-                DataType::AnnotationContext => ("annotation context", "s"),
-
-                DataType::DataVec => ("vector", "s"),
-            };
-
-            summaries.push(plurality(set.len(), stem, plur));
-        }
-
-        summaries.join(", ")
-    }
-
     pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             times,
-            per_type,
             timeless_msgs: _,
         } = self;
 
@@ -450,16 +371,5 @@ impl DataColumns {
                 !msg_ids.is_empty()
             });
         }
-        for msg_set in per_type.values_mut() {
-            msg_set.retain(|msg_id| !drop_msg_ids.contains(msg_id));
-        }
-    }
-}
-
-pub(crate) fn plurality(num: usize, singular: &str, plural_suffix: &str) -> String {
-    if num == 1 {
-        format!("1 {}", singular)
-    } else {
-        format!("{} {}{}", num, singular, plural_suffix)
     }
 }
