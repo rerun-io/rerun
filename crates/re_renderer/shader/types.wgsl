@@ -21,5 +21,5 @@ const X = Vec3(1.0, 0.0, 0.0);
 const Y = Vec3(0.0, 1.0, 0.0);
 const Z = Vec3(0.0, 0.0, 1.0);
 
-const ZERO = Vec3(0.0, 0.0, 0.0);
-const ONE  = Vec3(1.0, 1.0, 1.0);
+const ZERO = Vec4(0.0, 0.0, 0.0, 0.0);
+const ONE  = Vec4(1.0, 1.0, 1.0, 1.0);

@@ -112,7 +112,8 @@ impl<E: Example + 'static> Application<E> {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    features: wgpu::Features::empty(),
+                    // features: wgpu::Features::empty(),
+                    features: wgpu::Features::POLYGON_MODE_LINE, // TODO
                     limits: wgpu::Limits::downlevel_webgl2_defaults()
                         .using_resolution(adapter.limits()),
                 },

@@ -5,6 +5,8 @@
 
 use bytemuck::{Pod, Zeroable};
 
+// --- Vec ---
+
 #[repr(C, align(8))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Vec2 {
@@ -135,6 +137,50 @@ impl From<crate::Rgba> for Vec4 {
         }
     }
 }
+
+// --- UVec ---
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Zeroable, Pod)]
+pub struct UVec3 {
+    pub x: u32,
+    pub y: u32,
+    pub z: u32,
+    pub padding: u32,
+}
+
+impl From<glam::UVec3> for UVec3 {
+    #[inline]
+    fn from(v: glam::UVec3) -> Self {
+        UVec3 {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+            padding: 0,
+        }
+    }
+}
+
+#[repr(C, align(4))]
+#[derive(Clone, Copy, Zeroable, Pod)]
+pub struct UVec3Unpadded {
+    pub x: u32,
+    pub y: u32,
+    pub z: u32,
+}
+
+impl From<glam::UVec3> for UVec3Unpadded {
+    #[inline]
+    fn from(v: glam::UVec3) -> Self {
+        UVec3Unpadded {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
+    }
+}
+
+// --- Mat ---
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]

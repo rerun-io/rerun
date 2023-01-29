@@ -17,7 +17,8 @@ use smallvec::smallvec;
 #[repr(C)]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub(crate) struct FrameUniformBuffer {
-    pub view_from_world: wgpu_buffer_types::Mat4x3,
+    pub view_from_world: wgpu_buffer_types::Mat4,
+    pub world_from_view: wgpu_buffer_types::Mat4,
     pub projection_from_view: wgpu_buffer_types::Mat4,
     pub projection_from_world: wgpu_buffer_types::Mat4,
 

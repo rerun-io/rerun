@@ -6,7 +6,7 @@ use crate::{
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
     renderer::Renderer,
-    resource_managers::{MeshManager, TextureManager2D},
+    resource_managers::{MeshManager, TextureManager2D, TextureManager3D},
     wgpu_resources::WgpuResourcePools,
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
@@ -28,6 +28,7 @@ pub struct RenderContext {
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
+    pub texture_manager_3d: TextureManager3D,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
@@ -136,6 +137,8 @@ impl RenderContext {
         );
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
+        let texture_manager_3d =
+            TextureManager3D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
         RenderContext {
             device,
@@ -148,6 +151,7 @@ impl RenderContext {
 
             mesh_manager,
             texture_manager_2d,
+            texture_manager_3d,
 
             resolver,
 
