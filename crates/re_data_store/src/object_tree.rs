@@ -52,7 +52,7 @@ pub struct ObjectTree {
     pub prefix_times: TimesPerTimeline,
 
     /// Extra book-keeping used to seed any timelines that include timeless msgs
-    pub timeless_msgs: BTreeSet<MsgId>,
+    num_timeless_messages: usize,
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
@@ -73,7 +73,7 @@ impl ObjectTree {
             path,
             children: Default::default(),
             prefix_times: Default::default(),
-            timeless_msgs: Default::default(),
+            num_timeless_messages: 0,
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
             fields: Default::default(),
@@ -87,6 +87,10 @@ impl ObjectTree {
 
     pub fn num_children_and_fields(&self) -> usize {
         self.children.len() + self.fields.len()
+    }
+
+    pub fn num_timeless_messages(&self) -> usize {
+        self.num_timeless_messages
     }
 
     /// Add a `LoggedData` into the object tree
@@ -206,8 +210,7 @@ impl ObjectTree {
     ) -> &mut Self {
         // If the time_point is timeless...
         if time_point.is_timeless() {
-            // Save it so that we can duplicate it into future timelines
-            self.timeless_msgs.insert(msg_id);
+            self.num_timeless_messages += 1;
         } else {
             for (timeline, time_value) in time_point.iter() {
                 self.prefix_times
@@ -253,7 +256,7 @@ impl ObjectTree {
             path: _,
             children,
             prefix_times,
-            timeless_msgs: _,
+            num_timeless_messages: _,
             nonrecursive_clears,
             recursive_clears,
             fields,
@@ -299,29 +302,28 @@ impl ObjectTree {
 /// Column transform of [`re_log_types::Data`].
 #[derive(Default)]
 pub struct DataColumns {
-    /// When do we have data?
+    /// When do we have data? Ignored timeless.
     pub times: TimesPerTimeline,
+
     /// Extra book-keeping used to seed any timelines that include timeless msgs
-    pub timeless_msgs: BTreeSet<MsgId>,
+    num_timeless_messages: usize,
 }
 
 impl DataColumns {
+    pub fn num_timeless_messages(&self) -> usize {
+        self.num_timeless_messages
+    }
+
     pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint) {
         // If the `time_point` is timeless...
         if time_point.is_timeless() {
-            self.timeless_msgs.insert(msg_id);
+            self.num_timeless_messages += 1;
         } else {
             for (timeline, time_value) in time_point.iter() {
                 self.times
                     .0
                     .entry(*timeline)
-                    .or_insert_with(|| {
-                        if self.timeless_msgs.is_empty() {
-                            Default::default()
-                        } else {
-                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
-                        }
-                    })
+                    .or_default()
                     .entry(*time_value)
                     .or_default()
                     .insert(msg_id);
@@ -332,7 +334,7 @@ impl DataColumns {
     pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             times,
-            timeless_msgs: _, // we don't purge them
+            num_timeless_messages: _,
         } = self;
 
         for map in times.0.values_mut() {

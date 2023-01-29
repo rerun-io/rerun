@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
@@ -269,8 +267,8 @@ impl LogDb {
         &self.obj_db.tree.prefix_times
     }
 
-    pub fn timeless_msgs(&self) -> &BTreeSet<MsgId> {
-        &self.obj_db.tree.timeless_msgs
+    pub fn num_timeless_messages(&self) -> usize {
+        self.obj_db.tree.num_timeless_messages()
     }
 
     pub fn is_empty(&self) -> bool {

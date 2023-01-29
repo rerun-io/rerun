@@ -355,7 +355,7 @@ impl TimePanel {
         if !tree
             .prefix_times
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-            && tree.timeless_msgs.is_empty()
+            && tree.num_timeless_messages() == 0
         {
             return; // ignore objects that have no data for the current timeline and no timeless data.
         }
@@ -425,7 +425,7 @@ impl TimePanel {
                 time_area_response,
                 time_area_painter,
                 ui,
-                &tree.timeless_msgs,
+                tree.num_timeless_messages(),
                 messages_over_time,
                 full_width_rect,
                 &self.time_ranges_ui,
@@ -467,7 +467,7 @@ impl TimePanel {
 
             for (field_name, data) in &tree.fields {
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-                    && data.timeless_msgs.is_empty()
+                    && data.num_timeless_messages() == 0
                 {
                     continue; // ignore fields that have no data for the current timeline
                 }
@@ -534,7 +534,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         ui,
-                        &data.timeless_msgs,
+                        data.num_timeless_messages(),
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
@@ -587,7 +587,7 @@ fn show_data_over_time(
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
-    timeless_msgs: &BTreeSet<MsgId>,
+    num_timeless_messages: usize,
     messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
@@ -673,6 +673,23 @@ fn show_data_over_time(
         }
     };
 
+    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
+
+    if num_timeless_messages > 0 {
+        let time_int = TimeInt::BEGINNING;
+        let time_real = TimeReal::from(time_int);
+        if let Some(x) = time_ranges_ui.x_from_time(time_real) {
+            let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
+            paint_stretch(&Stretch {
+                start_x: x,
+                start_time: time_int,
+                stop_time: time_int,
+                selected,
+                time_points: vec![(time_int, num_timeless_messages)],
+            });
+        }
+    }
+
     let mut stretch: Option<Stretch> = None;
 
     let margin = 5.0;
@@ -686,10 +703,8 @@ fn show_data_over_time(
             .map_or(TimeInt::MAX, |tf| tf.ceil()),
     };
 
-    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
-
-    for (&time, msg_ids) in std::iter::once((&TimeInt::BEGINNING, timeless_msgs))
-        .chain(messages_over_time.range(visible_time_range.min..=visible_time_range.max))
+    for (&time, msg_ids) in
+        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
     {
         if msg_ids.is_empty() {
             continue;
@@ -795,7 +810,7 @@ fn initialize_time_ranges_ui(
     crate::profile_function!();
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
-    let mut time_range = if !ctx.log_db.timeless_msgs().is_empty() {
+    let mut time_range = if ctx.log_db.num_timeless_messages() > 0 {
         vec![TimeRange {
             min: TimeInt::BEGINNING,
             max: TimeInt::BEGINNING,
