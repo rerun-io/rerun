@@ -363,12 +363,7 @@ pub fn view_3d(
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
-                            instance_id.data_ui(
-                                ctx,
-                                ui,
-                                UiVerbosity::Small,
-                                &ctx.rec_cfg.time_ctrl.current_query(),
-                            );
+                            instance_id.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 &image.tensor,
@@ -399,7 +394,7 @@ pub fn view_3d(
                         ctx,
                         ui,
                         crate::ui::UiVerbosity::Large,
-                        &ctx.rec_cfg.time_ctrl.current_query(),
+                        &ctx.current_query(),
                     );
                 })
             };

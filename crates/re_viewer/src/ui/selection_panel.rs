@@ -53,7 +53,7 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        let query = ctx.rec_cfg.time_ctrl.current_query();
+        let query = ctx.current_query();
 
         egui::ScrollArea::both()
             .auto_shrink([false; 2])
@@ -344,7 +344,7 @@ fn obj_props_ui(
 
     if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
         if let Some(obj_path) = obj_path {
-            let query = ctx.rec_cfg.time_ctrl.current_query();
+            let query = ctx.current_query();
             if let Some(re_log_types::Transform::Pinhole(pinhole)) =
                 query_transform(&ctx.log_db.obj_db, obj_path, &query)
             {
