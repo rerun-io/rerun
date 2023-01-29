@@ -176,7 +176,7 @@ impl ObjDb {
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
-        for (data_path, data_type, mono_or_multi) in cleared_paths {
+        for (data_path, data_type) in cleared_paths {
             if data_path.is_arrow() {
                 if let FieldOrComponent::Component(component) = data_path.field_name {
                     if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
@@ -195,27 +195,15 @@ impl ObjDb {
                     }
                 }
             } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                match mono_or_multi {
-                    crate::MonoOrMulti::Mono => {
-                        self.add_data_msg(
-                            msg_id,
-                            time_point,
-                            &data_path,
-                            &LoggedData::Null(data_type),
-                        );
-                    }
-                    crate::MonoOrMulti::Multi => {
-                        self.add_data_msg(
-                            msg_id,
-                            time_point,
-                            &data_path,
-                            &LoggedData::Batch {
-                                indices: BatchIndex::SequentialIndex(0),
-                                data: DataVec::empty_from_data_type(data_type),
-                            },
-                        );
-                    }
-                }
+                self.add_data_msg(
+                    msg_id,
+                    time_point,
+                    &data_path,
+                    &LoggedData::Batch {
+                        indices: BatchIndex::SequentialIndex(0),
+                        data: DataVec::empty_from_data_type(data_type),
+                    },
+                );
             }
         }
     }

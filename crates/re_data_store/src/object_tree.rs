@@ -135,7 +135,7 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         path_op: &PathOp,
-    ) -> Vec<(DataPath, DataType, MonoOrMulti)> {
+    ) -> Vec<(DataPath, DataType)> {
         crate::profile_function!();
 
         let obj_path = path_op.obj_path().to_components();
@@ -159,7 +159,6 @@ impl ObjectTree {
                         (
                             DataPath::new_any(obj_path.clone(), *field_name),
                             DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                            MonoOrMulti::Multi,
                         )
                     })
                     .collect_vec()
@@ -190,7 +189,6 @@ impl ObjectTree {
                         (
                             DataPath::new_any(next.path.clone(), *field_name),
                             DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                            MonoOrMulti::Multi,
                         )
                     }));
                 }
@@ -296,12 +294,6 @@ impl ObjectTree {
             child.visit_children_recursively(visitor);
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum MonoOrMulti {
-    Mono,
-    Multi,
 }
 
 /// Column transform of [`re_log_types::Data`].
