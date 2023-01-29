@@ -406,13 +406,13 @@ impl TimePanel {
                 messages_over_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Some(Selection::Instance(
+                Selection::Instance(
                     None,
                     InstanceId {
                         obj_path: tree.path.clone(),
                         instance_index: None,
                     },
-                )),
+                ),
             );
         }
     }
@@ -513,7 +513,7 @@ impl TimePanel {
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Some(Selection::DataPath(data_path)),
+                        Selection::DataPath(data_path),
                     );
                 }
             }
@@ -565,16 +565,12 @@ fn show_data_over_time(
     messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
-    select_on_click: Option<Selection>,
+    select_on_click: Selection,
 ) {
     crate::profile_function!();
 
     // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
-    let is_selected = if let Some(select_on_click) = select_on_click.as_ref() {
-        ctx.selection().iter().contains(select_on_click)
-    } else {
-        false
-    };
+    let is_selected = ctx.selection().iter().contains(&select_on_click);
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -710,11 +706,7 @@ fn show_data_over_time(
 
     if !hovered_messages.is_empty() {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            if let Some(select_on_click) = select_on_click {
-                ctx.set_single_selection(select_on_click);
-            } else {
-                ctx.selection_state_mut().clear_current();
-            }
+            ctx.set_single_selection(select_on_click);
 
             if let Some(hovered_time) = hovered_time {
                 ctx.rec_cfg.time_ctrl.set_time(hovered_time);
