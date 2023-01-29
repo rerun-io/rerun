@@ -434,18 +434,8 @@ impl LogDb {
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         crate::profile_function!();
-
         assert!((0.0..=1.0).contains(&fraction_to_purge));
-
-        match (
-            !self.obj_db.store.is_empty(),
-            self.obj_db.arrow_store.total_temporal_index_rows() > 0,
-        ) {
-            (true, true) => warn_once!("GC not supported in mixed mode"),
-            (true, false) => self.purge_fraction_of_ram_classic(fraction_to_purge),
-            (false, true) => self.purge_fraction_of_ram_arrow(fraction_to_purge),
-            (false, false) => {}
-        }
+        self.purge_fraction_of_ram_arrow(fraction_to_purge);
     }
 
     fn purge_fraction_of_ram_arrow(&mut self, fraction_to_purge: f32) {
@@ -489,64 +479,5 @@ impl LogDb {
         }
 
         obj_db.retain(None, Some(&drop_msg_ids));
-    }
-
-    /// Free up some RAM by forgetting the older parts of all timelines.
-    fn purge_fraction_of_ram_classic(&mut self, fraction_to_purge: f32) {
-        fn always_keep(msg: &LogMsg) -> bool {
-            match msg {
-                //TODO(john) allow purging ArrowMsg
-                LogMsg::ArrowMsg(_)
-                | LogMsg::BeginRecordingMsg(_)
-                | LogMsg::TypeMsg(_)
-                | LogMsg::Goodbye(_) => true,
-                LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
-                LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
-            }
-        }
-
-        crate::profile_function!();
-
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
-
-        // Start by figuring out what `MsgId`:s to keep:
-        let keep_msg_ids = {
-            crate::profile_scope!("calc_what_to_keep");
-            let mut keep_msg_ids = ahash::HashSet::default();
-            for (_, time_points) in self.obj_db.tree.prefix_times.iter() {
-                let num_to_purge = (time_points.len() as f32 * fraction_to_purge).round() as usize;
-                for (_, msg_id) in time_points.iter().skip(num_to_purge) {
-                    keep_msg_ids.extend(msg_id);
-                }
-            }
-
-            keep_msg_ids.extend(
-                self.log_messages
-                    .iter()
-                    .filter_map(|(msg_id, msg)| always_keep(msg).then_some(*msg_id)),
-            );
-            keep_msg_ids
-        };
-
-        let Self {
-            chronological_message_ids,
-            log_messages,
-            timeless_message_ids,
-            recording_info: _,
-            obj_db,
-        } = self;
-
-        chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-
-        {
-            crate::profile_scope!("log_messages");
-            log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-        }
-        {
-            crate::profile_scope!("timeless_message_ids");
-            timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-        }
-
-        obj_db.retain(Some(&keep_msg_ids), None);
     }
 }
