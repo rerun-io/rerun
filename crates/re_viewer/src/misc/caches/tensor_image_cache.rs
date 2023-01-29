@@ -249,9 +249,13 @@ impl AsDynamicImage for field_types::Tensor {
 
 impl AsDynamicImage for ClassicTensor {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
-        crate::profile_function!();
         use anyhow::Context as _;
         let tensor = self;
+
+        crate::profile_function!(format!(
+            "dtype: {}, meaning: {:?}",
+            tensor.dtype, tensor.meaning
+        ));
 
         let shape = &tensor.shape();
 
@@ -292,43 +296,43 @@ impl AsDynamicImage for ClassicTensor {
                 match (depth, tensor.dtype, tensor.meaning) {
                     (1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
                         // Apply annotation mapping to raw bytes interpreted as u8
-                        image::RgbaImage::from_raw(
-                            width,
-                            height,
-                            bytes
-                                .to_vec()
-                                .iter()
-                                .flat_map(|p| {
-                                    annotations
-                                        .class_description(Some(ClassId(*p as u16)))
-                                        .annotation_info()
-                                        .color(None, DefaultColor::TransparentBlack)
-                                        .to_array()
-                                })
-                                .collect(),
-                        )
-                        .context("Bad RGBA8")
-                        .map(DynamicImage::ImageRgba8)
+                        let color_lookup: Vec<[u8; 4]> = (0..256)
+                            .map(|id| {
+                                annotations
+                                    .class_description(Some(ClassId(id)))
+                                    .annotation_info()
+                                    .color(None, DefaultColor::TransparentBlack)
+                                    .to_array()
+                            })
+                            .collect();
+                        let color_bytes = bytes
+                            .iter()
+                            .flat_map(|p: &u8| color_lookup[*p as usize])
+                            .collect();
+                        crate::profile_scope!("from_raw");
+                        image::RgbaImage::from_raw(width, height, color_bytes)
+                            .context("Bad RGBA8")
+                            .map(DynamicImage::ImageRgba8)
                     }
                     (1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
                         // Apply annotations mapping to bytes interpreted as u16
-                        image::RgbaImage::from_raw(
-                            width,
-                            height,
-                            bytemuck::cast_slice(bytes)
-                                .to_vec()
-                                .iter()
-                                .flat_map(|p| {
+                        let mut color_lookup: ahash::HashMap<u16, [u8; 4]> = Default::default();
+                        let color_bytes = bytemuck::cast_slice(bytes)
+                            .iter()
+                            .flat_map(|id: &u16| {
+                                *color_lookup.entry(*id).or_insert_with(|| {
                                     annotations
-                                        .class_description(Some(ClassId(*p)))
+                                        .class_description(Some(ClassId(*id)))
                                         .annotation_info()
                                         .color(None, DefaultColor::TransparentBlack)
                                         .to_array()
                                 })
-                                .collect(),
-                        )
-                        .context("Bad RGBA8")
-                        .map(DynamicImage::ImageRgba8)
+                            })
+                            .collect();
+                        crate::profile_scope!("from_raw");
+                        image::RgbaImage::from_raw(width, height, color_bytes)
+                            .context("Bad RGBA8")
+                            .map(DynamicImage::ImageRgba8)
                     }
                     (1, TensorDataType::U8, _) => {
                         // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
@@ -461,12 +465,15 @@ impl AsDynamicImage for ClassicTensor {
             }
 
             TensorDataStore::Jpeg(bytes) => {
-                crate::profile_scope!("Decode JPEG");
                 use image::io::Reader as ImageReader;
                 let mut reader = ImageReader::new(std::io::Cursor::new(bytes));
                 reader.set_format(image::ImageFormat::Jpeg);
                 // TODO(emilk): handle grayscale JPEG:s (depth == 1)
-                let img = reader.decode()?.into_rgb8();
+                let img = {
+                    crate::profile_scope!("decode_jpeg");
+                    reader.decode()?
+                }
+                .into_rgb8();
 
                 if depth != 3 || img.width() != width || img.height() != height {
                     anyhow::bail!(
