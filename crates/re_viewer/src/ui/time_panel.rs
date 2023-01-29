@@ -125,7 +125,7 @@ impl TimePanel {
                         );
 
                         ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
-                        self.expanded_ui(ctx, ui);
+                        self.expanded_ui(ctx, blueprint, ui);
                     });
                 }
             },
@@ -170,7 +170,12 @@ impl TimePanel {
         current_time_ui(ctx, ui);
     }
 
-    fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn expanded_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
         crate::profile_function!();
 
         //               |timeline            |
@@ -283,7 +288,13 @@ impl TimePanel {
                 if time_area_response.dragged_by(PointerButton::Primary) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
-                self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
+                self.tree_ui(
+                    ctx,
+                    blueprint,
+                    &time_area_response,
+                    &lower_time_area_painter,
+                    ui,
+                );
             });
 
         {
@@ -314,12 +325,14 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
         self.show_children(
             ctx,
+            blueprint,
             time_area_response,
             time_area_painter,
             &ctx.log_db.obj_db.tree,
@@ -327,9 +340,11 @@ impl TimePanel {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn show_tree(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         // the parent path of the name component
@@ -362,7 +377,14 @@ impl TimePanel {
             )
             .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
             .body(|ui| {
-                self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
+                self.show_children(
+                    ctx,
+                    blueprint,
+                    time_area_response,
+                    time_area_painter,
+                    tree,
+                    ui,
+                );
             });
 
         let is_closed = body_returned.is_none();
@@ -399,6 +421,7 @@ impl TimePanel {
 
             show_data_over_time(
                 ctx,
+                blueprint,
                 time_area_response,
                 time_area_painter,
                 ui,
@@ -420,6 +443,7 @@ impl TimePanel {
     fn show_children(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree: &ObjectTree,
@@ -428,6 +452,7 @@ impl TimePanel {
         for (last_component, child) in &tree.children {
             self.show_tree(
                 ctx,
+                blueprint,
                 time_area_response,
                 time_area_painter,
                 last_component,
@@ -506,6 +531,7 @@ impl TimePanel {
 
                     show_data_over_time(
                         ctx,
+                        blueprint,
                         time_area_response,
                         time_area_painter,
                         ui,
@@ -558,6 +584,7 @@ fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 #[allow(clippy::too_many_arguments)]
 fn show_data_over_time(
     ctx: &mut ViewerContext<'_>,
+    blueprint: &mut Blueprint,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
@@ -715,15 +742,22 @@ fn show_data_over_time(
                 ctx.rec_cfg.time_ctrl.pause();
             }
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
-            show_msg_ids_tooltip(ctx, ui.ctx(), &select_on_click, &hovered_messages);
+            show_msg_ids_tooltip(
+                ctx,
+                blueprint,
+                ui.ctx(),
+                &select_on_click,
+                &hovered_messages,
+            );
         }
     }
 }
 
 fn show_msg_ids_tooltip(
     ctx: &mut ViewerContext<'_>,
+    blueprint: &mut Blueprint,
     egui_ctx: &egui::Context,
-    select_on_click: &Selection,
+    selection: &Selection,
     time_points: &[(TimeInt, usize)],
 ) {
     show_tooltip_at_pointer(egui_ctx, Id::new("data_tooltip"), |ui| {
@@ -731,19 +765,19 @@ fn show_msg_ids_tooltip(
         let num_messages: usize = time_points.iter().map(|(_time, count)| *count).sum();
 
         if num_times == 1 {
-            if num_messages == 1 {
-                ui.label("One message");
-            } else {
+            if num_messages > 1 {
                 ui.label(format!("{num_messages} messages"));
+                ui.add_space(8.0);
                 // Could be an entity made up of many components logged at the same time.
                 // Still show a preview!
             }
+            super::selection_panel::what_is_selected_ui(ui, ctx, blueprint, selection);
             ui.add_space(8.0);
 
             let timeline = *ctx.rec_cfg.time_ctrl.timeline();
             let time_int = time_points[0].0;
             let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
-            select_on_click.data_ui(ctx, ui, super::UiVerbosity::Large, &query);
+            selection.data_ui(ctx, ui, super::UiVerbosity::Large, &query);
         } else {
             ui.label(format!(
                 "{num_messages} messages at {num_times} points in time"

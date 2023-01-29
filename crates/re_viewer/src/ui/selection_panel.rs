@@ -90,7 +90,7 @@ impl SelectionPanel {
 }
 
 /// What is selected? Not the contents, just the short id of it.
-fn what_is_selected_ui(
+pub fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
