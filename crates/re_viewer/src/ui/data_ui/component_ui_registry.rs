@@ -67,6 +67,7 @@ impl Default for ComponentUiRegistry {
         registry.add::<re_log_types::field_types::Transform>();
         // registry.add::<re_log_types::field_types::Vec2D>();
         // registry.add::<re_log_types::field_types::Vec3D>();
+        registry.add::<re_log_types::ViewCoordinates>();
 
         registry
     }
