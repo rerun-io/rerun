@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
@@ -10,9 +10,9 @@ use re_log_types::{
 
 /// Number of messages per time per timeline
 #[derive(Default)]
-pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeMap<TimeInt, usize>>);
+pub struct TimeHistogramPerTimeline(BTreeMap<Timeline, BTreeMap<TimeInt, usize>>);
 
-impl TimesPerTimeline {
+impl TimeHistogramPerTimeline {
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
         self.0.keys()
     }
@@ -38,6 +38,48 @@ impl TimesPerTimeline {
 
 // ----------------------------------------------------------------------------
 
+/// Number of messages per time per timeline
+#[derive(Default)]
+pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeSet<TimeInt>>);
+
+impl TimesPerTimeline {
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.0.keys()
+    }
+
+    pub fn get(&self, timeline: &Timeline) -> Option<&BTreeSet<TimeInt>> {
+        self.0.get(timeline)
+    }
+
+    pub fn insert(&mut self, timeline: Timeline, time: TimeInt) {
+        self.0.entry(timeline).or_default().insert(time);
+    }
+
+    pub fn purge(&mut self, cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>) {
+        for (timeline, time_set) in &mut self.0 {
+            if let Some(cutoff_time) = cutoff_times.get(timeline) {
+                time_set.retain(|time| cutoff_time <= time);
+            }
+        }
+    }
+
+    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
+        self.0.contains_key(timeline)
+    }
+
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeSet<TimeInt>)> {
+        self.0.iter()
+    }
+
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (&Timeline, &mut BTreeSet<TimeInt>)> {
+        self.0.iter_mut()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Tree of data paths.
 pub struct ObjectTree {
     /// Full path to the root of this tree.
@@ -48,7 +90,7 @@ pub struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: TimesPerTimeline,
+    pub prefix_times: TimeHistogramPerTimeline,
 
     /// Extra book-keeping used to seed any timelines that include timeless msgs
     num_timeless_messages: usize,
@@ -304,7 +346,7 @@ impl ObjectTree {
 #[derive(Default)]
 pub struct DataColumns {
     /// When do we have data? Ignored timeless.
-    pub times: TimesPerTimeline,
+    pub times: TimeHistogramPerTimeline,
 
     /// Extra book-keeping used to seed any timelines that include timeless msgs
     num_timeless_messages: usize,

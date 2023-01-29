@@ -819,7 +819,9 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .log_db
-        .times_per_timeline()
+        .obj_db
+        .tree
+        .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
