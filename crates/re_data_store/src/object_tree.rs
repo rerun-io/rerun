@@ -300,7 +300,7 @@ impl ObjectTree {
 #[derive(Default)]
 pub struct DataColumns {
     /// When do we have data?
-    pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    pub times: TimesPerTimeline,
     /// Extra book-keeping used to seed any timelines that include timeless msgs
     pub timeless_msgs: BTreeSet<MsgId>,
 }
@@ -309,19 +309,11 @@ impl DataColumns {
     pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint) {
         // If the `time_point` is timeless...
         if time_point.is_timeless() {
-            // Save it so that we can duplicate it into future timelines
             self.timeless_msgs.insert(msg_id);
-
-            // Add it to any existing timelines
-            for timeline in &mut self.times.values_mut() {
-                timeline
-                    .entry(TimeInt::BEGINNING)
-                    .or_default()
-                    .insert(msg_id);
-            }
         } else {
             for (timeline, time_value) in time_point.iter() {
                 self.times
+                    .0
                     .entry(*timeline)
                     .or_insert_with(|| {
                         if self.timeless_msgs.is_empty() {
@@ -340,10 +332,10 @@ impl DataColumns {
     pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             times,
-            timeless_msgs: _,
+            timeless_msgs: _, // we don't purge them
         } = self;
 
-        for map in times.values_mut() {
+        for map in times.0.values_mut() {
             map.retain(|_, msg_ids| {
                 msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
                 !msg_ids.is_empty()

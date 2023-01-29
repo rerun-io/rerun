@@ -466,7 +466,7 @@ impl TimePanel {
             let indent = ui.spacing().indent;
 
             for (field_name, data) in &tree.fields {
-                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline())
+                if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.timeless_msgs.is_empty()
                 {
                     continue; // ignore fields that have no data for the current timeline
