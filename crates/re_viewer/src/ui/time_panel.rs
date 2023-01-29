@@ -21,7 +21,7 @@ use crate::{
     Selection, TimeControl, TimeView, ViewerContext,
 };
 
-use super::{data_ui::DataUi, Blueprint};
+use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
 
 /// A panel that shows objects to the left, time on the top.
 ///
@@ -512,12 +512,11 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        ui.strong("Data");
-                        ui.label(data_path.to_string());
-                        let summary = data.summary();
-                        if !summary.is_empty() {
-                            ui.label(summary);
-                        }
+                        let selection = Selection::DataPath(data_path.clone());
+                        what_is_selected_ui(ui, ctx, blueprint, &selection);
+                        ui.add_space(8.0);
+                        let query = ctx.current_query();
+                        data_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
                 }
 
