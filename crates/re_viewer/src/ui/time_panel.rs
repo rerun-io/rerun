@@ -7,8 +7,8 @@ use egui::{
     lerp, pos2, remap, remap_clamp, show_tooltip_at_pointer, Align2, Color32, CursorIcon, Id,
     NumExt, PointerButton, Pos2, Rect, Rgba, Shape, Stroke, Vec2,
 };
-
 use itertools::Itertools;
+
 use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::{
     DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
@@ -590,25 +590,27 @@ fn show_data_over_time(
             .linear_multiply(0.75)
     };
 
-    struct Stretch<'a> {
+    struct Stretch {
         start_x: f32,
         start_time: TimeInt,
         stop_time: TimeInt,
         selected: bool,
-        msg_ids: Vec<&'a BTreeSet<MsgId>>,
+        /// Times x count at the given time
+        time_points: Vec<(TimeInt, usize)>,
     }
 
     let mut shapes = vec![];
     let mut scatter = BallScatterer::default();
-    let mut hovered_messages = vec![];
+    // Time x number of messages at that time point
+    let mut hovered_messages: Vec<(TimeInt, usize)> = vec![];
     let mut hovered_time = None;
 
-    let mut paint_stretch = |stretch: &Stretch<'_>| {
+    let mut paint_stretch = |stretch: &Stretch| {
         let stop_x = time_ranges_ui
             .x_from_time(stretch.stop_time.into())
             .unwrap_or(stretch.start_x);
 
-        let num_messages: usize = stretch.msg_ids.iter().map(|l| l.len()).sum();
+        let num_messages: usize = stretch.time_points.iter().map(|(_time, count)| count).sum();
         let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
         let radius = radius.at_most(full_width_rect.height() / 3.0);
         debug_assert!(radius.is_finite());
@@ -640,12 +642,12 @@ fn show_data_over_time(
         shapes.push(Shape::circle_filled(pos, radius, color));
 
         if is_hovered {
-            hovered_messages.extend(stretch.msg_ids.iter().copied().flatten().copied());
+            hovered_messages.extend(stretch.time_points.iter().copied());
             hovered_time.get_or_insert(stretch.start_time);
         }
     };
 
-    let mut stretch: Option<Stretch<'_>> = None;
+    let mut stretch: Option<Stretch> = None;
 
     let margin = 5.0;
     let visible_time_range = TimeRange {
@@ -676,7 +678,7 @@ fn show_data_over_time(
             {
                 // extend:
                 current_stretch.stop_time = time;
-                current_stretch.msg_ids.push(msg_ids);
+                current_stretch.time_points.push((time, msg_ids.len()));
             } else {
                 // stop the previous…
                 paint_stretch(current_stretch);
@@ -692,7 +694,7 @@ fn show_data_over_time(
                     start_time: time,
                     stop_time: time,
                     selected,
-                    msg_ids: vec![msg_ids],
+                    time_points: vec![(time, msg_ids.len())],
                 });
             }
         }
@@ -713,28 +715,38 @@ fn show_data_over_time(
                 ctx.rec_cfg.time_ctrl.pause();
             }
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
-            show_msg_ids_tooltip(ctx, ui.ctx(), &hovered_messages);
+            show_msg_ids_tooltip(ctx, ui.ctx(), &select_on_click, &hovered_messages);
         }
     }
 }
 
-fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, msg_ids: &[MsgId]) {
+fn show_msg_ids_tooltip(
+    ctx: &mut ViewerContext<'_>,
+    egui_ctx: &egui::Context,
+    select_on_click: &Selection,
+    time_points: &[(TimeInt, usize)],
+) {
     show_tooltip_at_pointer(egui_ctx, Id::new("data_tooltip"), |ui| {
-        // TODO(emilk): show as a table?
-        if msg_ids.len() == 1 {
-            let msg_id = msg_ids[0];
-            if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
-                ui.push_id(msg_id, |ui| {
-                    ui.group(|ui| {
-                        let query = ctx.current_query(); // TODO(emilk): use the hovered time instead!
-                        msg.data_ui(ctx, ui, crate::UiVerbosity::Small, &query);
-                    });
-                });
+        let num_times = time_points.len();
+        let num_messages: usize = time_points.iter().map(|(_time, count)| *count).sum();
+
+        if num_times == 1 {
+            if num_messages == 1 {
+                ui.label("One message");
+            } else {
+                ui.label(format!("{num_messages} messages"));
+                // Could be an entity made up of many components logged at the same time.
+                // Still show a preview!
             }
+            ui.add_space(8.0);
+
+            let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+            let time_int = time_points[0].0;
+            let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
+            select_on_click.data_ui(ctx, ui, super::UiVerbosity::Large, &query);
         } else {
             ui.label(format!(
-                "{} messages",
-                re_format::format_number(msg_ids.len())
+                "{num_messages} messages at {num_times} points in time"
             ));
         }
     });
