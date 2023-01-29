@@ -390,7 +390,12 @@ fn view_2d_scrollable(
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
-                            instance_id.data_ui(ctx, ui, UiVerbosity::Small);
+                            instance_id.data_ui(
+                                ctx,
+                                ui,
+                                UiVerbosity::Small,
+                                &ctx.rec_cfg.time_ctrl.current_query(),
+                            );
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 &image.tensor,
@@ -425,7 +430,12 @@ fn view_2d_scrollable(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::UiVerbosity::Large);
+                    instance_id.data_ui(
+                        ctx,
+                        ui,
+                        crate::ui::UiVerbosity::Large,
+                        &ctx.rec_cfg.time_ctrl.current_query(),
+                    );
                 })
             };
 

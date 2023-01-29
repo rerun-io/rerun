@@ -43,7 +43,12 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
-                msg_id.data_ui(self, ui, UiVerbosity::Small);
+                msg_id.data_ui(
+                    self,
+                    ui,
+                    UiVerbosity::Small,
+                    &self.rec_cfg.time_ctrl.current_query(),
+                );
             });
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -108,7 +113,12 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong(subtype_string);
                 ui.label(format!("Path: {instance_id}"));
-                instance_id.data_ui(self, ui, crate::ui::UiVerbosity::Large);
+                instance_id.data_ui(
+                    self,
+                    ui,
+                    crate::ui::UiVerbosity::Large,
+                    &self.rec_cfg.time_ctrl.current_query(),
+                );
             });
 
         self.cursor_interact_with_selectable(response, selection)
@@ -173,7 +183,12 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, UiVerbosity::Large);
+                obj_path.data_ui(
+                    self,
+                    ui,
+                    UiVerbosity::Large,
+                    &self.rec_cfg.time_ctrl.current_query(),
+                );
             });
         self.cursor_interact_with_selectable(response, selection)
     }

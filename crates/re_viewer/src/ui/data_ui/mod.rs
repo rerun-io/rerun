@@ -34,13 +34,26 @@ pub enum UiVerbosity {
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].
 pub(crate) trait DataUi {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity);
+    /// If you need to lookup something in the data store, use the given query to do so.
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    );
 }
 
 // ----------------------------------------------------------------------------
 
 impl DataUi for TimePoint {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _verbosity: UiVerbosity) {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
         ui.vertical(|ui| {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -55,7 +68,13 @@ impl DataUi for TimePoint {
 }
 
 impl DataUi for [ComponentBundle] {
-    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
         let mut sorted = self.to_vec();
         sorted.sort_by_key(|cb| cb.name);
 
@@ -85,7 +104,13 @@ fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
 }
 
 impl DataUi for PathOp {
-    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _verbosity: UiVerbosity) {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
         match self {
             PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
             PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),

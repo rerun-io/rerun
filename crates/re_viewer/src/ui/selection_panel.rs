@@ -37,6 +37,8 @@ impl SelectionPanel {
                     ctx.set_multi_selection(selection.iter().cloned());
                 }
 
+                ui.separator();
+
                 self.contents(ui, ctx, blueprint);
             },
         );
@@ -51,7 +53,7 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        ui.separator();
+        let query = ctx.rec_cfg.time_ctrl.current_query();
 
         egui::ScrollArea::both()
             .auto_shrink([false; 2])
@@ -69,7 +71,7 @@ impl SelectionPanel {
                         egui::CollapsingHeader::new("Data")
                             .default_open(true)
                             .show(ui, |ui| {
-                                data_ui(ui, ctx, selection, UiVerbosity::Large);
+                                data_ui(ui, ctx, selection, UiVerbosity::Large, &query);
                             });
 
                         egui::CollapsingHeader::new("Blueprint")
@@ -163,19 +165,20 @@ fn data_ui(
     ctx: &mut ViewerContext<'_>,
     selection: &Selection,
     verbosity: UiVerbosity,
+    query: &re_arrow_store::LatestAtQuery,
 ) {
     match selection {
         Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
-            msg_id.data_ui(ctx, ui, verbosity);
+            msg_id.data_ui(ctx, ui, verbosity, query);
         }
         Selection::DataPath(data_path) => {
-            data_path.data_ui(ctx, ui, verbosity);
+            data_path.data_ui(ctx, ui, verbosity, query);
         }
         Selection::Instance(_, instance_id) => {
-            instance_id.data_ui(ctx, ui, verbosity);
+            instance_id.data_ui(ctx, ui, verbosity, query);
         }
     }
 }

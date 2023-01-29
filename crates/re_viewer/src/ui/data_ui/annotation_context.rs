@@ -14,6 +14,7 @@ impl DataUi for AnnotationContext {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: crate::ui::UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {

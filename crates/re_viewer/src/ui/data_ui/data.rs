@@ -1,4 +1,5 @@
 use egui::Vec2;
+
 use re_log_types::{
     field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3,
     Transform, ViewCoordinates,
@@ -14,6 +15,7 @@ impl DataUi for Data {
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: crate::ui::UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
             Data::Bool(value) => {
@@ -28,7 +30,7 @@ impl DataUi for Data {
             Data::F64(value) => {
                 ui.label(value.to_string());
             }
-            Data::Color(value) => value.data_ui(ctx, ui, verbosity),
+            Data::Color(value) => value.data_ui(ctx, ui, verbosity, query),
             Data::String(string) => {
                 ui.label(format!("{string:?}"));
             }
@@ -59,16 +61,16 @@ impl DataUi for Data {
                     "Arrow3D(origin: [{x:.1},{y:.1},{z:.1}], vector: [{v0:.1},{v1:.1},{v2:.1}])"
                 ));
             }
-            Data::Transform(transform) => transform.data_ui(ctx, ui, verbosity),
-            Data::ViewCoordinates(coordinates) => coordinates.data_ui(ctx, ui, verbosity),
-            Data::AnnotationContext(context) => context.data_ui(ctx, ui, verbosity),
-            Data::Tensor(tensor) => tensor.data_ui(ctx, ui, verbosity),
+            Data::Transform(transform) => transform.data_ui(ctx, ui, verbosity, query),
+            Data::ViewCoordinates(coordinates) => coordinates.data_ui(ctx, ui, verbosity, query),
+            Data::AnnotationContext(context) => context.data_ui(ctx, ui, verbosity, query),
+            Data::Tensor(tensor) => tensor.data_ui(ctx, ui, verbosity, query),
 
             Data::ObjPath(obj_path) => {
                 ctx.obj_path_button(ui, None, obj_path);
             }
 
-            Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, verbosity),
+            Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
@@ -79,6 +81,7 @@ impl DataUi for [u8; 4] {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         let [r, g, b, a] = self;
         let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
@@ -98,6 +101,7 @@ impl DataUi for ColorRGBA {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         let [r, g, b, a] = self.to_array();
         let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
@@ -117,6 +121,7 @@ impl DataUi for DataVec {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.label(format!("{} x {:?}", self.len(), self.element_data_type()));
     }
@@ -128,13 +133,14 @@ impl DataUi for Transform {
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
             Transform::Unknown => {
                 ui.label("Unknown transform");
             }
-            Transform::Rigid3(rigid3) => rigid3.data_ui(ctx, ui, verbosity),
-            Transform::Pinhole(pinhole) => pinhole.data_ui(ctx, ui, verbosity),
+            Transform::Rigid3(rigid3) => rigid3.data_ui(ctx, ui, verbosity, query),
+            Transform::Pinhole(pinhole) => pinhole.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
@@ -145,6 +151,7 @@ impl DataUi for ViewCoordinates {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
@@ -163,11 +170,12 @@ impl DataUi for Rigid3 {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(_ctx, ui, UiVerbosity::Large);
+                    self.data_ui(_ctx, ui, UiVerbosity::Large, _query);
                 });
             }
 
@@ -201,11 +209,12 @@ impl DataUi for Pinhole {
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::Large);
+                    self.data_ui(ctx, ui, UiVerbosity::Large, query);
                 });
             }
 
@@ -229,7 +238,7 @@ impl DataUi for Pinhole {
 
                         ui.label("image from view:");
                         ui.indent("image_from_view", |ui| {
-                            image_from_view.data_ui(ctx, ui, verbosity);
+                            image_from_view.data_ui(ctx, ui, verbosity, query);
                         });
                     });
                 });
@@ -244,6 +253,7 @@ impl DataUi for Mat3x3 {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
             ui.monospace(self[0][0].to_string());

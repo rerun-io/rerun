@@ -15,8 +15,14 @@ pub fn format_tensor_shape(shape: &[re_log_types::field_types::TensorDimension])
 }
 
 impl DataUi for re_log_types::field_types::Tensor {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
-        ClassicTensor::from(self).data_ui(ctx, ui, verbosity);
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ClassicTensor::from(self).data_ui(ctx, ui, verbosity, query);
     }
 }
 
@@ -26,6 +32,7 @@ impl DataUi for ClassicTensor {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: crate::ui::UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
     ) {
         let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
 

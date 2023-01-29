@@ -13,18 +13,30 @@ use super::{
 };
 
 impl DataUi for ObjPath {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
         InstanceId {
             obj_path: self.clone(),
             instance_index: None,
         }
-        .data_ui(ctx, ui, verbosity);
+        .data_ui(ctx, ui, verbosity, query);
     }
 }
 
 impl DataUi for InstanceId {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
-        generic_arrow_ui(ctx, ui, self, verbosity);
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        generic_arrow_ui(ctx, ui, self, verbosity, query);
     }
 }
 
@@ -33,18 +45,11 @@ fn generic_arrow_ui(
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
     _verbosity: UiVerbosity,
+    query: &re_arrow_store::LatestAtQuery,
 ) {
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
 
-    let Some(time) = ctx.rec_cfg.time_ctrl.time_int() else {
-        ui.label(ctx.re_ui.error_text("No current time."));
-        return;
-    };
-
-    let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
-
-    let Some(mut components) = store.all_components(timeline, &instance_id.obj_path)
+    let Some(mut components) = store.all_components(&query.timeline, &instance_id.obj_path)
     else {
         ui.label("No Components");
         return ;
@@ -57,7 +62,7 @@ fn generic_arrow_ui(
             for component_name in components {
                 let component_data = get_component_with_instances(
                     store,
-                    &query,
+                    query,
                     &instance_id.obj_path,
                     component_name,
                 );
@@ -83,7 +88,7 @@ fn generic_arrow_ui(
                     }
                     // If an `instance_index` wasn't provided, just report the number of values
                     (Ok(component_data), None) => {
-                        arrow_component_ui(ctx, ui, &component_data, UiVerbosity::Small);
+                        arrow_component_ui(ctx, ui, &component_data, UiVerbosity::Small, query);
                     }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
@@ -91,6 +96,7 @@ fn generic_arrow_ui(
                             ctx,
                             ui,
                             UiVerbosity::Small,
+                            query,
                             &component_data,
                             instance,
                         );

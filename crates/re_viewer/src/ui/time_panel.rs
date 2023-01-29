@@ -734,7 +734,8 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
             if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
                 ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
-                        msg.data_ui(ctx, ui, crate::UiVerbosity::Small);
+                        let query = ctx.rec_cfg.time_ctrl.current_query(); // TODO(emilk): use the hovered time instead!
+                        msg.data_ui(ctx, ui, crate::UiVerbosity::Small, &query);
                     });
                 });
             }
