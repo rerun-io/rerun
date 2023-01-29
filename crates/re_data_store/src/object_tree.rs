@@ -337,20 +337,6 @@ impl DataColumns {
         }
     }
 
-    pub fn populate_timeless(&mut self, time_point: &TimePoint) {
-        // For any timeline in `time_point` populate an initial entry from the current
-        // `timeless_msgs` seed.
-        for (timeline, _) in time_point.iter() {
-            self.times.entry(*timeline).or_insert_with(|| {
-                if self.timeless_msgs.is_empty() {
-                    Default::default()
-                } else {
-                    [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
-                }
-            });
-        }
-    }
-
     pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             times,
