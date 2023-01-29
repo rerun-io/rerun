@@ -7,7 +7,7 @@ use re_query::{get_component_with_instances, QueryError};
 
 use crate::{
     misc::ViewerContext,
-    ui::{annotations::AnnotationMap, format_component_name, Preview},
+    ui::{annotations::AnnotationMap, format_component_name, UiVerbosity},
 };
 
 use super::{
@@ -16,17 +16,17 @@ use super::{
 };
 
 impl DataUi for ObjPath {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
         InstanceId {
             obj_path: self.clone(),
             instance_index: None,
         }
-        .data_ui(ctx, ui, preview);
+        .data_ui(ctx, ui, verbosity);
     }
 }
 
 impl DataUi for InstanceId {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if ctx
             .log_db
@@ -35,9 +35,9 @@ impl DataUi for InstanceId {
             .all_components(timeline, &self.obj_path)
             .is_some()
         {
-            generic_arrow_ui(ctx, ui, self, preview);
+            generic_arrow_ui(ctx, ui, self, verbosity);
         } else {
-            generic_instance_ui(ctx, ui, self, preview);
+            generic_instance_ui(ctx, ui, self, verbosity);
         }
     }
 }
@@ -46,7 +46,7 @@ fn generic_arrow_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
-    _preview: Preview,
+    _verbosity: UiVerbosity,
 ) {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
@@ -97,11 +97,17 @@ fn generic_arrow_ui(
                     }
                     // If an `instance_index` wasn't provided, just report the number of values
                     (Ok(component_data), None) => {
-                        arrow_component_ui(ctx, ui, &component_data, Preview::Small);
+                        arrow_component_ui(ctx, ui, &component_data, UiVerbosity::Small);
                     }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
-                        arrow_component_elem_ui(ctx, ui, Preview::Small, &component_data, instance);
+                        arrow_component_elem_ui(
+                            ctx,
+                            ui,
+                            UiVerbosity::Small,
+                            &component_data,
+                            instance,
+                        );
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`
@@ -120,7 +126,7 @@ fn generic_instance_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
-    preview: Preview,
+    verbosity: UiVerbosity,
 ) {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let Some(store) = ctx.log_db.obj_db.store.get(timeline) else {
@@ -165,9 +171,9 @@ fn generic_instance_ui(
                                     keypoint_id = Some(KeypointId(id as _));
                                 }
                             }
-                            data.data_ui(ctx, ui, Preview::Small);
+                            data.data_ui(ctx, ui, UiVerbosity::Small);
                         } else {
-                            data_vec.data_ui(ctx, ui, Preview::Small);
+                            data_vec.data_ui(ctx, ui, UiVerbosity::Small);
                         }
                     }
                     Err(err) => {
@@ -222,7 +228,7 @@ fn generic_instance_ui(
                             .or(class_annotation.color.as_ref())
                         {
                             ui.label("color");
-                            color.data_ui(ctx, ui, preview);
+                            color.data_ui(ctx, ui, verbosity);
                             ui.end_row();
                         }
                     } else {

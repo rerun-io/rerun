@@ -7,7 +7,7 @@ impl DataUi for DataPath {
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: crate::ui::Preview,
+        verbosity: crate::ui::UiVerbosity,
     ) {
         ui.horizontal(|ui| {
             ui.label("Object path:");
@@ -33,7 +33,7 @@ impl DataUi for DataPath {
                     Err(err) => {
                         ui.label(format!("Error: {}", err));
                     }
-                    Ok(component_data) => arrow_component_ui(ctx, ui, &component_data, preview),
+                    Ok(component_data) => arrow_component_ui(ctx, ui, &component_data, verbosity),
                 }
             } else {
                 let time_query = re_data_store::TimeQuery::LatestAt(time_i64);
@@ -47,9 +47,9 @@ impl DataUi for DataPath {
                     Some(Ok((_, data_vec))) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            data.data_ui(ctx, ui, preview);
+                            data.data_ui(ctx, ui, verbosity);
                         } else {
-                            data_vec.data_ui(ctx, ui, preview);
+                            data_vec.data_ui(ctx, ui, verbosity);
                         }
                     }
                     Some(Err(err)) => {

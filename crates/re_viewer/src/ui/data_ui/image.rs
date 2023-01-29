@@ -8,30 +8,35 @@ use re_log_types::{
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
-use super::{DataUi, Preview};
+use super::{DataUi, UiVerbosity};
 
 pub fn format_tensor_shape(shape: &[re_log_types::field_types::TensorDimension]) -> String {
     format!("[{}]", shape.iter().join(", "))
 }
 
 impl DataUi for re_log_types::field_types::Tensor {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
-        ClassicTensor::from(self).data_ui(ctx, ui, preview);
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, verbosity: UiVerbosity) {
+        ClassicTensor::from(self).data_ui(ctx, ui, verbosity);
     }
 }
 
 impl DataUi for ClassicTensor {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: crate::ui::Preview) {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: crate::ui::UiVerbosity,
+    ) {
         let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
 
-        match preview {
-            Preview::Small | Preview::MaxHeight(_) => {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.horizontal_centered(|ui| {
                     if let Some(retained_img) = tensor_view.retained_img {
-                        let max_height = match preview {
-                            Preview::Small => 24.0,
-                            Preview::Large => 128.0,
-                            Preview::MaxHeight(height) => height,
+                        let max_height = match verbosity {
+                            UiVerbosity::Small => 24.0,
+                            UiVerbosity::Large => 128.0,
+                            UiVerbosity::MaxHeight(height) => height,
                         };
                         retained_img
                             .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))
@@ -49,7 +54,7 @@ impl DataUi for ClassicTensor {
                 });
             }
 
-            Preview::Large => {
+            UiVerbosity::Large => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
                     tensor_dtype_and_shape_ui(ui, self);

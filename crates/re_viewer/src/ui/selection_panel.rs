@@ -3,7 +3,7 @@ use re_log_types::TimeType;
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Preview, Selection, ViewerContext,
+    Selection, UiVerbosity, ViewerContext,
 };
 
 use super::{data_ui::DataUi, space_view::ViewState};
@@ -69,7 +69,7 @@ impl SelectionPanel {
                         egui::CollapsingHeader::new("Data")
                             .default_open(true)
                             .show(ui, |ui| {
-                                data_ui(ui, ctx, selection, Preview::Large);
+                                data_ui(ui, ctx, selection, UiVerbosity::Large);
                             });
 
                         egui::CollapsingHeader::new("Blueprint")
@@ -162,20 +162,20 @@ fn data_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     selection: &Selection,
-    preview: Preview,
+    verbosity: UiVerbosity,
 ) {
     match selection {
         Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
-            msg_id.data_ui(ctx, ui, preview);
+            msg_id.data_ui(ctx, ui, verbosity);
         }
         Selection::DataPath(data_path) => {
-            data_path.data_ui(ctx, ui, preview);
+            data_path.data_ui(ctx, ui, verbosity);
         }
         Selection::Instance(_, instance_id) => {
-            instance_id.data_ui(ctx, ui, preview);
+            instance_id.data_ui(ctx, ui, verbosity);
         }
     }
 }

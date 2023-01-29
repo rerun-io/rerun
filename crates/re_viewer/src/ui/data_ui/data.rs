@@ -4,7 +4,7 @@ use re_log_types::{
     Transform, ViewCoordinates,
 };
 
-use crate::ui::Preview;
+use crate::ui::UiVerbosity;
 
 use super::DataUi;
 
@@ -13,7 +13,7 @@ impl DataUi for Data {
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: crate::ui::Preview,
+        verbosity: crate::ui::UiVerbosity,
     ) {
         match self {
             Data::Bool(value) => {
@@ -28,7 +28,7 @@ impl DataUi for Data {
             Data::F64(value) => {
                 ui.label(value.to_string());
             }
-            Data::Color(value) => value.data_ui(ctx, ui, preview),
+            Data::Color(value) => value.data_ui(ctx, ui, verbosity),
             Data::String(string) => {
                 ui.label(format!("{string:?}"));
             }
@@ -59,16 +59,16 @@ impl DataUi for Data {
                     "Arrow3D(origin: [{x:.1},{y:.1},{z:.1}], vector: [{v0:.1},{v1:.1},{v2:.1}])"
                 ));
             }
-            Data::Transform(transform) => transform.data_ui(ctx, ui, preview),
-            Data::ViewCoordinates(coordinates) => coordinates.data_ui(ctx, ui, preview),
-            Data::AnnotationContext(context) => context.data_ui(ctx, ui, preview),
-            Data::Tensor(tensor) => tensor.data_ui(ctx, ui, preview),
+            Data::Transform(transform) => transform.data_ui(ctx, ui, verbosity),
+            Data::ViewCoordinates(coordinates) => coordinates.data_ui(ctx, ui, verbosity),
+            Data::AnnotationContext(context) => context.data_ui(ctx, ui, verbosity),
+            Data::Tensor(tensor) => tensor.data_ui(ctx, ui, verbosity),
 
             Data::ObjPath(obj_path) => {
                 ctx.obj_path_button(ui, None, obj_path);
             }
 
-            Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, preview),
+            Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, verbosity),
         }
     }
 }
@@ -78,7 +78,7 @@ impl DataUi for [u8; 4] {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _preview: Preview,
+        _verbosity: UiVerbosity,
     ) {
         let [r, g, b, a] = self;
         let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
@@ -97,7 +97,7 @@ impl DataUi for ColorRGBA {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _preview: Preview,
+        _verbosity: UiVerbosity,
     ) {
         let [r, g, b, a] = self.to_array();
         let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
@@ -116,7 +116,7 @@ impl DataUi for DataVec {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _preview: Preview,
+        _verbosity: UiVerbosity,
     ) {
         ui.label(format!("{} x {:?}", self.len(), self.element_data_type()));
     }
@@ -127,14 +127,14 @@ impl DataUi for Transform {
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: Preview,
+        verbosity: UiVerbosity,
     ) {
         match self {
             Transform::Unknown => {
                 ui.label("Unknown transform");
             }
-            Transform::Rigid3(rigid3) => rigid3.data_ui(ctx, ui, preview),
-            Transform::Pinhole(pinhole) => pinhole.data_ui(ctx, ui, preview),
+            Transform::Rigid3(rigid3) => rigid3.data_ui(ctx, ui, verbosity),
+            Transform::Pinhole(pinhole) => pinhole.data_ui(ctx, ui, verbosity),
         }
     }
 }
@@ -144,13 +144,13 @@ impl DataUi for ViewCoordinates {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: Preview,
+        verbosity: UiVerbosity,
     ) {
-        match preview {
-            Preview::Small | Preview::MaxHeight(_) => {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
-            Preview::Large => {
+            UiVerbosity::Large => {
                 ui.label(self.describe());
             }
         }
@@ -162,16 +162,16 @@ impl DataUi for Rigid3 {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: Preview,
+        verbosity: UiVerbosity,
     ) {
-        match preview {
-            Preview::Small | Preview::MaxHeight(_) => {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(_ctx, ui, Preview::Large);
+                    self.data_ui(_ctx, ui, UiVerbosity::Large);
                 });
             }
 
-            Preview::Large => {
+            UiVerbosity::Large => {
                 let pose = self.parent_from_child(); // TODO(emilk): which one to show?
                 let rotation = pose.rotation();
                 let translation = pose.translation();
@@ -200,16 +200,16 @@ impl DataUi for Pinhole {
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: Preview,
+        verbosity: UiVerbosity,
     ) {
-        match preview {
-            Preview::Small | Preview::MaxHeight(_) => {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, Preview::Large);
+                    self.data_ui(ctx, ui, UiVerbosity::Large);
                 });
             }
 
-            Preview::Large => {
+            UiVerbosity::Large => {
                 let Pinhole {
                     image_from_cam: image_from_view,
                     resolution,
@@ -229,7 +229,7 @@ impl DataUi for Pinhole {
 
                         ui.label("image from view:");
                         ui.indent("image_from_view", |ui| {
-                            image_from_view.data_ui(ctx, ui, preview);
+                            image_from_view.data_ui(ctx, ui, verbosity);
                         });
                     });
                 });
@@ -243,7 +243,7 @@ impl DataUi for Mat3x3 {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _preview: Preview,
+        _verbosity: UiVerbosity,
     ) {
         egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
             ui.monospace(self[0][0].to_string());

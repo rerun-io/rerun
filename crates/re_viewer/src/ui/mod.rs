@@ -33,7 +33,7 @@ pub use self::data_blueprint::DataBlueprintGroupHandle;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 pub use self::viewport::Viewport;
 
-pub(crate) use data_ui::Preview;
+pub(crate) use data_ui::UiVerbosity;
 use re_log_types::FieldOrComponent;
 
 pub fn format_component_name(name: &re_data_store::FieldName) -> String {

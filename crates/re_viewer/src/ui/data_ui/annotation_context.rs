@@ -2,7 +2,7 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_log_types::{context::AnnotationInfo, AnnotationContext};
 
-use crate::ui::{annotations::auto_color, Preview};
+use crate::ui::{annotations::auto_color, UiVerbosity};
 
 use super::DataUi;
 
@@ -13,16 +13,16 @@ impl DataUi for AnnotationContext {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        preview: crate::ui::Preview,
+        verbosity: crate::ui::UiVerbosity,
     ) {
-        match preview {
-            Preview::Small | Preview::MaxHeight(_) => {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label(format!(
                     "AnnotationContext with {} classes",
                     self.class_map.len()
                 ));
             }
-            Preview::Large => {
+            UiVerbosity::Large => {
                 let row_height = re_ui::ReUi::table_line_height();
                 ui.vertical(|ui| {
                     annotation_info_table_ui(
