@@ -4,7 +4,6 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
-use re_log::warn_once;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
@@ -224,11 +223,7 @@ impl ObjDb {
         }
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         crate::profile_function!();
 
         let Self {
@@ -241,10 +236,10 @@ impl ObjDb {
 
         {
             crate::profile_scope!("tree");
-            tree.retain(keep_msg_ids, drop_msg_ids);
+            tree.purge(drop_msg_ids);
         }
 
-        store.retain(keep_msg_ids, drop_msg_ids);
+        store.purge(drop_msg_ids);
     }
 }
 
@@ -435,13 +430,6 @@ impl LogDb {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         crate::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
-        self.purge_fraction_of_ram_arrow(fraction_to_purge);
-    }
-
-    fn purge_fraction_of_ram_arrow(&mut self, fraction_to_purge: f32) {
-        crate::profile_function!();
-
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let drop_msg_ids = {
             let msg_id_chunks = self.obj_db.arrow_store.gc(
@@ -478,6 +466,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.retain(None, Some(&drop_msg_ids));
+        obj_db.purge(&drop_msg_ids);
     }
 }

@@ -149,11 +149,7 @@ impl DataStore {
         }
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         crate::profile_function!();
         let Self {
             store_from_timeline,
@@ -162,7 +158,7 @@ impl DataStore {
         for (timeline, (_, timeline_store)) in store_from_timeline {
             profile_scope!("purge_timeline", timeline.name().as_str());
             _ = timeline; // silence unused-variable warning on wasm
-            timeline_store.retain(keep_msg_ids, drop_msg_ids);
+            timeline_store.purge(drop_msg_ids);
         }
     }
 
