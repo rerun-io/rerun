@@ -43,17 +43,6 @@ impl SceneText {
     ) {
         crate::profile_function!();
 
-        self.load_text_entries_arrow(ctx, query, filters);
-    }
-
-    fn load_text_entries_arrow(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        filters: &ViewTextFilters,
-    ) {
-        crate::profile_function!();
-
         let store = &ctx.log_db.obj_db.arrow_store;
 
         for obj_path in query.obj_paths {

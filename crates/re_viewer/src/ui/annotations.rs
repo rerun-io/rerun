@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{FieldName, ObjPath, TimeQuery};
+use re_data_store::ObjPath;
 use re_log_types::{
     context::{AnnotationInfo, ClassDescription},
     field_types::{ClassId, KeypointId},
@@ -108,31 +108,10 @@ impl ResolvedAnnotationInfo {
 pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
 impl AnnotationMap {
-    fn load_classic(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-
-        for (obj_path, field_store) in
-            query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))
-        {
-            if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
-            {
-                let time_query = TimeQuery::LatestAt(query.latest_at.as_i64());
-                mono_field_store.query(&time_query, |_time, msg_id, context| {
-                    self.0.entry(obj_path.clone()).or_insert_with(|| {
-                        Arc::new(Annotations {
-                            msg_id: *msg_id,
-                            context: context.clone(),
-                        })
-                    });
-                });
-            }
-        }
-    }
-
     /// For each `ObjPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
     ///
     /// An object is considered its own (nearest) ancestor.
-    fn load_arrow(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let mut visited = IntSet::<ObjPath>::default();
@@ -192,12 +171,6 @@ impl AnnotationMap {
                 next_parent = parent.parent();
             }
         }
-    }
-
-    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-        self.load_classic(ctx, query);
-        self.load_arrow(ctx, query);
     }
 
     // Search through the all prefixes of this object path until we find a
