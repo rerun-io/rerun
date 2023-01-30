@@ -112,7 +112,7 @@ impl DataUi for PathOp {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
+            PathOp::ClearComponents(obj_path) => ui.label(format!("ClearComponents: {obj_path}")),
             PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),
         };
     }

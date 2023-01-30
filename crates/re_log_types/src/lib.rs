@@ -235,10 +235,10 @@ pub struct PathOpMsg {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum PathOp {
-    // Clear all the fields stored at an [`ObjPath`]
-    ClearFields(ObjPath),
+    // Clear all the components stored at an [`ObjPath`]
+    ClearComponents(ObjPath),
 
-    // Clear all the fields of an `[ObjPath]` and any descendents.
+    // Clear all the components of an `[ObjPath]` and any descendants.
     ClearRecursive(ObjPath),
 }
 
@@ -247,13 +247,13 @@ impl PathOp {
         if recursive {
             PathOp::ClearRecursive(obj_path)
         } else {
-            PathOp::ClearFields(obj_path)
+            PathOp::ClearComponents(obj_path)
         }
     }
 
     pub fn obj_path(&self) -> &ObjPath {
         match &self {
-            PathOp::ClearFields(path) | PathOp::ClearRecursive(path) => path,
+            PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
         }
     }
 }

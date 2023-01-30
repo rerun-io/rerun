@@ -181,7 +181,7 @@ impl ObjectTree {
 
         // TODO(jleibs): Refactor this as separate functions
         match path_op {
-            PathOp::ClearFields(obj_path) => {
+            PathOp::ClearComponents(obj_path) => {
                 // Track that any future fields need a Null at the right
                 // time-point when added.
                 leaf.nonrecursive_clears
