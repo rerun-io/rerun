@@ -9,7 +9,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
     field_types::{Instance, Rect2D},
     msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    ComponentName, EntityPath, MsgId, TimeType, Timeline,
 };
 
 // ---

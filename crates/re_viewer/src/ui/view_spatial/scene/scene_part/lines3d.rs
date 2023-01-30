@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, LineStrip3D, Radius},
     msg_bundle::Component,
@@ -24,14 +24,14 @@ impl Lines3DPart {
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
         entity_view: &EntityView<LineStrip3D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
         object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
-        let default_color = DefaultColor::ObjPath(ent_path);
+        let default_color = DefaultColor::EntityPath(ent_path);
 
         let mut line_batch = scene
             .primitives

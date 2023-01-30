@@ -4,7 +4,7 @@ use egui::{
     TextFormat, TextStyle, Vec2,
 };
 use macaw::IsoTransform;
-use re_data_store::ObjPath;
+use re_data_store::EntityPath;
 use re_log_types::field_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
@@ -223,7 +223,7 @@ pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
-    space: &ObjPath,
+    space: &EntityPath,
     scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
@@ -278,7 +278,7 @@ fn view_2d_scrollable(
     ctx: &mut ViewerContext<'_>,
     parent_ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
-    space: &ObjPath,
+    space: &EntityPath,
     mut scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
@@ -573,7 +573,7 @@ fn setup_target_config(
 
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
-    space: &ObjPath,
+    space: &EntityPath,
     response: &Response,
     space_from_ui: &RectTransform,
     z: Option<f32>,
@@ -595,7 +595,7 @@ fn project_onto_other_spaces(
 fn show_projections_from_3d_space(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
-    space: &ObjPath,
+    space: &EntityPath,
     ui_from_space: &RectTransform,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();

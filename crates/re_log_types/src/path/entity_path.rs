@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use crate::{hash::Hash128, path::obj_path_impl::ObjPathImpl, ObjPathComp};
+use crate::{hash::Hash128, path::entity_path_impl::EntityPathImpl, EntityPathComponent};
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash of [`ObjPath`] with negligible risk of collision.
+/// A 128 bit hash of [`EntityPath`] with negligible risk of collision.
 #[derive(Copy, Clone, Eq)]
-pub struct ObjPathHash(Hash128);
+pub struct EntityPathHash(Hash128);
 
-impl ObjPathHash {
+impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
-    pub const NONE: ObjPathHash = ObjPathHash(Hash128::ZERO);
+    pub const NONE: EntityPathHash = EntityPathHash(Hash128::ZERO);
 
     #[inline]
     pub fn hash64(&self) -> u64 {
@@ -28,26 +28,26 @@ impl ObjPathHash {
     }
 }
 
-impl std::hash::Hash for ObjPathHash {
+impl std::hash::Hash for EntityPathHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.0.hash64());
     }
 }
 
-impl std::cmp::PartialEq for ObjPathHash {
+impl std::cmp::PartialEq for EntityPathHash {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
 
-impl nohash_hasher::IsEnabled for ObjPathHash {}
+impl nohash_hasher::IsEnabled for EntityPathHash {}
 
-impl std::fmt::Debug for ObjPathHash {
+impl std::fmt::Debug for EntityPathHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
-            "ObjPathHash({:016X}{:016X})",
+            "EntityPathHash({:016X}{:016X})",
             self.0.first64(),
             self.0.second64()
         ))
@@ -62,33 +62,33 @@ impl std::fmt::Debug for ObjPathHash {
 ///
 /// Implements [`nohash_hasher::IsEnabled`].
 #[derive(Clone, Eq)]
-pub struct ObjPath {
+pub struct EntityPath {
     /// precomputed hash
-    hash: ObjPathHash,
+    hash: EntityPathHash,
 
-    // [`Arc`] used for cheap cloning, and to keep down the size of [`ObjPath`].
+    // [`Arc`] used for cheap cloning, and to keep down the size of [`EntityPath`].
     // We mostly use the hash for lookups and comparisons anyway!
-    path: Arc<ObjPathImpl>,
+    path: Arc<EntityPathImpl>,
 }
 
-impl ObjPath {
+impl EntityPath {
     #[inline]
     pub fn root() -> Self {
-        Self::from(ObjPathImpl::root())
+        Self::from(EntityPathImpl::root())
     }
 
     #[inline]
-    pub fn new(components: Vec<ObjPathComp>) -> Self {
+    pub fn new(components: Vec<EntityPathComponent>) -> Self {
         Self::from(components)
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &ObjPathComp> {
+    pub fn iter(&self) -> impl Iterator<Item = &EntityPathComponent> {
         self.path.iter()
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[ObjPathComp] {
+    pub fn as_slice(&self) -> &[EntityPathComponent] {
         self.path.as_slice()
     }
 
@@ -99,7 +99,7 @@ impl ObjPath {
 
     // Is this a strict descendant of the given path.
     #[inline]
-    pub fn is_descendant_of(&self, other: &ObjPath) -> bool {
+    pub fn is_descendant_of(&self, other: &EntityPath) -> bool {
         other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
@@ -111,7 +111,7 @@ impl ObjPath {
     }
 
     #[inline]
-    pub fn hash(&self) -> ObjPathHash {
+    pub fn hash(&self) -> EntityPathHash {
         self.hash
     }
 
@@ -128,47 +128,47 @@ impl ObjPath {
     }
 }
 
-impl From<ObjPathImpl> for ObjPath {
+impl From<EntityPathImpl> for EntityPath {
     #[inline]
-    fn from(path: ObjPathImpl) -> Self {
+    fn from(path: EntityPathImpl) -> Self {
         Self {
-            hash: ObjPathHash(Hash128::hash(&path)),
+            hash: EntityPathHash(Hash128::hash(&path)),
             path: Arc::new(path),
         }
     }
 }
 
-impl From<Vec<ObjPathComp>> for ObjPath {
+impl From<Vec<EntityPathComponent>> for EntityPath {
     #[inline]
-    fn from(path: Vec<ObjPathComp>) -> Self {
-        Self::from(ObjPathImpl::from(path.iter()))
+    fn from(path: Vec<EntityPathComponent>) -> Self {
+        Self::from(EntityPathImpl::from(path.iter()))
     }
 }
 
-impl From<&[ObjPathComp]> for ObjPath {
+impl From<&[EntityPathComponent]> for EntityPath {
     #[inline]
-    fn from(path: &[ObjPathComp]) -> Self {
-        Self::from(ObjPathImpl::from(path.iter()))
+    fn from(path: &[EntityPathComponent]) -> Self {
+        Self::from(EntityPathImpl::from(path.iter()))
     }
 }
 
-impl From<&str> for ObjPath {
+impl From<&str> for EntityPath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::from(vec![ObjPathComp::from(component)])
+        Self::from(vec![EntityPathComponent::from(component)])
     }
 }
 
-impl From<String> for ObjPath {
+impl From<String> for EntityPath {
     #[inline]
     fn from(component: String) -> Self {
-        Self::from(vec![ObjPathComp::from(component)])
+        Self::from(vec![EntityPathComponent::from(component)])
     }
 }
 
-impl From<ObjPath> for String {
+impl From<EntityPath> for String {
     #[inline]
-    fn from(path: ObjPath) -> Self {
+    fn from(path: EntityPath) -> Self {
         path.to_string()
     }
 }
@@ -176,7 +176,7 @@ impl From<ObjPath> for String {
 // ----------------------------------------------------------------------------
 
 #[cfg(feature = "serde")]
-impl serde::Serialize for ObjPath {
+impl serde::Serialize for EntityPath {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.path.serialize(serializer)
@@ -184,40 +184,40 @@ impl serde::Serialize for ObjPath {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for ObjPath {
+impl<'de> serde::Deserialize<'de> for EntityPath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ObjPathImpl::deserialize(deserializer).map(Self::from)
+        EntityPathImpl::deserialize(deserializer).map(Self::from)
     }
 }
 
 // ----------------------------------------------------------------------------
 
-impl std::cmp::PartialEq for ObjPath {
+impl std::cmp::PartialEq for EntityPath {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.hash == other.hash // much faster, and low risk of collision
     }
 }
 
-impl std::hash::Hash for ObjPath {
+impl std::hash::Hash for EntityPath {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.hash.hash(state);
     }
 }
 
-impl nohash_hasher::IsEnabled for ObjPath {}
+impl nohash_hasher::IsEnabled for EntityPath {}
 
 // ----------------------------------------------------------------------------
 
-impl std::cmp::Ord for ObjPath {
+impl std::cmp::Ord for EntityPath {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.path.cmp(&other.path)
     }
 }
 
-impl std::cmp::PartialOrd for ObjPath {
+impl std::cmp::PartialOrd for EntityPath {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.path.cmp(&other.path))
     }
@@ -225,13 +225,13 @@ impl std::cmp::PartialOrd for ObjPath {
 
 // ----------------------------------------------------------------------------
 
-impl std::fmt::Debug for ObjPath {
+impl std::fmt::Debug for EntityPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.path.fmt(f)
     }
 }
 
-impl std::fmt::Display for ObjPath {
+impl std::fmt::Display for EntityPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.path.fmt(f)
     }

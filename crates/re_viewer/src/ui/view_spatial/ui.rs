@@ -1,4 +1,4 @@
-use re_data_store::ObjPath;
+use re_data_store::EntityPath;
 use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
@@ -223,7 +223,7 @@ impl ViewSpatialState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space: &ObjPath,
+        space: &EntityPath,
         scene: SceneSpatial,
         space_info: &SpaceInfo,
         space_view_id: SpaceViewId,

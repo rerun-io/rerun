@@ -4,7 +4,7 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{EntityPath, InstanceIdHash, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
@@ -125,7 +125,7 @@ impl ImagesPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         properties: &ObjectProps,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {

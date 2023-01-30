@@ -12,7 +12,7 @@ use re_log_types::{
     },
     field_types::Instance,
     msg_bundle::Component as _,
-    ObjPath as EntityPath, Time,
+    EntityPath, Time,
 };
 
 // ---

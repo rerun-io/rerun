@@ -1,7 +1,7 @@
 use egui::Color32;
 use glam::Mat4;
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance},
     msg_bundle::Component,
@@ -29,14 +29,14 @@ impl MeshPart {
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
         entity_view: &EntityView<Mesh3D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
         ctx: &mut ViewerContext<'_>,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
-        let _default_color = DefaultColor::ObjPath(ent_path);
+        let _default_color = DefaultColor::EntityPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
         let object_highlight = highlights.object_highlight(ent_path.hash());
 

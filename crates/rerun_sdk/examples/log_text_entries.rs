@@ -3,7 +3,7 @@ use clap::Parser;
 use re_log_types::{
     field_types::{ColorRGBA, TextEntry},
     msg_bundle::MsgBundle,
-    LogMsg, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline,
+    EntityPath, LogMsg, MsgId, Time, TimePoint, TimeType, Timeline,
 };
 use rerun::Session;
 use rerun_sdk as rerun;
@@ -54,7 +54,7 @@ fn main() -> std::process::ExitCode {
         }
     }
 
-    let path = ObjPath::from("my/text/logs");
+    let path = EntityPath::from("my/text/logs");
 
     // Send a single text entry.
     let text_entries = Some(vec![
@@ -147,7 +147,7 @@ impl From<LogLevel> for String {
 /// TODO(cmc): Make this fancier and move into the SDK
 fn log_text_entries(
     session: &mut Session,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     text_entries: Option<Vec<TextEntry>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {

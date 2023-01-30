@@ -27,7 +27,7 @@ use crate::{
     misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::scene::SceneQuery,
 };
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{EntityPath, InstanceIdHash, ObjectProps};
 
 pub trait ScenePart {
     fn load(
@@ -44,7 +44,7 @@ pub trait ScenePart {
 ///
 /// Takes into account the currently the object properties, currently highlighted objects, and number of instances.
 pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
-    ent_path: &ObjPath,
+    ent_path: &EntityPath,
     instance: re_log_types::field_types::Instance,
     entity_view: &re_query::EntityView<T>,
     props: &ObjectProps,

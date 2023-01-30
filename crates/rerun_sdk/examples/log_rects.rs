@@ -3,7 +3,7 @@ use clap::Parser;
 use re_log_types::{
     field_types::{ColorRGBA, Rect2D},
     msg_bundle::MsgBundle,
-    LogMsg, MsgId, ObjPath,
+    EntityPath, LogMsg, MsgId,
 };
 use rerun::Session;
 use rerun_sdk as rerun;
@@ -54,7 +54,7 @@ fn main() -> std::process::ExitCode {
         }
     }
 
-    let path = ObjPath::from("worlds/rects");
+    let path = EntityPath::from("worlds/rects");
 
     // Send a single rect
     let rects = Some(vec![Rect2D::from_xywh(0.0, 0.0, 8.0, 8.0)]);
@@ -109,7 +109,7 @@ fn main() -> std::process::ExitCode {
 /// TODO(jleibs): Make this fancier and move into the SDK
 fn log_rects(
     session: &mut Session,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     rects: Option<Vec<Rect2D>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {

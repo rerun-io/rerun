@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, TimeInt};
+use re_data_store::{EntityPath, TimeInt};
 use re_log_types::field_types::{Tensor, TensorTrait};
 
 use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
@@ -557,7 +557,7 @@ impl Viewport {
         .on_hover_text("Add new space view.");
     }
 
-    pub fn space_views_containing_obj_path(&self, path: &ObjPath) -> Vec<SpaceViewId> {
+    pub fn space_views_containing_obj_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {

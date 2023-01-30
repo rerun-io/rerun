@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::{EntityPath, InstanceIdHash};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
@@ -26,7 +26,7 @@ impl Boxes2DPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        obj_path: &ObjPath,
+        obj_path: &EntityPath,
         world_from_obj: Mat4,
         instance_hash: InstanceIdHash,
         rect: &Rect2D,
@@ -42,7 +42,7 @@ impl Boxes2DPart {
         let annotation_info = annotations.class_description(class_id).annotation_info();
         let mut color = annotation_info.color(
             color.map(|c| c.to_array()).as_ref(),
-            DefaultColor::ObjPath(obj_path),
+            DefaultColor::EntityPath(obj_path),
         );
         let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
         let label = annotation_info.label(label.map(|l| l.0).as_ref());

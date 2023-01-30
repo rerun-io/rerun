@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
@@ -72,12 +72,12 @@ impl Points3DPart {
 
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
-        ent_path: &'a ObjPath,
+        ent_path: &'a EntityPath,
         highlights: &'a [InteractionHighlight],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         crate::profile_function!();
-        let default_color = DefaultColor::ObjPath(ent_path);
+        let default_color = DefaultColor::EntityPath(ent_path);
 
         let colors = itertools::izip!(
             highlights.iter(),
@@ -137,7 +137,7 @@ impl Points3DPart {
         query: &SceneQuery<'_>,
         properties: &ObjectProps,
         entity_view: &EntityView<Point3D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
         object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) -> Result<(), QueryError> {

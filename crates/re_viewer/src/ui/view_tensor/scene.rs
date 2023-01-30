@@ -1,5 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{Index, InstanceId, ObjPath, ObjectProps};
+use re_data_store::{EntityPath, Index, InstanceId, ObjectProps};
 use re_log_types::{
     field_types::{Instance, Tensor},
     ClassicTensor,
@@ -42,7 +42,7 @@ impl SceneTensor {
 
     fn load_tensor_entity(
         &mut self,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         _props: &ObjectProps,
         entity_view: &EntityView<Tensor>,
     ) -> Result<(), QueryError> {

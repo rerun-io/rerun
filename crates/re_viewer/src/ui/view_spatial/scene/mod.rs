@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::{EntityPath, InstanceIdHash};
 use re_log_types::{
     field_types::{ClassId, KeypointId, Tensor},
     IndexHash, MeshId,
@@ -127,7 +127,7 @@ pub struct SceneSpatial {
 }
 
 fn instance_hash_if_interactive(
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     instance_index: Option<&IndexHash>,
     interactive: bool,
 ) -> InstanceIdHash {
@@ -249,7 +249,7 @@ impl SceneSpatial {
 
     fn load_keypoint_connections(
         &mut self,
-        obj_path: &re_data_store::ObjPath,
+        obj_path: &re_data_store::EntityPath,
         keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
@@ -287,7 +287,7 @@ impl SceneSpatial {
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-    pub fn preferred_navigation_mode(&self, space_info_path: &ObjPath) -> SpatialNavigationMode {
+    pub fn preferred_navigation_mode(&self, space_info_path: &EntityPath) -> SpatialNavigationMode {
         // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
         if self
             .space_cameras

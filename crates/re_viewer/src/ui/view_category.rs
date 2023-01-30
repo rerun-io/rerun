@@ -1,5 +1,5 @@
 use re_arrow_store::{LatestAtQuery, TimeInt};
-use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
+use re_data_store::{query_transform, EntityPath, LogDb, Timeline};
 use re_log_types::{
     field_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
@@ -53,7 +53,7 @@ pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 pub fn categorize_obj_path(
     timeline: Timeline,
     log_db: &LogDb,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 
@@ -77,7 +77,7 @@ pub fn categorize_obj_path(
 pub fn categorize_arrow_obj_path(
     timeline: &Timeline,
     log_db: &LogDb,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 

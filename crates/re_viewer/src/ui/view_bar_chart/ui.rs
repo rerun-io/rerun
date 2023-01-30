@@ -2,7 +2,7 @@
 
 use egui::util::hash;
 
-use re_data_store::ObjPath as EntityPath;
+use re_data_store::EntityPath;
 use re_log::warn_once;
 use re_log_types::field_types::{self, Instance};
 

@@ -65,7 +65,9 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{parse_obj_path, ArrowMsg, ComponentName, MsgId, ObjPath, PathParseError, TimePoint};
+use crate::{
+    parse_obj_path, ArrowMsg, ComponentName, EntityPath, MsgId, PathParseError, TimePoint,
+};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -161,12 +163,12 @@ where
 ///
 /// Create a `MsgBundle` and add a component consisting of 2 [`crate::field_types::Rect2D`] values:
 /// ```
-/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
+/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
 /// let component = vec![
 ///     Rect2D::from_xywh(0.0, 0.0, 0.0, 0.0),
 ///     Rect2D::from_xywh(1.0, 1.0, 0.0, 0.0)
 /// ];
-/// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
+/// let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
 /// println!("{:?}", &bundle.components[0].value);
 /// ```
@@ -184,8 +186,8 @@ where
 /// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
 ///
 /// ```
-/// # use re_log_types::{ArrowMsg, field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
-/// # let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
+/// # use re_log_types::{ArrowMsg, field_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
+/// # let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
 /// let msg: ArrowMsg = bundle.try_into().unwrap();
 /// dbg!(&msg);
@@ -205,7 +207,7 @@ where
 pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
-    pub obj_path: ObjPath,
+    pub obj_path: EntityPath,
     pub time_point: TimePoint,
     pub components: Vec<ComponentBundle>,
 }
@@ -217,7 +219,7 @@ impl MsgBundle {
     /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
-        obj_path: ObjPath,
+        obj_path: EntityPath,
         time_point: TimePoint,
         components: Vec<ComponentBundle>,
     ) -> Self {
@@ -494,7 +496,7 @@ pub fn try_build_msg_bundle1<O, T, C0>(
     into_bundles: C0,
 ) -> Result<MsgBundle>
 where
-    O: Into<ObjPath>,
+    O: Into<EntityPath>,
     T: Into<TimePoint>,
     C0: TryInto<ComponentBundle>,
     MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
@@ -515,7 +517,7 @@ pub fn try_build_msg_bundle2<O, T, C0, C1>(
     into_bundles: (C0, C1),
 ) -> Result<MsgBundle>
 where
-    O: Into<ObjPath>,
+    O: Into<EntityPath>,
     T: Into<TimePoint>,
     C0: TryInto<ComponentBundle>,
     C1: TryInto<ComponentBundle>,
@@ -538,7 +540,7 @@ pub fn try_build_msg_bundle3<O, T, C0, C1, C2>(
     into_bundles: (C0, C1, C2),
 ) -> Result<MsgBundle>
 where
-    O: Into<ObjPath>,
+    O: Into<EntityPath>,
     T: Into<TimePoint>,
     C0: TryInto<ComponentBundle>,
     C1: TryInto<ComponentBundle>,

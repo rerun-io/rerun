@@ -14,8 +14,9 @@ use re_log_types::{
     context, coordinates,
     field_types::{ClassId, KeypointId, Label, TensorDimension, TensorId},
     msg_bundle::MsgBundle,
-    AnnotationContext, ApplicationId, EncodedMesh3D, LogMsg, Mesh3D, MeshFormat, MeshId, MsgId,
-    ObjPath, PathOp, RecordingId, Time, TimeInt, TimePoint, TimeType, Timeline, ViewCoordinates,
+    AnnotationContext, ApplicationId, EncodedMesh3D, EntityPath, LogMsg, Mesh3D, MeshFormat,
+    MeshId, MsgId, PathOp, RecordingId, Time, TimeInt, TimePoint, TimeType, Timeline,
+    ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -163,7 +164,7 @@ authkey = multiprocessing.current_process().authkey
 
 // ----------------------------------------------------------------------------
 
-fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
+fn parse_obj_path(obj_path: &str) -> PyResult<EntityPath> {
     let components = re_log_types::parse_obj_path(obj_path)
         .map_err(|err| PyTypeError::new_err(err.to_string()))?;
     if components.is_empty() {
@@ -171,7 +172,7 @@ fn parse_obj_path(obj_path: &str) -> PyResult<ObjPath> {
             "You cannot log to the root {obj_path:?}",
         ))
     } else {
-        Ok(ObjPath::from(components))
+        Ok(EntityPath::from(components))
     }
 }
 
@@ -744,7 +745,7 @@ fn log_annotation_context(
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let obj_path = if obj_path_str == "/" {
-        ObjPath::root()
+        EntityPath::root()
     } else {
         parse_obj_path(obj_path_str)?
     };

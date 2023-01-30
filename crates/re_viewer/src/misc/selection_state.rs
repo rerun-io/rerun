@@ -1,8 +1,8 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{LogDb, ObjPath};
-use re_log_types::{IndexHash, ObjPathHash};
+use re_data_store::{EntityPath, LogDb};
+use re_log_types::{EntityPathHash, IndexHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -14,17 +14,17 @@ pub enum HoveredSpace {
     None,
     /// Hovering in a 2D space.
     TwoD {
-        space_2d: ObjPath,
+        space_2d: EntityPath,
         /// Where in this 2D space (+ depth)?
         pos: glam::Vec3,
     },
     /// Hovering in a 3D space.
     ThreeD {
         /// The 3D space with the camera(s)
-        space_3d: ObjPath,
+        space_3d: EntityPath,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
+        target_spaces: Vec<(EntityPath, Option<glam::Vec3>)>,
     },
 }
 
@@ -137,13 +137,13 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]
 pub struct SpaceViewHighlights {
-    highlighted_object_paths: IntMap<ObjPathHash, SpaceViewObjectHighlight>,
+    highlighted_object_paths: IntMap<EntityPathHash, SpaceViewObjectHighlight>,
 }
 
 impl SpaceViewHighlights {
     pub fn object_highlight(
         &self,
-        obj_path_hash: ObjPathHash,
+        obj_path_hash: EntityPathHash,
     ) -> OptionalSpaceViewObjectHighlight<'_> {
         OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&obj_path_hash))
     }
@@ -318,7 +318,7 @@ impl SelectionState {
         crate::profile_function!();
 
         let mut highlighted_object_paths =
-            IntMap::<ObjPathHash, SpaceViewObjectHighlight>::default();
+            IntMap::<EntityPathHash, SpaceViewObjectHighlight>::default();
 
         for current_selection in self.selection.iter() {
             match current_selection {
@@ -329,7 +329,7 @@ impl SelectionState {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             space_view.data_blueprint.visit_group_objects_recursively(
                                 *group_handle,
-                                &mut |obj_path: &ObjPath| {
+                                &mut |obj_path: &EntityPath| {
                                     highlighted_object_paths
                                         .entry(obj_path.hash())
                                         .or_default()
@@ -379,7 +379,7 @@ impl SelectionState {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             space_view.data_blueprint.visit_group_objects_recursively(
                                 *group_handle,
-                                &mut |obj_path: &ObjPath| {
+                                &mut |obj_path: &EntityPath| {
                                     highlighted_object_paths
                                         .entry(obj_path.hash())
                                         .or_default()

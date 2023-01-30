@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
+use re_data_store::{log_db::ObjDb, query_transform, EntityPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
@@ -16,24 +16,24 @@ use super::UnreachableTransform;
 ///
 /// Expected to be recreated every frame (or whenever new data is available).
 pub struct SpaceInfo {
-    pub path: ObjPath,
+    pub path: EntityPath,
 
     /// The latest known coordinate system for this space.
     pub coordinates: Option<ViewCoordinates>,
 
     /// All paths in this space (including self and children connected by the identity transform).
-    pub descendants_without_transform: IntSet<ObjPath>,
+    pub descendants_without_transform: IntSet<EntityPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
     /// The transform is from parent to child, i.e. the *same* as in its [`Self::child_spaces`] array.
-    parent: Option<(ObjPath, Transform)>,
+    parent: Option<(EntityPath, Transform)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
-    pub child_spaces: BTreeMap<ObjPath, Transform>,
+    pub child_spaces: BTreeMap<EntityPath, Transform>,
 }
 
 impl SpaceInfo {
-    pub fn new(path: ObjPath) -> Self {
+    pub fn new(path: EntityPath) -> Self {
         Self {
             path,
             coordinates: Default::default(),
@@ -104,7 +104,7 @@ impl SpaceInfo {
 /// Expected to be recreated every frame (or whenever new data is available).
 #[derive(Default)]
 pub struct SpaceInfoCollection {
-    spaces: BTreeMap<ObjPath, SpaceInfo>,
+    spaces: BTreeMap<EntityPath, SpaceInfo>,
 }
 
 impl SpaceInfoCollection {
@@ -185,11 +185,11 @@ impl SpaceInfoCollection {
         spaces_info
     }
 
-    pub fn get(&self, path: &ObjPath) -> Option<&SpaceInfo> {
+    pub fn get(&self, path: &EntityPath) -> Option<&SpaceInfo> {
         self.spaces.get(path)
     }
 
-    pub fn get_first_parent_with_info(&self, path: &ObjPath) -> Option<&SpaceInfo> {
+    pub fn get_first_parent_with_info(&self, path: &EntityPath) -> Option<&SpaceInfo> {
         let mut path = path.clone();
         while let Some(parent) = path.parent() {
             let space_info = self.get(&path);
@@ -213,8 +213,8 @@ impl SpaceInfoCollection {
     /// If `from` and `to_reference` are not under the same root branch, they are regarded as [`UnreachableTransform::Unconnected`]
     pub fn is_reachable_by_transform(
         &self,
-        from: &ObjPath,
-        to_reference: &ObjPath,
+        from: &EntityPath,
+        to_reference: &EntityPath,
     ) -> Result<(), UnreachableTransform> {
         crate::profile_function!();
 
@@ -295,7 +295,7 @@ impl SpaceInfoCollection {
 
 pub fn query_view_coordinates(
     obj_db: &ObjDb,
-    ent_path: &ObjPath,
+    ent_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
     let arrow_store = &obj_db.arrow_store;

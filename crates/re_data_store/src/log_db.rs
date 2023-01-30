@@ -5,8 +5,8 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, DataPath, LogMsg, MsgId, ObjPath, ObjPathHash, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimePoint, Timeline,
+    ArrowMsg, BeginRecordingMsg, DataPath, EntityPath, EntityPathHash, LogMsg, MsgId, PathOp,
+    PathOpMsg, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -16,7 +16,7 @@ use crate::{Error, TimesPerTimeline};
 /// Stored objects and their types, with easy indexing of the paths.
 pub struct ObjDb {
     /// In many places we just store the hashes, so we need a way to translate back.
-    pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
+    pub obj_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
     /// Used for time control
     pub times_per_timeline: TimesPerTimeline,
@@ -48,11 +48,11 @@ impl Default for ObjDb {
 
 impl ObjDb {
     #[inline]
-    pub fn obj_path_from_hash(&self, obj_path_hash: &ObjPathHash) -> Option<&ObjPath> {
+    pub fn obj_path_from_hash(&self, obj_path_hash: &EntityPathHash) -> Option<&EntityPath> {
         self.obj_path_from_hash.get(obj_path_hash)
     }
 
-    fn register_obj_path(&mut self, obj_path: &ObjPath) {
+    fn register_obj_path(&mut self, obj_path: &EntityPath) {
         self.obj_path_from_hash
             .entry(obj_path.hash())
             .or_insert_with(|| obj_path.clone());

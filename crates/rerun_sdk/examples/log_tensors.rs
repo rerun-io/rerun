@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use ndarray_rand::RandomExt;
-use re_log_types::{field_types::Tensor, msg_bundle::MsgBundle, LogMsg, MsgId, ObjPath};
+use re_log_types::{field_types::Tensor, msg_bundle::MsgBundle, EntityPath, LogMsg, MsgId};
 use rerun::Session;
 use rerun_sdk as rerun;
 
@@ -51,7 +51,7 @@ fn main() -> std::process::ExitCode {
         }
     }
 
-    let path = ObjPath::from("world/tensors");
+    let path = EntityPath::from("world/tensors");
 
     // Send a single tensor
     let a = ndarray::Array::random((48, 48), ndarray_rand::rand_distr::Uniform::new(0u8, 255u8));
@@ -74,7 +74,7 @@ fn main() -> std::process::ExitCode {
 
 /// Log a collection of rects and/or colors
 /// TODO(jleibs): Make this fancier and move into the SDK
-fn log_tensors(session: &mut Session, obj_path: &ObjPath, tensors: Option<Vec<Tensor>>) {
+fn log_tensors(session: &mut Session, obj_path: &EntityPath, tensors: Option<Vec<Tensor>>) {
     // Capture the log_time and object_path
     let time_point = rerun::log_time();
 

@@ -1,5 +1,5 @@
 use re_arrow_store::TimeRange;
-use re_data_store::ObjPath;
+use re_data_store::EntityPath;
 use re_log_types::{
     field_types::{self, Instance},
     msg_bundle::Component,
@@ -17,7 +17,7 @@ use super::ui::ViewTextFilters;
 pub struct TextEntry {
     // props
     pub msg_id: MsgId,
-    pub obj_path: ObjPath,
+    pub obj_path: EntityPath,
     /// `None` for timeless data.
     pub time: Option<i64>,
     pub color: Option<[u8; 4]>,

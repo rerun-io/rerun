@@ -1,27 +1,27 @@
-use crate::path::ObjPathComp;
+use crate::path::EntityPathComponent;
 
 /// `camera / "left" / points / #42`
 ///
-/// Wrapped by [`crate::ObjPath`] together with a hash.
+/// Wrapped by [`crate::EntityPath`] together with a hash.
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ObjPathImpl {
-    components: Vec<ObjPathComp>,
+pub struct EntityPathImpl {
+    components: Vec<EntityPathComponent>,
 }
 
-impl ObjPathImpl {
+impl EntityPathImpl {
     #[inline]
     pub fn root() -> Self {
         Self { components: vec![] }
     }
 
     #[inline]
-    pub fn new(components: Vec<ObjPathComp>) -> Self {
+    pub fn new(components: Vec<EntityPathComponent>) -> Self {
         Self { components }
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[ObjPathComp] {
+    pub fn as_slice(&self) -> &[EntityPathComponent] {
         self.components.as_slice()
     }
 
@@ -38,12 +38,12 @@ impl ObjPathImpl {
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &ObjPathComp> {
+    pub fn iter(&self) -> impl Iterator<Item = &EntityPathComponent> {
         self.components.iter()
     }
 
     #[inline]
-    pub fn push(&mut self, comp: ObjPathComp) {
+    pub fn push(&mut self, comp: EntityPathComponent) {
         self.components.push(comp);
     }
 
@@ -62,9 +62,9 @@ impl ObjPathImpl {
 
 // ----------------------------------------------------------------------------
 
-impl<'a, It> From<It> for ObjPathImpl
+impl<'a, It> From<It> for EntityPathImpl
 where
-    It: Iterator<Item = &'a ObjPathComp>,
+    It: Iterator<Item = &'a EntityPathComponent>,
 {
     fn from(path: It) -> Self {
         Self::new(path.cloned().collect())
@@ -73,13 +73,13 @@ where
 
 // ----------------------------------------------------------------------------
 
-impl std::fmt::Debug for ObjPathImpl {
+impl std::fmt::Debug for EntityPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ObjPath({self})")
+        write!(f, "EntityPath({self})")
     }
 }
 
-impl std::fmt::Display for ObjPathImpl {
+impl std::fmt::Display for EntityPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::fmt::Write as _;
 

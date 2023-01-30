@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point2D, Radius},
     msg_bundle::Component,
@@ -28,7 +28,7 @@ impl Points2DPart {
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
         entity_view: &EntityView<Point2D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
         object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) -> Result<(), QueryError> {
@@ -38,7 +38,7 @@ impl Points2DPart {
         let max_num_labels = 10;
 
         let annotations = scene.annotation_map.find(ent_path);
-        let default_color = DefaultColor::ObjPath(ent_path);
+        let default_color = DefaultColor::EntityPath(ent_path);
 
         // If keypoints ids show up we may need to connect them later!
         // We include time in the key, so that the "Visible history" (time range queries) feature works.

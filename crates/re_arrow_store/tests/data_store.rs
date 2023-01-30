@@ -21,7 +21,7 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{ColorRGBA, Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    ComponentName, EntityPath, MsgId, TimeType, Timeline,
 };
 
 // --- LatestComponentsAt ---

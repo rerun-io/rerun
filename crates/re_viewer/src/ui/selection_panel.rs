@@ -1,4 +1,4 @@
-use re_data_store::{query_transform, ObjPath, ObjectProps};
+use re_data_store::{query_transform, EntityPath, ObjectProps};
 use re_log_types::TimeType;
 
 use crate::{
@@ -275,7 +275,7 @@ fn blueprint_ui(
 fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     blueprint: &Blueprint,
 ) {
     let space_views_with_path = blueprint.viewport.space_views_containing_obj_path(obj_path);
@@ -299,7 +299,7 @@ fn list_existing_data_blueprints(
 fn obj_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    obj_path: Option<&ObjPath>,
+    obj_path: Option<&EntityPath>,
     obj_props: &mut ObjectProps,
     view_state: &ViewState,
 ) {

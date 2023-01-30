@@ -4,9 +4,7 @@ use arrow2::array::{Array, ListArray};
 
 use itertools::Itertools;
 use re_log::trace;
-use re_log_types::{
-    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
-};
+use re_log_types::{ComponentName, EntityPath, MsgId, TimeInt, TimePoint, TimeRange, Timeline};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
@@ -162,7 +160,7 @@ impl DataStore {
     ///
     /// ```rust
     /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
+    /// # use re_log_types::{ComponentName, EntityPath as EntityPath, TimeInt};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
     ///
     /// pub fn latest_component(
@@ -331,7 +329,7 @@ impl DataStore {
     /// ```rust
     /// # use arrow2::array::Array;
     /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
+    /// # use re_log_types::{ComponentName, EntityPath as EntityPath, TimeInt};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
     ///
     /// # pub fn dataframe_from_results<const N: usize>(

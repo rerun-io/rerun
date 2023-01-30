@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::ObjPath as EntityPath;
+use re_data_store::EntityPath;
 use re_log::warn_once;
 use re_log_types::field_types::{self, Instance, Tensor, TensorTrait as _};
 use re_query::query_entity_with_primary;

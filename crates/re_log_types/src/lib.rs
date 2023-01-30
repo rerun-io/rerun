@@ -138,7 +138,7 @@ pub enum LogMsg {
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
-    /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
+    /// Server-backed operation on an [`EntityPath`] or [`DataPath`].
     PathOpMsg(PathOpMsg),
 
     /// Log an arrow message to a [`DataPath`].
@@ -222,28 +222,28 @@ pub struct PathOpMsg {
     /// A unique id per [`PathOpMsg`].
     pub msg_id: MsgId,
 
-    /// Time information (when it was logged, when it was received, …)
+    /// Time information (when it was logged, when it was received, …).
     ///
-    /// If this is empty, no operation will be performed as ObjPathOps
-    /// cannot be Timeless in a meaningful way.
+    /// If this is empty, no operation will be performed as we
+    /// cannot be timeless in a meaningful way.
     pub time_point: TimePoint,
 
-    /// The value of this.
+    /// What operation.
     pub path_op: PathOp,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum PathOp {
-    // Clear all the components stored at an [`ObjPath`]
-    ClearComponents(ObjPath),
+    // Clear all the components stored at an [`EntityPath`]
+    ClearComponents(EntityPath),
 
-    // Clear all the components of an `[ObjPath]` and any descendants.
-    ClearRecursive(ObjPath),
+    // Clear all the components of an `[EntityPath]` and any descendants.
+    ClearRecursive(EntityPath),
 }
 
 impl PathOp {
-    pub fn clear(recursive: bool, obj_path: ObjPath) -> Self {
+    pub fn clear(recursive: bool, obj_path: EntityPath) -> Self {
         if recursive {
             PathOp::ClearRecursive(obj_path)
         } else {
@@ -251,7 +251,7 @@ impl PathOp {
         }
     }
 
-    pub fn obj_path(&self) -> &ObjPath {
+    pub fn obj_path(&self) -> &EntityPath {
         match &self {
             PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
         }

@@ -1,5 +1,5 @@
 use re_data_store::{log_db::LogDb, InstanceId};
-use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
+use re_log_types::{DataPath, EntityPath, MsgId, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
@@ -53,7 +53,7 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        obj_path: &ObjPath,
+        obj_path: &EntityPath,
     ) -> egui::Response {
         self.instance_id_button_to(
             ui,
@@ -68,7 +68,7 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        obj_path: &ObjPath,
+        obj_path: &EntityPath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
         self.instance_id_button_to(
@@ -169,7 +169,7 @@ impl<'a> ViewerContext<'a> {
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
-        obj_path: &ObjPath,
+        obj_path: &EntityPath,
     ) -> egui::Response {
         let selection =
             Selection::Instance(Some(space_view_id), InstanceId::new(obj_path.clone(), None));

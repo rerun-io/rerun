@@ -11,7 +11,7 @@ use pyo3::{
 use re_log_types::{
     field_types,
     msg_bundle::{self, ComponentBundle, MsgBundle, MsgBundleError},
-    LogMsg, MsgId, ObjPath, TimePoint,
+    EntityPath, LogMsg, MsgId, TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
@@ -86,7 +86,7 @@ pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
 /// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
 /// component arrays.
 pub fn build_chunk_from_components(
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     components: &PyDict,
     time_point: &TimePoint,
 ) -> PyResult<LogMsg> {

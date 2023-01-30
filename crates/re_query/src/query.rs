@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
+use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, EntityPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -44,7 +44,7 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 pub fn get_component_with_instances(
     store: &DataStore,
     query: &LatestAtQuery,
-    ent_path: &ObjPath,
+    ent_path: &EntityPath,
     component: ComponentName,
 ) -> crate::Result<ComponentWithInstances> {
     let components = [Instance::name(), component];
@@ -110,7 +110,7 @@ pub fn get_component_with_instances(
 pub fn query_entity_with_primary<Primary: Component>(
     store: &DataStore,
     query: &LatestAtQuery,
-    ent_path: &ObjPath,
+    ent_path: &EntityPath,
     components: &[ComponentName],
 ) -> crate::Result<EntityView<Primary>> {
     crate::profile_function!();

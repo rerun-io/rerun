@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, DataPath, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint, Timeline,
+    ComponentName, DataPath, EntityPath, EntityPathComponent, MsgId, PathOp, TimeInt, TimePoint,
+    Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -82,9 +83,9 @@ impl TimesPerTimeline {
 /// Tree of data paths.
 pub struct ObjectTree {
     /// Full path to the root of this tree.
-    pub path: ObjPath,
+    pub path: EntityPath,
 
-    pub children: BTreeMap<ObjPathComp, ObjectTree>,
+    pub children: BTreeMap<EntityPathComponent, ObjectTree>,
 
     /// When do we or a child have data?
     ///
@@ -105,10 +106,10 @@ pub struct ObjectTree {
 
 impl ObjectTree {
     pub fn root() -> Self {
-        Self::new(ObjPath::root(), Default::default())
+        Self::new(EntityPath::root(), Default::default())
     }
 
-    pub fn new(path: ObjPath, recursive_clears: BTreeMap<MsgId, TimePoint>) -> Self {
+    pub fn new(path: EntityPath, recursive_clears: BTreeMap<MsgId, TimePoint>) -> Self {
         Self {
             path,
             children: Default::default(),
@@ -229,7 +230,7 @@ impl ObjectTree {
 
     fn create_subtrees_recursively(
         &mut self,
-        full_path: &[ObjPathComp],
+        full_path: &[EntityPathComponent],
         depth: usize,
         time_point: &TimePoint,
     ) -> &mut Self {
@@ -262,10 +263,10 @@ impl ObjectTree {
         }
     }
 
-    pub fn subtree(&self, path: &ObjPath) -> Option<&Self> {
+    pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
         fn subtree_recursive<'tree>(
             this: &'tree ObjectTree,
-            path: &[ObjPathComp],
+            path: &[EntityPathComponent],
         ) -> Option<&'tree ObjectTree> {
             match path {
                 [] => Some(this),
@@ -320,7 +321,7 @@ impl ObjectTree {
     }
 
     // Invokes visitor for `self` all children recursively.
-    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&ObjPath)) {
+    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath)) {
         visitor(&self.path);
         for child in self.children.values() {
             child.visit_children_recursively(visitor);

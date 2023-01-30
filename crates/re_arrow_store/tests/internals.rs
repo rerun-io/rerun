@@ -9,7 +9,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_instances},
     field_types::Instance,
     msg_bundle::{Component as _, MsgBundle},
-    MsgId, ObjPath as EntityPath, TimePoint,
+    EntityPath, MsgId, TimePoint,
 };
 
 // --- Internals ---

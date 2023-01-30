@@ -24,7 +24,7 @@ use re_log_types::{
     },
     field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
-    Duration, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
+    Duration, EntityPath, MsgId, Time, TimeType, Timeline,
 };
 
 // ---

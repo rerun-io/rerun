@@ -1,4 +1,4 @@
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{EntityPath, InstanceIdHash, ObjectProps};
 use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
     Pinhole, Transform, ViewCoordinates,
@@ -29,7 +29,7 @@ use super::ScenePart;
 fn determine_view_coordinates(
     obj_db: &re_data_store::log_db::ObjDb,
     time_ctrl: &crate::misc::TimeControl,
-    mut obj_path: ObjPath,
+    mut obj_path: EntityPath,
 ) -> ViewCoordinates {
     loop {
         if let Some(view_coordinates) =
@@ -57,7 +57,7 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        obj_path: &ObjPath,
+        obj_path: &EntityPath,
         props: &ObjectProps,
         transforms: &TransformCache,
         instance_hash: InstanceIdHash,

@@ -100,7 +100,7 @@ fn log_messages() {
         let used_bytes_start = live_bytes();
         let obj_path = obj_path!("points");
         let used_bytes = live_bytes() - used_bytes_start;
-        println!("Short ObjPath uses {used_bytes} bytes in RAM");
+        println!("Short EntityPath uses {used_bytes} bytes in RAM");
         drop(obj_path);
     }
 

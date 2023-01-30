@@ -10,7 +10,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::Component as _,
-    ObjPath as EntityPath, TimeType, Timeline,
+    EntityPath, TimeType, Timeline,
 };
 
 fn main() {

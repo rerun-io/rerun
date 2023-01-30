@@ -84,7 +84,7 @@ impl SceneTimeSeries {
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
             let annotation_info = annotations.class_description(None).annotation_info();
-            let default_color = DefaultColor::ObjPath(ent_path);
+            let default_color = DefaultColor::EntityPath(ent_path);
 
             let query = re_arrow_store::RangeQuery::new(
                 query.timeline,

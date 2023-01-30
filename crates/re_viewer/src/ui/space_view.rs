@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::Timeline;
-use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
+use re_data_store::{EntityPath, InstanceId, ObjectTree, TimeInt};
 
 use crate::{
     misc::{
@@ -42,13 +42,13 @@ pub struct SpaceView {
     pub name: String,
 
     /// Everything under this root *can* be shown in the space view.
-    pub root_path: ObjPath,
+    pub root_path: EntityPath,
 
     /// The "anchor point" of this space view.
     /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
     /// I.e. the position of this object path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what objects we show in this space view.
-    pub space_path: ObjPath,
+    pub space_path: EntityPath,
 
     /// The data blueprint tree, has blueprint settings for all blueprint groups and objects in this spaceview.
     /// It determines which objects are part of the spaceview.
@@ -67,11 +67,11 @@ impl SpaceView {
     pub fn new(
         category: ViewCategory,
         space_info: &SpaceInfo,
-        queried_objects: &[ObjPath],
+        queried_objects: &[EntityPath],
     ) -> Self {
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
-            |c| ObjPath::from(vec![c.clone()]),
+            |c| EntityPath::from(vec![c.clone()]),
         );
 
         let name = if queried_objects.len() == 1 {
@@ -105,7 +105,7 @@ impl SpaceView {
         spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
         category: ViewCategory,
-    ) -> Vec<ObjPath> {
+    ) -> Vec<EntityPath> {
         crate::profile_function!();
 
         let timeline = Timeline::log_time();
@@ -133,13 +133,13 @@ impl SpaceView {
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
-    ) -> BTreeMap<ViewCategory, Vec<ObjPath>> {
+    ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
         crate::profile_function!();
 
         let timeline = Timeline::log_time();
         let log_db = &ctx.log_db;
 
-        let mut groups: BTreeMap<ViewCategory, Vec<ObjPath>> = BTreeMap::default();
+        let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
 
         space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
             for obj_path in &space_info.descendants_without_transform {
@@ -320,7 +320,7 @@ impl SpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        path: &ObjPath,
+        path: &EntityPath,
         spaces_info: &SpaceInfoCollection,
         name: &str,
     ) {
@@ -351,7 +351,7 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        path: &ObjPath,
+        path: &EntityPath,
         obj_tree: &ObjectTree,
     ) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -362,7 +362,7 @@ impl SpaceView {
             obj_tree
                 .subtree(path)
                 .unwrap()
-                .visit_children_recursively(&mut |path: &ObjPath| {
+                .visit_children_recursively(&mut |path: &EntityPath| {
                     if has_visualization_for_category(ctx, self.category, path)
                         && !self.data_blueprint.contains_object(path)
                     {
@@ -452,7 +452,7 @@ impl SpaceView {
 fn has_visualization_for_category(
     ctx: &ViewerContext<'_>,
     category: ViewCategory,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
 ) -> bool {
     let log_db = &ctx.log_db;
     categorize_obj_path(Timeline::log_time(), log_db, obj_path).contains(category)
@@ -480,7 +480,7 @@ impl ViewState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space: &ObjPath,
+        space: &EntityPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
         space_view_id: SpaceViewId,

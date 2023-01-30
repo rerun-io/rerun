@@ -3,7 +3,7 @@ use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
 use re_data_store::{InstanceId, InstanceIdHash};
-use re_log_types::{ObjPath, ViewCoordinates};
+use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
     RenderContext, Size,
@@ -290,7 +290,7 @@ pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
-    space: &ObjPath,
+    space: &EntityPath,
     space_view_id: SpaceViewId,
     mut scene: SceneSpatial,
 ) {
@@ -647,7 +647,7 @@ fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &mut View3DState,
-    space: &ObjPath,
+    space: &EntityPath,
 ) {
     let mut target_spaces = vec![];
     for cam in space_cameras {

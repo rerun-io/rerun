@@ -1,13 +1,13 @@
-use crate::{path::ObjPath, ComponentName};
+use crate::{path::EntityPath, ComponentName};
 
-/// A [`ObjPath`] plus a [`ComponentName`].
+/// A [`EntityPath`] plus a [`ComponentName`].
 ///
 /// Example: `camera / "left" / points / #42`.`color`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataPath {
     /// `camera / "left" / points / #42`
-    pub obj_path: ObjPath,
+    pub obj_path: EntityPath,
 
     /// "color"
     pub component_name: ComponentName,
@@ -15,7 +15,7 @@ pub struct DataPath {
 
 impl DataPath {
     #[inline]
-    pub fn new(obj_path: ObjPath, component_name: ComponentName) -> Self {
+    pub fn new(obj_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             obj_path,
             component_name,
@@ -23,7 +23,7 @@ impl DataPath {
     }
 
     #[inline]
-    pub fn obj_path(&self) -> &ObjPath {
+    pub fn obj_path(&self) -> &EntityPath {
         &self.obj_path
     }
 

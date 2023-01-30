@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, ObjectsProperties};
+use re_data_store::{log_db::ObjDb, query_transform, EntityPath, ObjectTree, ObjectsProperties};
 
 use crate::misc::TimeControl;
 
@@ -15,16 +15,16 @@ use crate::misc::TimeControl;
 pub struct TransformCache {
     /// All transforms provided are relative to this reference path.
     #[allow(dead_code)]
-    reference_path: ObjPath,
+    reference_path: EntityPath,
 
     /// Alll reachable objects.
-    reference_from_obj_per_object: IntMap<ObjPath, glam::Mat4>,
+    reference_from_obj_per_object: IntMap<EntityPath, glam::Mat4>,
 
     /// All unreachable descendant paths of `reference_path`.
-    unreachable_descendants: Vec<(ObjPath, UnreachableTransform)>,
+    unreachable_descendants: Vec<(EntityPath, UnreachableTransform)>,
 
     /// The first parent of reference_path that is no longer reachable.
-    first_unreachable_parent: (ObjPath, UnreachableTransform),
+    first_unreachable_parent: (EntityPath, UnreachableTransform),
 }
 
 #[derive(Clone, Copy)]
@@ -48,7 +48,7 @@ impl TransformCache {
     pub fn determine_transforms(
         obj_db: &ObjDb,
         time_ctrl: &TimeControl,
-        root_path: &ObjPath,
+        root_path: &EntityPath,
         obj_properties: &ObjectsProperties,
     ) -> Self {
         crate::profile_function!();
@@ -57,7 +57,7 @@ impl TransformCache {
             reference_path: root_path.clone(),
             reference_from_obj_per_object: Default::default(),
             unreachable_descendants: Default::default(),
-            first_unreachable_parent: (ObjPath::root(), UnreachableTransform::Unconnected),
+            first_unreachable_parent: (EntityPath::root(), UnreachableTransform::Unconnected),
         };
 
         // Find the object path tree for the root.
@@ -182,7 +182,7 @@ impl TransformCache {
     /// Retrieves the transform of on object from its local system to the space of the reference.
     ///
     /// Returns None if the path is not reachable.
-    pub fn reference_from_obj(&self, obj_path: &ObjPath) -> Option<macaw::Mat4> {
+    pub fn reference_from_obj(&self, obj_path: &EntityPath) -> Option<macaw::Mat4> {
         self.reference_from_obj_per_object.get(obj_path).cloned()
     }
 
@@ -190,13 +190,13 @@ impl TransformCache {
     // All the necessary data on why a subtree isn't reachable is already stored.
     //
     // Returns why (if actually) a path isn't reachable.
-    // pub fn unreachable_reason(&self, _obj_path: &ObjPath) -> Option<UnreachableTransformReason> {
+    // pub fn unreachable_reason(&self, _obj_path: &EntityPath) -> Option<UnreachableTransformReason> {
     //     None
     // }
 }
 
 fn transform_at(
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     obj_db: &ObjDb,
     obj_properties: &ObjectsProperties,
     query: &LatestAtQuery,
@@ -244,7 +244,7 @@ fn transform_at(
 }
 
 fn inverse_transform_at(
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     obj_db: &ObjDb,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,

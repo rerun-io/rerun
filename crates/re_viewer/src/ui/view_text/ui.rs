@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use egui::{Color32, RichText};
 
-use re_data_store::{ObjPath, Timeline};
+use re_data_store::{EntityPath, Timeline};
 use re_log_types::TimePoint;
 
 use crate::ViewerContext;
@@ -91,7 +91,7 @@ pub struct ViewTextFilters {
     pub col_log_level: bool,
 
     // Row filters: which rows should be visible?
-    pub row_obj_paths: BTreeMap<ObjPath, bool>,
+    pub row_obj_paths: BTreeMap<EntityPath, bool>,
     pub row_log_levels: BTreeMap<String, bool>,
 }
 
@@ -108,7 +108,7 @@ impl Default for ViewTextFilters {
 }
 
 impl ViewTextFilters {
-    pub fn is_obj_path_visible(&self, obj_path: &ObjPath) -> bool {
+    pub fn is_obj_path_visible(&self, obj_path: &EntityPath) -> bool {
         self.row_obj_paths.get(obj_path).copied().unwrap_or(true)
     }
 

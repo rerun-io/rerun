@@ -8,7 +8,8 @@ use itertools::Itertools;
 
 use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::{
-    DataPath, Duration, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
+    DataPath, Duration, EntityPathComponent, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
+    TimeType,
 };
 
 use crate::{
@@ -344,7 +345,7 @@ impl TimePanel {
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         // the parent path of the name component
-        last_component: &ObjPathComp,
+        last_component: &EntityPathComponent,
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {

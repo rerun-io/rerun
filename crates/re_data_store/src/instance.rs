@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use re_log_types::{field_types::Instance, Index, IndexHash, ObjPath, ObjPathHash};
+use re_log_types::{field_types::Instance, EntityPath, EntityPathHash, Index, IndexHash};
 
 use crate::log_db::ObjDb;
 
@@ -10,7 +10,7 @@ use crate::log_db::ObjDb;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct InstanceId {
-    pub obj_path: ObjPath,
+    pub obj_path: EntityPath,
 
     /// If this is a concrete instance, what instance index are we?
     pub instance_index: Option<Index>,
@@ -18,7 +18,7 @@ pub struct InstanceId {
 
 impl InstanceId {
     #[inline]
-    pub fn new(obj_path: ObjPath, instance_index: Option<Index>) -> Self {
+    pub fn new(obj_path: EntityPath, instance_index: Option<Index>) -> Self {
         Self {
             obj_path,
             instance_index,
@@ -42,7 +42,7 @@ impl InstanceId {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance(&self, obj_path: &ObjPath, instance_index: IndexHash) -> bool {
+    pub fn is_instance(&self, obj_path: &EntityPath, instance_index: IndexHash) -> bool {
         &self.obj_path == obj_path
             && if let Some(index) = &self.instance_index {
                 index.hash() == instance_index
@@ -73,7 +73,7 @@ impl std::fmt::Display for InstanceId {
 /// Hashes of the components of an [`InstanceId`].
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct InstanceIdHash {
-    pub obj_path_hash: ObjPathHash,
+    pub obj_path_hash: EntityPathHash,
 
     /// If this is a multi-object, what instance index are we?
     /// [`IndexHash::NONE`] if we aren't a multi-object.
@@ -102,13 +102,13 @@ impl std::cmp::PartialEq for InstanceIdHash {
 
 impl InstanceIdHash {
     pub const NONE: Self = Self {
-        obj_path_hash: ObjPathHash::NONE,
+        obj_path_hash: EntityPathHash::NONE,
         instance_index_hash: IndexHash::NONE,
         arrow_instance: None,
     };
 
     #[inline]
-    pub fn from_path_and_index(obj_path: &ObjPath, instance_index: IndexHash) -> Self {
+    pub fn from_path_and_index(obj_path: &EntityPath, instance_index: IndexHash) -> Self {
         Self {
             obj_path_hash: obj_path.hash(),
             instance_index_hash: instance_index,
@@ -117,7 +117,7 @@ impl InstanceIdHash {
     }
 
     #[inline]
-    pub fn from_path_and_arrow_instance(obj_path: &ObjPath, arrow_instance: &Instance) -> Self {
+    pub fn from_path_and_arrow_instance(obj_path: &EntityPath, arrow_instance: &Instance) -> Self {
         Self {
             obj_path_hash: obj_path.hash(),
             instance_index_hash: Index::ArrowInstance(*arrow_instance).hash(),
@@ -150,7 +150,7 @@ impl InstanceIdHash {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance(&self, obj_path: &ObjPath, instance_index: IndexHash) -> bool {
+    pub fn is_instance(&self, obj_path: &EntityPath, instance_index: IndexHash) -> bool {
         self.obj_path_hash == obj_path.hash() && self.instance_index_hash == instance_index
     }
 }

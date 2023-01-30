@@ -1,4 +1,4 @@
-use crate::{Index, ObjPathComp};
+use crate::{EntityPathComponent, Index};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -25,7 +25,7 @@ pub enum PathParseError {
 }
 
 /// Parses an object path, e.g. `foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
-pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
+pub fn parse_obj_path(path: &str) -> Result<Vec<EntityPathComponent>, PathParseError> {
     if path.is_empty() {
         return Err(PathParseError::EmptyString);
     }
@@ -61,7 +61,7 @@ pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
             let unescaped = unescape_string(std::str::from_utf8(&bytes[1..i]).unwrap())
                 .map_err(|details| PathParseError::BadEscape { details })?;
 
-            components.push(ObjPathComp::Index(Index::String(unescaped)));
+            components.push(EntityPathComponent::Index(Index::String(unescaped)));
 
             bytes = &bytes[i + 1..]; // skip the closing quote
 
@@ -92,23 +92,23 @@ pub fn parse_obj_path(path: &str) -> Result<Vec<ObjPathComp>, PathParseError> {
     Ok(components)
 }
 
-fn parse_component(s: &str) -> Result<ObjPathComp, PathParseError> {
+fn parse_component(s: &str) -> Result<EntityPathComponent, PathParseError> {
     use std::str::FromStr as _;
 
     if s.is_empty() {
         Err(PathParseError::DoubleSlash)
     } else if let Some(s) = s.strip_prefix('#') {
         if let Ok(sequence) = u64::from_str(s) {
-            Ok(ObjPathComp::Index(Index::Sequence(sequence)))
+            Ok(EntityPathComponent::Index(Index::Sequence(sequence)))
         } else {
             Err(PathParseError::InvalidSequence(s.into()))
         }
     } else if let Ok(integer) = i128::from_str(s) {
-        Ok(ObjPathComp::Index(Index::Integer(integer)))
+        Ok(EntityPathComponent::Index(Index::Integer(integer)))
     } else if let Ok(uuid) = uuid::Uuid::parse_str(s) {
-        Ok(ObjPathComp::Index(Index::Uuid(uuid)))
+        Ok(EntityPathComponent::Index(Index::Uuid(uuid)))
     } else {
-        Ok(ObjPathComp::Name(s.into()))
+        Ok(EntityPathComponent::Name(s.into()))
     }
 }
 

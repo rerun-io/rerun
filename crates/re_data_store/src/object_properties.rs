@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::Component,
-    ObjPath, Transform,
+    EntityPath, Transform,
 };
 
 use crate::log_db::ObjDb;
@@ -12,15 +12,15 @@ use crate::log_db::ObjDb;
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ObjectsProperties {
-    props: nohash_hasher::IntMap<ObjPath, ObjectProps>,
+    props: nohash_hasher::IntMap<EntityPath, ObjectProps>,
 }
 
 impl ObjectsProperties {
-    pub fn get(&self, obj_path: &ObjPath) -> ObjectProps {
+    pub fn get(&self, obj_path: &EntityPath) -> ObjectProps {
         self.props.get(obj_path).cloned().unwrap_or_default()
     }
 
-    pub fn set(&mut self, obj_path: ObjPath, prop: ObjectProps) {
+    pub fn set(&mut self, obj_path: EntityPath, prop: ObjectProps) {
         if prop == ObjectProps::default() {
             self.props.remove(&obj_path); // save space
         } else {
@@ -121,7 +121,7 @@ impl ExtraQueryHistory {
 /// we check to see if it exists in the arrow storage.
 pub fn query_transform(
     obj_db: &ObjDb,
-    obj_path: &ObjPath,
+    obj_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<Transform> {
     crate::profile_function!();

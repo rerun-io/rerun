@@ -1,6 +1,6 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
 use re_data_store::ExtraQueryHistory;
-use re_log_types::{msg_bundle::Component, ComponentName, ObjPath};
+use re_log_types::{msg_bundle::Component, ComponentName, EntityPath};
 
 use crate::{query_entity_with_primary, range_entity_with_primary, EntityView};
 
@@ -11,7 +11,7 @@ pub fn query_primary_with_history<'a, Primary: Component + 'a, const N: usize>(
     timeline: &'a Timeline,
     time: &'a TimeInt,
     history: &ExtraQueryHistory,
-    ent_path: &'a ObjPath,
+    ent_path: &'a EntityPath,
     components: [ComponentName; N],
 ) -> crate::Result<impl Iterator<Item = EntityView<Primary>> + 'a> {
     let visible_history = match timeline.typ() {

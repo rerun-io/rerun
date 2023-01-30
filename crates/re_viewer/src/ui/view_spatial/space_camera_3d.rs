@@ -1,7 +1,7 @@
 use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::{EntityPath, InstanceIdHash};
 use re_log_types::ViewCoordinates;
 
 /// A logged camera that connects spaces.
@@ -10,7 +10,7 @@ pub struct SpaceCamera3D {
     /// Path to the object which has the projection (pinhole, ortho or otherwise) transforms.
     ///
     /// We expect the camera transform to apply to this object and every path below it.
-    pub obj_path: ObjPath,
+    pub obj_path: EntityPath,
 
     /// The instance id hash of the object that has the projection.
     pub instance: InstanceIdHash,

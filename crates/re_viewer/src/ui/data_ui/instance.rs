@@ -1,4 +1,4 @@
-use re_data_store::{Index, InstanceId, ObjPath};
+use re_data_store::{EntityPath, Index, InstanceId};
 use re_log_types::DataPath;
 use re_query::{get_component_with_instances, QueryError};
 
@@ -12,7 +12,7 @@ use super::{
     DataUi,
 };
 
-impl DataUi for ObjPath {
+impl DataUi for EntityPath {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,

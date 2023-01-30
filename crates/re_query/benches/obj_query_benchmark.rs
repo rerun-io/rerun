@@ -9,7 +9,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    obj_path, Index, MsgId, ObjPath, TimeType, Timeline,
+    obj_path, EntityPath, Index, MsgId, TimeType, Timeline,
 };
 use re_query::query_entity_with_primary;
 
@@ -63,7 +63,7 @@ fn obj_mono_points(c: &mut Criterion) {
 fn obj_batch_points(c: &mut Criterion) {
     {
         // Batch points are logged together at a single path
-        let paths = [ObjPath::from("points")];
+        let paths = [EntityPath::from("points")];
         let msgs = build_messages(&paths, NUM_POINTS as _);
 
         {
@@ -92,7 +92,7 @@ criterion_main!(benches);
 
 // --- Helpers ---
 
-fn build_messages(paths: &[ObjPath], pts: usize) -> Vec<MsgBundle> {
+fn build_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .flat_map(move |frame_idx| {
@@ -120,7 +120,7 @@ struct Point {
     _color: Option<ColorRGBA>,
 }
 
-fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
+fn query_and_visit(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Point> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES as i64 / 2).into());
 
