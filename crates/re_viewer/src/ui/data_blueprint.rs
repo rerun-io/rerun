@@ -221,7 +221,7 @@ impl DataBlueprintTree {
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
-                    display_name: path_to_group_name(path),
+                    display_name: path_to_group_name(path, base_path),
                     ..Default::default()
                 });
                 self.add_group_to_hierarchy_recursively(new_group, path, base_path);
@@ -289,7 +289,7 @@ impl DataBlueprintTree {
 
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
-                    display_name: path_to_group_name(&parent_path),
+                    display_name: path_to_group_name(&parent_path, base_path),
                     children: smallvec![new_group],
                     ..Default::default()
                 });
@@ -355,6 +355,17 @@ impl DataBlueprintTree {
     }
 }
 
-fn path_to_group_name(path: &ObjPath) -> String {
-    path.iter().last().map_or(String::new(), |c| c.to_string())
+fn path_to_group_name(path: &ObjPath, base_path: &ObjPath) -> String {
+    let name = path.iter().last().map_or(String::new(), |c| c.to_string());
+
+    // How many steps until a common ancestor?
+    let mut num_steps_until_common_ancestor = 0;
+    let mut common_ancestor = base_path.clone();
+    while !path.is_descendant_of(&common_ancestor) {
+        // Can never go beyond root because everything is a descendent of root, therefore this is safe.
+        common_ancestor = common_ancestor.parent().unwrap();
+        num_steps_until_common_ancestor += 1;
+    }
+
+    format!("{}{}", "../".repeat(num_steps_until_common_ancestor), name)
 }
