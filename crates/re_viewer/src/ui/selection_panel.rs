@@ -235,7 +235,7 @@ fn blueprint_ui(
                 } else {
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                     let mut props = data_blueprint.get(&instance_id.entity_path);
-                    obj_props_ui(
+                    entity_props_ui(
                         ctx,
                         ui,
                         Some(&instance_id.entity_path),
@@ -255,7 +255,7 @@ fn blueprint_ui(
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
                 {
-                    obj_props_ui(
+                    entity_props_ui(
                         ctx,
                         ui,
                         None,
@@ -303,11 +303,11 @@ fn list_existing_data_blueprints(
     }
 }
 
-fn obj_props_ui(
+fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: Option<&EntityPath>,
-    obj_props: &mut EntityProperties,
+    entity_props: &mut EntityProperties,
     view_state: &ViewState,
 ) {
     use egui::NumExt;
@@ -317,7 +317,7 @@ fn obj_props_ui(
         visible_history,
         interactive,
         ..
-    } = obj_props;
+    } = entity_props;
 
     ui.checkbox(visible, "Visible");
     ui.checkbox(interactive, "Interactive")
@@ -358,7 +358,7 @@ fn obj_props_ui(
             {
                 ui.horizontal(|ui| {
                     ui.label("Image plane distance:");
-                    let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
+                    let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
                     let speed = (distance * 0.05).at_least(0.01);
                     if ui
                         .add(
@@ -369,7 +369,7 @@ fn obj_props_ui(
                         .on_hover_text("Controls how far away the image plane is.")
                         .changed()
                     {
-                        obj_props.set_pinhole_image_plane_distance(distance);
+                        entity_props.set_pinhole_image_plane_distance(distance);
                     }
                 });
             }

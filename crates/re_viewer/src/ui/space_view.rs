@@ -221,7 +221,7 @@ impl SpaceView {
     }
 
     fn query_tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        let obj_tree = &ctx.log_db.entity_db.tree;
+        let entity_tree = &ctx.log_db.entity_db.tree;
 
         // We'd like to see the reference space path by default.
         let default_open = self.root_path != self.space_path;
@@ -235,14 +235,14 @@ impl SpaceView {
             ui.label(self.root_path.to_string());
         })
         .body(|ui| {
-            if let Some(subtree) = obj_tree.subtree(&self.root_path) {
+            if let Some(subtree) = entity_tree.subtree(&self.root_path) {
                 let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
-                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree);
+                self.entity_tree_children_ui(ctx, ui, &spaces_info, subtree);
             }
         });
     }
 
-    fn obj_tree_children_ui(
+    fn entity_tree_children_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -255,12 +255,12 @@ impl SpaceView {
         }
 
         for (path_comp, child_tree) in &tree.children {
-            self.obj_tree_ui(ctx, ui, spaces_info, &path_comp.to_string(), child_tree);
+            self.entity_tree_ui(ctx, ui, spaces_info, &path_comp.to_string(), child_tree);
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn obj_tree_ui(
+    fn entity_tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -309,7 +309,7 @@ impl SpaceView {
                 });
             })
             .body(|ui| {
-                self.obj_tree_children_ui(ctx, ui, spaces_info, tree);
+                self.entity_tree_children_ui(ctx, ui, spaces_info, tree);
             })
             .0
         };
@@ -355,14 +355,14 @@ impl SpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         path: &EntityPath,
-        obj_tree: &EntityTree,
+        entity_tree: &EntityTree,
     ) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Can't add things we already added.
 
             // Insert the object itself and all its children as far as they haven't been added yet
             let mut objects = Vec::new();
-            obj_tree
+            entity_tree
                 .subtree(path)
                 .unwrap()
                 .visit_children_recursively(&mut |path: &EntityPath| {
@@ -399,7 +399,7 @@ impl SpaceView {
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            obj_props: self.data_blueprint.data_blueprints_projected(),
+            entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
         match self.category {

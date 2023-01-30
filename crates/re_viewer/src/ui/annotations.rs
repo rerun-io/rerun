@@ -124,7 +124,7 @@ impl AnnotationMap {
         for entity_path in query
             .entity_paths
             .iter()
-            .filter(|entity_path| query.obj_props.get(entity_path).visible)
+            .filter(|entity_path| query.entity_props_map.get(entity_path).visible)
         {
             let mut next_parent = Some(entity_path.clone());
             while let Some(parent) = next_parent {

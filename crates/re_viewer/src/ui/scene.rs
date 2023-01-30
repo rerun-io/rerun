@@ -8,7 +8,7 @@ pub struct SceneQuery<'s> {
     pub entity_paths: &'s IntSet<EntityPath>,
     pub timeline: Timeline,
     pub latest_at: TimeInt,
-    pub obj_props: &'s EntityPropertyMap,
+    pub entity_props_map: &'s EntityPropertyMap,
 }
 
 impl<'s> SceneQuery<'s> {
@@ -18,7 +18,7 @@ impl<'s> SceneQuery<'s> {
     pub(crate) fn iter_entities(&self) -> impl Iterator<Item = (&EntityPath, EntityProperties)> {
         self.entity_paths
             .iter()
-            .map(|entity_path| (entity_path, self.obj_props.get(entity_path)))
-            .filter(|(_entity_path, obj_props)| obj_props.visible)
+            .map(|entity_path| (entity_path, self.entity_props_map.get(entity_path)))
+            .filter(|(_entity_path, props)| props.visible)
     }
 }

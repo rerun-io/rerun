@@ -49,7 +49,7 @@ impl TransformCache {
         entity_db: &EntityDb,
         time_ctrl: &TimeControl,
         root_path: &EntityPath,
-        obj_properties: &EntityPropertyMap,
+        entity_prop_map: &EntityPropertyMap,
     ) -> Self {
         crate::profile_function!();
 
@@ -86,7 +86,7 @@ impl TransformCache {
             current_tree,
             entity_db,
             &query,
-            obj_properties,
+            entity_prop_map,
             glam::Mat4::IDENTITY,
             false,
         );
@@ -126,7 +126,7 @@ impl TransformCache {
                 parent_tree,
                 entity_db,
                 &query,
-                obj_properties,
+                entity_prop_map,
                 reference_from_ancestor,
                 encountered_pinhole,
             );
@@ -142,7 +142,7 @@ impl TransformCache {
         tree: &EntityTree,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-        obj_properties: &EntityPropertyMap,
+        entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Mat4,
         encountered_pinhole: bool,
     ) {
@@ -163,7 +163,7 @@ impl TransformCache {
             let reference_from_child = match transform_at(
                 &child_tree.path,
                 entity_db,
-                obj_properties,
+                entity_properties,
                 query,
                 &mut encountered_pinhole,
             ) {
@@ -179,7 +179,7 @@ impl TransformCache {
                 child_tree,
                 entity_db,
                 query,
-                obj_properties,
+                entity_properties,
                 reference_from_child,
                 encountered_pinhole,
             );
@@ -207,7 +207,7 @@ impl TransformCache {
 fn transform_at(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
-    obj_properties: &EntityPropertyMap,
+    entity_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
@@ -227,7 +227,7 @@ fn transform_at(
                     // Images are spanned in their local x/y space.
                     // Center it and move it along z, scaling the further we move.
 
-                    let distance = obj_properties
+                    let distance = entity_properties
                         .get(entity_path)
                         .pinhole_image_plane_distance(&pinhole);
 
