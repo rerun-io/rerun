@@ -71,3 +71,7 @@ required-features = ["polars"]
 [[bench]]
 name = "obj_query_benchmark"
 harness = false
+
+[[bench]]
+name = "fixedarray"
+harness = false
