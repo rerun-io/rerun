@@ -356,7 +356,7 @@ fn obj_props_ui(
                     if ui
                         .add(
                             egui::DragValue::new(&mut distance)
-                                .clamp_range(0.0..=f32::INFINITY)
+                                .clamp_range(0.0..=1.0e8)
                                 .speed(speed),
                         )
                         .on_hover_text("Controls how far away the image plane is.")
