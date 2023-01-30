@@ -7,7 +7,7 @@ use crate::msg_bundle::Component;
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::Radius;
+/// # use re_log_types::component_types::Radius;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(Radius::data_type(), DataType::Float32);

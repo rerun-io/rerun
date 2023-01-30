@@ -9,7 +9,7 @@ use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 /// Also known as an isometric transform, or a pose.
 ///
 /// ```
-/// use re_log_types::field_types::Rigid3;
+/// use re_log_types::component_types::Rigid3;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
@@ -81,7 +81,7 @@ impl Rigid3 {
 ///
 ///
 /// ```
-/// use re_log_types::field_types::Pinhole;
+/// use re_log_types::component_types::Pinhole;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
@@ -184,7 +184,7 @@ impl Pinhole {
 /// A transform between two spaces.
 ///
 /// ```
-/// use re_log_types::field_types::{Transform, Rigid3, Pinhole};
+/// use re_log_types::component_types::{Transform, Rigid3, Pinhole};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///

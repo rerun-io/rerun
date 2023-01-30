@@ -111,7 +111,7 @@ impl From<ClassDescriptionArrow> for ClassDescription {
 /// path.
 ///
 /// ```
-/// use re_log_types::field_types::AnnotationContext;
+/// use re_log_types::component_types::AnnotationContext;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

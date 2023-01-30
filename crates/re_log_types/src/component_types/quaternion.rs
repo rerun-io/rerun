@@ -11,7 +11,7 @@ use crate::msg_bundle::Component;
 /// A Quaternion represented by 4 real numbers.
 ///
 /// ```
-/// use re_log_types::field_types::Quaternion;
+/// use re_log_types::component_types::Quaternion;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

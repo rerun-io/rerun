@@ -8,7 +8,7 @@ use super::Vec4D;
 ///
 /// ## Example
 /// ```
-/// # use re_log_types::field_types::{Rect2D, Vec4D};
+/// # use re_log_types::component_types::{Rect2D, Vec4D};
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(

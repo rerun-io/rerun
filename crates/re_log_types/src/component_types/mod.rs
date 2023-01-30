@@ -120,7 +120,7 @@ pub type Result<T> = std::result::Result<T, FieldError>;
 /// ## Example:
 /// ```
 /// use arrow2_convert::{ArrowField, ArrowSerialize, ArrowDeserialize};
-/// use re_log_types::field_types::FixedSizeArrayField;
+/// use re_log_types::component_types::FixedSizeArrayField;
 ///
 /// #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 /// pub struct ConvertibleType {

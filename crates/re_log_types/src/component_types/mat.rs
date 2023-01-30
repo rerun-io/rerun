@@ -11,7 +11,7 @@ use super::Vec3D;
 /// A 3x3 column-major Matrix made up of 3 Vecs
 ///
 /// ```
-/// use re_log_types::field_types::Mat3x3;
+/// use re_log_types::component_types::Mat3x3;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

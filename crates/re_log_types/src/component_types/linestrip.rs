@@ -15,7 +15,7 @@ use super::Vec3D;
 /// A Line Strip of 2D points
 ///
 /// ```
-/// use re_log_types::field_types::LineStrip2D;
+/// use re_log_types::component_types::LineStrip2D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
@@ -98,7 +98,7 @@ impl ArrowDeserialize for LineStrip2D {
 /// A Line Strip of 3D points
 ///
 /// ```
-/// use re_log_types::field_types::LineStrip3D;
+/// use re_log_types::component_types::LineStrip3D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

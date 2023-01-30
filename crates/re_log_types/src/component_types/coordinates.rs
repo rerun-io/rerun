@@ -83,7 +83,7 @@ impl TryFrom<u8> for ViewDir {
 /// For 3D view-space and image-space.
 ///
 /// ```
-/// use re_log_types::field_types::ViewCoordinates;
+/// use re_log_types::component_types::ViewCoordinates;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

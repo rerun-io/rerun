@@ -93,7 +93,7 @@ pub trait Component: ArrowField {
 /// # Example
 ///
 /// ```
-/// # use re_log_types::{field_types::Point2D, msg_bundle::ComponentBundle};
+/// # use re_log_types::{component_types::Point2D, msg_bundle::ComponentBundle};
 /// let points = vec![Point2D { x: 0.0, y: 1.0 }];
 /// let bundle = ComponentBundle::try_from(points).unwrap();
 /// ```
@@ -163,7 +163,7 @@ where
 ///
 /// Create a `MsgBundle` and add a component consisting of 2 [`crate::component_types::Rect2D`] values:
 /// ```
-/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
+/// # use re_log_types::{component_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
 /// let component = vec![
 ///     Rect2D::from_xywh(0.0, 0.0, 0.0, 0.0),
 ///     Rect2D::from_xywh(1.0, 1.0, 0.0, 0.0)
@@ -186,7 +186,7 @@ where
 /// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
 ///
 /// ```
-/// # use re_log_types::{ArrowMsg, field_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
+/// # use re_log_types::{ArrowMsg, component_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
 /// # let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
 /// let msg: ArrowMsg = bundle.try_into().unwrap();

@@ -205,7 +205,7 @@ impl std::fmt::Display for MeshFormat {
 /// A Generic 3D Mesh
 ///
 /// ```
-/// # use re_log_types::field_types::Mesh3D;
+/// # use re_log_types::component_types::Mesh3D;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(

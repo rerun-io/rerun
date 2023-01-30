@@ -8,7 +8,7 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, field_types::Point2D, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::Point2D, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -74,7 +74,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, field_types::{Point2D, ColorRGBA}, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";

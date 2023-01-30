@@ -11,7 +11,7 @@ use crate::msg_bundle::Component;
 /// A 3D bounding box represented by it's half-lengths
 ///
 /// ```
-/// use re_log_types::field_types::Box3D;
+/// use re_log_types::component_types::Box3D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

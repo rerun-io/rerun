@@ -43,30 +43,30 @@ impl Default for ComponentUiRegistry {
         // where the default arrow-format for them looks good enough (at least for now).
         // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
         registry.add::<re_log_types::component_types::AnnotationContext>();
-        // registry.add::<re_log_types::field_types::Arrow3D>();
-        // registry.add::<re_log_types::field_types::Box3D>();
-        // registry.add::<re_log_types::field_types::ClassId>();
+        // registry.add::<re_log_types::component_types::Arrow3D>();
+        // registry.add::<re_log_types::component_types::Box3D>();
+        // registry.add::<re_log_types::component_types::ClassId>();
         registry.add::<re_log_types::component_types::ColorRGBA>();
-        // registry.add::<re_log_types::field_types::Instance>();
-        // registry.add::<re_log_types::field_types::KeypointId>();
-        // registry.add::<re_log_types::field_types::Label>();
-        // registry.add::<re_log_types::field_types::LineStrip2D>();
-        // registry.add::<re_log_types::field_types::LineStrip3D>();
+        // registry.add::<re_log_types::component_types::Instance>();
+        // registry.add::<re_log_types::component_types::KeypointId>();
+        // registry.add::<re_log_types::component_types::Label>();
+        // registry.add::<re_log_types::component_types::LineStrip2D>();
+        // registry.add::<re_log_types::component_types::LineStrip3D>();
         registry.add::<re_log_types::component_types::Mesh3D>();
         registry.add::<re_log_types::component_types::MsgId>();
-        // registry.add::<re_log_types::field_types::Point2D>();
-        // registry.add::<re_log_types::field_types::Point3D>();
-        // registry.add::<re_log_types::field_types::Quaternion>();
-        // registry.add::<re_log_types::field_types::Radius>();
-        // registry.add::<re_log_types::field_types::Rect2D>();
-        // registry.add::<re_log_types::field_types::Scalar>();
-        // registry.add::<re_log_types::field_types::ScalarPlotProps>();
-        // registry.add::<re_log_types::field_types::Size3D>();
+        // registry.add::<re_log_types::component_types::Point2D>();
+        // registry.add::<re_log_types::component_types::Point3D>();
+        // registry.add::<re_log_types::component_types::Quaternion>();
+        // registry.add::<re_log_types::component_types::Radius>();
+        // registry.add::<re_log_types::component_types::Rect2D>();
+        // registry.add::<re_log_types::component_types::Scalar>();
+        // registry.add::<re_log_types::component_types::ScalarPlotProps>();
+        // registry.add::<re_log_types::component_types::Size3D>();
         registry.add::<re_log_types::component_types::Tensor>();
         registry.add::<re_log_types::component_types::TextEntry>();
         registry.add::<re_log_types::component_types::Transform>();
-        // registry.add::<re_log_types::field_types::Vec2D>();
-        // registry.add::<re_log_types::field_types::Vec3D>();
+        // registry.add::<re_log_types::component_types::Vec2D>();
+        // registry.add::<re_log_types::component_types::Vec3D>();
         registry.add::<re_log_types::ViewCoordinates>();
 
         registry
