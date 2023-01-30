@@ -108,7 +108,8 @@ def log_text_entry(
         The text to log.
     level:
         The level of the text entry (default: `LogLevel.INFO`). Note this can technically
-        be an arbitrary string, but it's recommended to use one of the constants from [LogLevel][rerun.log.text.LogLevel]
+        be an arbitrary string, but it's recommended to use one of the constants
+        from [LogLevel][rerun.log.text.LogLevel]
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
     timeless:

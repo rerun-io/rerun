@@ -58,6 +58,19 @@ def log_view_coordinates(
     rerun.log_view_coordinates("world", up="-Y", right_handed=False, timeless=True)
     ```
 
+    Parameters
+    ----------
+    obj_path:
+        Path in the space hierarchy where the view coordinate will be set.
+    xyz:
+        Three-letter acronym for the view coordinate axes.
+    up:
+        Which axis is up? One of "+X", "-X", "+Y", "-Y", "+Z", "-Z".
+    right_handed:
+        If True, the coordinate system is right-handed. If False, it is left-handed.
+    timeless:
+        If true, the view coordinates will be timeless (default: False).
+
     """
     if xyz == "" and up == "":
         _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
@@ -89,31 +102,17 @@ def log_rigid3(
     """
     Log a proper rigid 3D transform between this object and the parent.
 
-    Set either `parent_from_child` or `child_from_parent` to
-    a tuple of `(translation_xyz, quat_xyzw)`.
+    Set either `parent_from_child` or `child_from_parent` to a tuple of `(translation_xyz, quat_xyzw)`.
 
-    `parent_from_child`
-    -------------------
-    `parent_from_child=(translation_xyz, quat_xyzw)`
-
+    Parent-from-child
+    -----------------
     Also known as pose (e.g. camera extrinsics).
 
     The translation is the position of the object in the parent space.
     The resulting transform from child to parent corresponds to taking a point in the child space,
     rotating it by the given rotations, and then translating it by the given translation:
 
-    `point_parent = translation + quat * point_child * quat*
-
-    `child_from_parent`
-    -------------------
-    `child_from_parent=(translation_xyz, quat_xyzw)`
-
-    the inverse of `parent_from_child`
-
-    `xyz`
-    ----
-    Optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
-    This is a convenience for also calling `log_view_coordinates`.
+    `point_parent = translation + quat * point_child * quat*`
 
     Example
     -------
@@ -121,6 +120,20 @@ def log_rigid3(
     rerun.log_rigid3("world/camera", parent_from_child=(t,q))
     rerun.log_pinhole("world/camera/image", …)
     ```
+
+    Parameters
+    ----------
+    obj_path:
+        Path of the *child* space in the space hierarchy.
+    parent_from_child:
+        A tuple of `(translation_xyz, quat_xyzw)` mapping points in the child space to the parent space.
+    child_from_parent:
+        the inverse of `parent_from_child`
+    xyz:
+        Optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
+        This is a convenience for also calling [log_view_coordinates][rerun.log_view_coordinates].
+    timeless:
+        If true, the transform will be timeless (default: False).
 
     """
     if parent_from_child and child_from_parent:

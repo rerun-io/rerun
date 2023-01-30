@@ -32,7 +32,7 @@ def log_pinhole(
     Parameters
     ----------
     obj_path:
-        Path to the camera object in the space hierarchy.
+        Path to the child (image) space in the space hierarchy.
     child_from_parent:
         Row-major intrinsics matrix for projecting from camera space to image space.
     width:
