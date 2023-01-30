@@ -30,11 +30,12 @@ def log_path(
     A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
-
+    ```
            2------3     5
           /        \   /
     0----1          \ /
                      4
+    ```
 
     `positions`: a Nx3 array of points along the path.
     `stroke_width`: width of the line.

@@ -20,6 +20,7 @@ class TorchTensorLike(Protocol):
 
 
 Tensor = Union[npt.ArrayLike, TorchTensorLike]
+"""Type helper for a tensor-like object that can be logged to Rerun."""
 
 
 def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:

@@ -34,13 +34,14 @@ def log_obb(
 
     Parameters
     ----------
-
+    obj_path:
+        The path to the oriented bounding box in the space hierarchy.
     half_size:
         Array with [x, y, z] half dimensions of the OBB.
     position:
         Array with [x, y, z] position of the OBB in world space.
     rotation_q:
-        Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
+        Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
     stroke_width:
@@ -50,7 +51,8 @@ def log_obb(
     class_id:
         Optional class id for the OBB.  The class id provides colors and labels if not specified explicitly.
     timeless:
-        If true, the OBB will be timeless (default: False)
+        If true, the bounding box will be timeless (default: False).
+
     """
     comps = {}
 

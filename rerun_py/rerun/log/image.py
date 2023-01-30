@@ -32,6 +32,15 @@ def log_image(
     linear space.
     * float32/float64: all color components should be in 0-1 linear space.
 
+    Parameters
+    ----------
+    obj_path:
+        Path to the image in the space hierarchy.
+    image:
+        A [Tensor][rerun.log.tensor.Tensor] representing the image to log.
+    timeless:
+        If true, the image will be timeless (default: False).
+
     """
     image = _to_numpy(image)
 

@@ -37,7 +37,7 @@ def log_arrow(
     Parameters
     ----------
     obj_path
-        The path to store the object at.
+        The path to the arrow in the space hierarchy.
     origin
         The base position of the arrow.
     vector

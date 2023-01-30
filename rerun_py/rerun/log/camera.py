@@ -31,14 +31,16 @@ def log_pinhole(
 
     Parameters
     ----------
+    obj_path:
+        Path to the camera object in the space hierarchy.
     child_from_parent:
-        Row-major intrinsics matrix for projecting from camera space to image space
+        Row-major intrinsics matrix for projecting from camera space to image space.
     width:
-        Horizontal resolution of the child space
+        Horizontal resolution of the child space.
     height:
-        Vertical resolution of the child space
+        Vertical resolution of the child space.
     timeless:
-        If true, the camera will be timeless (default: False)
+        If true, the camera will be timeless (default: False).
 
     """
     # Transform arrow handling happens inside the python bridge

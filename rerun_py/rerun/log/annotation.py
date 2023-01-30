@@ -107,11 +107,11 @@ def log_annotation_context(
     Parameters
     ----------
     obj_path:
-        The path to log the annotation context to.
+        The path to the annotation context in the space hierarchy.
     class_descriptions:
         A single ClassDescription or a collection of ClassDescriptions.
     timeless:
-        If true, the annotation context will be timeless (default: True)
+        If true, the annotation context will be timeless (default: True).
 
     """
     if not isinstance(class_descriptions, Iterable):
