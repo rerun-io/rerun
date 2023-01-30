@@ -42,6 +42,23 @@ def log_tensor(
     meter: Optional[float] = None,
     timeless: bool = False,
 ) -> None:
+    """
+    Log an arbitrary-dimensional tensor.
+
+    Parameters
+    ----------
+    obj_path:
+        Path to the image in the space hierarchy.
+    tensor:
+        A [Tensor][rerun.log.tensor.Tensor] objector.
+    names:
+        Optional names for each dimension of the tensor.
+    meter:
+        Optional scale of the tensor (e.g. meters per cell).
+    timeless:
+        If true, the tensor will be timeless (default: False).
+
+    """
     _log_tensor(obj_path, tensor=_to_numpy(tensor), names=names, meter=meter, timeless=timeless)
 
 
