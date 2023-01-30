@@ -11,7 +11,7 @@ __all__ = [
 
 
 def log_scalar(
-    obj_path: str,
+    entity_path: str,
     scalar: float,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
@@ -121,4 +121,4 @@ def log_scalar(
         props = [{"scattered": scattered}]
         comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=False)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=False)

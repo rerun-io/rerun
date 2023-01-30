@@ -62,7 +62,7 @@ def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
 
 
 def log_annotation_context(
-    obj_path: str,
+    entity_path: str,
     class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
     *,
     timeless: bool = True,
@@ -128,4 +128,4 @@ def log_annotation_context(
     ]
 
     # AnnotationContext arrow handling happens inside the python bridge
-    bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+    bindings.log_annotation_context(entity_path, tuple_class_descriptions, timeless)

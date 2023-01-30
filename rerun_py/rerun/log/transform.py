@@ -14,7 +14,7 @@ __all__ = [
 
 
 def log_view_coordinates(
-    obj_path: str,
+    entity_path: str,
     *,
     xyz: str = "",
     up: str = "",
@@ -66,20 +66,20 @@ def log_view_coordinates(
         _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
         up = ""
     if xyz != "":
-        bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+        bindings.log_view_coordinates_xyz(entity_path, xyz, right_handed, timeless)
     else:
         if right_handed is None:
             right_handed = True
-        bindings.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
+        bindings.log_view_coordinates_up_handedness(entity_path, up, right_handed, timeless)
 
 
-def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
+def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
     """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
-    bindings.log_unknown_transform(obj_path, timeless=timeless)
+    bindings.log_unknown_transform(entity_path, timeless=timeless)
 
 
 def log_rigid3(
-    obj_path: str,
+    entity_path: str,
     *,
     parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
     child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
@@ -129,7 +129,7 @@ def log_rigid3(
     elif parent_from_child:
         (t, q) = parent_from_child
         bindings.log_rigid3(
-            obj_path,
+            entity_path,
             parent_from_child=True,
             rotation_q=_to_sequence(q),
             translation=_to_sequence(t),
@@ -138,7 +138,7 @@ def log_rigid3(
     elif child_from_parent:
         (t, q) = child_from_parent
         bindings.log_rigid3(
-            obj_path,
+            entity_path,
             parent_from_child=False,
             rotation_q=_to_sequence(q),
             translation=_to_sequence(t),
@@ -149,4 +149,4 @@ def log_rigid3(
         return
 
     if xyz != "":
-        log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)
+        log_view_coordinates(entity_path, xyz=xyz, timeless=timeless)

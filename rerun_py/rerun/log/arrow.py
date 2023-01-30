@@ -12,7 +12,7 @@ __all__ = [
 
 
 def log_arrow(
-    obj_path: str,
+    entity_path: str,
     origin: Optional[npt.ArrayLike],
     vector: Optional[npt.ArrayLike] = None,
     *,
@@ -32,7 +32,7 @@ def log_arrow(
 
     Parameters
     ----------
-    obj_path
+    entity_path
         The path to store the object at.
     origin
         The base position of the arrow.
@@ -73,4 +73,4 @@ def log_arrow(
         radii = _normalize_radii([width_scale / 2])
         comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)

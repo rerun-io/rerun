@@ -81,7 +81,7 @@ class LoggingHandler(logging.Handler):
 
 
 def log_text_entry(
-    obj_path: str,
+    entity_path: str,
     text: str,
     level: Optional[str] = LogLevel.INFO,
     color: Optional[Sequence[int]] = None,
@@ -100,10 +100,10 @@ def log_text_entry(
     if text:
         comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
     else:
-        logging.warning(f"Null  text entry in log_text_entry('{obj_path}') will be dropped.")
+        logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 
     if color:
         colors = _normalize_colors([color])
         comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
