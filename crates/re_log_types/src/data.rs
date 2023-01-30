@@ -8,43 +8,6 @@ pub use crate::field_types::{Arrow3D, Pinhole, Rigid3, Transform};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DataType {
-    // 1D:
-    Bool,
-    I32,
-    F32,
-    F64,
-    Color,
-    String,
-
-    // ----------------------------
-    // 2D:
-    Vec2,
-    BBox2D,
-
-    // ----------------------------
-    // 3D:
-    Vec3,
-    Box3,
-    Mesh3D,
-    Arrow3D,
-
-    // ----------------------------
-    // N-D:
-    Tensor,
-
-    // ----------------------------
-    ObjPath,
-
-    Transform,
-    ViewCoordinates,
-    AnnotationContext,
-}
-
-// ----------------------------------------------------------------------------
-
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct BBox2D {
