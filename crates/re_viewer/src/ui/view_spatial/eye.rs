@@ -286,7 +286,14 @@ impl OrbitEye {
                 .ctx
                 .input(|i| i.zoom_delta() * (i.scroll_delta.y / 200.0).exp());
             if factor != 1.0 {
-                self.orbit_radius /= factor;
+                let new_radius = self.orbit_radius / factor;
+
+                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
+                // Max value is choosen with some generous margin of an observed crash due to infinity.
+                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                    self.orbit_radius = new_radius;
+                }
+
                 did_interact = true;
             }
         }

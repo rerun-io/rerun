@@ -1,4 +1,4 @@
-use re_data_store::{query_transform, ObjPath, ObjectProps};
+use re_data_store::{query_transform, EntityPath, EntityProperties};
 use re_log_types::TimeType;
 
 use crate::{
@@ -103,10 +103,10 @@ pub fn what_is_selected_ui(
                 ctx.msg_id_button(ui, *msg_id);
             });
         }
-        Selection::DataPath(data_path) => {
+        Selection::ComponentPath(component_path) => {
             ui.horizontal(|ui| {
-                ui.label("Data path:");
-                ctx.data_path_button(ui, data_path);
+                ui.label("Entity component:");
+                ctx.component_path_button(ui, component_path);
             });
         }
         Selection::SpaceView(space_view_id) => {
@@ -118,11 +118,11 @@ pub fn what_is_selected_ui(
             }
         }
         Selection::Instance(space_view_id, instance_id) => {
-            egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+            egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_id.instance_index.is_none() {
-                    ui.label("Object Path:");
+                    ui.label("Entity:");
                 } else {
-                    ui.label("Instance:");
+                    ui.label("Entity instance:");
                 }
                 ctx.instance_id_button(ui, *space_view_id, instance_id);
                 ui.end_row();
@@ -174,8 +174,8 @@ impl DataUi for Selection {
             Selection::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::DataPath(data_path) => {
-                data_path.data_ui(ctx, ui, verbosity, query);
+            Selection::ComponentPath(component_path) => {
+                component_path.data_ui(ctx, ui, verbosity, query);
             }
             Selection::Instance(_, instance_id) => {
                 instance_id.data_ui(ctx, ui, verbosity, query);
@@ -193,12 +193,12 @@ fn blueprint_ui(
 ) {
     match selection {
         Selection::MsgId(_) => {
-            // TODO(andreas): Show space views that show objects from this message.
+            // TODO(andreas): Show space views that contains entities that's part of this message.
             ui.weak("(nothing)");
         }
 
-        Selection::DataPath(data_path) => {
-            list_existing_data_blueprints(ui, ctx, data_path.obj_path(), blueprint);
+        Selection::ComponentPath(component_path) => {
+            list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
         }
 
         Selection::SpaceView(space_view_id) => {
@@ -230,22 +230,22 @@ fn blueprint_ui(
                 if instance_id.instance_index.is_some() {
                     ui.horizontal(|ui| {
                         ui.label("Part of");
-                        ctx.obj_path_button(ui, *space_view_id, &instance_id.obj_path);
+                        ctx.entity_path_button(ui, *space_view_id, &instance_id.entity_path);
                     });
                 } else {
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
-                    let mut props = data_blueprint.get(&instance_id.obj_path);
-                    obj_props_ui(
+                    let mut props = data_blueprint.get(&instance_id.entity_path);
+                    entity_props_ui(
                         ctx,
                         ui,
-                        Some(&instance_id.obj_path),
+                        Some(&instance_id.entity_path),
                         &mut props,
                         &space_view.view_state,
                     );
-                    data_blueprint.set(instance_id.obj_path.clone(), props);
+                    data_blueprint.set(instance_id.entity_path.clone(), props);
                 }
             } else {
-                list_existing_data_blueprints(ui, ctx, &instance_id.obj_path, blueprint);
+                list_existing_data_blueprints(ui, ctx, &instance_id.entity_path, blueprint);
             }
         }
 
@@ -255,7 +255,7 @@ fn blueprint_ui(
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
                 {
-                    obj_props_ui(
+                    entity_props_ui(
                         ctx,
                         ui,
                         None,
@@ -275,10 +275,12 @@ fn blueprint_ui(
 fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
     blueprint: &Blueprint,
 ) {
-    let space_views_with_path = blueprint.viewport.space_views_containing_obj_path(obj_path);
+    let space_views_with_path = blueprint
+        .viewport
+        .space_views_containing_entity_path(entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
@@ -289,32 +291,37 @@ fn list_existing_data_blueprints(
         ui.indent("list of data blueprints indent", |ui| {
             for space_view_id in &space_views_with_path {
                 if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                    ctx.obj_path_button_to(ui, Some(*space_view_id), obj_path, &space_view.name);
+                    ctx.entity_path_button_to(
+                        ui,
+                        Some(*space_view_id),
+                        entity_path,
+                        &space_view.name,
+                    );
                 }
             }
         });
     }
 }
 
-fn obj_props_ui(
+fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    obj_path: Option<&ObjPath>,
-    obj_props: &mut ObjectProps,
+    entity_path: Option<&EntityPath>,
+    entity_props: &mut EntityProperties,
     view_state: &ViewState,
 ) {
     use egui::NumExt;
 
-    let ObjectProps {
+    let EntityProperties {
         visible,
         visible_history,
         interactive,
         ..
-    } = obj_props;
+    } = entity_props;
 
     ui.checkbox(visible, "Visible");
     ui.checkbox(interactive, "Interactive")
-        .on_hover_text("If disabled, the object will not react to any mouse interaction");
+        .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
     ui.horizontal(|ui| {
         ui.label("Visible history:");
@@ -328,7 +335,7 @@ fn obj_props_ui(
                         .speed(speed)
                         .suffix("s"),
                 )
-                .on_hover_text("Include this much history of the object in the Space View");
+                .on_hover_text("Include this much history of the entity in the Space View");
                 visible_history.nanos = (time_sec * 1e9).round() as _;
             }
             TimeType::Sequence => {
@@ -338,31 +345,31 @@ fn obj_props_ui(
                         .clamp_range(0.0..=f32::INFINITY)
                         .speed(speed),
                 )
-                .on_hover_text("Include this much history of the object in the Space View");
+                .on_hover_text("Include this much history of the entity in the Space View");
             }
         }
     });
 
     if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
-        if let Some(obj_path) = obj_path {
+        if let Some(entity_path) = entity_path {
             let query = ctx.current_query();
             if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.obj_db, obj_path, &query)
+                query_transform(&ctx.log_db.entity_db, entity_path, &query)
             {
                 ui.horizontal(|ui| {
                     ui.label("Image plane distance:");
-                    let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
+                    let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
                     let speed = (distance * 0.05).at_least(0.01);
                     if ui
                         .add(
                             egui::DragValue::new(&mut distance)
-                                .clamp_range(0.0..=f32::INFINITY)
+                                .clamp_range(0.0..=1.0e8)
                                 .speed(speed),
                         )
                         .on_hover_text("Controls how far away the image plane is.")
                         .changed()
                     {
-                        obj_props.set_pinhole_image_plane_distance(distance);
+                        entity_props.set_pinhole_image_plane_distance(distance);
                     }
                 });
             }

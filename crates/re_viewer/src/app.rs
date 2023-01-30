@@ -410,7 +410,7 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = DataStoreStats::from_store(&self.log_db().obj_db.arrow_store);
+        let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.arrow_store);
 
         self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
 
@@ -1355,7 +1355,7 @@ fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
-    use re_log_types::{DataMsg, PathOpMsg, TimeInt};
+    use re_log_types::{EntityPathOpMsg, TimeInt};
 
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
@@ -1373,11 +1373,10 @@ fn save_database_to_file(
                 .chronological_log_messages()
                 .filter(|msg| {
                     match msg {
-                        LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) | LogMsg::Goodbye(_) => {
+                        LogMsg::BeginRecordingMsg(_) | LogMsg::Goodbye(_) => {
                             true // timeless
                         }
-                        LogMsg::DataMsg(DataMsg { time_point, .. })
-                        | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
+                        LogMsg::EntityPathOpMsg(EntityPathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
                                     .get(&timeline)

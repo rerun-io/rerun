@@ -1,8 +1,8 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{LogDb, ObjPath};
-use re_log_types::{IndexHash, ObjPathHash};
+use re_data_store::{EntityPath, LogDb};
+use re_log_types::{EntityPathHash, IndexHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -14,17 +14,17 @@ pub enum HoveredSpace {
     None,
     /// Hovering in a 2D space.
     TwoD {
-        space_2d: ObjPath,
+        space_2d: EntityPath,
         /// Where in this 2D space (+ depth)?
         pos: glam::Vec3,
     },
     /// Hovering in a 3D space.
     ThreeD {
         /// The 3D space with the camera(s)
-        space_3d: ObjPath,
+        space_3d: EntityPath,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
+        target_spaces: Vec<(EntityPath, Option<glam::Vec3>)>,
     },
 }
 
@@ -92,37 +92,37 @@ impl InteractionHighlight {
     }
 }
 
-/// Highlights of a specific object path in a specific space view.
+/// Highlights of a specific entity path in a specific space view.
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
 #[derive(Default)]
-pub struct SpaceViewObjectHighlight {
+pub struct SpaceViewEntityHighlight {
     overall: InteractionHighlight,
     instances: IntMap<IndexHash, InteractionHighlight>,
 }
 
 #[derive(Copy, Clone)]
-pub struct OptionalSpaceViewObjectHighlight<'a>(Option<&'a SpaceViewObjectHighlight>);
+pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
-impl<'a> OptionalSpaceViewObjectHighlight<'a> {
+impl<'a> OptionalSpaceViewEntityHighlight<'a> {
     pub fn index_highlight(&self, index: IndexHash) -> InteractionHighlight {
         match self.0 {
-            Some(object_highlight) => object_highlight
+            Some(entity_highlight) => entity_highlight
                 .instances
                 .get(&index)
                 .cloned()
                 .unwrap_or_default()
-                .max(object_highlight.overall),
+                .max(entity_highlight.overall),
             None => InteractionHighlight::default(),
         }
     }
 
     pub fn any_selection_highlight(&self) -> bool {
         match self.0 {
-            Some(object_highlight) => {
+            Some(entity_highlight) => {
                 // TODO(andreas): Could easily pre-compute this!
-                object_highlight.overall.selection.is_some()
-                    || object_highlight
+                entity_highlight.overall.selection.is_some()
+                    || entity_highlight
                         .instances
                         .values()
                         .any(|instance_highlight| instance_highlight.selection.is_some())
@@ -137,15 +137,15 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]
 pub struct SpaceViewHighlights {
-    highlighted_object_paths: IntMap<ObjPathHash, SpaceViewObjectHighlight>,
+    highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewEntityHighlight>,
 }
 
 impl SpaceViewHighlights {
-    pub fn object_highlight(
+    pub fn entity_highlight(
         &self,
-        obj_path_hash: ObjPathHash,
-    ) -> OptionalSpaceViewObjectHighlight<'_> {
-        OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&obj_path_hash))
+        entity_path_hash: EntityPathHash,
+    ) -> OptionalSpaceViewEntityHighlight<'_> {
+        OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
     }
 }
 
@@ -279,7 +279,7 @@ impl SelectionState {
             .iter()
             .any(|current| match current {
                 Selection::MsgId(_)
-                | Selection::DataPath(_)
+                | Selection::ComponentPath(_)
                 | Selection::SpaceView(_)
                 | Selection::DataBlueprintGroup(_, _) => current == test,
 
@@ -292,7 +292,7 @@ impl SelectionState {
                             a.is_none() || b.is_none() || a == b
                         }
 
-                        current_instance_id.obj_path == test_instance_id.obj_path
+                        current_instance_id.entity_path == test_instance_id.entity_path
                             && either_none_or_same(
                                 &current_instance_id.instance_index,
                                 &test_instance_id.instance_index,
@@ -317,21 +317,21 @@ impl SelectionState {
     ) -> SpaceViewHighlights {
         crate::profile_function!();
 
-        let mut highlighted_object_paths =
-            IntMap::<ObjPathHash, SpaceViewObjectHighlight>::default();
+        let mut highlighted_entity_paths =
+            IntMap::<EntityPathHash, SpaceViewEntityHighlight>::default();
 
         for current_selection in self.selection.iter() {
             match current_selection {
-                Selection::MsgId(_) | Selection::DataPath(_) | Selection::SpaceView(_) => {}
+                Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::SpaceView(_) => {}
 
                 Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
-                            space_view.data_blueprint.visit_group_objects_recursively(
+                            space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
-                                &mut |obj_path: &ObjPath| {
-                                    highlighted_object_paths
-                                        .entry(obj_path.hash())
+                                &mut |entity_path: &EntityPath| {
+                                    highlighted_entity_paths
+                                        .entry(entity_path.hash())
                                         .or_default()
                                         .overall
                                         .selection = SelectionHighlight::SiblingSelection;
@@ -348,19 +348,19 @@ impl SelectionState {
                         SelectionHighlight::SiblingSelection
                     };
 
-                    let highlighted_object = highlighted_object_paths
-                        .entry(selected_instance.obj_path.hash())
+                    let highlighted_entity = highlighted_entity_paths
+                        .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target =
                         if let Some(selected_index) = &selected_instance.instance_index {
-                            &mut highlighted_object
+                            &mut highlighted_entity
                                 .instances
                                 .entry(selected_index.hash())
                                 .or_default()
                                 .selection
                         } else {
-                            &mut highlighted_object.overall.selection
+                            &mut highlighted_entity.overall.selection
                         };
 
                     *highlight_target = (*highlight_target).max(highlight);
@@ -370,18 +370,18 @@ impl SelectionState {
 
         for current_hover in self.hovered_previous_frame.iter() {
             match current_hover {
-                Selection::MsgId(_) | Selection::DataPath(_) | Selection::SpaceView(_) => {}
+                Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::SpaceView(_) => {}
 
                 Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
                     // since they are truly local to a space view.
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
-                            space_view.data_blueprint.visit_group_objects_recursively(
+                            space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
-                                &mut |obj_path: &ObjPath| {
-                                    highlighted_object_paths
-                                        .entry(obj_path.hash())
+                                &mut |entity_path: &EntityPath| {
+                                    highlighted_entity_paths
+                                        .entry(entity_path.hash())
                                         .or_default()
                                         .overall
                                         .hover = HoverHighlight::Hovered;
@@ -392,19 +392,19 @@ impl SelectionState {
                 }
 
                 Selection::Instance(_, selected_instance) => {
-                    let highlighted_object = highlighted_object_paths
-                        .entry(selected_instance.obj_path.hash())
+                    let highlighted_entity = highlighted_entity_paths
+                        .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target =
                         if let Some(selected_index) = &selected_instance.instance_index {
-                            &mut highlighted_object
+                            &mut highlighted_entity
                                 .instances
                                 .entry(selected_index.hash())
                                 .or_default()
                                 .hover
                         } else {
-                            &mut highlighted_object.overall.hover
+                            &mut highlighted_entity.overall.hover
                         };
 
                     *highlight_target = HoverHighlight::Hovered;
@@ -413,7 +413,7 @@ impl SelectionState {
         }
 
         SpaceViewHighlights {
-            highlighted_object_paths,
+            highlighted_entity_paths,
         }
     }
 }

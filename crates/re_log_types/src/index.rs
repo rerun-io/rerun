@@ -1,4 +1,4 @@
-use crate::{field_types::Instance, hash::Hash128};
+use crate::{component_types::Instance, hash::Hash128};
 
 // ----------------------------------------------------------------------------
 

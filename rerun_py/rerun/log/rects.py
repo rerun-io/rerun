@@ -1,8 +1,12 @@
-from enum import Enum
 from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.annotation import ClassIdArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
+from rerun.components.label import LabelArray
+from rerun.components.rect2d import Rect2DArray, RectFormat
 from rerun.log import (
     Color,
     Colors,
@@ -22,29 +26,8 @@ __all__ = [
 ]
 
 
-# """ How to specify rectangles (axis-aligned bounding boxes). """
-class RectFormat(Enum):
-    # """ [x,y,w,h], with x,y = left,top. """"
-    XYWH = "XYWH"
-
-    # """ [y,x,h,w], with x,y = left,top. """"
-    YXHW = "YXHW"
-
-    # """ [x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom """"
-    XYXY = "XYXY"
-
-    # """ [y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom """"
-    YXYX = "YXYX"
-
-    # """ [x_center, y_center, width, height]"
-    XCYCWH = "XCYCWH"
-
-    # """ [x_center, y_center, width/2, height/2]"
-    XCYCW2H2 = "XCYCW2H2"
-
-
 def log_rect(
-    obj_path: str,
+    entity_path: str,
     rect: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
@@ -64,11 +47,6 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.rect2d import Rect2DArray
-
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
     else:
@@ -88,11 +66,11 @@ def log_rect(
         class_ids = _normalize_ids([class_id])
         comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
 
 
 def log_rects(
-    obj_path: str,
+    entity_path: str,
     rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
@@ -105,7 +83,7 @@ def log_rects(
     """
     Log multiple 2D rectangles.
 
-    Logging again to the same `obj_path` will replace all the previous rectangles.
+    Logging again to the same `entity_path` will replace all the previous rectangles.
 
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
     argument.
@@ -137,12 +115,6 @@ def log_rects(
     class_ids = _normalize_ids(class_ids)
     labels = _normalize_labels(labels)
 
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.instance import InstanceArray
-    from rerun.components.label import LabelArray
-    from rerun.components.rect2d import Rect2DArray
-
     identifiers_np = np.array((), dtype="int64")
     if identifiers:
         try:
@@ -172,8 +144,8 @@ def log_rects(
         is_splat = len(class_ids) == 1
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
         comps[1]["rerun.instance"] = InstanceArray.splat()
-        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)

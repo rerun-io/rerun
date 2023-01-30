@@ -15,6 +15,8 @@ lint: toml-lint py-lint
 
 ### Python
 
+py_folders := "rerun_py examples"
+
 # Set up a Pythonvirtual environment for development
 py-dev-env:
     #!/usr/bin/env bash
@@ -41,18 +43,18 @@ py-build:
 
 # Run autoformatting
 py-format:
-    black --config rerun_py/pyproject.toml .
-    blackdoc .
-    isort .
+    black --config rerun_py/pyproject.toml {{py_folders}}
+    blackdoc {{py_folders}}
+    isort {{py_folders}}
     pyupgrade --py37-plus `find rerun_py/rerun/ -name "*.py" -type f`
 
 # Run linting
 py-lint:
-    black --check --config rerun_py/pyproject.toml --diff .
-    blackdoc --check .
-    isort --check .
+    black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
+    blackdoc --check {{py_folders}}
+    isort --check {{py_folders}}
     mypy --no-warn-unused-ignore
-    flake8
+    flake8 {{py_folders}}
 
 # Run fast unittests
 py-test:

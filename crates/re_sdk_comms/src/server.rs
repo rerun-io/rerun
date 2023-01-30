@@ -172,16 +172,15 @@ impl CongestionManager {
 
         #[allow(clippy::match_same_arms)]
         match msg {
-            LogMsg::BeginRecordingMsg(_)
-            | LogMsg::TypeMsg(_)
-            | LogMsg::PathOpMsg(_)
-            | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
+            LogMsg::BeginRecordingMsg(_) | LogMsg::EntityPathOpMsg(_) | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
 
-            LogMsg::DataMsg(data_msg) => self.should_send_time_point(&data_msg.time_point),
-
-            LogMsg::ArrowMsg(_) => {
-                true // TODO(emilk): parse TimePoints from ArrowMsg (https://github.com/rerun-io/rerun/issues/464)
-            }
+            LogMsg::ArrowMsg(arrow_msg) => match arrow_msg.time_point() {
+                Ok(time_point) => self.should_send_time_point(&time_point),
+                Err(err) => {
+                    re_log::error_once!("Failed to parse an Arrow Message - dropping this message, and maybe more. {err}");
+                    false
+                }
+            },
         }
     }
 

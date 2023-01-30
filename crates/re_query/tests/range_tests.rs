@@ -2,13 +2,13 @@ mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
 use re_log_types::{
+    component_types::Instance,
+    component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
-    field_types::Instance,
-    field_types::{ColorRGBA, Point2D},
     msg_bundle::try_build_msg_bundle1,
     msg_bundle::try_build_msg_bundle2,
     msg_bundle::Component,
-    MsgId, ObjPath,
+    EntityPath, MsgId,
 };
 use re_query::range_entity_with_primary;
 
@@ -16,7 +16,7 @@ use re_query::range_entity_with_primary;
 fn simple_range() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
-    let ent_path: ObjPath = "point".into();
+    let ent_path: EntityPath = "point".into();
 
     let timepoint1 = [build_frame_nr(123.into())];
     {
@@ -236,7 +236,7 @@ fn simple_range() {
 fn timeless_range() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
-    let ent_path: ObjPath = "point".into();
+    let ent_path: EntityPath = "point".into();
 
     let timepoint1 = [build_frame_nr(123.into())];
     {
@@ -671,7 +671,7 @@ fn timeless_range() {
 fn simple_splatted_range() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
-    let ent_path: ObjPath = "point".into();
+    let ent_path: EntityPath = "point".into();
 
     let timepoint1 = [build_frame_nr(123.into())];
     {

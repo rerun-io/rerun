@@ -9,16 +9,15 @@ use pyo3::{
     PyAny, PyResult,
 };
 use re_log_types::{
-    field_types,
+    component_types,
     msg_bundle::{self, ComponentBundle, MsgBundle, MsgBundleError},
-    LogMsg, MsgId, ObjPath, TimePoint,
+    EntityPath, LogMsg, MsgId, TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
-fn array_to_rust(
-    arrow_array: &PyAny,
-    field_name: Option<&str>,
-) -> PyResult<(Box<dyn Array>, Field)> {
+///
+/// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
+fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare pointers to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
@@ -41,22 +40,22 @@ fn array_to_rust(
         let mut field = ffi::import_field_from_c(schema.as_ref())
             .map_err(|e| PyValueError::new_err(format!("Error importing Field: {e}")))?;
 
-        // There is a bad incomparibility between pyarrow and arrow2-convert
+        // There is a bad incompatibility between pyarrow and arrow2-convert
         // Force the type to be correct.
         // https://github.com/rerun-io/rerun/issues/795s
-        if let Some(name) = field_name {
-            if name == <field_types::Tensor as msg_bundle::Component>::name() {
-                field.data_type = <field_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name == <field_types::Rect2D as msg_bundle::Component>::name() {
-                field.data_type = <field_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+        if let Some(name) = name {
+            if name == <component_types::Tensor as msg_bundle::Component>::name() {
+                field.data_type = <component_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            } else if name == <component_types::Rect2D as msg_bundle::Component>::name() {
+                field.data_type = <component_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
 
         let array = ffi::import_array_from_c(*array, field.data_type.clone())
             .map_err(|e| PyValueError::new_err(format!("Error importing Array: {e}")))?;
 
-        if let Some(field_name) = field_name {
-            field.name = field_name.to_owned();
+        if let Some(name) = name {
+            field.name = name.to_owned();
         }
 
         Ok((array, field))
@@ -64,14 +63,14 @@ fn array_to_rust(
 }
 
 #[pyo3::pyfunction]
-pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
+pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
     let pyarrow = py.import("pyarrow")?;
     let pyarrow_field_cls = pyarrow
         .dict()
         .get_item("Field")
         .ok_or_else(|| PyAttributeError::new_err("Module 'pyarrow' has no attribute 'Field'"))?;
 
-    let fields = field_types::iter_registered_field_types()
+    let fields = component_types::iter_registered_field_types()
         .map(|field| {
             let schema = Box::new(ffi::export_field_to_c(field));
             let schema_ptr = &*schema as *const ffi::ArrowSchema;
@@ -87,7 +86,7 @@ pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
 /// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
 /// component arrays.
 pub fn build_chunk_from_components(
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
     components: &PyDict,
     time_point: &TimePoint,
 ) -> PyResult<LogMsg> {
@@ -110,7 +109,7 @@ pub fn build_chunk_from_components(
 
     let msg_bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         time_point.clone(),
         cmp_bundles,
     );

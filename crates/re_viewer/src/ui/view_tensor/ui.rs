@@ -5,7 +5,7 @@ use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
 use half::f16;
 use ndarray::{Axis, Ix2};
 
-use re_log_types::{field_types, ClassicTensor, TensorDataType};
+use re_log_types::{component_types, ClassicTensor, TensorDataType};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
@@ -604,7 +604,7 @@ fn slice_ui<T: Copy>(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_state: &ViewTensorState,
-    tensor_shape: &[field_types::TensorDimension],
+    tensor_shape: &[component_types::TensorDimension],
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
@@ -635,7 +635,7 @@ fn slice_ui<T: Copy>(
     }
 }
 
-fn dimension_name(shape: &[field_types::TensorDimension], dim_idx: usize) -> String {
+fn dimension_name(shape: &[component_types::TensorDimension], dim_idx: usize) -> String {
     let dim = &shape[dim_idx];
     dim.name.as_ref().map_or_else(
         || format!("Dimension {dim_idx} (size={})", dim.size),

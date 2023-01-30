@@ -28,7 +28,7 @@ impl Blueprint {
     pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db);
+        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
 
         self.viewport.on_frame_start(ctx, &spaces_info);
 

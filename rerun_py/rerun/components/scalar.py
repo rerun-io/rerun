@@ -5,7 +5,7 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "ScalarArray",
@@ -26,7 +26,7 @@ class ScalarArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-ScalarType = ComponentTypeFactory("ScalarType", ScalarArray, REGISTERED_FIELDS["rerun.scalar"])
+ScalarType = ComponentTypeFactory("ScalarType", ScalarArray, REGISTERED_COMPONENT_NAMES["rerun.scalar"])
 
 pa.register_extension_type(ScalarType())
 
@@ -43,7 +43,7 @@ class ScalarPlotPropsArray(pa.ExtensionArray):  # type: ignore[misc]
 
 
 ScalarPlotPropsType = ComponentTypeFactory(
-    "ScalarPlotPropsType", ScalarPlotPropsArray, REGISTERED_FIELDS["rerun.scalar_plot_props"]
+    "ScalarPlotPropsType", ScalarPlotPropsArray, REGISTERED_COMPONENT_NAMES["rerun.scalar_plot_props"]
 )
 
 pa.register_extension_type(ScalarPlotPropsType())

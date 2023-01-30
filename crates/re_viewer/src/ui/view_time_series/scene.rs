@@ -4,7 +4,7 @@ use crate::{
 };
 use re_arrow_store::TimeRange;
 use re_log_types::{
-    field_types::{self, Instance},
+    component_types::{self, Instance},
     msg_bundle::Component,
 };
 use re_query::{range_entity_with_primary, QueryError};
@@ -64,8 +64,8 @@ pub struct SceneTimeSeries {
 }
 
 impl SceneTimeSeries {
-    /// Loads all plot objects into the scene according to the given query.
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    /// Loads all plots into the scene according to the given query.
+    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
@@ -76,15 +76,15 @@ impl SceneTimeSeries {
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let store = &ctx.log_db.obj_db.arrow_store;
+        let store = &ctx.log_db.entity_db.arrow_store;
 
-        for obj_path in query.obj_paths {
-            let ent_path = obj_path;
+        for entity_path in query.entity_paths {
+            let ent_path = entity_path;
 
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
             let annotation_info = annotations.class_description(None).annotation_info();
-            let default_color = DefaultColor::ObjPath(ent_path);
+            let default_color = DefaultColor::EntityPath(ent_path);
 
             let query = re_arrow_store::RangeQuery::new(
                 query.timeline,
@@ -93,25 +93,25 @@ impl SceneTimeSeries {
 
             let components = [
                 Instance::name(),
-                field_types::Scalar::name(),
-                field_types::ScalarPlotProps::name(),
-                field_types::ColorRGBA::name(),
-                field_types::Radius::name(),
-                field_types::Label::name(),
+                component_types::Scalar::name(),
+                component_types::ScalarPlotProps::name(),
+                component_types::ColorRGBA::name(),
+                component_types::Radius::name(),
+                component_types::Label::name(),
             ];
-            let ent_views = range_entity_with_primary::<field_types::Scalar, 6>(
+            let ent_views = range_entity_with_primary::<component_types::Scalar, 6>(
                 store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {
                 match ent_view.visit5(
                     |_instance,
-                     scalar: field_types::Scalar,
-                     props: Option<field_types::ScalarPlotProps>,
-                     color: Option<field_types::ColorRGBA>,
-                     radius: Option<field_types::Radius>,
-                     label: Option<field_types::Label>| {
-                        // TODO(andreas): Support object path
+                     scalar: component_types::Scalar,
+                     props: Option<component_types::ScalarPlotProps>,
+                     color: Option<component_types::ColorRGBA>,
+                     radius: Option<component_types::Radius>,
+                     label: Option<component_types::Label>| {
+                        // TODO(andreas): Support entity path
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);
                         let label = annotation_info.label(label.map(|l| l.into()).as_ref());
@@ -143,13 +143,13 @@ impl SceneTimeSeries {
 
             // If all points within a line share the label (and it isn't `None`), then we use it
             // as the whole line label for the plot legend.
-            // Otherwise, we just use the object path as-is.
+            // Otherwise, we just use the entity path as-is.
             let same_label = |points: &[PlotPoint]| {
                 let label = points[0].attrs.label.as_ref();
                 (label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label))
                     .then(|| label.cloned().unwrap())
             };
-            let line_label = same_label(&points).unwrap_or_else(|| obj_path.to_string());
+            let line_label = same_label(&points).unwrap_or_else(|| entity_path.to_string());
 
             self.add_line_segments(&line_label, points);
         }

@@ -3,8 +3,7 @@ use itertools::Itertools as _;
 use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_format::format_number;
 use re_log_types::{
-    msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo,
-    TypeMsg,
+    msg_bundle::MsgBundle, BeginRecordingMsg, EntityPathOpMsg, LogMsg, RecordingInfo,
 };
 
 use crate::{UiVerbosity, ViewerContext};
@@ -102,12 +101,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         });
 }
 
-fn row_height(msg: &LogMsg) -> f32 {
+fn row_height(_msg: &LogMsg) -> f32 {
+    // TODO(emilk): make rows with images (tensors) higher!
     re_ui::ReUi::table_line_height()
-        * match msg {
-            LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 2.0,
-            _ => 1.0,
-        }
 }
 
 fn table_row(
@@ -147,66 +143,8 @@ fn table_row(
                 ui.monospace(format!("{application_id} - {recording_id:?}"));
             });
         }
-        LogMsg::TypeMsg(msg) => {
-            let TypeMsg {
-                msg_id,
-                type_path,
-                obj_type,
-            } = msg;
-
-            row.col(|ui| {
-                ctx.msg_id_button(ui, *msg_id);
-            });
-            row.col(|ui| {
-                ui.monospace("TypeMsg");
-            });
-            for _ in ctx.log_db.timelines() {
-                row.col(|ui| {
-                    ui.label("-");
-                });
-            }
-            row.col(|ui| {
-                ui.monospace(type_path.to_string());
-            });
-            row.col(|ui| {
-                ui.monospace(format!("{obj_type:?}"));
-            });
-        }
-        LogMsg::DataMsg(msg) => {
-            let DataMsg {
-                msg_id,
-                time_point,
-                data_path,
-                data,
-            } = msg;
-
-            row.col(|ui| {
-                ctx.msg_id_button(ui, *msg_id);
-            });
-            row.col(|ui| {
-                ui.monospace("DataMsg");
-            });
-            for timeline in ctx.log_db.timelines() {
-                row.col(|ui| {
-                    if let Some(value) = time_point.get(timeline) {
-                        ctx.time_button(ui, timeline, *value);
-                    }
-                });
-            }
-            row.col(|ui| {
-                ctx.data_path_button(ui, data_path);
-            });
-            row.col(|ui| {
-                let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-                let query = LatestAtQuery::new(
-                    timeline,
-                    time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
-                );
-                data.data_ui(ctx, ui, UiVerbosity::MaxHeight(row_height), &query);
-            });
-        }
-        LogMsg::PathOpMsg(msg) => {
-            let PathOpMsg {
+        LogMsg::EntityPathOpMsg(msg) => {
+            let EntityPathOpMsg {
                 msg_id,
                 time_point,
                 path_op,
@@ -216,7 +154,7 @@ fn table_row(
                 ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
-                ui.monospace("PathOpMsg");
+                ui.monospace("EntityPathOpMsg");
             });
             for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
@@ -226,7 +164,7 @@ fn table_row(
                 });
             }
             row.col(|ui| {
-                ctx.obj_path_button(ui, None, path_op.obj_path());
+                ctx.entity_path_button(ui, None, path_op.entity_path());
             });
             row.col(|ui| {
                 let timeline = *ctx.rec_cfg.time_ctrl.timeline();
@@ -240,7 +178,7 @@ fn table_row(
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
             Ok(MsgBundle {
                 msg_id,
-                obj_path,
+                entity_path,
                 time_point,
                 components,
             }) => {
@@ -258,7 +196,7 @@ fn table_row(
                     });
                 }
                 row.col(|ui| {
-                    ctx.obj_path_button(ui, None, &obj_path);
+                    ctx.entity_path_button(ui, None, &entity_path);
                 });
 
                 row.col(|ui| {

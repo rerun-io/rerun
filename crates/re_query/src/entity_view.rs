@@ -4,12 +4,12 @@ use arrow2::array::{Array, MutableArray, PrimitiveArray};
 use re_arrow_store::ArrayExt;
 use re_format::arrow;
 use re_log_types::{
+    component_types::Instance,
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
         field::ArrowField,
         serialize::ArrowSerialize,
     },
-    field_types::Instance,
     msg_bundle::Component,
     ComponentName,
 };
@@ -380,8 +380,8 @@ where
 
 #[test]
 fn lookup_value() {
+    use re_log_types::component_types::{Instance, Point2D, Rect2D};
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-    use re_log_types::field_types::{Instance, Point2D, Rect2D};
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //
         Point2D { x: 3.0, y: 4.0 },
@@ -448,7 +448,7 @@ fn lookup_value() {
 
 #[test]
 fn lookup_splat() {
-    use re_log_types::field_types::{Instance, Point2D};
+    use re_log_types::component_types::{Instance, Point2D};
     let instances = vec![
         Instance::splat(), //
     ];

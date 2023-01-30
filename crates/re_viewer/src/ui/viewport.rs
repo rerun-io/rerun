@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, TimeInt};
-use re_log_types::field_types::{Tensor, TensorTrait};
+use re_data_store::{EntityPath, TimeInt};
+use re_log_types::component_types::{Tensor, TensorTrait};
 
 use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
 
@@ -126,8 +126,8 @@ impl Viewport {
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let root_group = space_view.data_blueprint.root_group();
-        let default_open =
-            root_group.children.len() + root_group.objects.len() <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
+        let default_open = root_group.children.len() + root_group.entities.len()
+            <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -189,11 +189,11 @@ impl Viewport {
 
         // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
         let children = group.children.clone();
-        let objects = group.objects.clone();
+        let entities = group.entities.clone();
         let group_name = group.display_name.clone();
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
-        for path in &objects {
+        for path in &entities {
             ui.horizontal(|ui| {
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
                 let visibility_changed = blueprint_row_with_visibility_button(
@@ -222,7 +222,7 @@ impl Viewport {
                 continue;
             };
 
-            let default_open = child_group.children.len() + child_group.objects.len()
+            let default_open = child_group.children.len() + child_group.entities.len()
                 <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
@@ -302,8 +302,8 @@ impl Viewport {
 
                 if space_view_candidate
                     .data_blueprint
-                    .object_paths()
-                    .is_subset(existing_view.data_blueprint.object_paths())
+                    .entity_paths()
+                    .is_subset(existing_view.data_blueprint.entity_paths())
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;
@@ -420,10 +420,10 @@ impl Viewport {
         let mut space_views = Vec::new();
 
         for space_info in spaces_info.iter() {
-            for (category, obj_paths) in
-                SpaceView::default_queried_objects_by_category(ctx, spaces_info, space_info)
+            for (category, entity_paths) in
+                SpaceView::default_queries_entities_by_category(ctx, spaces_info, space_info)
             {
-                space_views.push(SpaceView::new(category, space_info, &obj_paths));
+                space_views.push(SpaceView::new(category, space_info, &entity_paths));
             }
         }
 
@@ -467,17 +467,17 @@ impl Viewport {
                 let images = space_info
                     .descendants_without_transform
                     .iter()
-                    .filter_map(|obj_path| {
+                    .filter_map(|entity_path| {
                         if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                            &ctx.log_db.obj_db.arrow_store,
+                            &ctx.log_db.entity_db.arrow_store,
                             &timeline_query,
-                            obj_path,
+                            entity_path,
                             &[],
                         ) {
                             if let Ok(iter) = entity_view.iter_primary() {
                                 for tensor in iter.flatten() {
                                     if tensor.is_shaped_like_an_image() {
-                                        return Some((obj_path.clone(), tensor.shape));
+                                        return Some((entity_path.clone(), tensor.shape));
                                     }
                                 }
                             }
@@ -492,27 +492,29 @@ impl Viewport {
                     // Let's create one space view for each image, where the other images are disabled:
 
                     let mut image_sizes = BTreeSet::default();
-                    for (obj_path, shape) in &images {
+                    for (entity_path, shape) in &images {
                         debug_assert!(matches!(shape.len(), 2 | 3));
                         let image_size = (shape[0].size, shape[1].size);
                         image_sizes.insert(image_size);
 
                         // Space view with everything but the other images.
-                        // (note that other objects stay!)
+                        // (note that other entities stay!)
                         let mut single_image_space_view = space_view_candidate.clone();
-                        for (other_obj_path, _) in &images {
-                            if other_obj_path != obj_path {
+                        for (other_entity_path, _) in &images {
+                            if other_entity_path != entity_path {
                                 single_image_space_view
                                     .data_blueprint
-                                    .remove_object(other_obj_path);
+                                    .remove_entity(other_entity_path);
                             }
                         }
+
                         single_image_space_view.objects_determined_by_user = true;
+
                         space_views.push(single_image_space_view);
                     }
 
                     // Only if all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
-                    // TODO(andreas): What if there's also other objects that we want to show?
+                    // TODO(andreas): What if there's also other entities that we want to show?
                     if image_sizes.len() > 1 {
                         continue;
                     }
@@ -557,11 +559,11 @@ impl Viewport {
         .on_hover_text("Add new space view.");
     }
 
-    pub fn space_views_containing_obj_path(&self, path: &ObjPath) -> Vec<SpaceViewId> {
+    pub fn space_views_containing_entity_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
-                if space_view.data_blueprint.contains_object(path) {
+                if space_view.data_blueprint.contains_entity(path) {
                     Some(*space_view_id)
                 } else {
                     None

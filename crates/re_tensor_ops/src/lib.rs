@@ -4,7 +4,7 @@
 //! This is particularly helpful for performing slice-operations for
 //! dimensionality reduction.
 
-use re_log_types::{field_types, ClassicTensor, TensorDataStore, TensorDataTypeTrait};
+use re_log_types::{component_types, ClassicTensor, TensorDataStore, TensorDataTypeTrait};
 
 pub mod dimension_mapping;
 
@@ -51,7 +51,7 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
 pub fn to_rerun_tensor<A: ndarray::Data + ndarray::RawData, D: ndarray::Dimension>(
     data: &ndarray::ArrayBase<A, D>,
     names: Option<Vec<String>>,
-    meaning: field_types::TensorDataMeaning,
+    meaning: component_types::TensorDataMeaning,
 ) -> Result<ClassicTensor, TensorCastError>
 where
     <A as ndarray::RawData>::Elem: TensorDataTypeTrait + bytemuck::Pod,
@@ -71,17 +71,17 @@ where
         data.shape()
             .iter()
             .zip(names)
-            .map(|(&d, name)| field_types::TensorDimension::named(d as _, name))
+            .map(|(&d, name)| component_types::TensorDimension::named(d as _, name))
             .collect()
     } else {
         data.shape()
             .iter()
-            .map(|&d| field_types::TensorDimension::unnamed(d as _))
+            .map(|&d| component_types::TensorDimension::unnamed(d as _))
             .collect()
     };
 
     Ok(ClassicTensor::new(
-        field_types::TensorId::random(),
+        component_types::TensorId::random(),
         shape,
         A::Elem::DTYPE,
         meaning,
@@ -92,7 +92,7 @@ where
 #[cfg(test)]
 mod tests {
     use re_log_types::{
-        field_types::{TensorDataMeaning, TensorDimension, TensorId},
+        component_types::{TensorDataMeaning, TensorDimension, TensorId},
         TensorDataStore, TensorDataType,
     };
 
@@ -146,7 +146,7 @@ mod tests {
                 TensorDimension::unnamed(5),
             ],
             TensorDataType::F32,
-            field_types::TensorDataMeaning::Unknown,
+            component_types::TensorDataMeaning::Unknown,
             TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_f32; 60]).into()),
         );
 

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use re_log_types::field_types::{ColorRGBA, Instance, Point2D};
+use re_log_types::component_types::{ColorRGBA, Instance, Point2D};
 use re_query::{ComponentWithInstances, EntityView};
 
 #[test]

@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::Timeline;
-use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstanceId, TimeInt};
 
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpaceInfoCollection},
         SpaceViewHighlights, TransformCache, UnreachableTransform, ViewerContext,
     },
-    ui::view_category::categorize_obj_path,
+    ui::view_category::categorize_entity_path,
 };
 
 use super::{
@@ -42,16 +42,16 @@ pub struct SpaceView {
     pub name: String,
 
     /// Everything under this root *can* be shown in the space view.
-    pub root_path: ObjPath,
+    pub root_path: EntityPath,
 
     /// The "anchor point" of this space view.
     /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
-    /// I.e. the position of this object path in space forms the origin of the coordinate system in this space view.
-    /// Furthermore, this is the primary indicator for heuristics on what objects we show in this space view.
-    pub space_path: ObjPath,
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    pub space_path: EntityPath,
 
-    /// The data blueprint tree, has blueprint settings for all blueprint groups and objects in this spaceview.
-    /// It determines which objects are part of the spaceview.
+    /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
+    /// It determines which entities are part of the spaceview.
     pub data_blueprint: DataBlueprintTree,
 
     pub view_state: ViewState,
@@ -67,23 +67,23 @@ impl SpaceView {
     pub fn new(
         category: ViewCategory,
         space_info: &SpaceInfo,
-        queried_objects: &[ObjPath],
+        queries_entities: &[EntityPath],
     ) -> Self {
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
-            |c| ObjPath::from(vec![c.to_owned()]),
+            |c| EntityPath::from(vec![c.clone()]),
         );
 
-        let name = if queried_objects.len() == 1 {
-            // a single object in this space-view - name the space after it
-            queried_objects[0].to_string()
+        let name = if queries_entities.len() == 1 {
+            // a single entity in this space-view - name the space after it
+            queries_entities[0].to_string()
         } else {
             space_info.path.to_string()
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_objects_according_to_hierarchy(queried_objects.iter(), &space_info.path);
+            .insert_entities_according_to_hierarchy(queries_entities.iter(), &space_info.path);
 
         Self {
             name,
@@ -97,54 +97,57 @@ impl SpaceView {
         }
     }
 
-    /// List of objects a space view queries by default for a given category.
+    /// List of entities a space view queries by default for a given category.
     ///
-    /// These are all objects in the given space which have the requested category and are reachable by a transform.
-    pub fn default_queried_objects(
+    /// These are all entities in the given space which have the requested category and are reachable by a transform.
+    pub fn default_queries_entities(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
         category: ViewCategory,
-    ) -> Vec<ObjPath> {
+    ) -> Vec<EntityPath> {
         crate::profile_function!();
 
         let timeline = Timeline::log_time();
         let log_db = &ctx.log_db;
 
-        let mut objects = Vec::new();
+        let mut entities = Vec::new();
 
         space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            objects.extend(
+            entities.extend(
                 space_info
                     .descendants_without_transform
                     .iter()
-                    .filter(|obj_path| {
-                        categorize_obj_path(timeline, log_db, obj_path).contains(category)
+                    .filter(|entity_path| {
+                        categorize_entity_path(timeline, log_db, entity_path).contains(category)
                     })
                     .cloned(),
             );
         });
 
-        objects
+        entities
     }
 
-    /// List of objects a space view queries by default for all any possible category.
-    pub fn default_queried_objects_by_category(
+    /// List of entities a space view queries by default for all any possible category.
+    pub fn default_queries_entities_by_category(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
-    ) -> BTreeMap<ViewCategory, Vec<ObjPath>> {
+    ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
         crate::profile_function!();
 
         let timeline = Timeline::log_time();
         let log_db = &ctx.log_db;
 
-        let mut groups: BTreeMap<ViewCategory, Vec<ObjPath>> = BTreeMap::default();
+        let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
 
         space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            for obj_path in &space_info.descendants_without_transform {
-                for category in categorize_obj_path(timeline, log_db, obj_path) {
-                    groups.entry(category).or_default().push(obj_path.clone());
+            for entity_path in &space_info.descendants_without_transform {
+                for category in categorize_entity_path(timeline, log_db, entity_path) {
+                    groups
+                        .entry(category)
+                        .or_default()
+                        .push(entity_path.clone());
                 }
             }
         });
@@ -164,11 +167,11 @@ impl SpaceView {
         };
 
         if !self.objects_determined_by_user {
-            // Add objects that have been logged since we were created
-            let queried_objects =
-                Self::default_queried_objects(ctx, spaces_info, space_info, self.category);
+            // Add entities that have been logged since we were created
+            let queries_entities =
+                Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
             self.data_blueprint
-                .insert_objects_according_to_hierarchy(queried_objects.iter(), &self.space_path);
+                .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
         }
     }
 
@@ -178,7 +181,7 @@ impl SpaceView {
                 "Root path of this space view. All transformations are relative this.",
             );
             // specify no space view id since the path itself is not part of the space view.
-            ctx.obj_path_button(ui, None, &self.space_path);
+            ctx.entity_path_button(ui, None, &self.space_path);
         });
 
         ui.separator();
@@ -186,7 +189,7 @@ impl SpaceView {
         ui.checkbox(
             &mut self.objects_determined_by_user,
             "Manually add/remove data",
-        ).on_hover_text("Allows to manually add/removed objects from the Space View.\nIf set, new object paths won't be added automatically.");
+        ).on_hover_text("Allows to manually add/removed entities from the Space View.\nIf set, new object paths won't be added automatically.");
         if self.objects_determined_by_user {
             ui.add_space(2.0);
             self.add_objects_ui(ctx, ui);
@@ -229,15 +232,15 @@ impl SpaceView {
     fn add_objects_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         // We'd like to see the reference space path by default.
 
-        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db);
-        let obj_tree = &ctx.log_db.obj_db.tree;
+        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
+        let entity_tree = &ctx.log_db.entity_db.tree;
 
-        // All objects at the space path and below.
-        if let Some(tree) = obj_tree.subtree(&self.space_path) {
+        // All entities at the space path and below.
+        if let Some(tree) = entity_tree.subtree(&self.space_path) {
             self.add_objects_tree_ui(ctx, ui, &spaces_info, &tree.path.to_string(), tree, true);
         }
 
-        // All objects above
+        // All entities above
         let mut num_steps_up = 0; // I.e. the number of inverse transforms we had to do!
         let mut previous_path = self.space_path.clone();
         while let Some(parent) = previous_path.parent() {
@@ -247,7 +250,7 @@ impl SpaceView {
             }
 
             num_steps_up += 1;
-            if let Some(tree) = obj_tree.subtree(&parent) {
+            if let Some(tree) = entity_tree.subtree(&parent) {
                 for (path_comp, child_tree) in &tree.children {
                     if child_tree.path != self.space_path {
                         self.add_objects_tree_ui(
@@ -273,7 +276,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
         name: &str,
-        tree: &ObjectTree,
+        tree: &EntityTree,
         default_open: bool,
     ) {
         if tree.is_leaf() {
@@ -308,52 +311,52 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
         name: &str,
-        ent_path: &ObjPath,
+        entity_path: &EntityPath,
     ) {
         ui.horizontal(|ui| {
-            let space_view_id = if self.data_blueprint.contains_object(ent_path) {
+            let space_view_id = if self.data_blueprint.contains_entity(entity_path) {
                 Some(self.id)
             } else {
                 None
             };
 
-            let widget_text = if ent_path == &self.space_path {
+            let widget_text = if entity_path == &self.space_path {
                 egui::RichText::new(name).strong()
             } else {
                 egui::RichText::new(name)
             };
-            ctx.instance_id_button_to(ui, space_view_id, &InstanceId::new(ent_path.clone(), None), widget_text);
+            ctx.instance_id_button_to(ui, space_view_id, &InstanceId::new(entity_path.clone(), None), widget_text);
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let obj_tree = &ctx.log_db.obj_db.tree;
+                let entity_tree = &ctx.log_db.entity_db.tree;
 
-                if self.data_blueprint.contains_object(ent_path) {
+                if self.data_blueprint.contains_entity(entity_path) {
                     if ui
                     .button("➖")
                     .on_hover_text("Remove this path from the Space View")
                     .clicked()
                     {
-                        // Remove all objects at and under this path
-                        obj_tree.subtree(ent_path)
+                        // Remove all entities at and under this path
+                        entity_tree.subtree(entity_path)
                         .unwrap()
-                        .visit_children_recursively(&mut |path: &ObjPath| {
-                            self.data_blueprint.remove_object(path);
+                        .visit_children_recursively(&mut |path: &EntityPath| {
+                            self.data_blueprint.remove_entity(path);
                         });
                     }
                 } else {
-                    let object_category = categorize_obj_path(Timeline::log_time(), ctx.log_db, ent_path);
+                    let object_category = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
                     let cannot_add_reason = if object_category.contains(self.category) {
-                        spaces_info.is_reachable_by_transform(ent_path, &self.space_path).map_err
+                        spaces_info.is_reachable_by_transform(entity_path, &self.space_path).map_err
                         (|reason| match reason {
                             // Should never happen
                             UnreachableTransform::Unconnected =>
                                  "No object path connection from this space view.",
                             UnreachableTransform::NestedPinholeCameras =>
-                                "Can't display objects under nested pinhole cameras.",
+                                "Can't display entities under nested pinhole cameras.",
                             UnreachableTransform::UnknownTransform =>
-                                "Can't display objects that are connected via an unknown transform to this space.",
+                                "Can't display entities that are connected via an unknown transform to this space.",
                             UnreachableTransform::InversePinholeCameraWithoutResolution =>
-                                "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
+                                "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
                         }).err()
                     } else if object_category.is_empty() {
                         Some("Object does not contain any components")
@@ -365,20 +368,20 @@ impl SpaceView {
                         let response = ui.button("➕");
                         if response.clicked() {
                             // Insert the object itself and all its children as far as they haven't been added yet
-                            let mut objects = Vec::new();
-                            obj_tree
-                                .subtree(ent_path)
+                            let mut entities = Vec::new();
+                            entity_tree
+                                .subtree(entity_path)
                                 .unwrap()
-                                .visit_children_recursively(&mut |path: &ObjPath| {
+                                .visit_children_recursively(&mut |path: &EntityPath| {
                                     if has_visualization_for_category(ctx, self.category, path)
-                                        && !self.data_blueprint.contains_object(path)
+                                        && !self.data_blueprint.contains_entity(path)
                                         && spaces_info.is_reachable_by_transform(path, &self.space_path).is_ok()
                                     {
-                                        objects.push(path.clone());
+                                        entities.push(path.clone());
                                     }
                                 });
-                            self.data_blueprint.insert_objects_according_to_hierarchy(
-                                objects.iter(),
+                            self.data_blueprint.insert_entities_according_to_hierarchy(
+                                entities.iter(),
                                 &self.space_path,
                             );
                         }
@@ -404,40 +407,40 @@ impl SpaceView {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
-            obj_paths: self.data_blueprint.object_paths(),
+            entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            obj_props: self.data_blueprint.data_blueprints_projected(),
+            entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
         match self.category {
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
-                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
+                scene.load(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
             }
 
             ViewCategory::TimeSeries => {
                 let mut scene = view_time_series::SceneTimeSeries::default();
-                scene.load_objects(ctx, &query);
+                scene.load(ctx, &query);
                 self.view_state.ui_time_series(ctx, ui, &scene);
             }
 
             ViewCategory::BarChart => {
                 let mut scene = view_bar_chart::SceneBarChart::default();
-                scene.load_objects(ctx, &query);
+                scene.load(ctx, &query);
                 self.view_state.ui_bar_chart(ctx, ui, &scene);
             }
 
             ViewCategory::Spatial => {
                 let transforms = TransformCache::determine_transforms(
-                    &ctx.log_db.obj_db,
+                    &ctx.log_db.entity_db,
                     &ctx.rec_cfg.time_ctrl,
                     &self.space_path,
                     self.data_blueprint.data_blueprints_projected(),
                 );
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(ctx, &query, &transforms, highlights);
+                scene.load(ctx, &query, &transforms, highlights);
                 self.view_state.ui_spatial(
                     ctx,
                     ui,
@@ -453,7 +456,7 @@ impl SpaceView {
                 ui.add_space(16.0); // Extra headroom required for the hovering controls at the top of the space view.
 
                 let mut scene = view_tensor::SceneTensor::default();
-                scene.load_objects(ctx, &query);
+                scene.load(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
             }
         };
@@ -463,10 +466,10 @@ impl SpaceView {
 fn has_visualization_for_category(
     ctx: &ViewerContext<'_>,
     category: ViewCategory,
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
 ) -> bool {
     let log_db = &ctx.log_db;
-    categorize_obj_path(Timeline::log_time(), log_db, obj_path).contains(category)
+    categorize_entity_path(Timeline::log_time(), log_db, entity_path).contains(category)
 }
 
 // ----------------------------------------------------------------------------
@@ -491,7 +494,7 @@ impl ViewState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space: &ObjPath,
+        space: &EntityPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
         space_view_id: SpaceViewId,

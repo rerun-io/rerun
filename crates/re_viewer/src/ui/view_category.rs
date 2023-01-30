@@ -1,12 +1,12 @@
 use re_arrow_store::{LatestAtQuery, TimeInt};
-use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
+use re_data_store::{query_transform, EntityPath, LogDb, Timeline};
 use re_log_types::{
-    field_types::{
+    component_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
         TextEntry,
     },
     msg_bundle::Component,
-    Arrow3D, DataPath, Mesh3D, Transform,
+    Arrow3D, Mesh3D, Transform,
 };
 use re_query::query_entity_with_primary;
 
@@ -50,80 +50,41 @@ pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 // TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered
 // all possible `ViewCategory` values, or you're in for a bad time..!
 
-pub fn categorize_obj_path(
+pub fn categorize_entity_path(
     timeline: Timeline,
     log_db: &LogDb,
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 
-    let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path()) else {
-        // If it has a transform we might want to visualize it in space
-        // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
-        if query_transform(&log_db.obj_db, obj_path, &LatestAtQuery::new(timeline, TimeInt::MAX)).is_some() {
-            return ViewCategory::Spatial.into();
-        }
+    let mut set = categorize_arrow_entity_path(&timeline, log_db, entity_path);
 
-        return ViewCategorySet::default();
-    };
-
-    match obj_type {
-        re_log_types::ObjectType::TextEntry => ViewCategory::Text.into(),
-
-        re_log_types::ObjectType::Scalar => ViewCategory::TimeSeries.into(),
-
-        re_log_types::ObjectType::Point2D
-        | re_log_types::ObjectType::BBox2D
-        | re_log_types::ObjectType::LineSegments2D
-        | re_log_types::ObjectType::Point3D
-        | re_log_types::ObjectType::Box3D
-        | re_log_types::ObjectType::Path3D
-        | re_log_types::ObjectType::LineSegments3D
-        | re_log_types::ObjectType::Mesh3D
-        | re_log_types::ObjectType::Arrow3D => ViewCategory::Spatial.into(),
-
-        re_log_types::ObjectType::Image => {
-            // Some sort of tensor - could be an image, a vector, or a general tensor - let's check!
-            if let Some(Ok((_, re_log_types::DataVec::Tensor(tensors)))) =
-                log_db.obj_db.store.query_data_path(
-                    &timeline,
-                    &re_data_store::TimeQuery::LatestAt(i64::MAX),
-                    &DataPath::new(obj_path.clone(), "tensor".into()),
-                )
-            {
-                if tensors.iter().all(|tensor| tensor.is_vector()) {
-                    ViewCategory::BarChart.into()
-                } else if tensors
-                    .iter()
-                    .all(|tensor| tensor.is_shaped_like_an_image())
-                {
-                    ViewCategory::Spatial.into()
-                } else {
-                    ViewCategory::Tensor.into()
-                }
-            } else {
-                // something in the query failed - use a sane fallback:
-                ViewCategory::Spatial.into()
-            }
-        }
-
-        re_log_types::ObjectType::ArrowObject => {
-            categorize_arrow_obj_path(&timeline, log_db, obj_path)
-        }
+    // If it has a transform we might want to visualize it in space
+    // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
+    if query_transform(
+        &log_db.entity_db,
+        entity_path,
+        &LatestAtQuery::new(timeline, TimeInt::MAX),
+    )
+    .is_some()
+    {
+        set.insert(ViewCategory::Spatial);
     }
+
+    set
 }
 
-pub fn categorize_arrow_obj_path(
+pub fn categorize_arrow_entity_path(
     timeline: &Timeline,
     log_db: &LogDb,
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 
     log_db
-        .obj_db
+        .entity_db
         .arrow_store
-        .all_components(timeline, obj_path)
+        .all_components(timeline, entity_path)
         .unwrap_or_default()
         .into_iter()
         .fold(ViewCategorySet::default(), |mut set, component| {
@@ -146,9 +107,9 @@ pub fn categorize_arrow_obj_path(
                 let timeline_query = LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
 
                 if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
-                    &log_db.obj_db.arrow_store,
+                    &log_db.entity_db.arrow_store,
                     &timeline_query,
-                    obj_path,
+                    entity_path,
                     &[],
                 ) {
                     if let Ok(iter) = entity_view.iter_primary() {
