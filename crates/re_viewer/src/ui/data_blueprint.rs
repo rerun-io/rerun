@@ -332,10 +332,26 @@ impl DataBlueprintTree {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
                 group.objects.remove(path);
+                self.remove_empty_group_recursively(*group_handle);
             }
         }
         self.path_to_group.remove(path);
         self.object_paths.remove(path);
+    }
+
+    fn remove_empty_group_recursively(&mut self, group_handle: DataBlueprintGroupHandle) {
+        let Some(group) = self.groups.get(group_handle) else {
+            return;
+        };
+        if group.objects.is_empty() && group.children.is_empty() {
+            let parent_group_handle = group.parent;
+            if let Some(parent_group) = self.groups.get_mut(parent_group_handle) {
+                parent_group
+                    .children
+                    .retain(|child_group| *child_group != group_handle);
+                self.remove_empty_group_recursively(parent_group_handle);
+            }
+        }
     }
 }
 
