@@ -8,7 +8,8 @@ use itertools::Itertools;
 
 use re_data_store::{EntityTree, InstanceId};
 use re_log_types::{
-    DataPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
+    ComponentPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
+    TimeType,
 };
 
 use crate::{
@@ -469,7 +470,7 @@ impl TimePanel {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new(tree.path.clone(), *component_name);
+                let component_path = ComponentPath::new(tree.path.clone(), *component_name);
 
                 let response = ui
                     .horizontal(|ui| {
@@ -482,10 +483,10 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        ctx.data_path_button_to(
+                        ctx.component_path_button_to(
                             ui,
                             super::format_component_name(component_name),
-                            &data_path,
+                            &component_path,
                         );
                     })
                     .response;
@@ -509,11 +510,11 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        let selection = Selection::DataPath(data_path.clone());
+                        let selection = Selection::ComponentPath(component_path.clone());
                         what_is_selected_ui(ui, ctx, blueprint, &selection);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
-                        data_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
+                        component_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
                 }
 
@@ -535,7 +536,7 @@ impl TimePanel {
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Selection::DataPath(data_path),
+                        Selection::ComponentPath(component_path),
                     );
                 }
             }

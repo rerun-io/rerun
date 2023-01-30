@@ -47,7 +47,7 @@ pub enum TimeQuery<Time> {
     /// one before the start of the interval.
     ///
     /// Motivation: all data is considered alive until the next logging
-    /// to the same data path.
+    /// to the same component path.
     Range(std::ops::RangeInclusive<Time>),
 }
 

@@ -1,5 +1,5 @@
 use re_data_store::{log_db::LogDb, InstanceId};
-use re_log_types::{DataPath, EntityPath, MsgId, TimeInt, Timeline};
+use re_log_types::{ComponentPath, EntityPath, MsgId, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
@@ -119,19 +119,23 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
-    /// Show a data path and make it selectable.
-    pub fn data_path_button(&mut self, ui: &mut egui::Ui, data_path: &DataPath) -> egui::Response {
-        self.data_path_button_to(ui, data_path.to_string(), data_path)
+    /// Show a component path and make it selectable.
+    pub fn component_path_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        component_path: &ComponentPath,
+    ) -> egui::Response {
+        self.component_path_button_to(ui, component_path.to_string(), component_path)
     }
 
-    /// Show a data path and make it selectable.
-    pub fn data_path_button_to(
+    /// Show a component path and make it selectable.
+    pub fn component_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
-        data_path: &DataPath,
+        component_path: &ComponentPath,
     ) -> egui::Response {
-        let selection = Selection::DataPath(data_path.clone());
+        let selection = Selection::ComponentPath(component_path.clone());
         let response = ui.selectable_label(self.selection().contains(&selection), text);
         self.cursor_interact_with_selectable(response, selection)
     }

@@ -1,8 +1,8 @@
-use re_log_types::DataPath;
+use re_log_types::ComponentPath;
 
 use super::{component::arrow_component_ui, DataUi};
 
-impl DataUi for DataPath {
+impl DataUi for ComponentPath {
     fn data_ui(
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,

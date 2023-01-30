@@ -44,7 +44,7 @@ impl LatestAtQuery {
 /// Get all the data within this time interval, plus the latest one before the start of the
 /// interval.
 ///
-/// Motivation: all data is considered alive until the next logging to the same data path.
+/// Motivation: all data is considered alive until the next logging to the same component path.
 #[derive(Clone)]
 pub struct RangeQuery {
     pub timeline: Timeline,

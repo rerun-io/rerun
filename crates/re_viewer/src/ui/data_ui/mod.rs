@@ -7,9 +7,9 @@ use crate::{misc::ViewerContext, ui::format_component_name};
 
 mod annotation_context;
 mod component;
+mod component_path;
 mod component_ui_registry;
 mod data;
-mod data_path;
 pub(crate) mod image;
 mod instance;
 mod log_msg;

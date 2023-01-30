@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, DataPath, EntityPath, EntityPathPart, MsgId, PathOp, TimeInt, TimePoint,
+    ComponentName, ComponentPath, EntityPath, EntityPathPart, MsgId, PathOp, TimeInt, TimePoint,
     Timeline,
 };
 
@@ -80,7 +80,7 @@ impl TimesPerTimeline {
 
 // ----------------------------------------------------------------------------
 
-/// Tree of data paths.
+/// Tree of entity paths, plus components at the leaves.
 pub struct EntityTree {
     /// Full path to the root of this tree.
     pub path: EntityPath,
@@ -138,18 +138,18 @@ impl EntityTree {
     pub fn add_data_msg(
         &mut self,
         time_point: &TimePoint,
-        data_path: &DataPath,
+        component_path: &ComponentPath,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
 
         let leaf =
-            self.create_subtrees_recursively(data_path.entity_path.as_slice(), 0, time_point);
+            self.create_subtrees_recursively(component_path.entity_path.as_slice(), 0, time_point);
 
         let mut pending_clears = vec![];
 
         let fields = leaf
             .components
-            .entry(data_path.component_name)
+            .entry(component_path.component_name)
             .or_insert_with(|| {
                 // If we needed to create a new leaf to hold this data, we also want to
                 // insert all of the historical pending clear operations
@@ -165,7 +165,7 @@ impl EntityTree {
 
     /// Add a path operation into the the entity tree.
     ///
-    /// Returns a collection of data paths to clear as a result of the operation
+    /// Returns a collection of paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future
     /// insertion.
     pub fn add_path_op(
@@ -173,7 +173,7 @@ impl EntityTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         path_op: &PathOp,
-    ) -> Vec<DataPath> {
+    ) -> Vec<ComponentPath> {
         crate::profile_function!();
 
         let entity_path = path_op.entity_path();
@@ -194,7 +194,7 @@ impl EntityTree {
                 leaf.components
                     .iter()
                     .map(|(component_name, _components)| {
-                        DataPath::new(entity_path.clone(), *component_name)
+                        ComponentPath::new(entity_path.clone(), *component_name)
                     })
                     .collect_vec()
             }
@@ -221,7 +221,7 @@ impl EntityTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(next.components.iter().map(|(component_name, _components)| {
-                        DataPath::new(next.path.clone(), *component_name)
+                        ComponentPath::new(next.path.clone(), *component_name)
                     }));
                 }
                 results

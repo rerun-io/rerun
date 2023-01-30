@@ -135,13 +135,14 @@ impl ApplicationId {
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
     /// A new recording has begun.
+    ///
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
     /// Server-backed operation on an [`EntityPath`].
     EntityPathOpMsg(EntityPathOpMsg),
 
-    /// Log an arrow message to a [`DataPath`].
+    /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(ArrowMsg),
 
     /// Sent when the client shuts down the connection.

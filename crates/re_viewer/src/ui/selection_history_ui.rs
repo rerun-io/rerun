@@ -201,6 +201,6 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
             }
         }
         Selection::MsgId(s) => s.to_string(),
-        Selection::DataPath(s) => s.to_string(),
+        Selection::ComponentPath(s) => s.to_string(),
     }
 }

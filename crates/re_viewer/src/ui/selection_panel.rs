@@ -103,10 +103,10 @@ pub fn what_is_selected_ui(
                 ctx.msg_id_button(ui, *msg_id);
             });
         }
-        Selection::DataPath(data_path) => {
+        Selection::ComponentPath(component_path) => {
             ui.horizontal(|ui| {
-                ui.label("Data path:");
-                ctx.data_path_button(ui, data_path);
+                ui.label("Entity component:");
+                ctx.component_path_button(ui, component_path);
             });
         }
         Selection::SpaceView(space_view_id) => {
@@ -120,9 +120,9 @@ pub fn what_is_selected_ui(
         Selection::Instance(space_view_id, instance_id) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_id.instance_index.is_none() {
-                    ui.label("Entity path:");
+                    ui.label("Entity:");
                 } else {
-                    ui.label("Instance:");
+                    ui.label("Entity instance:");
                 }
                 ctx.instance_id_button(ui, *space_view_id, instance_id);
                 ui.end_row();
@@ -174,8 +174,8 @@ impl DataUi for Selection {
             Selection::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::DataPath(data_path) => {
-                data_path.data_ui(ctx, ui, verbosity, query);
+            Selection::ComponentPath(component_path) => {
+                component_path.data_ui(ctx, ui, verbosity, query);
             }
             Selection::Instance(_, instance_id) => {
                 instance_id.data_ui(ctx, ui, verbosity, query);
@@ -197,8 +197,8 @@ fn blueprint_ui(
             ui.weak("(nothing)");
         }
 
-        Selection::DataPath(data_path) => {
-            list_existing_data_blueprints(ui, ctx, data_path.entity_path(), blueprint);
+        Selection::ComponentPath(component_path) => {
+            list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
         }
 
         Selection::SpaceView(space_view_id) => {

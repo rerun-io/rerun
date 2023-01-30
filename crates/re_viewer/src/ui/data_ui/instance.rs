@@ -1,5 +1,5 @@
 use re_data_store::{EntityPath, Index, InstanceId};
-use re_log_types::DataPath;
+use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
 
 use crate::{
@@ -59,10 +59,10 @@ impl DataUi for InstanceId {
                         continue; // no need to show components that are unset
                     }
 
-                    ctx.data_path_button_to(
+                    ctx.component_path_button_to(
                         ui,
                         format_component_name(&component_name),
-                        &DataPath::new(self.entity_path.clone(), component_name),
+                        &ComponentPath::new(self.entity_path.clone(), component_name),
                     );
 
                     match (component_data, &self.instance_index) {

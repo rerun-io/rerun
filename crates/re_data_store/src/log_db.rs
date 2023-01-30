@@ -5,8 +5,8 @@ use re_log_types::{
     component_types::Instance,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, DataPath, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg,
-    MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
+    ArrowMsg, BeginRecordingMsg, ComponentPath, EntityPath, EntityPathHash, EntityPathOpMsg,
+    LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -68,11 +68,13 @@ impl EntityDb {
         self.register_entity_path(&msg_bundle.entity_path);
 
         for component in &msg_bundle.components {
-            let data_path = DataPath::new(msg_bundle.entity_path.clone(), component.name);
+            let component_path = ComponentPath::new(msg_bundle.entity_path.clone(), component.name);
             if component.name == MsgId::name() {
                 continue;
             }
-            let pending_clears = self.tree.add_data_msg(&msg_bundle.time_point, &data_path);
+            let pending_clears = self
+                .tree
+                .add_data_msg(&msg_bundle.time_point, &component_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
@@ -88,7 +90,7 @@ impl EntityDb {
                 self.arrow_store.insert(&msg_bundle).ok();
 
                 // Also update the tree with the clear-event
-                self.tree.add_data_msg(&time_point, &data_path);
+                self.tree.add_data_msg(&time_point, &component_path);
             }
         }
 
@@ -98,21 +100,24 @@ impl EntityDb {
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
-        for data_path in cleared_paths {
-            if let Some(data_type) = self.arrow_store.lookup_data_type(&data_path.component_name) {
+        for component_path in cleared_paths {
+            if let Some(data_type) = self
+                .arrow_store
+                .lookup_data_type(&component_path.component_name)
+            {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let bundle =
-                    ComponentBundle::new_empty(data_path.component_name, data_type.clone());
+                    ComponentBundle::new_empty(component_path.component_name, data_type.clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
-                    data_path.entity_path.clone(),
+                    component_path.entity_path.clone(),
                     time_point.clone(),
                     vec![bundle],
                 );
                 self.arrow_store.insert(&msg_bundle).ok();
                 // Also update the tree with the clear-event
-                self.tree.add_data_msg(time_point, &data_path);
+                self.tree.add_data_msg(time_point, &component_path);
             }
         }
     }
