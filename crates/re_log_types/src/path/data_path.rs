@@ -1,15 +1,15 @@
 use crate::{path::ObjPath, ComponentName};
 
-/// A [`ObjPath`] plus a [`FieldName`].
+/// A [`ObjPath`] plus a [`ComponentName`].
 ///
-/// Example: `camera / "left" / points / #42`.`pos`
+/// Example: `camera / "left" / points / #42`.`color`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataPath {
     /// `camera / "left" / points / #42`
     pub obj_path: ObjPath,
 
-    /// "pos"
+    /// "color"
     pub component_name: ComponentName,
 }
 
