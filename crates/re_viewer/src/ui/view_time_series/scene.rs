@@ -83,6 +83,7 @@ impl SceneTimeSeries {
 
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
+            let annotation_info = annotations.class_description(None).annotation_info();
             let default_color = DefaultColor::ObjPath(ent_path);
 
             let query = re_arrow_store::RangeQuery::new(
@@ -111,7 +112,6 @@ impl SceneTimeSeries {
                      radius: Option<field_types::Radius>,
                      label: Option<field_types::Label>| {
                         // TODO(andreas): Support object path
-                        let annotation_info = annotations.class_description(None).annotation_info();
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);
                         let label = annotation_info.label(label.map(|l| l.into()).as_ref());
@@ -160,6 +160,8 @@ impl SceneTimeSeries {
     // A line segment is a continuous run of points with identical attributes: each time
     // we notice a change in attributes, we need a new line segment.
     fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
+        crate::profile_function!();
+
         let nb_points = points.len();
         let mut attrs = points[0].attrs.clone();
         let mut line: PlotSeries = PlotSeries {
