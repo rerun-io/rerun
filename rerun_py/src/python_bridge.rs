@@ -444,8 +444,8 @@ fn log_transform(
 ) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
     if entity_path.len() == 1 {
-        // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
-        return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root entities cannot have transforms"));
+        // Stop people from logging a transform to a root-entity, such as "world" (which doesn't have a parent).
+        return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so root entities cannot have transforms"));
     }
     let mut session = global_session();
     let time_point = time(timeless);

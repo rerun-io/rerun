@@ -7,12 +7,12 @@ use re_log_types::ViewCoordinates;
 /// A logged camera that connects spaces.
 #[derive(Clone)]
 pub struct SpaceCamera3D {
-    /// Path to the object which has the projection (pinhole, ortho or otherwise) transforms.
+    /// Path to the entity which has the projection (pinhole, ortho or otherwise) transforms.
     ///
-    /// We expect the camera transform to apply to this object and every path below it.
+    /// We expect the camera transform to apply to this entity and every path below it.
     pub entity_path: EntityPath,
 
-    /// The instance id hash of the object that has the projection.
+    /// The instance id hash of the entity that has the projection.
     pub instance: InstanceIdHash,
 
     /// The coordinate system of the camera ("view-space").
@@ -23,7 +23,7 @@ pub struct SpaceCamera3D {
 
     // -------------------------
     // Optional projection-related things:
-    /// The projection transform of a child-object.
+    /// The projection transform of a child-entity.
     pub pinhole: Option<re_log_types::Pinhole>,
 }
 

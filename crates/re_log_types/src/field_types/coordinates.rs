@@ -76,7 +76,7 @@ impl TryFrom<u8> for ViewDir {
 
 // ----------------------------------------------------------------------------
 
-/// How we interpret the coordinate system of an object/space.
+/// How we interpret the coordinate system of an entity/space.
 ///
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///

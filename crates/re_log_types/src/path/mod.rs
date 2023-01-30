@@ -1,4 +1,4 @@
-//! Every logged object in Rerun is logged to a [`EntityPath`].
+//! Every logged entity in Rerun is logged to a [`EntityPath`].
 //!
 //! The path is made up out of several [`EntityPathComponent`],
 //! each of which is either a name ([`EntityPathComponent::Name`])
@@ -21,7 +21,7 @@ use re_string_interner::InternedString;
 use crate::Index;
 
 re_string_interner::declare_new_type!(
-    /// The name of an object component, e.g. `pos` or `color`.
+    /// The name of an entity component, e.g. `pos` or `color`.
     pub struct ComponentName;
 );
 

@@ -6,7 +6,7 @@ use crate::log_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 
-/// A specific instance of a multi-object, or the (only) instance of a mono-object.
+/// Either a specific instance of an entity, or the whole entity.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct InstanceId {
@@ -40,7 +40,7 @@ impl InstanceId {
         }
     }
 
-    /// Does this object match this instance id?
+    /// Does this entity match this instance id?
     #[inline]
     pub fn is_instance(&self, entity_path: &EntityPath, instance_index: IndexHash) -> bool {
         &self.entity_path == entity_path
@@ -75,8 +75,8 @@ impl std::fmt::Display for InstanceId {
 pub struct InstanceIdHash {
     pub entity_path_hash: EntityPathHash,
 
-    /// If this is a multi-object, what instance index are we?
-    /// [`IndexHash::NONE`] if we aren't a multi-object.
+    /// If this is a multi-entity, what instance index are we?
+    /// [`IndexHash::NONE`] if we aren't a multi-entity.
     pub instance_index_hash: IndexHash,
 
     /// If this is an arrow instance, hang onto the Instance
@@ -153,7 +153,7 @@ impl InstanceIdHash {
         }
     }
 
-    /// Does this object match this instance id?
+    /// Does this entity match this instance id?
     #[inline]
     pub fn is_instance(&self, entity_path: &EntityPath, instance_index: IndexHash) -> bool {
         self.entity_path_hash == entity_path.hash() && self.instance_index_hash == instance_index

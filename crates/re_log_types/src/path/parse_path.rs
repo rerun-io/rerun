@@ -31,7 +31,7 @@ pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathPar
     }
 
     if path == "/" {
-        return Ok(vec![]); // special-case root object
+        return Ok(vec![]); // special-case root entity
     }
 
     if path.starts_with('/') {

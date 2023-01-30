@@ -110,7 +110,7 @@ pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 impl AnnotationMap {
     /// For each `EntityPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
     ///
-    /// An object is considered its own (nearest) ancestor.
+    /// An entity is considered its own (nearest) ancestor.
     pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 

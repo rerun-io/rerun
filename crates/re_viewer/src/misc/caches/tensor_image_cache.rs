@@ -27,7 +27,7 @@ use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 /// the native Tensor type A -> Color32 which is stored for the cached dynamic /
 /// retained images.
 pub struct TensorImageView<'store, 'cache> {
-    /// Borrowed tensor from the object store
+    /// Borrowed tensor from the data store
     pub tensor: &'store dyn AsDynamicImage,
 
     /// Annotations used to create the view

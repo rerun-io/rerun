@@ -138,7 +138,7 @@ pub enum LogMsg {
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
-    /// Server-backed operation on an [`EntityPath`] or [`DataPath`].
+    /// Server-backed operation on an [`EntityPath`].
     PathOpMsg(PathOpMsg),
 
     /// Log an arrow message to a [`DataPath`].
@@ -214,7 +214,8 @@ impl std::fmt::Display for RecordingSource {
 }
 
 // ----------------------------------------------------------------------------
-/// The message sent to specify the data of a single field of an object.
+
+/// An operation (like a 'clear') on an [`EntityPath`].
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
