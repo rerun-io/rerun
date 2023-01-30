@@ -31,8 +31,8 @@ use re_string_interner::InternedString;
 use crate::Index;
 
 re_string_interner::declare_new_type!(
-    /// The name of an object field, e.g. `pos` or `color`.
-    pub struct FieldName;
+    /// The name of an object component, e.g. `pos` or `color`.
+    pub struct ComponentName;
 );
 
 // ----------------------------------------------------------------------------

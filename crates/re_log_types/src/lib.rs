@@ -45,8 +45,6 @@ pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName}
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 
-pub type ComponentName = FieldName;
-
 #[macro_export]
 macro_rules! impl_into_enum {
     ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {

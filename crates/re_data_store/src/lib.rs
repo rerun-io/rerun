@@ -17,7 +17,7 @@ pub use object_tree::*;
 use re_log_types::msg_bundle;
 
 pub use re_log_types::{
-    FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, ObjTypePathComp, TimeInt,
+    ComponentName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, ObjTypePathComp, TimeInt,
     Timeline,
 };
 

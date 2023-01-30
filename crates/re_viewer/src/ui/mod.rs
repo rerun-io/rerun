@@ -35,7 +35,7 @@ pub use self::viewport::Viewport;
 
 pub(crate) use data_ui::UiVerbosity;
 
-pub fn format_component_name(name: &re_data_store::FieldName) -> String {
+pub fn format_component_name(name: &re_data_store::ComponentName) -> String {
     let name = name.as_str();
     if let Some(name) = name.strip_prefix("rerun.") {
         name.into()
