@@ -75,7 +75,7 @@ impl std::fmt::Display for InstancePath {
 
 // ----------------------------------------------------------------------------
 
-/// Hashes of the components of an [`InstanceId`].
+/// Hashes of the components of an [`InstancePath`].
 ///
 /// This is unique to either a specific instance of an entity, or the whole entity (splat).
 #[derive(Clone, Copy, Debug, Eq)]
