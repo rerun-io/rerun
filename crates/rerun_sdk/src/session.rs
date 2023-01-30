@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, PathOp, RecordingId,
-    RecordingInfo, Time, TimePoint,
+    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, Time,
+    TimePoint,
 };
 
 pub struct Session {
@@ -177,21 +177,6 @@ impl Session {
         }
 
         self.sender.send(log_msg);
-    }
-
-    // convenience
-    pub fn send_data(
-        &mut self,
-        time_point: &TimePoint,
-        (obj_path, field_name): (&ObjPath, &str),
-        data: LoggedData,
-    ) {
-        self.send(LogMsg::DataMsg(re_log_types::DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: re_log_types::DataPath::new(obj_path.clone(), field_name.into()),
-            data,
-        }));
     }
 
     // convenience
