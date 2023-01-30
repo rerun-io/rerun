@@ -74,7 +74,7 @@ impl CamerasPart {
         let parent_path = entity_path
             .parent()
             .expect("root path can't be part of scene query");
-        let Some(world_from_parent) = transforms.reference_from_obj(&parent_path) else {
+        let Some(world_from_parent) = transforms.reference_from_entity(&parent_path) else {
                 return;
             };
 

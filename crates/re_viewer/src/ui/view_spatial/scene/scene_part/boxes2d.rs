@@ -95,7 +95,7 @@ impl ScenePart for Boxes2DPart {
         crate::profile_scope!("Boxes2DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
 

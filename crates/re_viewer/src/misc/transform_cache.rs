@@ -17,8 +17,8 @@ pub struct TransformCache {
     #[allow(dead_code)]
     reference_path: EntityPath,
 
-    /// Alll reachable objects.
-    reference_from_obj_per_object: IntMap<EntityPath, glam::Mat4>,
+    /// All reachable objects.
+    reference_from_entity_per_entity: IntMap<EntityPath, glam::Mat4>,
 
     /// All unreachable descendant paths of `reference_path`.
     unreachable_descendants: Vec<(EntityPath, UnreachableTransform)>,
@@ -55,7 +55,7 @@ impl TransformCache {
 
         let mut transforms = TransformCache {
             reference_path: root_path.clone(),
-            reference_from_obj_per_object: Default::default(),
+            reference_from_entity_per_entity: Default::default(),
             unreachable_descendants: Default::default(),
             first_unreachable_parent: (EntityPath::root(), UnreachableTransform::Unconnected),
         };
@@ -143,15 +143,18 @@ impl TransformCache {
         entity_db: &EntityDb,
         query: &LatestAtQuery,
         obj_properties: &EntityPropertyMap,
-        reference_from_obj: glam::Mat4,
+        reference_from_entity: glam::Mat4,
         encountered_pinhole: bool,
     ) {
-        match self.reference_from_obj_per_object.entry(tree.path.clone()) {
+        match self
+            .reference_from_entity_per_entity
+            .entry(tree.path.clone())
+        {
             std::collections::hash_map::Entry::Occupied(_) => {
                 return;
             }
             std::collections::hash_map::Entry::Vacant(e) => {
-                e.insert(reference_from_obj);
+                e.insert(reference_from_entity);
             }
         }
 
@@ -169,8 +172,8 @@ impl TransformCache {
                         .push((child_tree.path.clone(), unreachable_reason));
                     continue;
                 }
-                Ok(None) => reference_from_obj,
-                Ok(Some(child_from_parent)) => reference_from_obj * child_from_parent,
+                Ok(None) => reference_from_entity,
+                Ok(Some(child_from_parent)) => reference_from_entity * child_from_parent,
             };
             self.gather_descendants_transforms(
                 child_tree,
@@ -186,8 +189,10 @@ impl TransformCache {
     /// Retrieves the transform of on object from its local system to the space of the reference.
     ///
     /// Returns None if the path is not reachable.
-    pub fn reference_from_obj(&self, entity_path: &EntityPath) -> Option<macaw::Mat4> {
-        self.reference_from_obj_per_object.get(entity_path).cloned()
+    pub fn reference_from_entity(&self, entity_path: &EntityPath) -> Option<macaw::Mat4> {
+        self.reference_from_entity_per_entity
+            .get(entity_path)
+            .cloned()
     }
 
     // This method isn't currently implemented, but we might need it in the future.

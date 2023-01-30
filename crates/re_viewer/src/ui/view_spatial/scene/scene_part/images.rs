@@ -215,7 +215,7 @@ impl ScenePart for ImagesPart {
         crate::profile_scope!("ImagesPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
 

@@ -131,7 +131,7 @@ impl ScenePart for Points2DPart {
         crate::profile_scope!("Points2DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
             let object_highlight = highlights.object_highlight(ent_path.hash());
