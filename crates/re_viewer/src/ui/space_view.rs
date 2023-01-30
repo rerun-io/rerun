@@ -59,8 +59,8 @@ pub struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `false` the first time the user messes around with the list of queried objects.
-    pub allow_auto_adding_more_object: bool,
+    /// True if the user is expected to add elements themselves. False otherwise.
+    pub objects_determined_by_user: bool,
 }
 
 impl SpaceView {
@@ -93,7 +93,7 @@ impl SpaceView {
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
             category,
-            allow_auto_adding_more_object: true,
+            objects_determined_by_user: false,
         }
     }
 
@@ -163,7 +163,7 @@ impl SpaceView {
             return;
         };
 
-        if self.allow_auto_adding_more_object {
+        if !self.objects_determined_by_user {
             // Add objects that have been logged since we were created
             let queried_objects =
                 Self::default_queried_objects(ctx, spaces_info, space_info, self.category);
@@ -183,9 +183,14 @@ impl SpaceView {
 
         ui.separator();
 
-        ui.strong("Add/remove data");
-        ui.add_space(2.0);
-        self.add_objects_ui(ctx, ui);
+        ui.checkbox(
+            &mut self.objects_determined_by_user,
+            "Manually add/remove data",
+        ).on_hover_text("Allows to manually add/removed objects from the Space View.\nIf set, new object paths won't be added automatically.");
+        if self.objects_determined_by_user {
+            ui.add_space(2.0);
+            self.add_objects_ui(ctx, ui);
+        }
 
         ui.separator();
 
@@ -334,7 +339,6 @@ impl SpaceView {
                         .visit_children_recursively(&mut |path: &ObjPath| {
                             self.data_blueprint.remove_object(path);
                         });
-                        self.allow_auto_adding_more_object = false;
                     }
                 } else {
                     let object_category = categorize_obj_path(Timeline::log_time(), ctx.log_db, ent_path);
@@ -377,7 +381,6 @@ impl SpaceView {
                                 objects.iter(),
                                 &self.space_path,
                             );
-                            self.allow_auto_adding_more_object = false;
                         }
                         response.on_hover_text("Add this path to the Space View");
                     }).response;
