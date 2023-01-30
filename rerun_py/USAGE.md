@@ -32,7 +32,7 @@ for frame in read_sensor_frames():
 This will add the logged points to the timelines `log_time`, `frame_idx`, and `sensor_time`. You can then choose which timeline you want to organize your data along in the timeline view in the bottom of the Rerun Viewer.
 
 ## Paths
-The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path must be of the same type (you cannot log an image to the same path as a point cloud).
+The first argument to each log function is an _entity path_. Each time you log to a specific entity path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path must be of the same type (you cannot log an image to the same path as a point cloud).
 
 A path can look like this: `world/camera/image/detection/#42/bbox`. Each component (between the slashes) can either be:
 

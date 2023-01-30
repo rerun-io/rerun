@@ -45,8 +45,8 @@ class LoggingHandler(logging.Handler):
 
     * Root Object: Optional root object to gather all the logs under.
 
-    * Object path: the name of the logger responsible for the creation of the LogRecord
-                   is used as the final object path, appended after the Root Object path.
+    * Entity path: the name of the logger responsible for the creation of the LogRecord
+                   is used as the final entity path, appended after the Root Entity path.
 
     * Level: the log level is mapped as-is.
 
