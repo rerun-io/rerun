@@ -13,9 +13,9 @@ mod component_ui_registry;
 mod data;
 mod data_path;
 pub(crate) mod image;
+mod instance;
 mod log_msg;
 mod msg_id;
-mod object;
 
 pub(crate) use component_ui_registry::ComponentUiRegistry;
 
