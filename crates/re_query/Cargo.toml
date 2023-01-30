@@ -68,5 +68,5 @@ required-features = ["polars"]
 
 
 [[bench]]
-name = "obj_query_benchmark"
+name = "query_benchmark"
 harness = false

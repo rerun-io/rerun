@@ -27,69 +27,65 @@ const NUM_FRAMES: u32 = 1;
 #[cfg(debug_assertions)]
 const NUM_POINTS: u32 = 1;
 
+criterion_group!(benches, mono_points, batch_points);
+criterion_main!(benches);
+
 // --- Benchmarks ---
 
-fn obj_mono_points(c: &mut Criterion) {
+fn mono_points(c: &mut Criterion) {
+    // Each mono point gets logged at a different path
+    let paths = (0..NUM_POINTS)
+        .into_iter()
+        .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
+        .collect_vec();
+    let msgs = build_messages(&paths, 1);
+
     {
-        // Each mono point gets logged at a different path
-        let paths = (0..NUM_POINTS)
-            .into_iter()
-            .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
-            .collect_vec();
-        let msgs = build_messages(&paths, 1);
+        let mut group = c.benchmark_group("arrow_mono_points");
+        // Mono-insert is slow -- decrease the sample size
+        group.sample_size(10);
+        group.throughput(criterion::Throughput::Elements(
+            (NUM_POINTS * NUM_FRAMES) as _,
+        ));
+        group.bench_function("insert", |b| {
+            b.iter(|| insert_messages(msgs.iter()));
+        });
+    }
 
-        {
-            let mut group = c.benchmark_group("arrow_mono_points");
-            // Mono-insert is slow -- decrease the sample size
-            group.sample_size(10);
-            group.throughput(criterion::Throughput::Elements(
-                (NUM_POINTS * NUM_FRAMES) as _,
-            ));
-            group.bench_function("insert", |b| {
-                b.iter(|| insert_messages(msgs.iter()));
-            });
-        }
-
-        {
-            let mut group = c.benchmark_group("arrow_mono_points");
-            group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-            let mut store = insert_messages(msgs.iter());
-            group.bench_function("query", |b| {
-                b.iter(|| query_and_visit(&mut store, &paths));
-            });
-        }
+    {
+        let mut group = c.benchmark_group("arrow_mono_points");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        let mut store = insert_messages(msgs.iter());
+        group.bench_function("query", |b| {
+            b.iter(|| query_and_visit(&mut store, &paths));
+        });
     }
 }
 
-fn obj_batch_points(c: &mut Criterion) {
+fn batch_points(c: &mut Criterion) {
+    // Batch points are logged together at a single path
+    let paths = [EntityPath::from("points")];
+    let msgs = build_messages(&paths, NUM_POINTS as _);
+
     {
-        // Batch points are logged together at a single path
-        let paths = [EntityPath::from("points")];
-        let msgs = build_messages(&paths, NUM_POINTS as _);
+        let mut group = c.benchmark_group("arrow_batch_points");
+        group.throughput(criterion::Throughput::Elements(
+            (NUM_POINTS * NUM_FRAMES) as _,
+        ));
+        group.bench_function("insert", |b| {
+            b.iter(|| insert_messages(msgs.iter()));
+        });
+    }
 
-        {
-            let mut group = c.benchmark_group("arrow_batch_points");
-            group.throughput(criterion::Throughput::Elements(
-                (NUM_POINTS * NUM_FRAMES) as _,
-            ));
-            group.bench_function("insert", |b| {
-                b.iter(|| insert_messages(msgs.iter()));
-            });
-        }
-
-        {
-            let mut group = c.benchmark_group("arrow_batch_points");
-            group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-            let mut store = insert_messages(msgs.iter());
-            group.bench_function("query", |b| {
-                b.iter(|| query_and_visit(&mut store, &paths));
-            });
-        }
+    {
+        let mut group = c.benchmark_group("arrow_batch_points");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        let mut store = insert_messages(msgs.iter());
+        group.bench_function("query", |b| {
+            b.iter(|| query_and_visit(&mut store, &paths));
+        });
     }
 }
-
-criterion_group!(benches, obj_mono_points, obj_batch_points);
-criterion_main!(benches);
 
 // --- Helpers ---
 
