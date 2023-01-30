@@ -97,7 +97,7 @@ impl Blueprint {
     ) {
         if ctx
             .re_ui
-            .small_icon(ui, &re_ui::icons::RESET)
+            .small_icon_button(ui, &re_ui::icons::RESET)
             .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
             .clicked()
         {
