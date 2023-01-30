@@ -5,7 +5,7 @@
 //! Some of the heuristics include:
 //! * We want similar space views together. Similar can mean:
 //!   * Same category (2D vs text vs …)
-//!   * Similar object path (common prefix)
+//!   * Similar entity path (common prefix)
 //! * We also want to pick aspect ratios that fit the data pretty well
 // TODO(emilk): fix O(N^2) execution time (where N = number of spaces)
 

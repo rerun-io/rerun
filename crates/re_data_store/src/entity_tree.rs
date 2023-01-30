@@ -100,7 +100,7 @@ pub struct EntityTree {
     /// Book-keeping around whether we should clear recursively when data is added
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
-    /// Data logged at this object path.
+    /// Data logged at this entity path.
     pub components: BTreeMap<ComponentName, ComponentStats>,
 }
 

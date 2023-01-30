@@ -28,11 +28,11 @@ pub struct DataBlueprintGroup {
 
     /// Direct child objects of this blueprint group.
     ///
-    /// Musn't be a `HashSet` because we want to preserve order of object paths.
+    /// Musn't be a `HashSet` because we want to preserve order of entity paths.
     pub objects: BTreeSet<EntityPath>,
 }
 
-/// Data blueprints for all object paths in a space view.
+/// Data blueprints for all entity paths in a space view.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 struct DataBlueprints {
     /// Individual settings. Mutate this.
@@ -51,7 +51,7 @@ pub struct DataBlueprintTree {
     /// All data blueprint groups.
     groups: SlotMap<DataBlueprintGroupHandle, DataBlueprintGroup>,
 
-    /// Mapping from object paths to blueprints.
+    /// Mapping from entity paths to blueprints.
     ///
     /// We also use this for building up groups from hierarchy, meaning that some paths in here
     /// may not represent existing objects, i.e. the blueprint groups they are pointing to may not
@@ -116,7 +116,7 @@ impl DataBlueprintTree {
         self.groups.get_mut(handle)
     }
 
-    /// Calls the visitor function on every object path in the given group and its descending groups.
+    /// Calls the visitor function on every entity path in the given group and its descending groups.
     pub fn visit_group_objects_recursively(
         &self,
         handle: DataBlueprintGroupHandle,
@@ -161,7 +161,7 @@ impl DataBlueprintTree {
         crate::profile_function!();
 
         // NOTE: We could do this projection only when the object properties changes
-        // and/or when new object paths are added, but such memoization would add complexity.
+        // and/or when new entity paths are added, but such memoization would add complexity.
 
         fn project_tree(
             tree: &mut DataBlueprintTree,
@@ -194,7 +194,7 @@ impl DataBlueprintTree {
         project_tree(self, &EntityProperties::default(), self.root_group_handle);
     }
 
-    /// Adds a list of object paths to the tree, using grouping as dictated by their object path hierarchy.
+    /// Adds a list of entity paths to the tree, using grouping as dictated by their entity path hierarchy.
     ///
     /// `base_path` indicates a path at which we short-circuit to the root group.
     ///

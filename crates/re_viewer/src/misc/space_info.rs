@@ -205,7 +205,7 @@ impl SpaceInfoCollection {
         self.spaces.values()
     }
 
-    /// Answers if an object path (`from`) is reachable via a transform from some reference space (at `to_reference`)
+    /// Answers if an entity path (`from`) is reachable via a transform from some reference space (at `to_reference`)
     ///
     /// For how, you need to check [`crate::misc::TransformCache`]!
     /// Note that in any individual frame, objects may or may not be reachable.
@@ -223,7 +223,7 @@ impl SpaceInfoCollection {
             return Err(UnreachableTransform::Unconnected);
         }
 
-        // Get closest space infos for the given object paths.
+        // Get closest space infos for the given entity paths.
         let Some(mut from_space) = self.get_first_parent_with_info(from) else {
             re_log::warn_once!("{} not part of space infos", from);
             return Err(UnreachableTransform::Unconnected);

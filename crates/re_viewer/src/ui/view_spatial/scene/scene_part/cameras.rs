@@ -65,7 +65,7 @@ impl CamerasPart {
         view_coordinates: ViewCoordinates,
         object_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) {
-        // The transform *at* this object path already has the pinhole transformation we got passed in!
+        // The transform *at* this entity path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
         // We're however first interested in the rigid transform that led here, so query the parent transform.
         //

@@ -111,7 +111,7 @@ impl SceneTimeSeries {
                      color: Option<field_types::ColorRGBA>,
                      radius: Option<field_types::Radius>,
                      label: Option<field_types::Label>| {
-                        // TODO(andreas): Support object path
+                        // TODO(andreas): Support entity path
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);
                         let label = annotation_info.label(label.map(|l| l.into()).as_ref());
@@ -143,7 +143,7 @@ impl SceneTimeSeries {
 
             // If all points within a line share the label (and it isn't `None`), then we use it
             // as the whole line label for the plot legend.
-            // Otherwise, we just use the object path as-is.
+            // Otherwise, we just use the entity path as-is.
             let same_label = |points: &[PlotPoint]| {
                 let label = points[0].attrs.label.as_ref();
                 (label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label))

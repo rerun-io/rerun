@@ -165,13 +165,13 @@ impl AnnotationMap {
                     }
                 }
                 // Finally recurse to the next parent up the path
-                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the object path.
+                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the entity path.
                 next_parent = parent.parent();
             }
         }
     }
 
-    // Search through the all prefixes of this object path until we find a
+    // Search through the all prefixes of this entity path until we find a
     // matching annotation. If we find nothing return the default `MISSING_ANNOTATIONS`.
     pub fn find<'a>(&self, entity_path: impl Into<&'a EntityPath>) -> Arc<Annotations> {
         let mut next_parent = Some(entity_path.into().clone());

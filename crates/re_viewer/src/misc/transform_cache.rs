@@ -60,7 +60,7 @@ impl TransformCache {
             first_unreachable_parent: (EntityPath::root(), UnreachableTransform::Unconnected),
         };
 
-        // Find the object path tree for the root.
+        // Find the entity path tree for the root.
         let mut parent_tree_stack = Vec::new();
         let mut current_tree = &entity_db.tree;
         'outer: while &current_tree.path != root_path {

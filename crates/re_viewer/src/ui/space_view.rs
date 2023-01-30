@@ -46,7 +46,7 @@ pub struct SpaceView {
 
     /// The "anchor point" of this space view.
     /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
-    /// I.e. the position of this object path in space forms the origin of the coordinate system in this space view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what objects we show in this space view.
     pub space_path: EntityPath,
 
@@ -272,7 +272,7 @@ impl SpaceView {
             (|reason| match reason {
                 // Should never happen
                 UnreachableTransform::Unconnected =>
-                     "No object path connection from this space view.",
+                     "No entity path connection from this space view.",
                 UnreachableTransform::NestedPinholeCameras =>
                     "Can't display objects under nested pinhole cameras.",
                 UnreachableTransform::UnknownTransform =>
