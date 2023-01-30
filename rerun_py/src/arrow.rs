@@ -64,7 +64,7 @@ fn array_to_rust(
 }
 
 #[pyo3::pyfunction]
-pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
+pub fn get_REGISTERED_COMPONENT_NAMES(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
     let pyarrow = py.import("pyarrow")?;
     let pyarrow_field_cls = pyarrow
         .dict()

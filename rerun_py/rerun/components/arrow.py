@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 from rerun.components.vec import Vec3DArray
 
 __all__ = [
@@ -30,6 +30,6 @@ class Arrow3DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Arrow3DType = ComponentTypeFactory("Arrow3DType", Arrow3DArray, REGISTERED_FIELDS["rerun.arrow3d"])
+Arrow3DType = ComponentTypeFactory("Arrow3DType", Arrow3DArray, REGISTERED_COMPONENT_NAMES["rerun.arrow3d"])
 
 pa.register_extension_type(Arrow3DType())

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "InstanceArray",
@@ -26,6 +26,6 @@ class InstanceArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-InstanceType = ComponentTypeFactory("InstanceType", InstanceArray, REGISTERED_FIELDS["rerun.instance"])
+InstanceType = ComponentTypeFactory("InstanceType", InstanceArray, REGISTERED_COMPONENT_NAMES["rerun.instance"])
 
 pa.register_extension_type(InstanceType())

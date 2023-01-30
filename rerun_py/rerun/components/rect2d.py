@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory, build_dense_union
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory, build_dense_union
 from rerun.log.rects import RectFormat
 
 __all__ = [
@@ -25,6 +25,6 @@ class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Rect2DType = ComponentTypeFactory("Rect2DType", Rect2DArray, REGISTERED_FIELDS["rerun.rect2d"])
+Rect2DType = ComponentTypeFactory("Rect2DType", Rect2DArray, REGISTERED_COMPONENT_NAMES["rerun.rect2d"])
 
 pa.register_extension_type(Rect2DType())

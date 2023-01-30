@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "Point2DArray",
@@ -28,7 +28,7 @@ class Point2DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Point2DType = ComponentTypeFactory("Point2DType", Point2DArray, REGISTERED_FIELDS["rerun.point2d"])
+Point2DType = ComponentTypeFactory("Point2DType", Point2DArray, REGISTERED_COMPONENT_NAMES["rerun.point2d"])
 
 pa.register_extension_type(Point2DType())
 
@@ -48,6 +48,6 @@ class Point3DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Point3DType = ComponentTypeFactory("Point3DType", Point3DArray, REGISTERED_FIELDS["rerun.point3d"])
+Point3DType = ComponentTypeFactory("Point3DType", Point3DArray, REGISTERED_COMPONENT_NAMES["rerun.point3d"])
 
 pa.register_extension_type(Point3DType())
