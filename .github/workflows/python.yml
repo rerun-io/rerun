@@ -10,6 +10,9 @@ on:
     branches:
       - "main"
 
+env:
+  PYTHON_VERSION: "3.8"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-lint.txt"
 
@@ -119,10 +122,10 @@ jobs:
       - name: Install rerun_py
         run: pip install ./rerun_py
 
-  py-pip-install-macos:
-    name: Pip install Rerun SDK (macOS)
+  py-wheel-macos-aarch64:
+    name: Build Python Wheel for MacOS/aarch64
     runs-on: macos-latest
-    if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
+    #if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
     steps:
       - uses: actions/checkout@v3
 
@@ -135,11 +138,26 @@ jobs:
       - name: Setup python for building wheel
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-build.txt"
 
-      - name: Install rerun_py
-        run: pip install ./rerun_py
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --strip
+            --target aarch64-apple-darwin
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: rerun-sdk-wheel
+          path: target/wheels/*.whl
 
   py-docs:
     name: Build and deploy docs
