@@ -116,7 +116,7 @@ fn simple_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -136,7 +136,7 @@ fn simple_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -200,7 +200,7 @@ fn simple_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -220,7 +220,7 @@ fn simple_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -384,7 +384,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -404,7 +404,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -477,7 +477,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(122), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -497,7 +497,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -517,7 +517,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -596,7 +596,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(&None, time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -615,7 +615,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(&None, time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -635,7 +635,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -655,7 +655,7 @@ fn timeless_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -771,7 +771,7 @@ fn simple_splatted_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -791,7 +791,7 @@ fn simple_splatted_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -855,7 +855,7 @@ fn simple_splatted_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -875,7 +875,7 @@ fn simple_splatted_range() {
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
         //eprintln!("{df:?}");
-        //eprintln!("{:?}", expected);
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
