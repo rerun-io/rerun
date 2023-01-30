@@ -6,7 +6,7 @@ use egui::{
 };
 use itertools::Itertools;
 
-use re_data_store::{InstanceId, ObjectTree};
+use re_data_store::{EntityTree, InstanceId};
 use re_log_types::{
     DataPath, Duration, EntityPathComponent, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
     TimeType,
@@ -346,7 +346,7 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         // the parent path of the name component
         last_component: &EntityPathComponent,
-        tree: &ObjectTree,
+        tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
         if !tree
@@ -445,7 +445,7 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree: &ObjectTree,
+        tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
         for (last_component, child) in &tree.children {

@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{log_db::ObjDb, query_transform, EntityPath, ObjectTree, ObjectsProperties};
+use re_data_store::{log_db::ObjDb, query_transform, EntityPath, EntityTree, ObjectsProperties};
 
 use crate::misc::TimeControl;
 
@@ -135,7 +135,7 @@ impl TransformCache {
 
     fn gather_descendants_transforms(
         &mut self,
-        tree: &ObjectTree,
+        tree: &EntityTree,
         obj_db: &ObjDb,
         query: &LatestAtQuery,
         obj_properties: &ObjectsProperties,

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, InstanceId, ObjectTree, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstanceId, TimeInt};
 
 use crate::{
     misc::{
@@ -247,7 +247,7 @@ impl SpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
-        tree: &ObjectTree,
+        tree: &EntityTree,
     ) {
         if tree.children.is_empty() {
             ui.weak("(nothing)");
@@ -266,7 +266,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
         name: &str,
-        tree: &ObjectTree,
+        tree: &EntityTree,
     ) {
         let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.root_path).map_err
             (|reason| match reason {
@@ -355,7 +355,7 @@ impl SpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         path: &EntityPath,
-        obj_tree: &ObjectTree,
+        obj_tree: &EntityTree,
     ) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Can't add things we already added.

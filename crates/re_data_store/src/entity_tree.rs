@@ -81,11 +81,11 @@ impl TimesPerTimeline {
 // ----------------------------------------------------------------------------
 
 /// Tree of data paths.
-pub struct ObjectTree {
+pub struct EntityTree {
     /// Full path to the root of this tree.
     pub path: EntityPath,
 
-    pub children: BTreeMap<EntityPathComponent, ObjectTree>,
+    pub children: BTreeMap<EntityPathComponent, EntityTree>,
 
     /// When do we or a child have data?
     ///
@@ -104,7 +104,7 @@ pub struct ObjectTree {
     pub components: BTreeMap<ComponentName, ComponentStats>,
 }
 
-impl ObjectTree {
+impl EntityTree {
     pub fn root() -> Self {
         Self::new(EntityPath::root(), Default::default())
     }
@@ -258,7 +258,7 @@ impl ObjectTree {
                 .children
                 .entry(component.clone())
                 .or_insert_with(|| {
-                    ObjectTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
+                    EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
                 })
                 .create_subtrees_recursively(full_path, depth + 1, time_point),
         }
@@ -266,9 +266,9 @@ impl ObjectTree {
 
     pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
         fn subtree_recursive<'tree>(
-            this: &'tree ObjectTree,
+            this: &'tree EntityTree,
             path: &[EntityPathComponent],
-        ) -> Option<&'tree ObjectTree> {
+        ) -> Option<&'tree EntityTree> {
             match path {
                 [] => Some(this),
                 [first, rest @ ..] => subtree_recursive(this.children.get(first)?, rest),

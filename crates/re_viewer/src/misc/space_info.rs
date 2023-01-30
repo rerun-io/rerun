@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{log_db::ObjDb, query_transform, EntityPath, ObjectTree};
+use re_data_store::{log_db::ObjDb, query_transform, EntityPath, EntityTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
@@ -117,7 +117,7 @@ impl SpaceInfoCollection {
             obj_db: &ObjDb,
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
-            tree: &ObjectTree,
+            tree: &EntityTree,
             query: &LatestAtQuery,
         ) {
             if let Some(transform) = query_transform(obj_db, &tree.path, query) {

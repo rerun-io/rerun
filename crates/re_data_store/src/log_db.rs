@@ -22,7 +22,7 @@ pub struct ObjDb {
     pub times_per_timeline: TimesPerTimeline,
 
     /// A tree-view (split on path components) of the objects.
-    pub tree: crate::ObjectTree,
+    pub tree: crate::EntityTree,
 
     /// The arrow store of data.
     pub arrow_store: re_arrow_store::DataStore,
@@ -33,7 +33,7 @@ impl Default for ObjDb {
         Self {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
-            tree: crate::ObjectTree::root(),
+            tree: crate::EntityTree::root(),
             arrow_store: re_arrow_store::DataStore::new(
                 Instance::name(),
                 DataStoreConfig {
