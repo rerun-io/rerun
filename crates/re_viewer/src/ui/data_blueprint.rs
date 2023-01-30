@@ -146,7 +146,7 @@ impl DataBlueprintTree {
     }
 
     pub fn contains_object(&self, path: &ObjPath) -> bool {
-        self.path_to_group.contains_key(path)
+        self.object_paths.contains(path)
     }
 
     /// List of all objects that we query via this data blueprint collection.

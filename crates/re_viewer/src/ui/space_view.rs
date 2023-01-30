@@ -183,7 +183,7 @@ impl SpaceView {
 
         ui.separator();
 
-        ui.strong("Add/Remove object paths:");
+        ui.strong("Add/Remove data:");
         self.add_objects_ui(ctx, ui);
 
         ui.separator();
@@ -228,7 +228,7 @@ impl SpaceView {
 
         // All objects at the space path and below.
         if let Some(tree) = obj_tree.subtree(&self.space_path) {
-            self.add_objects_tree_ui(ctx, ui, &spaces_info, &tree.path.to_string(), tree);
+            self.add_objects_tree_ui(ctx, ui, &spaces_info, &tree.path.to_string(), tree, true);
         }
 
         // All objects above
@@ -243,13 +243,14 @@ impl SpaceView {
             num_steps_up += 1;
             if let Some(tree) = obj_tree.subtree(&parent) {
                 for (path_comp, child_tree) in &tree.children {
-                    if child_tree.path != previous_path {
+                    if child_tree.path != self.space_path {
                         self.add_objects_tree_ui(
                             ctx,
                             ui,
                             &spaces_info,
                             &format!("{}{}", "../".repeat(num_steps_up), path_comp),
                             child_tree,
+                            false,
                         );
                     }
                 }
@@ -267,32 +268,18 @@ impl SpaceView {
         spaces_info: &SpaceInfoCollection,
         name: &str,
         tree: &ObjectTree,
+        default_open: bool,
     ) {
-        let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.space_path).map_err
-            (|reason| match reason {
-                // Should never happen
-                UnreachableTransform::Unconnected =>
-                     "No object path connection from this space view.",
-                UnreachableTransform::NestedPinholeCameras =>
-                    "Can't display objects under nested pinhole cameras.",
-                UnreachableTransform::UnknownTransform =>
-                    "Can't display objects that are connected via an unknown transform to this space.",
-                UnreachableTransform::InversePinholeCameraWithoutResolution =>
-                    "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
-            }).err();
-
-        let response = if tree.is_leaf() {
-            self.add_object_line_ui(ctx, ui, unreachable_reason, name, &tree.path)
+        if tree.is_leaf() {
+            self.add_object_line_ui(ctx, ui, spaces_info, name, &tree.path);
         } else {
-            // Default open so that the reference path is visible.
-            let default_open = tree.children.len() <= 3;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 ui.id().with(name),
-                default_open,
+                default_open && tree.children.len() <= 3,
             )
             .show_header(ui, |ui| {
-                self.add_object_line_ui(ctx, ui, unreachable_reason, name, &tree.path)
+                self.add_object_line_ui(ctx, ui, spaces_info, name, &tree.path);
             })
             .body(|ui| {
                 for (path_comp, child_tree) in &tree.children {
@@ -302,72 +289,99 @@ impl SpaceView {
                         spaces_info,
                         &path_comp.to_string(),
                         child_tree,
+                        default_open,
                     );
                 }
-            })
-            .0
+            });
         };
-
-        if let Some(unreachable_reason) = unreachable_reason {
-            response.on_hover_text(unreachable_reason);
-        }
     }
 
     fn add_object_line_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        unreachable_reason: Option<&str>,
+        spaces_info: &SpaceInfoCollection,
         name: &str,
         ent_path: &ObjPath,
-    ) -> egui::Response {
+    ) {
         ui.horizontal(|ui| {
-            ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                if ent_path == &self.space_path {
-                    ui.strong(name);
+            let space_view_id = if self.data_blueprint.contains_object(ent_path) {
+                Some(self.id)
+            } else {
+                None
+            };
+            ctx.instance_id_button_to(ui, space_view_id, &InstanceId::new(ent_path.clone(), None), name);
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let obj_tree = &ctx.log_db.obj_db.tree;
+
+                if self.data_blueprint.contains_object(ent_path) {
+                    if ui
+                    .button("➖")
+                    .on_hover_text("Remove this path from the Space View")
+                    .clicked()
+                    {
+                        // Remove all objects at and under this path
+                        obj_tree
+                        .subtree(ent_path)
+                        .unwrap()
+                        .visit_children_recursively(&mut |path: &ObjPath| {
+                            dbg!("removing {}", path);
+                            self.data_blueprint.remove_object(path);
+                        });
+                    }
                 } else {
-                    ui.label(name);
-                }
-                if has_visualization_for_category(ctx, self.category, ent_path) {
-                    self.object_add_button(ctx, ui, ent_path, &ctx.log_db.obj_db.tree);
+                    let object_category = categorize_obj_path(Timeline::log_time(), ctx.log_db, ent_path);
+                    let cannot_add_reason = if object_category.contains(self.category) {
+                        spaces_info.is_reachable_by_transform(ent_path, &self.space_path).map_err
+                        (|reason| match reason {
+                            // Should never happen
+                            UnreachableTransform::Unconnected =>
+                                 "No object path connection from this space view.",
+                            UnreachableTransform::NestedPinholeCameras =>
+                                "Can't display objects under nested pinhole cameras.",
+                            UnreachableTransform::UnknownTransform =>
+                                "Can't display objects that are connected via an unknown transform to this space.",
+                            UnreachableTransform::InversePinholeCameraWithoutResolution =>
+                                "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
+                        }).err()
+                    } else if object_category.is_empty() {
+                        Some("Object does not contain any components")
+                    } else {
+                        Some("Object category can't be displayed by this type of spatial view")
+                    };
+
+                    let response = ui.add_enabled_ui(cannot_add_reason.is_none(), |ui| {
+                        let response = ui.button("➕");
+                        if response.clicked() {
+                            // Insert the object itself and all its children as far as they haven't been added yet
+                            let mut objects = Vec::new();
+                            obj_tree
+                                .subtree(ent_path)
+                                .unwrap()
+                                .visit_children_recursively(&mut |path: &ObjPath| {
+                                    if has_visualization_for_category(ctx, self.category, path)
+                                        && !self.data_blueprint.contains_object(path)
+                                        && spaces_info.is_reachable_by_transform(path, &self.space_path).is_ok()
+                                    {
+                                        dbg!("adding {}", path);
+                                        objects.push(path.clone());
+                                    }
+                                });
+                            self.data_blueprint.insert_objects_according_to_hierarchy(
+                                objects.iter(),
+                                &self.space_path,
+                            );
+                            self.allow_auto_adding_more_object = false;
+                        }
+                        response.on_hover_text("Add this path to the Space View");
+                    }).response;
+
+                    if let Some(cannot_add_reason) = cannot_add_reason {
+                        response.on_hover_text(cannot_add_reason);
+                    }
                 }
             });
-        })
-        .response
-    }
-
-    fn object_add_button(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        path: &ObjPath,
-        obj_tree: &ObjectTree,
-    ) {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Can't add things we already added.
-
-            // Insert the object itself and all its children as far as they haven't been added yet
-            let mut objects = Vec::new();
-            obj_tree
-                .subtree(path)
-                .unwrap()
-                .visit_children_recursively(&mut |path: &ObjPath| {
-                    if has_visualization_for_category(ctx, self.category, path)
-                        && !self.data_blueprint.contains_object(path)
-                    {
-                        objects.push(path.clone());
-                    }
-                });
-
-            ui.set_enabled(!objects.is_empty());
-
-            let response = ui.button("➕");
-            if response.clicked() {
-                self.data_blueprint
-                    .insert_objects_according_to_hierarchy(objects.iter(), &self.space_path);
-                self.allow_auto_adding_more_object = false;
-            }
-            response.on_hover_text("Add to this Space View's query")
         });
     }
 
