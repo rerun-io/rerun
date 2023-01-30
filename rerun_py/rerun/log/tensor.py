@@ -2,6 +2,7 @@ from typing import Any, Iterable, Optional, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
@@ -87,8 +88,6 @@ def _log_tensor(
     if tensor.dtype not in SUPPORTED_DTYPES:
         _send_warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.", 2)
         return
-
-    from rerun.components.tensor import TensorArray
 
     comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
 

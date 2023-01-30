@@ -2,6 +2,11 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.annotation import ClassIdArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
+from rerun.components.label import LabelArray
+from rerun.components.point import Point2DArray, Point3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import (
     Color,
@@ -63,11 +68,6 @@ def log_point(
         class_id = 0
     if position is not None:
         position = np.require(position, dtype="float32")
-
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.point import Point2DArray, Point3DArray
 
     comps = {}
 
@@ -148,12 +148,6 @@ def log_points(
     labels = _normalize_labels(labels)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
-
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.instance import InstanceArray
-    from rerun.components.label import LabelArray
-    from rerun.components.point import Point2DArray, Point3DArray
 
     identifiers_np = np.array((), dtype="int64")
     if identifiers:

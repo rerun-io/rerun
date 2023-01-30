@@ -2,6 +2,10 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
+from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
+from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
 
 from rerun import bindings
@@ -38,10 +42,6 @@ def log_path(
     """
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.linestrip import LineStrip3DArray
-    from rerun.components.radius import RadiusArray
 
     comps = {}
 
@@ -85,11 +85,6 @@ def log_line_segments(
     if positions is None:
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")
-
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.instance import InstanceArray
-    from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
-    from rerun.components.radius import RadiusArray
 
     # 0 = instanced, 1 = splat
     comps = [{}, {}]  # type: ignore[var-annotated]
