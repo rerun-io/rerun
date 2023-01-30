@@ -137,13 +137,10 @@ impl InstanceIdHash {
 
     pub fn resolve(&self, obj_db: &ObjDb) -> Option<InstanceId> {
         match self.arrow_instance {
-            None => Some(InstanceId {
-                obj_path: obj_db.obj_path_from_hash(&self.obj_path_hash).cloned()?,
-                instance_index: obj_db
-                    .store
-                    .index_from_hash(&self.instance_index_hash)
-                    .cloned(),
-            }),
+            None => {
+                re_log::error_once!("Found classical InstanceIdHash");
+                None
+            }
             Some(arrow_instance) => Some(InstanceId {
                 obj_path: obj_db.obj_path_from_hash(&self.obj_path_hash).cloned()?,
                 instance_index: Some(Index::ArrowInstance(arrow_instance)),

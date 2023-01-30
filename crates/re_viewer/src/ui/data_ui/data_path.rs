@@ -31,33 +31,7 @@ impl DataUi for DataPath {
                 }
             }
         } else {
-            let time_query = re_data_store::TimeQuery::LatestAt(query.at.as_i64());
-
-            match ctx
-                .log_db
-                .obj_db
-                .store
-                .query_data_path(&query.timeline, &time_query, self)
-            {
-                Some(Ok((_, data_vec))) => {
-                    if data_vec.len() == 1 {
-                        let data = data_vec.last().unwrap();
-                        data.data_ui(ctx, ui, verbosity, query);
-                    } else {
-                        data_vec.data_ui(ctx, ui, verbosity, query);
-                    }
-                }
-                Some(Err(err)) => {
-                    re_log::warn_once!("Bad data for {self}: {err}");
-                    ui.label(ctx.re_ui.error_text(format!("Data error: {:?}", err)));
-                }
-                None => {
-                    ui.label(format!(
-                        "No data at {}",
-                        query.timeline.typ().format(query.at)
-                    ));
-                }
-            }
+            re_log::error_once!("Found classical data");
         }
     }
 }

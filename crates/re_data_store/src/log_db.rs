@@ -27,9 +27,6 @@ pub struct ObjDb {
     /// A tree-view (split on path components) of the objects.
     pub tree: crate::ObjectTree,
 
-    /// The old store of data. Being deprecated.
-    pub store: crate::DataStore,
-
     /// The arrow store of data.
     pub arrow_store: re_arrow_store::DataStore,
 }
@@ -40,7 +37,6 @@ impl Default for ObjDb {
             types: Default::default(),
             obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
-            store: Default::default(),
             arrow_store: re_arrow_store::DataStore::new(
                 Instance::name(),
                 DataStoreConfig {
@@ -96,10 +92,6 @@ impl ObjDb {
         }
 
         self.register_obj_path(&data_path.obj_path);
-
-        if let Err(err) = self.store.insert_data(msg_id, time_point, data_path, data) {
-            re_log::warn!("Failed to add data to data_store: {err:?}");
-        }
 
         let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path);
 
@@ -213,16 +205,13 @@ impl ObjDb {
             types: _,
             obj_path_from_hash: _,
             tree,
-            store,
-            arrow_store: _,
+            arrow_store: _, // purged before this function is called
         } = self;
 
         {
             crate::profile_scope!("tree");
             tree.purge(drop_msg_ids);
         }
-
-        store.purge(drop_msg_ids);
     }
 }
 
