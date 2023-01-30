@@ -16,7 +16,7 @@
 //! [`TimePoint`].
 //!
 //! The `components` schema is semi-flexible: it should be a [`StructArray`] with one column per
-//! component. Each component schema is defined in [`crate::field_types`].
+//! component. Each component schema is defined in [`crate::component_types`].
 
 use std::collections::BTreeMap;
 
@@ -161,7 +161,7 @@ where
 ///
 /// # Example
 ///
-/// Create a `MsgBundle` and add a component consisting of 2 [`crate::field_types::Rect2D`] values:
+/// Create a `MsgBundle` and add a component consisting of 2 [`crate::component_types::Rect2D`] values:
 /// ```
 /// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
 /// let component = vec![
