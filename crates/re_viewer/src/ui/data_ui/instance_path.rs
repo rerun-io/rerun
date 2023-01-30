@@ -7,7 +7,7 @@ use crate::{
     ui::{format_component_name, UiVerbosity},
 };
 
-use super::{component::arrow_component_elem_ui, DataUi};
+use super::DataUi;
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -51,14 +51,18 @@ impl DataUi for InstancePath {
                             ui.label(ctx.re_ui.error_text(format!("Error: {}", err)));
                         }
                         Ok(component_data) => {
-                            arrow_component_elem_ui(
-                                ctx,
-                                ui,
-                                UiVerbosity::Small,
-                                query,
-                                &component_data,
-                                &self.instance_index,
-                            );
+                            if self.instance_index.is_splat() {
+                                component_data.data_ui(ctx, ui, UiVerbosity::Small, query);
+                            } else {
+                                ctx.component_ui_registry.ui(
+                                    ctx,
+                                    ui,
+                                    UiVerbosity::Small,
+                                    query,
+                                    &component_data,
+                                    &self.instance_index,
+                                );
+                            }
                         }
                     }
 

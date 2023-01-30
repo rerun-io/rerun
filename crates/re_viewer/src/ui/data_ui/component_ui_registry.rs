@@ -96,6 +96,7 @@ impl ComponentUiRegistry {
         );
     }
 
+    /// Show a ui for this instance of this component.
     pub fn ui(
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
@@ -105,6 +106,16 @@ impl ComponentUiRegistry {
         component: &ComponentWithInstances,
         instance_index: &Instance,
     ) {
+        if component.name() == Instance::name() {
+            ui.label(instance_index.to_string()).on_hover_ui(|ui| {
+                ui.label(format!(
+                    "There are {} instances of this component at this time.",
+                    component.len()
+                ));
+            });
+            return;
+        }
+
         if let Some(ui_callback) = self.components.get(&component.name()) {
             (*ui_callback)(ctx, ui, verbosity, query, component, instance_index);
         } else {
