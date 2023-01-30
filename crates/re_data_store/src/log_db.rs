@@ -6,9 +6,9 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataPath, DataVec, FieldOrComponent, LogMsg,
-    LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimePoint, Timeline,
+    objects, ArrowMsg, BeginRecordingMsg, DataPath, FieldOrComponent, LogMsg, MsgId, ObjPath,
+    ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId, RecordingInfo, TimePoint,
+    Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -61,13 +61,7 @@ impl ObjDb {
             .or_insert_with(|| obj_path.clone());
     }
 
-    fn add_data_msg(
-        &mut self,
-        msg_id: MsgId,
-        time_point: &TimePoint,
-        data_path: &DataPath,
-        data: &LoggedData,
-    ) {
+    fn add_data_msg(&mut self, msg_id: MsgId, time_point: &TimePoint, data_path: &DataPath) {
         // Validate:
         {
             let obj_type_path = &data_path.obj_path.obj_type_path();
@@ -93,35 +87,7 @@ impl ObjDb {
 
         self.register_obj_path(&data_path.obj_path);
 
-        let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path);
-
-        // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
-        for (msg_id, time_point) in pending_clears {
-            if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                // TODO(jleibs) After we reconcile Mono & Multi objects this can be simplified to just use Null
-                match data {
-                    LoggedData::Null(_) | LoggedData::Single(_) => {
-                        self.add_data_msg(
-                            msg_id,
-                            &time_point,
-                            data_path,
-                            &LoggedData::Null(data.data_type()),
-                        );
-                    }
-                    LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => {
-                        self.add_data_msg(
-                            msg_id,
-                            &time_point,
-                            data_path,
-                            &LoggedData::Batch {
-                                indices: BatchIndex::SequentialIndex(0),
-                                data: DataVec::empty_from_data_type(data.data_type()),
-                            },
-                        );
-                    }
-                };
-            }
-        }
+        self.tree.add_data_msg(msg_id, time_point, data_path);
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
@@ -166,7 +132,7 @@ impl ObjDb {
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
-        for (data_path, data_type) in cleared_paths {
+        for data_path in cleared_paths {
             if data_path.is_arrow() {
                 if let FieldOrComponent::Component(component) = data_path.field_name {
                     if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
@@ -185,15 +151,7 @@ impl ObjDb {
                     }
                 }
             } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                self.add_data_msg(
-                    msg_id,
-                    time_point,
-                    &data_path,
-                    &LoggedData::Batch {
-                        indices: BatchIndex::SequentialIndex(0),
-                        data: DataVec::empty_from_data_type(data_type),
-                    },
-                );
+                self.add_data_msg(msg_id, time_point, &data_path);
             }
         }
     }

@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, DataType, FieldOrComponent, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint,
-    Timeline,
+    DataPath, FieldOrComponent, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint, Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -139,7 +138,7 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         path_op: &PathOp,
-    ) -> Vec<(DataPath, DataType)> {
+    ) -> Vec<DataPath> {
         crate::profile_function!();
 
         let obj_path = path_op.obj_path().to_components();
@@ -159,12 +158,7 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.fields
                     .iter()
-                    .map(|(field_name, _fields)| {
-                        (
-                            DataPath::new_any(obj_path.clone(), *field_name),
-                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                        )
-                    })
+                    .map(|(field_name, _fields)| DataPath::new_any(obj_path.clone(), *field_name))
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -190,10 +184,7 @@ impl ObjectTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(next.fields.iter().map(|(field_name, _fields)| {
-                        (
-                            DataPath::new_any(next.path.clone(), *field_name),
-                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                        )
+                        DataPath::new_any(next.path.clone(), *field_name)
                     }));
                 }
                 results
