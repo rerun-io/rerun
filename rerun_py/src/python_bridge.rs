@@ -21,7 +21,7 @@ use re_log_types::{
 
 use rerun_sdk::global_session;
 
-use crate::arrow::get_registered_fields;
+use crate::arrow::get_REGISTERED_COMPONENT_NAMES;
 
 // ----------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
 
-    m.add_function(wrap_pyfunction!(get_registered_fields, m)?)?;
+    m.add_function(wrap_pyfunction!(get_REGISTERED_COMPONENT_NAMES, m)?)?;
 
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;

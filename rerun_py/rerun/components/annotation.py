@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "ClassIdArray",
@@ -24,7 +24,7 @@ class ClassIdArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-ClassIdType = ComponentTypeFactory("ClassIdType", ClassIdArray, REGISTERED_FIELDS["rerun.class_id"])
+ClassIdType = ComponentTypeFactory("ClassIdType", ClassIdArray, REGISTERED_COMPONENT_NAMES["rerun.class_id"])
 
 
 class KeypointIdArray(pa.ExtensionArray):  # type: ignore[misc]
@@ -38,6 +38,6 @@ class KeypointIdArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-KeypointIdType = ComponentTypeFactory("KeypointIdType", ClassIdArray, REGISTERED_FIELDS["rerun.keypoint_id"])
+KeypointIdType = ComponentTypeFactory("KeypointIdType", ClassIdArray, REGISTERED_COMPONENT_NAMES["rerun.keypoint_id"])
 
 pa.register_extension_type(ClassIdType())

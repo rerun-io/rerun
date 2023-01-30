@@ -13,7 +13,7 @@ __all__ = [
 
 
 def log_path(
-    obj_path: str,
+    entity_path: str,
     positions: Optional[npt.NDArray[np.float32]],
     *,
     stroke_width: Optional[float] = None,
@@ -57,11 +57,11 @@ def log_path(
         radii = _normalize_radii([stroke_width / 2])
         comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
 
 
 def log_line_segments(
-    obj_path: str,
+    entity_path: str,
     positions: npt.NDArray[np.float32],
     *,
     stroke_width: Optional[float] = None,
@@ -122,8 +122,8 @@ def log_line_segments(
         radii = _normalize_radii([stroke_width / 2])
         comps[1]["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
         comps[1]["rerun.instance"] = InstanceArray.splat()
-        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
