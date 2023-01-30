@@ -22,8 +22,13 @@ class AnnotationInfo:
     """
 
     id: int = 0
+    """The id of the class or key-point to annotate"""
+
     label: Optional[str] = None
+    """The label that will be shown in the UI"""
+
     color: Optional[Color] = None
+    """The color that will be applied to the annotated entity"""
 
 
 AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
@@ -48,8 +53,13 @@ class ClassDescription:
     """
 
     info: Optional[AnnotationInfoLike] = None
+    """The annotation info for the class"""
+
     keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
+    """The annotation infos for the all key-points"""
+
     keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]] = None
+    """The connections between key-points"""
 
 
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
