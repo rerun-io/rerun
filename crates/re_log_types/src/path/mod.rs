@@ -11,9 +11,6 @@
 //! * [`ObjPath`]:     `camera / "left" / points / #42`
 //! * [`ObjTypePath`]: `camera / *      / points / *`
 //! * [`IndexPath`]:   `       / "left" /       / #42`
-//!
-//! Every object with the same [`ObjTypePath`] have
-//! the same [`crate::ObjectType`] (hence the name).
 
 mod data_path;
 mod index_path;

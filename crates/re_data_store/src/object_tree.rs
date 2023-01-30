@@ -100,7 +100,7 @@ pub struct ObjectTree {
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
     /// Data logged at this object path.
-    pub fields: BTreeMap<FieldOrComponent, DataColumns>,
+    pub components: BTreeMap<FieldOrComponent, ComponentStats>,
 }
 
 impl ObjectTree {
@@ -116,7 +116,7 @@ impl ObjectTree {
             num_timeless_messages: 0,
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
-            fields: Default::default(),
+            components: Default::default(),
         }
     }
 
@@ -126,7 +126,7 @@ impl ObjectTree {
     }
 
     pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.fields.len()
+        self.children.len() + self.components.len()
     }
 
     pub fn num_timeless_messages(&self) -> usize {
@@ -146,13 +146,16 @@ impl ObjectTree {
 
         let mut pending_clears = vec![];
 
-        let fields = leaf.fields.entry(data_path.field_name).or_insert_with(|| {
-            // If we needed to create a new leaf to hold this data, we also want to
-            // insert all of the historical pending clear operations
-            pending_clears = leaf.nonrecursive_clears.clone().into_iter().collect_vec();
+        let fields = leaf
+            .components
+            .entry(data_path.field_name)
+            .or_insert_with(|| {
+                // If we needed to create a new leaf to hold this data, we also want to
+                // insert all of the historical pending clear operations
+                pending_clears = leaf.nonrecursive_clears.clone().into_iter().collect_vec();
 
-            Default::default()
-        });
+                Default::default()
+            });
 
         fields.add(time_point);
 
@@ -187,7 +190,7 @@ impl ObjectTree {
                     .or_insert_with(|| time_point.clone());
 
                 // For every existing field return a clear event
-                leaf.fields
+                leaf.components
                     .iter()
                     .map(|(field_name, _fields)| DataPath::new_any(obj_path.clone(), *field_name))
                     .collect_vec()
@@ -214,7 +217,7 @@ impl ObjectTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.fields.iter().map(|(field_name, _fields)| {
+                    results.extend(next.components.iter().map(|(field_name, _fields)| {
                         DataPath::new_any(next.path.clone(), *field_name)
                     }));
                 }
@@ -285,7 +288,7 @@ impl ObjectTree {
             num_timeless_messages: _,
             nonrecursive_clears,
             recursive_clears,
-            fields,
+            components: fields,
         } = self;
 
         for (timeline, map) in &mut prefix_times.0 {
@@ -324,9 +327,8 @@ impl ObjectTree {
     }
 }
 
-/// Column transform of [`re_log_types::Data`].
 #[derive(Default)]
-pub struct DataColumns {
+pub struct ComponentStats {
     /// When do we have data? Ignored timeless.
     pub times: TimeHistogramPerTimeline,
 
@@ -334,7 +336,7 @@ pub struct DataColumns {
     num_timeless_messages: usize,
 }
 
-impl DataColumns {
+impl ComponentStats {
     pub fn num_timeless_messages(&self) -> usize {
         self.num_timeless_messages
     }

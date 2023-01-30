@@ -1,19 +1,5 @@
 //! This is how we store and index logging data.
 //!
-//! We partion the data in this order:
-//! * [`Timeline`]
-//! * [`ObjPath`]
-//! * [`FieldName`]
-//! * [`TimeInt`]
-//!
-//! The stores are in order:
-//! * [`DataStore`], which maps [`Timeline`] to…
-//! * [`TimelineStore`], which maps [`ObjPath`] to…
-//! * [`ObjStore`], which maps [`FieldName`] to…
-//! * [`FieldStore`], which maps [`TimeInt`] to values.
-//!
-//! (in fact, most stores are generic on what the time type is, but in practice it is [`TimeInt`]).
-//!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!

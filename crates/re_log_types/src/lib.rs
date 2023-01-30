@@ -1,17 +1,5 @@
 //! Types used for the log data.
 //!
-//! Rerun is based around _objects_ and _data_.
-//!
-//! Example objects includes points, rectangles, images, … (see [`ObjectType`] for more).
-//! Each of these has many _fields_. For instance, a point
-//! has fields `pos`, `radius`, `color`, etc.
-//!
-//! When you log an object, you log each field separately,
-//! as [`Data`].
-//!
-//! Each object is logged to a specific [`ObjPath`] -
-//! check out module-level documentation for [`path`] for more on this.
-//!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!

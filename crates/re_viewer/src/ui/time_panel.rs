@@ -458,10 +458,10 @@ impl TimePanel {
         }
 
         // If this is an object:
-        if !tree.fields.is_empty() {
+        if !tree.components.is_empty() {
             let indent = ui.spacing().indent;
 
-            for (field_name, data) in &tree.fields {
+            for (field_name, data) in &tree.components {
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
                 {
