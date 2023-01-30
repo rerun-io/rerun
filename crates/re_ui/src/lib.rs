@@ -220,7 +220,7 @@ impl ReUi {
         self.static_image_cache.lock().get(icon.id, icon.png_bytes)
     }
 
-    pub fn small_icon(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
+    pub fn small_icon_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
         let size_points = Self::small_icon_size();
         let image = self.icon_image(icon);
         let texture_id = image.texture_id(ui.ctx());

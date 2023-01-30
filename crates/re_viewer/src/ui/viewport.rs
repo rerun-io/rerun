@@ -136,8 +136,12 @@ impl Viewport {
         )
         .show_header(ui, |ui| {
             let mut is_space_view_visible = self.visible.contains(space_view_id);
-            let visibility_changed =
-                blueprint_row_with_visibility_button(ui, true, &mut is_space_view_visible, |ui| {
+            let visibility_changed = blueprint_row_with_visibility_button(
+                ctx.re_ui,
+                ui,
+                true,
+                &mut is_space_view_visible,
+                |ui| {
                     let label = format!("{} {}", space_view.category.icon(), space_view.name);
                     let response = ctx.space_view_button_to(ui, label, *space_view_id);
                     if response.clicked() {
@@ -146,7 +150,8 @@ impl Viewport {
                         }
                     }
                     response
-                });
+                },
+            );
 
             if visibility_changed {
                 self.has_been_user_edited = true;
@@ -192,6 +197,7 @@ impl Viewport {
             ui.horizontal(|ui| {
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
                 let visibility_changed = blueprint_row_with_visibility_button(
+                    ctx.re_ui,
                     ui,
                     group_is_visible,
                     &mut properties.visible,
@@ -225,6 +231,7 @@ impl Viewport {
             )
             .show_header(ui, |ui| {
                 blueprint_row_with_visibility_button(
+                    ctx.re_ui,
                     ui,
                     group_is_visible,
                     &mut child_group.properties_individual.visible,
@@ -370,7 +377,7 @@ impl Viewport {
                 hovering_panel(ui, frame, response.rect, |ui| {
                     if ctx
                         .re_ui
-                        .small_icon(ui, &re_ui::icons::MINIMIZE)
+                        .small_icon_button(ui, &re_ui::icons::MINIMIZE)
                         .on_hover_text("Restore - show all spaces")
                         .clicked()
                     {
@@ -569,6 +576,7 @@ impl Viewport {
 ///
 /// Returns true if visibility changed.
 fn blueprint_row_with_visibility_button(
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     enabled: bool,
     visible: &mut bool,
@@ -627,7 +635,7 @@ fn blueprint_row_with_visibility_button(
         .hovered();
 
     let visibility_button_changed = if button_hovered {
-        visibility_button_ui(ui, enabled, visible).changed()
+        visibility_button_ui(re_ui, ui, enabled, visible).changed()
     } else {
         false
     };
@@ -647,7 +655,12 @@ fn blueprint_row_with_visibility_button(
     visibility_button_changed
 }
 
-fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+fn visibility_button_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    enabled: bool,
+    visible: &mut bool,
+) -> egui::Response {
     // Just put the button on top of the existing ui:
     let mut ui = ui.child_ui(
         ui.max_rect(),
@@ -656,14 +669,20 @@ fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) ->
 
     ui.set_enabled(enabled);
 
-    if enabled {
-        ui.add(re_ui::toggle_switch(visible))
+    let mut response = if enabled && *visible {
+        re_ui.small_icon_button(&mut ui, &re_ui::icons::VISIBLE)
     } else {
-        let mut always_false = false;
-        ui.add(re_ui::toggle_switch(&mut always_false))
+        re_ui.small_icon_button(&mut ui, &re_ui::icons::INVISIBLE)
+    };
+
+    if response.clicked() {
+        *visible = !*visible;
+        response.mark_changed();
     }
-    .on_hover_text("Toggle visibility")
-    .on_disabled_hover_text("A parent is invisible")
+
+    response
+        .on_hover_text("Toggle visibility")
+        .on_disabled_hover_text("A parent is invisible")
 }
 
 // ----------------------------------------------------------------------------
@@ -702,7 +721,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 if self
                     .ctx
                     .re_ui
-                    .small_icon(ui, &re_ui::icons::MAXIMIZE)
+                    .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
                     .on_hover_text("Maximize Space View")
                     .clicked()
                 {

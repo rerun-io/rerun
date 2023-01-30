@@ -42,5 +42,8 @@ pub const LEFT_PANEL_TOGGLE: Icon = Icon::new(
 pub const MINIMIZE: Icon = Icon::new("minimize", include_bytes!("../data/icons/minimize.png"));
 pub const MAXIMIZE: Icon = Icon::new("maximize", include_bytes!("../data/icons/maximize.png"));
 
+pub const VISIBLE: Icon = Icon::new("visible", include_bytes!("../data/icons/visible.png"));
+pub const INVISIBLE: Icon = Icon::new("invisible", include_bytes!("../data/icons/invisible.png"));
+
 pub const ADD: Icon = Icon::new("add", include_bytes!("../data/icons/add.png"));
 pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.png"));
