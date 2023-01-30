@@ -85,7 +85,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("logging")
+    rr.init("text_logging")
 
     if args.serve:
         rr.serve()

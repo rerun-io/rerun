@@ -7,8 +7,6 @@ from rerun.color_conversion import linear_to_gamma_u8_pixel
 from rerun import bindings
 
 __all__ = [
-    "ArrowState",
-    "EXP_ARROW",
     "annotation",
     "arrow",
     "bounding_box",
@@ -24,19 +22,6 @@ __all__ = [
     "text",
     "transform",
 ]
-
-
-class ArrowState:
-    """ArrowState is a enum used to configure the logging behaviour of the SDK during the transition to Arrow."""
-
-    def classic_log_gate(self) -> bool:
-        return bindings.classic_log_gate()  # type: ignore[no-any-return]
-
-    def arrow_log_gate(self) -> bool:
-        return bindings.arrow_log_gate()  # type: ignore[no-any-return]
-
-
-EXP_ARROW = ArrowState()
 
 
 ColorDtype = Union[np.uint8, np.float32, np.float64]
@@ -99,11 +84,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     If `recursive` is True this will also clear all sub-paths
     """
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_cleared(obj_path, recursive)
-
-    if EXP_ARROW.arrow_log_gate():
-        bindings.log_cleared(obj_path, recursive)
+    bindings.log_cleared(obj_path, recursive)
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:

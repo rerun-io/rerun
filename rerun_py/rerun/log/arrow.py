@@ -2,7 +2,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log import EXP_ARROW, _normalize_colors, _normalize_radii, _to_sequence
+from rerun.log import _normalize_colors, _normalize_radii
 
 from rerun import bindings
 
@@ -48,41 +48,29 @@ def log_arrow(
         Object is not time-dependent, and will be visible at any time point.
 
     """
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_arrow(
-            obj_path,
-            origin=_to_sequence(origin),
-            vector=_to_sequence(vector),
-            color=color,
-            label=label,
-            width_scale=width_scale,
-            timeless=timeless,
-        )
+    from rerun.components.arrow import Arrow3DArray
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.label import LabelArray
+    from rerun.components.radius import RadiusArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.arrow import Arrow3DArray
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.label import LabelArray
-        from rerun.components.radius import RadiusArray
+    comps = {}
 
-        comps = {}
+    if origin is not None:
+        if vector is None:
+            raise TypeError("Must provide both origin and vector")
+        origin = np.require(origin, dtype="float32")
+        vector = np.require(vector, dtype="float32")
+        comps["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
 
-        if origin is not None:
-            if vector is None:
-                raise TypeError("Must provide both origin and vector")
-            origin = np.require(origin, dtype="float32")
-            vector = np.require(vector, dtype="float32")
-            comps["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
+    if color:
+        colors = _normalize_colors([color])
+        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if color:
-            colors = _normalize_colors([color])
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+    if label:
+        comps["rerun.label"] = LabelArray.new([label])
 
-        if label:
-            comps["rerun.label"] = LabelArray.new([label])
+    if width_scale:
+        radii = _normalize_radii([width_scale / 2])
+        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        if width_scale:
-            radii = _normalize_radii([width_scale / 2])
-            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
-
-        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)

@@ -1,7 +1,7 @@
 from typing import Optional, Sequence
 
 import numpy as np
-from rerun.log import EXP_ARROW, _normalize_colors
+from rerun.log import _normalize_colors
 
 from rerun import bindings
 
@@ -100,29 +100,25 @@ def log_scalar(
     Points within a single line do not have to all share the same scatteredness: the line will
     switch between a scattered and a continous representation as required.
     """
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)
+    from rerun.components.color import ColorRGBAArray
+    from rerun.components.label import LabelArray
+    from rerun.components.radius import RadiusArray
+    from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.label import LabelArray
-        from rerun.components.radius import RadiusArray
-        from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
+    comps = {"rerun.scalar": ScalarArray.from_numpy(np.array([scalar]))}
 
-        comps = {"rerun.scalar": ScalarArray.from_numpy(np.array([scalar]))}
+    if label:
+        comps["rerun.label"] = LabelArray.new([label])
 
-        if label:
-            comps["rerun.label"] = LabelArray.new([label])
+    if color:
+        colors = _normalize_colors(np.array([color]))
+        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if color:
-            colors = _normalize_colors(np.array([color]))
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+    if radius:
+        comps["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
 
-        if radius:
-            comps["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
+    if scattered:
+        props = [{"scattered": scattered}]
+        comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
 
-        if scattered:
-            props = [{"scattered": scattered}]
-            comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
-
-        bindings.log_arrow_msg(obj_path, components=comps, timeless=False)
+    bindings.log_arrow_msg(obj_path, components=comps, timeless=False)
