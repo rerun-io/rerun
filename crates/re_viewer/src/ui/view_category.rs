@@ -57,6 +57,8 @@ pub fn categorize_obj_path(
 ) -> ViewCategorySet {
     crate::profile_function!();
 
+    let mut set = categorize_arrow_obj_path(&timeline, log_db, obj_path);
+
     // If it has a transform we might want to visualize it in space
     // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
     if query_transform(
@@ -66,10 +68,10 @@ pub fn categorize_obj_path(
     )
     .is_some()
     {
-        return ViewCategory::Spatial.into();
+        set.insert(ViewCategory::Spatial);
     }
 
-    categorize_arrow_obj_path(&timeline, log_db, obj_path)
+    set
 }
 
 pub fn categorize_arrow_obj_path(
