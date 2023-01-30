@@ -329,12 +329,12 @@ impl SpaceView {
                     .clicked()
                     {
                         // Remove all objects at and under this path
-                        obj_tree
-                        .subtree(ent_path)
+                        obj_tree.subtree(ent_path)
                         .unwrap()
                         .visit_children_recursively(&mut |path: &ObjPath| {
                             self.data_blueprint.remove_object(path);
                         });
+                        self.allow_auto_adding_more_object = false;
                     }
                 } else {
                     let object_category = categorize_obj_path(Timeline::log_time(), ctx.log_db, ent_path);
