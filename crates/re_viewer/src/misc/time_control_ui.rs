@@ -59,11 +59,14 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
-        self.play_button_ui(re_ui, ui, times_per_timeline);
-        self.follow_button_ui(re_ui, ui, times_per_timeline);
-        self.pause_button_ui(re_ui, ui);
-        self.step_time_button_ui(re_ui, ui, times_per_timeline);
-        self.loop_button_ui(re_ui, ui);
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 5.0; // from figma
+            self.play_button_ui(re_ui, ui, times_per_timeline);
+            self.follow_button_ui(re_ui, ui, times_per_timeline);
+            self.pause_button_ui(re_ui, ui);
+            self.step_time_button_ui(re_ui, ui, times_per_timeline);
+            self.loop_button_ui(re_ui, ui);
+        });
     }
 
     fn play_button_ui(

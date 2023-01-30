@@ -6,7 +6,10 @@ use crate::ui::{
     DataBlueprintGroupHandle, Preview, SpaceViewId,
 };
 
-use super::selection::{MultiSelection, Selection};
+use super::{
+    selection::{MultiSelection, Selection},
+    HoverHighlight,
+};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -34,7 +37,6 @@ pub struct ViewerContext<'a> {
 impl<'a> ViewerContext<'a> {
     /// Show an [`MsgId`] and make it selectable
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
-        // TODO(emilk): common hover-effect
         let selection = Selection::MsgId(msg_id);
         let response = ui
             .selectable_label(self.selection().contains(&selection), msg_id.to_string())
@@ -100,7 +102,7 @@ impl<'a> ViewerContext<'a> {
             Some(_) => "Object Instance",
             None => "Object",
         };
-        // TODO(emilk): common hover-effect of all buttons for the same instance_id!
+
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
@@ -124,7 +126,6 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         data_path: &DataPath,
     ) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same data_path!
         let selection = Selection::DataPath(data_path.clone());
         let response = ui.selectable_label(self.selection().contains(&selection), text);
         self.cursor_interact_with_selectable(response, selection)
@@ -256,6 +257,9 @@ impl<'a> ViewerContext<'a> {
         response: egui::Response,
         selectable: Selection,
     ) -> egui::Response {
+        let is_item_hovered =
+            self.selection_state().highlight_for_ui_element(&selectable) == HoverHighlight::Hovered;
+
         if response.hovered() {
             self.rec_cfg
                 .selection_state
@@ -263,7 +267,12 @@ impl<'a> ViewerContext<'a> {
         }
         self.select_hovered_on_click(&response);
         // TODO(andreas): How to deal with shift click for selecting ranges?
-        response
+
+        if is_item_hovered {
+            response.highlight()
+        } else {
+            response
+        }
     }
 
     /// Returns the current selection.

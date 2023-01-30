@@ -109,7 +109,7 @@ impl RenderContext {
             let err_tracker = std::sync::Arc::new(crate::error_tracker::ErrorTracker::default());
             device.on_uncaptured_error({
                 let err_tracker = std::sync::Arc::clone(&err_tracker);
-                move |err| err_tracker.handle_error(err)
+                Box::new(move |err| err_tracker.handle_error(err))
             });
             err_tracker
         };

@@ -6,3 +6,4 @@ mkdocs-material-extensions
 mkdocs-redirects
 mkdocstrings
 mkdocstrings-python
+mike

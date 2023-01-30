@@ -43,6 +43,13 @@ pub enum SelectionHighlight {
     Selection,
 }
 
+impl SelectionHighlight {
+    #[inline]
+    pub fn is_some(self) -> bool {
+        self != SelectionHighlight::None
+    }
+}
+
 /// Hover highlight, sorted from weakest to strongest.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum HoverHighlight {
@@ -54,6 +61,13 @@ pub enum HoverHighlight {
     Hovered,
 }
 
+impl HoverHighlight {
+    #[inline]
+    pub fn is_some(self) -> bool {
+        self != HoverHighlight::None
+    }
+}
+
 /// Combination of selection & hover highlight which can occur independently.
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct InteractionHighlight {
@@ -63,11 +77,13 @@ pub struct InteractionHighlight {
 
 impl InteractionHighlight {
     /// Any active highlight at all.
-    pub fn any(&self) -> bool {
-        self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
+    #[inline]
+    pub fn is_some(self) -> bool {
+        self.selection.is_some() || self.hover.is_some()
     }
 
     /// Picks the stronger selection & hover highlight from two highlight descriptions.
+    #[inline]
     pub fn max(&self, other: InteractionHighlight) -> Self {
         Self {
             selection: self.selection.max(other.selection),
@@ -98,6 +114,20 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
                 .unwrap_or_default()
                 .max(object_highlight.overall),
             None => InteractionHighlight::default(),
+        }
+    }
+
+    pub fn any_selection_highlight(&self) -> bool {
+        match self.0 {
+            Some(object_highlight) => {
+                // TODO(andreas): Could easily pre-compute this!
+                object_highlight.overall.selection.is_some()
+                    || object_highlight
+                        .instances
+                        .values()
+                        .any(|instance_highlight| instance_highlight.selection.is_some())
+            }
+            None => false,
         }
     }
 }
@@ -241,6 +271,43 @@ impl SelectionState {
         blueprint: &mut Blueprint,
     ) -> Option<MultiSelection> {
         self.history.selection_ui(ui, blueprint)
+    }
+
+    pub fn highlight_for_ui_element(&self, test: &Selection) -> HoverHighlight {
+        let hovered = self
+            .hovered_previous_frame
+            .iter()
+            .any(|current| match current {
+                Selection::MsgId(_)
+                | Selection::DataPath(_)
+                | Selection::SpaceView(_)
+                | Selection::DataBlueprintGroup(_, _) => current == test,
+
+                Selection::Instance(current_space_view_id, current_instance_id) => {
+                    if let Selection::Instance(test_space_view_id, test_instance_id) = test {
+                        // For both space view id and instance index we want to be inclusive,
+                        // but if both are set to Some, and set to different, then we count that
+                        // as a miss.
+                        fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
+                            a.is_none() || b.is_none() || a == b
+                        }
+
+                        current_instance_id.obj_path == test_instance_id.obj_path
+                            && either_none_or_same(
+                                &current_instance_id.instance_index,
+                                &test_instance_id.instance_index,
+                            )
+                            && either_none_or_same(current_space_view_id, test_space_view_id)
+                    } else {
+                        false
+                    }
+                }
+            });
+        if hovered {
+            HoverHighlight::Hovered
+        } else {
+            HoverHighlight::None
+        }
     }
 
     pub fn highlights_for_space_view(

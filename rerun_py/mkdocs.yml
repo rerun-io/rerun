@@ -51,3 +51,9 @@ markdown_extensions:
 # Some extra styling
 extra_css:
   - css/mkdocstrings.css
+
+# https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/
+extra:
+  version:
+    provider: mike
+    default: latest

@@ -2,7 +2,6 @@ from typing import Any, Iterable, Optional, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log import EXP_ARROW
 from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
@@ -89,12 +88,8 @@ def _log_tensor(
         _send_warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.", 2)
         return
 
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
+    from rerun.components.tensor import TensorArray
 
-    if EXP_ARROW.arrow_log_gate():
-        from rerun.components.tensor import TensorArray
+    comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
 
-        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
-
-        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)

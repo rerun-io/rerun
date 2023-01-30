@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, LineStrip2D, Radius},
     msg_bundle::Component,
@@ -13,7 +13,7 @@ use crate::{
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::ScenePart;
+use super::{instance_hash_for_picking, ScenePart};
 
 pub struct Lines2DPart;
 
@@ -43,13 +43,8 @@ impl Lines2DPart {
                        strip: LineStrip2D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let instance_hash = {
-                if props.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            };
+            let instance_hash =
+                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
 
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();

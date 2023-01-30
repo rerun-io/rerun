@@ -91,9 +91,12 @@ struct Application<E> {
 impl<E: Example + 'static> Application<E> {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
         let size = window.inner_size();
-        let instance = wgpu::Instance::new(supported_backends());
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: supported_backends(),
+            dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+        });
         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-        let surface = unsafe { instance.create_surface(&window) };
+        let surface = unsafe { instance.create_surface(&window) }.unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -120,6 +123,7 @@ impl<E: Example + 'static> Application<E> {
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
+        // re_renderer is doing its own srgb conversion for each ViewBuilder for better egui compatibility.
         let swapchain_format = if cfg!(target_arch = "wasm32") {
             wgpu::TextureFormat::Rgba8Unorm
         } else {
@@ -136,6 +140,7 @@ impl<E: Example + 'static> Application<E> {
             //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: [swapchain_format].to_vec(),
         };
         surface.configure(&device, &surface_config);
 

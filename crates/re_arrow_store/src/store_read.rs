@@ -1135,8 +1135,6 @@ impl PersistentComponentTable {
 
 impl ComponentTable {
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        crate::profile_function!();
-
         let bucket_nr = self
             .buckets
             .partition_point(|bucket| row_idx.as_u64() >= bucket.row_offset);
@@ -1189,8 +1187,6 @@ impl ComponentBucket {
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        crate::profile_function!();
-
         let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.archived {

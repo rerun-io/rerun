@@ -262,7 +262,7 @@ impl ErrorTracker {
         // The pipeline is in a poisoned state, errors are still coming in: we won't be
         // clearing the tracker until it had at least 2 complete frame_maintenance cycles
         // without any errors (meaning the swapchain surface is stabilized).
-        self.clear_countdown.store(2, Ordering::Relaxed);
+        self.clear_countdown.store(3, Ordering::Relaxed);
 
         match error {
             wgpu::Error::OutOfMemory { source: _ } => panic!("{error}"),
