@@ -582,16 +582,6 @@ fn blueprint_row_with_visibility_button(
     visible: &mut bool,
     add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
 ) -> bool {
-    if !*visible || !enabled {
-        // Dim the appearance of things added by `add_content`:
-        let widget_visuals = &mut ui.visuals_mut().widgets;
-        fn dim_color(color: &mut egui::Color32) {
-            *color = color.gamma_multiply(0.5);
-        }
-        dim_color(&mut widget_visuals.noninteractive.fg_stroke.color);
-        dim_color(&mut widget_visuals.inactive.fg_stroke.color);
-    }
-
     let where_to_add_hover_rect = ui.painter().add(egui::Shape::Noop);
 
     // Make the main button span the whole width to make it easier to click:
@@ -620,6 +610,16 @@ fn blueprint_row_with_visibility_button(
                 let visibility_button_width = 16.0;
                 clip_rect.max.x -= visibility_button_width;
                 ui.set_clip_rect(clip_rect);
+            }
+
+            if !*visible || !enabled {
+                // Dim the appearance of things added by `add_content`:
+                let widget_visuals = &mut ui.visuals_mut().widgets;
+                fn dim_color(color: &mut egui::Color32) {
+                    *color = color.gamma_multiply(0.5);
+                }
+                dim_color(&mut widget_visuals.noninteractive.fg_stroke.color);
+                dim_color(&mut widget_visuals.inactive.fg_stroke.color);
             }
 
             add_content(ui)
