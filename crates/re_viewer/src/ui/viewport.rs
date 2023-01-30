@@ -421,7 +421,7 @@ impl Viewport {
 
         for space_info in spaces_info.iter() {
             for (category, entity_paths) in
-                SpaceView::default_queried_objects_by_category(ctx, spaces_info, space_info)
+                SpaceView::default_queries_entities_by_category(ctx, spaces_info, space_info)
             {
                 space_views.push(SpaceView::new(category, space_info, &entity_paths));
             }

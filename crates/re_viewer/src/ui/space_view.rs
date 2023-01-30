@@ -67,23 +67,23 @@ impl SpaceView {
     pub fn new(
         category: ViewCategory,
         space_info: &SpaceInfo,
-        queried_objects: &[EntityPath],
+        queries_entities: &[EntityPath],
     ) -> Self {
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
             |c| EntityPath::from(vec![c.clone()]),
         );
 
-        let name = if queried_objects.len() == 1 {
+        let name = if queries_entities.len() == 1 {
             // a single object in this space-view - name the space after it
-            queried_objects[0].to_string()
+            queries_entities[0].to_string()
         } else {
             space_info.path.to_string()
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_entities_according_to_hierarchy(queried_objects.iter(), &space_info.path);
+            .insert_entities_according_to_hierarchy(queries_entities.iter(), &space_info.path);
 
         Self {
             name,
@@ -100,7 +100,7 @@ impl SpaceView {
     /// List of objects a space view queries by default for a given category.
     ///
     /// These are all objects in the given space which have the requested category and are reachable by a transform.
-    pub fn default_queried_objects(
+    pub fn default_queries_entities(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
@@ -129,7 +129,7 @@ impl SpaceView {
     }
 
     /// List of objects a space view queries by default for all any possible category.
-    pub fn default_queried_objects_by_category(
+    pub fn default_queries_entities_by_category(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         space_info: &SpaceInfo,
@@ -168,10 +168,10 @@ impl SpaceView {
 
         if self.allow_auto_adding_more_object {
             // Add objects that have been logged since we were created
-            let queried_objects =
-                Self::default_queried_objects(ctx, spaces_info, space_info, self.category);
+            let queries_entities =
+                Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
             self.data_blueprint
-                .insert_entities_according_to_hierarchy(queried_objects.iter(), &self.space_path);
+                .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
         }
     }
 
