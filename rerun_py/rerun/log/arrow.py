@@ -33,7 +33,7 @@ def log_arrow(
     Parameters
     ----------
     entity_path
-        The path to store the object at.
+        The path to store the entity at.
     origin
         The base position of the arrow.
     vector
@@ -45,7 +45,7 @@ def log_arrow(
     width_scale
         An optional scaling factor, default=1.0.
     timeless
-        Object is not time-dependent, and will be visible at any time point.
+        The entity is not time-dependent, and will be visible at any time point.
 
     """
     from rerun.components.arrow import Arrow3DArray

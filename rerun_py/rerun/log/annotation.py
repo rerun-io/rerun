@@ -17,7 +17,7 @@ class AnnotationInfo:
     """
     Annotation info annotating a class id or key-point id.
 
-    Color and label will be used to annotate objects/keypoints which reference the id.
+    Color and label will be used to annotate entities/keypoints which reference the id.
     The id refers either to a class or key-point id
     """
 
@@ -70,10 +70,10 @@ def log_annotation_context(
     """
     Log an annotation context made up of a collection of ClassDescriptions.
 
-    Any object needing to access the annotation context will find it by searching the
-    path upward. If all objects share the same you can simply log it to the
-    root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
-    your object.
+    Any entity needing to access the annotation context will find it by searching the
+    path upward. If all entities share the same you can simply log it to the
+    root ("/"), or if you want a per-entity ClassDescriptions log it to the same path as
+    your entity.
 
     Each ClassDescription must include an annotation info with an id, which will be used for matching
     the class and may optionally include a label and color. Colors should

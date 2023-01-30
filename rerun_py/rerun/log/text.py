@@ -43,7 +43,7 @@ class LoggingHandler(logging.Handler):
     Because Rerun's data model doesn't match 1-to-1 with the different concepts from
     python's logging ecosystem, we need a way to map the latter to the former:
 
-    * Root Object: Optional root object to gather all the logs under.
+    * Root Entity: Optional root entity to gather all the logs under.
 
     * Entity path: the name of the logger responsible for the creation of the LogRecord
                    is used as the final entity path, appended after the Root Entity path.
@@ -65,15 +65,15 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: LogLevel.DEBUG,
     }
 
-    def __init__(self, root_obj_path: Optional[str] = None):
+    def __init__(self, root_entity_path: Optional[str] = None):
         logging.Handler.__init__(self)
-        self.root_obj_path = root_obj_path
+        self.root_entity_path = root_entity_path
 
     def emit(self, record: logging.LogRecord) -> None:
         """Emits a record to the Rerun SDK."""
         objpath = record.name.replace(".", "/")
-        if self.root_obj_path is not None:
-            objpath = f"{self.root_obj_path}/{objpath}"
+        if self.root_entity_path is not None:
+            objpath = f"{self.root_entity_path}/{objpath}"
         level = self.LVL2NAME.get(record.levelno)
         if level is None:  # user-defined level
             level = record.levelname

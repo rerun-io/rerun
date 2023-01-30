@@ -80,7 +80,7 @@ def _normalize_labels(labels: Optional[Union[str, Sequence[str]]]) -> Sequence[s
 
 def log_cleared(entity_path: str, *, recursive: bool = False) -> None:
     """
-    Indicate that an object at a given path should no longer be displayed.
+    Indicate that an entity at a given path should no longer be displayed.
 
     If `recursive` is True this will also clear all sub-paths
     """
