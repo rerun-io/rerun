@@ -120,7 +120,7 @@ pub fn what_is_selected_ui(
         Selection::Instance(space_view_id, instance_id) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_id.instance_index.is_none() {
-                    ui.label("Object Path:");
+                    ui.label("Entity path:");
                 } else {
                     ui.label("Instance:");
                 }

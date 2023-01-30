@@ -188,7 +188,7 @@ impl ViewTextFilters {
             for (timeline, visible) in col_timelines {
                 ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
             }
-            ui.checkbox(col_entity_path, "Object path");
+            ui.checkbox(col_entity_path, "Entity path");
             ui.checkbox(col_log_level, "Log level");
         });
 
@@ -214,7 +214,7 @@ impl ViewTextFilters {
 
             ui.group(|ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Object paths");
+                    ui.label("Entity paths");
                     if ui
                         .button(clear_or_select[has_entity_path_row_filters as usize])
                         .clicked()
@@ -310,7 +310,7 @@ fn table_ui(
         table_builder =
             table_builder.columns(Column::auto().clip(true).at_least(32.0), timelines.len());
 
-        // object path
+        // entity path
         if state.filters.col_entity_path {
             table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
         }
@@ -331,7 +331,7 @@ fn table_ui(
             }
             if state.filters.col_entity_path {
                 header.col(|ui| {
-                    ui.strong("Object Path");
+                    ui.strong("Entity path");
                 });
             }
             if state.filters.col_log_level {

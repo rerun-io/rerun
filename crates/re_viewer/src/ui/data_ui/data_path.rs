@@ -11,7 +11,7 @@ impl DataUi for DataPath {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.horizontal(|ui| {
-            ui.label("Object path:");
+            ui.label("Entity path:");
             ctx.entity_path_button(ui, None, &self.entity_path);
         });
 

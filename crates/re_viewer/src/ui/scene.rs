@@ -12,9 +12,9 @@ pub struct SceneQuery<'s> {
 }
 
 impl<'s> SceneQuery<'s> {
-    /// Iter over all of the currently visible `EntityPath`s in the `SceneQuery`
+    /// Iter over all of the currently visible [`EntityPath`]s in the [`SceneQuery`].
     ///
-    /// Also includes the corresponding `ObjectProps`.
+    /// Also includes the corresponding [`EntityProperties`].
     pub(crate) fn iter_entities(&self) -> impl Iterator<Item = (&EntityPath, EntityProperties)> {
         self.entity_paths
             .iter()
