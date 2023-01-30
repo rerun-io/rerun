@@ -1,4 +1,4 @@
-//! Every logged entity in Rerun is logged to a [`EntityPath`].
+//! Every logged entity in Rerun is logged to an [`EntityPath`].
 //!
 //! The path is made up out of several [`EntityPathComponent`],
 //! each of which is either a name ([`EntityPathComponent::Name`])
