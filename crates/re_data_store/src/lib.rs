@@ -4,13 +4,11 @@
 #![doc = document_features::document_features!()]
 //!
 
-mod batch;
 mod instance;
 pub mod log_db;
 pub mod object_properties;
 pub mod object_tree;
 
-pub use batch::*;
 pub use instance::*;
 pub use log_db::LogDb;
 pub use object_properties::*;
