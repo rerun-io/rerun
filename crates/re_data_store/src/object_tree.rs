@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, FieldOrComponent, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint, Timeline,
+    ComponentName, DataPath, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint, Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -100,7 +100,7 @@ pub struct ObjectTree {
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
     /// Data logged at this object path.
-    pub components: BTreeMap<FieldOrComponent, ComponentStats>,
+    pub components: BTreeMap<ComponentName, ComponentStats>,
 }
 
 impl ObjectTree {
@@ -192,7 +192,7 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.components
                     .iter()
-                    .map(|(field_name, _fields)| DataPath::new_any(obj_path.clone(), *field_name))
+                    .map(|(field_name, _fields)| DataPath::new(obj_path.clone(), *field_name))
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -218,7 +218,7 @@ impl ObjectTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(next.components.iter().map(|(field_name, _fields)| {
-                        DataPath::new_any(next.path.clone(), *field_name)
+                        DataPath::new(next.path.clone(), *field_name)
                     }));
                 }
                 results

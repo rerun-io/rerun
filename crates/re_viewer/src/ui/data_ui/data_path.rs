@@ -1,4 +1,4 @@
-use re_log_types::{DataPath, FieldOrComponent};
+use re_log_types::DataPath;
 
 use super::{component::arrow_component_ui, DataUi};
 
@@ -15,23 +15,24 @@ impl DataUi for DataPath {
             ctx.obj_path_button(ui, None, &self.obj_path);
         });
 
-        if let FieldOrComponent::Component(component) = self.component_name {
-            let store = &ctx.log_db.obj_db.arrow_store;
+        let store = &ctx.log_db.obj_db.arrow_store;
 
-            match re_query::get_component_with_instances(store, query, self.obj_path(), component) {
-                Err(re_query::QueryError::PrimaryNotFound) => {
-                    ui.label("<unset>");
-                }
-                // Any other failure to get a component is unexpected
-                Err(err) => {
-                    ui.label(format!("Error: {}", err));
-                }
-                Ok(component_data) => {
-                    arrow_component_ui(ctx, ui, &component_data, verbosity, query);
-                }
+        match re_query::get_component_with_instances(
+            store,
+            query,
+            self.obj_path(),
+            self.component_name,
+        ) {
+            Err(re_query::QueryError::PrimaryNotFound) => {
+                ui.label("<unset>");
             }
-        } else {
-            re_log::error_once!("Found classical data");
+            // Any other failure to get a component is unexpected
+            Err(err) => {
+                ui.label(format!("Error: {}", err));
+            }
+            Ok(component_data) => {
+                arrow_component_ui(ctx, ui, &component_data, verbosity, query);
+            }
         }
     }
 }

@@ -1,32 +1,4 @@
-use crate::{
-    path::{FieldName, ObjPath},
-    ComponentName,
-};
-
-/// A `DataPath` may contain either a classic `Field` or an arrow `Component`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum FieldOrComponent {
-    Field(FieldName),
-    Component(ComponentName),
-}
-
-impl FieldOrComponent {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Field(field) | Self::Component(field) => field.as_str(),
-        }
-    }
-}
-
-impl std::fmt::Display for FieldOrComponent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let field = match self {
-            Self::Field(field) | Self::Component(field) => field,
-        };
-        field.fmt(f)
-    }
-}
+use crate::{path::ObjPath, ComponentName};
 
 /// A [`ObjPath`] plus a [`FieldName`].
 ///
@@ -38,31 +10,15 @@ pub struct DataPath {
     pub obj_path: ObjPath,
 
     /// "pos"
-    pub component_name: FieldOrComponent,
+    pub component_name: ComponentName,
 }
 
 impl DataPath {
     #[inline]
-    pub fn new(obj_path: ObjPath, field_name: FieldName) -> Self {
+    pub fn new(obj_path: ObjPath, component_name: ComponentName) -> Self {
         Self {
             obj_path,
-            component_name: FieldOrComponent::Field(field_name),
-        }
-    }
-
-    #[inline]
-    pub fn new_arrow(obj_path: ObjPath, component_name: ComponentName) -> Self {
-        Self {
-            obj_path,
-            component_name: FieldOrComponent::Component(component_name),
-        }
-    }
-
-    #[inline]
-    pub fn new_any(obj_path: ObjPath, field_name: FieldOrComponent) -> Self {
-        Self {
-            obj_path,
-            component_name: field_name,
+            component_name,
         }
     }
 
@@ -72,16 +28,8 @@ impl DataPath {
     }
 
     #[inline]
-    pub fn field_name(&self) -> &FieldOrComponent {
+    pub fn component_name(&self) -> &ComponentName {
         &self.component_name
-    }
-
-    #[inline]
-    pub fn is_arrow(&self) -> bool {
-        match self.component_name {
-            FieldOrComponent::Field(_) => false,
-            FieldOrComponent::Component(_) => true,
-        }
     }
 }
 

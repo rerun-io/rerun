@@ -5,8 +5,8 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, DataPath, FieldOrComponent, LogMsg, MsgId, ObjPath, ObjPathHash,
-    PathOp, PathOpMsg, RecordingId, RecordingInfo, TimePoint, Timeline,
+    ArrowMsg, BeginRecordingMsg, DataPath, LogMsg, MsgId, ObjPath, ObjPathHash, PathOp, PathOpMsg,
+    RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -58,11 +58,6 @@ impl ObjDb {
             .or_insert_with(|| obj_path.clone());
     }
 
-    fn add_data_msg(&mut self, time_point: &TimePoint, data_path: &DataPath) {
-        self.register_obj_path(&data_path.obj_path);
-        self.tree.add_data_msg(time_point, data_path);
-    }
-
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
@@ -73,7 +68,7 @@ impl ObjDb {
         self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
-            let data_path = DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name);
+            let data_path = DataPath::new(msg_bundle.obj_path.clone(), component.name);
             if component.name == MsgId::name() {
                 continue;
             }
@@ -104,25 +99,20 @@ impl ObjDb {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
         for data_path in cleared_paths {
-            if data_path.is_arrow() {
-                if let FieldOrComponent::Component(component) = data_path.component_name {
-                    if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
-                        // Create and insert an empty component into the arrow store
-                        // TODO(jleibs): Faster empty-array creation
-                        let bundle = ComponentBundle::new_empty(component, data_type.clone());
-                        let msg_bundle = MsgBundle::new(
-                            msg_id,
-                            data_path.obj_path.clone(),
-                            time_point.clone(),
-                            vec![bundle],
-                        );
-                        self.arrow_store.insert(&msg_bundle).ok();
-                        // Also update the object tree with the clear-event
-                        self.tree.add_data_msg(time_point, &data_path);
-                    }
-                }
-            } else {
-                self.add_data_msg(time_point, &data_path);
+            if let Some(data_type) = self.arrow_store.lookup_data_type(&data_path.component_name) {
+                // Create and insert an empty component into the arrow store
+                // TODO(jleibs): Faster empty-array creation
+                let bundle =
+                    ComponentBundle::new_empty(data_path.component_name, data_type.clone());
+                let msg_bundle = MsgBundle::new(
+                    msg_id,
+                    data_path.obj_path.clone(),
+                    time_point.clone(),
+                    vec![bundle],
+                );
+                self.arrow_store.insert(&msg_bundle).ok();
+                // Also update the object tree with the clear-event
+                self.tree.add_data_msg(time_point, &data_path);
             }
         }
     }

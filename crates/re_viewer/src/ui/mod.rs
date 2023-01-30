@@ -34,7 +34,6 @@ pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 pub use self::viewport::Viewport;
 
 pub(crate) use data_ui::UiVerbosity;
-use re_log_types::FieldOrComponent;
 
 pub fn format_component_name(name: &re_data_store::FieldName) -> String {
     let name = name.as_str();
@@ -42,13 +41,5 @@ pub fn format_component_name(name: &re_data_store::FieldName) -> String {
         name.into()
     } else {
         name.into()
-    }
-}
-
-pub fn format_field_or_component_name(name: &FieldOrComponent) -> String {
-    match name {
-        FieldOrComponent::Field(name) | FieldOrComponent::Component(name) => {
-            format_component_name(name)
-        }
     }
 }

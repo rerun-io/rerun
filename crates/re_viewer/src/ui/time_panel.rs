@@ -461,14 +461,14 @@ impl TimePanel {
         if !tree.components.is_empty() {
             let indent = ui.spacing().indent;
 
-            for (field_name, data) in &tree.components {
+            for (component_name, data) in &tree.components {
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
                 {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new_any(tree.path.clone(), *field_name);
+                let data_path = DataPath::new(tree.path.clone(), *component_name);
 
                 let response = ui
                     .horizontal(|ui| {
@@ -483,7 +483,7 @@ impl TimePanel {
                         );
                         ctx.data_path_button_to(
                             ui,
-                            super::format_field_or_component_name(field_name),
+                            super::format_component_name(component_name),
                             &data_path,
                         );
                     })

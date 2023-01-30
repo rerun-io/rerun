@@ -74,7 +74,7 @@ fn generic_arrow_ui(
                 ctx.data_path_button_to(
                     ui,
                     format_component_name(&component_name),
-                    &DataPath::new_arrow(instance_id.obj_path.clone(), component_name),
+                    &DataPath::new(instance_id.obj_path.clone(), component_name),
                 );
 
                 match (component_data, &instance_id.instance_index) {
