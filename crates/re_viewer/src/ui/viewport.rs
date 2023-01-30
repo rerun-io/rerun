@@ -294,7 +294,7 @@ impl Viewport {
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceView) -> bool {
         for existing_view in self.space_views.values() {
             if existing_view.space_path == space_view_candidate.space_path {
-                if existing_view.objects_determined_by_user {
+                if existing_view.entities_determined_by_user {
                     // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
                     // So let's skip that.
                     return false;
@@ -508,7 +508,7 @@ impl Viewport {
                             }
                         }
 
-                        single_image_space_view.objects_determined_by_user = true;
+                        single_image_space_view.entities_determined_by_user = true;
 
                         space_views.push(single_image_space_view);
                     }

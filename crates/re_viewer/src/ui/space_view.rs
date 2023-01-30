@@ -60,7 +60,7 @@ pub struct SpaceView {
     pub category: ViewCategory,
 
     /// True if the user is expected to add elements themselves. False otherwise.
-    pub objects_determined_by_user: bool,
+    pub entities_determined_by_user: bool,
 }
 
 impl SpaceView {
@@ -93,7 +93,7 @@ impl SpaceView {
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
             category,
-            objects_determined_by_user: false,
+            entities_determined_by_user: false,
         }
     }
 
@@ -166,7 +166,7 @@ impl SpaceView {
             return;
         };
 
-        if !self.objects_determined_by_user {
+        if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
                 Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
@@ -187,12 +187,12 @@ impl SpaceView {
         ui.separator();
 
         ui.checkbox(
-            &mut self.objects_determined_by_user,
+            &mut self.entities_determined_by_user,
             "Manually add/remove data",
-        ).on_hover_text("Allows to manually add/removed entities from the Space View.\nIf set, new object paths won't be added automatically.");
-        if self.objects_determined_by_user {
+        ).on_hover_text("Allows to manually add/removed entities from the Space View.\nIf set, new entity paths won't be added automatically.");
+        if self.entities_determined_by_user {
             ui.add_space(2.0);
-            self.add_objects_ui(ctx, ui);
+            self.add_entities_ui(ctx, ui);
         }
 
         ui.separator();
@@ -229,7 +229,7 @@ impl SpaceView {
         }
     }
 
-    fn add_objects_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn add_entities_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         // We'd like to see the reference space path by default.
 
         let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
@@ -237,7 +237,7 @@ impl SpaceView {
 
         // All entities at the space path and below.
         if let Some(tree) = entity_tree.subtree(&self.space_path) {
-            self.add_objects_tree_ui(ctx, ui, &spaces_info, &tree.path.to_string(), tree, true);
+            self.add_entities_tree_ui(ctx, ui, &spaces_info, &tree.path.to_string(), tree, true);
         }
 
         // All entities above
@@ -253,7 +253,7 @@ impl SpaceView {
             if let Some(tree) = entity_tree.subtree(&parent) {
                 for (path_comp, child_tree) in &tree.children {
                     if child_tree.path != self.space_path {
-                        self.add_objects_tree_ui(
+                        self.add_entities_tree_ui(
                             ctx,
                             ui,
                             &spaces_info,
@@ -270,7 +270,7 @@ impl SpaceView {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_objects_tree_ui(
+    fn add_entities_tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -280,7 +280,7 @@ impl SpaceView {
         default_open: bool,
     ) {
         if tree.is_leaf() {
-            self.add_object_line_ui(ctx, ui, spaces_info, &format!("🔹 {}", name), &tree.path);
+            self.add_entities_line_ui(ctx, ui, spaces_info, &format!("🔹 {}", name), &tree.path);
         } else {
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
@@ -288,11 +288,11 @@ impl SpaceView {
                 default_open && tree.children.len() <= 3,
             )
             .show_header(ui, |ui| {
-                self.add_object_line_ui(ctx, ui, spaces_info, name, &tree.path);
+                self.add_entities_line_ui(ctx, ui, spaces_info, name, &tree.path);
             })
             .body(|ui| {
                 for (path_comp, child_tree) in &tree.children {
-                    self.add_objects_tree_ui(
+                    self.add_entities_tree_ui(
                         ctx,
                         ui,
                         spaces_info,
@@ -305,7 +305,7 @@ impl SpaceView {
         };
     }
 
-    fn add_object_line_ui(
+    fn add_entities_line_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -344,13 +344,13 @@ impl SpaceView {
                         });
                     }
                 } else {
-                    let object_category = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
-                    let cannot_add_reason = if object_category.contains(self.category) {
+                    let entity_category = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
+                    let cannot_add_reason = if entity_category.contains(self.category) {
                         spaces_info.is_reachable_by_transform(entity_path, &self.space_path).map_err
                         (|reason| match reason {
                             // Should never happen
                             UnreachableTransform::Unconnected =>
-                                 "No object path connection from this space view.",
+                                 "No entity path connection from this space view.",
                             UnreachableTransform::NestedPinholeCameras =>
                                 "Can't display entities under nested pinhole cameras.",
                             UnreachableTransform::UnknownTransform =>
@@ -358,16 +358,16 @@ impl SpaceView {
                             UnreachableTransform::InversePinholeCameraWithoutResolution =>
                                 "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
                         }).err()
-                    } else if object_category.is_empty() {
-                        Some("Object does not contain any components")
+                    } else if entity_category.is_empty() {
+                        Some("Entity does not have any components")
                     } else {
-                        Some("Object category can't be displayed by this type of spatial view")
+                        Some("Entity category can't be displayed by this type of spatial view")
                     };
 
                     let response = ui.add_enabled_ui(cannot_add_reason.is_none(), |ui| {
                         let response = ui.button("➕");
                         if response.clicked() {
-                            // Insert the object itself and all its children as far as they haven't been added yet
+                            // Insert the entity itself and all its children as far as they haven't been added yet
                             let mut entities = Vec::new();
                             entity_tree
                                 .subtree(entity_path)
