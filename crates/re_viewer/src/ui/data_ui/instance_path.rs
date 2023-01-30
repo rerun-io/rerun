@@ -20,8 +20,8 @@ impl DataUi for InstancePath {
         let store = &ctx.log_db.entity_db.arrow_store;
 
         let Some(mut components) = store.all_components(&query.timeline, &self.entity_path) else {
-            ui.label("No Components");
-            return ;
+            ui.label(format!("No components in entity {}", self.entity_path));
+            return;
         };
         components.sort();
 
@@ -48,7 +48,7 @@ impl DataUi for InstancePath {
 
                     match component_data {
                         Err(err) => {
-                            ui.label(format!("Error: {}", err)); // TODO: error formatting
+                            ui.label(ctx.re_ui.error_text(format!("Error: {}", err)));
                         }
                         Ok(component_data) => {
                             arrow_component_elem_ui(
