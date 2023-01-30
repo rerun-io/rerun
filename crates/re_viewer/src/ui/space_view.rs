@@ -173,15 +173,18 @@ impl SpaceView {
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        ui.label("Space path:");
-        // specify no space view id since the path itself is not part of the space view.
-        ctx.obj_path_button(ui, None, &self.space_path);
-        ui.end_row();
+        ui.horizontal(|ui| {
+            ui.label("Space path:").on_hover_text(
+                "Root path of this space view. All transformations are relative this.",
+            );
+            // specify no space view id since the path itself is not part of the space view.
+            ctx.obj_path_button(ui, None, &self.space_path);
+        });
 
         ui.separator();
 
-        ui.strong("Query tree");
-        self.query_tree_ui(ctx, ui);
+        ui.strong("Add/Remove object paths:");
+        self.add_objects_ui(ctx, ui);
 
         ui.separator();
 
@@ -217,47 +220,47 @@ impl SpaceView {
         }
     }
 
-    fn query_tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn add_objects_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        // We'd like to see the reference space path by default.
+
+        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db);
         let obj_tree = &ctx.log_db.obj_db.tree;
 
-        // We'd like to see the reference space path by default.
-        let default_open = self.root_path != self.space_path;
-        let collapsing_header_id = ui.make_persistent_id(self.id);
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            collapsing_header_id,
-            default_open,
-        )
-        .show_header(ui, |ui| {
-            ui.label(self.root_path.to_string());
-        })
-        .body(|ui| {
-            if let Some(subtree) = obj_tree.subtree(&self.root_path) {
-                let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db);
-                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree);
-            }
-        });
-    }
-
-    fn obj_tree_children_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpaceInfoCollection,
-        tree: &ObjectTree,
-    ) {
-        if tree.children.is_empty() {
-            ui.weak("(nothing)");
-            return;
+        // All objects at the space path and below.
+        if let Some(tree) = obj_tree.subtree(&self.space_path) {
+            self.add_objects_tree_ui(ctx, ui, &spaces_info, &tree.path.to_string(), tree);
         }
 
-        for (path_comp, child_tree) in &tree.children {
-            self.obj_tree_ui(ctx, ui, spaces_info, &path_comp.to_string(), child_tree);
+        // All objects above
+        let mut num_steps_up = 0; // I.e. the number of inverse transforms we had to do!
+        let mut previous_path = self.space_path.clone();
+        while let Some(parent) = previous_path.parent() {
+            // Don't allow breaking out of the root
+            if parent.is_root() {
+                break;
+            }
+
+            num_steps_up += 1;
+            if let Some(tree) = obj_tree.subtree(&parent) {
+                for (path_comp, child_tree) in &tree.children {
+                    if child_tree.path != previous_path {
+                        self.add_objects_tree_ui(
+                            ctx,
+                            ui,
+                            &spaces_info,
+                            &format!("{}{}", "../".repeat(num_steps_up), path_comp),
+                            child_tree,
+                        );
+                    }
+                }
+            }
+
+            previous_path = parent;
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn obj_tree_ui(
+    fn add_objects_tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -265,7 +268,7 @@ impl SpaceView {
         name: &str,
         tree: &ObjectTree,
     ) {
-        let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.root_path).map_err
+        let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.space_path).map_err
             (|reason| match reason {
                 // Should never happen
                 UnreachableTransform::Unconnected =>
@@ -277,36 +280,30 @@ impl SpaceView {
                 UnreachableTransform::InversePinholeCameraWithoutResolution =>
                     "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
             }).err();
-        let response = if tree.is_leaf() {
-            ui.horizontal(|ui| {
-                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                    if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
-                    }
-                });
-            })
-            .response
-        } else {
-            let collapsing_header_id = ui.id().with(&tree.path);
 
+        let response = if tree.is_leaf() {
+            self.add_object_line_ui(ctx, ui, unreachable_reason, name, &tree.path)
+        } else {
             // Default open so that the reference path is visible.
-            let default_open = self.space_path.is_descendant_of(&tree.path);
+            let default_open = tree.children.len() <= 3;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
-                collapsing_header_id,
+                ui.id().with(name),
                 default_open,
             )
             .show_header(ui, |ui| {
-                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                    if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
-                    }
-                });
+                self.add_object_line_ui(ctx, ui, unreachable_reason, name, &tree.path)
             })
             .body(|ui| {
-                self.obj_tree_children_ui(ctx, ui, spaces_info, tree);
+                for (path_comp, child_tree) in &tree.children {
+                    self.add_objects_tree_ui(
+                        ctx,
+                        ui,
+                        spaces_info,
+                        &path_comp.to_string(),
+                        child_tree,
+                    );
+                }
             })
             .0
         };
@@ -316,35 +313,27 @@ impl SpaceView {
         }
     }
 
-    pub fn object_path_button(
-        &self,
+    fn add_object_line_ui(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        path: &ObjPath,
-        spaces_info: &SpaceInfoCollection,
+        unreachable_reason: Option<&str>,
         name: &str,
-    ) {
-        let mut is_space_info = false;
-        let label_text = if spaces_info.get(path).is_some() {
-            is_space_info = true;
-            let label_text = egui::RichText::new(format!("📐 {}", name));
-            if *path == self.space_path {
-                label_text.strong()
-            } else {
-                label_text
-            }
-        } else {
-            egui::RichText::new(name)
-        };
-
-        if ctx
-            .data_blueprint_button_to(ui, label_text, self.id, path)
-            .double_clicked()
-            && is_space_info
-        {
-            // TODO(andreas): Can't yet change the reference space.
-            //*reference_space = path.clone();
-        }
+        ent_path: &ObjPath,
+    ) -> egui::Response {
+        ui.horizontal(|ui| {
+            ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
+                if ent_path == &self.space_path {
+                    ui.strong(name);
+                } else {
+                    ui.label(name);
+                }
+                if has_visualization_for_category(ctx, self.category, ent_path) {
+                    self.object_add_button(ctx, ui, ent_path, &ctx.log_db.obj_db.tree);
+                }
+            });
+        })
+        .response
     }
 
     fn object_add_button(
