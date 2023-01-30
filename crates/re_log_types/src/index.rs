@@ -1,4 +1,4 @@
-use crate::{component_types::Instance, hash::Hash128};
+use crate::hash::Hash128;
 
 // ----------------------------------------------------------------------------
 
@@ -20,13 +20,6 @@ pub enum Index {
 
     /// Anything goes.
     String(String),
-
-    /// An Index for an Arrow-batch
-    ///
-    /// Even though this is the same as a Sequence, the context
-    /// that this comes from Arrow lets us know which store to
-    /// look things up in.
-    ArrowInstance(Instance),
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -67,7 +60,6 @@ impl std::fmt::Display for Index {
             Self::Integer(value) => value.fmt(f),
             Self::Uuid(value) => value.fmt(f),
             Self::String(value) => format!("{value:?}").fmt(f), // put it in quotes
-            Self::ArrowInstance(value) => value.fmt(f),
         }
     }
 }
