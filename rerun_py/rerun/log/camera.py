@@ -29,8 +29,16 @@ def log_pinhole(
     rerun.log_pinhole("world/camera/image", …)
     ```
 
-    `child_from_parent`: Row-major intrinsics matrix for projecting from camera space to image space
-    `resolution`: Array with [width, height] image resolution in pixels.
+    Parameters
+    ----------
+    child_from_parent:
+        Row-major intrinsics matrix for projecting from camera space to image space
+    width:
+        Horizontal resolution of the child space
+    height:
+        Vertical resolution of the child space
+    timeless:
+        If true, the camera will be timeless (default: False)
 
     """
     # Transform arrow handling happens inside the python bridge
