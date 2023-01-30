@@ -281,7 +281,7 @@ pub const HELP_TEXT: &str = "Drag to rotate.\n\
     While hovering the 3D view, navigate with WSAD and QE.\n\
     CTRL slows down, SHIFT speeds up.\n\
     \n\
-    Double-click on an entity to focus the view on it.\n\
+    Double-click an object to focus the view on it.\n\
     \n\
     Double-click on empty space to reset the view.";
 
