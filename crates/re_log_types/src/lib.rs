@@ -13,7 +13,7 @@ pub mod encoding;
 pub mod datagen;
 
 pub mod arrow_msg;
-pub mod field_types;
+pub mod component_types;
 pub use arrow_msg::ArrowMsg;
 mod data;
 pub mod hash;
@@ -30,14 +30,14 @@ pub mod external {
     pub use arrow2_convert;
 }
 
+pub use self::component_types::context;
+pub use self::component_types::coordinates;
+pub use self::component_types::AnnotationContext;
+pub use self::component_types::Arrow3D;
+pub use self::component_types::MsgId;
+pub use self::component_types::ViewCoordinates;
+pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::data::*;
-pub use self::field_types::context;
-pub use self::field_types::coordinates;
-pub use self::field_types::AnnotationContext;
-pub use self::field_types::Arrow3D;
-pub use self::field_types::MsgId;
-pub use self::field_types::ViewCoordinates;
-pub use self::field_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::index::*;
 pub use self::path::*;
 pub use self::time::{Duration, Time};

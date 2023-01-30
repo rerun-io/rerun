@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
 use re_log_types::{
-    field_types::{ColorRGBA, Instance, Tensor, TensorTrait},
+    component_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};

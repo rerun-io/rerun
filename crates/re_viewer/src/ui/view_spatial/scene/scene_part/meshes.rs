@@ -3,7 +3,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ColorRGBA, Instance},
+    component_types::{ColorRGBA, Instance},
     msg_bundle::Component,
     Mesh3D,
 };

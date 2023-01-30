@@ -14,12 +14,12 @@ use re_arrow_store::{
     RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
+    component_types::{ColorRGBA, Instance, Point2D, Rect2D},
     datagen::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    field_types::{ColorRGBA, Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
     ComponentName, EntityPath, MsgId, TimeType, Timeline,
 };

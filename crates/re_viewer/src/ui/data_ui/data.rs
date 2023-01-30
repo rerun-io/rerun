@@ -1,7 +1,8 @@
 use egui::Vec2;
 
 use re_log_types::{
-    field_types::ColorRGBA, field_types::Mat3x3, Pinhole, Rigid3, Transform, ViewCoordinates,
+    component_types::ColorRGBA, component_types::Mat3x3, Pinhole, Rigid3, Transform,
+    ViewCoordinates,
 };
 
 use crate::ui::UiVerbosity;
@@ -151,7 +152,7 @@ impl DataUi for Pinhole {
                     ui.indent("pinole", |ui| {
                         ui.horizontal(|ui| {
                             ui.label("resolution:");
-                            if let Some(re_log_types::field_types::Vec2D([x, y])) = resolution {
+                            if let Some(re_log_types::component_types::Vec2D([x, y])) = resolution {
                                 ui.monospace(format!("{x}x{y}"));
                             } else {
                                 ui.weak("(none)");

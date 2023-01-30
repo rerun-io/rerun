@@ -2,8 +2,8 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
+    component_types::Instance,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
     ArrowMsg, BeginRecordingMsg, DataPath, EntityPath, EntityPathHash, LogMsg, MsgId, PathOp,
     PathOpMsg, RecordingId, RecordingInfo, TimePoint, Timeline,

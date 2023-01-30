@@ -9,7 +9,7 @@ use pyo3::{
     PyAny, PyResult,
 };
 use re_log_types::{
-    field_types,
+    component_types,
     msg_bundle::{self, ComponentBundle, MsgBundle, MsgBundleError},
     EntityPath, LogMsg, MsgId, TimePoint,
 };
@@ -44,10 +44,10 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         // Force the type to be correct.
         // https://github.com/rerun-io/rerun/issues/795s
         if let Some(name) = name {
-            if name == <field_types::Tensor as msg_bundle::Component>::name() {
-                field.data_type = <field_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name == <field_types::Rect2D as msg_bundle::Component>::name() {
-                field.data_type = <field_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            if name == <component_types::Tensor as msg_bundle::Component>::name() {
+                field.data_type = <component_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            } else if name == <component_types::Rect2D as msg_bundle::Component>::name() {
+                field.data_type = <component_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
 
@@ -70,7 +70,7 @@ pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict>
         .get_item("Field")
         .ok_or_else(|| PyAttributeError::new_err("Module 'pyarrow' has no attribute 'Field'"))?;
 
-    let fields = field_types::iter_registered_field_types()
+    let fields = component_types::iter_registered_field_types()
         .map(|field| {
             let schema = Box::new(ffi::export_field_to_c(field));
             let schema_ptr = &*schema as *const ffi::ArrowSchema;

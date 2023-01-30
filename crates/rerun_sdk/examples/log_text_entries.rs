@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use re_log_types::{
-    field_types::{ColorRGBA, TextEntry},
+    component_types::{ColorRGBA, TextEntry},
     msg_bundle::MsgBundle,
     EntityPath, LogMsg, MsgId, Time, TimePoint, TimeType, Timeline,
 };

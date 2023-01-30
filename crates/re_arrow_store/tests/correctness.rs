@@ -16,13 +16,13 @@ use re_arrow_store::{
     RangeQuery, TimeRange, WriteError,
 };
 use re_log_types::{
+    component_types::{ColorRGBA, Instance, Point2D},
     datagen::{
         build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, serialize::TryIntoArrow,
     },
-    field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, EntityPath, MsgId, Time, TimeType, Timeline,
 };

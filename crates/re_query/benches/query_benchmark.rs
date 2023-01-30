@@ -6,9 +6,9 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
+    component_types::{ColorRGBA, Instance, Point2D},
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     entity_path,
-    field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
     EntityPath, Index, MsgId, TimeType, Timeline,
 };

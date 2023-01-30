@@ -1,7 +1,7 @@
 use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{query_transform, EntityPath, LogDb, Timeline};
 use re_log_types::{
-    field_types::{
+    component_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
         TextEntry,
     },

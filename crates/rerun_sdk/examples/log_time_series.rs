@@ -3,7 +3,7 @@ use std::f64::consts::TAU;
 use clap::Parser;
 
 use re_log_types::{
-    field_types::{ColorRGBA, Label, Radius, Scalar, ScalarPlotProps},
+    component_types::{ColorRGBA, Label, Radius, Scalar, ScalarPlotProps},
     msg_bundle::MsgBundle,
     EntityPath, LogMsg, MsgId, Time, TimePoint, TimeType, Timeline,
 };

@@ -5,7 +5,7 @@ use egui::{
 };
 use macaw::IsoTransform;
 use re_data_store::EntityPath;
-use re_log_types::field_types::TensorTrait;
+use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};

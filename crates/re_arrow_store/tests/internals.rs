@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use re_arrow_store::{DataStore, DataStoreConfig};
 use re_log_types::{
+    component_types::Instance,
     datagen::{build_frame_nr, build_some_instances},
-    field_types::Instance,
     msg_bundle::{Component as _, MsgBundle},
     EntityPath, MsgId, TimePoint,
 };

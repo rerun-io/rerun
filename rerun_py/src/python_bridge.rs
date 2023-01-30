@@ -11,8 +11,8 @@ use pyo3::{
 };
 
 use re_log_types::{
+    component_types::{ClassId, KeypointId, Label, TensorDimension, TensorId},
     context, coordinates,
-    field_types::{ClassId, KeypointId, Label, TensorDimension, TensorId},
     msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, EncodedMesh3D, EntityPath, LogMsg, Mesh3D, MeshFormat,
     MeshId, MsgId, PathOp, RecordingId, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -694,15 +694,15 @@ fn log_image_file(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![vec![re_log_types::field_types::Tensor {
+        vec![vec![re_log_types::component_types::Tensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            data: re_log_types::field_types::TensorData::JPEG(img_bytes),
-            meaning: re_log_types::field_types::TensorDataMeaning::Unknown,
+            data: re_log_types::component_types::TensorData::JPEG(img_bytes),
+            meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
             meter: None,
         }]
         .try_into()

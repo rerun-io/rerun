@@ -8,7 +8,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::{EntityPath, TimeInt};
-use re_log_types::field_types::{Tensor, TensorTrait};
+use re_log_types::component_types::{Tensor, TensorTrait};
 
 use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
 

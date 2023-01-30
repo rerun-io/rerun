@@ -6,7 +6,7 @@ use arrow2_convert::{
 };
 
 use crate::{
-    field_types::{ClassId, KeypointId},
+    component_types::{ClassId, KeypointId},
     msg_bundle::Component,
 };
 

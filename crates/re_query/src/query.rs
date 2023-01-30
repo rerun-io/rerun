@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, EntityPath};
+use re_log_types::{component_types::Instance, msg_bundle::Component, ComponentName, EntityPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -146,8 +146,8 @@ pub fn query_entity_with_primary<Primary: Component>(
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
     use re_log_types::{
+        component_types::{ColorRGBA, Point2D},
         datagen::build_frame_nr,
-        field_types::{ColorRGBA, Point2D},
         msg_bundle::try_build_msg_bundle2,
         MsgId,
     };
@@ -177,7 +177,7 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
-    use re_log_types::{field_types::Point2D, msg_bundle::Component as _, Timeline};
+    use re_log_types::{component_types::Point2D, msg_bundle::Component as _, Timeline};
 
     let store = __populate_example_store();
 
@@ -213,7 +213,7 @@ fn simple_get_component() {
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::{
-        field_types::{ColorRGBA, Point2D},
+        component_types::{ColorRGBA, Point2D},
         msg_bundle::Component as _,
         Timeline,
     };

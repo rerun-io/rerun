@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, Index, InstanceId};
 use re_log_types::{
-    field_types::{Instance, Tensor},
+    component_types::{Instance, Tensor},
     ClassicTensor,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};

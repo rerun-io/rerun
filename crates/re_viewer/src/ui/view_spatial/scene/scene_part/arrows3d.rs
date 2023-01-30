@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ColorRGBA, Instance, Label, Radius},
+    component_types::{ColorRGBA, Instance, Label, Radius},
     msg_bundle::Component,
     Arrow3D,
 };

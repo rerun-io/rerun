@@ -1,23 +1,25 @@
 //! Generate random data for tests and benchmarks.
 
 use crate::{
-    field_types::{self, Instance},
+    component_types::{self, Instance},
     Time, TimeInt, TimeType, Timeline,
 };
 
 /// Create `len` dummy rectangles
-pub fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
+pub fn build_some_rects(len: usize) -> Vec<component_types::Rect2D> {
     (0..len)
         .into_iter()
-        .map(|i| field_types::Rect2D::from_xywh(i as f32, i as f32, (i / 2) as f32, (i / 2) as f32))
+        .map(|i| {
+            component_types::Rect2D::from_xywh(i as f32, i as f32, (i / 2) as f32, (i / 2) as f32)
+        })
         .collect()
 }
 
 /// Create `len` dummy colors
-pub fn build_some_colors(len: usize) -> Vec<field_types::ColorRGBA> {
+pub fn build_some_colors(len: usize) -> Vec<component_types::ColorRGBA> {
     (0..len)
         .into_iter()
-        .map(|i| field_types::ColorRGBA(i as u32))
+        .map(|i| component_types::ColorRGBA(i as u32))
         .collect()
 }
 
@@ -27,13 +29,13 @@ pub fn build_some_labels(len: usize) -> Vec<String> {
 }
 
 /// Create `len` dummy `Point2D`
-pub fn build_some_point2d(len: usize) -> Vec<field_types::Point2D> {
+pub fn build_some_point2d(len: usize) -> Vec<component_types::Point2D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
     (0..len)
         .into_iter()
-        .map(|_| field_types::Point2D {
+        .map(|_| component_types::Point2D {
             x: rng.gen_range(0.0..10.0),
             y: rng.gen_range(0.0..10.0),
         })

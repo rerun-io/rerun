@@ -1,7 +1,7 @@
 use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::{
-    field_types::{self, Instance},
+    component_types::{self, Instance},
     msg_bundle::Component,
     MsgId,
 };
@@ -62,20 +62,20 @@ impl SceneText {
             let components = [
                 Instance::name(),
                 MsgId::name(),
-                field_types::TextEntry::name(),
-                field_types::ColorRGBA::name(),
+                component_types::TextEntry::name(),
+                component_types::ColorRGBA::name(),
             ];
-            let ent_views = range_entity_with_primary::<field_types::TextEntry, 4>(
+            let ent_views = range_entity_with_primary::<component_types::TextEntry, 4>(
                 store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {
                 match ent_view.visit3(
                     |_instance,
-                     text_entry: field_types::TextEntry,
+                     text_entry: component_types::TextEntry,
                      msg_id: Option<MsgId>,
-                     color: Option<field_types::ColorRGBA>| {
-                        let field_types::TextEntry { body, level } = text_entry;
+                     color: Option<component_types::ColorRGBA>| {
+                        let component_types::TextEntry { body, level } = text_entry;
 
                         // Early filtering once more, see above.
                         let is_visible = level

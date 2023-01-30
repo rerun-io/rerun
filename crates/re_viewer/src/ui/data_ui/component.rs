@@ -1,4 +1,4 @@
-use re_log_types::{field_types::Instance, msg_bundle::Component};
+use re_log_types::{component_types::Instance, msg_bundle::Component};
 use re_query::ComponentWithInstances;
 
 pub(crate) fn arrow_component_ui(

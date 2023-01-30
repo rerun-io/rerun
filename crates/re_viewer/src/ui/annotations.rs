@@ -6,8 +6,8 @@ use nohash_hasher::IntSet;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::{
+    component_types::{ClassId, KeypointId},
     context::{AnnotationInfo, ClassDescription},
-    field_types::{ClassId, KeypointId},
     msg_bundle::Component,
     AnnotationContext, MsgId,
 };

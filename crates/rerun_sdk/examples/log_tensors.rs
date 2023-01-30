@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use ndarray_rand::RandomExt;
-use re_log_types::{field_types::Tensor, msg_bundle::MsgBundle, EntityPath, LogMsg, MsgId};
+use re_log_types::{component_types::Tensor, msg_bundle::MsgBundle, EntityPath, LogMsg, MsgId};
 use rerun::Session;
 use rerun_sdk as rerun;
 

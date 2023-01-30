@@ -65,7 +65,7 @@ pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
-    //TODO(john) actully use a run-time type registry
+    //TODO(john): use a run-time type registry
     static ref FIELDS: [Field; 26] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),

@@ -43,12 +43,12 @@
 //! ```
 
 use re_log_types::{
+    component_types::Instance,
     external::arrow2_convert::{
         deserialize::{ArrowArray, ArrowDeserialize},
         field::ArrowField,
         serialize::ArrowSerialize,
     },
-    field_types::Instance,
     msg_bundle::Component,
 };
 

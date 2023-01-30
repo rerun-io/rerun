@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::field_types::{self, Instance, Tensor, TensorTrait as _};
+use re_log_types::component_types::{self, Instance, Tensor, TensorTrait as _};
 use re_query::query_entity_with_primary;
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
@@ -33,7 +33,7 @@ impl SceneBarChart {
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let ent_view =
-                query_entity_with_primary::<field_types::Tensor>(store, &query, ent_path, &[]);
+                query_entity_with_primary::<component_types::Tensor>(store, &query, ent_path, &[]);
             let Ok(ent_view) = ent_view else {
                 warn_once!("bar chart query failed for {:?}", ent_path);
                 continue;

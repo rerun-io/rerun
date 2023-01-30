@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ColorRGBA, Instance, LineStrip2D, Radius},
+    component_types::{ColorRGBA, Instance, LineStrip2D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};

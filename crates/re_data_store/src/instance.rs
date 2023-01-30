@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use re_log_types::{field_types::Instance, EntityPath, EntityPathHash, Index, IndexHash};
+use re_log_types::{component_types::Instance, EntityPath, EntityPathHash, Index, IndexHash};
 
 use crate::log_db::EntityDb;
 
@@ -81,7 +81,7 @@ pub struct InstanceIdHash {
 
     /// If this is an arrow instance, hang onto the Instance
     /// TODO(jleibs): this can go way once we have an arrow-store resolver
-    pub arrow_instance: Option<re_log_types::field_types::Instance>,
+    pub arrow_instance: Option<re_log_types::component_types::Instance>,
 }
 
 impl std::hash::Hash for InstanceIdHash {

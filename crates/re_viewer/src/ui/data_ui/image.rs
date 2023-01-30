@@ -2,7 +2,7 @@ use egui::Vec2;
 use itertools::Itertools as _;
 
 use re_log_types::{
-    field_types::{ClassId, TensorDataMeaning},
+    component_types::{ClassId, TensorDataMeaning},
     ClassicTensor,
 };
 
@@ -10,11 +10,11 @@ use crate::misc::{caches::TensorImageView, ViewerContext};
 
 use super::{DataUi, UiVerbosity};
 
-pub fn format_tensor_shape(shape: &[re_log_types::field_types::TensorDimension]) -> String {
+pub fn format_tensor_shape(shape: &[re_log_types::component_types::TensorDimension]) -> String {
     format!("[{}]", shape.iter().join(", "))
 }
 
-impl DataUi for re_log_types::field_types::Tensor {
+impl DataUi for re_log_types::component_types::Tensor {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,

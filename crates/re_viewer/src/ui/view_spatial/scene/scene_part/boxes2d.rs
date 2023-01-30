@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{EntityPath, InstanceIdHash};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
+    component_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, QueryError};

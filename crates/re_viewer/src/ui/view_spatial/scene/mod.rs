@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{EntityPath, InstanceIdHash};
 use re_log_types::{
-    field_types::{ClassId, KeypointId, Tensor},
+    component_types::{ClassId, KeypointId, Tensor},
     IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};

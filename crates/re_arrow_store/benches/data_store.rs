@@ -6,8 +6,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
 use re_log_types::{
+    component_types::{Instance, Rect2D},
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
-    field_types::{Instance, Rect2D},
     msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
     ComponentName, EntityPath, MsgId, TimeType, Timeline,
 };

@@ -6,11 +6,11 @@
 
 use re_arrow_store::polars_util::latest_component;
 use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
+use re_log_types::component_types::Rect2D;
 use re_log_types::datagen::build_some_rects;
-use re_log_types::field_types::Rect2D;
 use re_log_types::{
+    component_types::{Instance, Point2D},
     datagen::{build_frame_nr, build_some_point2d},
-    field_types::{Instance, Point2D},
     msg_bundle::Component,
     EntityPath,
 };

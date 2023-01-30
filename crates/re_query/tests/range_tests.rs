@@ -2,9 +2,9 @@ mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
 use re_log_types::{
+    component_types::Instance,
+    component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
-    field_types::Instance,
-    field_types::{ColorRGBA, Point2D},
     msg_bundle::try_build_msg_bundle1,
     msg_bundle::try_build_msg_bundle2,
     msg_bundle::Component,

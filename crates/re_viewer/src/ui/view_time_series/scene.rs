@@ -4,7 +4,7 @@ use crate::{
 };
 use re_arrow_store::TimeRange;
 use re_log_types::{
-    field_types::{self, Instance},
+    component_types::{self, Instance},
     msg_bundle::Component,
 };
 use re_query::{range_entity_with_primary, QueryError};
@@ -93,24 +93,24 @@ impl SceneTimeSeries {
 
             let components = [
                 Instance::name(),
-                field_types::Scalar::name(),
-                field_types::ScalarPlotProps::name(),
-                field_types::ColorRGBA::name(),
-                field_types::Radius::name(),
-                field_types::Label::name(),
+                component_types::Scalar::name(),
+                component_types::ScalarPlotProps::name(),
+                component_types::ColorRGBA::name(),
+                component_types::Radius::name(),
+                component_types::Label::name(),
             ];
-            let ent_views = range_entity_with_primary::<field_types::Scalar, 6>(
+            let ent_views = range_entity_with_primary::<component_types::Scalar, 6>(
                 store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {
                 match ent_view.visit5(
                     |_instance,
-                     scalar: field_types::Scalar,
-                     props: Option<field_types::ScalarPlotProps>,
-                     color: Option<field_types::ColorRGBA>,
-                     radius: Option<field_types::Radius>,
-                     label: Option<field_types::Label>| {
+                     scalar: component_types::Scalar,
+                     props: Option<component_types::ScalarPlotProps>,
+                     color: Option<component_types::ColorRGBA>,
+                     radius: Option<component_types::Radius>,
+                     label: Option<component_types::Label>| {
                         // TODO(andreas): Support entity path
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);
