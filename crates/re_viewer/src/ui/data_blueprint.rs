@@ -26,10 +26,10 @@ pub struct DataBlueprintGroup {
 
     pub children: SmallVec<[DataBlueprintGroupHandle; 4]>,
 
-    /// Direct child objects of this blueprint group.
+    /// Direct child entities of this blueprint group.
     ///
     /// Musn't be a `HashSet` because we want to preserve order of entity paths.
-    pub objects: BTreeSet<EntityPath>,
+    pub entities: BTreeSet<EntityPath>,
 }
 
 /// Data blueprints for all entity paths in a space view.
@@ -54,11 +54,11 @@ pub struct DataBlueprintTree {
     /// Mapping from entity paths to blueprints.
     ///
     /// We also use this for building up groups from hierarchy, meaning that some paths in here
-    /// may not represent existing objects, i.e. the blueprint groups they are pointing to may not
+    /// may not represent existing entities, i.e. the blueprint groups they are pointing to may not
     /// necessarily have the respective path as a child.
     path_to_group: IntMap<EntityPath, DataBlueprintGroupHandle>,
 
-    /// List of all objects that we query via this data blueprint collection.
+    /// List of all entities that we query via this data blueprint collection.
     ///
     /// Two things to keep in sync:
     /// * children on [`DataBlueprintGroup`] this is on
@@ -117,7 +117,7 @@ impl DataBlueprintTree {
     }
 
     /// Calls the visitor function on every entity path in the given group and its descending groups.
-    pub fn visit_group_objects_recursively(
+    pub fn visit_group_entities_recursively(
         &self,
         handle: DataBlueprintGroupHandle,
         visitor: &mut impl FnMut(&EntityPath),
@@ -126,30 +126,30 @@ impl DataBlueprintTree {
             return;
         };
 
-        for object in &group.objects {
-            visitor(object);
+        for entity in &group.entities {
+            visitor(entity);
         }
 
         for child in &group.children {
-            self.visit_group_objects_recursively(*child, visitor);
+            self.visit_group_entities_recursively(*child, visitor);
         }
     }
 
-    /// Returns object properties with the hierarchy applied.
+    /// Returns entity properties with the hierarchy applied.
     pub fn data_blueprints_projected(&self) -> &EntityPropertyMap {
         &self.data_blueprints.projected
     }
 
-    /// Returns mutable individual object properties, the hierarchy was not applied to this.
+    /// Returns mutable individual entity properties, the hierarchy was not applied to this.
     pub fn data_blueprints_individual(&mut self) -> &mut EntityPropertyMap {
         &mut self.data_blueprints.individual
     }
 
-    pub fn contains_object(&self, path: &EntityPath) -> bool {
+    pub fn contains_entity(&self, path: &EntityPath) -> bool {
         self.path_to_group.contains_key(path)
     }
 
-    /// List of all objects that we query via this data blueprint collection.
+    /// List of all entities that we query via this data blueprint collection.
     pub fn entity_paths(&self) -> &IntSet<EntityPath> {
         &self.entity_paths
     }
@@ -160,7 +160,7 @@ impl DataBlueprintTree {
     pub fn on_frame_start(&mut self) {
         crate::profile_function!();
 
-        // NOTE: We could do this projection only when the object properties changes
+        // NOTE: We could do this projection only when the entity properties changes
         // and/or when new entity paths are added, but such memoization would add complexity.
 
         fn project_tree(
@@ -177,7 +177,7 @@ impl DataBlueprintTree {
                 parent_properties.with_child(&group.properties_individual);
             group.properties_projected = group_properties_projected.clone();
 
-            for entity_path in &group.objects {
+            for entity_path in &group.entities {
                 let projected_properties = group_properties_projected
                     .with_child(&tree.data_blueprints.individual.get(entity_path));
                 tree.data_blueprints
@@ -198,8 +198,8 @@ impl DataBlueprintTree {
     ///
     /// `base_path` indicates a path at which we short-circuit to the root group.
     ///
-    /// Creates a group at *every* step of every path, unless a new group would only contain the object itself.
-    pub fn insert_objects_according_to_hierarchy<'a>(
+    /// Creates a group at *every* step of every path, unless a new group would only contain the entity itself.
+    pub fn insert_entities_according_to_hierarchy<'a>(
         &mut self,
         paths: impl Iterator<Item = &'a EntityPath>,
         base_path: &EntityPath,
@@ -219,7 +219,7 @@ impl DataBlueprintTree {
                 // An entity might have directly been logged on the base_path. We map then to the root!
                 self.root_group_handle
             } else {
-                // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
+                // Otherwise, create a new group which only contains this entity and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
                     display_name: path_to_group_name(path),
                     ..Default::default()
@@ -229,7 +229,7 @@ impl DataBlueprintTree {
                 new_group
             };
 
-            self.add_object_to_group(group_handle, path);
+            self.add_entity_to_group(group_handle, path);
         }
 
         // If a leaf group contains only a single element, move that element to the parent and remove the leaf again.
@@ -238,23 +238,23 @@ impl DataBlueprintTree {
             let Some(leaf_group) = self.groups.get_mut(leaf_group_handle) else {
                 continue;
             };
-            if !leaf_group.children.is_empty() || leaf_group.objects.len() != 1 {
+            if !leaf_group.children.is_empty() || leaf_group.entities.len() != 1 {
                 continue;
             }
 
             // Remove group.
-            let single_object = leaf_group.objects.iter().next().unwrap().clone();
+            let single_entity = leaf_group.entities.iter().next().unwrap().clone();
             let parent_group_handle = leaf_group.parent;
             self.groups.remove(leaf_group_handle);
 
-            // Add object to its parent and remove the now deleted child.
+            // Add entity to its parent and remove the now deleted child.
             let parent_group = self.groups.get_mut(parent_group_handle).unwrap();
             parent_group
                 .children
                 .retain(|child_group| *child_group != leaf_group_handle);
-            parent_group.objects.insert(single_object.clone());
+            parent_group.entities.insert(single_entity.clone());
             self.path_to_group
-                .insert(single_object, parent_group_handle);
+                .insert(single_entity, parent_group_handle);
         }
     }
 
@@ -270,7 +270,7 @@ impl DataBlueprintTree {
         };
 
         // Short circuit to the root group at base_path.
-        // If the object is outside of the base path we would walk up all the way to the root
+        // If the entity is outside of the base path we would walk up all the way to the root
         // That's ok but we want to stop one element short (since a space view can only show elements under a shared path)
         if &parent_path == base_path || parent_path.iter().count() == 1 {
             parent_path = EntityPath::root();
@@ -302,18 +302,18 @@ impl DataBlueprintTree {
         self.groups.get_mut(new_group).unwrap().parent = parent_group;
     }
 
-    /// Adds an objectpath to a group.
+    /// Adds an entity path to a group.
     ///
     /// If it was already associated with this group, nothing will happen.
     /// If it was already associated with a different group, it will move from there.
-    pub fn add_object_to_group(
+    pub fn add_entity_to_group(
         &mut self,
         group_handle: DataBlueprintGroupHandle,
         path: &EntityPath,
     ) {
         if let Some(group) = self.groups.get_mut(group_handle) {
-            if !group.objects.insert(path.clone()) {
-                // If the object was already in here it won't be in another group previously.
+            if !group.entities.insert(path.clone()) {
+                // If the entity was already in here it won't be in another group previously.
                 return;
             }
         } else {
@@ -323,19 +323,19 @@ impl DataBlueprintTree {
         if let Some(previous_group) = self.path_to_group.insert(path.clone(), group_handle) {
             if previous_group != group_handle {
                 if let Some(previous_group) = self.groups.get_mut(previous_group) {
-                    previous_group.objects.retain(|obj| obj != path);
+                    previous_group.entities.retain(|ent| ent != path);
                 }
             }
         }
     }
 
-    /// Removes an object from the data blueprint collection.
+    /// Removes an entity from the data blueprint collection.
     ///
-    /// If the object was not known by this data blueprint tree nothing happens.
-    pub fn remove_object(&mut self, path: &EntityPath) {
+    /// If the entity was not known by this data blueprint tree nothing happens.
+    pub fn remove_entity(&mut self, path: &EntityPath) {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
-                group.objects.remove(path);
+                group.entities.remove(path);
             }
         }
         self.path_to_group.remove(path);

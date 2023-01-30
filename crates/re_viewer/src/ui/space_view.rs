@@ -83,7 +83,7 @@ impl SpaceView {
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_objects_according_to_hierarchy(queried_objects.iter(), &space_info.path);
+            .insert_entities_according_to_hierarchy(queried_objects.iter(), &space_info.path);
 
         Self {
             name,
@@ -171,7 +171,7 @@ impl SpaceView {
             let queried_objects =
                 Self::default_queried_objects(ctx, spaces_info, space_info, self.category);
             self.data_blueprint
-                .insert_objects_according_to_hierarchy(queried_objects.iter(), &self.space_path);
+                .insert_entities_according_to_hierarchy(queried_objects.iter(), &self.space_path);
         }
     }
 
@@ -367,7 +367,7 @@ impl SpaceView {
                 .unwrap()
                 .visit_children_recursively(&mut |path: &EntityPath| {
                     if has_visualization_for_category(ctx, self.category, path)
-                        && !self.data_blueprint.contains_object(path)
+                        && !self.data_blueprint.contains_entity(path)
                     {
                         objects.push(path.clone());
                     }
@@ -378,7 +378,7 @@ impl SpaceView {
             let response = ui.button("➕");
             if response.clicked() {
                 self.data_blueprint
-                    .insert_objects_according_to_hierarchy(objects.iter(), &self.space_path);
+                    .insert_entities_according_to_hierarchy(objects.iter(), &self.space_path);
                 self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")

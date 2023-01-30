@@ -327,7 +327,7 @@ impl SelectionState {
                 Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
-                            space_view.data_blueprint.visit_group_objects_recursively(
+                            space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
                                 &mut |entity_path: &EntityPath| {
                                     highlighted_entity_paths
@@ -377,7 +377,7 @@ impl SelectionState {
                     // since they are truly local to a space view.
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
-                            space_view.data_blueprint.visit_group_objects_recursively(
+                            space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
                                 &mut |entity_path: &EntityPath| {
                                     highlighted_entity_paths

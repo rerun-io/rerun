@@ -126,8 +126,8 @@ impl Viewport {
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let root_group = space_view.data_blueprint.root_group();
-        let default_open =
-            root_group.children.len() + root_group.objects.len() <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
+        let default_open = root_group.children.len() + root_group.entities.len()
+            <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -189,7 +189,7 @@ impl Viewport {
 
         // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
         let children = group.children.clone();
-        let objects = group.objects.clone();
+        let objects = group.entities.clone();
         let group_name = group.display_name.clone();
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
@@ -222,7 +222,7 @@ impl Viewport {
                 continue;
             };
 
-            let default_open = child_group.children.len() + child_group.objects.len()
+            let default_open = child_group.children.len() + child_group.entities.len()
                 <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
@@ -504,7 +504,7 @@ impl Viewport {
                             if other_entity_path != entity_path {
                                 single_image_space_view
                                     .data_blueprint
-                                    .remove_object(other_entity_path);
+                                    .remove_entity(other_entity_path);
                             }
                         }
                         single_image_space_view.allow_auto_adding_more_object = false;
@@ -561,7 +561,7 @@ impl Viewport {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
-                if space_view.data_blueprint.contains_object(path) {
+                if space_view.data_blueprint.contains_entity(path) {
                     Some(*space_view_id)
                 } else {
                     None
