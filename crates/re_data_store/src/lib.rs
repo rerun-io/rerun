@@ -30,7 +30,7 @@ pub use log_db::LogDb;
 pub use object_properties::*;
 pub use object_tree::*;
 
-use re_log_types::{msg_bundle, DataType};
+use re_log_types::msg_bundle;
 
 pub use re_log_types::{
     FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, ObjTypePathComp, TimeInt,
@@ -39,29 +39,12 @@ pub use re_log_types::{
 
 // ----------------------------------------------------------------------------
 
-/// The errors that can occur when misuing the data store.
+/// The errors that can occur when misusing the data store.
 ///
 /// Most of these indicate a problem with either the logging SDK,
-/// or how the loggign SDK is being used (PEBKAC).
+/// or how the logging SDK is being used (PEBKAC).
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Batch had differing number of indices and data.")]
-    BadBatch,
-
-    #[error("Using an object both as mono and multi.")]
-    MixingMonoAndMulti,
-
-    #[error(
-        "Logging different types to the same field. Existing: {existing:?}, expected: {expected:?}"
-    )]
-    MixingTypes {
-        existing: DataType,
-        expected: DataType,
-    },
-
-    #[error("Tried to write into classic store using arrow component")]
-    WrongFieldType,
-
     #[error(transparent)]
     MsgBundleError(#[from] msg_bundle::MsgBundleError),
 
