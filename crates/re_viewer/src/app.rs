@@ -511,23 +511,23 @@ impl App {
                     self.state.selected_rec_id = msg.info.recording_id;
 
                     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-                    use re_analytics::Property;
                     if let Some(analytics) = self.analytics.as_mut() {
+                        use re_analytics::Property;
                         analytics.default_append_props_mut().extend([
                             ("application_id".into(), {
                                 let prop: Property = msg.info.application_id.0.clone().into();
-                                if !msg.info.is_official_example {
-                                    prop.hashed()
-                                } else {
+                                if msg.info.is_official_example {
                                     prop
+                                } else {
+                                    prop.hashed()
                                 }
                             }),
                             ("recording_id".into(), {
                                 let prop: Property = msg.info.recording_id.to_string().into();
-                                if !msg.info.is_official_example {
-                                    prop.hashed()
-                                } else {
+                                if msg.info.is_official_example {
                                     prop
+                                } else {
+                                    prop.hashed()
                                 }
                             }),
                             (
