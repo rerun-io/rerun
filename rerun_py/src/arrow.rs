@@ -15,10 +15,9 @@ use re_log_types::{
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
-fn array_to_rust(
-    arrow_array: &PyAny,
-    field_name: Option<&str>,
-) -> PyResult<(Box<dyn Array>, Field)> {
+///
+/// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
+fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare pointers to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
@@ -41,10 +40,10 @@ fn array_to_rust(
         let mut field = ffi::import_field_from_c(schema.as_ref())
             .map_err(|e| PyValueError::new_err(format!("Error importing Field: {e}")))?;
 
-        // There is a bad incomparibility between pyarrow and arrow2-convert
+        // There is a bad incompatibility between pyarrow and arrow2-convert
         // Force the type to be correct.
         // https://github.com/rerun-io/rerun/issues/795s
-        if let Some(name) = field_name {
+        if let Some(name) = name {
             if name == <field_types::Tensor as msg_bundle::Component>::name() {
                 field.data_type = <field_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             } else if name == <field_types::Rect2D as msg_bundle::Component>::name() {
@@ -55,8 +54,8 @@ fn array_to_rust(
         let array = ffi::import_array_from_c(*array, field.data_type.clone())
             .map_err(|e| PyValueError::new_err(format!("Error importing Array: {e}")))?;
 
-        if let Some(field_name) = field_name {
-            field.name = field_name.to_owned();
+        if let Some(name) = name {
+            field.name = name.to_owned();
         }
 
         Ok((array, field))

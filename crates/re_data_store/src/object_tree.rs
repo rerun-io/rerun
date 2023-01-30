@@ -191,7 +191,9 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.components
                     .iter()
-                    .map(|(field_name, _fields)| DataPath::new(obj_path.clone(), *field_name))
+                    .map(|(component_name, _components)| {
+                        DataPath::new(obj_path.clone(), *component_name)
+                    })
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -216,8 +218,8 @@ impl ObjectTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.components.iter().map(|(field_name, _fields)| {
-                        DataPath::new(next.path.clone(), *field_name)
+                    results.extend(next.components.iter().map(|(component_name, _components)| {
+                        DataPath::new(next.path.clone(), *component_name)
                     }));
                 }
                 results
