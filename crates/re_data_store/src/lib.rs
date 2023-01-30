@@ -16,7 +16,7 @@ pub use log_db::LogDb;
 
 use re_log_types::msg_bundle;
 
-pub use re_log_types::{ComponentName, EntityPath, EntityPathComponent, Index, TimeInt, Timeline};
+pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt, Timeline};
 
 // ----------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-use crate::{EntityPathComponent, Index};
+use crate::{EntityPathPart, Index};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -14,7 +14,7 @@ pub enum PathParseError {
     #[error("Bad escape sequence: {details}")]
     BadEscape { details: &'static str },
 
-    #[error("Double-slashes with no component between")]
+    #[error("Double-slashes with no part between")]
     DoubleSlash,
 
     #[error("Invalid sequence: {0:?} (expected positive integer)")]
@@ -25,7 +25,7 @@ pub enum PathParseError {
 }
 
 /// Parses an entity path, e.g. `foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
-pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathParseError> {
+pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathPart>, PathParseError> {
     if path.is_empty() {
         return Err(PathParseError::EmptyString);
     }
@@ -40,7 +40,7 @@ pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathPar
 
     let mut bytes = path.as_bytes();
 
-    let mut components = vec![];
+    let mut parts = vec![];
 
     while let Some(c) = bytes.first() {
         if *c == b'"' {
@@ -61,7 +61,7 @@ pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathPar
             let unescaped = unescape_string(std::str::from_utf8(&bytes[1..i]).unwrap())
                 .map_err(|details| PathParseError::BadEscape { details })?;
 
-            components.push(EntityPathComponent::Index(Index::String(unescaped)));
+            parts.push(EntityPathPart::Index(Index::String(unescaped)));
 
             bytes = &bytes[i + 1..]; // skip the closing quote
 
@@ -78,9 +78,7 @@ pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathPar
             }
         } else {
             let end = bytes.iter().position(|&b| b == b'/').unwrap_or(bytes.len());
-            components.push(parse_component(
-                std::str::from_utf8(&bytes[0..end]).unwrap(),
-            )?);
+            parts.push(parse_part(std::str::from_utf8(&bytes[0..end]).unwrap())?);
             if end == bytes.len() {
                 break;
             } else {
@@ -89,26 +87,26 @@ pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathPar
         }
     }
 
-    Ok(components)
+    Ok(parts)
 }
 
-fn parse_component(s: &str) -> Result<EntityPathComponent, PathParseError> {
+fn parse_part(s: &str) -> Result<EntityPathPart, PathParseError> {
     use std::str::FromStr as _;
 
     if s.is_empty() {
         Err(PathParseError::DoubleSlash)
     } else if let Some(s) = s.strip_prefix('#') {
         if let Ok(sequence) = u64::from_str(s) {
-            Ok(EntityPathComponent::Index(Index::Sequence(sequence)))
+            Ok(EntityPathPart::Index(Index::Sequence(sequence)))
         } else {
             Err(PathParseError::InvalidSequence(s.into()))
         }
     } else if let Ok(integer) = i128::from_str(s) {
-        Ok(EntityPathComponent::Index(Index::Integer(integer)))
+        Ok(EntityPathPart::Index(Index::Integer(integer)))
     } else if let Ok(uuid) = uuid::Uuid::parse_str(s) {
-        Ok(EntityPathComponent::Index(Index::Uuid(uuid)))
+        Ok(EntityPathPart::Index(Index::Uuid(uuid)))
     } else {
-        Ok(EntityPathComponent::Name(s.into()))
+        Ok(EntityPathPart::Name(s.into()))
     }
 }
 

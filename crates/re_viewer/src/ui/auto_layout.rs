@@ -15,7 +15,7 @@ use ahash::HashMap;
 use egui::Vec2;
 use itertools::Itertools as _;
 
-use re_data_store::{EntityPath, EntityPathComponent};
+use re_data_store::{EntityPath, EntityPathPart};
 
 use super::{space_view::SpaceView, view_category::ViewCategory, SpaceViewId};
 
@@ -277,8 +277,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
         .collect_vec();
 
     for i in 0.. {
-        let mut groups: BTreeMap<Option<&EntityPathComponent>, Vec<&SpaceMakeInfo>> =
-            Default::default();
+        let mut groups: BTreeMap<Option<&EntityPathPart>, Vec<&SpaceMakeInfo>> = Default::default();
         for (path, space) in paths.iter().zip(space_infos) {
             groups.entry(path.get(i)).or_default().push(space);
         }

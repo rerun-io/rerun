@@ -8,8 +8,7 @@ use itertools::Itertools;
 
 use re_data_store::{EntityTree, InstanceId};
 use re_log_types::{
-    DataPath, Duration, EntityPathComponent, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
-    TimeType,
+    DataPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
 };
 
 use crate::{
@@ -344,8 +343,7 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        // the parent path of the name component
-        last_component: &EntityPathComponent,
+        last_path_part: &EntityPathPart,
         tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
@@ -359,9 +357,9 @@ impl TimePanel {
 
         // The last part of the the path component
         let text = if tree.is_leaf() {
-            last_component.to_string()
+            last_path_part.to_string()
         } else {
-            format!("{}/", last_component) // show we have children with a /
+            format!("{}/", last_path_part) // show we have children with a /
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);

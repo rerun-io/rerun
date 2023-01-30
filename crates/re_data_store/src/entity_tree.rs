@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, DataPath, EntityPath, EntityPathComponent, MsgId, PathOp, TimeInt, TimePoint,
+    ComponentName, DataPath, EntityPath, EntityPathPart, MsgId, PathOp, TimeInt, TimePoint,
     Timeline,
 };
 
@@ -85,7 +85,7 @@ pub struct EntityTree {
     /// Full path to the root of this tree.
     pub path: EntityPath,
 
-    pub children: BTreeMap<EntityPathComponent, EntityTree>,
+    pub children: BTreeMap<EntityPathPart, EntityTree>,
 
     /// When do we or a child have data?
     ///
@@ -231,7 +231,7 @@ impl EntityTree {
 
     fn create_subtrees_recursively(
         &mut self,
-        full_path: &[EntityPathComponent],
+        full_path: &[EntityPathPart],
         depth: usize,
         time_point: &TimePoint,
     ) -> &mut Self {
@@ -267,7 +267,7 @@ impl EntityTree {
     pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
         fn subtree_recursive<'tree>(
             this: &'tree EntityTree,
-            path: &[EntityPathComponent],
+            path: &[EntityPathPart],
         ) -> Option<&'tree EntityTree> {
             match path {
                 [] => Some(this),

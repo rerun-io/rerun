@@ -1,7 +1,7 @@
 //! Every logged entity in Rerun is logged to an [`EntityPath`].
 //!
-//! The path is made up out of several [`EntityPathComponent`],
-//! each of which is either a name ([`EntityPathComponent::Name`])
+//! The path is made up out of several [`EntityPathPart`]s,
+//! each of which is either a name ([`EntityPathPart::Name`])
 //! or an [`Index`].
 //!
 //! The [`Index`]es are for tables, arrays etc.
@@ -30,7 +30,7 @@ re_string_interner::declare_new_type!(
 /// The different parts that make up an [`EntityPath`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum EntityPathComponent {
+pub enum EntityPathPart {
     /// Struct member. Each member can have a different type.
     Name(InternedString),
 
@@ -38,7 +38,7 @@ pub enum EntityPathComponent {
     Index(Index),
 }
 
-impl std::fmt::Display for EntityPathComponent {
+impl std::fmt::Display for EntityPathPart {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Name(name) => f.write_str(name),
@@ -47,30 +47,30 @@ impl std::fmt::Display for EntityPathComponent {
     }
 }
 
-impl From<&str> for EntityPathComponent {
+impl From<&str> for EntityPathPart {
     #[inline]
-    fn from(comp: &str) -> Self {
-        Self::Name(comp.into())
+    fn from(part: &str) -> Self {
+        Self::Name(part.into())
     }
 }
 
-impl From<String> for EntityPathComponent {
+impl From<String> for EntityPathPart {
     #[inline]
-    fn from(comp: String) -> Self {
-        Self::Name(comp.into())
+    fn from(part: String) -> Self {
+        Self::Name(part.into())
     }
 }
 
-impl From<Index> for EntityPathComponent {
+impl From<Index> for EntityPathPart {
     #[inline]
-    fn from(comp: Index) -> Self {
-        Self::Index(comp)
+    fn from(part: Index) -> Self {
+        Self::Index(part)
     }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Build a `Vec<EntityPathComponent>`:
+/// Build a `Vec<EntityPathPart>`:
 /// ```
 /// # use re_log_types::*;
 /// entity_path_vec!("foo", Index::Sequence(123));
@@ -80,8 +80,8 @@ macro_rules! entity_path_vec {
         () => {
             vec![]
         };
-        ($($comp: expr),* $(,)?) => {
-            vec![ $($crate::EntityPathComponent::from($comp),)+ ]
+        ($($part: expr),* $(,)?) => {
+            vec![ $($crate::EntityPathPart::from($part),)+ ]
         };
     }
 
@@ -95,7 +95,7 @@ macro_rules! entity_path {
         () => {
             vec![]
         };
-        ($($comp: expr),* $(,)?) => {
-            $crate::EntityPath::from(vec![ $($crate::EntityPathComponent::from($comp),)+ ])
+        ($($part: expr),* $(,)?) => {
+            $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
         };
     }

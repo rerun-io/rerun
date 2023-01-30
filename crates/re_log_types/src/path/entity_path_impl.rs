@@ -1,4 +1,4 @@
-use crate::path::EntityPathComponent;
+use crate::path::EntityPathPart;
 
 /// `camera / "left" / points / #42`
 ///
@@ -6,56 +6,54 @@ use crate::path::EntityPathComponent;
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPathImpl {
-    components: Vec<EntityPathComponent>,
+    parts: Vec<EntityPathPart>,
 }
 
 impl EntityPathImpl {
     #[inline]
     pub fn root() -> Self {
-        Self { components: vec![] }
+        Self { parts: vec![] }
     }
 
     #[inline]
-    pub fn new(components: Vec<EntityPathComponent>) -> Self {
-        Self { components }
+    pub fn new(parts: Vec<EntityPathPart>) -> Self {
+        Self { parts }
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[EntityPathComponent] {
-        self.components.as_slice()
+    pub fn as_slice(&self) -> &[EntityPathPart] {
+        self.parts.as_slice()
     }
 
     #[inline]
     pub fn is_root(&self) -> bool {
-        self.components.is_empty()
+        self.parts.is_empty()
     }
 
     /// Number of components
     #[inline]
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
-        self.components.len()
+        self.parts.len()
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &EntityPathComponent> {
-        self.components.iter()
+    pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
+        self.parts.iter()
     }
 
     #[inline]
-    pub fn push(&mut self, comp: EntityPathComponent) {
-        self.components.push(comp);
+    pub fn push(&mut self, comp: EntityPathPart) {
+        self.parts.push(comp);
     }
 
     /// Return [`None`] if root.
     #[must_use]
     pub fn parent(&self) -> Option<Self> {
-        if self.components.is_empty() {
+        if self.parts.is_empty() {
             None
         } else {
-            Some(Self::new(
-                self.components[..(self.components.len() - 1)].to_vec(),
-            ))
+            Some(Self::new(self.parts[..(self.parts.len() - 1)].to_vec()))
         }
     }
 }
@@ -64,7 +62,7 @@ impl EntityPathImpl {
 
 impl<'a, It> From<It> for EntityPathImpl
 where
-    It: Iterator<Item = &'a EntityPathComponent>,
+    It: Iterator<Item = &'a EntityPathPart>,
 {
     fn from(path: It) -> Self {
         Self::new(path.cloned().collect())

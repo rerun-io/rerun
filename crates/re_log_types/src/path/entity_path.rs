@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{hash::Hash128, path::entity_path_impl::EntityPathImpl, EntityPathComponent};
+use crate::{hash::Hash128, path::entity_path_impl::EntityPathImpl, EntityPathPart};
 
 // ----------------------------------------------------------------------------
 
@@ -78,17 +78,17 @@ impl EntityPath {
     }
 
     #[inline]
-    pub fn new(components: Vec<EntityPathComponent>) -> Self {
-        Self::from(components)
+    pub fn new(parts: Vec<EntityPathPart>) -> Self {
+        Self::from(parts)
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &EntityPathComponent> {
+    pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
         self.path.iter()
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[EntityPathComponent] {
+    pub fn as_slice(&self) -> &[EntityPathPart] {
         self.path.as_slice()
     }
 
@@ -103,7 +103,7 @@ impl EntityPath {
         other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
-    /// Number of components
+    /// Number of parts
     #[inline]
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
@@ -138,16 +138,16 @@ impl From<EntityPathImpl> for EntityPath {
     }
 }
 
-impl From<Vec<EntityPathComponent>> for EntityPath {
+impl From<Vec<EntityPathPart>> for EntityPath {
     #[inline]
-    fn from(path: Vec<EntityPathComponent>) -> Self {
+    fn from(path: Vec<EntityPathPart>) -> Self {
         Self::from(EntityPathImpl::from(path.iter()))
     }
 }
 
-impl From<&[EntityPathComponent]> for EntityPath {
+impl From<&[EntityPathPart]> for EntityPath {
     #[inline]
-    fn from(path: &[EntityPathComponent]) -> Self {
+    fn from(path: &[EntityPathPart]) -> Self {
         Self::from(EntityPathImpl::from(path.iter()))
     }
 }
@@ -155,14 +155,14 @@ impl From<&[EntityPathComponent]> for EntityPath {
 impl From<&str> for EntityPath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::from(vec![EntityPathComponent::from(component)])
+        Self::from(vec![EntityPathPart::from(component)])
     }
 }
 
 impl From<String> for EntityPath {
     #[inline]
     fn from(component: String) -> Self {
-        Self::from(vec![EntityPathComponent::from(component)])
+        Self::from(vec![EntityPathPart::from(component)])
     }
 }
 
