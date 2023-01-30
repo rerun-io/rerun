@@ -330,7 +330,7 @@ impl SpaceView {
         let mut is_space_info = false;
         let label_text = if spaces_info.get(path).is_some() {
             is_space_info = true;
-            let label_text = egui::RichText::new(format!("📐 {}", name));
+            let label_text = egui::RichText::new(format!("📐 {name}"));
             if *path == self.space_path {
                 label_text.strong()
             } else {

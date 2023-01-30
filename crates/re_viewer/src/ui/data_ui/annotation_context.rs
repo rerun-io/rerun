@@ -28,9 +28,7 @@ impl DataUi for AnnotationContext {
                 ui.vertical(|ui| {
                     annotation_info_table_ui(
                         ui,
-                        self.class_map
-                            .iter()
-                            .map(|(_, class)| &class.info)
+                        self.class_map.values().map(|class| &class.info)
                             .sorted_by_key(|info| info.id),
                     );
 
@@ -93,7 +91,7 @@ impl DataUi for AnnotationContext {
                                                                     info.label.as_ref()
                                                                 })
                                                                 .map_or_else(
-                                                                    || format!("id {:?}", id),
+                                                                    || format!("id {id:?}"),
                                                                     |label| label.0.clone(),
                                                                 ),
                                                         );

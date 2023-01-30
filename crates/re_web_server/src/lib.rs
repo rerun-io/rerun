@@ -80,7 +80,7 @@ pub struct WebServer {
 
 impl WebServer {
     pub fn new(port: u16) -> Self {
-        let bind_addr = format!("127.0.0.1:{}", port).parse().unwrap();
+        let bind_addr = format!("127.0.0.1:{port}").parse().unwrap();
         let server = hyper::Server::bind(&bind_addr).serve(MakeSvc);
         Self { server }
     }

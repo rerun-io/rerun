@@ -25,7 +25,7 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 /// # #[cfg(feature = "polars")]
 /// let df = component.as_df::<Point2D>().unwrap();
 ///
-/// //println!("{:?}", df);
+/// //println!("{df:?}");
 /// ```
 ///
 /// Outputs:
@@ -91,7 +91,7 @@ pub fn get_component_with_instances(
 /// # #[cfg(feature = "polars")]
 /// let df = entity_view.as_df1().unwrap();
 ///
-/// //println!("{:?}", df);
+/// //println!("{df:?}");
 /// ```
 ///
 /// Outputs:
@@ -190,7 +190,7 @@ fn simple_get_component() {
     #[cfg(feature = "polars")]
     {
         let df = component.as_df::<Point2D>().unwrap();
-        eprintln!("{:?}", df);
+        eprintln!("{df:?}");
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];
         let points = vec![
@@ -234,7 +234,7 @@ fn simple_query_entity() {
     #[cfg(feature = "polars")]
     {
         let df = entity_view.as_df2::<ColorRGBA>().unwrap();
-        eprintln!("{:?}", df);
+        eprintln!("{df:?}");
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];
         let points = vec![

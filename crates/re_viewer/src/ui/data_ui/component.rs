@@ -28,17 +28,17 @@ pub(crate) fn arrow_component_ui(
             } else if count <= max_elems {
                 egui::Grid::new("component").num_columns(2).show(ui, |ui| {
                     for instance in instance_keys {
-                        ui.label(format!("{}", instance));
+                        ui.label(format!("{instance}"));
                         arrow_component_elem_ui(ctx, ui, verbosity, query, component, &instance);
                         ui.end_row();
                     }
                 });
             } else {
-                ui.label(format!("{} values", count));
+                ui.label(format!("{count} values"));
             }
         }
         Err(err) => {
-            ui.label(format!("Error: {}", err));
+            ui.label(format!("Error: {err}"));
         }
     }
 }

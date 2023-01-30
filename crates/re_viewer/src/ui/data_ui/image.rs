@@ -291,7 +291,7 @@ pub fn show_zoomed_image_region(
 
             let text = match dynamic_img {
                 DynamicImage::ImageLuma8(_) => {
-                    format!("L: {}", r)
+                    format!("L: {r}")
                 }
 
                 DynamicImage::ImageLuma16(image) => {
@@ -300,14 +300,14 @@ pub fn show_zoomed_image_region(
                 }
 
                 DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
-                    format!("L: {}, A: {}", r, a)
+                    format!("L: {r}, A: {a}")
                 }
 
                 DynamicImage::ImageRgb8(_)
                 | DynamicImage::ImageRgb16(_)
                 | DynamicImage::ImageRgb32F(_) => {
                     // TODO(emilk): show 16-bit and 32f values differently
-                    format!("R: {}, G: {}, B: {}, #{:02X}{:02X}{:02X}", r, g, b, r, g, b)
+                    format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}")
                 }
 
                 DynamicImage::ImageRgba8(_)
@@ -315,16 +315,14 @@ pub fn show_zoomed_image_region(
                 | DynamicImage::ImageRgba32F(_) => {
                     // TODO(emilk): show 16-bit and 32f values differently
                     format!(
-                        "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
-                        r, g, b, a, r, g, b, a
+                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
                     )
                 }
 
                 _ => {
                     re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
                     format!(
-                        "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
-                        r, g, b, a, r, g, b, a
+                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
                     )
                 }
             };

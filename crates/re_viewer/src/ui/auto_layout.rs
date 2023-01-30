@@ -262,7 +262,7 @@ fn group_by_category(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {
     for info in space_infos {
         groups.entry(info.category).or_default().push(info.clone());
     }
-    groups.into_iter().map(|(_, group)| group).collect()
+    groups.into_values().collect()
 }
 
 fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>> {

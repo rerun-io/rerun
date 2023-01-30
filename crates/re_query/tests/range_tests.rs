@@ -115,7 +115,7 @@ fn simple_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -135,7 +135,7 @@ fn simple_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);
@@ -199,7 +199,7 @@ fn simple_range() {
         let colors: Vec<Option<ColorRGBA>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -219,7 +219,7 @@ fn simple_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);
@@ -383,7 +383,7 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -403,7 +403,7 @@ fn timeless_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);
@@ -476,7 +476,7 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(122), time);
@@ -496,7 +496,7 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -516,7 +516,7 @@ fn timeless_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);
@@ -595,7 +595,7 @@ fn timeless_range() {
         let colors: Vec<Option<ColorRGBA>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(&None, time);
@@ -614,7 +614,7 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(&None, time);
@@ -634,7 +634,7 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -654,7 +654,7 @@ fn timeless_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);
@@ -770,7 +770,7 @@ fn simple_splatted_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -790,7 +790,7 @@ fn simple_splatted_range() {
         let colors = vec![Some(ColorRGBA(0x00ff0000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);
@@ -854,7 +854,7 @@ fn simple_splatted_range() {
         let colors: Vec<Option<ColorRGBA>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), time);
@@ -874,7 +874,7 @@ fn simple_splatted_range() {
         let colors = vec![Some(ColorRGBA(0x00ff0000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
+        //eprintln!("{df:?}");
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), time);

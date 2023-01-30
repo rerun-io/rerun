@@ -219,7 +219,7 @@ fn test_df_builder() {
     ];
 
     let df = df_builder2(&points, &colors).unwrap();
-    // eprintln!("{:?}", df);
+    // eprintln!("{df:?}");
     //
     // ┌───────────┬────────────┐
     // │ point2d   ┆ colorrgba  │
@@ -237,7 +237,7 @@ fn test_df_builder() {
 
     // Unnesting the struct makes it easier to validate the results.
     let df = df.unnest([Point2D::name()]).unwrap();
-    // eprintln!("{:?}", df);
+    // eprintln!("{df:?}");
     //
     // ┌─────┬─────┬────────────┐
     // │ x   ┆ y   ┆ colorrgba  │
