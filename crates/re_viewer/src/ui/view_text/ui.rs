@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use egui::{Color32, RichText};
 
 use re_data_store::{ObjPath, Timeline};
-use re_log_types::{LogMsg, TimePoint};
+use re_log_types::TimePoint;
 
 use crate::ViewerContext;
 
@@ -253,28 +253,17 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
-    if entry.is_arrow {
-        let Some(time_point) = ctx.log_db.obj_db.arrow_store.get_msg_metadata(&entry.msg_id) else {
-            re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
-            return None;
-        };
-        return Some(time_point.clone());
-    }
-
-    let Some(msg) = ctx.log_db.get_log_msg(&entry.msg_id) else {
+    if let Some(time_point) = ctx
+        .log_db
+        .obj_db
+        .arrow_store
+        .get_msg_metadata(&entry.msg_id)
+    {
+        Some(time_point.clone())
+    } else {
         re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
-        return None;
-    };
-
-    let LogMsg::DataMsg(data_msg) = msg else {
-        re_log::warn_once!(
-            "LogMsg must be a DataMsg ({:?})",
-            entry.obj_path.obj_type_path()
-        );
-        return None;
-    };
-
-    Some(data_msg.time_point.clone())
+        None
+    }
 }
 
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
