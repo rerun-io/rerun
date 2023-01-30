@@ -2,7 +2,9 @@ use itertools::Itertools as _;
 
 use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_format::format_number;
-use re_log_types::{msg_bundle::MsgBundle, BeginRecordingMsg, LogMsg, PathOpMsg, RecordingInfo};
+use re_log_types::{
+    msg_bundle::MsgBundle, BeginRecordingMsg, EntityPathOpMsg, LogMsg, RecordingInfo,
+};
 
 use crate::{UiVerbosity, ViewerContext};
 
@@ -141,8 +143,8 @@ fn table_row(
                 ui.monospace(format!("{application_id} - {recording_id:?}"));
             });
         }
-        LogMsg::PathOpMsg(msg) => {
-            let PathOpMsg {
+        LogMsg::EntityPathOpMsg(msg) => {
+            let EntityPathOpMsg {
                 msg_id,
                 time_point,
                 path_op,
@@ -152,7 +154,7 @@ fn table_row(
                 ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
-                ui.monospace("PathOpMsg");
+                ui.monospace("EntityPathOpMsg");
             });
             for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
@@ -162,7 +164,7 @@ fn table_row(
                 });
             }
             row.col(|ui| {
-                ctx.obj_path_button(ui, None, path_op.obj_path());
+                ctx.entity_path_button(ui, None, path_op.entity_path());
             });
             row.col(|ui| {
                 let timeline = *ctx.rec_cfg.time_ctrl.timeline();
@@ -176,7 +178,7 @@ fn table_row(
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
             Ok(MsgBundle {
                 msg_id,
-                obj_path,
+                entity_path,
                 time_point,
                 components,
             }) => {
@@ -194,7 +196,7 @@ fn table_row(
                     });
                 }
                 row.col(|ui| {
-                    ctx.obj_path_button(ui, None, &obj_path);
+                    ctx.entity_path_button(ui, None, &entity_path);
                 });
 
                 row.col(|ui| {

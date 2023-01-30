@@ -88,7 +88,7 @@ impl ArrowDeserialize for TensorId {
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::TensorData;
+/// # use re_log_types::component_types::TensorData;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(
@@ -173,7 +173,7 @@ pub enum TensorData {
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::TensorDimension;
+/// # use re_log_types::component_types::TensorDimension;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
@@ -250,7 +250,7 @@ impl std::fmt::Display for TensorDimension {
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
-    /// The data is an annotated [`crate::field_types::ClassId`] which should be
+    /// The data is an annotated [`crate::component_types::ClassId`] which should be
     /// looked up using the appropriate [`crate::context::AnnotationContext`]
     ClassId,
     /// Image data interpreted as depth map.
@@ -262,7 +262,7 @@ pub enum TensorDataMeaning {
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::{TensorData, TensorDimension, Tensor};
+/// # use re_log_types::component_types::{TensorData, TensorDimension, Tensor};
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(

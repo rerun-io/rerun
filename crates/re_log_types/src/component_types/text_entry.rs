@@ -5,7 +5,7 @@ use crate::msg_bundle::Component;
 /// A text entry component, comprised of a text body and its log level.
 ///
 /// ```
-/// use re_log_types::field_types::TextEntry;
+/// use re_log_types::component_types::TextEntry;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

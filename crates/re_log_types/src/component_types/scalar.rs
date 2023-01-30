@@ -9,7 +9,7 @@ use crate::msg_bundle::Component;
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::Scalar;
+/// # use re_log_types::component_types::Scalar;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(Scalar::data_type(), DataType::Float64);
@@ -40,7 +40,7 @@ impl Component for Scalar {
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::ScalarPlotProps;
+/// # use re_log_types::component_types::ScalarPlotProps;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(

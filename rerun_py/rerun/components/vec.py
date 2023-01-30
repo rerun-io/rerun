@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "Vec2DArray",
@@ -23,7 +23,7 @@ class Vec2DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Vec2DType = ComponentTypeFactory("Vec2DType", Vec2DArray, REGISTERED_FIELDS["rerun.vec2d"])
+Vec2DType = ComponentTypeFactory("Vec2DType", Vec2DArray, REGISTERED_COMPONENT_NAMES["rerun.vec2d"])
 
 pa.register_extension_type(Vec2DType())
 
@@ -38,6 +38,6 @@ class Vec3DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Vec3DType = ComponentTypeFactory("Vec3DType", Vec3DArray, REGISTERED_FIELDS["rerun.vec3d"])
+Vec3DType = ComponentTypeFactory("Vec3DType", Vec3DArray, REGISTERED_COMPONENT_NAMES["rerun.vec3d"])
 
 pa.register_extension_type(Vec3DType())

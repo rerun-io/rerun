@@ -8,77 +8,77 @@ use arrow2_convert::{
 
 use crate::msg_bundle::Component;
 
-/// A 3D bounding box represented by it's half-lengths
+/// A Quaternion represented by 4 real numbers.
 ///
 /// ```
-/// use re_log_types::field_types::Box3D;
+/// use re_log_types::component_types::Quaternion;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     Box3D::data_type(),
+///     Quaternion::data_type(),
 ///     DataType::FixedSizeList(
-///         Box::new(
-///             Field::new("item", DataType::Float32, false)
-///         ),
-///     3)
+///         Box::new(Field::new("item", DataType::Float32, false)),
+///         4
+///     )
 /// );
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Box3D {
-    x: f32,
-    y: f32,
-    z: f32,
+pub struct Quaternion {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
 }
 
-impl Component for Box3D {
+impl Component for Quaternion {
     fn name() -> crate::ComponentName {
-        "rerun.box3d".into()
+        "rerun.quaternion".into()
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<Box3D> for glam::Vec3 {
-    fn from(b: Box3D) -> Self {
-        Self::new(b.x, b.y, b.z)
+impl From<Quaternion> for glam::Quat {
+    fn from(q: Quaternion) -> Self {
+        Self::from_xyzw(q.x, q.y, q.z, q.w)
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<glam::Vec3> for Box3D {
-    fn from(v: glam::Vec3) -> Self {
-        let (x, y, z) = v.into();
-        Self { x, y, z }
+impl From<glam::Quat> for Quaternion {
+    fn from(q: glam::Quat) -> Self {
+        let (x, y, z, w) = q.into();
+        Self { x, y, z, w }
     }
 }
 
-arrow_enable_vec_for_type!(Box3D);
+arrow_enable_vec_for_type!(Quaternion);
 
-impl ArrowField for Box3D {
+impl ArrowField for Quaternion {
     type Type = Self;
     fn data_type() -> DataType {
-        <FixedSizeVec<f32, 3> as ArrowField>::data_type()
+        <FixedSizeVec<f32, 4> as ArrowField>::data_type()
     }
 }
 
-impl ArrowSerialize for Box3D {
-    type MutableArrayType = <FixedSizeVec<f32, 3> as ArrowSerialize>::MutableArrayType;
+impl ArrowSerialize for Quaternion {
+    type MutableArrayType = <FixedSizeVec<f32, 4> as ArrowSerialize>::MutableArrayType;
 
     #[inline]
     fn new_array() -> Self::MutableArrayType {
-        FixedSizeVec::<f32, 3>::new_array()
+        FixedSizeVec::<f32, 4>::new_array()
     }
 
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        array.mut_values().extend_from_slice(&[v.x, v.y, v.z]);
+        array.mut_values().extend_from_slice(&[v.x, v.y, v.z, v.w]);
         array.try_push_valid()
     }
 }
 
-impl ArrowDeserialize for Box3D {
-    type ArrayType = <FixedSizeVec<f32, 3> as ArrowDeserialize>::ArrayType;
+impl ArrowDeserialize for Quaternion {
+    type ArrayType = <FixedSizeVec<f32, 4> as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
@@ -91,10 +91,11 @@ impl ArrowDeserialize for Box3D {
                 .unwrap()
                 .values()
                 .as_slice();
-            Box3D {
+            Quaternion {
                 x: v[0],
                 y: v[1],
                 z: v[2],
+                w: v[3],
             }
         })
     }

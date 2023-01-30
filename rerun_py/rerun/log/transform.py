@@ -14,7 +14,7 @@ __all__ = [
 
 
 def log_view_coordinates(
-    obj_path: str,
+    entity_path: str,
     *,
     xyz: str = "",
     up: str = "",
@@ -22,11 +22,11 @@ def log_view_coordinates(
     timeless: bool = False,
 ) -> None:
     """
-    Log the view coordinates for an object.
+    Log the view coordinates for an entity.
 
-    Each object defines its own coordinate system, called a space.
+    Each entity defines its own coordinate system, called a space.
     By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
-    This is for instance useful for camera objects ("what axis is forward?").
+    This is for instance useful for camera entities ("what axis is forward?").
 
     For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
 
@@ -66,20 +66,20 @@ def log_view_coordinates(
         _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
         up = ""
     if xyz != "":
-        bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+        bindings.log_view_coordinates_xyz(entity_path, xyz, right_handed, timeless)
     else:
         if right_handed is None:
             right_handed = True
-        bindings.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
+        bindings.log_view_coordinates_up_handedness(entity_path, up, right_handed, timeless)
 
 
-def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
-    """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
-    bindings.log_unknown_transform(obj_path, timeless=timeless)
+def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
+    """Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate."""
+    bindings.log_unknown_transform(entity_path, timeless=timeless)
 
 
 def log_rigid3(
-    obj_path: str,
+    entity_path: str,
     *,
     parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
     child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
@@ -87,7 +87,7 @@ def log_rigid3(
     timeless: bool = False,
 ) -> None:
     """
-    Log a proper rigid 3D transform between this object and the parent.
+    Log a proper rigid 3D transform between this entity and the parent.
 
     Set either `parent_from_child` or `child_from_parent` to
     a tuple of `(translation_xyz, quat_xyzw)`.
@@ -98,7 +98,7 @@ def log_rigid3(
 
     Also known as pose (e.g. camera extrinsics).
 
-    The translation is the position of the object in the parent space.
+    The translation is the position of the entity in the parent space.
     The resulting transform from child to parent corresponds to taking a point in the child space,
     rotating it by the given rotations, and then translating it by the given translation:
 
@@ -112,7 +112,7 @@ def log_rigid3(
 
     `xyz`
     ----
-    Optionally set the view coordinates of this object, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
+    Optionally set the view coordinates of this entity, e.g. to `RDF` for `X=Right, Y=Down, Z=Forward`.
     This is a convenience for also calling `log_view_coordinates`.
 
     Example
@@ -129,7 +129,7 @@ def log_rigid3(
     elif parent_from_child:
         (t, q) = parent_from_child
         bindings.log_rigid3(
-            obj_path,
+            entity_path,
             parent_from_child=True,
             rotation_q=_to_sequence(q),
             translation=_to_sequence(t),
@@ -138,7 +138,7 @@ def log_rigid3(
     elif child_from_parent:
         (t, q) = child_from_parent
         bindings.log_rigid3(
-            obj_path,
+            entity_path,
             parent_from_child=False,
             rotation_q=_to_sequence(q),
             translation=_to_sequence(t),
@@ -149,4 +149,4 @@ def log_rigid3(
         return
 
     if xyz != "":
-        log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)
+        log_view_coordinates(entity_path, xyz=xyz, timeless=timeless)

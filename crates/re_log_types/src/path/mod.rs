@@ -1,36 +1,36 @@
-//! Every logged object in Rerun is logged to a [`ObjPath`].
+//! Every logged entity in Rerun is logged to an [`EntityPath`].
 //!
-//! The path is made up out of several [`ObjPathComp`],
-//! each of which is either a name ([`ObjPathComp::Name`])
+//! The path is made up out of several [`EntityPathPart`]s,
+//! each of which is either a name ([`EntityPathPart::Name`])
 //! or an [`Index`].
 //!
 //! The [`Index`]es are for tables, arrays etc.
 
-mod data_path;
-mod obj_path;
-mod obj_path_impl;
+mod component_path;
+mod entity_path;
+mod entity_path_impl;
 mod parse_path;
 
-pub use data_path::DataPath;
-pub use obj_path::{ObjPath, ObjPathHash};
-pub use obj_path_impl::ObjPathImpl;
-pub use parse_path::{parse_obj_path, PathParseError};
+pub use component_path::ComponentPath;
+pub use entity_path::{EntityPath, EntityPathHash};
+pub use entity_path_impl::EntityPathImpl;
+pub use parse_path::{parse_entity_path, PathParseError};
 
 use re_string_interner::InternedString;
 
 use crate::Index;
 
 re_string_interner::declare_new_type!(
-    /// The name of an object component, e.g. `pos` or `color`.
+    /// The name of an entity component, e.g. `pos` or `color`.
     pub struct ComponentName;
 );
 
 // ----------------------------------------------------------------------------
 
-/// The different parts that make up an [`ObjPath`].
+/// The different parts that make up an [`EntityPath`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObjPathComp {
+pub enum EntityPathPart {
     /// Struct member. Each member can have a different type.
     Name(InternedString),
 
@@ -38,7 +38,7 @@ pub enum ObjPathComp {
     Index(Index),
 }
 
-impl std::fmt::Display for ObjPathComp {
+impl std::fmt::Display for EntityPathPart {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Name(name) => f.write_str(name),
@@ -47,55 +47,55 @@ impl std::fmt::Display for ObjPathComp {
     }
 }
 
-impl From<&str> for ObjPathComp {
+impl From<&str> for EntityPathPart {
     #[inline]
-    fn from(comp: &str) -> Self {
-        Self::Name(comp.into())
+    fn from(part: &str) -> Self {
+        Self::Name(part.into())
     }
 }
 
-impl From<String> for ObjPathComp {
+impl From<String> for EntityPathPart {
     #[inline]
-    fn from(comp: String) -> Self {
-        Self::Name(comp.into())
+    fn from(part: String) -> Self {
+        Self::Name(part.into())
     }
 }
 
-impl From<Index> for ObjPathComp {
+impl From<Index> for EntityPathPart {
     #[inline]
-    fn from(comp: Index) -> Self {
-        Self::Index(comp)
+    fn from(part: Index) -> Self {
+        Self::Index(part)
     }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Build a `Vec<ObjPathComp>`:
+/// Build a `Vec<EntityPathPart>`:
 /// ```
 /// # use re_log_types::*;
-/// obj_path_vec!("foo", Index::Sequence(123));
+/// entity_path_vec!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
-macro_rules! obj_path_vec {
+macro_rules! entity_path_vec {
         () => {
             vec![]
         };
-        ($($comp: expr),* $(,)?) => {
-            vec![ $($crate::ObjPathComp::from($comp),)+ ]
+        ($($part: expr),* $(,)?) => {
+            vec![ $($crate::EntityPathPart::from($part),)+ ]
         };
     }
 
-/// Build a `ObjPath`:
+/// Build a `EntityPath`:
 /// ```
 /// # use re_log_types::*;
-/// obj_path!("foo", Index::Sequence(123));
+/// entity_path!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
-macro_rules! obj_path {
+macro_rules! entity_path {
         () => {
             vec![]
         };
-        ($($comp: expr),* $(,)?) => {
-            $crate::ObjPath::from(vec![ $($crate::ObjPathComp::from($comp),)+ ])
+        ($($part: expr),* $(,)?) => {
+            $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
         };
     }

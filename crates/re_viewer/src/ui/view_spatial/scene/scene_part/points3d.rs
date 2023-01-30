@@ -3,9 +3,9 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
+    component_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -13,7 +13,7 @@ use re_renderer::Size;
 
 use crate::{
     misc::{
-        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        InteractionHighlight, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
         TransformCache, ViewerContext,
     },
     ui::{
@@ -72,12 +72,12 @@ impl Points3DPart {
 
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
-        ent_path: &'a ObjPath,
+        ent_path: &'a EntityPath,
         highlights: &'a [InteractionHighlight],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         crate::profile_function!();
-        let default_color = DefaultColor::ObjPath(ent_path);
+        let default_color = DefaultColor::EntityPath(ent_path);
 
         let colors = itertools::izip!(
             highlights.iter(),
@@ -135,11 +135,11 @@ impl Points3DPart {
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
-        properties: &ObjectProps,
+        properties: &EntityProperties,
         entity_view: &EntityView<Point3D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -178,7 +178,7 @@ impl Points3DPart {
                         instance,
                         entity_view,
                         properties,
-                        object_highlight,
+                        entity_highlight,
                     )
                 })
                 .collect::<Vec<_>>()
@@ -188,7 +188,7 @@ impl Points3DPart {
             crate::profile_scope!("highlights");
             instance_hashes
                 .iter()
-                .map(|hash| object_highlight.index_highlight(hash.instance_index_hash))
+                .map(|hash| entity_highlight.index_highlight(hash.instance_index_hash))
                 .collect::<Vec<_>>()
         };
 
@@ -225,13 +225,13 @@ impl ScenePart for Points3DPart {
         crate::profile_scope!("Points3DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point3D, 7>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
@@ -255,7 +255,7 @@ impl ScenePart for Points3DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        object_highlight,
+                        entity_highlight,
                     )?;
                 }
                 Ok(())

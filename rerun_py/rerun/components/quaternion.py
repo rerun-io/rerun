@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "QuaternionArray",
@@ -21,6 +21,6 @@ class QuaternionArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-QuaternionType = ComponentTypeFactory("QuaternionType", QuaternionArray, REGISTERED_FIELDS["rerun.quaternion"])
+QuaternionType = ComponentTypeFactory("QuaternionType", QuaternionArray, REGISTERED_COMPONENT_NAMES["rerun.quaternion"])
 
 pa.register_extension_type(QuaternionType())

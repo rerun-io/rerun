@@ -18,9 +18,9 @@ pub enum AdditionalPickingInfo {
 }
 
 pub struct PickingRayHit {
-    /// What object got hit by the picking ray.
+    /// What entity or instance got hit by the picking ray.
     ///
-    /// The ray hit position may not actually be on this object, as we allow snapping to closest object!
+    /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
     pub instance_hash: InstanceIdHash,
 
     /// Where along the picking ray the hit occurred.

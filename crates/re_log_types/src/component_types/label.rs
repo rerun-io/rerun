@@ -5,7 +5,7 @@ use crate::msg_bundle::Component;
 /// A String label component
 ///
 /// ```
-/// use re_log_types::field_types::Label;
+/// use re_log_types::component_types::Label;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

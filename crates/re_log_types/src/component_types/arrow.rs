@@ -8,7 +8,7 @@ use crate::msg_bundle::Component;
 /// ## Examples
 ///
 /// ```
-/// use re_log_types::field_types::Arrow3D;
+/// use re_log_types::component_types::Arrow3D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

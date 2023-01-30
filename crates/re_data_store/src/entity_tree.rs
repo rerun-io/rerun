@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, DataPath, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint, Timeline,
+    ComponentName, ComponentPath, EntityPath, EntityPathPart, MsgId, PathOp, TimeInt, TimePoint,
+    Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -79,12 +80,12 @@ impl TimesPerTimeline {
 
 // ----------------------------------------------------------------------------
 
-/// Tree of data paths.
-pub struct ObjectTree {
+/// Tree of entity paths, plus components at the leaves.
+pub struct EntityTree {
     /// Full path to the root of this tree.
-    pub path: ObjPath,
+    pub path: EntityPath,
 
-    pub children: BTreeMap<ObjPathComp, ObjectTree>,
+    pub children: BTreeMap<EntityPathPart, EntityTree>,
 
     /// When do we or a child have data?
     ///
@@ -99,16 +100,16 @@ pub struct ObjectTree {
     /// Book-keeping around whether we should clear recursively when data is added
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
-    /// Data logged at this object path.
+    /// Data logged at this entity path.
     pub components: BTreeMap<ComponentName, ComponentStats>,
 }
 
-impl ObjectTree {
+impl EntityTree {
     pub fn root() -> Self {
-        Self::new(ObjPath::root(), Default::default())
+        Self::new(EntityPath::root(), Default::default())
     }
 
-    pub fn new(path: ObjPath, recursive_clears: BTreeMap<MsgId, TimePoint>) -> Self {
+    pub fn new(path: EntityPath, recursive_clears: BTreeMap<MsgId, TimePoint>) -> Self {
         Self {
             path,
             children: Default::default(),
@@ -120,7 +121,7 @@ impl ObjectTree {
         }
     }
 
-    /// Has no child objects.
+    /// Has no child entities.
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
     }
@@ -137,17 +138,18 @@ impl ObjectTree {
     pub fn add_data_msg(
         &mut self,
         time_point: &TimePoint,
-        data_path: &DataPath,
+        component_path: &ComponentPath,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
 
-        let leaf = self.create_subtrees_recursively(data_path.obj_path.as_slice(), 0, time_point);
+        let leaf =
+            self.create_subtrees_recursively(component_path.entity_path.as_slice(), 0, time_point);
 
         let mut pending_clears = vec![];
 
         let fields = leaf
             .components
-            .entry(data_path.component_name)
+            .entry(component_path.component_name)
             .or_insert_with(|| {
                 // If we needed to create a new leaf to hold this data, we also want to
                 // insert all of the historical pending clear operations
@@ -161,9 +163,9 @@ impl ObjectTree {
         pending_clears
     }
 
-    /// Add a path operation into the the object tree
+    /// Add a path operation into the the entity tree.
     ///
-    /// Returns a collection of data paths to clear as a result of the operation
+    /// Returns a collection of paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future
     /// insertion.
     pub fn add_path_op(
@@ -171,17 +173,17 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         path_op: &PathOp,
-    ) -> Vec<DataPath> {
+    ) -> Vec<ComponentPath> {
         crate::profile_function!();
 
-        let obj_path = path_op.obj_path();
+        let entity_path = path_op.entity_path();
 
         // Look up the leaf at which we will execute the path operation
-        let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, time_point);
+        let leaf = self.create_subtrees_recursively(entity_path.as_slice(), 0, time_point);
 
         // TODO(jleibs): Refactor this as separate functions
         match path_op {
-            PathOp::ClearFields(obj_path) => {
+            PathOp::ClearComponents(entity_path) => {
                 // Track that any future fields need a Null at the right
                 // time-point when added.
                 leaf.nonrecursive_clears
@@ -191,7 +193,9 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.components
                     .iter()
-                    .map(|(field_name, _fields)| DataPath::new(obj_path.clone(), *field_name))
+                    .map(|(component_name, _components)| {
+                        ComponentPath::new(entity_path.clone(), *component_name)
+                    })
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -216,8 +220,8 @@ impl ObjectTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.components.iter().map(|(field_name, _fields)| {
-                        DataPath::new(next.path.clone(), *field_name)
+                    results.extend(next.components.iter().map(|(component_name, _components)| {
+                        ComponentPath::new(next.path.clone(), *component_name)
                     }));
                 }
                 results
@@ -227,7 +231,7 @@ impl ObjectTree {
 
     fn create_subtrees_recursively(
         &mut self,
-        full_path: &[ObjPathComp],
+        full_path: &[EntityPathPart],
         depth: usize,
         time_point: &TimePoint,
     ) -> &mut Self {
@@ -254,17 +258,17 @@ impl ObjectTree {
                 .children
                 .entry(component.clone())
                 .or_insert_with(|| {
-                    ObjectTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
+                    EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
                 })
                 .create_subtrees_recursively(full_path, depth + 1, time_point),
         }
     }
 
-    pub fn subtree(&self, path: &ObjPath) -> Option<&Self> {
+    pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
         fn subtree_recursive<'tree>(
-            this: &'tree ObjectTree,
-            path: &[ObjPathComp],
-        ) -> Option<&'tree ObjectTree> {
+            this: &'tree EntityTree,
+            path: &[EntityPathPart],
+        ) -> Option<&'tree EntityTree> {
             match path {
                 [] => Some(this),
                 [first, rest @ ..] => subtree_recursive(this.children.get(first)?, rest),
@@ -318,7 +322,7 @@ impl ObjectTree {
     }
 
     // Invokes visitor for `self` all children recursively.
-    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&ObjPath)) {
+    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath)) {
         visitor(&self.path);
         for child in self.children.values() {
             child.visit_children_recursively(visitor);

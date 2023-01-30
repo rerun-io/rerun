@@ -3,7 +3,7 @@ The core of the third iteration of the data model and data store.
 
 ## Problems with previous model
 
-Model 2 introduced the "batch" concept for efficiently logging and indexing large amounts of data. It was designed as an optimization for point clouds. Instead of logging each point individually, you can log many in a "batch", all with the same time stamp. This allowed for efficient indexing, but only if we had the caveat that "only the latest batch counts" - i.e. each new batch (to the same object path) would overwrite previous batches.
+Model 2 introduced the "batch" concept for efficiently logging and indexing large amounts of data. It was designed as an optimization for point clouds. Instead of logging each point individually, you can log many in a "batch", all with the same time stamp. This allowed for efficient indexing, but only if we had the caveat that "only the latest batch counts" - i.e. each new batch (to the same entity path) would overwrite previous batches.
 
 It turned out this "batches overwrites previous values" was a hidden strength. For instance, if you do a bunch of detections in a camera frame, you can log all of their bboxes in a batch and next frame you overwrite all the detections from the previous frame by logging a new batch.
 
@@ -13,7 +13,7 @@ To complicate things even further, we allowed some field of an object to be batc
 
 ## Changes in the new model
 
-In the new model, batches are first-class-citizens. Each object can either be "mono" or "multi" (batch). Mono-objects are referred to with just an object path, but multi-objects have an added `InstanceIndex` to distinguish which instance of the multi-object it is.
+In the new model, batches are first-class-citizens. Each object can either be "mono" or "multi" (batch). Mono-objects are referred to with just an entity path, but multi-objects have an added `InstanceIndex` to distinguish which instance of the multi-object it is.
 
 All fields in a multi-object must be batch-logged. There is no mixing allowed.
 

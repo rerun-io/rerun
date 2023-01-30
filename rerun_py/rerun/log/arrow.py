@@ -16,7 +16,7 @@ __all__ = [
 
 
 def log_arrow(
-    obj_path: str,
+    entity_path: str,
     origin: Optional[npt.ArrayLike],
     vector: Optional[npt.ArrayLike] = None,
     *,
@@ -36,8 +36,8 @@ def log_arrow(
 
     Parameters
     ----------
-    obj_path
-        The path to store the object at.
+    entity_path
+        The path to store the entity at.
     origin
         The base position of the arrow.
     vector
@@ -49,7 +49,7 @@ def log_arrow(
     width_scale
         An optional scaling factor, default=1.0.
     timeless
-        Object is not time-dependent, and will be visible at any time point.
+        The entity is not time-dependent, and will be visible at any time point.
 
     """
     comps = {}
@@ -72,4 +72,4 @@ def log_arrow(
         radii = _normalize_radii([width_scale / 2])
         comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)

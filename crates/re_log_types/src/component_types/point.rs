@@ -5,7 +5,7 @@ use crate::msg_bundle::Component;
 /// A point in 2D space.
 ///
 /// ```
-/// use re_log_types::field_types::Point2D;
+/// use re_log_types::component_types::Point2D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
@@ -39,7 +39,7 @@ impl From<Point2D> for glam::Vec2 {
 /// A point in 3D space.
 ///
 /// ```
-/// use re_log_types::field_types::Point3D;
+/// use re_log_types::component_types::Point3D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

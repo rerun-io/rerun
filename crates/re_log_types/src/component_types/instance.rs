@@ -5,7 +5,7 @@ use crate::msg_bundle::Component;
 /// The Instance used to identify an entity within a batch
 ///
 /// ```
-/// use re_log_types::field_types::Instance;
+/// use re_log_types::component_types::Instance;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

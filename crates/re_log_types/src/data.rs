@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use half::f16;
 
-use crate::field_types;
+use crate::component_types;
 
-pub use crate::field_types::{Arrow3D, Pinhole, Rigid3, Transform};
+pub use crate::component_types::{Arrow3D, Pinhole, Rigid3, Transform};
 
 // ----------------------------------------------------------------------------
 
@@ -302,7 +302,7 @@ impl std::fmt::Debug for TensorDataStore {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ClassicTensor {
     /// Unique identifier for the tensor
-    tensor_id: field_types::TensorId,
+    tensor_id: component_types::TensorId,
 
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
@@ -312,7 +312,7 @@ pub struct ClassicTensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    shape: Vec<field_types::TensorDimension>,
+    shape: Vec<component_types::TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -320,18 +320,18 @@ pub struct ClassicTensor {
 
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
-    pub meaning: field_types::TensorDataMeaning,
+    pub meaning: component_types::TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
 }
 
-impl field_types::TensorTrait for ClassicTensor {
-    fn id(&self) -> field_types::TensorId {
+impl component_types::TensorTrait for ClassicTensor {
+    fn id(&self) -> component_types::TensorId {
         self.tensor_id
     }
 
-    fn shape(&self) -> &[field_types::TensorDimension] {
+    fn shape(&self) -> &[component_types::TensorDimension] {
         self.shape.as_slice()
     }
 
@@ -347,7 +347,7 @@ impl field_types::TensorTrait for ClassicTensor {
         self.is_vector()
     }
 
-    fn meaning(&self) -> field_types::TensorDataMeaning {
+    fn meaning(&self) -> component_types::TensorDataMeaning {
         self.meaning
     }
 
@@ -358,10 +358,10 @@ impl field_types::TensorTrait for ClassicTensor {
 
 impl ClassicTensor {
     pub fn new(
-        tensor_id: field_types::TensorId,
-        shape: Vec<field_types::TensorDimension>,
+        tensor_id: component_types::TensorId,
+        shape: Vec<component_types::TensorDimension>,
         dtype: TensorDataType,
-        meaning: field_types::TensorDataMeaning,
+        meaning: component_types::TensorDataMeaning,
         data: TensorDataStore,
     ) -> Self {
         Self {
@@ -374,12 +374,12 @@ impl ClassicTensor {
     }
 
     #[inline]
-    pub fn id(&self) -> field_types::TensorId {
+    pub fn id(&self) -> component_types::TensorId {
         self.tensor_id
     }
 
     #[inline]
-    pub fn shape(&self) -> &[field_types::TensorDimension] {
+    pub fn shape(&self) -> &[component_types::TensorDimension] {
         self.shape.as_slice()
     }
 
@@ -389,7 +389,7 @@ impl ClassicTensor {
     }
 
     #[inline]
-    pub fn meaning(&self) -> field_types::TensorDataMeaning {
+    pub fn meaning(&self) -> component_types::TensorDataMeaning {
         self.meaning
     }
 
@@ -455,7 +455,7 @@ impl ClassicTensor {
             TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
-                for (field_types::TensorDimension { size, name: _ }, index) in
+                for (component_types::TensorDimension { size, name: _ }, index) in
                     self.shape.iter().zip(index).rev()
                 {
                     if size <= index {

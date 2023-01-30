@@ -1,30 +1,30 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::Component,
-    ObjPath, Transform,
+    EntityPath, Transform,
 };
 
-use crate::log_db::ObjDb;
+use crate::log_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 
-/// Properties for a collection of objects.
+/// Properties for a collection of entities.
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ObjectsProperties {
-    props: nohash_hasher::IntMap<ObjPath, ObjectProps>,
+pub struct EntityPropertyMap {
+    props: nohash_hasher::IntMap<EntityPath, EntityProperties>,
 }
 
-impl ObjectsProperties {
-    pub fn get(&self, obj_path: &ObjPath) -> ObjectProps {
-        self.props.get(obj_path).cloned().unwrap_or_default()
+impl EntityPropertyMap {
+    pub fn get(&self, entity_path: &EntityPath) -> EntityProperties {
+        self.props.get(entity_path).cloned().unwrap_or_default()
     }
 
-    pub fn set(&mut self, obj_path: ObjPath, prop: ObjectProps) {
-        if prop == ObjectProps::default() {
-            self.props.remove(&obj_path); // save space
+    pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
+        if prop == EntityProperties::default() {
+            self.props.remove(&entity_path); // save space
         } else {
-            self.props.insert(obj_path, prop);
+            self.props.insert(entity_path, prop);
         }
     }
 }
@@ -34,14 +34,14 @@ impl ObjectsProperties {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-pub struct ObjectProps {
+pub struct EntityProperties {
     pub visible: bool,
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
     pinhole_image_plane_distance: Option<ordered_float::NotNan<f32>>,
 }
 
-impl ObjectProps {
+impl EntityProperties {
     /// If this has a pinhole camera transform, how far away is the image plane.
     ///
     /// Scale relative to the respective space the pinhole camera is in.
@@ -77,7 +77,7 @@ impl ObjectProps {
     }
 }
 
-impl Default for ObjectProps {
+impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             visible: true,
@@ -90,7 +90,7 @@ impl Default for ObjectProps {
 
 // ----------------------------------------------------------------------------
 
-/// When showing an object in the history view, add this much history to it.
+/// When showing an entity in the history view, add this much history to it.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -120,8 +120,8 @@ impl ExtraQueryHistory {
 /// what most users are still using. If we don't find the transform there, then
 /// we check to see if it exists in the arrow storage.
 pub fn query_transform(
-    obj_db: &ObjDb,
-    obj_path: &ObjPath,
+    entity_db: &EntityDb,
+    entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<Transform> {
     crate::profile_function!();
@@ -129,11 +129,11 @@ pub fn query_transform(
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
     // transforms this is easy enough.
-    let arrow_store = &obj_db.arrow_store;
+    let arrow_store = &entity_db.arrow_store;
 
     let components = [Transform::name()];
 
-    let row_indices = arrow_store.latest_at(query, obj_path, Transform::name(), &components)?;
+    let row_indices = arrow_store.latest_at(query, entity_path, Transform::name(), &components)?;
 
     let results = arrow_store.get(&components, &row_indices);
     let arr = results.get(0)?.as_ref()?.as_ref();
@@ -143,7 +143,7 @@ pub fn query_transform(
     let transform = iter.next();
 
     if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for Transform at: {}", obj_path);
+        re_log::warn_once!("Unexpected batch for Transform at: {}", entity_path);
     }
 
     transform

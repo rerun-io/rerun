@@ -7,7 +7,7 @@ use crate::{msg_bundle::Component, ComponentName};
 /// ## Examples
 ///
 /// ```
-/// # use re_log_types::field_types::MsgId;
+/// # use re_log_types::component_types::MsgId;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(

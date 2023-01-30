@@ -1,15 +1,15 @@
 use glam::Mat4;
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ColorRGBA, Instance, LineStrip3D, Radius},
+    component_types::{ColorRGBA, Instance, LineStrip3D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
@@ -22,16 +22,16 @@ impl Lines3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &ObjectProps,
+        props: &EntityProperties,
         entity_view: &EntityView<LineStrip3D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
-        let default_color = DefaultColor::ObjPath(ent_path);
+        let default_color = DefaultColor::EntityPath(ent_path);
 
         let mut line_batch = scene
             .primitives
@@ -44,7 +44,7 @@ impl Lines3DPart {
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
             let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
+                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
 
             let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
 
@@ -56,7 +56,7 @@ impl Lines3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                object_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             line_batch
@@ -84,13 +84,13 @@ impl ScenePart for Lines3DPart {
         crate::profile_scope!("Lines3DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<LineStrip3D, 4>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
@@ -111,7 +111,7 @@ impl ScenePart for Lines3DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        object_highlight,
+                        entity_highlight,
                     )?;
                 }
                 Ok(())

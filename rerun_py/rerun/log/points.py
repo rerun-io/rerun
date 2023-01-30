@@ -29,7 +29,7 @@ __all__ = [
 
 
 def log_point(
-    obj_path: str,
+    entity_path: str,
     position: Union[Sequence[float], npt.NDArray[np.float32], None],
     *,
     radius: Optional[float] = None,
@@ -42,7 +42,7 @@ def log_point(
     """
     Log a 2D or 3D point, with optional color.
 
-    Logging again to the same `obj_path` will replace the previous point.
+    Logging again to the same `entity_path` will replace the previous point.
 
     * `position`: 2x1 or 3x1 array
     * `radius`: Optional radius (make it a sphere)
@@ -94,11 +94,11 @@ def log_point(
         class_ids = _normalize_ids([class_id])
         comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
 
 
 def log_points(
-    obj_path: str,
+    entity_path: str,
     positions: Union[Sequence[Sequence[float]], Optional[npt.NDArray[np.float32]]],
     *,
     identifiers: Optional[Sequence[Union[str, int]]] = None,
@@ -112,7 +112,7 @@ def log_points(
     """
     Log 2D or 3D points, with optional colors.
 
-    Logging again to the same `obj_path` will replace all the previous points.
+    Logging again to the same `entity_path` will replace all the previous points.
 
     * `positions`: Nx2 or Nx3 array
     * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the points.
@@ -193,8 +193,8 @@ def log_points(
         is_splat = len(keypoint_ids) == 1
         comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
         comps[1]["rerun.instance"] = InstanceArray.splat()
-        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)

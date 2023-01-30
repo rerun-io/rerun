@@ -76,14 +76,14 @@ impl TryFrom<u8> for ViewDir {
 
 // ----------------------------------------------------------------------------
 
-/// How we interpret the coordinate system of an object/space.
+/// How we interpret the coordinate system of an entity/space.
 ///
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///
 /// For 3D view-space and image-space.
 ///
 /// ```
-/// use re_log_types::field_types::ViewCoordinates;
+/// use re_log_types::component_types::ViewCoordinates;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
