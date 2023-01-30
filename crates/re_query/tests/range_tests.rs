@@ -697,7 +697,7 @@ fn simple_splatted_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with a splatted instance
-        let color_instances = vec![Instance::splat()];
+        let color_instances = vec![Instance::SPLAT];
         let colors = vec![ColorRGBA(0x00ff0000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),

@@ -284,7 +284,7 @@ fn splatted_query() {
     store.insert(&bundle).unwrap();
 
     // Assign all of them a color via splat
-    let color_instances = vec![Instance::splat()];
+    let color_instances = vec![Instance::SPLAT];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle = try_build_msg_bundle2(
         MsgId::random(),

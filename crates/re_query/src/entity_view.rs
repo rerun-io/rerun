@@ -114,7 +114,7 @@ impl ComponentWithInstances {
                 .values();
 
             // If the value is splatted, return the offset of the splat
-            if keys.len() == 1 && keys[0] == Instance::splat().0 {
+            if keys.len() == 1 && keys[0] == Instance::SPLAT.0 {
                 0
             } else {
                 // Otherwise binary search to find the offset of the instance
@@ -450,7 +450,7 @@ fn lookup_value() {
 fn lookup_splat() {
     use re_log_types::component_types::{Instance, Point2D};
     let instances = vec![
-        Instance::splat(), //
+        Instance::SPLAT, //
     ];
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //

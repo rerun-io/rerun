@@ -29,10 +29,7 @@ use crate::msg_bundle::Component;
 pub struct Instance(pub u64);
 
 impl Instance {
-    #[inline]
-    pub fn splat() -> Instance {
-        Self(u64::MAX)
-    }
+    pub const SPLAT: Self = Self(u64::MAX);
 
     #[inline]
     pub fn is_splat(&self) -> bool {
