@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Optional, Sequence, Union
 
 import numpy as np
