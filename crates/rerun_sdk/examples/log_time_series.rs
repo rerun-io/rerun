@@ -214,7 +214,7 @@ fn log_segmentation(session: &mut Session) {
 fn log_scalars(
     session: &mut Session,
     timepoint: TimePoint,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     scalars: Option<Vec<Scalar>>,
     colors: Option<Vec<ColorRGBA>>,
     radii: Option<Vec<Radius>>,
@@ -223,7 +223,7 @@ fn log_scalars(
 ) {
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         timepoint,
         [
             scalars.map(|te| te.try_into().unwrap()),

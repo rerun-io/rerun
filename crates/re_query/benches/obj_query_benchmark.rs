@@ -7,9 +7,10 @@ use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
+    entity_path,
     field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    obj_path, EntityPath, Index, MsgId, TimeType, Timeline,
+    EntityPath, Index, MsgId, TimeType, Timeline,
 };
 use re_query::query_entity_with_primary;
 
@@ -33,7 +34,7 @@ fn obj_mono_points(c: &mut Criterion) {
         // Each mono point gets logged at a different path
         let paths = (0..NUM_POINTS)
             .into_iter()
-            .map(move |point_idx| obj_path!("points", Index::Sequence(point_idx as _)))
+            .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
             .collect_vec();
         let msgs = build_messages(&paths, 1);
 

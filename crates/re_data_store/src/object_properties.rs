@@ -16,15 +16,15 @@ pub struct ObjectsProperties {
 }
 
 impl ObjectsProperties {
-    pub fn get(&self, obj_path: &EntityPath) -> ObjectProps {
-        self.props.get(obj_path).cloned().unwrap_or_default()
+    pub fn get(&self, entity_path: &EntityPath) -> ObjectProps {
+        self.props.get(entity_path).cloned().unwrap_or_default()
     }
 
-    pub fn set(&mut self, obj_path: EntityPath, prop: ObjectProps) {
+    pub fn set(&mut self, entity_path: EntityPath, prop: ObjectProps) {
         if prop == ObjectProps::default() {
-            self.props.remove(&obj_path); // save space
+            self.props.remove(&entity_path); // save space
         } else {
-            self.props.insert(obj_path, prop);
+            self.props.insert(entity_path, prop);
         }
     }
 }
@@ -121,7 +121,7 @@ impl ExtraQueryHistory {
 /// we check to see if it exists in the arrow storage.
 pub fn query_transform(
     obj_db: &ObjDb,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<Transform> {
     crate::profile_function!();
@@ -133,7 +133,7 @@ pub fn query_transform(
 
     let components = [Transform::name()];
 
-    let row_indices = arrow_store.latest_at(query, obj_path, Transform::name(), &components)?;
+    let row_indices = arrow_store.latest_at(query, entity_path, Transform::name(), &components)?;
 
     let results = arrow_store.get(&components, &row_indices);
     let arr = results.get(0)?.as_ref()?.as_ref();
@@ -143,7 +143,7 @@ pub fn query_transform(
     let transform = iter.next();
 
     if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for Transform at: {}", obj_path);
+        re_log::warn_once!("Unexpected batch for Transform at: {}", entity_path);
     }
 
     transform

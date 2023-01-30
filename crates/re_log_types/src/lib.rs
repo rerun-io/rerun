@@ -243,15 +243,15 @@ pub enum PathOp {
 }
 
 impl PathOp {
-    pub fn clear(recursive: bool, obj_path: EntityPath) -> Self {
+    pub fn clear(recursive: bool, entity_path: EntityPath) -> Self {
         if recursive {
-            PathOp::ClearRecursive(obj_path)
+            PathOp::ClearRecursive(entity_path)
         } else {
-            PathOp::ClearComponents(obj_path)
+            PathOp::ClearComponents(entity_path)
         }
     }
 
-    pub fn obj_path(&self) -> &EntityPath {
+    pub fn entity_path(&self) -> &EntityPath {
         match &self {
             PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
         }

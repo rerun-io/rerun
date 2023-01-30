@@ -12,7 +12,7 @@ impl DataUi for DataPath {
     ) {
         ui.horizontal(|ui| {
             ui.label("Object path:");
-            ctx.obj_path_button(ui, None, &self.obj_path);
+            ctx.entity_path_button(ui, None, &self.entity_path);
         });
 
         let store = &ctx.log_db.obj_db.arrow_store;
@@ -20,7 +20,7 @@ impl DataUi for DataPath {
         match re_query::get_component_with_instances(
             store,
             query,
-            self.obj_path(),
+            self.entity_path(),
             self.component_name,
         ) {
             Err(re_query::QueryError::PrimaryNotFound) => {

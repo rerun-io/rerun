@@ -118,7 +118,7 @@ pub fn what_is_selected_ui(
             }
         }
         Selection::Instance(space_view_id, instance_id) => {
-            egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+            egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_id.instance_index.is_none() {
                     ui.label("Object Path:");
                 } else {
@@ -198,7 +198,7 @@ fn blueprint_ui(
         }
 
         Selection::DataPath(data_path) => {
-            list_existing_data_blueprints(ui, ctx, data_path.obj_path(), blueprint);
+            list_existing_data_blueprints(ui, ctx, data_path.entity_path(), blueprint);
         }
 
         Selection::SpaceView(space_view_id) => {
@@ -230,22 +230,22 @@ fn blueprint_ui(
                 if instance_id.instance_index.is_some() {
                     ui.horizontal(|ui| {
                         ui.label("Part of");
-                        ctx.obj_path_button(ui, *space_view_id, &instance_id.obj_path);
+                        ctx.entity_path_button(ui, *space_view_id, &instance_id.entity_path);
                     });
                 } else {
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
-                    let mut props = data_blueprint.get(&instance_id.obj_path);
+                    let mut props = data_blueprint.get(&instance_id.entity_path);
                     obj_props_ui(
                         ctx,
                         ui,
-                        Some(&instance_id.obj_path),
+                        Some(&instance_id.entity_path),
                         &mut props,
                         &space_view.view_state,
                     );
-                    data_blueprint.set(instance_id.obj_path.clone(), props);
+                    data_blueprint.set(instance_id.entity_path.clone(), props);
                 }
             } else {
-                list_existing_data_blueprints(ui, ctx, &instance_id.obj_path, blueprint);
+                list_existing_data_blueprints(ui, ctx, &instance_id.entity_path, blueprint);
             }
         }
 
@@ -275,10 +275,12 @@ fn blueprint_ui(
 fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     blueprint: &Blueprint,
 ) {
-    let space_views_with_path = blueprint.viewport.space_views_containing_obj_path(obj_path);
+    let space_views_with_path = blueprint
+        .viewport
+        .space_views_containing_entity_path(entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
@@ -289,7 +291,12 @@ fn list_existing_data_blueprints(
         ui.indent("list of data blueprints indent", |ui| {
             for space_view_id in &space_views_with_path {
                 if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                    ctx.obj_path_button_to(ui, Some(*space_view_id), obj_path, &space_view.name);
+                    ctx.entity_path_button_to(
+                        ui,
+                        Some(*space_view_id),
+                        entity_path,
+                        &space_view.name,
+                    );
                 }
             }
         });
@@ -299,7 +306,7 @@ fn list_existing_data_blueprints(
 fn obj_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    obj_path: Option<&EntityPath>,
+    entity_path: Option<&EntityPath>,
     obj_props: &mut ObjectProps,
     view_state: &ViewState,
 ) {
@@ -344,10 +351,10 @@ fn obj_props_ui(
     });
 
     if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
-        if let Some(obj_path) = obj_path {
+        if let Some(entity_path) = entity_path {
             let query = ctx.current_query();
             if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.obj_db, obj_path, &query)
+                query_transform(&ctx.log_db.obj_db, entity_path, &query)
             {
                 ui.horizontal(|ui| {
                     ui.label("Image plane distance:");

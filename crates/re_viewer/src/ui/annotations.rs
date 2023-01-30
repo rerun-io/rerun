@@ -86,8 +86,8 @@ impl ResolvedAnnotationInfo {
             match default_color {
                 DefaultColor::TransparentBlack => re_renderer::Color32::TRANSPARENT,
                 DefaultColor::OpaqueWhite => re_renderer::Color32::WHITE,
-                DefaultColor::EntityPath(obj_path) => {
-                    auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16)
+                DefaultColor::EntityPath(entity_path) => {
+                    auto_color((entity_path.hash64() % std::u16::MAX as u64) as u16)
                 }
             }
         }
@@ -121,12 +121,12 @@ impl AnnotationMap {
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
-        for obj_path in query
-            .obj_paths
+        for entity_path in query
+            .entity_paths
             .iter()
-            .filter(|obj_path| query.obj_props.get(obj_path).visible)
+            .filter(|entity_path| query.obj_props.get(entity_path).visible)
         {
-            let mut next_parent = Some(obj_path.clone());
+            let mut next_parent = Some(entity_path.clone());
             while let Some(parent) = next_parent {
                 // If we've visited this parent before it's safe to break early.
                 // All of it's parents have have also been visited.
@@ -173,8 +173,8 @@ impl AnnotationMap {
 
     // Search through the all prefixes of this object path until we find a
     // matching annotation. If we find nothing return the default `MISSING_ANNOTATIONS`.
-    pub fn find<'a>(&self, obj_path: impl Into<&'a EntityPath>) -> Arc<Annotations> {
-        let mut next_parent = Some(obj_path.into().clone());
+    pub fn find<'a>(&self, entity_path: impl Into<&'a EntityPath>) -> Arc<Annotations> {
+        let mut next_parent = Some(entity_path.into().clone());
         while let Some(parent) = next_parent {
             if let Some(legend) = self.0.get(&parent) {
                 return legend.clone();

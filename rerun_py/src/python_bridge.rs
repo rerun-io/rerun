@@ -164,12 +164,12 @@ authkey = multiprocessing.current_process().authkey
 
 // ----------------------------------------------------------------------------
 
-fn parse_obj_path(obj_path: &str) -> PyResult<EntityPath> {
-    let components = re_log_types::parse_obj_path(obj_path)
+fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
+    let components = re_log_types::parse_entity_path(entity_path)
         .map_err(|err| PyTypeError::new_err(err.to_string()))?;
     if components.is_empty() {
         Err(PyTypeError::new_err(
-            "You cannot log to the root {obj_path:?}",
+            "You cannot log to the root {entity_path:?}",
         ))
     } else {
         Ok(EntityPath::from(components))
@@ -394,14 +394,14 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
 }
 
 #[pyfunction]
-fn log_unknown_transform(obj_path: &str, timeless: bool) -> PyResult<()> {
+fn log_unknown_transform(entity_path: &str, timeless: bool) -> PyResult<()> {
     let transform = re_log_types::Transform::Unknown;
-    log_transform(obj_path, transform, timeless)
+    log_transform(entity_path, transform, timeless)
 }
 
 #[pyfunction]
 fn log_rigid3(
-    obj_path: &str,
+    entity_path: &str,
     parent_from_child: bool,
     rotation_q: re_log_types::Quaternion,
     translation: [f32; 3],
@@ -419,12 +419,12 @@ fn log_rigid3(
 
     let transform = re_log_types::Transform::Rigid3(transform);
 
-    log_transform(obj_path, transform, timeless)
+    log_transform(entity_path, transform, timeless)
 }
 
 #[pyfunction]
 fn log_pinhole(
-    obj_path: &str,
+    entity_path: &str,
     resolution: [f32; 2],
     child_from_parent: [[f32; 3]; 3],
     timeless: bool,
@@ -434,16 +434,16 @@ fn log_pinhole(
         resolution: Some(resolution.into()),
     });
 
-    log_transform(obj_path, transform, timeless)
+    log_transform(entity_path, transform, timeless)
 }
 
 fn log_transform(
-    obj_path: &str,
+    entity_path: &str,
     transform: re_log_types::Transform,
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
-    if obj_path.len() == 1 {
+    let entity_path = parse_entity_path(entity_path)?;
+    if entity_path.len() == 1 {
         // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
         return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
     }
@@ -458,7 +458,7 @@ fn log_transform(
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path,
+        entity_path,
         time_point,
         vec![vec![transform].try_into().unwrap()],
     );
@@ -474,7 +474,7 @@ fn log_transform(
 
 #[pyfunction]
 fn log_view_coordinates_xyz(
-    obj_path: &str,
+    entity_path: &str,
     xyz: &str,
     right_handed: Option<bool>,
     timeless: bool,
@@ -496,12 +496,12 @@ fn log_view_coordinates_xyz(
         }
     }
 
-    log_view_coordinates(obj_path, coordinates, timeless)
+    log_view_coordinates(entity_path, coordinates, timeless)
 }
 
 #[pyfunction]
 fn log_view_coordinates_up_handedness(
-    obj_path: &str,
+    entity_path: &str,
     up: &str,
     right_handed: bool,
     timeless: bool,
@@ -512,11 +512,11 @@ fn log_view_coordinates_up_handedness(
     let handedness = Handedness::from_right_handed(right_handed);
     let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
 
-    log_view_coordinates(obj_path, coordinates, timeless)
+    log_view_coordinates(entity_path, coordinates, timeless)
 }
 
 fn log_view_coordinates(
-    obj_path: &str,
+    entity_path: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
@@ -525,7 +525,7 @@ fn log_view_coordinates(
     }
 
     let mut session = global_session();
-    let obj_path = parse_obj_path(obj_path)?;
+    let entity_path = parse_entity_path(entity_path)?;
     let time_point = time(timeless);
 
     // We currently log view coordinates from inside the bridge because the code
@@ -535,7 +535,7 @@ fn log_view_coordinates(
     // conversion errors.
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path,
+        entity_path,
         time_point,
         vec![vec![coordinates].try_into().unwrap()],
     );
@@ -563,13 +563,13 @@ enum TensorDataMeaning {
 
 #[pyfunction]
 fn log_mesh_file(
-    obj_path_str: &str,
+    entity_path_str: &str,
     mesh_format: &str,
     bytes: &[u8],
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path_str)?;
+    let entity_path = parse_entity_path(entity_path_str)?;
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
         "GLTF" => MeshFormat::Gltf,
@@ -627,7 +627,7 @@ fn log_mesh_file(
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path,
+        entity_path,
         time_point,
         vec![vec![mesh3d].try_into().unwrap()],
     );
@@ -644,12 +644,12 @@ fn log_mesh_file(
 /// If no `img_format` is specified, we will try and guess it.
 #[pyfunction]
 fn log_image_file(
-    obj_path: &str,
+    entity_path: &str,
     img_path: PathBuf,
     img_format: Option<&str>,
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
+    let entity_path = parse_entity_path(entity_path)?;
 
     let img_bytes = std::fs::read(img_path)?;
     let img_format = match img_format {
@@ -692,7 +692,7 @@ fn log_image_file(
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path,
+        entity_path,
         time_point,
         vec![vec![re_log_types::field_types::Tensor {
             tensor_id: TensorId::random(),
@@ -737,17 +737,17 @@ type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec
 
 #[pyfunction]
 fn log_annotation_context(
-    obj_path_str: &str,
+    entity_path_str: &str,
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
-    let obj_path = if obj_path_str == "/" {
+    let entity_path = if entity_path_str == "/" {
         EntityPath::root()
     } else {
-        parse_obj_path(obj_path_str)?
+        parse_entity_path(entity_path_str)?
     };
 
     let mut annotation_context = AnnotationContext::default();
@@ -779,7 +779,7 @@ fn log_annotation_context(
     // TODO(jleibs) replace with python-native implementation
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path,
+        entity_path,
         time_point,
         vec![vec![annotation_context.clone()].try_into().unwrap()],
     );
@@ -792,25 +792,25 @@ fn log_annotation_context(
 }
 
 #[pyfunction]
-fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
+fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
+    let entity_path = parse_entity_path(entity_path)?;
     let mut session = global_session();
 
     let time_point = time(false);
 
-    session.send_path_op(&time_point, PathOp::clear(recursive, obj_path));
+    session.send_path_op(&time_point, PathOp::clear(recursive, entity_path));
 
     Ok(())
 }
 
 #[pyfunction]
-fn log_arrow_msg(obj_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
+fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
+    let entity_path = parse_entity_path(entity_path)?;
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
-    let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(timeless))?;
+    let msg = crate::arrow::build_chunk_from_components(&entity_path, components, &time(timeless))?;
 
     let mut session = global_session();
     session.send(msg);

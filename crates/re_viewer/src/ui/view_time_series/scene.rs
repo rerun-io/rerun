@@ -78,8 +78,8 @@ impl SceneTimeSeries {
 
         let store = &ctx.log_db.obj_db.arrow_store;
 
-        for obj_path in query.obj_paths {
-            let ent_path = obj_path;
+        for entity_path in query.entity_paths {
+            let ent_path = entity_path;
 
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
@@ -149,7 +149,7 @@ impl SceneTimeSeries {
                 (label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label))
                     .then(|| label.cloned().unwrap())
             };
-            let line_label = same_label(&points).unwrap_or_else(|| obj_path.to_string());
+            let line_label = same_label(&points).unwrap_or_else(|| entity_path.to_string());
 
             self.add_line_segments(&line_label, points);
         }

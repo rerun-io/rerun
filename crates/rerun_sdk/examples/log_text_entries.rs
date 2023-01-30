@@ -147,7 +147,7 @@ impl From<LogLevel> for String {
 /// TODO(cmc): Make this fancier and move into the SDK
 fn log_text_entries(
     session: &mut Session,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     text_entries: Option<Vec<TextEntry>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {
@@ -159,7 +159,7 @@ fn log_text_entries(
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         time_point,
         [
             text_entries.map(|te| te.try_into().unwrap()),

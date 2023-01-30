@@ -29,17 +29,17 @@ use super::ScenePart;
 fn determine_view_coordinates(
     obj_db: &re_data_store::log_db::ObjDb,
     time_ctrl: &crate::misc::TimeControl,
-    mut obj_path: EntityPath,
+    mut entity_path: EntityPath,
 ) -> ViewCoordinates {
     loop {
         if let Some(view_coordinates) =
-            query_view_coordinates(obj_db, &obj_path, &time_ctrl.current_query())
+            query_view_coordinates(obj_db, &entity_path, &time_ctrl.current_query())
         {
             return view_coordinates;
         }
 
-        if let Some(parent) = obj_path.parent() {
-            obj_path = parent;
+        if let Some(parent) = entity_path.parent() {
+            entity_path = parent;
         } else {
             // Keep in mind, there is no universal convention for any of this!
             // https://twitter.com/freyaholmer/status/1325556229410861056
@@ -57,7 +57,7 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        obj_path: &EntityPath,
+        entity_path: &EntityPath,
         props: &ObjectProps,
         transforms: &TransformCache,
         instance_hash: InstanceIdHash,
@@ -71,7 +71,7 @@ impl CamerasPart {
         //
         // Note that currently a transform on an object can't have both a pinhole AND a rigid transform,
         // which makes this rather well defined here.
-        let parent_path = obj_path
+        let parent_path = entity_path
             .parent()
             .expect("root path can't be part of scene query");
         let Some(world_from_parent) = transforms.reference_from_obj(&parent_path) else {
@@ -91,7 +91,7 @@ impl CamerasPart {
         //                  https://github.com/rerun-io/rerun/issues/681 (Improve camera frustum length heuristic & editability)
         //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
-            obj_path: obj_path.clone(),
+            entity_path: entity_path.clone(),
             instance: instance_hash,
             view_coordinates,
             world_from_camera,

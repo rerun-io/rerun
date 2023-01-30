@@ -10,7 +10,7 @@ use crate::log_db::ObjDb;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct InstanceId {
-    pub obj_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// If this is a concrete instance, what instance index are we?
     pub instance_index: Option<Index>,
@@ -18,9 +18,9 @@ pub struct InstanceId {
 
 impl InstanceId {
     #[inline]
-    pub fn new(obj_path: EntityPath, instance_index: Option<Index>) -> Self {
+    pub fn new(entity_path: EntityPath, instance_index: Option<Index>) -> Self {
         Self {
-            obj_path,
+            entity_path,
             instance_index,
         }
     }
@@ -28,7 +28,7 @@ impl InstanceId {
     #[inline]
     pub fn hash(&self) -> InstanceIdHash {
         InstanceIdHash {
-            obj_path_hash: self.obj_path.hash(),
+            entity_path_hash: self.entity_path.hash(),
             instance_index_hash: self.instance_index_hash(),
             arrow_instance: {
                 if let Some(Index::ArrowInstance(key)) = &self.instance_index {
@@ -42,8 +42,8 @@ impl InstanceId {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance(&self, obj_path: &EntityPath, instance_index: IndexHash) -> bool {
-        &self.obj_path == obj_path
+    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: IndexHash) -> bool {
+        &self.entity_path == entity_path
             && if let Some(index) = &self.instance_index {
                 index.hash() == instance_index
             } else {
@@ -61,9 +61,9 @@ impl InstanceId {
 impl std::fmt::Display for InstanceId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(instance_index) = &self.instance_index {
-            format!("{}[{}]", self.obj_path, instance_index).fmt(f)
+            format!("{}[{}]", self.entity_path, instance_index).fmt(f)
         } else {
-            self.obj_path.fmt(f)
+            self.entity_path.fmt(f)
         }
     }
 }
@@ -73,7 +73,7 @@ impl std::fmt::Display for InstanceId {
 /// Hashes of the components of an [`InstanceId`].
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct InstanceIdHash {
-    pub obj_path_hash: EntityPathHash,
+    pub entity_path_hash: EntityPathHash,
 
     /// If this is a multi-object, what instance index are we?
     /// [`IndexHash::NONE`] if we aren't a multi-object.
@@ -87,7 +87,7 @@ pub struct InstanceIdHash {
 impl std::hash::Hash for InstanceIdHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.obj_path_hash.hash64());
+        state.write_u64(self.entity_path_hash.hash64());
         state.write_u64(self.instance_index_hash.hash64());
     }
 }
@@ -95,31 +95,34 @@ impl std::hash::Hash for InstanceIdHash {
 impl std::cmp::PartialEq for InstanceIdHash {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.obj_path_hash == other.obj_path_hash
+        self.entity_path_hash == other.entity_path_hash
             && self.instance_index_hash == other.instance_index_hash
     }
 }
 
 impl InstanceIdHash {
     pub const NONE: Self = Self {
-        obj_path_hash: EntityPathHash::NONE,
+        entity_path_hash: EntityPathHash::NONE,
         instance_index_hash: IndexHash::NONE,
         arrow_instance: None,
     };
 
     #[inline]
-    pub fn from_path_and_index(obj_path: &EntityPath, instance_index: IndexHash) -> Self {
+    pub fn from_path_and_index(entity_path: &EntityPath, instance_index: IndexHash) -> Self {
         Self {
-            obj_path_hash: obj_path.hash(),
+            entity_path_hash: entity_path.hash(),
             instance_index_hash: instance_index,
             arrow_instance: None,
         }
     }
 
     #[inline]
-    pub fn from_path_and_arrow_instance(obj_path: &EntityPath, arrow_instance: &Instance) -> Self {
+    pub fn from_path_and_arrow_instance(
+        entity_path: &EntityPath,
+        arrow_instance: &Instance,
+    ) -> Self {
         Self {
-            obj_path_hash: obj_path.hash(),
+            entity_path_hash: entity_path.hash(),
             instance_index_hash: Index::ArrowInstance(*arrow_instance).hash(),
             arrow_instance: Some(*arrow_instance),
         }
@@ -127,12 +130,12 @@ impl InstanceIdHash {
 
     #[inline]
     pub fn is_some(&self) -> bool {
-        self.obj_path_hash.is_some()
+        self.entity_path_hash.is_some()
     }
 
     #[inline]
     pub fn is_none(&self) -> bool {
-        self.obj_path_hash.is_none()
+        self.entity_path_hash.is_none()
     }
 
     pub fn resolve(&self, obj_db: &ObjDb) -> Option<InstanceId> {
@@ -142,7 +145,9 @@ impl InstanceIdHash {
                 None
             }
             Some(arrow_instance) => Some(InstanceId {
-                obj_path: obj_db.obj_path_from_hash(&self.obj_path_hash).cloned()?,
+                entity_path: obj_db
+                    .entity_path_from_hash(&self.entity_path_hash)
+                    .cloned()?,
                 instance_index: Some(Index::ArrowInstance(arrow_instance)),
             }),
         }
@@ -150,8 +155,8 @@ impl InstanceIdHash {
 
     /// Does this object match this instance id?
     #[inline]
-    pub fn is_instance(&self, obj_path: &EntityPath, instance_index: IndexHash) -> bool {
-        self.obj_path_hash == obj_path.hash() && self.instance_index_hash == instance_index
+    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: IndexHash) -> bool {
+        self.entity_path_hash == entity_path.hash() && self.instance_index_hash == instance_index
     }
 }
 

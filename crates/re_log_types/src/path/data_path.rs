@@ -7,7 +7,7 @@ use crate::{path::EntityPath, ComponentName};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DataPath {
     /// `camera / "left" / points / #42`
-    pub obj_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// "color"
     pub component_name: ComponentName,
@@ -15,16 +15,16 @@ pub struct DataPath {
 
 impl DataPath {
     #[inline]
-    pub fn new(obj_path: EntityPath, component_name: ComponentName) -> Self {
+    pub fn new(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
-            obj_path,
+            entity_path,
             component_name,
         }
     }
 
     #[inline]
-    pub fn obj_path(&self) -> &EntityPath {
-        &self.obj_path
+    pub fn entity_path(&self) -> &EntityPath {
+        &self.entity_path
     }
 
     #[inline]
@@ -36,7 +36,7 @@ impl DataPath {
 impl std::fmt::Display for DataPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::fmt::Write as _;
-        self.obj_path.fmt(f)?;
+        self.entity_path.fmt(f)?;
         f.write_char('.')?;
         self.component_name.fmt(f)
     }

@@ -10,7 +10,7 @@ pub struct SpaceCamera3D {
     /// Path to the object which has the projection (pinhole, ortho or otherwise) transforms.
     ///
     /// We expect the camera transform to apply to this object and every path below it.
-    pub obj_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// The instance id hash of the object that has the projection.
     pub instance: InstanceIdHash,
@@ -46,7 +46,7 @@ impl SpaceCamera3D {
         match from_rub_quat(self.view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
-                re_log::warn_once!("Camera {:?}: {}", self.obj_path, err);
+                re_log::warn_once!("Camera {:?}: {}", self.entity_path, err);
                 None
             }
         }

@@ -182,27 +182,27 @@ impl TransformCache {
     /// Retrieves the transform of on object from its local system to the space of the reference.
     ///
     /// Returns None if the path is not reachable.
-    pub fn reference_from_obj(&self, obj_path: &EntityPath) -> Option<macaw::Mat4> {
-        self.reference_from_obj_per_object.get(obj_path).cloned()
+    pub fn reference_from_obj(&self, entity_path: &EntityPath) -> Option<macaw::Mat4> {
+        self.reference_from_obj_per_object.get(entity_path).cloned()
     }
 
     // This method isn't currently implemented, but we might need it in the future.
     // All the necessary data on why a subtree isn't reachable is already stored.
     //
     // Returns why (if actually) a path isn't reachable.
-    // pub fn unreachable_reason(&self, _obj_path: &EntityPath) -> Option<UnreachableTransformReason> {
+    // pub fn unreachable_reason(&self, _entity_path: &EntityPath) -> Option<UnreachableTransformReason> {
     //     None
     // }
 }
 
 fn transform_at(
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     obj_db: &ObjDb,
     obj_properties: &ObjectsProperties,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(transform) = query_transform(obj_db, obj_path, query) {
+    if let Some(transform) = query_transform(obj_db, entity_path, query) {
         match transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().to_mat4())),
             // If we're connected via 'unknown' it's not reachable
@@ -219,7 +219,7 @@ fn transform_at(
                     // Center it and move it along z, scaling the further we move.
 
                     let distance = obj_properties
-                        .get(obj_path)
+                        .get(entity_path)
                         .pinhole_image_plane_distance(&pinhole);
 
                     let focal_length = pinhole.focal_length_in_pixels();
@@ -244,12 +244,12 @@ fn transform_at(
 }
 
 fn inverse_transform_at(
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     obj_db: &ObjDb,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(parent_transform) = query_transform(obj_db, obj_path, query) {
+    if let Some(parent_transform) = query_transform(obj_db, entity_path, query) {
         match parent_transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.child_from_parent().to_mat4())),
             // If we're connected via 'unknown', everything except whats under `parent_tree` is unreachable

@@ -104,13 +104,13 @@ impl DataUi for ArrowMsg {
         match self.try_into() {
             Ok(MsgBundle {
                 msg_id: _,
-                obj_path,
+                entity_path,
                 time_point,
                 components,
             }) => {
                 egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-                    ui.monospace("obj_path:");
-                    ctx.obj_path_button(ui, None, &obj_path);
+                    ui.monospace("entity_path:");
+                    ctx.entity_path_button(ui, None, &entity_path);
                     ui.end_row();
 
                     ui.monospace("time_point:");

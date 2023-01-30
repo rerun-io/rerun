@@ -86,7 +86,7 @@ pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
 /// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
 /// component arrays.
 pub fn build_chunk_from_components(
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     components: &PyDict,
     time_point: &TimePoint,
 ) -> PyResult<LogMsg> {
@@ -109,7 +109,7 @@ pub fn build_chunk_from_components(
 
     let msg_bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         time_point.clone(),
         cmp_bundles,
     );

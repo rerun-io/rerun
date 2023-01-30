@@ -109,7 +109,7 @@ fn main() -> std::process::ExitCode {
 /// TODO(jleibs): Make this fancier and move into the SDK
 fn log_rects(
     session: &mut Session,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     rects: Option<Vec<Rect2D>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {
@@ -118,7 +118,7 @@ fn log_rects(
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         time_point,
         [
             rects.map(|rects| rects.try_into().unwrap()),

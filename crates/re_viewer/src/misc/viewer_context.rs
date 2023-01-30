@@ -49,32 +49,32 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Show an obj path and make it selectable.
-    pub fn obj_path_button(
+    pub fn entity_path_button(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        obj_path: &EntityPath,
+        entity_path: &EntityPath,
     ) -> egui::Response {
         self.instance_id_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(obj_path.clone(), None),
-            obj_path.to_string(),
+            &InstanceId::new(entity_path.clone(), None),
+            entity_path.to_string(),
         )
     }
 
     /// Show an obj path and make it selectable.
-    pub fn obj_path_button_to(
+    pub fn entity_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        obj_path: &EntityPath,
+        entity_path: &EntityPath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
         self.instance_id_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(obj_path.clone(), None),
+            &InstanceId::new(entity_path.clone(), None),
             text,
         )
     }
@@ -169,16 +169,18 @@ impl<'a> ViewerContext<'a> {
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
-        obj_path: &EntityPath,
+        entity_path: &EntityPath,
     ) -> egui::Response {
-        let selection =
-            Selection::Instance(Some(space_view_id), InstanceId::new(obj_path.clone(), None));
+        let selection = Selection::Instance(
+            Some(space_view_id),
+            InstanceId::new(entity_path.clone(), None),
+        );
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
-                ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
+                ui.label(format!("Path: {entity_path}"));
+                entity_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
             });
         self.cursor_interact_with_selectable(response, selection)
     }

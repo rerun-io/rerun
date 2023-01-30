@@ -178,8 +178,8 @@ impl SpaceInfoCollection {
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
-        for (obj_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinates = query_view_coordinates(obj_db, obj_path, &query);
+        for (entity_path, space_info) in &mut spaces_info.spaces {
+            space_info.coordinates = query_view_coordinates(obj_db, entity_path, &query);
         }
 
         spaces_info

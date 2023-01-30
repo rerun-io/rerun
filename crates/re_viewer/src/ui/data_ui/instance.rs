@@ -21,7 +21,7 @@ impl DataUi for EntityPath {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         InstanceId {
-            obj_path: self.clone(),
+            entity_path: self.clone(),
             instance_index: None,
         }
         .data_ui(ctx, ui, verbosity, query);
@@ -38,7 +38,7 @@ impl DataUi for InstanceId {
     ) {
         let store = &ctx.log_db.obj_db.arrow_store;
 
-        let Some(mut components) = store.all_components(&query.timeline, &self.obj_path) else {
+        let Some(mut components) = store.all_components(&query.timeline, &self.entity_path) else {
             ui.label("No Components");
             return ;
         };
@@ -48,8 +48,12 @@ impl DataUi for InstanceId {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in components {
-                    let component_data =
-                        get_component_with_instances(store, query, &self.obj_path, component_name);
+                    let component_data = get_component_with_instances(
+                        store,
+                        query,
+                        &self.entity_path,
+                        component_name,
+                    );
 
                     if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
                         continue; // no need to show components that are unset
@@ -58,7 +62,7 @@ impl DataUi for InstanceId {
                     ctx.data_path_button_to(
                         ui,
                         format_component_name(&component_name),
-                        &DataPath::new(self.obj_path.clone(), component_name),
+                        &DataPath::new(self.entity_path.clone(), component_name),
                     );
 
                     match (component_data, &self.instance_index) {

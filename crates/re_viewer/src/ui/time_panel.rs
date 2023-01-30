@@ -372,7 +372,9 @@ impl TimePanel {
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
+            .show_header(ui, |ui| {
+                ctx.entity_path_button_to(ui, None, &tree.path, text)
+            })
             .body(|ui| {
                 self.show_children(
                     ctx,
@@ -429,7 +431,7 @@ impl TimePanel {
                 Selection::Instance(
                     None,
                     InstanceId {
-                        obj_path: tree.path.clone(),
+                        entity_path: tree.path.clone(),
                         instance_index: None,
                     },
                 ),

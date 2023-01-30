@@ -177,12 +177,12 @@ impl DataBlueprintTree {
                 parent_properties.with_child(&group.properties_individual);
             group.properties_projected = group_properties_projected.clone();
 
-            for obj_path in &group.objects {
+            for entity_path in &group.objects {
                 let projected_properties = group_properties_projected
-                    .with_child(&tree.data_blueprints.individual.get(obj_path));
+                    .with_child(&tree.data_blueprints.individual.get(entity_path));
                 tree.data_blueprints
                     .projected
-                    .set(obj_path.clone(), projected_properties);
+                    .set(entity_path.clone(), projected_properties);
             }
 
             let children = group.children.clone(); // TODO(andreas): How to avoid this clone?

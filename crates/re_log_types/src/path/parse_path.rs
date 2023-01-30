@@ -25,7 +25,7 @@ pub enum PathParseError {
 }
 
 /// Parses an object path, e.g. `foo/bar/#1234/5678/"string index"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d`
-pub fn parse_obj_path(path: &str) -> Result<Vec<EntityPathComponent>, PathParseError> {
+pub fn parse_entity_path(path: &str) -> Result<Vec<EntityPathComponent>, PathParseError> {
     if path.is_empty() {
         return Err(PathParseError::EmptyString);
     }
@@ -146,17 +146,23 @@ fn test_unescape_string() {
 
 #[test]
 fn test_parse_path() {
-    use crate::obj_path_vec;
+    use crate::entity_path_vec;
 
-    assert_eq!(parse_obj_path(""), Err(PathParseError::EmptyString));
-    assert_eq!(parse_obj_path("/"), Ok(obj_path_vec!()));
-    assert_eq!(parse_obj_path("foo"), Ok(obj_path_vec!("foo")));
-    assert_eq!(parse_obj_path("/foo"), Err(PathParseError::LeadingSlash));
-    assert_eq!(parse_obj_path("foo/bar"), Ok(obj_path_vec!("foo", "bar")));
-    assert_eq!(parse_obj_path("foo//bar"), Err(PathParseError::DoubleSlash));
+    assert_eq!(parse_entity_path(""), Err(PathParseError::EmptyString));
+    assert_eq!(parse_entity_path("/"), Ok(entity_path_vec!()));
+    assert_eq!(parse_entity_path("foo"), Ok(entity_path_vec!("foo")));
+    assert_eq!(parse_entity_path("/foo"), Err(PathParseError::LeadingSlash));
     assert_eq!(
-        parse_obj_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
-        Ok(obj_path_vec!(
+        parse_entity_path("foo/bar"),
+        Ok(entity_path_vec!("foo", "bar"))
+    );
+    assert_eq!(
+        parse_entity_path("foo//bar"),
+        Err(PathParseError::DoubleSlash)
+    );
+    assert_eq!(
+        parse_entity_path(r#"foo/"bar"/#123/-1234/6d046bf4-e5d3-4599-9153-85dd97218cb3"#),
+        Ok(entity_path_vec!(
             "foo",
             Index::String("bar".into()),
             Index::Sequence(123),
@@ -165,7 +171,7 @@ fn test_parse_path() {
         ))
     );
     assert_eq!(
-        parse_obj_path(r#"foo/"bar""baz""#),
+        parse_entity_path(r#"foo/"bar""baz""#),
         Err(PathParseError::MissingSlash)
     );
 }

@@ -127,13 +127,13 @@ pub struct SceneSpatial {
 }
 
 fn instance_hash_if_interactive(
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
     instance_index: Option<&IndexHash>,
     interactive: bool,
 ) -> InstanceIdHash {
     if interactive {
         InstanceIdHash::from_path_and_index(
-            obj_path,
+            entity_path,
             instance_index.copied().unwrap_or(IndexHash::NONE),
         )
     } else {
@@ -249,13 +249,13 @@ impl SceneSpatial {
 
     fn load_keypoint_connections(
         &mut self,
-        obj_path: &re_data_store::EntityPath,
+        entity_path: &re_data_store::EntityPath,
         keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_hash = instance_hash_if_interactive(obj_path, None, interactive);
+        let instance_hash = instance_hash_if_interactive(entity_path, None, interactive);
 
         let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
 
@@ -273,7 +273,7 @@ impl SceneSpatial {
                 let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                     re_log::warn_once!(
                         "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                        a, b, obj_path
+                        a, b, entity_path
                     );
                     continue;
                 };
@@ -292,7 +292,7 @@ impl SceneSpatial {
         if self
             .space_cameras
             .iter()
-            .any(|camera| &camera.obj_path != space_info_path)
+            .any(|camera| &camera.entity_path != space_info_path)
         {
             return SpatialNavigationMode::ThreeD;
         }

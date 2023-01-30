@@ -72,7 +72,7 @@ impl DataStore {
 
         let MsgBundle {
             msg_id,
-            obj_path: ent_path,
+            entity_path: ent_path,
             time_point,
             components,
         } = bundle;

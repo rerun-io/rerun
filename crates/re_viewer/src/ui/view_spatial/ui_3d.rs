@@ -603,7 +603,7 @@ fn show_projections_from_2d_space(
             .batch("projection from 2d hit points");
 
         for cam in &scene.space_cameras {
-            if &cam.obj_path == space_2d {
+            if &cam.entity_path == space_2d {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
@@ -654,7 +654,7 @@ fn project_onto_other_spaces(
         let point_in_2d = state
             .hovered_point
             .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
-        target_spaces.push((cam.obj_path.clone(), point_in_2d));
+        target_spaces.push((cam.entity_path.clone(), point_in_2d));
     }
     ctx.selection_state_mut()
         .set_hovered_space(HoveredSpace::ThreeD {

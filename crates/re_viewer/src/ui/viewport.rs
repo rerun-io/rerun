@@ -420,10 +420,10 @@ impl Viewport {
         let mut space_views = Vec::new();
 
         for space_info in spaces_info.iter() {
-            for (category, obj_paths) in
+            for (category, entity_paths) in
                 SpaceView::default_queried_objects_by_category(ctx, spaces_info, space_info)
             {
-                space_views.push(SpaceView::new(category, space_info, &obj_paths));
+                space_views.push(SpaceView::new(category, space_info, &entity_paths));
             }
         }
 
@@ -467,17 +467,17 @@ impl Viewport {
                 let images = space_info
                     .descendants_without_transform
                     .iter()
-                    .filter_map(|obj_path| {
+                    .filter_map(|entity_path| {
                         if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
                             &ctx.log_db.obj_db.arrow_store,
                             &timeline_query,
-                            obj_path,
+                            entity_path,
                             &[],
                         ) {
                             if let Ok(iter) = entity_view.iter_primary() {
                                 for tensor in iter.flatten() {
                                     if tensor.is_shaped_like_an_image() {
-                                        return Some((obj_path.clone(), tensor.shape));
+                                        return Some((entity_path.clone(), tensor.shape));
                                     }
                                 }
                             }
@@ -492,7 +492,7 @@ impl Viewport {
                     // Let's create one space view for each image, where the other images are disabled:
 
                     let mut image_sizes = BTreeSet::default();
-                    for (obj_path, shape) in &images {
+                    for (entity_path, shape) in &images {
                         debug_assert!(matches!(shape.len(), 2 | 3));
                         let image_size = (shape[0].size, shape[1].size);
                         image_sizes.insert(image_size);
@@ -500,11 +500,11 @@ impl Viewport {
                         // Space view with everything but the other images.
                         // (note that other objects stay!)
                         let mut single_image_space_view = space_view_candidate.clone();
-                        for (other_obj_path, _) in &images {
-                            if other_obj_path != obj_path {
+                        for (other_entity_path, _) in &images {
+                            if other_entity_path != entity_path {
                                 single_image_space_view
                                     .data_blueprint
-                                    .remove_object(other_obj_path);
+                                    .remove_object(other_entity_path);
                             }
                         }
                         single_image_space_view.allow_auto_adding_more_object = false;
@@ -557,7 +557,7 @@ impl Viewport {
         .on_hover_text("Add new space view.");
     }
 
-    pub fn space_views_containing_obj_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
+    pub fn space_views_containing_entity_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {

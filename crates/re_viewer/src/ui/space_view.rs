@@ -8,7 +8,7 @@ use crate::{
         space_info::{SpaceInfo, SpaceInfoCollection},
         SpaceViewHighlights, TransformCache, UnreachableTransform, ViewerContext,
     },
-    ui::view_category::categorize_obj_path,
+    ui::view_category::categorize_entity_path,
 };
 
 use super::{
@@ -118,8 +118,8 @@ impl SpaceView {
                 space_info
                     .descendants_without_transform
                     .iter()
-                    .filter(|obj_path| {
-                        categorize_obj_path(timeline, log_db, obj_path).contains(category)
+                    .filter(|entity_path| {
+                        categorize_entity_path(timeline, log_db, entity_path).contains(category)
                     })
                     .cloned(),
             );
@@ -142,9 +142,12 @@ impl SpaceView {
         let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
 
         space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            for obj_path in &space_info.descendants_without_transform {
-                for category in categorize_obj_path(timeline, log_db, obj_path) {
-                    groups.entry(category).or_default().push(obj_path.clone());
+            for entity_path in &space_info.descendants_without_transform {
+                for category in categorize_entity_path(timeline, log_db, entity_path) {
+                    groups
+                        .entry(category)
+                        .or_default()
+                        .push(entity_path.clone());
                 }
             }
         });
@@ -175,7 +178,7 @@ impl SpaceView {
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.label("Space path:");
         // specify no space view id since the path itself is not part of the space view.
-        ctx.obj_path_button(ui, None, &self.space_path);
+        ctx.entity_path_button(ui, None, &self.space_path);
         ui.end_row();
 
         ui.separator();
@@ -393,7 +396,7 @@ impl SpaceView {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
-            obj_paths: self.data_blueprint.object_paths(),
+            entity_paths: self.data_blueprint.object_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: self.data_blueprint.data_blueprints_projected(),
@@ -452,10 +455,10 @@ impl SpaceView {
 fn has_visualization_for_category(
     ctx: &ViewerContext<'_>,
     category: ViewCategory,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
 ) -> bool {
     let log_db = &ctx.log_db;
-    categorize_obj_path(Timeline::log_time(), log_db, obj_path).contains(category)
+    categorize_entity_path(Timeline::log_time(), log_db, entity_path).contains(category)
 }
 
 // ----------------------------------------------------------------------------

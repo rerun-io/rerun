@@ -74,13 +74,13 @@ fn main() -> std::process::ExitCode {
 
 /// Log a collection of rects and/or colors
 /// TODO(jleibs): Make this fancier and move into the SDK
-fn log_tensors(session: &mut Session, obj_path: &EntityPath, tensors: Option<Vec<Tensor>>) {
+fn log_tensors(session: &mut Session, entity_path: &EntityPath, tensors: Option<Vec<Tensor>>) {
     // Capture the log_time and object_path
     let time_point = rerun::log_time();
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         time_point,
         tensors
             .map(|tensors| vec![tensors.try_into().unwrap()])

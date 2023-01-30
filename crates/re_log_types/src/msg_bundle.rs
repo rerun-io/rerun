@@ -66,7 +66,7 @@ pub enum MsgBundleError {
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
 use crate::{
-    parse_obj_path, ArrowMsg, ComponentName, EntityPath, MsgId, PathParseError, TimePoint,
+    parse_entity_path, ArrowMsg, ComponentName, EntityPath, MsgId, PathParseError, TimePoint,
 };
 
 //TODO(john) get rid of this eventually
@@ -207,7 +207,7 @@ where
 pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
-    pub obj_path: EntityPath,
+    pub entity_path: EntityPath,
     pub time_point: TimePoint,
     pub components: Vec<ComponentBundle>,
 }
@@ -219,13 +219,13 @@ impl MsgBundle {
     /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
-        obj_path: EntityPath,
+        entity_path: EntityPath,
         time_point: TimePoint,
         components: Vec<ComponentBundle>,
     ) -> Self {
         let mut this = Self {
             msg_id,
-            obj_path,
+            entity_path,
             time_point,
             components,
         };
@@ -317,7 +317,7 @@ impl std::fmt::Display for MsgBundle {
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
             "MsgBundle '{}' @ {:?}:\n{table}",
-            self.obj_path, self.time_point
+            self.entity_path, self.time_point
         ))
     }
 }
@@ -365,12 +365,12 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             chunk,
         } = msg;
 
-        let obj_path_cmp = schema
+        let entity_path_cmp = schema
             .metadata
             .get(ENTITY_PATH_KEY)
             .ok_or(MsgBundleError::MissingEntityPath)
             .and_then(|path| {
-                parse_obj_path(path.as_str()).map_err(MsgBundleError::PathParseError)
+                parse_entity_path(path.as_str()).map_err(MsgBundleError::PathParseError)
             })?;
 
         let time_point = extract_timelines(schema, chunk)?;
@@ -378,7 +378,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
 
         Ok(Self {
             msg_id: *msg_id,
-            obj_path: obj_path_cmp.into(),
+            entity_path: entity_path_cmp.into(),
             time_point,
             components,
         })
@@ -394,7 +394,8 @@ impl TryFrom<MsgBundle> for ArrowMsg {
         let mut schema = Schema::default();
         let mut cols: Vec<Box<dyn Array>> = Vec::new();
 
-        schema.metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), bundle.obj_path.to_string())]);
+        schema.metadata =
+            BTreeMap::from([(ENTITY_PATH_KEY.into(), bundle.entity_path.to_string())]);
 
         // Build & pack timelines
         let timelines_field = Field::new(COL_TIMELINES, TimePoint::data_type(), false);
@@ -491,7 +492,7 @@ pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
 /// Helper to build a `MessageBundle` from 1 component
 pub fn try_build_msg_bundle1<O, T, C0>(
     msg_id: MsgId,
-    into_obj_path: O,
+    into_entity_path: O,
     into_time_point: T,
     into_bundles: C0,
 ) -> Result<MsgBundle>
@@ -503,7 +504,7 @@ where
 {
     Ok(MsgBundle::new(
         msg_id,
-        into_obj_path.into(),
+        into_entity_path.into(),
         into_time_point.into(),
         vec![into_bundles.try_into()?],
     ))
@@ -512,7 +513,7 @@ where
 /// Helper to build a `MessageBundle` from 2 components
 pub fn try_build_msg_bundle2<O, T, C0, C1>(
     msg_id: MsgId,
-    into_obj_path: O,
+    into_entity_path: O,
     into_time_point: T,
     into_bundles: (C0, C1),
 ) -> Result<MsgBundle>
@@ -526,7 +527,7 @@ where
 {
     Ok(MsgBundle::new(
         msg_id,
-        into_obj_path.into(),
+        into_entity_path.into(),
         into_time_point.into(),
         vec![into_bundles.0.try_into()?, into_bundles.1.try_into()?],
     ))
@@ -535,7 +536,7 @@ where
 /// Helper to build a `MessageBundle` from 3 components
 pub fn try_build_msg_bundle3<O, T, C0, C1, C2>(
     msg_id: MsgId,
-    into_obj_path: O,
+    into_entity_path: O,
     into_time_point: T,
     into_bundles: (C0, C1, C2),
 ) -> Result<MsgBundle>
@@ -551,7 +552,7 @@ where
 {
     Ok(MsgBundle::new(
         msg_id,
-        into_obj_path.into(),
+        into_entity_path.into(),
         into_time_point.into(),
         vec![
             into_bundles.0.try_into()?,

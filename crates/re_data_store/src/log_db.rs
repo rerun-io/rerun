@@ -16,7 +16,7 @@ use crate::{Error, TimesPerTimeline};
 /// Stored objects and their types, with easy indexing of the paths.
 pub struct ObjDb {
     /// In many places we just store the hashes, so we need a way to translate back.
-    pub obj_path_from_hash: IntMap<EntityPathHash, EntityPath>,
+    pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
     /// Used for time control
     pub times_per_timeline: TimesPerTimeline,
@@ -31,7 +31,7 @@ pub struct ObjDb {
 impl Default for ObjDb {
     fn default() -> Self {
         Self {
-            obj_path_from_hash: Default::default(),
+            entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::ObjectTree::root(),
             arrow_store: re_arrow_store::DataStore::new(
@@ -48,14 +48,14 @@ impl Default for ObjDb {
 
 impl ObjDb {
     #[inline]
-    pub fn obj_path_from_hash(&self, obj_path_hash: &EntityPathHash) -> Option<&EntityPath> {
-        self.obj_path_from_hash.get(obj_path_hash)
+    pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
+        self.entity_path_from_hash.get(entity_path_hash)
     }
 
-    fn register_obj_path(&mut self, obj_path: &EntityPath) {
-        self.obj_path_from_hash
-            .entry(obj_path.hash())
-            .or_insert_with(|| obj_path.clone());
+    fn register_entity_path(&mut self, entity_path: &EntityPath) {
+        self.entity_path_from_hash
+            .entry(entity_path.hash())
+            .or_insert_with(|| entity_path.clone());
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
@@ -65,10 +65,10 @@ impl ObjDb {
             self.times_per_timeline.insert(timeline, time_int);
         }
 
-        self.register_obj_path(&msg_bundle.obj_path);
+        self.register_entity_path(&msg_bundle.entity_path);
 
         for component in &msg_bundle.components {
-            let data_path = DataPath::new(msg_bundle.obj_path.clone(), component.name);
+            let data_path = DataPath::new(msg_bundle.entity_path.clone(), component.name);
             if component.name == MsgId::name() {
                 continue;
             }
@@ -81,7 +81,7 @@ impl ObjDb {
                     ComponentBundle::new_empty(component.name, component.data_type().clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
-                    msg_bundle.obj_path.clone(),
+                    msg_bundle.entity_path.clone(),
                     time_point.clone(),
                     vec![bundle],
                 );
@@ -106,7 +106,7 @@ impl ObjDb {
                     ComponentBundle::new_empty(data_path.component_name, data_type.clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
-                    data_path.obj_path.clone(),
+                    data_path.entity_path.clone(),
                     time_point.clone(),
                     vec![bundle],
                 );
@@ -125,7 +125,7 @@ impl ObjDb {
         crate::profile_function!();
 
         let Self {
-            obj_path_from_hash: _,
+            entity_path_from_hash: _,
             times_per_timeline,
             tree,
             arrow_store: _, // purged before this function is called

@@ -143,9 +143,9 @@ pub struct SpaceViewHighlights {
 impl SpaceViewHighlights {
     pub fn object_highlight(
         &self,
-        obj_path_hash: EntityPathHash,
+        entity_path_hash: EntityPathHash,
     ) -> OptionalSpaceViewObjectHighlight<'_> {
-        OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&obj_path_hash))
+        OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&entity_path_hash))
     }
 }
 
@@ -292,7 +292,7 @@ impl SelectionState {
                             a.is_none() || b.is_none() || a == b
                         }
 
-                        current_instance_id.obj_path == test_instance_id.obj_path
+                        current_instance_id.entity_path == test_instance_id.entity_path
                             && either_none_or_same(
                                 &current_instance_id.instance_index,
                                 &test_instance_id.instance_index,
@@ -329,9 +329,9 @@ impl SelectionState {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             space_view.data_blueprint.visit_group_objects_recursively(
                                 *group_handle,
-                                &mut |obj_path: &EntityPath| {
+                                &mut |entity_path: &EntityPath| {
                                     highlighted_object_paths
-                                        .entry(obj_path.hash())
+                                        .entry(entity_path.hash())
                                         .or_default()
                                         .overall
                                         .selection = SelectionHighlight::SiblingSelection;
@@ -349,7 +349,7 @@ impl SelectionState {
                     };
 
                     let highlighted_object = highlighted_object_paths
-                        .entry(selected_instance.obj_path.hash())
+                        .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target =
@@ -379,9 +379,9 @@ impl SelectionState {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             space_view.data_blueprint.visit_group_objects_recursively(
                                 *group_handle,
-                                &mut |obj_path: &EntityPath| {
+                                &mut |entity_path: &EntityPath| {
                                     highlighted_object_paths
-                                        .entry(obj_path.hash())
+                                        .entry(entity_path.hash())
                                         .or_default()
                                         .overall
                                         .hover = HoverHighlight::Hovered;
@@ -393,7 +393,7 @@ impl SelectionState {
 
                 Selection::Instance(_, selected_instance) => {
                     let highlighted_object = highlighted_object_paths
-                        .entry(selected_instance.obj_path.hash())
+                        .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target =

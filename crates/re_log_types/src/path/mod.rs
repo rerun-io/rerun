@@ -14,7 +14,7 @@ mod parse_path;
 pub use data_path::DataPath;
 pub use entity_path::{EntityPath, EntityPathHash};
 pub use entity_path_impl::EntityPathImpl;
-pub use parse_path::{parse_obj_path, PathParseError};
+pub use parse_path::{parse_entity_path, PathParseError};
 
 use re_string_interner::InternedString;
 
@@ -73,10 +73,10 @@ impl From<Index> for EntityPathComponent {
 /// Build a `Vec<EntityPathComponent>`:
 /// ```
 /// # use re_log_types::*;
-/// obj_path_vec!("foo", Index::Sequence(123));
+/// entity_path_vec!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
-macro_rules! obj_path_vec {
+macro_rules! entity_path_vec {
         () => {
             vec![]
         };
@@ -88,10 +88,10 @@ macro_rules! obj_path_vec {
 /// Build a `EntityPath`:
 /// ```
 /// # use re_log_types::*;
-/// obj_path!("foo", Index::Sequence(123));
+/// entity_path!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
-macro_rules! obj_path {
+macro_rules! entity_path {
         () => {
             vec![]
         };

@@ -510,7 +510,7 @@ fn create_labels(
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
         let hightlight = highlights
-            .object_highlight(label.labled_instance.obj_path_hash)
+            .object_highlight(label.labled_instance.entity_path_hash)
             .index_highlight(label.labled_instance.instance_index_hash);
         let fill_color = match hightlight.hover {
             crate::misc::HoverHighlight::None => match hightlight.selection {

@@ -162,7 +162,7 @@ fn table_row(
                 });
             }
             row.col(|ui| {
-                ctx.obj_path_button(ui, None, path_op.obj_path());
+                ctx.entity_path_button(ui, None, path_op.entity_path());
             });
             row.col(|ui| {
                 let timeline = *ctx.rec_cfg.time_ctrl.timeline();
@@ -176,7 +176,7 @@ fn table_row(
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
             Ok(MsgBundle {
                 msg_id,
-                obj_path,
+                entity_path,
                 time_point,
                 components,
             }) => {
@@ -194,7 +194,7 @@ fn table_row(
                     });
                 }
                 row.col(|ui| {
-                    ctx.obj_path_button(ui, None, &obj_path);
+                    ctx.entity_path_button(ui, None, &entity_path);
                 });
 
                 row.col(|ui| {

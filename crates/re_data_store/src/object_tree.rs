@@ -142,7 +142,8 @@ impl ObjectTree {
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
 
-        let leaf = self.create_subtrees_recursively(data_path.obj_path.as_slice(), 0, time_point);
+        let leaf =
+            self.create_subtrees_recursively(data_path.entity_path.as_slice(), 0, time_point);
 
         let mut pending_clears = vec![];
 
@@ -175,14 +176,14 @@ impl ObjectTree {
     ) -> Vec<DataPath> {
         crate::profile_function!();
 
-        let obj_path = path_op.obj_path();
+        let entity_path = path_op.entity_path();
 
         // Look up the leaf at which we will execute the path operation
-        let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, time_point);
+        let leaf = self.create_subtrees_recursively(entity_path.as_slice(), 0, time_point);
 
         // TODO(jleibs): Refactor this as separate functions
         match path_op {
-            PathOp::ClearComponents(obj_path) => {
+            PathOp::ClearComponents(entity_path) => {
                 // Track that any future fields need a Null at the right
                 // time-point when added.
                 leaf.nonrecursive_clears
@@ -193,7 +194,7 @@ impl ObjectTree {
                 leaf.components
                     .iter()
                     .map(|(component_name, _components)| {
-                        DataPath::new(obj_path.clone(), *component_name)
+                        DataPath::new(entity_path.clone(), *component_name)
                     })
                     .collect_vec()
             }

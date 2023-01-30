@@ -17,7 +17,7 @@ use super::ui::ViewTextFilters;
 pub struct TextEntry {
     // props
     pub msg_id: MsgId,
-    pub obj_path: EntityPath,
+    pub entity_path: EntityPath,
     /// `None` for timeless data.
     pub time: Option<i64>,
     pub color: Option<[u8; 4]>,
@@ -45,12 +45,12 @@ impl SceneText {
 
         let store = &ctx.log_db.obj_db.arrow_store;
 
-        for obj_path in query.obj_paths {
-            let ent_path = obj_path;
+        for entity_path in query.entity_paths {
+            let ent_path = entity_path;
 
             // Early filtering: if we're not showing it the view, there isn't much point
             // in querying it to begin with... at least for now.
-            if !filters.is_obj_path_visible(ent_path) {
+            if !filters.is_entity_path_visible(ent_path) {
                 return;
             }
 
@@ -85,7 +85,7 @@ impl SceneText {
                         if is_visible {
                             self.text_entries.push(TextEntry {
                                 msg_id: msg_id.unwrap(), // always present
-                                obj_path: obj_path.clone(),
+                                entity_path: entity_path.clone(),
                                 time: time.map(|time| time.as_i64()),
                                 color: color.map(|c| c.to_array()),
                                 level,

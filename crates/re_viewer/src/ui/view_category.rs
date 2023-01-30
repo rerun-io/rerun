@@ -50,20 +50,20 @@ pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 // TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered
 // all possible `ViewCategory` values, or you're in for a bad time..!
 
-pub fn categorize_obj_path(
+pub fn categorize_entity_path(
     timeline: Timeline,
     log_db: &LogDb,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 
-    let mut set = categorize_arrow_obj_path(&timeline, log_db, obj_path);
+    let mut set = categorize_arrow_entity_path(&timeline, log_db, entity_path);
 
     // If it has a transform we might want to visualize it in space
     // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
     if query_transform(
         &log_db.obj_db,
-        obj_path,
+        entity_path,
         &LatestAtQuery::new(timeline, TimeInt::MAX),
     )
     .is_some()
@@ -74,17 +74,17 @@ pub fn categorize_obj_path(
     set
 }
 
-pub fn categorize_arrow_obj_path(
+pub fn categorize_arrow_entity_path(
     timeline: &Timeline,
     log_db: &LogDb,
-    obj_path: &EntityPath,
+    entity_path: &EntityPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 
     log_db
         .obj_db
         .arrow_store
-        .all_components(timeline, obj_path)
+        .all_components(timeline, entity_path)
         .unwrap_or_default()
         .into_iter()
         .fold(ViewCategorySet::default(), |mut set, component| {
@@ -109,7 +109,7 @@ pub fn categorize_arrow_obj_path(
                 if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
                     &log_db.obj_db.arrow_store,
                     &timeline_query,
-                    obj_path,
+                    entity_path,
                     &[],
                 ) {
                     if let Ok(iter) = entity_view.iter_primary() {
