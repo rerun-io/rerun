@@ -30,7 +30,7 @@ pub use {
     app_options::*,
     selection::{MultiSelection, Selection},
     selection_state::{
-        HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
+        HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewEntityHighlight,
         SelectionHighlight, SelectionState, SpaceViewHighlights,
     },
 };

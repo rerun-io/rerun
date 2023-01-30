@@ -216,7 +216,7 @@ impl DataBlueprintTree {
             let group_handle = if let Some(group_handle) = self.path_to_group.get(path) {
                 *group_handle
             } else if path == base_path {
-                // Object might have directly been logged on the base_path. We map then to the root!
+                // An entity might have directly been logged on the base_path. We map then to the root!
                 self.root_group_handle
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.

@@ -8,7 +8,7 @@ use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{
@@ -34,7 +34,7 @@ impl Boxes2DPart {
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) {
         scene.num_logged_2d_objects += 1;
 

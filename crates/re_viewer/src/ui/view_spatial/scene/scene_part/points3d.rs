@@ -13,7 +13,7 @@ use re_renderer::Size;
 
 use crate::{
     misc::{
-        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        InteractionHighlight, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
         TransformCache, ViewerContext,
     },
     ui::{
@@ -139,7 +139,7 @@ impl Points3DPart {
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 

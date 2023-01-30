@@ -359,9 +359,7 @@ fn summarize_callstack(callstack: &str) -> String {
     let patterns = [
         ("LogDb", "LogDb"),
         ("ObjDb", "ObjDb"),
-        ("ObjectTree", "ObjectTree"),
-        ("TimelineStore", "TimelineStore"),
-        ("ObjStore", "ObjStore"),
+        ("EntityTree", "EntityTree"),
         ("::LogMsg>::deserialize", "LogMsg"),
         ("::TimePoint>::deserialize", "TimePoint"),
         ("gltf", "gltf"),

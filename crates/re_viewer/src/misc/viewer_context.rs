@@ -99,8 +99,8 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         let selection = Selection::Instance(space_view_id, instance_id.clone());
         let subtype_string = match instance_id.instance_index {
-            Some(_) => "Object Instance",
-            None => "Object",
+            Some(_) => "Entity Instance",
+            None => "Entity",
         };
 
         let response = ui
@@ -178,7 +178,7 @@ impl<'a> ViewerContext<'a> {
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
-                ui.strong("Space View Object");
+                ui.strong("Space View Entity");
                 ui.label(format!("Path: {entity_path}"));
                 entity_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
             });

@@ -92,19 +92,19 @@ impl InteractionHighlight {
     }
 }
 
-/// Highlights of a specific object path in a specific space view.
+/// Highlights of a specific entity path in a specific space view.
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
 #[derive(Default)]
-pub struct SpaceViewObjectHighlight {
+pub struct SpaceViewEntityHighlight {
     overall: InteractionHighlight,
     instances: IntMap<IndexHash, InteractionHighlight>,
 }
 
 #[derive(Copy, Clone)]
-pub struct OptionalSpaceViewObjectHighlight<'a>(Option<&'a SpaceViewObjectHighlight>);
+pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
-impl<'a> OptionalSpaceViewObjectHighlight<'a> {
+impl<'a> OptionalSpaceViewEntityHighlight<'a> {
     pub fn index_highlight(&self, index: IndexHash) -> InteractionHighlight {
         match self.0 {
             Some(object_highlight) => object_highlight
@@ -137,15 +137,15 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]
 pub struct SpaceViewHighlights {
-    highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewObjectHighlight>,
+    highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewEntityHighlight>,
 }
 
 impl SpaceViewHighlights {
     pub fn object_highlight(
         &self,
         entity_path_hash: EntityPathHash,
-    ) -> OptionalSpaceViewObjectHighlight<'_> {
-        OptionalSpaceViewObjectHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
+    ) -> OptionalSpaceViewEntityHighlight<'_> {
+        OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
     }
 }
 
@@ -318,7 +318,7 @@ impl SelectionState {
         crate::profile_function!();
 
         let mut highlighted_entity_paths =
-            IntMap::<EntityPathHash, SpaceViewObjectHighlight>::default();
+            IntMap::<EntityPathHash, SpaceViewEntityHighlight>::default();
 
         for current_selection in self.selection.iter() {
             match current_selection {

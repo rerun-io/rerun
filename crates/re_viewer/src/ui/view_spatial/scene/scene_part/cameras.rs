@@ -8,7 +8,7 @@ use re_renderer::renderer::LineStripFlags;
 
 use crate::{
     misc::{
-        space_info::query_view_coordinates, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        space_info::query_view_coordinates, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
         TransformCache, ViewerContext,
     },
     ui::{
@@ -63,7 +63,7 @@ impl CamerasPart {
         instance_hash: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.

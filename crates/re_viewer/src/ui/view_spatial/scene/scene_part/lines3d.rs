@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
@@ -26,7 +26,7 @@ impl Lines3DPart {
         entity_view: &EntityView<LineStrip3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
