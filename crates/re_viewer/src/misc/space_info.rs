@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{log_db::ObjDb, query_transform, EntityPath, EntityTree};
+use re_data_store::{log_db::EntityDb, query_transform, EntityPath, EntityTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
@@ -110,11 +110,11 @@ pub struct SpaceInfoCollection {
 impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    pub fn new(obj_db: &ObjDb) -> Self {
+    pub fn new(obj_db: &EntityDb) -> Self {
         crate::profile_function!();
 
         fn add_children(
-            obj_db: &ObjDb,
+            obj_db: &EntityDb,
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &EntityTree,
@@ -294,7 +294,7 @@ impl SpaceInfoCollection {
 // ----------------------------------------------------------------------------
 
 pub fn query_view_coordinates(
-    obj_db: &ObjDb,
+    obj_db: &EntityDb,
     ent_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {

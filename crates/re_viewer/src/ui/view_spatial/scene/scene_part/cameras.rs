@@ -27,7 +27,7 @@ use super::ScenePart;
 ///
 /// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
 fn determine_view_coordinates(
-    obj_db: &re_data_store::log_db::ObjDb,
+    obj_db: &re_data_store::log_db::EntityDb,
     time_ctrl: &crate::misc::TimeControl,
     mut entity_path: EntityPath,
 ) -> ViewCoordinates {

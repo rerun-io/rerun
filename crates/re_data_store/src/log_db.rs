@@ -13,8 +13,8 @@ use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
-/// Stored objects and their types, with easy indexing of the paths.
-pub struct ObjDb {
+/// Stored entities with easy indexing of the paths.
+pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
@@ -28,7 +28,7 @@ pub struct ObjDb {
     pub arrow_store: re_arrow_store::DataStore,
 }
 
-impl Default for ObjDb {
+impl Default for EntityDb {
     fn default() -> Self {
         Self {
             entity_path_from_hash: Default::default(),
@@ -46,7 +46,7 @@ impl Default for ObjDb {
     }
 }
 
-impl ObjDb {
+impl EntityDb {
     #[inline]
     pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
         self.entity_path_from_hash.get(entity_path_hash)
@@ -160,7 +160,7 @@ pub struct LogDb {
     recording_info: Option<RecordingInfo>,
 
     /// Where we store the objects.
-    pub obj_db: ObjDb,
+    pub obj_db: EntityDb,
 }
 
 impl LogDb {

@@ -4,7 +4,7 @@ use re_log_types::{
     EntityPath, Transform,
 };
 
-use crate::log_db::ObjDb;
+use crate::log_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 
@@ -120,7 +120,7 @@ impl ExtraQueryHistory {
 /// what most users are still using. If we don't find the transform there, then
 /// we check to see if it exists in the arrow storage.
 pub fn query_transform(
-    obj_db: &ObjDb,
+    obj_db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<Transform> {

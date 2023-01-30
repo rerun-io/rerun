@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use re_log_types::{field_types::Instance, EntityPath, EntityPathHash, Index, IndexHash};
 
-use crate::log_db::ObjDb;
+use crate::log_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ impl InstanceIdHash {
         self.entity_path_hash.is_none()
     }
 
-    pub fn resolve(&self, obj_db: &ObjDb) -> Option<InstanceId> {
+    pub fn resolve(&self, obj_db: &EntityDb) -> Option<InstanceId> {
         match self.arrow_instance {
             None => {
                 re_log::error_once!("Found classical InstanceIdHash");

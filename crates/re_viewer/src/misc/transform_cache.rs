@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{log_db::ObjDb, query_transform, EntityPath, EntityPropertyMap, EntityTree};
+use re_data_store::{log_db::EntityDb, query_transform, EntityPath, EntityPropertyMap, EntityTree};
 
 use crate::misc::TimeControl;
 
@@ -46,7 +46,7 @@ impl TransformCache {
     /// This means that the objects in `reference_space` get the identity transform and all other
     /// objects are transformed relative to it.
     pub fn determine_transforms(
-        obj_db: &ObjDb,
+        obj_db: &EntityDb,
         time_ctrl: &TimeControl,
         root_path: &EntityPath,
         obj_properties: &EntityPropertyMap,
@@ -136,7 +136,7 @@ impl TransformCache {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
-        obj_db: &ObjDb,
+        obj_db: &EntityDb,
         query: &LatestAtQuery,
         obj_properties: &EntityPropertyMap,
         reference_from_obj: glam::Mat4,
@@ -197,7 +197,7 @@ impl TransformCache {
 
 fn transform_at(
     entity_path: &EntityPath,
-    obj_db: &ObjDb,
+    obj_db: &EntityDb,
     obj_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
@@ -245,7 +245,7 @@ fn transform_at(
 
 fn inverse_transform_at(
     entity_path: &EntityPath,
-    obj_db: &ObjDb,
+    obj_db: &EntityDb,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {

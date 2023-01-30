@@ -358,7 +358,7 @@ impl MemoryPanel {
 fn summarize_callstack(callstack: &str) -> String {
     let patterns = [
         ("LogDb", "LogDb"),
-        ("ObjDb", "ObjDb"),
+        ("EntityDb", "EntityDb"),
         ("EntityTree", "EntityTree"),
         ("::LogMsg>::deserialize", "LogMsg"),
         ("::TimePoint>::deserialize", "TimePoint"),
