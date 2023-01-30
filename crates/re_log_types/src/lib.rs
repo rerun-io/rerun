@@ -139,7 +139,7 @@ pub enum LogMsg {
     BeginRecordingMsg(BeginRecordingMsg),
 
     /// Server-backed operation on an [`EntityPath`].
-    PathOpMsg(PathOpMsg),
+    EntityPathOpMsg(EntityPathOpMsg),
 
     /// Log an arrow message to a [`DataPath`].
     ArrowMsg(ArrowMsg),
@@ -152,7 +152,7 @@ impl LogMsg {
     pub fn id(&self) -> MsgId {
         match self {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
-            Self::PathOpMsg(msg) => msg.msg_id,
+            Self::EntityPathOpMsg(msg) => msg.msg_id,
             Self::ArrowMsg(msg) => msg.msg_id,
             Self::Goodbye(msg_id) => *msg_id,
         }
@@ -160,7 +160,7 @@ impl LogMsg {
 }
 
 impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
-impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
+impl_into_enum!(EntityPathOpMsg, LogMsg, EntityPathOpMsg);
 impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
 // ----------------------------------------------------------------------------
@@ -219,8 +219,8 @@ impl std::fmt::Display for RecordingSource {
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct PathOpMsg {
-    /// A unique id per [`PathOpMsg`].
+pub struct EntityPathOpMsg {
+    /// A unique id per [`EntityPathOpMsg`].
     pub msg_id: MsgId,
 
     /// Time information (when it was logged, when it was received, …).

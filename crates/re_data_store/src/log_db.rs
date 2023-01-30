@@ -5,8 +5,8 @@ use re_log_types::{
     component_types::Instance,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, DataPath, EntityPath, EntityPathHash, LogMsg, MsgId, PathOp,
-    PathOpMsg, RecordingId, RecordingInfo, TimePoint, Timeline,
+    ArrowMsg, BeginRecordingMsg, DataPath, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg,
+    MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -196,8 +196,8 @@ impl LogDb {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::PathOpMsg(msg) => {
-                let PathOpMsg {
+            LogMsg::EntityPathOpMsg(msg) => {
+                let EntityPathOpMsg {
                     msg_id,
                     time_point,
                     path_op,

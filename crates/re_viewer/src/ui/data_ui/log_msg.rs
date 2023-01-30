@@ -1,5 +1,5 @@
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, LogMsg, PathOpMsg, RecordingInfo,
+    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, EntityPathOpMsg, LogMsg, RecordingInfo,
 };
 
 use crate::{misc::ViewerContext, ui::UiVerbosity};
@@ -16,7 +16,7 @@ impl DataUi for LogMsg {
     ) {
         match self {
             LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::EntityPathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::Goodbye(_) => {
                 ui.label("Goodbye");
@@ -67,7 +67,7 @@ impl DataUi for BeginRecordingMsg {
     }
 }
 
-impl DataUi for PathOpMsg {
+impl DataUi for EntityPathOpMsg {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -75,7 +75,7 @@ impl DataUi for PathOpMsg {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let PathOpMsg {
+        let EntityPathOpMsg {
             msg_id: _,
             time_point,
             path_op,

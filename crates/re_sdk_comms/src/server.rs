@@ -172,7 +172,7 @@ impl CongestionManager {
 
         #[allow(clippy::match_same_arms)]
         match msg {
-            LogMsg::BeginRecordingMsg(_) | LogMsg::PathOpMsg(_) | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
+            LogMsg::BeginRecordingMsg(_) | LogMsg::EntityPathOpMsg(_) | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
 
             LogMsg::ArrowMsg(arrow_msg) => match arrow_msg.time_point() {
                 Ok(time_point) => self.should_send_time_point(&time_point),
