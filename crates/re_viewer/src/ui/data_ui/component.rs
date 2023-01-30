@@ -21,7 +21,9 @@ pub(crate) fn arrow_component_ui(
                 ui.weak("(empty)");
             } else if count == 1 {
                 if let Some(instance) = instance_keys.next() {
-                    arrow_component_elem_ui(ctx, ui, verbosity, query, component, &instance);
+                    arrow_component_elem_ui_specific(
+                        ctx, ui, verbosity, query, component, &instance,
+                    );
                 } else {
                     ui.label("Error: missing instance key");
                 }
@@ -29,7 +31,9 @@ pub(crate) fn arrow_component_ui(
                 egui::Grid::new("component").num_columns(2).show(ui, |ui| {
                     for instance in instance_keys {
                         ui.label(format!("{}", instance));
-                        arrow_component_elem_ui(ctx, ui, verbosity, query, component, &instance);
+                        arrow_component_elem_ui_specific(
+                            ctx, ui, verbosity, query, component, &instance,
+                        );
                         ui.end_row();
                     }
                 });
@@ -56,6 +60,23 @@ pub(crate) fn arrow_component_elem_ui(
         ui.label(instance_index.to_string());
     } else if instance_index.is_splat() {
         arrow_component_ui(ctx, ui, component, verbosity, query);
+    } else {
+        ctx.component_ui_registry
+            .ui(ctx, ui, verbosity, query, component, instance_index);
+    }
+}
+
+fn arrow_component_elem_ui_specific(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    verbosity: crate::ui::UiVerbosity,
+    query: &re_arrow_store::LatestAtQuery,
+    component: &ComponentWithInstances,
+    instance_index: &Instance,
+) {
+    if component.name() == Instance::name() {
+        // No reason to do another lookup -- this is the instance itself
+        ui.label(instance_index.to_string());
     } else {
         ctx.component_ui_registry
             .ui(ctx, ui, verbosity, query, component, instance_index);
