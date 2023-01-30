@@ -27,6 +27,7 @@ class AnnotationInfo:
 
 
 AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
+"""Type helper representing the different ways to specify an [AnnotationInfo][rerun.log.annotation.AnnotationInfo]"""
 
 
 def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
@@ -52,6 +53,7 @@ class ClassDescription:
 
 
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
+"""Type helper representing the different ways to specify a [ClassDescription][rerun.log.annotation.ClassDescription]"""
 
 
 def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
@@ -68,17 +70,17 @@ def log_annotation_context(
     timeless: bool = True,
 ) -> None:
     """
-    Log an annotation context made up of a collection of ClassDescriptions.
+    Log an annotation context made up of a collection of [ClassDescription][rerun.log.annotation.ClassDescription]s.
 
-    Any object needing to access the annotation context will find it by searching the
-    path upward. If all objects share the same you can simply log it to the
-    root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
-    your object.
+    Any object needing to access the annotation context will find it by
+    searching the path upward. If all objects share the same you can simply log
+    it to the root ("/"), or if you want a per-object ClassDescriptions log it
+    to the same path as your object.
 
-    Each ClassDescription must include an annotation info with an id, which will be used for matching
-    the class and may optionally include a label and color. Colors should
-    either be in 0-255 gamma space or in 0-1 linear space. Colors can be RGB or
-    RGBA.
+    Each ClassDescription must include an annotation info with an id, which will
+    be used for matching the class and may optionally include a label and color.
+    Colors should either be in 0-255 gamma space or in 0-1 linear space. Colors
+    can be RGB or RGBA.
 
     These can either be specified verbosely as:
     ```
@@ -91,6 +93,16 @@ def log_annotation_context(
     ```
 
     Unspecified colors will be filled in by the visualizer randomly.
+
+    Parameters
+    ----------
+    obj_path:
+        The path to log the annotation context to.
+    class_descriptions:
+        A single ClassDescription or a collection of ClassDescriptions.
+    timeless:
+        If true, the annotation context will be timeless (default: True)
+
     """
     if not isinstance(class_descriptions, Iterable):
         class_descriptions = [class_descriptions]
