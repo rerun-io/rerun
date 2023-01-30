@@ -1354,7 +1354,7 @@ fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
-    use re_log_types::{DataMsg, PathOpMsg, TimeInt};
+    use re_log_types::{PathOpMsg, TimeInt};
 
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
@@ -1375,8 +1375,7 @@ fn save_database_to_file(
                         LogMsg::BeginRecordingMsg(_) | LogMsg::Goodbye(_) => {
                             true // timeless
                         }
-                        LogMsg::DataMsg(DataMsg { time_point, .. })
-                        | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
+                        LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
                                     .get(&timeline)

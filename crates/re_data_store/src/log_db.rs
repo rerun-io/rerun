@@ -6,9 +6,9 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
-    LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline,
+    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataPath, DataVec, FieldOrComponent, LogMsg,
+    LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -279,15 +279,6 @@ impl LogDb {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::DataMsg(msg) => {
-                let DataMsg {
-                    msg_id,
-                    time_point,
-                    data_path,
-                    data,
-                } = msg;
-                self.add_data_msg(*msg_id, time_point, data_path, data);
-            }
             LogMsg::PathOpMsg(msg) => {
                 let PathOpMsg {
                     msg_id,
@@ -308,65 +299,6 @@ impl LogDb {
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
         self.recording_info = Some(msg.info.clone());
-    }
-
-    fn add_data_msg(
-        &mut self,
-        msg_id: MsgId,
-        time_point: &TimePoint,
-        data_path: &DataPath,
-        data: &LoggedData,
-    ) {
-        crate::profile_function!();
-
-        if time_point.is_timeless() {
-            // Timeless data should be added to all existing timelines,
-            // as well to all future timelines, so we special-case it here.
-            // See https://linear.app/rerun/issue/PRO-97
-
-            // Remember to add it to future timelines:
-            self.timeless_message_ids.push(msg_id);
-
-            let has_any_timelines = self.timelines().next().is_some();
-            if has_any_timelines {
-                // Add to existing timelines (if any):
-                let mut time_point = TimePoint::default();
-                for &timeline in self.timelines() {
-                    time_point.insert(timeline, TimeInt::BEGINNING);
-                }
-                self.add_data_msg(msg_id, &time_point, data_path, data);
-            }
-        } else {
-            // Not timeless data.
-
-            // First check if this data message adds a new timeline…
-            let mut new_timelines = TimePoint::default();
-            for timeline in time_point.timelines() {
-                let is_new_timeline = self.times_per_timeline().get(timeline).is_none();
-                if is_new_timeline {
-                    re_log::debug!("New timeline added: {timeline:?}");
-                    new_timelines.insert(*timeline, TimeInt::BEGINNING);
-                }
-            }
-
-            // .…then add the data, remembering any new timelines…
-            self.obj_db
-                .add_data_msg(msg_id, time_point, data_path, data);
-
-            // …finally, if needed, add outstanding timeless data to any newly created timelines.
-            if !new_timelines.is_empty() {
-                let timeless_data_messages = self
-                    .timeless_message_ids
-                    .iter()
-                    .filter_map(|msg_id| self.log_messages.get(msg_id).cloned())
-                    .collect_vec();
-                for msg in &timeless_data_messages {
-                    if let LogMsg::DataMsg(msg) = msg {
-                        self.add_data_msg(msg.msg_id, &new_timelines, &msg.data_path, &msg.data);
-                    }
-                }
-            }
-        }
     }
 
     pub fn len(&self) -> usize {

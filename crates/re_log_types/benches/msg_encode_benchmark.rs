@@ -7,8 +7,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     msg_bundle::{try_build_msg_bundle2, MsgBundle},
-    obj_path, ArrowMsg, BatchIndex, Data, DataMsg, DataPath, DataVec, FieldName, Index, LogMsg,
-    LoggedData, MsgId, TimeInt, TimePoint, Timeline,
+    obj_path, ArrowMsg, Index, LogMsg, MsgId,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -20,17 +19,8 @@ const NUM_POINTS: usize = 10_000;
 #[cfg(debug_assertions)]
 const NUM_POINTS: usize = 1;
 
-criterion_group!(
-    benches,
-    mono_points_classic,
-    mono_points_arrow,
-    batch_points_classic,
-    batch_points_arrow,
-);
+criterion_group!(benches, mono_points_arrow, batch_points_arrow,);
 criterion_main!(benches);
-
-const COLOR: [u8; 4] = [255, 255, 255, 255];
-const POS: [f32; 2] = [2.0, 3.0];
 
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
     let mut bytes = vec![];
@@ -66,63 +56,6 @@ fn decode_message_bundles(messages: &[LogMsg]) -> Vec<MsgBundle> {
             }
         })
         .collect()
-}
-
-fn mono_points_classic(c: &mut Criterion) {
-    fn generate_messages() -> Vec<LogMsg> {
-        let timeline = Timeline::new_sequence("frame_nr");
-        let pos_field_name = FieldName::from("pos");
-        let radius_field_name = FieldName::from("radius");
-
-        (0..NUM_POINTS)
-            .flat_map(|i| {
-                let obj_path = obj_path!("points", Index::Sequence(i as _));
-
-                let mut time_point = TimePoint::default();
-                time_point.insert(timeline, TimeInt::from(0));
-
-                [
-                    LogMsg::DataMsg(DataMsg {
-                        msg_id: MsgId::ZERO,
-                        time_point: time_point.clone(),
-                        data_path: DataPath::new(obj_path.clone(), pos_field_name),
-                        data: Data::Vec2(POS).into(),
-                    }),
-                    LogMsg::DataMsg(DataMsg {
-                        msg_id: MsgId::ZERO,
-                        time_point,
-                        data_path: DataPath::new(obj_path, radius_field_name),
-                        data: Data::Color(COLOR).into(),
-                    }),
-                ]
-            })
-            .collect()
-    }
-
-    {
-        let mut group = c.benchmark_group("mono_points_classic");
-        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        group.bench_function("generate_messages", |b| {
-            b.iter(generate_messages);
-        });
-        let messages = generate_messages();
-        group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages));
-        });
-
-        group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages()));
-        });
-
-        let encoded = encode_log_msgs(&messages);
-        group.bench_function("decode_total", |b| {
-            b.iter(|| {
-                let decoded = decode_log_msgs(&encoded);
-                assert_eq!(decoded.len(), messages.len());
-                decoded
-            });
-        });
-    }
 }
 
 fn mono_points_arrow(c: &mut Criterion) {
@@ -175,64 +108,6 @@ fn mono_points_arrow(c: &mut Criterion) {
         });
         group.bench_function("decode_total", |b| {
             b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
-        });
-    }
-}
-
-fn batch_points_classic(c: &mut Criterion) {
-    fn generate_messages() -> Vec<LogMsg> {
-        let obj_path = obj_path!("points");
-        let timeline = Timeline::new_sequence("frame_nr");
-        let pos_field_name = FieldName::from("pos");
-        let radius_field_name = FieldName::from("radius");
-
-        let mut time_point = TimePoint::default();
-        time_point.insert(timeline, TimeInt::from(0));
-
-        vec![
-            LogMsg::DataMsg(DataMsg {
-                msg_id: MsgId::ZERO,
-                time_point: time_point.clone(),
-                data_path: DataPath::new(obj_path.clone(), pos_field_name),
-                data: LoggedData::Batch {
-                    indices: BatchIndex::SequentialIndex(NUM_POINTS),
-                    data: DataVec::Vec2(vec![POS; NUM_POINTS]),
-                },
-            }),
-            LogMsg::DataMsg(DataMsg {
-                msg_id: MsgId::ZERO,
-                time_point,
-                data_path: DataPath::new(obj_path, radius_field_name),
-                data: LoggedData::Batch {
-                    indices: BatchIndex::SequentialIndex(NUM_POINTS),
-                    data: DataVec::Color(vec![COLOR; NUM_POINTS]),
-                },
-            }),
-        ]
-    }
-
-    {
-        let mut group = c.benchmark_group("batch_points_classic");
-        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        group.bench_function("generate_messages", |b| {
-            b.iter(generate_messages);
-        });
-        let messages = generate_messages();
-        group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages));
-        });
-
-        group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages()));
-        });
-
-        let encoded = encode_log_msgs(&messages);
-        group.bench_function("decode_total", |b| {
-            b.iter(|| {
-                let decoded = decode_log_msgs(&encoded);
-                assert_eq!(decoded.len(), messages.len());
-                decoded
-            });
         });
     }
 }

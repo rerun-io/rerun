@@ -2,8 +2,8 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    BatchIndex, DataMsg, DataPath, FieldOrComponent, Index, IndexHash, LoggedData, MsgId,
-    TimePoint, TimeType, Timeline,
+    BatchIndex, DataPath, FieldOrComponent, Index, IndexHash, LoggedData, MsgId, TimePoint,
+    TimeType, Timeline,
 };
 
 use crate::{
@@ -62,19 +62,6 @@ impl DataStore {
         } else {
             None
         }
-    }
-
-    pub fn insert_data_msg(&mut self, data_msg: &DataMsg) -> Result<()> {
-        crate::profile_function!();
-
-        let DataMsg {
-            msg_id,
-            time_point,
-            data_path,
-            data,
-        } = data_msg;
-
-        self.insert_data(*msg_id, time_point, data_path, data)
     }
 
     pub fn insert_data(

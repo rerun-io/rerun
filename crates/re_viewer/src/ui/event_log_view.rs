@@ -2,9 +2,7 @@ use itertools::Itertools as _;
 
 use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_format::format_number;
-use re_log_types::{
-    msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo,
-};
+use re_log_types::{msg_bundle::MsgBundle, BeginRecordingMsg, LogMsg, PathOpMsg, RecordingInfo};
 
 use crate::{UiVerbosity, ViewerContext};
 
@@ -101,12 +99,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         });
 }
 
-fn row_height(msg: &LogMsg) -> f32 {
+fn row_height(_msg: &LogMsg) -> f32 {
+    // TODO(emilk): make rows with images (tensors) higher!
     re_ui::ReUi::table_line_height()
-        * match msg {
-            LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 2.0,
-            _ => 1.0,
-        }
 }
 
 fn table_row(
@@ -144,39 +139,6 @@ fn table_row(
             });
             row.col(|ui| {
                 ui.monospace(format!("{application_id} - {recording_id:?}"));
-            });
-        }
-        LogMsg::DataMsg(msg) => {
-            let DataMsg {
-                msg_id,
-                time_point,
-                data_path,
-                data,
-            } = msg;
-
-            row.col(|ui| {
-                ctx.msg_id_button(ui, *msg_id);
-            });
-            row.col(|ui| {
-                ui.monospace("DataMsg");
-            });
-            for timeline in ctx.log_db.timelines() {
-                row.col(|ui| {
-                    if let Some(value) = time_point.get(timeline) {
-                        ctx.time_button(ui, timeline, *value);
-                    }
-                });
-            }
-            row.col(|ui| {
-                ctx.data_path_button(ui, data_path);
-            });
-            row.col(|ui| {
-                let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-                let query = LatestAtQuery::new(
-                    timeline,
-                    time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
-                );
-                data.data_ui(ctx, ui, UiVerbosity::MaxHeight(row_height), &query);
             });
         }
         LogMsg::PathOpMsg(msg) => {

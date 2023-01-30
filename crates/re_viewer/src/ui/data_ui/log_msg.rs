@@ -1,5 +1,5 @@
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, DataMsg, LogMsg, LoggedData, PathOpMsg,
+    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, LogMsg, LoggedData, PathOpMsg,
     RecordingInfo,
 };
 
@@ -17,7 +17,6 @@ impl DataUi for LogMsg {
     ) {
         match self {
             LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::Goodbye(_) => {
@@ -64,37 +63,6 @@ impl DataUi for BeginRecordingMsg {
 
             ui.monospace("is_official_example:");
             ui.label(format!("{is_official_example}"));
-            ui.end_row();
-        });
-    }
-}
-
-impl DataUi for DataMsg {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        let DataMsg {
-            msg_id: _,
-            time_point,
-            data_path,
-            data,
-        } = self;
-
-        egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-            ui.monospace("data_path:");
-            ctx.data_path_button(ui, data_path);
-            ui.end_row();
-
-            ui.monospace("time_point:");
-            time_point.data_ui(ctx, ui, verbosity, query);
-            ui.end_row();
-
-            ui.monospace("data:");
-            data.data_ui(ctx, ui, verbosity, query);
             ui.end_row();
         });
     }

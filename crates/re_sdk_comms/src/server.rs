@@ -174,10 +174,9 @@ impl CongestionManager {
         match msg {
             LogMsg::BeginRecordingMsg(_) | LogMsg::PathOpMsg(_) | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
 
-            LogMsg::DataMsg(data_msg) => self.should_send_time_point(&data_msg.time_point),
-
-            LogMsg::ArrowMsg(_) => {
-                true // TODO(emilk): parse TimePoints from ArrowMsg (https://github.com/rerun-io/rerun/issues/464)
+            LogMsg::ArrowMsg(_arrow_msg) => {
+                let time_point = TimePoint::default(); // TODO: parse TimePoints from ArrowMsg
+                self.should_send_time_point(&time_point)
             }
         }
     }

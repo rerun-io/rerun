@@ -154,9 +154,6 @@ pub enum LogMsg {
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
-    /// Log some data to a [`DataPath`].
-    DataMsg(DataMsg),
-
     /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
     PathOpMsg(PathOpMsg),
 
@@ -171,7 +168,6 @@ impl LogMsg {
     pub fn id(&self) -> MsgId {
         match self {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
-            Self::DataMsg(msg) => msg.msg_id,
             Self::PathOpMsg(msg) => msg.msg_id,
             Self::ArrowMsg(msg) => msg.msg_id,
             Self::Goodbye(msg_id) => *msg_id,
@@ -180,7 +176,6 @@ impl LogMsg {
 }
 
 impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
-impl_into_enum!(DataMsg, LogMsg, DataMsg);
 impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
 impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
@@ -232,30 +227,6 @@ impl std::fmt::Display for RecordingSource {
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
-}
-
-// ----------------------------------------------------------------------------
-
-/// The message sent to specify the data of a single field of an object.
-#[must_use]
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct DataMsg {
-    /// A unique id per [`DataMsg`].
-    pub msg_id: MsgId,
-
-    /// Time information (when it was logged, when it was received, …)
-    ///
-    /// If this is empty, the data is _timeless_.
-    /// Timeless data will show up on all timelines, past and future,
-    /// and will hit all time queries. In other words, it is always there.
-    pub time_point: TimePoint,
-
-    /// What the data is targeting.
-    pub data_path: DataPath,
-
-    /// The value of this.
-    pub data: LoggedData,
 }
 
 // ----------------------------------------------------------------------------
