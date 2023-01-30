@@ -174,10 +174,13 @@ impl CongestionManager {
         match msg {
             LogMsg::BeginRecordingMsg(_) | LogMsg::PathOpMsg(_) | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
 
-            LogMsg::ArrowMsg(_arrow_msg) => {
-                let time_point = TimePoint::default(); // TODO: parse TimePoints from ArrowMsg
-                self.should_send_time_point(&time_point)
-            }
+            LogMsg::ArrowMsg(arrow_msg) => match arrow_msg.time_point() {
+                Ok(time_point) => self.should_send_time_point(&time_point),
+                Err(err) => {
+                    re_log::error_once!("Failed to parse an Arrow Message - dropping this message, and maybe more. {err}");
+                    false
+                }
+            },
         }
     }
 

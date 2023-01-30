@@ -419,7 +419,7 @@ impl TryFrom<MsgBundle> for ArrowMsg {
 /// Extract a [`TimePoint`] from the "timelines" column. This function finds the "timelines" field
 /// in `chunk` and deserializes the values into a `TimePoint` using the
 /// [`arrow2_convert::deserialize::ArrowDeserialize`] trait.
-fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<TimePoint> {
+pub fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<TimePoint> {
     use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 
     let timelines = schema
