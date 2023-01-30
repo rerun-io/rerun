@@ -165,17 +165,18 @@ impl DataUi for ViewCoordinates {
 }
 
 impl DataUi for Rigid3 {
+    #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(_ctx, ui, UiVerbosity::Large, _query);
+                    self.data_ui(ctx, ui, UiVerbosity::Large, query);
                 });
             }
 
