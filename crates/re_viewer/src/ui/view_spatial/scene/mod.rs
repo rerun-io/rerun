@@ -4,7 +4,7 @@ use ahash::HashMap;
 use re_data_store::{EntityPath, InstanceIdHash};
 use re_log_types::{
     component_types::{ClassId, KeypointId, Tensor},
-    IndexHash, MeshId,
+    MeshId,
 };
 use re_renderer::{Color32, Size};
 
@@ -126,16 +126,9 @@ pub struct SceneSpatial {
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-fn instance_hash_if_interactive(
-    entity_path: &EntityPath,
-    instance_index: Option<&IndexHash>,
-    interactive: bool,
-) -> InstanceIdHash {
+fn instance_hash_if_interactive(entity_path: &EntityPath, interactive: bool) -> InstanceIdHash {
     if interactive {
-        InstanceIdHash::from_path_and_index(
-            entity_path,
-            instance_index.copied().unwrap_or(IndexHash::NONE),
-        )
+        InstanceIdHash::from_path(entity_path)
     } else {
         InstanceIdHash::NONE
     }
@@ -255,7 +248,7 @@ impl SceneSpatial {
         interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_hash = instance_hash_if_interactive(entity_path, None, interactive);
+        let instance_hash = instance_hash_if_interactive(entity_path, interactive);
 
         let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
 

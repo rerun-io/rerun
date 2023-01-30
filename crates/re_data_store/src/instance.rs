@@ -107,15 +107,17 @@ impl InstanceIdHash {
         arrow_instance: None,
     };
 
+    /// Indicate the whole entity.
     #[inline]
-    pub fn from_path_and_index(entity_path: &EntityPath, instance_index: IndexHash) -> Self {
+    pub fn from_path(entity_path: &EntityPath) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
-            instance_index_hash: instance_index,
+            instance_index_hash: IndexHash::NONE,
             arrow_instance: None,
         }
     }
 
+    /// Indicate a specific instance of the entity.
     #[inline]
     pub fn from_path_and_arrow_instance(
         entity_path: &EntityPath,
@@ -139,18 +141,16 @@ impl InstanceIdHash {
     }
 
     pub fn resolve(&self, entity_db: &EntityDb) -> Option<InstanceId> {
-        match self.arrow_instance {
-            None => {
-                re_log::error_once!("Found classical InstanceIdHash");
-                None
-            }
-            Some(arrow_instance) => Some(InstanceId {
-                entity_path: entity_db
-                    .entity_path_from_hash(&self.entity_path_hash)
-                    .cloned()?,
-                instance_index: Some(Index::ArrowInstance(arrow_instance)),
-            }),
-        }
+        let entity_path = entity_db
+            .entity_path_from_hash(&self.entity_path_hash)
+            .cloned()?;
+
+        let instance_index = self.arrow_instance.map(Index::ArrowInstance);
+
+        Some(InstanceId {
+            entity_path,
+            instance_index,
+        })
     }
 
     /// Does this entity match this instance id?
