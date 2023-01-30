@@ -8,7 +8,7 @@ on:
     branches:
       - "main"
     paths:
-      - ".github/workflows/release.yaml"
+      - ".github/workflows/release.yml"
 
   workflow_dispatch:
     inputs:
