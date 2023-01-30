@@ -31,6 +31,7 @@ plugins:
             members_order: source
             heading_level: 3
             show_root_heading: true
+            merge_init_into_class: true
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_package_index.py
