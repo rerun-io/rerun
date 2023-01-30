@@ -116,6 +116,16 @@ impl Int64Histogram {
         self.root.total_count()
     }
 
+    /// Lowest key with a non-zero count.
+    pub fn min_key(&self) -> Option<i64> {
+        self.root.min_key(0, ROOT_LEVEL).map(i64_key_from_u64_key)
+    }
+
+    /// Highest key with a non-zero count.
+    pub fn max_key(&self) -> Option<i64> {
+        self.root.max_key(0, ROOT_LEVEL).map(i64_key_from_u64_key)
+    }
+
     /// What is the count of all the buckets in the given range?
     pub fn range_count(&self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
@@ -280,6 +290,22 @@ impl Node {
         }
     }
 
+    fn min_key(&self, my_addr: u64, my_level: Level) -> Option<u64> {
+        match self {
+            Node::BranchNode(node) => node.min_key(my_addr, my_level),
+            Node::SparseLeaf(sparse) => sparse.min_key(),
+            Node::DenseLeaf(dense) => dense.min_key(my_addr),
+        }
+    }
+
+    fn max_key(&self, my_addr: u64, my_level: Level) -> Option<u64> {
+        match self {
+            Node::BranchNode(node) => node.max_key(my_addr, my_level),
+            Node::SparseLeaf(sparse) => sparse.max_key(),
+            Node::DenseLeaf(dense) => dense.max_key(my_addr),
+        }
+    }
+
     fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
             Node::BranchNode(node) => node.range_count(my_addr, my_level, range),
@@ -324,6 +350,38 @@ impl BranchNode {
 
     fn total_count(&self) -> u64 {
         self.total_count
+    }
+
+    fn min_key(&self, my_addr: u64, my_level: Level) -> Option<u64> {
+        debug_assert!(my_level != BOTTOM_LEVEL);
+
+        let (child_level, child_size) = child_level_and_size(my_level);
+
+        for ci in 0..NUM_CHILDREN_IN_NODE {
+            let child_addr = my_addr + ci * child_size;
+            if let Some(child) = &self.children[ci as usize] {
+                if let Some(min_key) = child.min_key(child_addr, child_level) {
+                    return Some(min_key);
+                }
+            }
+        }
+        None
+    }
+
+    fn max_key(&self, my_addr: u64, my_level: Level) -> Option<u64> {
+        debug_assert!(my_level != BOTTOM_LEVEL);
+
+        let (child_level, child_size) = child_level_and_size(my_level);
+
+        for ci in (0..NUM_CHILDREN_IN_NODE).rev() {
+            let child_addr = my_addr + ci * child_size;
+            if let Some(child) = &self.children[ci as usize] {
+                if let Some(max_key) = child.max_key(child_addr, child_level) {
+                    return Some(max_key);
+                }
+            }
+        }
+        None
     }
 
     fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
@@ -426,6 +484,14 @@ impl SparseLeaf {
         self.counts.iter().map(|&c| c as u64).sum()
     }
 
+    fn min_key(&self) -> Option<u64> {
+        self.addrs.first().copied()
+    }
+
+    fn max_key(&self) -> Option<u64> {
+        self.addrs.last().copied()
+    }
+
     fn range_count(&self, range: RangeU64) -> u64 {
         let mut total = 0;
         for (key, count) in self.addrs.iter().zip(&self.counts) {
@@ -467,6 +533,24 @@ impl DenseLeaf {
 
     fn total_count(&self) -> u64 {
         self.counts.iter().map(|&c| c as u64).sum()
+    }
+
+    fn min_key(&self, my_addr: u64) -> Option<u64> {
+        for (i, count) in self.counts.iter().enumerate() {
+            if *count > 0 {
+                return Some(my_addr + i as u64);
+            }
+        }
+        None
+    }
+
+    fn max_key(&self, my_addr: u64) -> Option<u64> {
+        for (i, count) in self.counts.iter().enumerate().rev() {
+            if *count > 0 {
+                return Some(my_addr + i as u64);
+            }
+        }
+        None
     }
 
     fn range_count(&self, my_addr: u64, range: RangeU64) -> u64 {
@@ -584,6 +668,8 @@ impl<'a> Iterator for TreeIterator<'a> {
 #[test]
 fn test_dense() {
     let mut set = Int64Histogram::default();
+    debug_assert_eq!(set.min_key(), None);
+    debug_assert_eq!(set.max_key(), None);
     let mut expected_ranges = vec![];
     for i in 0..100 {
         debug_assert_eq!(set.total_count(), i);
@@ -592,6 +678,9 @@ fn test_dense() {
         set.increment(key, 1);
 
         expected_ranges.push((RangeI64::single(key), 1));
+
+        debug_assert_eq!(set.min_key(), Some(0));
+        debug_assert_eq!(set.max_key(), Some(key));
     }
 
     assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
@@ -610,6 +699,9 @@ fn test_sparse() {
         let key = i as i64 * spacing;
         set.increment(key, inc as u32);
         expected_ranges.push((RangeI64::single(key), inc));
+
+        debug_assert_eq!(set.min_key(), Some(0));
+        debug_assert_eq!(set.max_key(), Some(key));
     }
 
     assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
@@ -623,6 +715,9 @@ fn test_two_dense_ranges() {
         set.increment(i, 1);
         set.increment(10_000 + i, 1);
         set.increment(20_000 + i, 1);
+
+        debug_assert_eq!(set.min_key(), Some(0));
+        debug_assert_eq!(set.max_key(), Some(20_000 + i));
     }
 
     assert_eq!(set.range(..15_000, 1000).count(), 2);
@@ -678,6 +773,9 @@ fn test_removal() {
     set.increment(i64::MIN + 1, 2);
     set.increment(i64::MIN, 1);
 
+    debug_assert_eq!(set.min_key(), Some(i64::MIN));
+    debug_assert_eq!(set.max_key(), Some(i64::MAX));
+
     debug_assert_eq!(set.range_count((i64::MAX - 1)..=i64::MAX), 3);
     debug_assert_eq!(
         set.range(0.., 1).collect::<Vec<_>>(),
@@ -689,6 +787,9 @@ fn test_removal() {
     );
 
     set.remove(i64::MAX..=i64::MAX);
+
+    debug_assert_eq!(set.min_key(), Some(i64::MIN));
+    debug_assert_eq!(set.max_key(), Some(i64::MAX - 1));
 
     debug_assert_eq!(
         set.range(.., 1).collect::<Vec<_>>(),
@@ -702,6 +803,9 @@ fn test_removal() {
     );
 
     set.remove(i64::MIN..=(i64::MAX - 2));
+
+    debug_assert_eq!(set.min_key(), Some(i64::MAX - 1));
+    debug_assert_eq!(set.max_key(), Some(i64::MAX - 1));
 
     debug_assert_eq!(
         set.range(.., 1).collect::<Vec<_>>(),

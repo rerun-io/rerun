@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
@@ -18,6 +18,9 @@ pub struct ObjDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
 
+    /// Used for time control
+    pub times_per_timeline: TimesPerTimeline,
+
     /// A tree-view (split on path components) of the objects.
     pub tree: crate::ObjectTree,
 
@@ -29,6 +32,7 @@ impl Default for ObjDb {
     fn default() -> Self {
         Self {
             obj_path_from_hash: Default::default(),
+            times_per_timeline: Default::default(),
             tree: crate::ObjectTree::root(),
             arrow_store: re_arrow_store::DataStore::new(
                 Instance::name(),
@@ -54,13 +58,17 @@ impl ObjDb {
             .or_insert_with(|| obj_path.clone());
     }
 
-    fn add_data_msg(&mut self, msg_id: MsgId, time_point: &TimePoint, data_path: &DataPath) {
+    fn add_data_msg(&mut self, time_point: &TimePoint, data_path: &DataPath) {
         self.register_obj_path(&data_path.obj_path);
-        self.tree.add_data_msg(msg_id, time_point, data_path);
+        self.tree.add_data_msg(time_point, data_path);
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
+
+        for (&timeline, &time_int) in msg_bundle.time_point.iter() {
+            self.times_per_timeline.insert(timeline, time_int);
+        }
 
         self.register_obj_path(&msg_bundle.obj_path);
 
@@ -69,9 +77,7 @@ impl ObjDb {
             if component.name == MsgId::name() {
                 continue;
             }
-            let pending_clears =
-                self.tree
-                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path);
+            let pending_clears = self.tree.add_data_msg(&msg_bundle.time_point, &data_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
@@ -87,7 +93,7 @@ impl ObjDb {
                 self.arrow_store.insert(&msg_bundle).ok();
 
                 // Also update the object tree with the clear-event
-                self.tree.add_data_msg(msg_id, &time_point, &data_path);
+                self.tree.add_data_msg(&time_point, &data_path);
             }
         }
 
@@ -112,27 +118,37 @@ impl ObjDb {
                         );
                         self.arrow_store.insert(&msg_bundle).ok();
                         // Also update the object tree with the clear-event
-                        self.tree.add_data_msg(msg_id, time_point, &data_path);
+                        self.tree.add_data_msg(time_point, &data_path);
                     }
                 }
             } else {
-                self.add_data_msg(msg_id, time_point, &data_path);
+                self.add_data_msg(time_point, &data_path);
             }
         }
     }
 
-    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn purge(
+        &mut self,
+        cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
+        drop_msg_ids: &ahash::HashSet<MsgId>,
+    ) {
         crate::profile_function!();
 
         let Self {
             obj_path_from_hash: _,
+            times_per_timeline,
             tree,
             arrow_store: _, // purged before this function is called
         } = self;
 
         {
+            crate::profile_scope!("times_per_timeline");
+            times_per_timeline.purge(cutoff_times);
+        }
+
+        {
             crate::profile_scope!("tree");
-            tree.purge(drop_msg_ids);
+            tree.purge(cutoff_times, drop_msg_ids);
         }
     }
 }
@@ -175,7 +191,7 @@ impl LogDb {
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.obj_db.tree.prefix_times
+        &self.obj_db.times_per_timeline
     }
 
     pub fn num_timeless_messages(&self) -> usize {
@@ -248,6 +264,8 @@ impl LogDb {
                 .collect::<ahash::HashSet<_>>()
         };
 
+        let cutoff_times = self.obj_db.arrow_store.oldest_time_per_timeline();
+
         let Self {
             chronological_message_ids,
             log_messages,
@@ -256,7 +274,10 @@ impl LogDb {
             obj_db,
         } = self;
 
-        chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+        {
+            crate::profile_scope!("chronological_message_ids");
+            chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+        }
 
         {
             crate::profile_scope!("log_messages");
@@ -267,6 +288,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.purge(&drop_msg_ids);
+        obj_db.purge(&cutoff_times, &drop_msg_ids);
     }
 }

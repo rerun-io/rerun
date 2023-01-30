@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use egui::NumExt as _;
 
@@ -444,15 +444,15 @@ impl TimeControl {
     }
 }
 
-fn min<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
-    *values.keys().next().unwrap()
+fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
+    *values.iter().next().unwrap()
 }
 
-fn max<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
-    *values.keys().rev().next().unwrap()
+fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
+    *values.iter().rev().next().unwrap()
 }
 
-fn range<T>(values: &BTreeMap<TimeInt, T>) -> TimeRange {
+fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
     TimeRange::new(min(values), max(values))
 }
 
@@ -471,7 +471,7 @@ fn default_time_line<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Optio
     log_time_timeline
 }
 
-fn step_fwd_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
+fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
     if let Some(next) = values
         .range((
             std::ops::Bound::Excluded(time.floor()),
@@ -479,23 +479,23 @@ fn step_fwd_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
         ))
         .next()
     {
-        *next.0
+        *next
     } else {
         min(values)
     }
 }
 
-fn step_back_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
+fn step_back_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
     if let Some(previous) = values.range(..time.ceil()).rev().next() {
-        *previous.0
+        *previous
     } else {
         max(values)
     }
 }
 
-fn step_fwd_time_looped<T>(
+fn step_fwd_time_looped(
     time: TimeReal,
-    values: &BTreeMap<TimeInt, T>,
+    values: &BTreeSet<TimeInt>,
     loop_range: &TimeRangeF,
 ) -> TimeReal {
     if time < loop_range.min || loop_range.max <= time {
@@ -507,15 +507,15 @@ fn step_fwd_time_looped<T>(
         ))
         .next()
     {
-        TimeReal::from(*next.0)
+        TimeReal::from(*next)
     } else {
         step_fwd_time(time, values).into()
     }
 }
 
-fn step_back_time_looped<T>(
+fn step_back_time_looped(
     time: TimeReal,
-    values: &BTreeMap<TimeInt, T>,
+    values: &BTreeSet<TimeInt>,
     loop_range: &TimeRangeF,
 ) -> TimeReal {
     if time <= loop_range.min || loop_range.max < time {
@@ -525,7 +525,7 @@ fn step_back_time_looped<T>(
         .rev()
         .next()
     {
-        TimeReal::from(*previous.0)
+        TimeReal::from(*previous)
     } else {
         step_back_time(time, values).into()
     }

@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::RangeInclusive,
-};
+use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use egui::{
     lerp, pos2, remap, remap_clamp, show_tooltip_at_pointer, Align2, Color32, CursorIcon, Id,
@@ -11,8 +8,7 @@ use itertools::Itertools;
 
 use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::{
-    DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
-    TimeType,
+    DataPath, Duration, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
 };
 
 use crate::{
@@ -413,11 +409,11 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            let empty_messages_over_time = BTreeMap::default();
-            let messages_over_time = tree
+            let empty = BTreeMap::default();
+            let num_messages_at_time = tree
                 .prefix_times
                 .get(ctx.rec_cfg.time_ctrl.timeline())
-                .unwrap_or(&empty_messages_over_time);
+                .unwrap_or(&empty);
 
             show_data_over_time(
                 ctx,
@@ -426,7 +422,7 @@ impl TimePanel {
                 time_area_painter,
                 ui,
                 tree.num_timeless_messages(),
-                messages_over_time,
+                num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
                 Selection::Instance(
@@ -588,7 +584,7 @@ fn show_data_over_time(
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
     num_timeless_messages: usize,
-    messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
+    num_messages_at_time: &BTreeMap<TimeInt, usize>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
     select_on_click: Selection,
@@ -703,10 +699,10 @@ fn show_data_over_time(
             .map_or(TimeInt::MAX, |tf| tf.ceil()),
     };
 
-    for (&time, msg_ids) in
-        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
+    for (&time, &num_messages_at_time) in
+        num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
     {
-        if msg_ids.is_empty() {
+        if num_messages_at_time == 0 {
             continue;
         }
         let time_real = TimeReal::from(time);
@@ -719,7 +715,9 @@ fn show_data_over_time(
             {
                 // extend:
                 current_stretch.stop_time = time;
-                current_stretch.time_points.push((time, msg_ids.len()));
+                current_stretch
+                    .time_points
+                    .push((time, num_messages_at_time));
             } else {
                 // stop the previous…
                 paint_stretch(current_stretch);
@@ -735,7 +733,7 @@ fn show_data_over_time(
                     start_time: time,
                     stop_time: time,
                     selected,
-                    time_points: vec![(time, msg_ids.len())],
+                    time_points: vec![(time, num_messages_at_time)],
                 });
             }
         }
@@ -821,7 +819,9 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .log_db
-        .times_per_timeline()
+        .obj_db
+        .tree
+        .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
