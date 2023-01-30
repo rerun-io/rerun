@@ -183,7 +183,8 @@ impl SpaceView {
 
         ui.separator();
 
-        ui.strong("Add/Remove data:");
+        ui.strong("Add/remove data");
+        ui.add_space(2.0);
         self.add_objects_ui(ctx, ui);
 
         ui.separator();
@@ -271,7 +272,7 @@ impl SpaceView {
         default_open: bool,
     ) {
         if tree.is_leaf() {
-            self.add_object_line_ui(ctx, ui, spaces_info, name, &tree.path);
+            self.add_object_line_ui(ctx, ui, spaces_info, &format!("🔹 {}", name), &tree.path);
         } else {
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
@@ -310,7 +311,13 @@ impl SpaceView {
             } else {
                 None
             };
-            ctx.instance_id_button_to(ui, space_view_id, &InstanceId::new(ent_path.clone(), None), name);
+
+            let widget_text = if ent_path == &self.space_path {
+                egui::RichText::new(name).strong()
+            } else {
+                egui::RichText::new(name)
+            };
+            ctx.instance_id_button_to(ui, space_view_id, &InstanceId::new(ent_path.clone(), None), widget_text);
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let obj_tree = &ctx.log_db.obj_db.tree;
@@ -326,7 +333,6 @@ impl SpaceView {
                         .subtree(ent_path)
                         .unwrap()
                         .visit_children_recursively(&mut |path: &ObjPath| {
-                            dbg!("removing {}", path);
                             self.data_blueprint.remove_object(path);
                         });
                     }
@@ -364,7 +370,6 @@ impl SpaceView {
                                         && !self.data_blueprint.contains_object(path)
                                         && spaces_info.is_reachable_by_transform(path, &self.space_path).is_ok()
                                     {
-                                        dbg!("adding {}", path);
                                         objects.push(path.clone());
                                     }
                                 });
