@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "*.*.*" # on release tag
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/release.yaml"
 
   workflow_dispatch:
     inputs:
