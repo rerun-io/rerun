@@ -191,9 +191,9 @@ impl EntityTree {
                     .or_insert_with(|| time_point.clone());
 
                 // For every existing field return a clear event
-                leaf.components.keys().map(|component_name| {
-                        ComponentPath::new(entity_path.clone(), *component_name)
-                    })
+                leaf.components
+                    .keys()
+                    .map(|component_name| ComponentPath::new(entity_path.clone(), *component_name))
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {

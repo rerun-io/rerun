@@ -314,16 +314,12 @@ pub fn show_zoomed_image_region(
                 | DynamicImage::ImageRgba16(_)
                 | DynamicImage::ImageRgba32F(_) => {
                     // TODO(emilk): show 16-bit and 32f values differently
-                    format!(
-                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
-                    )
+                    format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}")
                 }
 
                 _ => {
                     re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
-                    format!(
-                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
-                    )
+                    format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}")
                 }
             };
             ui.label(text);

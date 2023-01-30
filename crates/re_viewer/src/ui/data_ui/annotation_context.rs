@@ -28,7 +28,9 @@ impl DataUi for AnnotationContext {
                 ui.vertical(|ui| {
                     annotation_info_table_ui(
                         ui,
-                        self.class_map.values().map(|class| &class.info)
+                        self.class_map
+                            .values()
+                            .map(|class| &class.info)
                             .sorted_by_key(|info| info.id),
                     );
 
