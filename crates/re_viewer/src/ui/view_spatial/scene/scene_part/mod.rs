@@ -27,7 +27,7 @@ use crate::{
     misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::scene::SceneQuery,
 };
-use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 
 pub trait ScenePart {
     fn load(
@@ -49,14 +49,14 @@ pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
     entity_view: &re_query::EntityView<T>,
     props: &EntityProperties,
     entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
-) -> InstanceIdHash {
+) -> InstancePathHash {
     if props.interactive {
         if entity_view.num_instances() == 1 || !entity_highlight.any_selection_highlight() {
-            InstanceIdHash::entity(ent_path)
+            InstancePathHash::entity_splat(ent_path)
         } else {
-            InstanceIdHash::instance(ent_path, instance)
+            InstancePathHash::instance(ent_path, instance)
         }
     } else {
-        InstanceIdHash::NONE
+        InstancePathHash::NONE
     }
 }

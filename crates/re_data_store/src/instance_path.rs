@@ -6,10 +6,10 @@ use crate::log_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 
-/// Either a specific instance of an entity, or the whole entity.
+/// The path to either a specific instance of an entity, or the whole entity (splat).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct InstanceId {
+pub struct InstancePath {
     pub entity_path: EntityPath,
 
     /// If this is a concrete instance, what instance index are we?
@@ -18,7 +18,7 @@ pub struct InstanceId {
     pub instance_index: Instance,
 }
 
-impl InstanceId {
+impl InstancePath {
     /// Indicate the whole entity (all instances of it) - i.e. a splat.
     ///
     /// For instance: the whole point cloud, rather than a specific point.
@@ -49,8 +49,8 @@ impl InstanceId {
     }
 
     #[inline]
-    pub fn hash(&self) -> InstanceIdHash {
-        InstanceIdHash {
+    pub fn hash(&self) -> InstancePathHash {
+        InstancePathHash {
             entity_path_hash: self.entity_path.hash(),
             instance_index: self.instance_index,
         }
@@ -63,7 +63,7 @@ impl InstanceId {
     }
 }
 
-impl std::fmt::Display for InstanceId {
+impl std::fmt::Display for InstancePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.instance_index.is_splat() {
             self.entity_path.fmt(f)
@@ -76,8 +76,10 @@ impl std::fmt::Display for InstanceId {
 // ----------------------------------------------------------------------------
 
 /// Hashes of the components of an [`InstanceId`].
+///
+/// This is unique to either a specific instance of an entity, or the whole entity (splat).
 #[derive(Clone, Copy, Debug, Eq)]
-pub struct InstanceIdHash {
+pub struct InstancePathHash {
     pub entity_path_hash: EntityPathHash,
 
     /// If this is a concrete instance, what instance index are we?
@@ -88,7 +90,7 @@ pub struct InstanceIdHash {
     pub instance_index: Instance,
 }
 
-impl std::hash::Hash for InstanceIdHash {
+impl std::hash::Hash for InstancePathHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.entity_path_hash.hash64());
@@ -96,7 +98,7 @@ impl std::hash::Hash for InstanceIdHash {
     }
 }
 
-impl std::cmp::PartialEq for InstanceIdHash {
+impl std::cmp::PartialEq for InstancePathHash {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.entity_path_hash == other.entity_path_hash
@@ -104,7 +106,7 @@ impl std::cmp::PartialEq for InstanceIdHash {
     }
 }
 
-impl InstanceIdHash {
+impl InstancePathHash {
     pub const NONE: Self = Self {
         entity_path_hash: EntityPathHash::NONE,
         instance_index: Instance::SPLAT,
@@ -114,7 +116,7 @@ impl InstanceIdHash {
     ///
     /// For instance: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn entity(entity_path: &EntityPath) -> Self {
+    pub fn entity_splat(entity_path: &EntityPath) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
             instance_index: Instance::SPLAT,
@@ -141,14 +143,14 @@ impl InstanceIdHash {
         self.entity_path_hash.is_none()
     }
 
-    pub fn resolve(&self, entity_db: &EntityDb) -> Option<InstanceId> {
+    pub fn resolve(&self, entity_db: &EntityDb) -> Option<InstancePath> {
         let entity_path = entity_db
             .entity_path_from_hash(&self.entity_path_hash)
             .cloned()?;
 
         let instance_index = self.instance_index;
 
-        Some(InstanceId {
+        Some(InstancePath {
             entity_path,
             instance_index,
         })
@@ -161,7 +163,7 @@ impl InstanceIdHash {
     }
 }
 
-impl Default for InstanceIdHash {
+impl Default for InstancePathHash {
     fn default() -> Self {
         Self::NONE
     }

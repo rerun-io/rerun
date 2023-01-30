@@ -10,8 +10,9 @@ mod component;
 mod component_path;
 mod component_ui_registry;
 mod data;
+mod entity_path;
 pub(crate) mod image;
-mod instance;
+mod instance_path;
 mod log_msg;
 mod msg_id;
 

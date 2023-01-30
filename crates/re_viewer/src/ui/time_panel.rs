@@ -6,7 +6,7 @@ use egui::{
 };
 use itertools::Itertools;
 
-use re_data_store::{EntityTree, InstanceId};
+use re_data_store::{EntityTree, InstancePath};
 use re_log_types::{
     ComponentPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
     TimeType,
@@ -427,7 +427,7 @@ impl TimePanel {
                 num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Selection::Instance(None, InstanceId::entity_splat(tree.path.clone())),
+                Selection::Instance(None, InstancePath::entity_splat(tree.path.clone())),
             );
         }
     }

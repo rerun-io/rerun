@@ -4,7 +4,7 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
@@ -28,7 +28,7 @@ fn push_tensor_texture<T: AsDynamicImage>(
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
-    instance_hash: InstanceIdHash,
+    instance_hash: InstancePathHash,
     tensor: &T,
     tint: egui::Rgba,
 ) {

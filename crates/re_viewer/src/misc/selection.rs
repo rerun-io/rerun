@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use re_data_store::{InstanceId, LogDb};
+use re_data_store::{InstancePath, LogDb};
 use re_log_types::{ComponentPath, MsgId};
 
 use crate::ui::SpaceViewId;
@@ -9,7 +9,7 @@ pub enum Selection {
     MsgId(MsgId),
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
-    Instance(Option<SpaceViewId>, InstanceId),
+    Instance(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 

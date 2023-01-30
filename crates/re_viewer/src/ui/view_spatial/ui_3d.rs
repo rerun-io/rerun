@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstanceId, InstanceIdHash};
+use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
@@ -36,7 +36,7 @@ pub struct View3DState {
     orbit_eye: Option<OrbitEye>,
 
     /// Currently tracked camera.
-    tracked_camera: Option<InstanceId>,
+    tracked_camera: Option<InstancePath>,
 
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
@@ -255,7 +255,7 @@ impl SpaceSpecs {
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceIdHash) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
@@ -451,7 +451,7 @@ pub fn view_3d(
         let axis_length = 1.0; // The axes are also a measuring stick
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
-            InstanceIdHash::NONE,
+            InstancePathHash::NONE,
             axis_length,
         );
     }

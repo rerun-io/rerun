@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_data_store::InstanceIdHash;
+use re_data_store::InstancePathHash;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
@@ -21,7 +21,7 @@ pub struct PickingRayHit {
     /// What entity or instance got hit by the picking ray.
     ///
     /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
-    pub instance_hash: InstanceIdHash,
+    pub instance_hash: InstancePathHash,
 
     /// Where along the picking ray the hit occurred.
     pub ray_t: f32,
@@ -33,7 +33,7 @@ pub struct PickingRayHit {
 }
 
 impl PickingRayHit {
-    fn from_instance_and_t(instance_hash: InstanceIdHash, t: f32) -> Self {
+    fn from_instance_and_t(instance_hash: InstancePathHash, t: f32) -> Self {
         Self {
             instance_hash,
             ray_t: t,
@@ -148,7 +148,7 @@ pub fn picking(
     let mut state = PickingState {
         closest_opaque_side_ui_dist_sq: max_side_ui_dist_sq,
         closest_opaque_pick: PickingRayHit {
-            instance_hash: InstanceIdHash::NONE,
+            instance_hash: InstancePathHash::NONE,
             ray_t: f32::INFINITY,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
@@ -193,7 +193,7 @@ pub fn picking(
 fn picking_points(
     context: &PickingContext,
     state: &mut PickingState,
-    points: &re_renderer::PointCloudBuilder<InstanceIdHash>,
+    points: &re_renderer::PointCloudBuilder<InstancePathHash>,
 ) {
     crate::profile_function!();
 
@@ -227,7 +227,7 @@ fn picking_points(
 fn picking_lines(
     context: &PickingContext,
     state: &mut PickingState,
-    line_strips: &re_renderer::LineStripSeriesBuilder<InstanceIdHash>,
+    line_strips: &re_renderer::LineStripSeriesBuilder<InstancePathHash>,
 ) {
     crate::profile_function!();
 
@@ -299,7 +299,7 @@ fn picking_textured_rects(
     context: &PickingContext,
     state: &mut PickingState,
     textured_rectangles: &[re_renderer::renderer::TexturedRect],
-    textured_rectangles_ids: &[InstanceIdHash],
+    textured_rectangles_ids: &[InstancePathHash],
 ) {
     crate::profile_function!();
 

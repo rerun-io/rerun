@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, InstanceIdHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
@@ -28,7 +28,7 @@ impl Boxes2DPart {
         scene: &mut SceneSpatial,
         entity_path: &EntityPath,
         world_from_obj: Mat4,
-        instance_hash: InstanceIdHash,
+        instance_hash: InstancePathHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
         radius: Option<Radius>,

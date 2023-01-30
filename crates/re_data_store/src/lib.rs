@@ -6,12 +6,12 @@
 
 pub mod entity_properties;
 pub mod entity_tree;
-mod instance;
+mod instance_path;
 pub mod log_db;
 
 pub use entity_properties::*;
 pub use entity_tree::*;
-pub use instance::*;
+pub use instance_path::*;
 pub use log_db::LogDb;
 
 use re_log_types::msg_bundle;

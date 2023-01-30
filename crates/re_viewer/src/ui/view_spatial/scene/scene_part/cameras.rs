@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
     Pinhole, Transform, ViewCoordinates,
@@ -60,7 +60,7 @@ impl CamerasPart {
         entity_path: &EntityPath,
         props: &EntityProperties,
         transforms: &TransformCache,
-        instance_hash: InstanceIdHash,
+        instance_hash: InstancePathHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         entity_highlight: OptionalSpaceViewEntityHighlight<'_>,

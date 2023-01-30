@@ -1,4 +1,4 @@
-use re_data_store::{log_db::LogDb, InstanceId};
+use re_data_store::{log_db::LogDb, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, MsgId, TimeInt, Timeline};
 
 use crate::ui::{
@@ -58,7 +58,7 @@ impl<'a> ViewerContext<'a> {
         self.instance_id_button_to(
             ui,
             space_view_id,
-            &InstanceId::entity_splat(entity_path.clone()),
+            &InstancePath::entity_splat(entity_path.clone()),
             entity_path.to_string(),
         )
     }
@@ -74,7 +74,7 @@ impl<'a> ViewerContext<'a> {
         self.instance_id_button_to(
             ui,
             space_view_id,
-            &InstanceId::entity_splat(entity_path.clone()),
+            &InstancePath::entity_splat(entity_path.clone()),
             text,
         )
     }
@@ -84,7 +84,7 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstanceId,
+        instance_id: &InstancePath,
     ) -> egui::Response {
         self.instance_id_button_to(ui, space_view_id, instance_id, instance_id.to_string())
     }
@@ -94,7 +94,7 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstanceId,
+        instance_id: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
         let selection = Selection::Instance(space_view_id, instance_id.clone());
@@ -178,7 +178,7 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         let selection = Selection::Instance(
             Some(space_view_id),
-            InstanceId::entity_splat(entity_path.clone()),
+            InstancePath::entity_splat(entity_path.clone()),
         );
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)

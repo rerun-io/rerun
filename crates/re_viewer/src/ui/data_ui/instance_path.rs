@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, InstanceId};
+use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
 
@@ -9,19 +9,7 @@ use crate::{
 
 use super::{component::arrow_component_elem_ui, DataUi};
 
-impl DataUi for EntityPath {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        InstanceId::entity_splat(self.clone()).data_ui(ctx, ui, verbosity, query);
-    }
-}
-
-impl DataUi for InstanceId {
+impl DataUi for InstancePath {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -49,7 +37,7 @@ impl DataUi for InstanceId {
                     );
 
                     if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
-                        continue; // no need to show components that are unset
+                        continue; // no need to show components that are unset at this point in time
                     }
 
                     ctx.component_path_button_to(

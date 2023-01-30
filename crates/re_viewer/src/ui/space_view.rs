@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, EntityTree, InstanceId, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 
 use crate::{
     misc::{
@@ -467,13 +467,13 @@ fn has_visualization_for_category(
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewState {
     /// Selects in [`Self::state_tensors`].
-    selected_tensor: Option<InstanceId>,
+    selected_tensor: Option<InstancePath>,
 
     state_text: view_text::ViewTextState,
     state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
-    state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
+    state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
 impl ViewState {
