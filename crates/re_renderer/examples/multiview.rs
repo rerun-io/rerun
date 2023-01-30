@@ -125,6 +125,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .color(Color32::GREEN)
         .radius(Size::new_scene(0.05))
         .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
+    drop(batch);
 
     // Blue spiral, rotating
     builder

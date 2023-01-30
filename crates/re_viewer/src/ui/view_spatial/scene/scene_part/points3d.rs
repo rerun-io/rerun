@@ -148,12 +148,6 @@ impl Points3DPart {
         let annotations = scene.annotation_map.find(ent_path);
         let show_labels = true;
 
-        let mut point_batch = scene
-            .primitives
-            .points
-            .batch("3d points")
-            .world_from_obj(world_from_obj);
-
         let point_positions = {
             crate::profile_scope!("collect_points");
             entity_view
@@ -201,7 +195,11 @@ impl Points3DPart {
             scene.ui.labels_3d.extend(labels);
         }
 
-        point_batch
+        scene
+            .primitives
+            .points
+            .batch("3d points")
+            .world_from_obj(world_from_obj)
             .add_points(point_positions.into_iter())
             .colors(colors)
             .radii(radii)
