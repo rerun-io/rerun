@@ -7,7 +7,7 @@ from rerun.components.annotation import ClassIdArray
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
-from rerun.components.rect2d import Rect2DArray
+from rerun.components.rect2d import Rect2DArray, RectFormat
 from rerun.log import (
     Color,
     Colors,
@@ -25,27 +25,6 @@ __all__ = [
     "log_rect",
     "log_rects",
 ]
-
-
-# """ How to specify rectangles (axis-aligned bounding boxes). """
-class RectFormat(Enum):
-    # """ [x,y,w,h], with x,y = left,top. """"
-    XYWH = "XYWH"
-
-    # """ [y,x,h,w], with x,y = left,top. """"
-    YXHW = "YXHW"
-
-    # """ [x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom """"
-    XYXY = "XYXY"
-
-    # """ [y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom """"
-    YXYX = "YXYX"
-
-    # """ [x_center, y_center, width, height]"
-    XCYCWH = "XCYCWH"
-
-    # """ [x_center, y_center, width/2, height/2]"
-    XCYCW2H2 = "XCYCW2H2"
 
 
 def log_rect(
