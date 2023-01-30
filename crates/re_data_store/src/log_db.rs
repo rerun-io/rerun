@@ -160,7 +160,7 @@ pub struct LogDb {
     recording_info: Option<RecordingInfo>,
 
     /// Where we store the objects.
-    pub obj_db: EntityDb,
+    pub entity_db: EntityDb,
 }
 
 impl LogDb {
@@ -181,11 +181,11 @@ impl LogDb {
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.obj_db.times_per_timeline
+        &self.entity_db.times_per_timeline
     }
 
     pub fn num_timeless_messages(&self) -> usize {
-        self.obj_db.tree.num_timeless_messages()
+        self.entity_db.tree.num_timeless_messages()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -202,10 +202,10 @@ impl LogDb {
                     time_point,
                     path_op,
                 } = msg;
-                self.obj_db.add_path_op(*msg_id, time_point, path_op);
+                self.entity_db.add_path_op(*msg_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(msg) => {
-                self.obj_db.try_add_arrow_data_msg(msg)?;
+                self.entity_db.try_add_arrow_data_msg(msg)?;
             }
             LogMsg::Goodbye(_) => {}
         }
@@ -239,7 +239,7 @@ impl LogDb {
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let drop_msg_ids = {
-            let msg_id_chunks = self.obj_db.arrow_store.gc(
+            let msg_id_chunks = self.entity_db.arrow_store.gc(
                 GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
                 Timeline::log_time(),
                 MsgId::name(),
@@ -254,14 +254,14 @@ impl LogDb {
                 .collect::<ahash::HashSet<_>>()
         };
 
-        let cutoff_times = self.obj_db.arrow_store.oldest_time_per_timeline();
+        let cutoff_times = self.entity_db.arrow_store.oldest_time_per_timeline();
 
         let Self {
             chronological_message_ids,
             log_messages,
             timeless_message_ids,
             recording_info: _,
-            obj_db,
+            entity_db,
         } = self;
 
         {
@@ -278,6 +278,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.purge(&cutoff_times, &drop_msg_ids);
+        entity_db.purge(&cutoff_times, &drop_msg_ids);
     }
 }

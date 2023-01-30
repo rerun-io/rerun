@@ -116,7 +116,7 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let arrow_store = &ctx.log_db.obj_db.arrow_store;
+        let arrow_store = &ctx.log_db.entity_db.arrow_store;
         let arrow_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead

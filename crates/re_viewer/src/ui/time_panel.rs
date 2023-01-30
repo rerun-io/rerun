@@ -332,7 +332,7 @@ impl TimePanel {
             blueprint,
             time_area_response,
             time_area_painter,
-            &ctx.log_db.obj_db.tree,
+            &ctx.log_db.entity_db.tree,
             ui,
         );
     }
@@ -822,7 +822,7 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .log_db
-        .obj_db
+        .entity_db
         .tree
         .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())

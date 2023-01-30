@@ -90,7 +90,7 @@ impl ScenePart for Lines3DPart {
             let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<LineStrip3D, 4>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

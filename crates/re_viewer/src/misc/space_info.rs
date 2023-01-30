@@ -110,17 +110,17 @@ pub struct SpaceInfoCollection {
 impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    pub fn new(obj_db: &EntityDb) -> Self {
+    pub fn new(entity_db: &EntityDb) -> Self {
         crate::profile_function!();
 
         fn add_children(
-            obj_db: &EntityDb,
+            entity_db: &EntityDb,
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &EntityTree,
             query: &LatestAtQuery,
         ) {
-            if let Some(transform) = query_transform(obj_db, &tree.path, query) {
+            if let Some(transform) = query_transform(entity_db, &tree.path, query) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -134,7 +134,7 @@ impl SpaceInfoCollection {
 
                 for child_tree in tree.children.values() {
                     add_children(
-                        obj_db,
+                        entity_db,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
@@ -151,7 +151,7 @@ impl SpaceInfoCollection {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(obj_db, spaces_info, parent_space, child_tree, query);
+                    add_children(entity_db, spaces_info, parent_space, child_tree, query);
                 }
             }
         }
@@ -163,10 +163,10 @@ impl SpaceInfoCollection {
 
         let mut spaces_info = Self::default();
 
-        for tree in obj_db.tree.children.values() {
+        for tree in entity_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(obj_db, &tree.path, &query).is_some() {
+            if query_transform(entity_db, &tree.path, &query).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -174,12 +174,12 @@ impl SpaceInfoCollection {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(obj_db, &mut spaces_info, &mut space_info, tree, &query);
+            add_children(entity_db, &mut spaces_info, &mut space_info, tree, &query);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
         for (entity_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinates = query_view_coordinates(obj_db, entity_path, &query);
+            space_info.coordinates = query_view_coordinates(entity_db, entity_path, &query);
         }
 
         spaces_info
@@ -294,11 +294,11 @@ impl SpaceInfoCollection {
 // ----------------------------------------------------------------------------
 
 pub fn query_view_coordinates(
-    obj_db: &EntityDb,
+    entity_db: &EntityDb,
     ent_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
-    let arrow_store = &obj_db.arrow_store;
+    let arrow_store = &entity_db.arrow_store;
 
     let entity_view =
         query_entity_with_primary::<ViewCoordinates>(arrow_store, query, ent_path, &[]).ok()?;

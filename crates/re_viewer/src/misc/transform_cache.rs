@@ -46,7 +46,7 @@ impl TransformCache {
     /// This means that the objects in `reference_space` get the identity transform and all other
     /// objects are transformed relative to it.
     pub fn determine_transforms(
-        obj_db: &EntityDb,
+        entity_db: &EntityDb,
         time_ctrl: &TimeControl,
         root_path: &EntityPath,
         obj_properties: &EntityPropertyMap,
@@ -62,7 +62,7 @@ impl TransformCache {
 
         // Find the object path tree for the root.
         let mut parent_tree_stack = Vec::new();
-        let mut current_tree = &obj_db.tree;
+        let mut current_tree = &entity_db.tree;
         'outer: while &current_tree.path != root_path {
             for child_tree in current_tree.children.values() {
                 if root_path == &child_tree.path || root_path.is_descendant_of(&child_tree.path) {
@@ -84,7 +84,7 @@ impl TransformCache {
         // Child transforms of this space
         transforms.gather_descendants_transforms(
             current_tree,
-            obj_db,
+            entity_db,
             &query,
             obj_properties,
             glam::Mat4::IDENTITY,
@@ -104,8 +104,12 @@ impl TransformCache {
 
             // Note that the transform at the reference is the first that needs to be inversed to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
-            match inverse_transform_at(&current_tree.path, obj_db, &query, &mut encountered_pinhole)
-            {
+            match inverse_transform_at(
+                &current_tree.path,
+                entity_db,
+                &query,
+                &mut encountered_pinhole,
+            ) {
                 Err(unreachable_reason) => {
                     transforms.first_unreachable_parent =
                         (parent_tree.path.clone(), unreachable_reason);
@@ -120,7 +124,7 @@ impl TransformCache {
             // (skip over everything at and under `current_tree` automatically)
             transforms.gather_descendants_transforms(
                 parent_tree,
-                obj_db,
+                entity_db,
                 &query,
                 obj_properties,
                 reference_from_ancestor,
@@ -136,7 +140,7 @@ impl TransformCache {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
-        obj_db: &EntityDb,
+        entity_db: &EntityDb,
         query: &LatestAtQuery,
         obj_properties: &EntityPropertyMap,
         reference_from_obj: glam::Mat4,
@@ -155,7 +159,7 @@ impl TransformCache {
             let mut encountered_pinhole = encountered_pinhole;
             let reference_from_child = match transform_at(
                 &child_tree.path,
-                obj_db,
+                entity_db,
                 obj_properties,
                 query,
                 &mut encountered_pinhole,
@@ -170,7 +174,7 @@ impl TransformCache {
             };
             self.gather_descendants_transforms(
                 child_tree,
-                obj_db,
+                entity_db,
                 query,
                 obj_properties,
                 reference_from_child,
@@ -197,12 +201,12 @@ impl TransformCache {
 
 fn transform_at(
     entity_path: &EntityPath,
-    obj_db: &EntityDb,
+    entity_db: &EntityDb,
     obj_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(transform) = query_transform(obj_db, entity_path, query) {
+    if let Some(transform) = query_transform(entity_db, entity_path, query) {
         match transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().to_mat4())),
             // If we're connected via 'unknown' it's not reachable
@@ -245,11 +249,11 @@ fn transform_at(
 
 fn inverse_transform_at(
     entity_path: &EntityPath,
-    obj_db: &EntityDb,
+    entity_db: &EntityDb,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(parent_transform) = query_transform(obj_db, entity_path, query) {
+    if let Some(parent_transform) = query_transform(entity_db, entity_path, query) {
         match parent_transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.child_from_parent().to_mat4())),
             // If we're connected via 'unknown', everything except whats under `parent_tree` is unreachable

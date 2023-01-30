@@ -410,7 +410,7 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = DataStoreStats::from_store(&self.log_db().obj_db.arrow_store);
+        let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.arrow_store);
 
         self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
 

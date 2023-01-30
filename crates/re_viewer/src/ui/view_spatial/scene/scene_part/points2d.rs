@@ -137,7 +137,7 @@ impl ScenePart for Points2DPart {
             let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point2D, 7>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

@@ -93,7 +93,7 @@ impl ScenePart for MeshPart {
             };
 
             match query_primary_with_history::<Mesh3D, 3>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

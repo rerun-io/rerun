@@ -27,13 +27,13 @@ use super::ScenePart;
 ///
 /// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
 fn determine_view_coordinates(
-    obj_db: &re_data_store::log_db::EntityDb,
+    entity_db: &re_data_store::log_db::EntityDb,
     time_ctrl: &crate::misc::TimeControl,
     mut entity_path: EntityPath,
 ) -> ViewCoordinates {
     loop {
         if let Some(view_coordinates) =
-            query_view_coordinates(obj_db, &entity_path, &time_ctrl.current_query())
+            query_view_coordinates(entity_db, &entity_path, &time_ctrl.current_query())
         {
             return view_coordinates;
         }
@@ -184,7 +184,7 @@ impl ScenePart for CamerasPart {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             match query_entity_with_primary::<Transform>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query,
                 ent_path,
                 &[],
@@ -204,7 +204,7 @@ impl ScenePart for CamerasPart {
                     );
 
                     let view_coordinates = determine_view_coordinates(
-                        &ctx.log_db.obj_db,
+                        &ctx.log_db.entity_db,
                         &ctx.rec_cfg.time_ctrl,
                         ent_path.clone(),
                     );

@@ -356,7 +356,7 @@ fn view_2d_scrollable(
         );
 
         for hit in picking_result.iter_hits() {
-            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
+            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
 
             // Special hover ui for images.
@@ -436,7 +436,7 @@ fn view_2d_scrollable(
 
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
                 pick.instance_hash
-                    .resolve(&ctx.log_db.obj_db)
+                    .resolve(&ctx.log_db.entity_db)
                     .map(|instance| Selection::Instance(Some(space_view_id), instance))
             }));
         }

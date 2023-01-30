@@ -469,7 +469,7 @@ impl Viewport {
                     .iter()
                     .filter_map(|entity_path| {
                         if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                            &ctx.log_db.obj_db.arrow_store,
+                            &ctx.log_db.entity_db.arrow_store,
                             &timeline_query,
                             entity_path,
                             &[],

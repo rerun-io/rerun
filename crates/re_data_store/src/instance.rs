@@ -138,14 +138,14 @@ impl InstanceIdHash {
         self.entity_path_hash.is_none()
     }
 
-    pub fn resolve(&self, obj_db: &EntityDb) -> Option<InstanceId> {
+    pub fn resolve(&self, entity_db: &EntityDb) -> Option<InstanceId> {
         match self.arrow_instance {
             None => {
                 re_log::error_once!("Found classical InstanceIdHash");
                 None
             }
             Some(arrow_instance) => Some(InstanceId {
-                entity_path: obj_db
+                entity_path: entity_db
                     .entity_path_from_hash(&self.entity_path_hash)
                     .cloned()?,
                 instance_index: Some(Index::ArrowInstance(arrow_instance)),

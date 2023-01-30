@@ -120,7 +120,7 @@ impl ExtraQueryHistory {
 /// what most users are still using. If we don't find the transform there, then
 /// we check to see if it exists in the arrow storage.
 pub fn query_transform(
-    obj_db: &EntityDb,
+    entity_db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<Transform> {
@@ -129,7 +129,7 @@ pub fn query_transform(
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
     // transforms this is easy enough.
-    let arrow_store = &obj_db.arrow_store;
+    let arrow_store = &entity_db.arrow_store;
 
     let components = [Transform::name()];
 

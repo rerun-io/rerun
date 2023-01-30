@@ -354,7 +354,7 @@ fn obj_props_ui(
         if let Some(entity_path) = entity_path {
             let query = ctx.current_query();
             if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.obj_db, entity_path, &query)
+                query_transform(&ctx.log_db.entity_db, entity_path, &query)
             {
                 ui.horizontal(|ui| {
                     ui.label("Image plane distance:");

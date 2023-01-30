@@ -221,7 +221,7 @@ impl SpaceView {
     }
 
     fn query_tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        let obj_tree = &ctx.log_db.obj_db.tree;
+        let obj_tree = &ctx.log_db.entity_db.tree;
 
         // We'd like to see the reference space path by default.
         let default_open = self.root_path != self.space_path;
@@ -236,7 +236,7 @@ impl SpaceView {
         })
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
-                let spaces_info = SpaceInfoCollection::new(&ctx.log_db.obj_db);
+                let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
                 self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree);
             }
         });
@@ -285,7 +285,7 @@ impl SpaceView {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
                     self.entity_path_button(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
+                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
                     }
                 });
             })
@@ -304,7 +304,7 @@ impl SpaceView {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
                     self.entity_path_button(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
+                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
                     }
                 });
             })
@@ -423,7 +423,7 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let transforms = TransformCache::determine_transforms(
-                    &ctx.log_db.obj_db,
+                    &ctx.log_db.entity_db,
                     &ctx.rec_cfg.time_ctrl,
                     &self.space_path,
                     self.data_blueprint.data_blueprints_projected(),

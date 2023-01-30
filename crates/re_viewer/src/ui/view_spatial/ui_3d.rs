@@ -341,7 +341,7 @@ pub fn view_3d(
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
 
         for hit in picking_result.iter_hits() {
-            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
+            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
 
             // Special hover ui for images.
@@ -402,7 +402,7 @@ pub fn view_3d(
 
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
             pick.instance_hash
-                .resolve(&ctx.log_db.obj_db)
+                .resolve(&ctx.log_db.entity_db)
                 .map(|instance| Selection::Instance(Some(space_view_id), instance))
         }));
         state.state_3d.hovered_point = picking_result

@@ -15,7 +15,7 @@ impl DataUi for DataPath {
             ctx.entity_path_button(ui, None, &self.entity_path);
         });
 
-        let store = &ctx.log_db.obj_db.arrow_store;
+        let store = &ctx.log_db.entity_db.arrow_store;
 
         match re_query::get_component_with_instances(
             store,

@@ -62,7 +62,7 @@ pub fn categorize_entity_path(
     // If it has a transform we might want to visualize it in space
     // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
     if query_transform(
-        &log_db.obj_db,
+        &log_db.entity_db,
         entity_path,
         &LatestAtQuery::new(timeline, TimeInt::MAX),
     )
@@ -82,7 +82,7 @@ pub fn categorize_arrow_entity_path(
     crate::profile_function!();
 
     log_db
-        .obj_db
+        .entity_db
         .arrow_store
         .all_components(timeline, entity_path)
         .unwrap_or_default()
@@ -107,7 +107,7 @@ pub fn categorize_arrow_entity_path(
                 let timeline_query = LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
 
                 if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
-                    &log_db.obj_db.arrow_store,
+                    &log_db.entity_db.arrow_store,
                     &timeline_query,
                     entity_path,
                     &[],

@@ -36,7 +36,7 @@ impl DataUi for InstanceId {
         _verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let store = &ctx.log_db.obj_db.arrow_store;
+        let store = &ctx.log_db.entity_db.arrow_store;
 
         let Some(mut components) = store.all_components(&query.timeline, &self.entity_path) else {
             ui.label("No Components");
