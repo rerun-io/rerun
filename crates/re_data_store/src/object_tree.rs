@@ -92,15 +92,6 @@ impl ObjectTree {
         self.num_timeless_messages
     }
 
-    /// Add a `LoggedData` into the object tree
-    ///
-    /// As of the arrow-migration, the data argument is now optional. The data
-    /// stored in fields is redundant information used for visualizing the
-    /// timeline. This concept will be removed from the object-tree all together
-    /// once timeline context is populated directly from the arrow store. Until
-    /// this happens we only get top-level messages in the timeline, not
-    /// individual fields.
-    ///
     /// Returns a collection of pending clear operations
     pub fn add_data_msg(
         &mut self,

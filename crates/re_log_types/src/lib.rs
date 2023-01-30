@@ -228,67 +228,6 @@ impl std::fmt::Display for RecordingSource {
 }
 
 // ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum LoggedData {
-    /// An empty data value, for "mono-objects", indicates the data is no longer valid
-    Null(DataType),
-
-    /// A single data value, for "mono-objects".
-    Single(Data),
-
-    /// Log multiple values at once to a "multi-object".
-    ///
-    /// The index becomes an "instance index" that, together with the object-path, forms an "instance".
-    Batch { indices: BatchIndex, data: DataVec },
-
-    /// Log the same value for all instances of a multi-object.
-    ///
-    /// You can only use this for optional fields such as `color`, `space` etc.
-    /// You can NOT use it for primary fields such as `pos`.
-    BatchSplat(Data),
-}
-
-impl LoggedData {
-    #[inline]
-    pub fn data_type(&self) -> DataType {
-        match self {
-            Self::Null(data_type) => *data_type,
-            Self::Single(data) | Self::BatchSplat(data) => data.data_type(),
-            Self::Batch { data, .. } => data.element_data_type(),
-        }
-    }
-}
-
-impl From<Data> for LoggedData {
-    #[inline]
-    fn from(data: Data) -> Self {
-        Self::Single(data)
-    }
-}
-
-#[macro_export]
-macro_rules! impl_into_logged_data {
-    ($from_ty: ty, $data_enum_variant: ident) => {
-        impl From<$from_ty> for LoggedData {
-            #[inline]
-            fn from(value: $from_ty) -> Self {
-                Self::Single(Data::$data_enum_variant(value))
-            }
-        }
-    };
-}
-
-impl_into_logged_data!(i32, I32);
-impl_into_logged_data!(f32, F32);
-impl_into_logged_data!(BBox2D, BBox2D);
-impl_into_logged_data!(ClassicTensor, Tensor);
-impl_into_logged_data!(Box3, Box3);
-impl_into_logged_data!(Mesh3D, Mesh3D);
-impl_into_logged_data!(ObjPath, ObjPath);
-
-// ----------------------------------------------------------------------------
 /// The message sent to specify the data of a single field of an object.
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -312,6 +251,7 @@ pub struct PathOpMsg {
 pub enum PathOp {
     // Clear all the fields stored at an [`ObjPath`]
     ClearFields(ObjPath),
+
     // Clear all the fields of an `[ObjPath]` and any descendents.
     ClearRecursive(ObjPath),
 }

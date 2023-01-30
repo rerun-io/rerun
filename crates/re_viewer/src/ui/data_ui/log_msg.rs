@@ -1,6 +1,5 @@
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, LogMsg, LoggedData, PathOpMsg,
-    RecordingInfo,
+    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, LogMsg, PathOpMsg, RecordingInfo,
 };
 
 use crate::{misc::ViewerContext, ui::UiVerbosity};
@@ -65,32 +64,6 @@ impl DataUi for BeginRecordingMsg {
             ui.label(format!("{is_official_example}"));
             ui.end_row();
         });
-    }
-}
-
-impl DataUi for LoggedData {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            LoggedData::Null(data_type) => {
-                ui.label(format!("null: {:?}", data_type));
-            }
-            LoggedData::Batch { data, .. } => {
-                ui.label(format!("batch: {:?}", data));
-            }
-            LoggedData::Single(data) => data.data_ui(ctx, ui, verbosity, query),
-            LoggedData::BatchSplat(data) => {
-                ui.horizontal(|ui| {
-                    ui.label("Batch Splat:");
-                    data.data_ui(ctx, ui, verbosity, query);
-                });
-            }
-        }
     }
 }
 
