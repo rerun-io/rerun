@@ -55,12 +55,6 @@ impl InstancePath {
             instance_index: self.instance_index,
         }
     }
-
-    /// Does this entity match this instance id?
-    #[inline]
-    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: Instance) -> bool {
-        &self.entity_path == entity_path && self.instance_index == instance_index
-    }
 }
 
 impl std::fmt::Display for InstancePath {
@@ -154,12 +148,6 @@ impl InstancePathHash {
             entity_path,
             instance_index,
         })
-    }
-
-    /// Does this entity match this instance id?
-    #[inline]
-    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: Instance) -> bool {
-        self.entity_path_hash == entity_path.hash() && self.instance_index == instance_index
     }
 }
 
