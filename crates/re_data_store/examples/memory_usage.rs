@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{obj_path, MsgId};
+use re_log_types::{entity_path, MsgId};
 
 fn main() {
     log_messages();
@@ -98,10 +98,10 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let obj_path = obj_path!("points");
+        let entity_path = entity_path!("points");
         let used_bytes = live_bytes() - used_bytes_start;
-        println!("Short ObjPath uses {used_bytes} bytes in RAM");
-        drop(obj_path);
+        println!("Short EntityPath uses {used_bytes} bytes in RAM");
+        drop(entity_path);
     }
 
     {
@@ -109,7 +109,7 @@ fn log_messages() {
         let msg_bundle = Box::new(
             try_build_msg_bundle1(
                 MsgId::random(),
-                obj_path!("points"),
+                entity_path!("points"),
                 [build_frame_nr(0.into())],
                 build_some_point2d(1),
             )
@@ -131,7 +131,7 @@ fn log_messages() {
         let msg_bundle = Box::new(
             try_build_msg_bundle1(
                 MsgId::random(),
-                obj_path!("points"),
+                entity_path!("points"),
                 [build_frame_nr(0.into())],
                 build_some_point2d(NUM_POINTS),
             )

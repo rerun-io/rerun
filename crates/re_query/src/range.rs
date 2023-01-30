@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
-use re_log_types::{msg_bundle::Component, ComponentName, ObjPath};
+use re_log_types::{msg_bundle::Component, ComponentName, EntityPath};
 
 use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 
@@ -24,7 +24,7 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     store: &'a DataStore,
     query: &RangeQuery,
-    ent_path: &'a ObjPath,
+    ent_path: &'a EntityPath,
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, EntityView<Primary>)> + 'a {
     crate::profile_function!();

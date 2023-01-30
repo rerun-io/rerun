@@ -3,9 +3,9 @@ use std::f64::consts::TAU;
 use clap::Parser;
 
 use re_log_types::{
-    field_types::{ColorRGBA, Label, Radius, Scalar, ScalarPlotProps},
+    component_types::{ColorRGBA, Label, Radius, Scalar, ScalarPlotProps},
     msg_bundle::MsgBundle,
-    LogMsg, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline,
+    EntityPath, LogMsg, MsgId, Time, TimePoint, TimeType, Timeline,
 };
 use rerun::Session;
 use rerun_sdk as rerun;
@@ -76,7 +76,7 @@ fn main() -> std::process::ExitCode {
 
 /// Logs a parabola as a time-series.
 fn log_parabola(session: &mut Session) {
-    let path = ObjPath::from("parabola");
+    let path = EntityPath::from("parabola");
     let labels = vec!["f(t) = (0.01t - 3)³ + 1".to_owned().into()];
 
     for t in (0..1000).step_by(10) {
@@ -110,11 +110,11 @@ fn log_parabola(session: &mut Session) {
 
 /// Logs basic trig functions as a time-series.
 fn log_trig(session: &mut Session) {
-    let cos_path = ObjPath::from("trig/cos");
+    let cos_path = EntityPath::from("trig/cos");
     let cos_labels = vec!["cos(0.01t)".to_owned().into()];
     let cos_colors = vec![0x00_FF_00_FF.into()];
 
-    let sin_path = ObjPath::from("trig/sin");
+    let sin_path = EntityPath::from("trig/sin");
     let sin_labels = vec!["sin(0.01t)".to_owned().into()];
     let sin_colors = vec![0xFF_00_00_FF.into()];
 
@@ -157,11 +157,11 @@ fn log_segmentation(session: &mut Session) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
-    let line_path = ObjPath::from("segmentation/line");
+    let line_path = EntityPath::from("segmentation/line");
     let line_colors = vec![0xFF_FF_00_FF.into()];
     let line_radii = vec![3.0.into()];
 
-    let samples_path = ObjPath::from("segmentation/samples");
+    let samples_path = EntityPath::from("segmentation/samples");
     let samples_props = vec![ScalarPlotProps { scattered: true }];
 
     for t in (0..1_000).step_by(2) {
@@ -214,7 +214,7 @@ fn log_segmentation(session: &mut Session) {
 fn log_scalars(
     session: &mut Session,
     timepoint: TimePoint,
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
     scalars: Option<Vec<Scalar>>,
     colors: Option<Vec<ColorRGBA>>,
     radii: Option<Vec<Radius>>,
@@ -223,7 +223,7 @@ fn log_scalars(
 ) {
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         timepoint,
         [
             scalars.map(|te| te.try_into().unwrap()),

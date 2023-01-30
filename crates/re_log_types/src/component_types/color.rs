@@ -5,7 +5,7 @@ use crate::msg_bundle::Component;
 /// An RGBA color tuple.
 ///
 /// ```
-/// use re_log_types::field_types::ColorRGBA;
+/// use re_log_types::component_types::ColorRGBA;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

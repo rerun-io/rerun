@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{Index, InstanceId, ObjPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties, Index, InstanceId};
 use re_log_types::{
-    field_types::{Instance, Tensor},
+    component_types::{Instance, Tensor},
     ClassicTensor,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
@@ -17,15 +17,15 @@ pub struct SceneTensor {
 }
 
 impl SceneTensor {
-    /// Loads all tensor objects into the scene according to the given query.
-    pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+    /// Loads all tensors into the scene according to the given query.
+    pub(crate) fn load(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (ent_path, props) in query.iter_entities() {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             match query_entity_with_primary::<Tensor>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &timeline_query,
                 ent_path,
                 &[],
@@ -42,8 +42,8 @@ impl SceneTensor {
 
     fn load_tensor_entity(
         &mut self,
-        ent_path: &ObjPath,
-        _props: &ObjectProps,
+        ent_path: &EntityPath,
+        _props: &EntityProperties,
         entity_view: &EntityView<Tensor>,
     ) -> Result<(), QueryError> {
         entity_view.visit1(|instance: Instance, tensor: Tensor| {

@@ -10,8 +10,7 @@ use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use re_format::{arrow, format_bytes, format_number};
 use re_log_types::{
-    ComponentName, MsgId, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimePoint,
-    TimeRange, Timeline,
+    ComponentName, EntityPath, EntityPathHash, MsgId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 // --- Indices & offsets ---

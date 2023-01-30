@@ -65,7 +65,7 @@ pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
-    //TODO(john) actully use a run-time type registry
+    //TODO(john): use a run-time type registry
     static ref FIELDS: [Field; 26] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
@@ -120,7 +120,7 @@ pub type Result<T> = std::result::Result<T, FieldError>;
 /// ## Example:
 /// ```
 /// use arrow2_convert::{ArrowField, ArrowSerialize, ArrowDeserialize};
-/// use re_log_types::field_types::FixedSizeArrayField;
+/// use re_log_types::component_types::FixedSizeArrayField;
 ///
 /// #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 /// pub struct ConvertibleType {

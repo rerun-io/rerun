@@ -1,9 +1,9 @@
 use egui::Color32;
 use glam::Mat4;
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ColorRGBA, Instance},
+    component_types::{ColorRGBA, Instance},
     msg_bundle::Component,
     Mesh3D,
 };
@@ -27,28 +27,28 @@ impl MeshPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &ObjectProps,
+        props: &EntityProperties,
         entity_view: &EntityView<Mesh3D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
         ctx: &mut ViewerContext<'_>,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
-        let _default_color = DefaultColor::ObjPath(ent_path);
+        let _default_color = DefaultColor::EntityPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-        let object_highlight = highlights.object_highlight(ent_path.hash());
+        let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
         let visitor = |instance: Instance,
                        mesh: re_log_types::Mesh3D,
                        _color: Option<ColorRGBA>| {
             let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
+                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
 
             let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                 Color32::TRANSPARENT,
-                object_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             if let Some(mesh) = ctx
@@ -88,12 +88,12 @@ impl ScenePart for MeshPart {
         crate::profile_scope!("MeshPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
 
             match query_primary_with_history::<Mesh3D, 3>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

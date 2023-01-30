@@ -78,16 +78,16 @@ def _normalize_labels(labels: Optional[Union[str, Sequence[str]]]) -> Sequence[s
         return labels
 
 
-def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
+def log_cleared(entity_path: str, *, recursive: bool = False) -> None:
     """
-    Indicate that an object at a given path should no longer be displayed.
+    Indicate that an entity at a given path should no longer be displayed.
 
     If `recursive` is True this will also clear all sub-paths
     """
-    bindings.log_cleared(obj_path, recursive)
+    bindings.log_cleared(entity_path, recursive)
 
 
-def set_visible(obj_path: str, visibile: bool) -> None:
+def set_visible(entity_path: str, visibile: bool) -> None:
     """
     set_visible has been deprecated.
 

@@ -8,10 +8,10 @@ use polars_core::prelude::*;
 use re_arrow_store::polars_util::latest_components;
 use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
 use re_log_types::{
+    component_types::{Instance, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    field_types::{Instance, Point2D, Rect2D},
     msg_bundle::Component,
-    ObjPath as EntityPath,
+    EntityPath,
 };
 
 fn main() {

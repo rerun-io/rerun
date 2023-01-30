@@ -27,7 +27,7 @@ __all__ = [
 
 
 def log_rect(
-    obj_path: str,
+    entity_path: str,
     rect: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
@@ -41,7 +41,7 @@ def log_rect(
 
     Parameters
     ----------
-    obj_path:
+    entity_path:
         Path to the rectangle in the space hierarchy.
     rect:
         the recangle in [x, y, w, h], or some format you pick with the `rect_format` argument.
@@ -78,11 +78,11 @@ def log_rect(
         class_ids = _normalize_ids([class_id])
         comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
 
 
 def log_rects(
-    obj_path: str,
+    entity_path: str,
     rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
@@ -95,7 +95,7 @@ def log_rects(
     """
     Log multiple 2D rectangles.
 
-    Logging again to the same `obj_path` will replace all the previous rectangles.
+    Logging again to the same `entity_path` will replace all the previous rectangles.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -109,7 +109,7 @@ def log_rects(
 
     Parameters
     ----------
-    obj_path:
+    entity_path:
         Path to the rectangles in the space hierarchy.
     rects:
         Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
@@ -169,8 +169,8 @@ def log_rects(
         is_splat = len(class_ids) == 1
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
         comps[1]["rerun.instance"] = InstanceArray.splat()
-        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)

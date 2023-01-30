@@ -15,7 +15,7 @@ __all__ = [
 
 
 def log_scalar(
-    obj_path: str,
+    entity_path: str,
     scalar: float,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
@@ -45,8 +45,7 @@ def log_scalar(
     In terms of actual hierarchy:
 
     - Each space represents a single plot.
-    - Each object path within a space that contains scalar data is a line within
-      that plot.
+    - Each entity path within a space that contains scalar data is a line within that plot.
     - Each logged scalar is a point.
 
     E.g. the following:
@@ -55,12 +54,12 @@ def log_scalar(
     color=RED) rerun.log_scalar("trig/cos", cos(t), label="cos(t)", color=BLUE)
     ```
     will yield a single plot (space = `trig`), comprised of two lines
-    (object paths `trig/sin` and `trig/cos`).
+    (entity paths `trig/sin` and `trig/cos`).
 
 
     Parameters
     ----------
-    obj_path:
+    entity_path:
         The path to the scalar in the space hierarchy.
     scalar:
         The scalar value to log.
@@ -69,20 +68,20 @@ def log_scalar(
 
         This won't show up on points at the moment, as our plots don't yet
         support displaying labels for individual points. If all points within a
-        single object path (i.e. a line) share the same label, then this label
+        single entity path (i.e. a line) share the same label, then this label
         will be used as the label for the line itself. Otherwise, the line will
-        be named after the object path. The plot itself is named after the space
+        be named after the entity path. The plot itself is named after the space
         it's in.
     color:
         An optional color in the form of a RGB or RGBA triplet in 0-255 sRGB.
 
         If left unspecified, a pseudo-random color will be used instead. That
-        same color will apply to all points residing in the same object path
+        same color will apply to all points residing in the same entity path
         that don't have a color specified.
 
         Points within a single line do not have to share the same color, the line
         will have differently colored segments as appropriate.
-        If all points within a single object path (i.e. a line) share the same
+        If all points within a single entity path (i.e. a line) share the same
         color, then this color will be used as the line color in the plot legend.
         Otherwise, the line will appear grey in the legend.
     radius:
@@ -91,7 +90,7 @@ def log_scalar(
         Points within a single line do not have to share the same radius, the line
         will have differently sized segments as appropriate.
 
-        If all points within a single object path (i.e. a line) share the same
+        If all points within a single entity path (i.e. a line) share the same
         radius, then this radius will be used as the line width too. Otherwise, the
         line will use the default width of `1.0`.
     scattered:
@@ -118,4 +117,4 @@ def log_scalar(
         props = [{"scattered": scattered}]
         comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=False)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=False)

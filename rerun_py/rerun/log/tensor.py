@@ -36,7 +36,7 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 
 
 def log_tensor(
-    obj_path: str,
+    entity_path: str,
     tensor: npt.ArrayLike,
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
@@ -47,8 +47,8 @@ def log_tensor(
 
     Parameters
     ----------
-    obj_path:
-        Path to the image in the space hierarchy.
+    entity_path:
+        Path to the tensor in the space hierarchy.
     tensor:
         A [Tensor][rerun.log.tensor.Tensor] objector.
     names:
@@ -59,11 +59,11 @@ def log_tensor(
         If true, the tensor will be timeless (default: False).
 
     """
-    _log_tensor(obj_path, tensor=_to_numpy(tensor), names=names, meter=meter, timeless=timeless)
+    _log_tensor(entity_path, tensor=_to_numpy(tensor), names=names, meter=meter, timeless=timeless)
 
 
 def _log_tensor(
-    obj_path: str,
+    entity_path: str,
     tensor: npt.NDArray[Any],
     names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
@@ -109,4 +109,4 @@ def _log_tensor(
 
     comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)

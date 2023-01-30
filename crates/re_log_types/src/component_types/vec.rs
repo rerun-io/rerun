@@ -6,7 +6,7 @@ use crate::msg_bundle::Component;
 /// A vector in 2D space.
 ///
 /// ```
-/// # use re_log_types::field_types::Vec2D;
+/// # use re_log_types::component_types::Vec2D;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
@@ -74,7 +74,7 @@ impl From<glam::Vec2> for Vec2D {
 /// A vector in 3D space.
 ///
 /// ```
-/// use re_log_types::field_types::Vec3D;
+/// use re_log_types::component_types::Vec3D;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
@@ -148,7 +148,7 @@ impl From<glam::Vec3> for Vec3D {
 /// A vector in 4D space.
 ///
 /// ```
-/// # use re_log_types::field_types::Vec4D;
+/// # use re_log_types::component_types::Vec4D;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(

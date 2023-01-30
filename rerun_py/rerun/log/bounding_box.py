@@ -19,7 +19,7 @@ __all__ = [
 
 
 def log_obb(
-    obj_path: str,
+    entity_path: str,
     half_size: Optional[npt.ArrayLike],
     position: Optional[npt.ArrayLike] = None,
     rotation_q: Optional[npt.ArrayLike] = None,
@@ -34,7 +34,7 @@ def log_obb(
 
     Parameters
     ----------
-    obj_path:
+    entity_path:
         The path to the oriented bounding box in the space hierarchy.
     half_size:
         Array with [x, y, z] half dimensions of the OBB.
@@ -96,4 +96,4 @@ def log_obb(
         class_ids = _normalize_ids([class_id])
         comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(f"{obj_path}", components=comps, timeless=timeless)
+    bindings.log_arrow_msg(f"{entity_path}", components=comps, timeless=timeless)

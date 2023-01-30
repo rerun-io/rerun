@@ -40,7 +40,7 @@ class ImageFormat(Enum):
 
 
 def log_mesh_file(
-    obj_path: str,
+    entity_path: str,
     mesh_format: MeshFormat,
     mesh_file: bytes,
     *,
@@ -64,7 +64,7 @@ def log_mesh_file(
 
     Parameters
     ----------
-    obj_path:
+    entity_path:
         Path to the mesh in the space hierarchy
     mesh_format:
         Format of the mesh file
@@ -82,11 +82,11 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
+    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
-    obj_path: str,
+    entity_path: str,
     img_path: Path,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
@@ -98,7 +98,7 @@ def log_image_file(
 
     Parameters
     ----------
-    obj_path:
+    entity_path:
         Path to the image in the space hierarchy.
     img_path:
         Path to the image file.
@@ -111,4 +111,4 @@ def log_image_file(
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(obj_path, img_path, img_format, timeless)
+    bindings.log_image_file(entity_path, img_path, img_format, timeless)

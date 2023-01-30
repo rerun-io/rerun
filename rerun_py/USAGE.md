@@ -32,7 +32,7 @@ for frame in read_sensor_frames():
 This will add the logged points to the timelines `log_time`, `frame_idx`, and `sensor_time`. You can then choose which timeline you want to organize your data along in the timeline view in the bottom of the Rerun Viewer.
 
 ## Paths
-The first argument to each log function is an _object path_. Each time you log to a specific object path you will update the object, i.e. log a new instance of it along the timeline. Each logging to a path must be of the same type (you cannot log an image to the same path as a point cloud).
+The first argument to each log function is an _entity path_. Each time you log to a specific entity path you will update the entity, i.e. log a new instance of it along the timeline. Each logging to a path must be of the same type (you cannot log an image to the same path as a point cloud).
 
 A path can look like this: `world/camera/image/detection/#42/bbox`. Each component (between the slashes) can either be:
 
@@ -53,14 +53,14 @@ for cam in cameras:
 ```
 
 ## Transform hierarchy
-The path defines a hierarchy. The root objects all define separate _spaces_. All other objects are by default assumed to be in the same space as its parent object.
+The path defines a hierarchy. The root entities all define separate _spaces_. All other entities are by default assumed to be in the same space as its parent entity.
 
 Rerun uses the term _space_ to mean _coordinate system_ or _coordinate frame_.
 
 * `world/car` and `world/bike` will be in the same space (same parent)
-* `world/car` and `image/detection` will be in different spaces (different root objects)
+* `world/car` and `image/detection` will be in different spaces (different root entities)
 
-Objects can be separated into their own spaces by logging special transforms relative to their parents using `rr.log_rigid3` and `rr.log_pinhole`. `log_rigid3` is for the camera pose (translation and rotation), while `log_pinhole` is for the camera pinhole projection matrix and image resolution.
+Entities can be separated into their own spaces by logging special transforms relative to their parents using `rr.log_rigid3` and `rr.log_pinhole`. `log_rigid3` is for the camera pose (translation and rotation), while `log_pinhole` is for the camera pinhole projection matrix and image resolution.
 
 Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log some things in the shared 3D space, and also log each camera image and some detection in these images.
 
@@ -81,7 +81,7 @@ rr.log_image("world/camera/#0/image", …)
 rr.log_rect("world/camera/#0/image/detection", …)
 ```
 
-Rerun will from this understand how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, which allows you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform objects between spaces, so that you can view 3D objects projected onto a 2D space, for instance.
+Rerun will from this understand how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, which allows you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space. In the future Rerun will also be able to transform entities between spaces, so that you can view 3D entities projected onto a 2D space, for instance.
 
 Note that none of the names in the path are special.
 
@@ -96,9 +96,9 @@ You can use `rr.log_unknown_transform("parent/child")` to indicate to that `chil
 ## View coordinates
 You can use `log_view_coordinates` to set your preferred view coordinate systems.
 
-Each object defines its own coordinate system, called a space.
+Each entity defines its own coordinate system, called a space.
 By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
-This is for instance useful for camera objects ("what axis is forward?").
+This is for instance useful for camera entities ("what axis is forward?").
 
 For camera spaces this could for instance be `rr.log_view_coordinates("world/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged camera.
 
@@ -106,7 +106,7 @@ For 3D world spaces it can be useful to log what the up-axis is in your coordina
 
 
 ## Timeless data
-The logging functions all have `timeless = False` parameters. Timeless objects belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for object that aren't part of normal data capture, but set the scene for how they are shown. For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.
+The logging functions all have `timeless = False` parameters. Timeless entities belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for entity that aren't part of normal data capture, but set the scene for how they are shown. For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.
 
 
 ## Inline viewer

@@ -181,7 +181,7 @@ impl Session {
 
     // convenience
     pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
-        self.send(LogMsg::PathOpMsg(re_log_types::PathOpMsg {
+        self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
             msg_id: MsgId::random(),
             time_point: time_point.clone(),
             path_op,

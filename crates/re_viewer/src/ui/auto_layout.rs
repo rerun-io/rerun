@@ -5,7 +5,7 @@
 //! Some of the heuristics include:
 //! * We want similar space views together. Similar can mean:
 //!   * Same category (2D vs text vs …)
-//!   * Similar object path (common prefix)
+//!   * Similar entity path (common prefix)
 //! * We also want to pick aspect ratios that fit the data pretty well
 // TODO(emilk): fix O(N^2) execution time (where N = number of spaces)
 
@@ -15,7 +15,7 @@ use ahash::HashMap;
 use egui::Vec2;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjPathComp};
+use re_data_store::{EntityPath, EntityPathPart};
 
 use super::{space_view::SpaceView, view_category::ViewCategory, SpaceViewId};
 
@@ -24,7 +24,7 @@ pub struct SpaceMakeInfo {
     pub id: SpaceViewId,
 
     /// Some path we use to group the views by
-    pub path: ObjPath,
+    pub path: EntityPath,
 
     pub category: ViewCategory,
 
@@ -277,7 +277,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
         .collect_vec();
 
     for i in 0.. {
-        let mut groups: BTreeMap<Option<&ObjPathComp>, Vec<&SpaceMakeInfo>> = Default::default();
+        let mut groups: BTreeMap<Option<&EntityPathPart>, Vec<&SpaceMakeInfo>> = Default::default();
         for (path, space) in paths.iter().zip(space_infos) {
             groups.entry(path.get(i)).or_default().push(space);
         }

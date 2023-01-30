@@ -6,7 +6,7 @@ use arrow2_convert::{
 };
 
 use crate::{
-    field_types::{ClassId, KeypointId},
+    component_types::{ClassId, KeypointId},
     msg_bundle::Component,
 };
 
@@ -107,11 +107,11 @@ impl From<ClassDescriptionArrow> for ClassDescription {
 /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
 /// the labels and colors will be looked up in the appropriate
 /// `AnnotationContext`. We use the *first* annotation context we find in the
-/// path-hierarchy when searching up through the ancestors of a given object
+/// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
 /// ```
-/// use re_log_types::field_types::AnnotationContext;
+/// use re_log_types::component_types::AnnotationContext;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///

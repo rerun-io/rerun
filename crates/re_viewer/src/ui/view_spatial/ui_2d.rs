@@ -4,8 +4,8 @@ use egui::{
     TextFormat, TextStyle, Vec2,
 };
 use macaw::IsoTransform;
-use re_data_store::ObjPath;
-use re_log_types::field_types::TensorTrait;
+use re_data_store::EntityPath;
+use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
@@ -223,7 +223,7 @@ pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
-    space: &ObjPath,
+    space: &EntityPath,
     scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
@@ -278,7 +278,7 @@ fn view_2d_scrollable(
     ctx: &mut ViewerContext<'_>,
     parent_ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
-    space: &ObjPath,
+    space: &EntityPath,
     mut scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
@@ -356,7 +356,7 @@ fn view_2d_scrollable(
         );
 
         for hit in picking_result.iter_hits() {
-            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
+            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
 
             // Special hover ui for images.
@@ -436,7 +436,7 @@ fn view_2d_scrollable(
 
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
                 pick.instance_hash
-                    .resolve(&ctx.log_db.obj_db)
+                    .resolve(&ctx.log_db.entity_db)
                     .map(|instance| Selection::Instance(Some(space_view_id), instance))
             }));
         }
@@ -510,7 +510,7 @@ fn create_labels(
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
         let hightlight = highlights
-            .object_highlight(label.labled_instance.obj_path_hash)
+            .entity_highlight(label.labled_instance.entity_path_hash)
             .index_highlight(label.labled_instance.instance_index_hash);
         let fill_color = match hightlight.hover {
             crate::misc::HoverHighlight::None => match hightlight.selection {
@@ -573,7 +573,7 @@ fn setup_target_config(
 
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
-    space: &ObjPath,
+    space: &EntityPath,
     response: &Response,
     space_from_ui: &RectTransform,
     z: Option<f32>,
@@ -595,7 +595,7 @@ fn project_onto_other_spaces(
 fn show_projections_from_3d_space(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
-    space: &ObjPath,
+    space: &EntityPath,
     ui_from_space: &RectTransform,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();

@@ -31,7 +31,7 @@ def linear_to_gamma_u8_value(linear: npt.NDArray[np.floating[Any]]) -> npt.NDArr
     """
     Transform color values from linear [0.0, 1.0] to gamma encoded [0, 255].
 
-    Linear colors are expected to have dtype [numpy.float][]
+    Linear colors are expected to have dtype [numpy.floating][]
 
     Intended to implement the following per color value:
     ```Rust
