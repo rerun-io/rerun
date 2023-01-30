@@ -149,29 +149,10 @@ impl TextureManager2D {
         let format_info = creation_desc.format.describe();
         let width_blocks = creation_desc.width / format_info.block_dimensions.0 as u32;
         let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
-        let bytes_per_row_aligned =
-            wgpu::util::align_to(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuissance!
-        let mut data = creation_desc.data;
-        let mut padded_rows_copy_if_necessary = Vec::new();
-
-        if bytes_per_row_aligned > bytes_per_row_unaligned {
-            crate::profile_scope!("pad");
-            padded_rows_copy_if_necessary.resize((size.height * bytes_per_row_aligned) as usize, 0);
-            for y in 0..size.height {
-                let src_index = (y * bytes_per_row_unaligned) as usize;
-                let dst_index = (y * bytes_per_row_aligned) as usize;
-                let num_bytes = bytes_per_row_unaligned as usize;
-                let src_range = src_index..(src_index + num_bytes);
-                let dst_range = dst_index..(dst_index + num_bytes);
-                padded_rows_copy_if_necessary[dst_range]
-                    .copy_from_slice(&creation_desc.data[src_range]);
-            }
-
-            data = &padded_rows_copy_if_necessary[..];
-        };
+        let data = creation_desc.data;
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
@@ -187,7 +168,7 @@ impl TextureManager2D {
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: Some(
-                    NonZeroU32::new(bytes_per_row_aligned).expect("invalid bytes per row"),
+                    NonZeroU32::new(bytes_per_row_unaligned).expect("invalid bytes per row"),
                 ),
                 rows_per_image: None,
             },
