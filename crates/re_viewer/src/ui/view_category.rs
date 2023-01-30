@@ -57,36 +57,19 @@ pub fn categorize_obj_path(
 ) -> ViewCategorySet {
     crate::profile_function!();
 
-    let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path()) else {
-        // If it has a transform we might want to visualize it in space
-        // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
-        if query_transform(&log_db.obj_db, obj_path, &LatestAtQuery::new(timeline, TimeInt::MAX)).is_some() {
-            return ViewCategory::Spatial.into();
-        }
-
-        return ViewCategorySet::default();
-    };
-
-    match obj_type {
-        re_log_types::ObjectType::TextEntry => ViewCategory::Text.into(),
-
-        re_log_types::ObjectType::Scalar => ViewCategory::TimeSeries.into(),
-
-        re_log_types::ObjectType::Point2D
-        | re_log_types::ObjectType::BBox2D
-        | re_log_types::ObjectType::LineSegments2D
-        | re_log_types::ObjectType::Point3D
-        | re_log_types::ObjectType::Box3D
-        | re_log_types::ObjectType::Path3D
-        | re_log_types::ObjectType::LineSegments3D
-        | re_log_types::ObjectType::Mesh3D
-        | re_log_types::ObjectType::Arrow3D
-        | re_log_types::ObjectType::Image => ViewCategory::Spatial.into(),
-
-        re_log_types::ObjectType::ArrowObject => {
-            categorize_arrow_obj_path(&timeline, log_db, obj_path)
-        }
+    // If it has a transform we might want to visualize it in space
+    // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
+    if query_transform(
+        &log_db.obj_db,
+        obj_path,
+        &LatestAtQuery::new(timeline, TimeInt::MAX),
+    )
+    .is_some()
+    {
+        return ViewCategory::Spatial.into();
     }
+
+    categorize_arrow_obj_path(&timeline, log_db, obj_path)
 }
 
 pub fn categorize_arrow_obj_path(

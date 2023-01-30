@@ -1,4 +1,3 @@
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
@@ -6,9 +5,8 @@ use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    objects, ArrowMsg, BeginRecordingMsg, DataPath, FieldOrComponent, LogMsg, MsgId, ObjPath,
-    ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId, RecordingInfo, TimePoint,
-    Timeline,
+    ArrowMsg, BeginRecordingMsg, DataPath, FieldOrComponent, LogMsg, MsgId, ObjPath, ObjPathHash,
+    PathOp, PathOpMsg, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -17,10 +15,6 @@ use crate::{Error, TimesPerTimeline};
 
 /// Stored objects and their types, with easy indexing of the paths.
 pub struct ObjDb {
-    /// The types of all the objects.
-    /// Must be registered before adding them.
-    pub types: IntMap<ObjTypePath, ObjectType>,
-
     /// In many places we just store the hashes, so we need a way to translate back.
     pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
 
@@ -34,7 +28,6 @@ pub struct ObjDb {
 impl Default for ObjDb {
     fn default() -> Self {
         Self {
-            types: Default::default(),
             obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
             arrow_store: re_arrow_store::DataStore::new(
@@ -62,40 +55,12 @@ impl ObjDb {
     }
 
     fn add_data_msg(&mut self, msg_id: MsgId, time_point: &TimePoint, data_path: &DataPath) {
-        // Validate:
-        {
-            let obj_type_path = &data_path.obj_path.obj_type_path();
-            let field_name = &data_path.field_name;
-
-            let is_meta_field = re_log_types::objects::META_FIELDS.contains(&field_name.as_str());
-            if !is_meta_field {
-                if let Some(obj_type) = self.types.get(obj_type_path) {
-                    let valid_members = obj_type.members();
-                    if !valid_members.contains(&field_name.as_str()) {
-                        re_log::warn_once!(
-                            "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
-                            valid_members.iter().format(", ")
-                        );
-                    }
-                } else {
-                    re_log::warn_once!(
-                        "Logging to {obj_type_path}.{field_name} without first registering object type"
-                    );
-                }
-            }
-        }
-
         self.register_obj_path(&data_path.obj_path);
-
         self.tree.add_data_msg(msg_id, time_point, data_path);
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
-
-        self.types
-            .entry(msg_bundle.obj_path.obj_type_path().clone())
-            .or_insert(ObjectType::ArrowObject);
 
         self.register_obj_path(&msg_bundle.obj_path);
 
@@ -150,7 +115,7 @@ impl ObjDb {
                         self.tree.add_data_msg(msg_id, time_point, &data_path);
                     }
                 }
-            } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
+            } else {
                 self.add_data_msg(msg_id, time_point, &data_path);
             }
         }
@@ -160,7 +125,6 @@ impl ObjDb {
         crate::profile_function!();
 
         let Self {
-            types: _,
             obj_path_from_hash: _,
             tree,
             arrow_store: _, // purged before this function is called

@@ -6,7 +6,7 @@
 //! Each of these has many _fields_. For instance, a point
 //! has fields `pos`, `radius`, `color`, etc.
 //!
-//! When you log an object, you log each field seperatedly,
+//! When you log an object, you log each field separately,
 //! as [`Data`].
 //!
 //! Each object is logged to a specific [`ObjPath`] -
@@ -31,7 +31,6 @@ mod data;
 pub mod hash;
 mod index;
 pub mod msg_bundle;
-pub mod objects;
 pub mod path;
 mod time;
 pub mod time_point;
@@ -52,7 +51,6 @@ pub use self::field_types::MsgId;
 pub use self::field_types::ViewCoordinates;
 pub use self::field_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::index::*;
-pub use self::objects::ObjectType;
 pub use self::path::*;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
