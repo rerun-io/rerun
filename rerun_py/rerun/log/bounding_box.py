@@ -2,6 +2,13 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.annotation import ClassIdArray
+from rerun.components.box import Box3DArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.label import LabelArray
+from rerun.components.quaternion import QuaternionArray
+from rerun.components.radius import RadiusArray
+from rerun.components.vec import Vec3DArray
 from rerun.log import _normalize_colors, _normalize_ids, _normalize_radii
 
 from rerun import bindings
@@ -34,14 +41,6 @@ def log_obb(
     `class_id`: Optional class id for the OBB.
                  The class id provides colors and labels if not specified explicitly.
     """
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.box import Box3DArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.quaternion import QuaternionArray
-    from rerun.components.radius import RadiusArray
-    from rerun.components.vec import Vec3DArray
-
     comps = {}
 
     if half_size is not None:

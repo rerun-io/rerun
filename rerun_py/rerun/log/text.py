@@ -2,6 +2,8 @@ import logging
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence
 
+from rerun.components.color import ColorRGBAArray
+from rerun.components.text_entry import TextEntryArray
 from rerun.log import _normalize_colors
 
 from rerun import bindings
@@ -93,9 +95,6 @@ def log_text_entry(
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.text_entry import TextEntryArray
-
     comps = {}
     if text:
         comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])

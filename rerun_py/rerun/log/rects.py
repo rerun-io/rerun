@@ -3,6 +3,11 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.annotation import ClassIdArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
+from rerun.components.label import LabelArray
+from rerun.components.rect2d import Rect2DArray
 from rerun.log import (
     Color,
     Colors,
@@ -64,11 +69,6 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.rect2d import Rect2DArray
-
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
     else:
@@ -136,12 +136,6 @@ def log_rects(
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
     labels = _normalize_labels(labels)
-
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.instance import InstanceArray
-    from rerun.components.label import LabelArray
-    from rerun.components.rect2d import Rect2DArray
 
     identifiers_np = np.array((), dtype="int64")
     if identifiers:

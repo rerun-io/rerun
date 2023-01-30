@@ -2,6 +2,10 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.arrow import Arrow3DArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.label import LabelArray
+from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
 
 from rerun import bindings
@@ -48,11 +52,6 @@ def log_arrow(
         Object is not time-dependent, and will be visible at any time point.
 
     """
-    from rerun.components.arrow import Arrow3DArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.radius import RadiusArray
-
     comps = {}
 
     if origin is not None:
