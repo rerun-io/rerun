@@ -1,77 +1,12 @@
 use egui::Vec2;
 
 use re_log_types::{
-    field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, Pinhole, Rigid3, Transform,
-    ViewCoordinates,
+    field_types::ColorRGBA, field_types::Mat3x3, Pinhole, Rigid3, Transform, ViewCoordinates,
 };
 
 use crate::ui::UiVerbosity;
 
 use super::DataUi;
-
-impl DataUi for Data {
-    fn data_ui(
-        &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: crate::ui::UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            Data::Bool(value) => {
-                ui.label(value.to_string());
-            }
-            Data::I32(value) => {
-                ui.label(value.to_string());
-            }
-            Data::F32(value) => {
-                ui.label(value.to_string());
-            }
-            Data::F64(value) => {
-                ui.label(value.to_string());
-            }
-            Data::Color(value) => value.data_ui(ctx, ui, verbosity, query),
-            Data::String(string) => {
-                ui.label(format!("{string:?}"));
-            }
-
-            Data::Vec2([x, y]) => {
-                ui.label(format!("[{x:.1}, {y:.1}]"));
-            }
-            Data::BBox2D(bbox) => {
-                ui.label(format!(
-                    "BBox2D(min: [{:.1} {:.1}], max: [{:.1} {:.1}])",
-                    bbox.min[0], bbox.min[1], bbox.max[0], bbox.max[1]
-                ));
-            }
-
-            Data::Vec3([x, y, z]) => {
-                ui.label(format!("[{x:.3}, {y:.3}, {z:.3}]"));
-            }
-            Data::Box3(_) => {
-                ui.label("3D box");
-            }
-            Data::Mesh3D(_) => {
-                ui.label("3D mesh");
-            }
-            Data::Arrow3D(Arrow3D { origin, vector }) => {
-                let [x, y, z] = origin.0;
-                let [v0, v1, v2] = vector.0;
-                ui.label(format!(
-                    "Arrow3D(origin: [{x:.1},{y:.1},{z:.1}], vector: [{v0:.1},{v1:.1},{v2:.1}])"
-                ));
-            }
-            Data::Transform(transform) => transform.data_ui(ctx, ui, verbosity, query),
-            Data::ViewCoordinates(coordinates) => coordinates.data_ui(ctx, ui, verbosity, query),
-            Data::AnnotationContext(context) => context.data_ui(ctx, ui, verbosity, query),
-            Data::Tensor(tensor) => tensor.data_ui(ctx, ui, verbosity, query),
-
-            Data::ObjPath(obj_path) => {
-                ctx.obj_path_button(ui, None, obj_path);
-            }
-        }
-    }
-}
 
 impl DataUi for [u8; 4] {
     fn data_ui(

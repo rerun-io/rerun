@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use half::f16;
 
-use crate::{field_types, impl_into_enum, AnnotationContext, Mesh3D, ObjPath, ViewCoordinates};
+use crate::field_types;
 
 pub use crate::field_types::{Arrow3D, Pinhole, Rigid3, Transform};
 
@@ -42,97 +42,6 @@ pub enum DataType {
     ViewCoordinates,
     AnnotationContext,
 }
-
-// ----------------------------------------------------------------------------
-
-pub mod data_types {
-    /// RGBA unmultiplied/separate alpha
-    pub type Color = [u8; 4];
-    pub type Vec2 = [f32; 2];
-    pub type Vec3 = [f32; 3];
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Data {
-    // 1D:
-    Bool(bool),
-    I32(i32),
-    F32(f32),
-    F64(f64),
-    Color(data_types::Color),
-    String(String),
-
-    // ----------------------------
-    // 2D:
-    Vec2(data_types::Vec2),
-    BBox2D(BBox2D),
-
-    // ----------------------------
-    // 3D:
-    Vec3(data_types::Vec3),
-    Box3(Box3),
-    Mesh3D(Mesh3D),
-    Arrow3D(Arrow3D),
-
-    // ----------------------------
-    // N-D:
-    Tensor(ClassicTensor),
-
-    // ----------------------------
-    // Meta:
-    /// One object referring to another (a pointer).
-    ObjPath(ObjPath),
-
-    Transform(crate::field_types::Transform),
-    ViewCoordinates(ViewCoordinates),
-    AnnotationContext(AnnotationContext),
-}
-
-impl Data {
-    #[inline]
-    pub fn data_type(&self) -> DataType {
-        match self {
-            Self::Bool(_) => DataType::Bool,
-            Self::I32(_) => DataType::I32,
-            Self::F32(_) => DataType::F32,
-            Self::F64(_) => DataType::F64,
-            Self::Color(_) => DataType::Color,
-            Self::String(_) => DataType::String,
-
-            Self::Vec2(_) => DataType::Vec2,
-            Self::BBox2D(_) => DataType::BBox2D,
-
-            Self::Vec3(_) => DataType::Vec3,
-            Self::Box3(_) => DataType::Box3,
-            Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Arrow3D(_) => DataType::Arrow3D,
-
-            Self::Tensor(_) => DataType::Tensor,
-
-            Self::ObjPath(_) => DataType::ObjPath,
-
-            Self::Transform(_) => DataType::Transform,
-            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
-            Self::AnnotationContext(_) => DataType::AnnotationContext,
-        }
-    }
-}
-
-impl_into_enum!(bool, Data, Bool);
-impl_into_enum!(i32, Data, I32);
-impl_into_enum!(f32, Data, F32);
-impl_into_enum!(f64, Data, F64);
-impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(ClassicTensor, Data, Tensor);
-impl_into_enum!(Box3, Data, Box3);
-impl_into_enum!(Mesh3D, Data, Mesh3D);
-impl_into_enum!(ObjPath, Data, ObjPath);
-impl_into_enum!(Transform, Data, Transform);
-impl_into_enum!(ViewCoordinates, Data, ViewCoordinates);
-impl_into_enum!(AnnotationContext, Data, AnnotationContext);
 
 // ----------------------------------------------------------------------------
 
