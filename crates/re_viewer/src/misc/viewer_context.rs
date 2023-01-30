@@ -55,7 +55,7 @@ impl<'a> ViewerContext<'a> {
         space_view_id: Option<SpaceViewId>,
         entity_path: &EntityPath,
     ) -> egui::Response {
-        self.instance_id_button_to(
+        self.instance_path_button_to(
             ui,
             space_view_id,
             &InstancePath::entity_splat(entity_path.clone()),
@@ -71,7 +71,7 @@ impl<'a> ViewerContext<'a> {
         entity_path: &EntityPath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.instance_id_button_to(
+        self.instance_path_button_to(
             ui,
             space_view_id,
             &InstancePath::entity_splat(entity_path.clone()),
@@ -80,25 +80,25 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Show an instance id and make it selectable.
-    pub fn instance_id_button(
+    pub fn instance_path_button(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstancePath,
+        instance_path: &InstancePath,
     ) -> egui::Response {
-        self.instance_id_button_to(ui, space_view_id, instance_id, instance_id.to_string())
+        self.instance_path_button_to(ui, space_view_id, instance_path, instance_path.to_string())
     }
 
     /// Show an instance id and make it selectable.
-    pub fn instance_id_button_to(
+    pub fn instance_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstancePath,
+        instance_path: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Selection::Instance(space_view_id, instance_id.clone());
-        let subtype_string = if instance_id.instance_index.is_splat() {
+        let selection = Selection::Instance(space_view_id, instance_path.clone());
+        let subtype_string = if instance_path.instance_index.is_splat() {
             "Entity"
         } else {
             "Entity Instance"
@@ -108,8 +108,8 @@ impl<'a> ViewerContext<'a> {
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong(subtype_string);
-                ui.label(format!("Path: {instance_id}"));
-                instance_id.data_ui(
+                ui.label(format!("Path: {instance_path}"));
+                instance_path.data_ui(
                     self,
                     ui,
                     crate::ui::UiVerbosity::Large,

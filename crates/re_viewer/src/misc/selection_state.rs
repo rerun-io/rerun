@@ -283,8 +283,8 @@ impl SelectionState {
                 | Selection::SpaceView(_)
                 | Selection::DataBlueprintGroup(_, _) => current == test,
 
-                Selection::Instance(current_space_view_id, current_instance_id) => {
-                    if let Selection::Instance(test_space_view_id, test_instance_id) = test {
+                Selection::Instance(current_space_view_id, current_instance_path) => {
+                    if let Selection::Instance(test_space_view_id, test_instance_path) = test {
                         // For both space view id and instance index we want to be inclusive,
                         // but if both are set to Some, and set to different, then we count that
                         // as a miss.
@@ -292,10 +292,10 @@ impl SelectionState {
                             a.is_none() || b.is_none() || a == b
                         }
 
-                        current_instance_id.entity_path == test_instance_id.entity_path
+                        current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_id.instance_index.specific_index(),
-                                &test_instance_id.instance_index.specific_index(),
+                                &current_instance_path.instance_index.specific_index(),
+                                &test_instance_path.instance_index.specific_index(),
                             )
                             && either_none_or_same(current_space_view_id, test_space_view_id)
                     } else {

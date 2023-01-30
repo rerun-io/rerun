@@ -529,10 +529,10 @@ impl ViewState {
                 if scene.tensors.len() > 1 {
                     // Show radio buttons for the different tensors we have in this view - better than nothing!
                     ui.horizontal(|ui| {
-                        for instance_id in scene.tensors.keys() {
-                            let is_selected = self.selected_tensor.as_ref() == Some(instance_id);
-                            if ui.radio(is_selected, instance_id.to_string()).clicked() {
-                                self.selected_tensor = Some(instance_id.clone());
+                        for instance_path in scene.tensors.keys() {
+                            let is_selected = self.selected_tensor.as_ref() == Some(instance_path);
+                            if ui.radio(is_selected, instance_path.to_string()).clicked() {
+                                self.selected_tensor = Some(instance_path.clone());
                             }
                         }
                     });

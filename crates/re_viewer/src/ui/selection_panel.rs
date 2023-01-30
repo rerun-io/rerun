@@ -117,14 +117,14 @@ pub fn what_is_selected_ui(
                 });
             }
         }
-        Selection::Instance(space_view_id, instance_id) => {
+        Selection::Instance(space_view_id, instance_path) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
-                if instance_id.instance_index.is_splat() {
+                if instance_path.instance_index.is_splat() {
                     ui.label("Entity:");
                 } else {
                     ui.label("Entity instance:");
                 }
-                ctx.instance_id_button(ui, *space_view_id, instance_id);
+                ctx.instance_path_button(ui, *space_view_id, instance_path);
                 ui.end_row();
 
                 if let Some(space_view_id) = space_view_id {
@@ -177,8 +177,8 @@ impl DataUi for Selection {
             Selection::ComponentPath(component_path) => {
                 component_path.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::Instance(_, instance_id) => {
-                instance_id.data_ui(ctx, ui, verbosity, query);
+            Selection::Instance(_, instance_path) => {
+                instance_path.data_ui(ctx, ui, verbosity, query);
             }
         }
     }
@@ -223,31 +223,31 @@ fn blueprint_ui(
             }
         }
 
-        Selection::Instance(space_view_id, instance_id) => {
+        Selection::Instance(space_view_id, instance_path) => {
             if let Some(space_view) = space_view_id
                 .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
             {
-                if instance_id.instance_index.is_specific() {
+                if instance_path.instance_index.is_specific() {
                     ui.horizontal(|ui| {
                         ui.label("Part of");
-                        ctx.entity_path_button(ui, *space_view_id, &instance_id.entity_path);
+                        ctx.entity_path_button(ui, *space_view_id, &instance_path.entity_path);
                     });
                     // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                 } else {
                     // splat - the whole entity
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
-                    let mut props = data_blueprint.get(&instance_id.entity_path);
+                    let mut props = data_blueprint.get(&instance_path.entity_path);
                     entity_props_ui(
                         ctx,
                         ui,
-                        Some(&instance_id.entity_path),
+                        Some(&instance_path.entity_path),
                         &mut props,
                         &space_view.view_state,
                     );
-                    data_blueprint.set(instance_id.entity_path.clone(), props);
+                    data_blueprint.set(instance_path.entity_path.clone(), props);
                 }
             } else {
-                list_existing_data_blueprints(ui, ctx, &instance_id.entity_path, blueprint);
+                list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, blueprint);
             }
         }
 

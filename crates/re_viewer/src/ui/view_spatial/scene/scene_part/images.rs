@@ -191,7 +191,7 @@ impl ImagesPart {
                 let meter = tensor.meter;
 
                 scene.ui.images.push(Image {
-                    instance_hash,
+                    instance_path_hash: instance_hash,
                     tensor,
                     meter,
                     annotations,

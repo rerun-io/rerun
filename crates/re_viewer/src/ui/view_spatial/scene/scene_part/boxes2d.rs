@@ -28,7 +28,7 @@ impl Boxes2DPart {
         scene: &mut SceneSpatial,
         entity_path: &EntityPath,
         world_from_obj: Mat4,
-        instance_hash: InstancePathHash,
+        instance_path_hash: InstancePathHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
         radius: Option<Radius>,
@@ -50,7 +50,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            entity_highlight.index_highlight(instance_hash.instance_index),
+            entity_highlight.index_highlight(instance_path_hash.instance_index),
         );
 
         let mut line_batch = scene
@@ -67,7 +67,7 @@ impl Boxes2DPart {
             )
             .color(color)
             .radius(radius)
-            .user_data(instance_hash);
+            .user_data(instance_path_hash);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
@@ -77,7 +77,7 @@ impl Boxes2DPart {
                     rect.top_left_corner().into(),
                     egui::vec2(rect.width(), rect.height()),
                 )),
-                labled_instance: instance_hash,
+                labled_instance: instance_path_hash,
             });
         }
     }

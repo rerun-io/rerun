@@ -51,7 +51,7 @@ impl MeshSourceData {
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
-    pub instance_hash: InstancePathHash,
+    pub instance_path_hash: InstancePathHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
@@ -59,7 +59,7 @@ pub struct MeshSource {
 }
 
 pub struct Image {
-    pub instance_hash: InstancePathHash,
+    pub instance_path_hash: InstancePathHash,
 
     pub tensor: Tensor,
     /// If this is a depth map, how long is a meter?

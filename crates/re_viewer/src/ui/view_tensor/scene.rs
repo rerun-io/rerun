@@ -49,8 +49,8 @@ impl SceneTensor {
         entity_view.visit1(|instance: Instance, tensor: Tensor| {
             let tensor = ClassicTensor::from(&tensor);
             if !tensor.is_shaped_like_an_image() {
-                let instance_id = InstancePath::instance(ent_path.clone(), instance);
-                self.tensors.insert(instance_id, tensor);
+                let instance_path = InstancePath::instance(ent_path.clone(), instance);
+                self.tensors.insert(instance_path, tensor);
             }
         })
     }

@@ -117,7 +117,7 @@ impl SceneSpatialPrimitives {
     pub fn add_axis_lines(
         &mut self,
         transform: macaw::IsoTransform,
-        instance: InstancePathHash,
+        instance_path_hash: InstancePathHash,
         axis_length: f32,
     ) {
         use re_renderer::renderer::LineStripFlags;
@@ -135,7 +135,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_X)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance);
+            .user_data(instance_path_hash);
         line_batch
             .add_segment(
                 origin,
@@ -144,7 +144,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance);
+            .user_data(instance_path_hash);
         line_batch
             .add_segment(
                 origin,
@@ -153,6 +153,6 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance);
+            .user_data(instance_path_hash);
     }
 }

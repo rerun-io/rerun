@@ -53,9 +53,9 @@ impl Selection {
     pub fn kind(self: &Selection) -> &'static str {
         match self {
             Selection::MsgId(_) => "Message",
-            Selection::Instance(space_view_id, instance_id) => {
+            Selection::Instance(space_view_id, instance_path) => {
                 match (
-                    instance_id.instance_index.is_specific(),
+                    instance_path.instance_index.is_specific(),
                     space_view_id.is_some(),
                 ) {
                     (true, true) => "Entity Instance Blueprint",

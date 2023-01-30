@@ -60,7 +60,7 @@ impl MeshPart {
                     ctx.render_ctx,
                 )
                 .map(|cpu_mesh| MeshSource {
-                    instance_hash,
+                    instance_path_hash: instance_hash,
                     world_from_mesh: world_from_obj_affine,
                     mesh: cpu_mesh,
                     additive_tint,
