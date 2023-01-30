@@ -1,8 +1,8 @@
 use egui::Vec2;
 
 use re_log_types::{
-    field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3,
-    Transform, ViewCoordinates,
+    field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, Pinhole, Rigid3, Transform,
+    ViewCoordinates,
 };
 
 use crate::ui::UiVerbosity;
@@ -69,8 +69,6 @@ impl DataUi for Data {
             Data::ObjPath(obj_path) => {
                 ctx.obj_path_button(ui, None, obj_path);
             }
-
-            Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
@@ -112,18 +110,6 @@ impl DataUi for ColorRGBA {
             ui.visuals().widgets.noninteractive.fg_stroke,
         );
         response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a));
-    }
-}
-
-impl DataUi for DataVec {
-    fn data_ui(
-        &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.label(format!("{} x {:?}", self.len(), self.element_data_type()));
     }
 }
 
