@@ -3,7 +3,7 @@ use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
-    DataBlueprintGroupHandle, Preview, SpaceViewId,
+    DataBlueprintGroupHandle, SpaceViewId, UiVerbosity,
 };
 
 use super::{
@@ -43,7 +43,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
-                msg_id.data_ui(self, ui, Preview::Small);
+                msg_id.data_ui(self, ui, UiVerbosity::Small, &self.current_query());
             });
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -108,7 +108,12 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong(subtype_string);
                 ui.label(format!("Path: {instance_id}"));
-                instance_id.data_ui(self, ui, crate::ui::Preview::Large);
+                instance_id.data_ui(
+                    self,
+                    ui,
+                    crate::ui::UiVerbosity::Large,
+                    &self.current_query(),
+                );
             });
 
         self.cursor_interact_with_selectable(response, selection)
@@ -173,7 +178,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, Preview::Large);
+                obj_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
             });
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -296,6 +301,11 @@ impl<'a> ViewerContext<'a> {
 
     pub fn selection_state_mut(&mut self) -> &mut super::SelectionState {
         &mut self.rec_cfg.selection_state
+    }
+
+    /// The current time query, based on the current time control.
+    pub fn current_query(&self) -> re_arrow_store::LatestAtQuery {
+        self.rec_cfg.time_ctrl.current_query()
     }
 }
 

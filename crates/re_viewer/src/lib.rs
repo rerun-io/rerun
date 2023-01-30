@@ -11,7 +11,7 @@ mod remote_viewer_app;
 mod ui;
 
 pub(crate) use misc::{mesh_loader, time_axis, Selection, TimeControl, TimeView, ViewerContext};
-pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, Preview};
+pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, UiVerbosity};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;

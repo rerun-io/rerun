@@ -7,8 +7,8 @@ use egui::{
     lerp, pos2, remap, remap_clamp, show_tooltip_at_pointer, Align2, Color32, CursorIcon, Id,
     NumExt, PointerButton, Pos2, Rect, Rgba, Shape, Stroke, Vec2,
 };
-
 use itertools::Itertools;
+
 use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::{
     DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
@@ -21,7 +21,7 @@ use crate::{
     Selection, TimeControl, TimeView, ViewerContext,
 };
 
-use super::{data_ui::DataUi, Blueprint};
+use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
 
 /// A panel that shows objects to the left, time on the top.
 ///
@@ -125,7 +125,7 @@ impl TimePanel {
                         );
 
                         ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
-                        self.expanded_ui(ctx, ui);
+                        self.expanded_ui(ctx, blueprint, ui);
                     });
                 }
             },
@@ -170,7 +170,12 @@ impl TimePanel {
         current_time_ui(ctx, ui);
     }
 
-    fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn expanded_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
+        ui: &mut egui::Ui,
+    ) {
         crate::profile_function!();
 
         //               |timeline            |
@@ -283,7 +288,13 @@ impl TimePanel {
                 if time_area_response.dragged_by(PointerButton::Primary) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
-                self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
+                self.tree_ui(
+                    ctx,
+                    blueprint,
+                    &time_area_response,
+                    &lower_time_area_painter,
+                    ui,
+                );
             });
 
         {
@@ -314,12 +325,14 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
         self.show_children(
             ctx,
+            blueprint,
             time_area_response,
             time_area_painter,
             &ctx.log_db.obj_db.tree,
@@ -327,9 +340,11 @@ impl TimePanel {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn show_tree(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         // the parent path of the name component
@@ -340,7 +355,7 @@ impl TimePanel {
         if !tree
             .prefix_times
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-            && tree.timeless_msgs.is_empty()
+            && tree.num_timeless_messages() == 0
         {
             return; // ignore objects that have no data for the current timeline and no timeless data.
         }
@@ -362,7 +377,14 @@ impl TimePanel {
             )
             .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
             .body(|ui| {
-                self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
+                self.show_children(
+                    ctx,
+                    blueprint,
+                    time_area_response,
+                    time_area_painter,
+                    tree,
+                    ui,
+                );
             });
 
         let is_closed = body_returned.is_none();
@@ -399,20 +421,21 @@ impl TimePanel {
 
             show_data_over_time(
                 ctx,
+                blueprint,
                 time_area_response,
                 time_area_painter,
                 ui,
-                &tree.timeless_msgs,
+                tree.num_timeless_messages(),
                 messages_over_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Some(Selection::Instance(
+                Selection::Instance(
                     None,
                     InstanceId {
                         obj_path: tree.path.clone(),
                         instance_index: None,
                     },
-                )),
+                ),
             );
         }
     }
@@ -420,6 +443,7 @@ impl TimePanel {
     fn show_children(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree: &ObjectTree,
@@ -428,6 +452,7 @@ impl TimePanel {
         for (last_component, child) in &tree.children {
             self.show_tree(
                 ctx,
+                blueprint,
                 time_area_response,
                 time_area_painter,
                 last_component,
@@ -441,8 +466,8 @@ impl TimePanel {
             let indent = ui.spacing().indent;
 
             for (field_name, data) in &tree.fields {
-                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline())
-                    && data.timeless_msgs.is_empty()
+                if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
+                    && data.num_timeless_messages() == 0
                 {
                     continue; // ignore fields that have no data for the current timeline
                 }
@@ -487,12 +512,11 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        ui.strong("Data");
-                        ui.label(data_path.to_string());
-                        let summary = data.summary();
-                        if !summary.is_empty() {
-                            ui.label(summary);
-                        }
+                        let selection = Selection::DataPath(data_path.clone());
+                        what_is_selected_ui(ui, ctx, blueprint, &selection);
+                        ui.add_space(8.0);
+                        let query = ctx.current_query();
+                        data_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
                 }
 
@@ -506,14 +530,15 @@ impl TimePanel {
 
                     show_data_over_time(
                         ctx,
+                        blueprint,
                         time_area_response,
                         time_area_painter,
                         ui,
-                        &data.timeless_msgs,
+                        data.num_timeless_messages(),
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Some(Selection::DataPath(data_path)),
+                        Selection::DataPath(data_path),
                     );
                 }
             }
@@ -558,23 +583,20 @@ fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 #[allow(clippy::too_many_arguments)]
 fn show_data_over_time(
     ctx: &mut ViewerContext<'_>,
+    blueprint: &mut Blueprint,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
-    timeless_msgs: &BTreeSet<MsgId>,
+    num_timeless_messages: usize,
     messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
-    select_on_click: Option<Selection>,
+    select_on_click: Selection,
 ) {
     crate::profile_function!();
 
     // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
-    let is_selected = if let Some(select_on_click) = select_on_click.as_ref() {
-        ctx.selection().iter().contains(select_on_click)
-    } else {
-        false
-    };
+    let is_selected = ctx.selection().iter().contains(&select_on_click);
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -594,25 +616,27 @@ fn show_data_over_time(
             .linear_multiply(0.75)
     };
 
-    struct Stretch<'a> {
+    struct Stretch {
         start_x: f32,
         start_time: TimeInt,
         stop_time: TimeInt,
         selected: bool,
-        msg_ids: Vec<&'a BTreeSet<MsgId>>,
+        /// Times x count at the given time
+        time_points: Vec<(TimeInt, usize)>,
     }
 
     let mut shapes = vec![];
     let mut scatter = BallScatterer::default();
-    let mut hovered_messages = vec![];
+    // Time x number of messages at that time point
+    let mut hovered_messages: Vec<(TimeInt, usize)> = vec![];
     let mut hovered_time = None;
 
-    let mut paint_stretch = |stretch: &Stretch<'_>| {
+    let mut paint_stretch = |stretch: &Stretch| {
         let stop_x = time_ranges_ui
             .x_from_time(stretch.stop_time.into())
             .unwrap_or(stretch.start_x);
 
-        let num_messages: usize = stretch.msg_ids.iter().map(|l| l.len()).sum();
+        let num_messages: usize = stretch.time_points.iter().map(|(_time, count)| count).sum();
         let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
         let radius = radius.at_most(full_width_rect.height() / 3.0);
         debug_assert!(radius.is_finite());
@@ -644,12 +668,29 @@ fn show_data_over_time(
         shapes.push(Shape::circle_filled(pos, radius, color));
 
         if is_hovered {
-            hovered_messages.extend(stretch.msg_ids.iter().copied().flatten().copied());
+            hovered_messages.extend(stretch.time_points.iter().copied());
             hovered_time.get_or_insert(stretch.start_time);
         }
     };
 
-    let mut stretch: Option<Stretch<'_>> = None;
+    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
+
+    if num_timeless_messages > 0 {
+        let time_int = TimeInt::BEGINNING;
+        let time_real = TimeReal::from(time_int);
+        if let Some(x) = time_ranges_ui.x_from_time(time_real) {
+            let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
+            paint_stretch(&Stretch {
+                start_x: x,
+                start_time: time_int,
+                stop_time: time_int,
+                selected,
+                time_points: vec![(time_int, num_timeless_messages)],
+            });
+        }
+    }
+
+    let mut stretch: Option<Stretch> = None;
 
     let margin = 5.0;
     let visible_time_range = TimeRange {
@@ -662,10 +703,8 @@ fn show_data_over_time(
             .map_or(TimeInt::MAX, |tf| tf.ceil()),
     };
 
-    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
-
-    for (&time, msg_ids) in std::iter::once((&TimeInt::BEGINNING, timeless_msgs))
-        .chain(messages_over_time.range(visible_time_range.min..=visible_time_range.max))
+    for (&time, msg_ids) in
+        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
     {
         if msg_ids.is_empty() {
             continue;
@@ -680,7 +719,7 @@ fn show_data_over_time(
             {
                 // extend:
                 current_stretch.stop_time = time;
-                current_stretch.msg_ids.push(msg_ids);
+                current_stretch.time_points.push((time, msg_ids.len()));
             } else {
                 // stop the previous…
                 paint_stretch(current_stretch);
@@ -696,7 +735,7 @@ fn show_data_over_time(
                     start_time: time,
                     stop_time: time,
                     selected,
-                    msg_ids: vec![msg_ids],
+                    time_points: vec![(time, msg_ids.len())],
                 });
             }
         }
@@ -710,38 +749,52 @@ fn show_data_over_time(
 
     if !hovered_messages.is_empty() {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            if let Some(select_on_click) = select_on_click {
-                ctx.set_single_selection(select_on_click);
-            } else {
-                ctx.selection_state_mut().clear_current();
-            }
+            ctx.set_single_selection(select_on_click);
 
             if let Some(hovered_time) = hovered_time {
                 ctx.rec_cfg.time_ctrl.set_time(hovered_time);
                 ctx.rec_cfg.time_ctrl.pause();
             }
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
-            show_msg_ids_tooltip(ctx, ui.ctx(), &hovered_messages);
+            show_msg_ids_tooltip(
+                ctx,
+                blueprint,
+                ui.ctx(),
+                &select_on_click,
+                &hovered_messages,
+            );
         }
     }
 }
 
-fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, msg_ids: &[MsgId]) {
+fn show_msg_ids_tooltip(
+    ctx: &mut ViewerContext<'_>,
+    blueprint: &mut Blueprint,
+    egui_ctx: &egui::Context,
+    selection: &Selection,
+    time_points: &[(TimeInt, usize)],
+) {
     show_tooltip_at_pointer(egui_ctx, Id::new("data_tooltip"), |ui| {
-        // TODO(emilk): show as a table?
-        if msg_ids.len() == 1 {
-            let msg_id = msg_ids[0];
-            if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
-                ui.push_id(msg_id, |ui| {
-                    ui.group(|ui| {
-                        msg.data_ui(ctx, ui, crate::Preview::Small);
-                    });
-                });
+        let num_times = time_points.len();
+        let num_messages: usize = time_points.iter().map(|(_time, count)| *count).sum();
+
+        if num_times == 1 {
+            if num_messages > 1 {
+                ui.label(format!("{num_messages} messages"));
+                ui.add_space(8.0);
+                // Could be an entity made up of many components logged at the same time.
+                // Still show a preview!
             }
+            super::selection_panel::what_is_selected_ui(ui, ctx, blueprint, selection);
+            ui.add_space(8.0);
+
+            let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+            let time_int = time_points[0].0; // We want to show the selection at the time of whatever point we are hovering
+            let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
+            selection.data_ui(ctx, ui, super::UiVerbosity::Large, &query);
         } else {
             ui.label(format!(
-                "{} messages",
-                re_format::format_number(msg_ids.len())
+                "{num_messages} messages at {num_times} points in time"
             ));
         }
     });
@@ -757,7 +810,7 @@ fn initialize_time_ranges_ui(
     crate::profile_function!();
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
-    let mut time_range = if !ctx.log_db.timeless_msgs().is_empty() {
+    let mut time_range = if ctx.log_db.num_timeless_messages() > 0 {
         vec![TimeRange {
             min: TimeInt::BEGINNING,
             max: TimeInt::BEGINNING,

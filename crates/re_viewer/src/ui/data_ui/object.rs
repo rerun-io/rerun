@@ -1,13 +1,10 @@
 use re_data_store::{Index, InstanceId, ObjPath};
-use re_log_types::{
-    field_types::{ClassId, KeypointId},
-    Data, DataPath,
-};
+use re_log_types::DataPath;
 use re_query::{get_component_with_instances, QueryError};
 
 use crate::{
     misc::ViewerContext,
-    ui::{annotations::AnnotationMap, format_component_name, Preview},
+    ui::{format_component_name, UiVerbosity},
 };
 
 use super::{
@@ -16,29 +13,30 @@ use super::{
 };
 
 impl DataUi for ObjPath {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
         InstanceId {
             obj_path: self.clone(),
             instance_index: None,
         }
-        .data_ui(ctx, ui, preview);
+        .data_ui(ctx, ui, verbosity, query);
     }
 }
 
 impl DataUi for InstanceId {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
-        let timeline = ctx.rec_cfg.time_ctrl.timeline();
-        if ctx
-            .log_db
-            .obj_db
-            .arrow_store
-            .all_components(timeline, &self.obj_path)
-            .is_some()
-        {
-            generic_arrow_ui(ctx, ui, self, preview);
-        } else {
-            generic_instance_ui(ctx, ui, self, preview);
-        }
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        generic_arrow_ui(ctx, ui, self, verbosity, query);
     }
 }
 
@@ -46,19 +44,12 @@ fn generic_arrow_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
-    _preview: Preview,
+    _verbosity: UiVerbosity,
+    query: &re_arrow_store::LatestAtQuery,
 ) {
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
 
-    let Some(time) = ctx.rec_cfg.time_ctrl.time_int() else {
-        ui.label(ctx.re_ui.error_text("No current time."));
-        return;
-    };
-
-    let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
-
-    let Some(mut components) = store.all_components(timeline, &instance_id.obj_path)
+    let Some(mut components) = store.all_components(&query.timeline, &instance_id.obj_path)
     else {
         ui.label("No Components");
         return ;
@@ -71,7 +62,7 @@ fn generic_arrow_ui(
             for component_name in components {
                 let component_data = get_component_with_instances(
                     store,
-                    &query,
+                    query,
                     &instance_id.obj_path,
                     component_name,
                 );
@@ -97,11 +88,18 @@ fn generic_arrow_ui(
                     }
                     // If an `instance_index` wasn't provided, just report the number of values
                     (Ok(component_data), None) => {
-                        arrow_component_ui(ctx, ui, &component_data, Preview::Small);
+                        arrow_component_ui(ctx, ui, &component_data, UiVerbosity::Small, query);
                     }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
-                        arrow_component_elem_ui(ctx, ui, Preview::Small, &component_data, instance);
+                        arrow_component_elem_ui(
+                            ctx,
+                            ui,
+                            UiVerbosity::Small,
+                            query,
+                            &component_data,
+                            instance,
+                        );
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`
@@ -114,130 +112,4 @@ fn generic_arrow_ui(
             }
             Some(())
         });
-}
-
-fn generic_instance_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    instance_id: &InstanceId,
-    preview: Preview,
-) {
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
-    let Some(store) = ctx.log_db.obj_db.store.get(timeline) else {
-        return;
-    };
-    let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() else {
-        ui.label(ctx.re_ui.error_text("No current time."));
-        return;
-    };
-    let time_query = re_data_store::TimeQuery::LatestAt(time_i64);
-    let Some(obj_store) = store.get(&instance_id.obj_path) else {
-        ui.weak("No data logged.");
-        return;
-    };
-
-    let mut class_id = None;
-    let mut keypoint_id = None;
-
-    egui::Grid::new("object_instance")
-        .num_columns(2)
-        .show(ui, |ui| {
-            for (field_name, field_store) in obj_store.iter() {
-                ctx.data_path_button_to(
-                    ui,
-                    format_component_name(field_name),
-                    &DataPath::new(instance_id.obj_path.clone(), *field_name),
-                );
-
-                match field_store
-                    .query_field_to_datavec(&time_query, instance_id.instance_index.as_ref())
-                {
-                    Ok((_, data_vec)) => {
-                        if data_vec.len() == 1 {
-                            let data = data_vec.last().unwrap();
-                            if field_name.as_str() == "class_id" {
-                                if let Data::I32(id) = data {
-                                    class_id = Some(ClassId(id as _));
-                                }
-                            }
-                            if field_name.as_str() == "keypoint_id" {
-                                if let Data::I32(id) = data {
-                                    keypoint_id = Some(KeypointId(id as _));
-                                }
-                            }
-                            data.data_ui(ctx, ui, Preview::Small);
-                        } else {
-                            data_vec.data_ui(ctx, ui, Preview::Small);
-                        }
-                    }
-                    Err(err) => {
-                        re_log::warn_once!("Bad data for {instance_id}: {err}");
-                        ui.label(ctx.re_ui.error_text(format!("Data error: {:?}", err)));
-                    }
-                }
-
-                ui.end_row();
-            }
-        });
-
-    // If we have a class id, show some information about the resolved style!
-    if let Some(class_id) = class_id {
-        ui.separator();
-
-        if let Some((data_path, annotations)) =
-            AnnotationMap::find_associated(ctx, instance_id.obj_path.clone())
-        {
-            ctx.data_path_button_to(
-                ui,
-                format!("Annotation Context at {}", data_path.obj_path),
-                &data_path,
-            );
-            egui::Grid::new("class_description")
-                .num_columns(2)
-                .show(ui, |ui| {
-                    if let Some(class_description) = annotations.context.class_map.get(&class_id) {
-                        let class_annotation = &class_description.info;
-                        let mut keypoint_annotation = None;
-
-                        if let Some(keypoint_id) = keypoint_id {
-                            keypoint_annotation = class_description.keypoint_map.get(&keypoint_id);
-                            if keypoint_annotation.is_none() {
-                                ui.label(ctx.re_ui.warning_text(format!(
-                                    "unknown keypoint_id {}",
-                                    keypoint_id.0
-                                )));
-                            }
-                        }
-
-                        if let Some(label) = keypoint_annotation
-                            .and_then(|a| a.label.as_ref())
-                            .or(class_annotation.label.as_ref())
-                        {
-                            ui.label("label");
-                            ui.label(label.0.as_str());
-                            ui.end_row();
-                        }
-                        if let Some(color) = keypoint_annotation
-                            .and_then(|a| a.color.as_ref())
-                            .or(class_annotation.color.as_ref())
-                        {
-                            ui.label("color");
-                            color.data_ui(ctx, ui, preview);
-                            ui.end_row();
-                        }
-                    } else {
-                        ui.label(
-                            ctx.re_ui
-                                .warning_text(format!("unknown class_id {}", class_id.0)),
-                        );
-                    }
-                })
-                .response
-        } else {
-            ui.label(
-                ctx.re_ui
-                    .warning_text("class_id specified, but no annotation context found"),
-            )
-        };
-    }
 }

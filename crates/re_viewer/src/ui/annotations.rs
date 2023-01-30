@@ -1,15 +1,17 @@
+use std::{collections::BTreeMap, sync::Arc};
+
 use lazy_static::lazy_static;
 use nohash_hasher::IntSet;
+
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{FieldName, ObjPath, TimeQuery};
 use re_log_types::{
     context::{AnnotationInfo, ClassDescription},
     field_types::{ClassId, KeypointId},
     msg_bundle::Component,
-    AnnotationContext, DataPath, MsgId,
+    AnnotationContext, MsgId,
 };
 use re_query::query_entity_with_primary;
-use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
@@ -196,40 +198,6 @@ impl AnnotationMap {
         crate::profile_function!();
         self.load_classic(ctx, query);
         self.load_arrow(ctx, query);
-    }
-
-    pub(crate) fn find_associated(
-        ctx: &mut ViewerContext<'_>,
-        mut obj_path: ObjPath,
-    ) -> Option<(DataPath, Annotations)> {
-        let timeline = ctx.rec_cfg.time_ctrl.timeline();
-        let timeline_store = ctx.log_db.obj_db.store.get(timeline)?;
-        let query_time = ctx.rec_cfg.time_ctrl.time_i64()?;
-        let field_name = FieldName::from("_annotation_context");
-
-        let annotation_context_for_path = |obj_path: &ObjPath| {
-            let field_store = timeline_store.get(obj_path)?.get(&field_name)?;
-            // `_annotation_context` is only allowed to be stored in a mono-field.
-            let mono_field_store = field_store
-                .get_mono::<re_log_types::AnnotationContext>()
-                .ok()?;
-            let (_, msg_id, context) = mono_field_store.latest_at(&query_time)?;
-            Some((
-                DataPath::new(obj_path.clone(), field_name),
-                Annotations {
-                    msg_id: *msg_id,
-                    context: context.clone(),
-                },
-            ))
-        };
-
-        loop {
-            obj_path = obj_path.parent()?;
-            let annotations = annotation_context_for_path(&obj_path);
-            if annotations.is_some() {
-                return annotations;
-            }
-        }
     }
 
     // Search through the all prefixes of this object path until we find a

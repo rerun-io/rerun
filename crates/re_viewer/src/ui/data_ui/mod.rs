@@ -19,9 +19,9 @@ mod object;
 
 pub(crate) use component_ui_registry::ComponentUiRegistry;
 
-/// Controls how large we show the data in [`DataUi`].
+/// Controls how mich space we use to show the data in [`DataUi`].
 #[derive(Clone, Copy, Debug)]
-pub enum Preview {
+pub enum UiVerbosity {
     /// Keep it small enough to fit on one row.
     Small,
 
@@ -34,13 +34,26 @@ pub enum Preview {
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].
 pub(crate) trait DataUi {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview);
+    /// If you need to lookup something in the data store, use the given query to do so.
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    );
 }
 
 // ----------------------------------------------------------------------------
 
 impl DataUi for TimePoint {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
         ui.vertical(|ui| {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -55,16 +68,22 @@ impl DataUi for TimePoint {
 }
 
 impl DataUi for [ComponentBundle] {
-    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
         let mut sorted = self.to_vec();
         sorted.sort_by_key(|cb| cb.name);
 
-        match preview {
-            Preview::Small | Preview::MaxHeight(_) => {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label(sorted.iter().map(format_component_bundle).join(", "));
             }
 
-            Preview::Large => {
+            UiVerbosity::Large => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_component_bundle(component_bundle));
@@ -85,7 +104,13 @@ fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
 }
 
 impl DataUi for PathOp {
-    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
         match self {
             PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
             PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),

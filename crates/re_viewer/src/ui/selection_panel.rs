@@ -3,7 +3,7 @@ use re_log_types::TimeType;
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Preview, Selection, ViewerContext,
+    Selection, UiVerbosity, ViewerContext,
 };
 
 use super::{data_ui::DataUi, space_view::ViewState};
@@ -37,6 +37,8 @@ impl SelectionPanel {
                     ctx.set_multi_selection(selection.iter().cloned());
                 }
 
+                ui.separator();
+
                 self.contents(ui, ctx, blueprint);
             },
         );
@@ -51,7 +53,7 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        ui.separator();
+        let query = ctx.current_query();
 
         egui::ScrollArea::both()
             .auto_shrink([false; 2])
@@ -69,7 +71,7 @@ impl SelectionPanel {
                         egui::CollapsingHeader::new("Data")
                             .default_open(true)
                             .show(ui, |ui| {
-                                data_ui(ui, ctx, selection, Preview::Large);
+                                selection.data_ui(ctx, ui, UiVerbosity::Large, &query);
                             });
 
                         egui::CollapsingHeader::new("Blueprint")
@@ -88,7 +90,7 @@ impl SelectionPanel {
 }
 
 /// What is selected? Not the contents, just the short id of it.
-fn what_is_selected_ui(
+pub fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
@@ -157,25 +159,27 @@ fn what_is_selected_ui(
     }
 }
 
-/// What is the data contained by this selection?
-fn data_ui(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    selection: &Selection,
-    preview: Preview,
-) {
-    match selection {
-        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
-            ui.weak("(nothing)");
-        }
-        Selection::MsgId(msg_id) => {
-            msg_id.data_ui(ctx, ui, preview);
-        }
-        Selection::DataPath(data_path) => {
-            data_path.data_ui(ctx, ui, preview);
-        }
-        Selection::Instance(_, instance_id) => {
-            instance_id.data_ui(ctx, ui, preview);
+impl DataUi for Selection {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        match self {
+            Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
+                ui.weak("(nothing)");
+            }
+            Selection::MsgId(msg_id) => {
+                msg_id.data_ui(ctx, ui, verbosity, query);
+            }
+            Selection::DataPath(data_path) => {
+                data_path.data_ui(ctx, ui, verbosity, query);
+            }
+            Selection::Instance(_, instance_id) => {
+                instance_id.data_ui(ctx, ui, verbosity, query);
+            }
         }
     }
 }
@@ -341,7 +345,7 @@ fn obj_props_ui(
 
     if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
         if let Some(obj_path) = obj_path {
-            let query = ctx.rec_cfg.time_ctrl.current_query();
+            let query = ctx.current_query();
             if let Some(re_log_types::Transform::Pinhole(pinhole)) =
                 query_transform(&ctx.log_db.obj_db, obj_path, &query)
             {

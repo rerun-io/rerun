@@ -1,12 +1,13 @@
 use itertools::Itertools as _;
 
+use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_format::format_number;
 use re_log_types::{
     msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo,
     TypeMsg,
 };
 
-use crate::{Preview, ViewerContext};
+use crate::{UiVerbosity, ViewerContext};
 
 use super::data_ui::DataUi;
 
@@ -196,7 +197,12 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                data.data_ui(ctx, ui, Preview::MaxHeight(row_height));
+                let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+                let query = LatestAtQuery::new(
+                    timeline,
+                    time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
+                );
+                data.data_ui(ctx, ui, UiVerbosity::MaxHeight(row_height), &query);
             });
         }
         LogMsg::PathOpMsg(msg) => {
@@ -223,7 +229,12 @@ fn table_row(
                 ctx.obj_path_button(ui, None, path_op.obj_path());
             });
             row.col(|ui| {
-                path_op.data_ui(ctx, ui, Preview::Large);
+                let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+                let query = LatestAtQuery::new(
+                    timeline,
+                    time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
+                );
+                path_op.data_ui(ctx, ui, UiVerbosity::Large, &query);
             });
         }
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
@@ -251,7 +262,12 @@ fn table_row(
                 });
 
                 row.col(|ui| {
-                    components.data_ui(ctx, ui, Preview::MaxHeight(row_height));
+                    let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+                    let query = LatestAtQuery::new(
+                        timeline,
+                        time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
+                    );
+                    components.data_ui(ctx, ui, UiVerbosity::MaxHeight(row_height), &query);
                 });
             }
             Err(err) => {

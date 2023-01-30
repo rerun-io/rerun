@@ -17,7 +17,7 @@ use crate::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             Label2DTarget, SceneSpatial,
         },
-        Preview, SpaceViewId,
+        SpaceViewId, UiVerbosity,
     },
     ViewerContext,
 };
@@ -390,7 +390,7 @@ fn view_2d_scrollable(
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
-                            instance_id.data_ui(ctx, ui, Preview::Small);
+                            instance_id.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 &image.tensor,
@@ -425,7 +425,12 @@ fn view_2d_scrollable(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
+                    instance_id.data_ui(
+                        ctx,
+                        ui,
+                        crate::ui::UiVerbosity::Large,
+                        &ctx.current_query(),
+                    );
                 })
             };
 

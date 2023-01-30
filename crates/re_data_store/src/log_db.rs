@@ -1,10 +1,7 @@
-use std::collections::BTreeSet;
-
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
-use re_log::warn_once;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
@@ -104,9 +101,7 @@ impl ObjDb {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        let pending_clears = self
-            .tree
-            .add_data_msg(msg_id, time_point, data_path, Some(data));
+        let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path);
 
         // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
         for (msg_id, time_point) in pending_clears {
@@ -153,7 +148,7 @@ impl ObjDb {
             }
             let pending_clears =
                 self.tree
-                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path, None);
+                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
@@ -169,8 +164,7 @@ impl ObjDb {
                 self.arrow_store.insert(&msg_bundle).ok();
 
                 // Also update the object tree with the clear-event
-                self.tree
-                    .add_data_msg(msg_id, &time_point, &data_path, None);
+                self.tree.add_data_msg(msg_id, &time_point, &data_path);
             }
         }
 
@@ -180,7 +174,7 @@ impl ObjDb {
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
-        for (data_path, data_type, mono_or_multi) in cleared_paths {
+        for (data_path, data_type) in cleared_paths {
             if data_path.is_arrow() {
                 if let FieldOrComponent::Component(component) = data_path.field_name {
                     if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
@@ -195,40 +189,24 @@ impl ObjDb {
                         );
                         self.arrow_store.insert(&msg_bundle).ok();
                         // Also update the object tree with the clear-event
-                        self.tree.add_data_msg(msg_id, time_point, &data_path, None);
+                        self.tree.add_data_msg(msg_id, time_point, &data_path);
                     }
                 }
             } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                match mono_or_multi {
-                    crate::MonoOrMulti::Mono => {
-                        self.add_data_msg(
-                            msg_id,
-                            time_point,
-                            &data_path,
-                            &LoggedData::Null(data_type),
-                        );
-                    }
-                    crate::MonoOrMulti::Multi => {
-                        self.add_data_msg(
-                            msg_id,
-                            time_point,
-                            &data_path,
-                            &LoggedData::Batch {
-                                indices: BatchIndex::SequentialIndex(0),
-                                data: DataVec::empty_from_data_type(data_type),
-                            },
-                        );
-                    }
-                }
+                self.add_data_msg(
+                    msg_id,
+                    time_point,
+                    &data_path,
+                    &LoggedData::Batch {
+                        indices: BatchIndex::SequentialIndex(0),
+                        data: DataVec::empty_from_data_type(data_type),
+                    },
+                );
             }
         }
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         crate::profile_function!();
 
         let Self {
@@ -241,10 +219,10 @@ impl ObjDb {
 
         {
             crate::profile_scope!("tree");
-            tree.retain(keep_msg_ids, drop_msg_ids);
+            tree.purge(drop_msg_ids);
         }
 
-        store.retain(keep_msg_ids, drop_msg_ids);
+        store.purge(drop_msg_ids);
     }
 }
 
@@ -289,8 +267,8 @@ impl LogDb {
         &self.obj_db.tree.prefix_times
     }
 
-    pub fn timeless_msgs(&self) -> &BTreeSet<MsgId> {
-        &self.obj_db.tree.timeless_msgs
+    pub fn num_timeless_messages(&self) -> usize {
+        self.obj_db.tree.num_timeless_messages()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -434,23 +412,6 @@ impl LogDb {
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         crate::profile_function!();
-
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
-
-        match (
-            !self.obj_db.store.is_empty(),
-            self.obj_db.arrow_store.total_temporal_index_rows() > 0,
-        ) {
-            (true, true) => warn_once!("GC not supported in mixed mode"),
-            (true, false) => self.purge_fraction_of_ram_classic(fraction_to_purge),
-            (false, true) => self.purge_fraction_of_ram_arrow(fraction_to_purge),
-            (false, false) => {}
-        }
-    }
-
-    fn purge_fraction_of_ram_arrow(&mut self, fraction_to_purge: f32) {
-        crate::profile_function!();
-
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let drop_msg_ids = {
@@ -488,65 +449,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.retain(None, Some(&drop_msg_ids));
-    }
-
-    /// Free up some RAM by forgetting the older parts of all timelines.
-    fn purge_fraction_of_ram_classic(&mut self, fraction_to_purge: f32) {
-        fn always_keep(msg: &LogMsg) -> bool {
-            match msg {
-                //TODO(john) allow purging ArrowMsg
-                LogMsg::ArrowMsg(_)
-                | LogMsg::BeginRecordingMsg(_)
-                | LogMsg::TypeMsg(_)
-                | LogMsg::Goodbye(_) => true,
-                LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
-                LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
-            }
-        }
-
-        crate::profile_function!();
-
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
-
-        // Start by figuring out what `MsgId`:s to keep:
-        let keep_msg_ids = {
-            crate::profile_scope!("calc_what_to_keep");
-            let mut keep_msg_ids = ahash::HashSet::default();
-            for (_, time_points) in self.obj_db.tree.prefix_times.iter() {
-                let num_to_purge = (time_points.len() as f32 * fraction_to_purge).round() as usize;
-                for (_, msg_id) in time_points.iter().skip(num_to_purge) {
-                    keep_msg_ids.extend(msg_id);
-                }
-            }
-
-            keep_msg_ids.extend(
-                self.log_messages
-                    .iter()
-                    .filter_map(|(msg_id, msg)| always_keep(msg).then_some(*msg_id)),
-            );
-            keep_msg_ids
-        };
-
-        let Self {
-            chronological_message_ids,
-            log_messages,
-            timeless_message_ids,
-            recording_info: _,
-            obj_db,
-        } = self;
-
-        chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-
-        {
-            crate::profile_scope!("log_messages");
-            log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-        }
-        {
-            crate::profile_scope!("timeless_message_ids");
-            timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-        }
-
-        obj_db.retain(Some(&keep_msg_ids), None);
+        obj_db.purge(&drop_msg_ids);
     }
 }

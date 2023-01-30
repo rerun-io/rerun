@@ -249,11 +249,11 @@ pub struct DataStore {
     /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: IntMap<ComponentName, ComponentTable>,
 
-    /// Monotically increasing ID for insertions.
+    /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
-    /// Monotically increasing ID for queries.
+    /// Monotonically increasing ID for queries.
     pub(crate) query_id: AtomicU64,
-    /// Monotically increasing ID for GCs.
+    /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
 }
 

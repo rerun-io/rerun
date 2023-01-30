@@ -180,11 +180,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
         }
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             data_store,
             mono,
@@ -196,13 +192,13 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             ($enum_variant: ident, $typ: ty) => {{
                 if *mono {
                     if let Some(store) = data_store.downcast_mut::<MonoFieldStore<Time, $typ>>() {
-                        store.retain(keep_msg_ids, drop_msg_ids);
+                        store.purge(drop_msg_ids);
                     } else {
                         re_log::warn!("Expected mono-store");
                     }
                 } else {
                     if let Some(store) = data_store.downcast_mut::<MultiFieldStore<Time, $typ>>() {
-                        store.retain(keep_msg_ids, drop_msg_ids);
+                        store.purge(drop_msg_ids);
                     } else {
                         re_log::warn!("Expected multi-store");
                     }
@@ -283,19 +279,9 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
         (time, msg_id, value).into()
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self { history } = self;
-
-        if let Some(keep_msg_ids) = keep_msg_ids {
-            history.retain(|(_, msg_id), _| keep_msg_ids.contains(msg_id));
-        }
-        if let Some(drop_msg_ids) = drop_msg_ids {
-            history.retain(|(_, msg_id), _| !drop_msg_ids.contains(msg_id));
-        }
+        history.retain(|(_, msg_id), _| !drop_msg_ids.contains(msg_id));
     }
 }
 
@@ -325,18 +311,8 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MultiFieldStore<Time, T> {
         });
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self { history } = self;
-
-        if let Some(keep_msg_ids) = keep_msg_ids {
-            history.retain(|(_, msg_id), _| keep_msg_ids.contains(msg_id));
-        }
-        if let Some(drop_msg_ids) = drop_msg_ids {
-            history.retain(|(_, msg_id), _| !drop_msg_ids.contains(msg_id));
-        }
+        history.retain(|(_, msg_id), _| !drop_msg_ids.contains(msg_id));
     }
 }

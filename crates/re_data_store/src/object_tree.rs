@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, DataType, FieldOrComponent, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
-    TimePoint, Timeline,
+    DataPath, DataType, FieldOrComponent, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint,
+    Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ pub struct ObjectTree {
     pub prefix_times: TimesPerTimeline,
 
     /// Extra book-keeping used to seed any timelines that include timeless msgs
-    pub timeless_msgs: BTreeSet<MsgId>,
+    num_timeless_messages: usize,
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
@@ -73,7 +73,7 @@ impl ObjectTree {
             path,
             children: Default::default(),
             prefix_times: Default::default(),
-            timeless_msgs: Default::default(),
+            num_timeless_messages: 0,
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
             fields: Default::default(),
@@ -87,6 +87,10 @@ impl ObjectTree {
 
     pub fn num_children_and_fields(&self) -> usize {
         self.children.len() + self.fields.len()
+    }
+
+    pub fn num_timeless_messages(&self) -> usize {
+        self.num_timeless_messages
     }
 
     /// Add a `LoggedData` into the object tree
@@ -104,7 +108,6 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         data_path: &DataPath,
-        data: Option<&LoggedData>,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
@@ -121,7 +124,7 @@ impl ObjectTree {
             Default::default()
         });
 
-        fields.add(msg_id, time_point, data);
+        fields.add(msg_id, time_point);
 
         pending_clears
     }
@@ -136,7 +139,7 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         path_op: &PathOp,
-    ) -> Vec<(DataPath, DataType, MonoOrMulti)> {
+    ) -> Vec<(DataPath, DataType)> {
         crate::profile_function!();
 
         let obj_path = path_op.obj_path().to_components();
@@ -156,25 +159,11 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.fields
                     .iter()
-                    .flat_map(|(field_name, fields)| match field_name {
-                        FieldOrComponent::Field(_) => {
-                            itertools::Either::Left(fields.per_type.iter().map(
-                                |((data_type, multi_or_mono), _)| {
-                                    (
-                                        DataPath::new_any(obj_path.clone(), *field_name),
-                                        *data_type,
-                                        *multi_or_mono,
-                                    )
-                                },
-                            ))
-                        }
-                        FieldOrComponent::Component(_) => {
-                            itertools::Either::Right(std::iter::once((
-                                DataPath::new_any(obj_path.clone(), *field_name),
-                                DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                                MonoOrMulti::Multi,
-                            )))
-                        }
+                    .map(|(field_name, _fields)| {
+                        (
+                            DataPath::new_any(obj_path.clone(), *field_name),
+                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                        )
                     })
                     .collect_vec()
             }
@@ -200,27 +189,11 @@ impl ObjectTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.fields.iter().flat_map(|(field_name, fields)| {
-                        match field_name {
-                            FieldOrComponent::Field(_) => {
-                                itertools::Either::Left(fields.per_type.iter().map(
-                                    |((data_type, multi_or_mono), _)| {
-                                        (
-                                            DataPath::new_any(next.path.clone(), *field_name),
-                                            *data_type,
-                                            *multi_or_mono,
-                                        )
-                                    },
-                                ))
-                            }
-                            FieldOrComponent::Component(_) => {
-                                itertools::Either::Right(std::iter::once((
-                                    DataPath::new_any(next.path.clone(), *field_name),
-                                    DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                                    MonoOrMulti::Multi,
-                                )))
-                            }
-                        }
+                    results.extend(next.fields.iter().map(|(field_name, _fields)| {
+                        (
+                            DataPath::new_any(next.path.clone(), *field_name),
+                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                        )
                     }));
                 }
                 results
@@ -237,8 +210,7 @@ impl ObjectTree {
     ) -> &mut Self {
         // If the time_point is timeless...
         if time_point.is_timeless() {
-            // Save it so that we can duplicate it into future timelines
-            self.timeless_msgs.insert(msg_id);
+            self.num_timeless_messages += 1;
         } else {
             for (timeline, time_value) in time_point.iter() {
                 self.prefix_times
@@ -279,16 +251,12 @@ impl ObjectTree {
         subtree_recursive(self, &path.to_components())
     }
 
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             path: _,
             children,
             prefix_times,
-            timeless_msgs: _,
+            num_timeless_messages: _,
             nonrecursive_clears,
             recursive_clears,
             fields,
@@ -297,43 +265,28 @@ impl ObjectTree {
         for map in prefix_times.0.values_mut() {
             crate::profile_scope!("prefix_times");
             map.retain(|_, msg_ids| {
-                if let Some(keep_msg_ids) = keep_msg_ids {
-                    msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-                }
-                if let Some(drop_msg_ids) = drop_msg_ids {
-                    msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
-                }
+                msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
                 !msg_ids.is_empty()
             });
         }
         {
             crate::profile_scope!("nonrecursive_clears");
-            if let Some(keep_msg_ids) = keep_msg_ids {
-                nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-            }
-            if let Some(drop_msg_ids) = drop_msg_ids {
-                nonrecursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
-            }
+            nonrecursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
         }
         {
             crate::profile_scope!("recursive_clears");
-            if let Some(keep_msg_ids) = keep_msg_ids {
-                recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
-            }
-            if let Some(drop_msg_ids) = drop_msg_ids {
-                recursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
-            }
+            recursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
         }
 
         {
             crate::profile_scope!("fields");
             for columns in fields.values_mut() {
-                columns.retain(keep_msg_ids, drop_msg_ids);
+                columns.purge(drop_msg_ids);
             }
         }
 
         for child in children.values_mut() {
-            child.retain(keep_msg_ids, drop_msg_ids);
+            child.purge(drop_msg_ids);
         }
     }
 
@@ -346,153 +299,49 @@ impl ObjectTree {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum MonoOrMulti {
-    Mono,
-    Multi,
-}
-
 /// Column transform of [`re_log_types::Data`].
 #[derive(Default)]
 pub struct DataColumns {
-    /// When do we have data?
-    pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    /// When do we have data? Ignored timeless.
+    pub times: TimesPerTimeline,
+
     /// Extra book-keeping used to seed any timelines that include timeless msgs
-    pub timeless_msgs: BTreeSet<MsgId>,
-    pub per_type: HashMap<(DataType, MonoOrMulti), BTreeSet<MsgId>>,
+    num_timeless_messages: usize,
 }
 
 impl DataColumns {
-    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: Option<&LoggedData>) {
+    pub fn num_timeless_messages(&self) -> usize {
+        self.num_timeless_messages
+    }
+
+    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint) {
         // If the `time_point` is timeless...
         if time_point.is_timeless() {
-            // Save it so that we can duplicate it into future timelines
-            self.timeless_msgs.insert(msg_id);
-
-            // Add it to any existing timelines
-            for timeline in &mut self.times.values_mut() {
-                timeline
-                    .entry(TimeInt::BEGINNING)
-                    .or_default()
-                    .insert(msg_id);
-            }
+            self.num_timeless_messages += 1;
         } else {
             for (timeline, time_value) in time_point.iter() {
                 self.times
+                    .0
                     .entry(*timeline)
-                    .or_insert_with(|| {
-                        if self.timeless_msgs.is_empty() {
-                            Default::default()
-                        } else {
-                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
-                        }
-                    })
+                    .or_default()
                     .entry(*time_value)
                     .or_default()
                     .insert(msg_id);
             }
         }
-
-        if let Some(data) = data {
-            let mono_or_multi = match data {
-                LoggedData::Null(_) | LoggedData::Single(_) => MonoOrMulti::Mono,
-                LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => MonoOrMulti::Multi,
-            };
-
-            self.per_type
-                .entry((data.data_type(), mono_or_multi))
-                .or_default()
-                .insert(msg_id);
-        }
     }
 
-    pub fn populate_timeless(&mut self, time_point: &TimePoint) {
-        // For any timeline in `time_point` populate an initial entry from the current
-        // `timeless_msgs` seed.
-        for (timeline, _) in time_point.iter() {
-            self.times.entry(*timeline).or_insert_with(|| {
-                if self.timeless_msgs.is_empty() {
-                    Default::default()
-                } else {
-                    [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
-                }
-            });
-        }
-    }
-
-    pub fn summary(&self) -> String {
-        let mut summaries = vec![];
-
-        for ((typ, _), set) in &self.per_type {
-            let (stem, plur) = match typ {
-                DataType::Bool => ("bool", "s"),
-                DataType::I32 => ("integer", "s"),
-                DataType::F32 | DataType::F64 => ("scalar", "s"),
-                DataType::Color => ("color", "s"),
-                DataType::String => ("string", "s"),
-
-                DataType::Vec2 => ("2D vector", "s"),
-                DataType::BBox2D => ("2D bounding box", "es"),
-
-                DataType::Vec3 => ("3D vector", "s"),
-                DataType::Box3 => ("3D box", "es"),
-                DataType::Mesh3D => ("mesh", "es"),
-                DataType::Arrow3D => ("3D arrow", "s"),
-
-                DataType::Tensor => ("tensor", "s"),
-
-                DataType::ObjPath => ("path", "s"),
-
-                DataType::Transform => ("transform", "s"),
-                DataType::ViewCoordinates => ("coordinate system", "s"),
-                DataType::AnnotationContext => ("annotation context", "s"),
-
-                DataType::DataVec => ("vector", "s"),
-            };
-
-            summaries.push(plurality(set.len(), stem, plur));
-        }
-
-        summaries.join(", ")
-    }
-
-    pub fn retain(
-        &mut self,
-        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
-        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
-    ) {
+    pub fn purge(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self {
             times,
-            per_type,
-            timeless_msgs: _,
+            num_timeless_messages: _,
         } = self;
 
-        for map in times.values_mut() {
+        for map in times.0.values_mut() {
             map.retain(|_, msg_ids| {
-                if let Some(keep_msg_ids) = keep_msg_ids {
-                    msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
-                }
-                if let Some(drop_msg_ids) = drop_msg_ids {
-                    msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
-                }
+                msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
                 !msg_ids.is_empty()
             });
         }
-        for msg_set in per_type.values_mut() {
-            if let Some(keep_msg_ids) = keep_msg_ids {
-                msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
-            }
-            if let Some(drop_msg_ids) = drop_msg_ids {
-                msg_set.retain(|msg_id| !drop_msg_ids.contains(msg_id));
-            }
-        }
-    }
-}
-
-pub(crate) fn plurality(num: usize, singular: &str, plural_suffix: &str) -> String {
-    if num == 1 {
-        format!("1 {}", singular)
-    } else {
-        format!("{} {}{}", num, singular, plural_suffix)
     }
 }
