@@ -32,7 +32,9 @@ class LineStrip2DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-LineStrip2DType = ComponentTypeFactory("LineStrip2DType", LineStrip2DArray, REGISTERED_COMPONENT_NAMES["rerun.linestrip2d"])
+LineStrip2DType = ComponentTypeFactory(
+    "LineStrip2DType", LineStrip2DArray, REGISTERED_COMPONENT_NAMES["rerun.linestrip2d"]
+)
 
 pa.register_extension_type(LineStrip2DType())
 
@@ -53,6 +55,8 @@ class LineStrip3DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-LineStrip3DType = ComponentTypeFactory("LineStrip3DType", LineStrip3DArray, REGISTERED_COMPONENT_NAMES["rerun.linestrip3d"])
+LineStrip3DType = ComponentTypeFactory(
+    "LineStrip3DType", LineStrip3DArray, REGISTERED_COMPONENT_NAMES["rerun.linestrip3d"]
+)
 
 pa.register_extension_type(LineStrip3DType())

@@ -6,7 +6,11 @@ from typing import Final, Iterable, Union, cast
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory, build_dense_union
+from rerun.components import (
+    REGISTERED_COMPONENT_NAMES,
+    ComponentTypeFactory,
+    build_dense_union,
+)
 
 from rerun import bindings
 

@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory, build_dense_union
+from rerun.components import (
+    REGISTERED_COMPONENT_NAMES,
+    ComponentTypeFactory,
+    build_dense_union,
+)
 from rerun.log.rects import RectFormat
 
 __all__ = [
