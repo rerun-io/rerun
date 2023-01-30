@@ -511,7 +511,7 @@ fn create_labels(
 
         let hightlight = highlights
             .entity_highlight(label.labled_instance.entity_path_hash)
-            .index_highlight(label.labled_instance.instance_index_hash);
+            .index_highlight(label.labled_instance.instance_index);
         let fill_color = match hightlight.hover {
             crate::misc::HoverHighlight::None => match hightlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,

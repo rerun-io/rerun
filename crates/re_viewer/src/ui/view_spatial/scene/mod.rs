@@ -128,7 +128,7 @@ pub struct SceneSpatial {
 
 fn instance_hash_if_interactive(entity_path: &EntityPath, interactive: bool) -> InstanceIdHash {
     if interactive {
-        InstanceIdHash::from_path(entity_path)
+        InstanceIdHash::entity(entity_path)
     } else {
         InstanceIdHash::NONE
     }

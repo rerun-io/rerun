@@ -2,7 +2,7 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, LogDb};
-use re_log_types::{EntityPathHash, IndexHash};
+use re_log_types::{component_types::Instance, EntityPathHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -98,18 +98,18 @@ impl InteractionHighlight {
 #[derive(Default)]
 pub struct SpaceViewEntityHighlight {
     overall: InteractionHighlight,
-    instances: IntMap<IndexHash, InteractionHighlight>,
+    instances: ahash::HashMap<Instance, InteractionHighlight>,
 }
 
 #[derive(Copy, Clone)]
 pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
 impl<'a> OptionalSpaceViewEntityHighlight<'a> {
-    pub fn index_highlight(&self, index: IndexHash) -> InteractionHighlight {
+    pub fn index_highlight(&self, instance_index: Instance) -> InteractionHighlight {
         match self.0 {
             Some(entity_highlight) => entity_highlight
                 .instances
-                .get(&index)
+                .get(&instance_index)
                 .cloned()
                 .unwrap_or_default()
                 .max(entity_highlight.overall),
@@ -294,8 +294,8 @@ impl SelectionState {
 
                         current_instance_id.entity_path == test_instance_id.entity_path
                             && either_none_or_same(
-                                &current_instance_id.instance_index,
-                                &test_instance_id.instance_index,
+                                &current_instance_id.instance_index.specific_index(),
+                                &test_instance_id.instance_index.specific_index(),
                             )
                             && either_none_or_same(current_space_view_id, test_space_view_id)
                     } else {
@@ -352,16 +352,17 @@ impl SelectionState {
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
-                    let highlight_target =
-                        if let Some(selected_index) = &selected_instance.instance_index {
-                            &mut highlighted_entity
-                                .instances
-                                .entry(selected_index.hash())
-                                .or_default()
-                                .selection
-                        } else {
-                            &mut highlighted_entity.overall.selection
-                        };
+                    let highlight_target = if let Some(selected_index) =
+                        selected_instance.instance_index.specific_index()
+                    {
+                        &mut highlighted_entity
+                            .instances
+                            .entry(selected_index)
+                            .or_default()
+                            .selection
+                    } else {
+                        &mut highlighted_entity.overall.selection
+                    };
 
                     *highlight_target = (*highlight_target).max(highlight);
                 }
@@ -396,16 +397,17 @@ impl SelectionState {
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
-                    let highlight_target =
-                        if let Some(selected_index) = &selected_instance.instance_index {
-                            &mut highlighted_entity
-                                .instances
-                                .entry(selected_index.hash())
-                                .or_default()
-                                .hover
-                        } else {
-                            &mut highlighted_entity.overall.hover
-                        };
+                    let highlight_target = if let Some(selected_index) =
+                        selected_instance.instance_index.specific_index()
+                    {
+                        &mut highlighted_entity
+                            .instances
+                            .entry(selected_index)
+                            .or_default()
+                            .hover
+                    } else {
+                        &mut highlighted_entity.overall.hover
+                    };
 
                     *highlight_target = HoverHighlight::Hovered;
                 }

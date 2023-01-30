@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, Index, InstanceId};
+use re_data_store::{EntityPath, InstanceId};
 use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
 
@@ -7,10 +7,7 @@ use crate::{
     ui::{format_component_name, UiVerbosity},
 };
 
-use super::{
-    component::{arrow_component_elem_ui, arrow_component_ui},
-    DataUi,
-};
+use super::{component::arrow_component_elem_ui, DataUi};
 
 impl DataUi for EntityPath {
     fn data_ui(
@@ -20,11 +17,7 @@ impl DataUi for EntityPath {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        InstanceId {
-            entity_path: self.clone(),
-            instance_index: None,
-        }
-        .data_ui(ctx, ui, verbosity, query);
+        InstanceId::entity_splat(self.clone()).data_ui(ctx, ui, verbosity, query);
     }
 }
 
@@ -65,36 +58,21 @@ impl DataUi for InstanceId {
                         &ComponentPath::new(self.entity_path.clone(), component_name),
                     );
 
-                    match (component_data, &self.instance_index) {
-                        // If we didn't find the component then it's not set at this point in time
-                        (Err(QueryError::PrimaryNotFound), _) => {
-                            ui.label("<unset>");
+                    match component_data {
+                        Err(err) => {
+                            ui.label(format!("Error: {}", err)); // TODO: error formatting
                         }
-                        // Any other failure to get a component is unexpected
-                        (Err(err), _) => {
-                            ui.label(format!("Error: {}", err));
-                        }
-                        // If an `instance_index` wasn't provided, just report the number of values
-                        (Ok(component_data), None) => {
-                            arrow_component_ui(ctx, ui, &component_data, UiVerbosity::Small, query);
-                        }
-                        // If the `instance_index` is an `ArrowInstance` show the value
-                        (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
+                        Ok(component_data) => {
                             arrow_component_elem_ui(
                                 ctx,
                                 ui,
                                 UiVerbosity::Small,
                                 query,
                                 &component_data,
-                                instance,
+                                &self.instance_index,
                             );
                         }
-                        // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
-                        // TODO(jleibs) this goes away once all indexes are just `Instances`
-                        (Ok(_), Some(_)) => {
-                            ui.label("<bad index>");
-                        }
-                    };
+                    }
 
                     ui.end_row();
                 }

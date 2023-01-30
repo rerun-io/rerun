@@ -188,7 +188,7 @@ impl Points3DPart {
             crate::profile_scope!("highlights");
             instance_hashes
                 .iter()
-                .map(|hash| entity_highlight.index_highlight(hash.instance_index_hash))
+                .map(|hash| entity_highlight.index_highlight(hash.instance_index))
                 .collect::<Vec<_>>()
         };
 

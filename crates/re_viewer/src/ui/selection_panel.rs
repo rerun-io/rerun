@@ -119,7 +119,7 @@ pub fn what_is_selected_ui(
         }
         Selection::Instance(space_view_id, instance_id) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
-                if instance_id.instance_index.is_none() {
+                if instance_id.instance_index.is_splat() {
                     ui.label("Entity:");
                 } else {
                     ui.label("Entity instance:");
@@ -227,12 +227,14 @@ fn blueprint_ui(
             if let Some(space_view) = space_view_id
                 .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
             {
-                if instance_id.instance_index.is_some() {
+                if instance_id.instance_index.is_specific() {
                     ui.horizontal(|ui| {
                         ui.label("Part of");
                         ctx.entity_path_button(ui, *space_view_id, &instance_id.entity_path);
                     });
+                    // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                 } else {
+                    // splat - the whole entity
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                     let mut props = data_blueprint.get(&instance_id.entity_path);
                     entity_props_ui(

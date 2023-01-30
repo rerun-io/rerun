@@ -58,7 +58,7 @@ impl<'a> ViewerContext<'a> {
         self.instance_id_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(entity_path.clone(), None),
+            &InstanceId::entity_splat(entity_path.clone()),
             entity_path.to_string(),
         )
     }
@@ -74,7 +74,7 @@ impl<'a> ViewerContext<'a> {
         self.instance_id_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(entity_path.clone(), None),
+            &InstanceId::entity_splat(entity_path.clone()),
             text,
         )
     }
@@ -98,9 +98,10 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
         let selection = Selection::Instance(space_view_id, instance_id.clone());
-        let subtype_string = match instance_id.instance_index {
-            Some(_) => "Entity Instance",
-            None => "Entity",
+        let subtype_string = if instance_id.instance_index.is_splat() {
+            "Entity"
+        } else {
+            "Entity Instance"
         };
 
         let response = ui
@@ -177,7 +178,7 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         let selection = Selection::Instance(
             Some(space_view_id),
-            InstanceId::new(entity_path.clone(), None),
+            InstanceId::entity_splat(entity_path.clone()),
         );
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)

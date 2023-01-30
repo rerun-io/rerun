@@ -55,7 +55,7 @@ impl Selection {
             Selection::MsgId(_) => "Message",
             Selection::Instance(space_view_id, instance_id) => {
                 match (
-                    instance_id.instance_index.is_some(),
+                    instance_id.instance_index.is_specific(),
                     space_view_id.is_some(),
                 ) {
                     (true, true) => "Entity Instance Blueprint",

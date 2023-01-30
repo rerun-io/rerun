@@ -49,13 +49,15 @@ pub(crate) fn arrow_component_elem_ui(
     verbosity: crate::ui::UiVerbosity,
     query: &re_arrow_store::LatestAtQuery,
     component: &ComponentWithInstances,
-    instance: &Instance,
+    instance_index: &Instance,
 ) {
     if component.name() == Instance::name() {
         // No reason to do another lookup -- this is the instance itself
-        ui.label(instance.to_string());
+        ui.label(instance_index.to_string());
+    } else if instance_index.is_splat() {
+        arrow_component_ui(ctx, ui, component, verbosity, query);
     } else {
         ctx.component_ui_registry
-            .ui(ctx, ui, verbosity, query, component, instance);
+            .ui(ctx, ui, verbosity, query, component, instance_index);
     }
 }

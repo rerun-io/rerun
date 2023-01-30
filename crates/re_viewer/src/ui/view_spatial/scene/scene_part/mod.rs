@@ -52,9 +52,9 @@ pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
 ) -> InstanceIdHash {
     if props.interactive {
         if entity_view.num_instances() == 1 || !entity_highlight.any_selection_highlight() {
-            InstanceIdHash::from_path(ent_path)
+            InstanceIdHash::entity(ent_path)
         } else {
-            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+            InstanceIdHash::instance(ent_path, instance)
         }
     } else {
         InstanceIdHash::NONE

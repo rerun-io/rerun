@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use re_log_types::{component_types::Instance, EntityPath, EntityPathHash, Index, IndexHash};
+use re_log_types::{component_types::Instance, EntityPath, EntityPathHash};
 
 use crate::log_db::EntityDb;
 
@@ -13,57 +13,62 @@ pub struct InstanceId {
     pub entity_path: EntityPath,
 
     /// If this is a concrete instance, what instance index are we?
-    pub instance_index: Option<Index>,
+    ///
+    /// If we refer to all instance, [`Instance::SPLAT`] is used.
+    pub instance_index: Instance,
 }
 
 impl InstanceId {
+    /// Indicate the whole entity (all instances of it) - i.e. a splat.
+    ///
+    /// For instance: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn new(entity_path: EntityPath, instance_index: Option<Index>) -> Self {
+    pub fn entity_splat(entity_path: EntityPath) -> Self {
+        Self {
+            entity_path,
+            instance_index: Instance::SPLAT,
+        }
+    }
+
+    /// Indicate a specific instance of the entity,
+    /// e.g. a specific point in a point cloud entity.
+    #[inline]
+    pub fn instance(entity_path: EntityPath, instance_index: Instance) -> Self {
         Self {
             entity_path,
             instance_index,
         }
     }
 
+    /// Do we refer to the whole entity (all instances of it)?
+    ///
+    /// For instance: the whole point cloud, rather than a specific point.
+    #[inline]
+    pub fn is_splat(&self) -> bool {
+        self.instance_index.is_splat()
+    }
+
     #[inline]
     pub fn hash(&self) -> InstanceIdHash {
         InstanceIdHash {
             entity_path_hash: self.entity_path.hash(),
-            instance_index_hash: self.instance_index_hash(),
-            arrow_instance: {
-                if let Some(Index::ArrowInstance(key)) = &self.instance_index {
-                    Some(*key)
-                } else {
-                    None
-                }
-            },
+            instance_index: self.instance_index,
         }
     }
 
     /// Does this entity match this instance id?
     #[inline]
-    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: IndexHash) -> bool {
-        &self.entity_path == entity_path
-            && if let Some(index) = &self.instance_index {
-                index.hash() == instance_index
-            } else {
-                instance_index.is_none()
-            }
-    }
-
-    pub fn instance_index_hash(&self) -> IndexHash {
-        self.instance_index
-            .as_ref()
-            .map_or(IndexHash::NONE, Index::hash)
+    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: Instance) -> bool {
+        &self.entity_path == entity_path && self.instance_index == instance_index
     }
 }
 
 impl std::fmt::Display for InstanceId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(instance_index) = &self.instance_index {
-            format!("{}[{}]", self.entity_path, instance_index).fmt(f)
-        } else {
+        if self.instance_index.is_splat() {
             self.entity_path.fmt(f)
+        } else {
+            format!("{}[{}]", self.entity_path, self.instance_index).fmt(f)
         }
     }
 }
@@ -75,20 +80,19 @@ impl std::fmt::Display for InstanceId {
 pub struct InstanceIdHash {
     pub entity_path_hash: EntityPathHash,
 
-    /// If this is a multi-entity, what instance index are we?
-    /// [`IndexHash::NONE`] if we aren't a multi-entity.
-    pub instance_index_hash: IndexHash,
-
-    /// If this is an arrow instance, hang onto the Instance
-    /// TODO(jleibs): this can go way once we have an arrow-store resolver
-    pub arrow_instance: Option<re_log_types::component_types::Instance>,
+    /// If this is a concrete instance, what instance index are we?
+    ///
+    /// If we refer to all instance, [`Instance::SPLAT`] is used.
+    ///
+    /// Note that this is NOT hashed, because we don't need to (it's already small).
+    pub instance_index: Instance,
 }
 
 impl std::hash::Hash for InstanceIdHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.entity_path_hash.hash64());
-        state.write_u64(self.instance_index_hash.hash64());
+        state.write_u64(self.instance_index.0);
     }
 }
 
@@ -96,37 +100,34 @@ impl std::cmp::PartialEq for InstanceIdHash {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.entity_path_hash == other.entity_path_hash
-            && self.instance_index_hash == other.instance_index_hash
+            && self.instance_index == other.instance_index
     }
 }
 
 impl InstanceIdHash {
     pub const NONE: Self = Self {
         entity_path_hash: EntityPathHash::NONE,
-        instance_index_hash: IndexHash::NONE,
-        arrow_instance: None,
+        instance_index: Instance::SPLAT,
     };
 
-    /// Indicate the whole entity.
+    /// Indicate the whole entity (all instances of it) - i.e. a splat.
+    ///
+    /// For instance: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn from_path(entity_path: &EntityPath) -> Self {
+    pub fn entity(entity_path: &EntityPath) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
-            instance_index_hash: IndexHash::NONE,
-            arrow_instance: None,
+            instance_index: Instance::SPLAT,
         }
     }
 
-    /// Indicate a specific instance of the entity.
+    /// Indicate a specific instance of the entity,
+    /// e.g. a specific point in a point cloud entity.
     #[inline]
-    pub fn from_path_and_arrow_instance(
-        entity_path: &EntityPath,
-        arrow_instance: &Instance,
-    ) -> Self {
+    pub fn instance(entity_path: &EntityPath, instance_index: Instance) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
-            instance_index_hash: Index::ArrowInstance(*arrow_instance).hash(),
-            arrow_instance: Some(*arrow_instance),
+            instance_index,
         }
     }
 
@@ -145,7 +146,7 @@ impl InstanceIdHash {
             .entity_path_from_hash(&self.entity_path_hash)
             .cloned()?;
 
-        let instance_index = self.arrow_instance.map(Index::ArrowInstance);
+        let instance_index = self.instance_index;
 
         Some(InstanceId {
             entity_path,
@@ -155,8 +156,8 @@ impl InstanceIdHash {
 
     /// Does this entity match this instance id?
     #[inline]
-    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: IndexHash) -> bool {
-        self.entity_path_hash == entity_path.hash() && self.instance_index_hash == instance_index
+    pub fn is_instance(&self, entity_path: &EntityPath, instance_index: Instance) -> bool {
+        self.entity_path_hash == entity_path.hash() && self.instance_index == instance_index
     }
 }
 

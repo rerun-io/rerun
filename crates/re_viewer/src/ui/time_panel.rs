@@ -427,13 +427,7 @@ impl TimePanel {
                 num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Selection::Instance(
-                    None,
-                    InstanceId {
-                        entity_path: tree.path.clone(),
-                        instance_index: None,
-                    },
-                ),
+                Selection::Instance(None, InstanceId::entity_splat(tree.path.clone())),
             );
         }
     }

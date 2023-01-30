@@ -26,9 +26,9 @@ impl DataUi for ComponentPath {
             Err(re_query::QueryError::PrimaryNotFound) => {
                 ui.label("<unset>");
             }
-            // Any other failure to get a component is unexpected
             Err(err) => {
-                ui.label(format!("Error: {}", err));
+                // Any other failure to get a component is unexpected
+                ui.label(format!("Error: {}", err)); // TODO: error formatting
             }
             Ok(component_data) => {
                 arrow_component_ui(ctx, ui, &component_data, verbosity, query);

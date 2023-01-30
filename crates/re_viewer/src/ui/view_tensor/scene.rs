@@ -1,5 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, Index, InstanceId};
+use re_data_store::{EntityPath, EntityProperties, InstanceId};
 use re_log_types::{
     component_types::{Instance, Tensor},
     ClassicTensor,
@@ -49,8 +49,7 @@ impl SceneTensor {
         entity_view.visit1(|instance: Instance, tensor: Tensor| {
             let tensor = ClassicTensor::from(&tensor);
             if !tensor.is_shaped_like_an_image() {
-                let instance_id =
-                    InstanceId::new(ent_path.clone(), Some(Index::ArrowInstance(instance)));
+                let instance_id = InstanceId::instance(ent_path.clone(), instance);
                 self.tensors.insert(instance_id, tensor);
             }
         })

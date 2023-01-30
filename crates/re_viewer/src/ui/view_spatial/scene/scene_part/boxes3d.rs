@@ -62,7 +62,7 @@ impl Boxes3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index),
             );
 
             let scale = glam::Vec3::from(half_size);
