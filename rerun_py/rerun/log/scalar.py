@@ -1,6 +1,10 @@
 from typing import Optional, Sequence
 
 import numpy as np
+from rerun.components.color import ColorRGBAArray
+from rerun.components.label import LabelArray
+from rerun.components.radius import RadiusArray
+from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import _normalize_colors
 
 from rerun import bindings
@@ -100,11 +104,6 @@ def log_scalar(
     Points within a single line do not have to all share the same scatteredness: the line will
     switch between a scattered and a continous representation as required.
     """
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.radius import RadiusArray
-    from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
-
     comps = {"rerun.scalar": ScalarArray.from_numpy(np.array([scalar]))}
 
     if label:
