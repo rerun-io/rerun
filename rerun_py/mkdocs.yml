@@ -9,11 +9,12 @@ repo_url: https://github.com/rerun-io/rerun/
 theme:
   name: "material"
   features:
-    - navigation.tabs
-    - navigation.instant
-    - navigation.indexes
-    - navigation.tracking
     - navigation.expand
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.tracking
 
 plugins:
   - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
