@@ -273,7 +273,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
 
     let paths = space_infos
         .iter()
-        .map(|space_info| space_info.path.to_components())
+        .map(|space_info| space_info.path.as_slice().to_vec())
         .collect_vec();
 
     for i in 0.. {

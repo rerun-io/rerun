@@ -140,9 +140,8 @@ impl ObjectTree {
         data_path: &DataPath,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
-        let obj_path = data_path.obj_path.to_components();
 
-        let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, time_point);
+        let leaf = self.create_subtrees_recursively(data_path.obj_path.as_slice(), 0, time_point);
 
         let mut pending_clears = vec![];
 
@@ -175,7 +174,7 @@ impl ObjectTree {
     ) -> Vec<DataPath> {
         crate::profile_function!();
 
-        let obj_path = path_op.obj_path().to_components();
+        let obj_path = path_op.obj_path();
 
         // Look up the leaf at which we will execute the path operation
         let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, time_point);
@@ -272,7 +271,7 @@ impl ObjectTree {
             }
         }
 
-        subtree_recursive(self, &path.to_components())
+        subtree_recursive(self, path.as_slice())
     }
 
     /// Purge all times before the cutoff, or in the given set

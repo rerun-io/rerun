@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    hash::Hash128,
-    path::{obj_path_impl::ObjPathImpl, IndexPath, ObjTypePath},
-    ObjPathComp,
-};
+use crate::{hash::Hash128, path::obj_path_impl::ObjPathImpl, ObjPathComp};
 
 // ----------------------------------------------------------------------------
 
@@ -82,13 +78,18 @@ impl ObjPath {
     }
 
     #[inline]
-    pub fn new(obj_type_path: ObjTypePath, index_path: IndexPath) -> Self {
-        Self::from(ObjPathImpl::new(obj_type_path, index_path))
+    pub fn new(components: Vec<ObjPathComp>) -> Self {
+        Self::from(components)
     }
 
     #[inline]
-    pub fn iter(&self) -> Iter<'_> {
+    pub fn iter(&self) -> impl Iterator<Item = &ObjPathComp> {
         self.path.iter()
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[ObjPathComp] {
+        self.path.as_slice()
     }
 
     #[inline]
@@ -118,25 +119,6 @@ impl ObjPath {
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.hash.hash64()
-    }
-
-    #[inline]
-    pub fn obj_type_path(&self) -> &ObjTypePath {
-        self.path.obj_type_path()
-    }
-
-    #[inline]
-    pub fn index_path(&self) -> &IndexPath {
-        self.path.index_path()
-    }
-
-    pub fn to_components(&self) -> Vec<ObjPathComp> {
-        self.path.to_components()
-    }
-
-    #[inline]
-    pub fn to_type_path_and_index_path(&self) -> (ObjTypePath, IndexPath) {
-        self.path.to_type_path_and_index_path()
     }
 
     /// Return [`None`] if root.
@@ -240,11 +222,6 @@ impl std::cmp::PartialOrd for ObjPath {
         Some(self.path.cmp(&other.path))
     }
 }
-
-// ----------------------------------------------------------------------------
-
-pub use super::obj_path_impl::Iter;
-pub use super::obj_path_impl::ObjPathCompRef;
 
 // ----------------------------------------------------------------------------
 

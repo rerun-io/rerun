@@ -261,7 +261,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
     {
         Some(time_point.clone())
     } else {
-        re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
+        re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path);
         None
     }
 }
