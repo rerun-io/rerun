@@ -21,7 +21,7 @@ crate-type = ["cdylib", "rlib"]
 default = ["analytics"]
 
 ## Enable telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "dep:sha2"]
+analytics = ["dep:re_analytics"]
 
 
 [dependencies]
@@ -90,8 +90,6 @@ smallvec = { version = "1.10", features = ["serde"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu.workspace = true
-# External (optional)
-sha2 = { version = "0.10", optional = true }
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

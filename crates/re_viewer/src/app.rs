@@ -512,22 +512,23 @@ impl App {
 
                     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
                     if let Some(analytics) = self.analytics.as_mut() {
-                        use sha2::Digest as _;
+                        use re_analytics::Property;
                         analytics.default_append_props_mut().extend([
-                            (
-                                "application_id".into(),
-                                if !msg.info.is_official_example {
-                                    let mut hasher = sha2::Sha256::default();
-                                    hasher.update(&msg.info.application_id.0);
-                                    format!("{:x}", hasher.finalize()).into()
+                            ("application_id".into(), {
+                                let prop: Property = msg.info.application_id.0.clone().into();
+                                if msg.info.is_official_example {
+                                    prop
                                 } else {
-                                    msg.info.application_id.0.clone().into()
-                                },
-                            ),
+                                    prop.hashed()
+                                }
+                            }),
                             ("recording_id".into(), {
-                                let mut hasher = sha2::Sha256::default();
-                                hasher.update(msg.info.recording_id.to_string());
-                                format!("{:x}", hasher.finalize()).into()
+                                let prop: Property = msg.info.recording_id.to_string().into();
+                                if msg.info.is_official_example {
+                                    prop
+                                } else {
+                                    prop.hashed()
+                                }
                             }),
                             (
                                 "recording_source".into(),

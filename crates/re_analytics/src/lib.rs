@@ -66,6 +66,26 @@ pub enum Property {
     Bool(bool),
 }
 
+impl Property {
+    /// Returns a new string property that is a hex representation of the hashed sum of the current
+    /// property.
+    pub fn hashed(&self) -> Property {
+        /// Just a random fixed salt to render pre-built rainbow tables useless.
+        const SALT: &str = "d6d6bed3-028a-49ac-94dc-8c89cfb19379";
+
+        use sha2::Digest as _;
+        let mut hasher = sha2::Sha256::default();
+        hasher.update(SALT);
+        match self {
+            Property::Integer(data) => hasher.update(data.to_le_bytes()),
+            Property::Float(data) => hasher.update(data.to_le_bytes()),
+            Property::String(data) => hasher.update(data),
+            Property::Bool(data) => hasher.update([*data as u8]),
+        }
+        format!("{:x}", hasher.finalize()).into()
+    }
+}
+
 // ---
 
 const DISCLAIMER: &str = "
