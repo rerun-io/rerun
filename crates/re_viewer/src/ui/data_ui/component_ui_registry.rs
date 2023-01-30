@@ -107,12 +107,8 @@ impl ComponentUiRegistry {
         instance_index: &Instance,
     ) {
         if component.name() == Instance::name() {
-            ui.label(instance_index.to_string()).on_hover_ui(|ui| {
-                ui.label(format!(
-                    "There are {} instances of this component at this time.",
-                    component.len()
-                ));
-            });
+            // The user wants to show a ui for the `Instance` component - well, that's easy:
+            ui.label(instance_index.to_string());
             return;
         }
 

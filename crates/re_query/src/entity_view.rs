@@ -35,6 +35,7 @@ impl ComponentWithInstances {
         self.name
     }
 
+    /// Number of values. 1 for splats.
     pub fn len(&self) -> usize {
         self.values.len()
     }
