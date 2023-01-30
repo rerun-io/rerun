@@ -37,9 +37,19 @@ def log_path(
                      4
     ```
 
-    `positions`: a Nx3 array of points along the path.
-    `stroke_width`: width of the line.
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    Parameters
+    ----------
+    obj_path:
+        Path to the path in the space hierarchy
+    positions:
+        A Nx3 array of points along the path.
+    stroke_width:
+        Width of the line.
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    timeless:
+        If true, the path will be timeless (default: False).
+
     """
     if positions is not None:
         positions = np.require(positions, dtype="float32")
@@ -74,14 +84,26 @@ def log_line_segments(
 
     The points will be connected in even-odd pairs, like so:
 
+    ```
            2------3     5
                        /
     0----1            /
                      4
+    ```
 
-    `positions`: a Nx3 array of points along the path.
-    `stroke_width`: width of the line.
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    Parameters
+    ----------
+    obj_path:
+        Path to the line segments in the space hierarchy
+    positions:
+        A Nx3 array of points along the path.
+    stroke_width:
+        Width of the line.
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    timeless:
+        If true, the line segments will be timeless (default: False).
+
     """
     if positions is None:
         positions = np.require([], dtype="float32")
