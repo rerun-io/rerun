@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, InstanceIdHash, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
 use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
     Pinhole, Transform, ViewCoordinates,
@@ -58,7 +58,7 @@ impl CamerasPart {
     fn visit_instance(
         scene: &mut SceneSpatial,
         entity_path: &EntityPath,
-        props: &ObjectProps,
+        props: &EntityProperties,
         transforms: &TransformCache,
         instance_hash: InstanceIdHash,
         pinhole: Pinhole,

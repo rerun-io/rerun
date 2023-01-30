@@ -4,15 +4,15 @@
 #![doc = document_features::document_features!()]
 //!
 
+pub mod entity_properties;
 pub mod entity_tree;
 mod instance;
 pub mod log_db;
-pub mod object_properties;
 
+pub use entity_properties::*;
 pub use entity_tree::*;
 pub use instance::*;
 pub use log_db::LogDb;
-pub use object_properties::*;
 
 use re_log_types::msg_bundle;
 

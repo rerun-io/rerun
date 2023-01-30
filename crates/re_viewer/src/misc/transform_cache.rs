@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{log_db::ObjDb, query_transform, EntityPath, EntityTree, ObjectsProperties};
+use re_data_store::{log_db::ObjDb, query_transform, EntityPath, EntityPropertyMap, EntityTree};
 
 use crate::misc::TimeControl;
 
@@ -49,7 +49,7 @@ impl TransformCache {
         obj_db: &ObjDb,
         time_ctrl: &TimeControl,
         root_path: &EntityPath,
-        obj_properties: &ObjectsProperties,
+        obj_properties: &EntityPropertyMap,
     ) -> Self {
         crate::profile_function!();
 
@@ -138,7 +138,7 @@ impl TransformCache {
         tree: &EntityTree,
         obj_db: &ObjDb,
         query: &LatestAtQuery,
-        obj_properties: &ObjectsProperties,
+        obj_properties: &EntityPropertyMap,
         reference_from_obj: glam::Mat4,
         encountered_pinhole: bool,
     ) {
@@ -198,7 +198,7 @@ impl TransformCache {
 fn transform_at(
     entity_path: &EntityPath,
     obj_db: &ObjDb,
-    obj_properties: &ObjectsProperties,
+    obj_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {

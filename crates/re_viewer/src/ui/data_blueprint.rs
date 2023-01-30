@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{EntityPath, ObjectProps, ObjectsProperties};
+use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -13,13 +13,13 @@ pub struct DataBlueprintGroup {
     pub display_name: String,
 
     /// Individual settings. Mutate & display this.
-    pub properties_individual: ObjectProps,
+    pub properties_individual: EntityProperties,
 
     /// Properties, as inherited from parent. Read from this.
     ///
     /// Recalculated at the start of each frame from [`Self::properties_individual`].
     #[cfg_attr(feature = "serde", serde(skip))]
-    pub properties_projected: ObjectProps,
+    pub properties_projected: EntityProperties,
 
     /// Parent of this blueprint group. Every data blueprint except the root has a parent.
     pub parent: DataBlueprintGroupHandle,
@@ -36,13 +36,13 @@ pub struct DataBlueprintGroup {
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 struct DataBlueprints {
     /// Individual settings. Mutate this.
-    individual: ObjectsProperties,
+    individual: EntityPropertyMap,
 
     /// Properties, as inherited from parent. Read from this.
     ///
     /// Recalculated at the start of each frame from [`Self::individual`].
     #[cfg_attr(feature = "serde", serde(skip))]
-    projected: ObjectsProperties,
+    projected: EntityPropertyMap,
 }
 
 /// Tree of all data blueprint groups for a single space view.
@@ -136,12 +136,12 @@ impl DataBlueprintTree {
     }
 
     /// Returns object properties with the hierarchy applied.
-    pub fn data_blueprints_projected(&self) -> &ObjectsProperties {
+    pub fn data_blueprints_projected(&self) -> &EntityPropertyMap {
         &self.data_blueprints.projected
     }
 
     /// Returns mutable individual object properties, the hierarchy was not applied to this.
-    pub fn data_blueprints_individual(&mut self) -> &mut ObjectsProperties {
+    pub fn data_blueprints_individual(&mut self) -> &mut EntityPropertyMap {
         &mut self.data_blueprints.individual
     }
 
@@ -165,7 +165,7 @@ impl DataBlueprintTree {
 
         fn project_tree(
             tree: &mut DataBlueprintTree,
-            parent_properties: &ObjectProps,
+            parent_properties: &EntityProperties,
             group_handle: DataBlueprintGroupHandle,
         ) {
             let Some(group) = tree.groups.get_mut(group_handle) else {
@@ -191,7 +191,7 @@ impl DataBlueprintTree {
             }
         }
 
-        project_tree(self, &ObjectProps::default(), self.root_group_handle);
+        project_tree(self, &EntityProperties::default(), self.root_group_handle);
     }
 
     /// Adds a list of object paths to the tree, using grouping as dictated by their object path hierarchy.

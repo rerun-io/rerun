@@ -11,17 +11,17 @@ use crate::log_db::ObjDb;
 /// Properties for a collection of objects.
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ObjectsProperties {
-    props: nohash_hasher::IntMap<EntityPath, ObjectProps>,
+pub struct EntityPropertyMap {
+    props: nohash_hasher::IntMap<EntityPath, EntityProperties>,
 }
 
-impl ObjectsProperties {
-    pub fn get(&self, entity_path: &EntityPath) -> ObjectProps {
+impl EntityPropertyMap {
+    pub fn get(&self, entity_path: &EntityPath) -> EntityProperties {
         self.props.get(entity_path).cloned().unwrap_or_default()
     }
 
-    pub fn set(&mut self, entity_path: EntityPath, prop: ObjectProps) {
-        if prop == ObjectProps::default() {
+    pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
+        if prop == EntityProperties::default() {
             self.props.remove(&entity_path); // save space
         } else {
             self.props.insert(entity_path, prop);
@@ -34,14 +34,14 @@ impl ObjectsProperties {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-pub struct ObjectProps {
+pub struct EntityProperties {
     pub visible: bool,
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
     pinhole_image_plane_distance: Option<ordered_float::NotNan<f32>>,
 }
 
-impl ObjectProps {
+impl EntityProperties {
     /// If this has a pinhole camera transform, how far away is the image plane.
     ///
     /// Scale relative to the respective space the pinhole camera is in.
@@ -77,7 +77,7 @@ impl ObjectProps {
     }
 }
 
-impl Default for ObjectProps {
+impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             visible: true,

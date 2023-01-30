@@ -1,4 +1,4 @@
-use re_data_store::{query_transform, EntityPath, ObjectProps};
+use re_data_store::{query_transform, EntityPath, EntityProperties};
 use re_log_types::TimeType;
 
 use crate::{
@@ -307,12 +307,12 @@ fn obj_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: Option<&EntityPath>,
-    obj_props: &mut ObjectProps,
+    obj_props: &mut EntityProperties,
     view_state: &ViewState,
 ) {
     use egui::NumExt;
 
-    let ObjectProps {
+    let EntityProperties {
         visible,
         visible_history,
         interactive,

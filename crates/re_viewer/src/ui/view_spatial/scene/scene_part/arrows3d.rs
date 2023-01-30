@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Label, Radius},
     msg_bundle::Component,
@@ -22,7 +22,7 @@ impl Arrows3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &ObjectProps,
+        props: &EntityProperties,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
