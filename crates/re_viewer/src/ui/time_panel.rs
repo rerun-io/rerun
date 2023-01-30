@@ -789,7 +789,7 @@ fn show_msg_ids_tooltip(
             ui.add_space(8.0);
 
             let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-            let time_int = time_points[0].0;
+            let time_int = time_points[0].0; // We want to show the selection at the time of whatever point we are hovering
             let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
             selection.data_ui(ctx, ui, super::UiVerbosity::Large, &query);
         } else {
