@@ -18,7 +18,7 @@ pub struct SceneTensor {
 
 impl SceneTensor {
     /// Loads all tensor objects into the scene according to the given query.
-    pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (ent_path, props) in query.iter_entities() {

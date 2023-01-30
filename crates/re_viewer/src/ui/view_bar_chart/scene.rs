@@ -15,7 +15,7 @@ pub struct SceneBarChart {
 }
 
 impl SceneBarChart {
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         self.load_tensors(ctx, query);

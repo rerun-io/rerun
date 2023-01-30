@@ -65,7 +65,7 @@ pub struct SceneTimeSeries {
 
 impl SceneTimeSeries {
     /// Loads all plot objects into the scene according to the given query.
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);

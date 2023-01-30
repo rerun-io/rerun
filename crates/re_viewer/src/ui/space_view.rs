@@ -405,19 +405,19 @@ impl SpaceView {
         match self.category {
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
-                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
+                scene.load(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
             }
 
             ViewCategory::TimeSeries => {
                 let mut scene = view_time_series::SceneTimeSeries::default();
-                scene.load_objects(ctx, &query);
+                scene.load(ctx, &query);
                 self.view_state.ui_time_series(ctx, ui, &scene);
             }
 
             ViewCategory::BarChart => {
                 let mut scene = view_bar_chart::SceneBarChart::default();
-                scene.load_objects(ctx, &query);
+                scene.load(ctx, &query);
                 self.view_state.ui_bar_chart(ctx, ui, &scene);
             }
 
@@ -429,7 +429,7 @@ impl SpaceView {
                     self.data_blueprint.data_blueprints_projected(),
                 );
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(ctx, &query, &transforms, highlights);
+                scene.load(ctx, &query, &transforms, highlights);
                 self.view_state.ui_spatial(
                     ctx,
                     ui,
@@ -445,7 +445,7 @@ impl SpaceView {
                 ui.add_space(16.0); // Extra headroom required for the hovering controls at the top of the space view.
 
                 let mut scene = view_tensor::SceneTensor::default();
-                scene.load_objects(ctx, &query);
+                scene.load(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
             }
         };

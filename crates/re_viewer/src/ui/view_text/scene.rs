@@ -35,7 +35,7 @@ pub struct SceneText {
 
 impl SceneText {
     /// Loads all text objects into the scene according to the given query.
-    pub(crate) fn load_objects(
+    pub(crate) fn load(
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &SceneQuery<'_>,
