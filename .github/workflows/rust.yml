@@ -29,6 +29,9 @@ jobs:
   rs-benchmarks:
     name: Rust Criterion benchmarks
 
+    # Only save the rs-benchmarks job when a commit gets pushed to main
+    if: ${{ github.event_name == 'push' }}
+
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.1
@@ -58,8 +61,6 @@ jobs:
             -- --output-format=bencher | tee output.txt
 
       - name: Store benchmark result
-        # Only save the rs-benchmarks job when a commit gets pushed to main
-        if: ${{ github.event_name == 'push' }}
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
@@ -146,7 +147,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features
+          args: --all-targets --all-features
 
   # ---------------------------------------------------------------------------
 
