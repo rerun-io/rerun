@@ -64,7 +64,7 @@ pub struct DataBlueprintTree {
     /// * children on [`DataBlueprintGroup`] this is on
     /// * elements in [`Self::path_to_group`]
     /// TODO(andreas): Can we reduce the amount of these dependencies?
-    object_paths: IntSet<EntityPath>,
+    entity_paths: IntSet<EntityPath>,
 
     /// Root group, always exists as a placeholder
     root_group_handle: DataBlueprintGroupHandle,
@@ -83,7 +83,7 @@ impl Default for DataBlueprintTree {
         Self {
             groups,
             path_to_group: path_to_blueprint,
-            object_paths: IntSet::default(),
+            entity_paths: IntSet::default(),
             root_group_handle: root_group,
             data_blueprints: DataBlueprints::default(),
         }
@@ -150,8 +150,8 @@ impl DataBlueprintTree {
     }
 
     /// List of all objects that we query via this data blueprint collection.
-    pub fn object_paths(&self) -> &IntSet<EntityPath> {
-        &self.object_paths
+    pub fn entity_paths(&self) -> &IntSet<EntityPath> {
+        &self.entity_paths
     }
 
     /// Should be called on frame start.
@@ -209,7 +209,7 @@ impl DataBlueprintTree {
         let mut new_leaf_groups = Vec::new();
 
         for path in paths {
-            self.object_paths.insert(path.clone());
+            self.entity_paths.insert(path.clone());
 
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
@@ -339,7 +339,7 @@ impl DataBlueprintTree {
             }
         }
         self.path_to_group.remove(path);
-        self.object_paths.remove(path);
+        self.entity_paths.remove(path);
     }
 }
 

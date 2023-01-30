@@ -113,7 +113,7 @@ fn log_rects(
     rects: Option<Vec<Rect2D>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {
-    // Capture the log_time and object_path
+    // Capture the log_time and entity_path
     let time_point = rerun::log_time();
 
     let bundle = MsgBundle::new(

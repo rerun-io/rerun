@@ -283,7 +283,7 @@ impl SpaceView {
         let response = if tree.is_leaf() {
             ui.horizontal(|ui| {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    self.entity_path_button(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
                         self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
                     }
@@ -302,7 +302,7 @@ impl SpaceView {
             )
             .show_header(ui, |ui| {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    self.entity_path_button(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
                         self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
                     }
@@ -319,7 +319,7 @@ impl SpaceView {
         }
     }
 
-    pub fn object_path_button(
+    pub fn entity_path_button(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -396,7 +396,7 @@ impl SpaceView {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
-            entity_paths: self.data_blueprint.object_paths(),
+            entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: self.data_blueprint.data_blueprints_projected(),

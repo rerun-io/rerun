@@ -137,7 +137,7 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]
 pub struct SpaceViewHighlights {
-    highlighted_object_paths: IntMap<EntityPathHash, SpaceViewObjectHighlight>,
+    highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewObjectHighlight>,
 }
 
 impl SpaceViewHighlights {
@@ -145,7 +145,7 @@ impl SpaceViewHighlights {
         &self,
         entity_path_hash: EntityPathHash,
     ) -> OptionalSpaceViewObjectHighlight<'_> {
-        OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&entity_path_hash))
+        OptionalSpaceViewObjectHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
     }
 }
 
@@ -317,7 +317,7 @@ impl SelectionState {
     ) -> SpaceViewHighlights {
         crate::profile_function!();
 
-        let mut highlighted_object_paths =
+        let mut highlighted_entity_paths =
             IntMap::<EntityPathHash, SpaceViewObjectHighlight>::default();
 
         for current_selection in self.selection.iter() {
@@ -330,7 +330,7 @@ impl SelectionState {
                             space_view.data_blueprint.visit_group_objects_recursively(
                                 *group_handle,
                                 &mut |entity_path: &EntityPath| {
-                                    highlighted_object_paths
+                                    highlighted_entity_paths
                                         .entry(entity_path.hash())
                                         .or_default()
                                         .overall
@@ -348,7 +348,7 @@ impl SelectionState {
                         SelectionHighlight::SiblingSelection
                     };
 
-                    let highlighted_object = highlighted_object_paths
+                    let highlighted_object = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
@@ -380,7 +380,7 @@ impl SelectionState {
                             space_view.data_blueprint.visit_group_objects_recursively(
                                 *group_handle,
                                 &mut |entity_path: &EntityPath| {
-                                    highlighted_object_paths
+                                    highlighted_entity_paths
                                         .entry(entity_path.hash())
                                         .or_default()
                                         .overall
@@ -392,7 +392,7 @@ impl SelectionState {
                 }
 
                 Selection::Instance(_, selected_instance) => {
-                    let highlighted_object = highlighted_object_paths
+                    let highlighted_object = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
@@ -413,7 +413,7 @@ impl SelectionState {
         }
 
         SpaceViewHighlights {
-            highlighted_object_paths,
+            highlighted_entity_paths,
         }
     }
 }

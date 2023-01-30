@@ -151,7 +151,7 @@ fn log_text_entries(
     text_entries: Option<Vec<TextEntry>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {
-    // Capture the log_time and object_path
+    // Capture the log_time and entity_path
     let time_point = TimePoint::from([
         (Timeline::log_time(), Time::now().into()),
         (Timeline::new("frame_nr", TimeType::Sequence), 42.into()),

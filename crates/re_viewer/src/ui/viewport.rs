@@ -302,8 +302,8 @@ impl Viewport {
 
                 if space_view_candidate
                     .data_blueprint
-                    .object_paths()
-                    .is_subset(existing_view.data_blueprint.object_paths())
+                    .entity_paths()
+                    .is_subset(existing_view.data_blueprint.entity_paths())
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;

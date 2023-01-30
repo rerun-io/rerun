@@ -75,7 +75,7 @@ fn main() -> std::process::ExitCode {
 /// Log a collection of rects and/or colors
 /// TODO(jleibs): Make this fancier and move into the SDK
 fn log_tensors(session: &mut Session, entity_path: &EntityPath, tensors: Option<Vec<Tensor>>) {
-    // Capture the log_time and object_path
+    // Capture the log_time and entity_path
     let time_point = rerun::log_time();
 
     let bundle = MsgBundle::new(
