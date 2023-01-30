@@ -177,6 +177,7 @@ impl DataUi for re_log_types::field_types::Mesh3D {
     ) {
         match self {
             re_log_types::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
+            re_log_types::Mesh3D::Raw(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
@@ -190,5 +191,20 @@ impl DataUi for re_log_types::field_types::EncodedMesh3D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.label(format!("{} mesh", self.format));
+    }
+}
+
+impl DataUi for re_log_types::field_types::RawMesh3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(format!(
+            "mesh ({} triangles)",
+            re_format::format_number(self.positions.len() / 3)
+        ));
     }
 }

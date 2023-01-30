@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "rerun_py", "run_wasm"]
+members = ["crates/*", "rerun_py", "run_wasm", "examples/raw_mesh"]
 
 [workspace.package]
 version = "0.1.0"
@@ -31,11 +31,11 @@ polars-core = "0.26"
 polars-lazy = "0.26"
 polars-ops = "0.26"
 puffin = "0.14"
+reqwest = "0.11"
 thiserror = "1.0"
 tokio = "1.24"
 wgpu = { version = "0.15", default-features = false }
 wgpu-core = { version = "0.15", default-features = false }
-
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }

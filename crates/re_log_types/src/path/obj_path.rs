@@ -144,6 +144,12 @@ impl ObjPath {
     pub fn parent(&self) -> Option<Self> {
         self.path.parent().map(Self::from)
     }
+
+    pub fn join(&self, ent_path: &ObjPath) -> Self {
+        let mut comps = self.to_components();
+        comps.extend(ent_path.to_components());
+        comps.into()
+    }
 }
 
 impl From<ObjPathImpl> for ObjPath {

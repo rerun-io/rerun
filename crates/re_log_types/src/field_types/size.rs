@@ -2,6 +2,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
+// TODO: should just embed a Vec3D?
 #[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Size3D {
     pub x: f32,

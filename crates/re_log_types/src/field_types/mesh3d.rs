@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
 use arrow2::datatypes::DataType;
 use arrow2_convert::arrow_enable_vec_for_type;
@@ -72,14 +74,17 @@ impl ArrowDeserialize for MeshId {
 
 // ----------------------------------------------------------------------------
 
-// TODO(#749) Re-enable `RawMesh3D`
-// These seem totally unused at the moment and not even supported by the SDK
-#[derive(Clone, Debug, PartialEq)]
+// TODO: Arcs
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
     pub mesh_id: MeshId,
-    pub positions: Vec<[f32; 3]>,
-    pub indices: Vec<[u32; 3]>,
+    pub indices: Option<Vec<u32>>,
+    // TODO: feels like this should be Vec3D though?
+    // TODO: %3 guarantee
+    pub positions: Vec<f32>,
+    // TODO: %3 guarantee
+    pub normals: Option<Vec<f32>>,
 }
 
 // ----------------------------------------------------------------------------
@@ -90,7 +95,7 @@ pub struct RawMesh3D {
 pub struct EncodedMesh3D {
     pub mesh_id: MeshId,
     pub format: MeshFormat,
-    pub bytes: std::sync::Arc<[u8]>,
+    pub bytes: Arc<[u8]>,
     /// four columns of an affine transformation matrix
     pub transform: [[f32; 3]; 4],
 }
@@ -101,6 +106,7 @@ pub struct EncodedMesh3DArrow {
     pub mesh_id: MeshId,
     pub format: MeshFormat,
     pub bytes: Vec<u8>,
+    // TODO: why is this not a Mat?
     #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<f32, 12>")]
     pub transform: Vec<f32>,
 }
@@ -250,8 +256,8 @@ impl std::fmt::Display for MeshFormat {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
-    // TODO(#749) Re-enable `RawMesh3D`
-    // Raw(Arc<RawMesh3D>),
+    // TODO: there used to be an Arc here for some reason?
+    Raw(RawMesh3D),
 }
 
 impl Component for Mesh3D {
@@ -264,8 +270,7 @@ impl Mesh3D {
     pub fn mesh_id(&self) -> MeshId {
         match self {
             Mesh3D::Encoded(mesh) => mesh.mesh_id,
-            // TODO(#749) Re-enable `RawMesh3D`
-            // Mesh3D::Raw(mesh) => mesh.mesh_id,
+            Mesh3D::Raw(mesh) => mesh.mesh_id,
         }
     }
 }

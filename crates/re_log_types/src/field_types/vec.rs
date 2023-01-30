@@ -3,6 +3,8 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use super::FixedSizeArrayField;
 use crate::msg_bundle::Component;
 
+// --- Vec2D ---
+
 /// A vector in 2D space.
 ///
 /// ```
@@ -70,6 +72,8 @@ impl From<glam::Vec2> for Vec2D {
         Self(v.to_array())
     }
 }
+
+// --- Vec3D ---
 
 /// A vector in 3D space.
 ///
@@ -144,6 +148,8 @@ impl From<glam::Vec3> for Vec3D {
         Self(v.to_array())
     }
 }
+
+// --- Vec4D ---
 
 /// A vector in 4D space.
 ///

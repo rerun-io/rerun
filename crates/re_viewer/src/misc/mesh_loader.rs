@@ -19,13 +19,12 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
-            // Mesh from user logging some triangles.
+            // Mesh from some file format. File passed in bytes.
             Mesh3D::Encoded(encoded_mesh) => {
                 Self::load_encoded_mesh(name, encoded_mesh, render_ctx)
             }
-            // Mesh from some file format. File passed in bytes.
-            // TODO(#749) Re-enable `RawMesh3D`
-            //Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
+            // Mesh from user logging some triangles.
+            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
         }
     }
 
@@ -83,7 +82,6 @@ impl LoadedMesh {
         Ok(slf)
     }
 
-    // TODO(#749) Re-enable `RawMesh3D`
     #[allow(dead_code)]
     fn load_raw_mesh(
         name: String,
@@ -92,9 +90,41 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         crate::profile_function!();
 
-        let bbox = macaw::BoundingBox::from_points(
-            raw_mesh.positions.iter().map(|p| glam::Vec3::from(*p)),
-        );
+        let positions = raw_mesh
+            .positions
+            .chunks_exact(3)
+            .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))
+            .collect::<Vec<_>>();
+        let nb_positions = positions.len();
+
+        let indices = if let Some(indices) = &raw_mesh.indices {
+            indices.clone() // TODO: ???
+        } else {
+            (0..positions.len() as u32).collect()
+        };
+        let nb_indices = indices.len();
+
+        let normals = if let Some(normals) = &raw_mesh.normals {
+            normals
+                .chunks_exact(3)
+                .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))
+                .map(|normal| re_renderer::mesh::mesh_vertices::MeshVertexData {
+                    normal,
+                    texcoord: glam::Vec2::ZERO,
+                })
+                .collect::<Vec<_>>()
+        } else {
+            // TODO(andreas): Calculate normals
+            // TODO(cmc): support textured raw meshes
+            std::iter::repeat(re_renderer::mesh::mesh_vertices::MeshVertexData {
+                normal: glam::Vec3::ZERO,
+                texcoord: glam::Vec2::ZERO,
+            })
+            .take(nb_positions)
+            .collect()
+        };
+
+        let bbox = macaw::BoundingBox::from_points(positions.iter().copied());
 
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
             gpu_mesh: render_ctx.mesh_manager.create(
@@ -102,24 +132,12 @@ impl LoadedMesh {
                 &render_ctx.texture_manager_2d,
                 &re_renderer::mesh::Mesh {
                     label: name.clone().into(),
-                    indices: raw_mesh.indices.iter().flatten().cloned().collect(),
-                    vertex_positions: raw_mesh
-                        .positions
-                        .iter()
-                        .map(|p| glam::Vec3::from(*p))
-                        .collect(),
-                    // TODO(andreas): Calculate normals
-                    vertex_data: std::iter::repeat(
-                        re_renderer::mesh::mesh_vertices::MeshVertexData {
-                            normal: glam::Vec3::ZERO,
-                            texcoord: glam::Vec2::ZERO,
-                        },
-                    )
-                    .take(raw_mesh.positions.len())
-                    .collect(),
+                    indices,
+                    vertex_positions: positions,
+                    vertex_data: normals,
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
-                        index_range: 0..raw_mesh.indices.len() as _,
+                        index_range: 0..nb_indices as _,
                         albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
                         albedo_multiplier: re_renderer::Rgba::WHITE,
                     }],

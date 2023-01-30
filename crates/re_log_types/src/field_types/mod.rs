@@ -38,6 +38,7 @@ mod size;
 mod tensor;
 mod text_entry;
 mod transform;
+mod uvec;
 mod vec;
 
 pub use arrow::Arrow3D;
@@ -62,6 +63,7 @@ pub use size::Size3D;
 pub use tensor::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait};
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
+pub use uvec::UVec2D;
 pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
