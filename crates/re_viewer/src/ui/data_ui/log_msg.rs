@@ -1,6 +1,6 @@
 use re_log_types::{
     msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, DataMsg, LogMsg, LoggedData, PathOpMsg,
-    RecordingInfo, TypeMsg,
+    RecordingInfo,
 };
 
 use crate::{misc::ViewerContext, ui::UiVerbosity};
@@ -17,7 +17,6 @@ impl DataUi for LogMsg {
     ) {
         match self {
             LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
@@ -66,22 +65,6 @@ impl DataUi for BeginRecordingMsg {
             ui.monospace("is_official_example:");
             ui.label(format!("{is_official_example}"));
             ui.end_row();
-        });
-    }
-}
-
-impl DataUi for TypeMsg {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.horizontal(|ui| {
-            ui.code(self.type_path.to_string());
-            ui.label(" = ");
-            ui.code(format!("{:?}", self.obj_type));
         });
     }
 }

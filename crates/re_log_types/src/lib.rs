@@ -154,9 +154,6 @@ pub enum LogMsg {
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
-    /// Log type-info ([`ObjectType`]) to a [`ObjTypePath`].
-    TypeMsg(TypeMsg),
-
     /// Log some data to a [`DataPath`].
     DataMsg(DataMsg),
 
@@ -174,7 +171,6 @@ impl LogMsg {
     pub fn id(&self) -> MsgId {
         match self {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
-            Self::TypeMsg(msg) => msg.msg_id,
             Self::DataMsg(msg) => msg.msg_id,
             Self::PathOpMsg(msg) => msg.msg_id,
             Self::ArrowMsg(msg) => msg.msg_id,
@@ -184,7 +180,6 @@ impl LogMsg {
 }
 
 impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
-impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
 impl_into_enum!(DataMsg, LogMsg, DataMsg);
 impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
 impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
@@ -235,34 +230,6 @@ impl std::fmt::Display for RecordingSource {
         match self {
             Self::PythonSdk => "Python SDK".fmt(f),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// The message sent to specify the [`ObjectType`] of all objects at a specific [`ObjTypePath`].
-#[must_use]
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TypeMsg {
-    /// A unique id per [`LogMsg`].
-    pub msg_id: MsgId,
-
-    /// The [`ObjTypePath`] target.
-    pub type_path: ObjTypePath,
-
-    /// The type of object at this object type path.
-    pub obj_type: ObjectType,
-}
-
-impl TypeMsg {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn obj_type(type_path: ObjTypePath, obj_type: ObjectType) -> Self {
-        Self {
-            msg_id: MsgId::random(),
-            type_path,
-            obj_type,
         }
     }
 }

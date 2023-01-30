@@ -8,7 +8,7 @@ use re_log_types::{
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
     LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
+    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -279,7 +279,6 @@ impl LogDb {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
             LogMsg::DataMsg(msg) => {
                 let DataMsg {
                     msg_id,
@@ -309,30 +308,6 @@ impl LogDb {
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
         self.recording_info = Some(msg.info.clone());
-    }
-
-    fn add_type_msg(&mut self, msg: &TypeMsg) {
-        let previous_value = self
-            .obj_db
-            .types
-            .insert(msg.type_path.clone(), msg.obj_type);
-
-        if let Some(previous_value) = previous_value {
-            if previous_value != msg.obj_type {
-                re_log::warn!(
-                    "Object {} changed type from {:?} to {:?}",
-                    msg.type_path,
-                    previous_value,
-                    msg.obj_type
-                );
-            }
-        } else {
-            re_log::debug!(
-                "Registered object type {}: {:?}",
-                msg.type_path,
-                msg.obj_type
-            );
-        }
     }
 
     fn add_data_msg(

@@ -1372,7 +1372,7 @@ fn save_database_to_file(
                 .chronological_log_messages()
                 .filter(|msg| {
                     match msg {
-                        LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) | LogMsg::Goodbye(_) => {
+                        LogMsg::BeginRecordingMsg(_) | LogMsg::Goodbye(_) => {
                             true // timeless
                         }
                         LogMsg::DataMsg(DataMsg { time_point, .. })

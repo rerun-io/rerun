@@ -4,7 +4,6 @@ use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_format::format_number;
 use re_log_types::{
     msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo,
-    TypeMsg,
 };
 
 use crate::{UiVerbosity, ViewerContext};
@@ -145,31 +144,6 @@ fn table_row(
             });
             row.col(|ui| {
                 ui.monospace(format!("{application_id} - {recording_id:?}"));
-            });
-        }
-        LogMsg::TypeMsg(msg) => {
-            let TypeMsg {
-                msg_id,
-                type_path,
-                obj_type,
-            } = msg;
-
-            row.col(|ui| {
-                ctx.msg_id_button(ui, *msg_id);
-            });
-            row.col(|ui| {
-                ui.monospace("TypeMsg");
-            });
-            for _ in ctx.log_db.timelines() {
-                row.col(|ui| {
-                    ui.label("-");
-                });
-            }
-            row.col(|ui| {
-                ui.monospace(type_path.to_string());
-            });
-            row.col(|ui| {
-                ui.monospace(format!("{obj_type:?}"));
             });
         }
         LogMsg::DataMsg(msg) => {
