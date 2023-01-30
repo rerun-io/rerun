@@ -42,7 +42,3 @@ rand = "0.8"
 
 [lib]
 bench = false
-
-[[bench]]
-name = "obj_query_benchmark"
-harness = false

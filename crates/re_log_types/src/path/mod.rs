@@ -5,28 +5,15 @@
 //! or an [`Index`].
 //!
 //! The [`Index`]es are for tables, arrays etc.
-//! You can split an [`ObjPath`] into the names and the indices,
-//! and then you get a [`ObjTypePath`] and an [`IndexPath`], like so:
-//!
-//! * [`ObjPath`]:     `camera / "left" / points / #42`
-//! * [`ObjTypePath`]: `camera / *      / points / *`
-//! * [`IndexPath`]:   `       / "left" /       / #42`
-//!
-//! Every object with the same [`ObjTypePath`] have
-//! the same [`crate::ObjectType`] (hence the name).
 
 mod data_path;
-mod index_path;
 mod obj_path;
 mod obj_path_impl;
-mod obj_type_path;
 mod parse_path;
 
-pub use data_path::{DataPath, FieldOrComponent};
-pub use index_path::{IndexPath, IndexPathHash};
+pub use data_path::DataPath;
 pub use obj_path::{ObjPath, ObjPathHash};
-pub use obj_path_impl::{ObjPathCompRef, ObjPathImpl};
-pub use obj_type_path::ObjTypePath;
+pub use obj_path_impl::ObjPathImpl;
 pub use parse_path::{parse_obj_path, PathParseError};
 
 use re_string_interner::InternedString;
@@ -34,8 +21,8 @@ use re_string_interner::InternedString;
 use crate::Index;
 
 re_string_interner::declare_new_type!(
-    /// The name of an object field, e.g. `pos` or `color`.
-    pub struct FieldName;
+    /// The name of an object component, e.g. `pos` or `color`.
+    pub struct ComponentName;
 );
 
 // ----------------------------------------------------------------------------
@@ -49,15 +36,6 @@ pub enum ObjPathComp {
 
     /// Array/table/map member. Each member must be of the same type (homogenous).
     Index(Index),
-}
-
-impl ObjPathComp {
-    pub fn to_type_path_comp(&self) -> ObjTypePathComp {
-        match self {
-            Self::Name(name) => ObjTypePathComp::Name(*name),
-            Self::Index(_) => ObjTypePathComp::Index,
-        }
-    }
 }
 
 impl std::fmt::Display for ObjPathComp {
@@ -87,29 +65,6 @@ impl From<Index> for ObjPathComp {
     #[inline]
     fn from(comp: Index) -> Self {
         Self::Index(comp)
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// The different parts that make up a [`ObjTypePath`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObjTypePathComp {
-    /// Struct member
-    Name(InternedString),
-
-    /// Table (array/map) member.
-    /// Tables are homogenous, so it is the same type path for all.
-    Index,
-}
-
-impl std::fmt::Display for ObjTypePathComp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Name(name) => name.fmt(f),
-            Self::Index => '*'.fmt(f),
-        }
     }
 }
 

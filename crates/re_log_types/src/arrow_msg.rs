@@ -3,7 +3,7 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use crate::MsgId;
+use crate::{MsgId, TimePoint};
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
@@ -12,10 +12,18 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 pub struct ArrowMsg {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
+
     /// Arrow schema
     pub schema: Schema,
+
     /// Arrow chunk
     pub chunk: Chunk<Box<dyn Array>>,
+}
+
+impl ArrowMsg {
+    pub fn time_point(&self) -> Result<TimePoint, crate::msg_bundle::MsgBundleError> {
+        crate::msg_bundle::extract_timelines(&self.schema, &self.chunk)
+    }
 }
 
 #[cfg(feature = "serde")]

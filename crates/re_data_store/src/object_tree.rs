@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, DataType, FieldOrComponent, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint,
-    Timeline,
+    ComponentName, DataPath, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt, TimePoint, Timeline,
 };
 
 // ----------------------------------------------------------------------------
@@ -101,7 +100,7 @@ pub struct ObjectTree {
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
     /// Data logged at this object path.
-    pub fields: BTreeMap<FieldOrComponent, DataColumns>,
+    pub components: BTreeMap<ComponentName, ComponentStats>,
 }
 
 impl ObjectTree {
@@ -117,7 +116,7 @@ impl ObjectTree {
             num_timeless_messages: 0,
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
-            fields: Default::default(),
+            components: Default::default(),
         }
     }
 
@@ -127,22 +126,13 @@ impl ObjectTree {
     }
 
     pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.fields.len()
+        self.children.len() + self.components.len()
     }
 
     pub fn num_timeless_messages(&self) -> usize {
         self.num_timeless_messages
     }
 
-    /// Add a `LoggedData` into the object tree
-    ///
-    /// As of the arrow-migration, the data argument is now optional. The data
-    /// stored in fields is redundant information used for visualizing the
-    /// timeline. This concept will be removed from the object-tree all together
-    /// once timeline context is populated directly from the arrow store. Until
-    /// this happens we only get top-level messages in the timeline, not
-    /// individual fields.
-    ///
     /// Returns a collection of pending clear operations
     pub fn add_data_msg(
         &mut self,
@@ -150,19 +140,21 @@ impl ObjectTree {
         data_path: &DataPath,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
-        let obj_path = data_path.obj_path.to_components();
 
-        let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, time_point);
+        let leaf = self.create_subtrees_recursively(data_path.obj_path.as_slice(), 0, time_point);
 
         let mut pending_clears = vec![];
 
-        let fields = leaf.fields.entry(data_path.field_name).or_insert_with(|| {
-            // If we needed to create a new leaf to hold this data, we also want to
-            // insert all of the historical pending clear operations
-            pending_clears = leaf.nonrecursive_clears.clone().into_iter().collect_vec();
+        let fields = leaf
+            .components
+            .entry(data_path.component_name)
+            .or_insert_with(|| {
+                // If we needed to create a new leaf to hold this data, we also want to
+                // insert all of the historical pending clear operations
+                pending_clears = leaf.nonrecursive_clears.clone().into_iter().collect_vec();
 
-            Default::default()
-        });
+                Default::default()
+            });
 
         fields.add(time_point);
 
@@ -179,10 +171,10 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         path_op: &PathOp,
-    ) -> Vec<(DataPath, DataType)> {
+    ) -> Vec<DataPath> {
         crate::profile_function!();
 
-        let obj_path = path_op.obj_path().to_components();
+        let obj_path = path_op.obj_path();
 
         // Look up the leaf at which we will execute the path operation
         let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, time_point);
@@ -197,14 +189,9 @@ impl ObjectTree {
                     .or_insert_with(|| time_point.clone());
 
                 // For every existing field return a clear event
-                leaf.fields
+                leaf.components
                     .iter()
-                    .map(|(field_name, _fields)| {
-                        (
-                            DataPath::new_any(obj_path.clone(), *field_name),
-                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                        )
-                    })
+                    .map(|(field_name, _fields)| DataPath::new(obj_path.clone(), *field_name))
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -229,11 +216,8 @@ impl ObjectTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.fields.iter().map(|(field_name, _fields)| {
-                        (
-                            DataPath::new_any(next.path.clone(), *field_name),
-                            DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
-                        )
+                    results.extend(next.components.iter().map(|(field_name, _fields)| {
+                        DataPath::new(next.path.clone(), *field_name)
                     }));
                 }
                 results
@@ -287,7 +271,7 @@ impl ObjectTree {
             }
         }
 
-        subtree_recursive(self, &path.to_components())
+        subtree_recursive(self, path.as_slice())
     }
 
     /// Purge all times before the cutoff, or in the given set
@@ -303,7 +287,7 @@ impl ObjectTree {
             num_timeless_messages: _,
             nonrecursive_clears,
             recursive_clears,
-            fields,
+            components: fields,
         } = self;
 
         for (timeline, map) in &mut prefix_times.0 {
@@ -342,9 +326,8 @@ impl ObjectTree {
     }
 }
 
-/// Column transform of [`re_log_types::Data`].
 #[derive(Default)]
-pub struct DataColumns {
+pub struct ComponentStats {
     /// When do we have data? Ignored timeless.
     pub times: TimeHistogramPerTimeline,
 
@@ -352,7 +335,7 @@ pub struct DataColumns {
     num_timeless_messages: usize,
 }
 
-impl DataColumns {
+impl ComponentStats {
     pub fn num_timeless_messages(&self) -> usize {
         self.num_timeless_messages
     }

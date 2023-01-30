@@ -1,14 +1,12 @@
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
-    LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
+    ArrowMsg, BeginRecordingMsg, DataPath, LogMsg, MsgId, ObjPath, ObjPathHash, PathOp, PathOpMsg,
+    RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -17,10 +15,6 @@ use crate::{Error, TimesPerTimeline};
 
 /// Stored objects and their types, with easy indexing of the paths.
 pub struct ObjDb {
-    /// The types of all the objects.
-    /// Must be registered before adding them.
-    pub types: IntMap<ObjTypePath, ObjectType>,
-
     /// In many places we just store the hashes, so we need a way to translate back.
     pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
 
@@ -30,9 +24,6 @@ pub struct ObjDb {
     /// A tree-view (split on path components) of the objects.
     pub tree: crate::ObjectTree,
 
-    /// The old store of data. Being deprecated.
-    pub store: crate::DataStore,
-
     /// The arrow store of data.
     pub arrow_store: re_arrow_store::DataStore,
 }
@@ -40,11 +31,9 @@ pub struct ObjDb {
 impl Default for ObjDb {
     fn default() -> Self {
         Self {
-            types: Default::default(),
             obj_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::ObjectTree::root(),
-            store: Default::default(),
             arrow_store: re_arrow_store::DataStore::new(
                 Instance::name(),
                 DataStoreConfig {
@@ -69,83 +58,8 @@ impl ObjDb {
             .or_insert_with(|| obj_path.clone());
     }
 
-    fn add_data_msg(
-        &mut self,
-        msg_id: MsgId,
-        time_point: &TimePoint,
-        data_path: &DataPath,
-        data: &LoggedData,
-    ) {
-        // Validate:
-        {
-            let obj_type_path = &data_path.obj_path.obj_type_path();
-            let field_name = &data_path.field_name;
-
-            let is_meta_field = re_log_types::objects::META_FIELDS.contains(&field_name.as_str());
-            if !is_meta_field {
-                if let Some(obj_type) = self.types.get(obj_type_path) {
-                    let valid_members = obj_type.members();
-                    if !valid_members.contains(&field_name.as_str()) {
-                        re_log::warn_once!(
-                            "Logged to {obj_type_path}.{field_name}, but the parent object ({obj_type:?}) does not have that field. Expected one of: {}",
-                            valid_members.iter().format(", ")
-                        );
-                    }
-                } else {
-                    re_log::warn_once!(
-                        "Logging to {obj_type_path}.{field_name} without first registering object type"
-                    );
-                }
-            }
-        }
-
-        for (&timeline, &time_int) in time_point.iter() {
-            self.times_per_timeline.insert(timeline, time_int);
-        }
-
-        self.register_obj_path(&data_path.obj_path);
-
-        if let Err(err) = self.store.insert_data(msg_id, time_point, data_path, data) {
-            re_log::warn!("Failed to add data to data_store: {err:?}");
-        }
-
-        let pending_clears = self.tree.add_data_msg(time_point, data_path);
-
-        // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
-        for (msg_id, time_point) in pending_clears {
-            if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                // TODO(jleibs) After we reconcile Mono & Multi objects this can be simplified to just use Null
-                match data {
-                    LoggedData::Null(_) | LoggedData::Single(_) => {
-                        self.add_data_msg(
-                            msg_id,
-                            &time_point,
-                            data_path,
-                            &LoggedData::Null(data.data_type()),
-                        );
-                    }
-                    LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => {
-                        self.add_data_msg(
-                            msg_id,
-                            &time_point,
-                            data_path,
-                            &LoggedData::Batch {
-                                indices: BatchIndex::SequentialIndex(0),
-                                data: DataVec::empty_from_data_type(data.data_type()),
-                            },
-                        );
-                    }
-                };
-            }
-        }
-    }
-
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
-
-        self.types
-            .entry(msg_bundle.obj_path.obj_type_path().clone())
-            .or_insert(ObjectType::ArrowObject);
 
         for (&timeline, &time_int) in msg_bundle.time_point.iter() {
             self.times_per_timeline.insert(timeline, time_int);
@@ -154,7 +68,7 @@ impl ObjDb {
         self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
-            let data_path = DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name);
+            let data_path = DataPath::new(msg_bundle.obj_path.clone(), component.name);
             if component.name == MsgId::name() {
                 continue;
             }
@@ -184,34 +98,21 @@ impl ObjDb {
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
-        for (data_path, data_type) in cleared_paths {
-            if data_path.is_arrow() {
-                if let FieldOrComponent::Component(component) = data_path.field_name {
-                    if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
-                        // Create and insert an empty component into the arrow store
-                        // TODO(jleibs): Faster empty-array creation
-                        let bundle = ComponentBundle::new_empty(component, data_type.clone());
-                        let msg_bundle = MsgBundle::new(
-                            msg_id,
-                            data_path.obj_path.clone(),
-                            time_point.clone(),
-                            vec![bundle],
-                        );
-                        self.arrow_store.insert(&msg_bundle).ok();
-                        // Also update the object tree with the clear-event
-                        self.tree.add_data_msg(time_point, &data_path);
-                    }
-                }
-            } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                self.add_data_msg(
+        for data_path in cleared_paths {
+            if let Some(data_type) = self.arrow_store.lookup_data_type(&data_path.component_name) {
+                // Create and insert an empty component into the arrow store
+                // TODO(jleibs): Faster empty-array creation
+                let bundle =
+                    ComponentBundle::new_empty(data_path.component_name, data_type.clone());
+                let msg_bundle = MsgBundle::new(
                     msg_id,
-                    time_point,
-                    &data_path,
-                    &LoggedData::Batch {
-                        indices: BatchIndex::SequentialIndex(0),
-                        data: DataVec::empty_from_data_type(data_type),
-                    },
+                    data_path.obj_path.clone(),
+                    time_point.clone(),
+                    vec![bundle],
                 );
+                self.arrow_store.insert(&msg_bundle).ok();
+                // Also update the object tree with the clear-event
+                self.tree.add_data_msg(time_point, &data_path);
             }
         }
     }
@@ -224,12 +125,10 @@ impl ObjDb {
         crate::profile_function!();
 
         let Self {
-            types: _,
             obj_path_from_hash: _,
             times_per_timeline,
             tree,
-            store,
-            arrow_store: _,
+            arrow_store: _, // purged before this function is called
         } = self;
 
         {
@@ -241,8 +140,6 @@ impl ObjDb {
             crate::profile_scope!("tree");
             tree.purge(cutoff_times, drop_msg_ids);
         }
-
-        store.purge(drop_msg_ids);
     }
 }
 
@@ -299,16 +196,6 @@ impl LogDb {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
-            LogMsg::DataMsg(msg) => {
-                let DataMsg {
-                    msg_id,
-                    time_point,
-                    data_path,
-                    data,
-                } = msg;
-                self.add_data_msg(*msg_id, time_point, data_path, data);
-            }
             LogMsg::PathOpMsg(msg) => {
                 let PathOpMsg {
                     msg_id,
@@ -329,89 +216,6 @@ impl LogDb {
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
         self.recording_info = Some(msg.info.clone());
-    }
-
-    fn add_type_msg(&mut self, msg: &TypeMsg) {
-        let previous_value = self
-            .obj_db
-            .types
-            .insert(msg.type_path.clone(), msg.obj_type);
-
-        if let Some(previous_value) = previous_value {
-            if previous_value != msg.obj_type {
-                re_log::warn!(
-                    "Object {} changed type from {:?} to {:?}",
-                    msg.type_path,
-                    previous_value,
-                    msg.obj_type
-                );
-            }
-        } else {
-            re_log::debug!(
-                "Registered object type {}: {:?}",
-                msg.type_path,
-                msg.obj_type
-            );
-        }
-    }
-
-    fn add_data_msg(
-        &mut self,
-        msg_id: MsgId,
-        time_point: &TimePoint,
-        data_path: &DataPath,
-        data: &LoggedData,
-    ) {
-        crate::profile_function!();
-
-        if time_point.is_timeless() {
-            // Timeless data should be added to all existing timelines,
-            // as well to all future timelines, so we special-case it here.
-            // See https://linear.app/rerun/issue/PRO-97
-
-            // Remember to add it to future timelines:
-            self.timeless_message_ids.push(msg_id);
-
-            let has_any_timelines = self.timelines().next().is_some();
-            if has_any_timelines {
-                // Add to existing timelines (if any):
-                let mut time_point = TimePoint::default();
-                for &timeline in self.timelines() {
-                    time_point.insert(timeline, TimeInt::BEGINNING);
-                }
-                self.add_data_msg(msg_id, &time_point, data_path, data);
-            }
-        } else {
-            // Not timeless data.
-
-            // First check if this data message adds a new timeline…
-            let mut new_timelines = TimePoint::default();
-            for timeline in time_point.timelines() {
-                let is_new_timeline = self.times_per_timeline().get(timeline).is_none();
-                if is_new_timeline {
-                    re_log::debug!("New timeline added: {timeline:?}");
-                    new_timelines.insert(*timeline, TimeInt::BEGINNING);
-                }
-            }
-
-            // .…then add the data, remembering any new timelines…
-            self.obj_db
-                .add_data_msg(msg_id, time_point, data_path, data);
-
-            // …finally, if needed, add outstanding timeless data to any newly created timelines.
-            if !new_timelines.is_empty() {
-                let timeless_data_messages = self
-                    .timeless_message_ids
-                    .iter()
-                    .filter_map(|msg_id| self.log_messages.get(msg_id).cloned())
-                    .collect_vec();
-                for msg in &timeless_data_messages {
-                    if let LogMsg::DataMsg(msg) = msg {
-                        self.add_data_msg(msg.msg_id, &new_timelines, &msg.data_path, &msg.data);
-                    }
-                }
-            }
-        }
     }
 
     pub fn len(&self) -> usize {

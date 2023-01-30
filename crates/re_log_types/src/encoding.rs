@@ -159,47 +159,18 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[cfg(all(feature = "load", feature = "save"))]
 #[test]
 fn test_encode_decode() {
-    use crate::{
-        obj_path, Data, DataMsg, DataPath, FieldName, LogMsg, LoggedData, MsgId, ObjPath, Time,
-        TimePoint, Timeline,
-    };
+    use crate::{BeginRecordingMsg, LogMsg, MsgId, Time};
 
-    fn data_msg(
-        time_point: &TimePoint,
-        obj_path: impl Into<ObjPath>,
-        field_name: impl Into<FieldName>,
-        data: impl Into<LoggedData>,
-    ) -> DataMsg {
-        DataMsg {
-            time_point: time_point.clone(),
-            data_path: DataPath::new(obj_path.into(), field_name.into()),
-            data: data.into(),
-            msg_id: MsgId::random(),
-        }
-    }
-
-    // Some fake log data
-    let time_point = [(
-        Timeline::log_time(),
-        Time::from_ns_since_epoch(1_649_934_625_012_345_678).into(),
-    )]
-    .into();
-
-    let messages = vec![
-        LogMsg::from(data_msg(&time_point, obj_path!("foo", "bar"), "baz", 42)),
-        LogMsg::from(data_msg(
-            &time_point,
-            obj_path!("badger", "mushroom"),
-            "snake",
-            1337.0,
-        )),
-        LogMsg::from(data_msg(
-            &time_point,
-            obj_path!("badger", "mushroom"),
-            "pos",
-            Data::Vec3([1.0, 2.5, 3.0]),
-        )),
-    ];
+    let messages = vec![LogMsg::BeginRecordingMsg(BeginRecordingMsg {
+        msg_id: MsgId::random(),
+        info: crate::RecordingInfo {
+            application_id: crate::ApplicationId("test".to_owned()),
+            recording_id: crate::RecordingId::random(),
+            is_official_example: true,
+            started: Time::now(),
+            recording_source: crate::RecordingSource::PythonSdk,
+        },
+    })];
 
     let mut file = vec![];
     encode(messages.iter(), &mut file).unwrap();

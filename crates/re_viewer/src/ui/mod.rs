@@ -34,21 +34,12 @@ pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 pub use self::viewport::Viewport;
 
 pub(crate) use data_ui::UiVerbosity;
-use re_log_types::FieldOrComponent;
 
-pub fn format_component_name(name: &re_data_store::FieldName) -> String {
+pub fn format_component_name(name: &re_data_store::ComponentName) -> String {
     let name = name.as_str();
     if let Some(name) = name.strip_prefix("rerun.") {
         name.into()
     } else {
         name.into()
-    }
-}
-
-pub fn format_field_or_component_name(name: &FieldOrComponent) -> String {
-    match name {
-        FieldOrComponent::Field(name) | FieldOrComponent::Component(name) => {
-            format_component_name(name)
-        }
     }
 }

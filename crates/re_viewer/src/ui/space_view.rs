@@ -71,7 +71,7 @@ impl SpaceView {
     ) -> Self {
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
-            |c| ObjPath::from(vec![c.to_owned()]),
+            |c| ObjPath::from(vec![c.clone()]),
         );
 
         let name = if queried_objects.len() == 1 {

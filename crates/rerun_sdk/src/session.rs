@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType,
-    PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
+    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, Time,
+    TimePoint,
 };
 
 pub struct Session {
@@ -10,9 +10,6 @@ pub struct Session {
     tokio_rt: tokio::runtime::Runtime,
 
     sender: Sender,
-
-    // TODO(emilk): just store `ObjTypePathHash`
-    registered_types: nohash_hasher::IntMap<ObjTypePath, ObjectType>,
 
     application_id: Option<ApplicationId>,
     recording_id: Option<RecordingId>,
@@ -28,7 +25,6 @@ impl Session {
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
             sender: Default::default(),
-            registered_types: Default::default(),
             application_id: None,
             recording_id: None,
             is_official_example: None,
@@ -149,22 +145,6 @@ impl Session {
         }
     }
 
-    pub fn register_type(&mut self, obj_type_path: &ObjTypePath, typ: ObjectType) {
-        if let Some(prev_type) = self.registered_types.get(obj_type_path) {
-            if *prev_type != typ {
-                re_log::warn!("Registering different types to the same object type path: {obj_type_path:?}. First you used {prev_type:?}, then {typ:?}");
-            }
-        } else {
-            self.registered_types.insert(obj_type_path.clone(), typ);
-
-            self.send(LogMsg::TypeMsg(TypeMsg {
-                msg_id: MsgId::random(),
-                type_path: obj_type_path.clone(),
-                obj_type: typ,
-            }));
-        }
-    }
-
     pub fn send(&mut self, log_msg: LogMsg) {
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
@@ -197,21 +177,6 @@ impl Session {
         }
 
         self.sender.send(log_msg);
-    }
-
-    // convenience
-    pub fn send_data(
-        &mut self,
-        time_point: &TimePoint,
-        (obj_path, field_name): (&ObjPath, &str),
-        data: LoggedData,
-    ) {
-        self.send(LogMsg::DataMsg(re_log_types::DataMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            data_path: re_log_types::DataPath::new(obj_path.clone(), field_name.into()),
-            data,
-        }));
     }
 
     // convenience
