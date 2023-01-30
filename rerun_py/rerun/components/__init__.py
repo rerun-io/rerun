@@ -26,7 +26,7 @@ all = [
 ]
 
 # Component names that are recognized by Rerun.
-REGISTERED_COMPONENT_NAMES: Final[dict[str, pa.field]] = bindings.get_REGISTERED_COMPONENT_NAMES()
+REGISTERED_COMPONENT_NAMES: Final[dict[str, pa.field]] = bindings.get_registered_component_names()
 
 
 def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: pa.Field) -> type[pa.ExtensionType]:

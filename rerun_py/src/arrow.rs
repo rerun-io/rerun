@@ -63,7 +63,7 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
 }
 
 #[pyo3::pyfunction]
-pub fn get_REGISTERED_COMPONENT_NAMES(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
+pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
     let pyarrow = py.import("pyarrow")?;
     let pyarrow_field_cls = pyarrow
         .dict()
