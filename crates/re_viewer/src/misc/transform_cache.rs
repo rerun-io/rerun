@@ -4,7 +4,7 @@ use re_data_store::{log_db::EntityDb, query_transform, EntityPath, EntityPropert
 
 use crate::misc::TimeControl;
 
-/// Provides transforms from an object to a chosen reference space for all elements in the scene
+/// Provides transforms from an entity to a chosen reference space for all elements in the scene
 /// for the currently selected time & timeline.
 ///
 /// The renderer then uses this reference space as its world space,
@@ -17,7 +17,7 @@ pub struct TransformCache {
     #[allow(dead_code)]
     reference_path: EntityPath,
 
-    /// All reachable objects.
+    /// All reachable entities.
     reference_from_entity_per_entity: IntMap<EntityPath, glam::Mat4>,
 
     /// All unreachable descendant paths of `reference_path`.
@@ -40,11 +40,11 @@ pub enum UnreachableTransform {
 }
 
 impl TransformCache {
-    /// Determines transforms for all objects relative to a root path which serves as the "reference".
+    /// Determines transforms for all entities relative to a root path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///
-    /// This means that the objects in `reference_space` get the identity transform and all other
-    /// objects are transformed relative to it.
+    /// This means that the entities in `reference_space` get the identity transform and all other
+    /// entities are transformed relative to it.
     pub fn determine_transforms(
         entity_db: &EntityDb,
         time_ctrl: &TimeControl,
@@ -73,7 +73,7 @@ impl TransformCache {
             }
             // Should never reach this
             re_log::warn_once!(
-                "Path {} doesn't seem to be part of the global object tree",
+                "Path {} doesn't seem to be part of the global entity tree",
                 root_path
             );
             return transforms;
@@ -102,7 +102,7 @@ impl TransformCache {
                 break;
             }
 
-            // Note that the transform at the reference is the first that needs to be inversed to "break out" of its hierarchy.
+            // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match inverse_transform_at(
                 &current_tree.path,
@@ -186,7 +186,7 @@ impl TransformCache {
         }
     }
 
-    /// Retrieves the transform of on object from its local system to the space of the reference.
+    /// Retrieves the transform of on entity from its local system to the space of the reference.
     ///
     /// Returns None if the path is not reachable.
     pub fn reference_from_entity(&self, entity_path: &EntityPath) -> Option<macaw::Mat4> {

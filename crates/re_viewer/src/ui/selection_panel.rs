@@ -193,7 +193,7 @@ fn blueprint_ui(
 ) {
     match selection {
         Selection::MsgId(_) => {
-            // TODO(andreas): Show space views that show objects from this message.
+            // TODO(andreas): Show space views that contains entities that's part of this message.
             ui.weak("(nothing)");
         }
 
@@ -321,7 +321,7 @@ fn entity_props_ui(
 
     ui.checkbox(visible, "Visible");
     ui.checkbox(interactive, "Interactive")
-        .on_hover_text("If disabled, the object will not react to any mouse interaction");
+        .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
     ui.horizontal(|ui| {
         ui.label("Visible history:");
@@ -335,7 +335,7 @@ fn entity_props_ui(
                         .speed(speed)
                         .suffix("s"),
                 )
-                .on_hover_text("Include this much history of the object in the Space View");
+                .on_hover_text("Include this much history of the entity in the Space View");
                 visible_history.nanos = (time_sec * 1e9).round() as _;
             }
             TimeType::Sequence => {
@@ -345,7 +345,7 @@ fn entity_props_ui(
                         .clamp_range(0.0..=f32::INFINITY)
                         .speed(speed),
                 )
-                .on_hover_text("Include this much history of the object in the Space View");
+                .on_hover_text("Include this much history of the entity in the Space View");
             }
         }
     });

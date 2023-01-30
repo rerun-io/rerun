@@ -189,11 +189,11 @@ impl Viewport {
 
         // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
         let children = group.children.clone();
-        let objects = group.entities.clone();
+        let entities = group.entities.clone();
         let group_name = group.display_name.clone();
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
-        for path in &objects {
+        for path in &entities {
             ui.horizontal(|ui| {
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
                 let visibility_changed = blueprint_row_with_visibility_button(
@@ -498,7 +498,7 @@ impl Viewport {
                         image_sizes.insert(image_size);
 
                         // Space view with everything but the other images.
-                        // (note that other objects stay!)
+                        // (note that other entities stay!)
                         let mut single_image_space_view = space_view_candidate.clone();
                         for (other_entity_path, _) in &images {
                             if other_entity_path != entity_path {
@@ -512,7 +512,7 @@ impl Viewport {
                     }
 
                     // Only if all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
-                    // TODO(andreas): What if there's also other objects that we want to show?
+                    // TODO(andreas): What if there's also other entities that we want to show?
                     if image_sizes.len() > 1 {
                         continue;
                     }

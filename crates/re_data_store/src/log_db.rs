@@ -21,7 +21,7 @@ pub struct EntityDb {
     /// Used for time control
     pub times_per_timeline: TimesPerTimeline,
 
-    /// A tree-view (split on path components) of the objects.
+    /// A tree-view (split on path components) of the entities.
     pub tree: crate::EntityTree,
 
     /// The arrow store of data.
@@ -87,7 +87,7 @@ impl EntityDb {
                 );
                 self.arrow_store.insert(&msg_bundle).ok();
 
-                // Also update the object tree with the clear-event
+                // Also update the tree with the clear-event
                 self.tree.add_data_msg(&time_point, &data_path);
             }
         }
@@ -111,7 +111,7 @@ impl EntityDb {
                     vec![bundle],
                 );
                 self.arrow_store.insert(&msg_bundle).ok();
-                // Also update the object tree with the clear-event
+                // Also update the tree with the clear-event
                 self.tree.add_data_msg(time_point, &data_path);
             }
         }
@@ -159,7 +159,7 @@ pub struct LogDb {
 
     recording_info: Option<RecordingInfo>,
 
-    /// Where we store the objects.
+    /// Where we store the entities.
     pub entity_db: EntityDb,
 }
 

@@ -11,7 +11,7 @@ use super::UnreachableTransform;
 
 /// Information about one "space".
 ///
-/// This is gathered by analyzing the transform hierarchy of the objects.
+/// This is gathered by analyzing the transform hierarchy of the entities.
 /// ⚠️ Transforms used for this are latest known, i.e. the "right most location in the timeline" ⚠️
 ///
 /// Expected to be recreated every frame (or whenever new data is available).
@@ -43,9 +43,9 @@ impl SpaceInfo {
         }
     }
 
-    /// Invokes visitor for `self` and all descendents that are reachable with a valid transform recursively.
+    /// Invokes visitor for `self` and all descendants that are reachable with a valid transform recursively.
     ///
-    /// Keep in mind that transforms are the newest on the currently choosen timeline.
+    /// Keep in mind that transforms are the newest on the currently chosen timeline.
     pub fn visit_descendants_with_reachable_transform(
         &self,
         spaces_info: &SpaceInfoCollection,
@@ -97,7 +97,7 @@ impl SpaceInfo {
 
 /// Information about all spaces.
 ///
-/// This is gathered by analyzing the transform hierarchy of the objects:
+/// This is gathered by analyzing the transform hierarchy of the entities:
 /// For every child of the root there is a space info.
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
 ///
@@ -164,11 +164,11 @@ impl SpaceInfoCollection {
         let mut spaces_info = Self::default();
 
         for tree in entity_db.tree.children.values() {
-            // Each root object is its own space (or should be)
+            // Each root entity is its own space (or should be)
 
             if query_transform(entity_db, &tree.path, &query).is_some() {
                 re_log::warn_once!(
-                    "Root object '{}' has a _transform - this is not allowed!",
+                    "Root entity '{}' has a _transform - this is not allowed!",
                     tree.path
                 );
             }
@@ -208,7 +208,7 @@ impl SpaceInfoCollection {
     /// Answers if an entity path (`from`) is reachable via a transform from some reference space (at `to_reference`)
     ///
     /// For how, you need to check [`crate::misc::TransformCache`]!
-    /// Note that in any individual frame, objects may or may not be reachable.
+    /// Note that in any individual frame, entities may or may not be reachable.
     ///
     /// If `from` and `to_reference` are not under the same root branch, they are regarded as [`UnreachableTransform::Unconnected`]
     pub fn is_reachable_by_transform(

@@ -8,7 +8,7 @@ use crate::log_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 
-/// Properties for a collection of objects.
+/// Properties for a collection of entities.
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPropertyMap {
@@ -90,7 +90,7 @@ impl Default for EntityProperties {
 
 // ----------------------------------------------------------------------------
 
-/// When showing an object in the history view, add this much history to it.
+/// When showing an entity in the history view, add this much history to it.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]

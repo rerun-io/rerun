@@ -121,7 +121,7 @@ impl EntityTree {
         }
     }
 
-    /// Has no child objects.
+    /// Has no child entities.
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
     }
@@ -163,7 +163,7 @@ impl EntityTree {
         pending_clears
     }
 
-    /// Add a path operation into the the object tree
+    /// Add a path operation into the the entity tree.
     ///
     /// Returns a collection of data paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future

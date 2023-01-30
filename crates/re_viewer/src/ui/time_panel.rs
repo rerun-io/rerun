@@ -20,16 +20,16 @@ use crate::{
 
 use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
 
-/// A panel that shows objects to the left, time on the top.
+/// A panel that shows entity names to the left, time on the top.
 ///
 /// This includes the timeline controls and streams view.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
-    /// Width of the object name columns previous frame.
+    /// Width of the entity name columns previous frame.
     prev_col_width: f32,
 
-    /// The right side of the object name column; updated during its painting.
+    /// The right side of the entity name column; updated during its painting.
     #[serde(skip)]
     next_col_right: f32,
 
@@ -273,7 +273,7 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
-        // All the object rows:
+        // All the entity rows:
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
@@ -354,7 +354,7 @@ impl TimePanel {
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
             && tree.num_timeless_messages() == 0
         {
-            return; // ignore objects that have no data for the current timeline and no timeless data.
+            return; // ignore entities that have no data for the current timeline, nor any timeless data.
         }
 
         // The last part of the the path component
@@ -460,7 +460,7 @@ impl TimePanel {
             );
         }
 
-        // If this is an object:
+        // If this is an entity:
         if !tree.components.is_empty() {
             let indent = ui.spacing().indent;
 

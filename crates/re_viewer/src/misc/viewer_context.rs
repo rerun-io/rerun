@@ -48,7 +48,7 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
-    /// Show an obj path and make it selectable.
+    /// Show an entity path and make it selectable.
     pub fn entity_path_button(
         &mut self,
         ui: &mut egui::Ui,
@@ -63,7 +63,7 @@ impl<'a> ViewerContext<'a> {
         )
     }
 
-    /// Show an obj path and make it selectable.
+    /// Show an entity path and make it selectable.
     pub fn entity_path_button_to(
         &mut self,
         ui: &mut egui::Ui,

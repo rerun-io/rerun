@@ -1,6 +1,4 @@
-//! The `DataUi` trait and implementations provide methods for representing Rerun data objects and
-//! types in `egui`.
-//!
+//! The `DataUi` trait and implementations provide methods for representing data using [`egui`].
 
 use itertools::Itertools;
 use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
