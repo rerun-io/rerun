@@ -148,7 +148,7 @@ impl ObjectTree {
 
         let fields = leaf
             .components
-            .entry(data_path.field_name)
+            .entry(data_path.component_name)
             .or_insert_with(|| {
                 // If we needed to create a new leaf to hold this data, we also want to
                 // insert all of the historical pending clear operations

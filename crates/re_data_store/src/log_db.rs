@@ -105,7 +105,7 @@ impl ObjDb {
 
         for data_path in cleared_paths {
             if data_path.is_arrow() {
-                if let FieldOrComponent::Component(component) = data_path.field_name {
+                if let FieldOrComponent::Component(component) = data_path.component_name {
                     if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
                         // Create and insert an empty component into the arrow store
                         // TODO(jleibs): Faster empty-array creation

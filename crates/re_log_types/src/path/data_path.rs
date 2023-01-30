@@ -38,7 +38,7 @@ pub struct DataPath {
     pub obj_path: ObjPath,
 
     /// "pos"
-    pub field_name: FieldOrComponent,
+    pub component_name: FieldOrComponent,
 }
 
 impl DataPath {
@@ -46,7 +46,7 @@ impl DataPath {
     pub fn new(obj_path: ObjPath, field_name: FieldName) -> Self {
         Self {
             obj_path,
-            field_name: FieldOrComponent::Field(field_name),
+            component_name: FieldOrComponent::Field(field_name),
         }
     }
 
@@ -54,7 +54,7 @@ impl DataPath {
     pub fn new_arrow(obj_path: ObjPath, component_name: ComponentName) -> Self {
         Self {
             obj_path,
-            field_name: FieldOrComponent::Component(component_name),
+            component_name: FieldOrComponent::Component(component_name),
         }
     }
 
@@ -62,7 +62,7 @@ impl DataPath {
     pub fn new_any(obj_path: ObjPath, field_name: FieldOrComponent) -> Self {
         Self {
             obj_path,
-            field_name,
+            component_name: field_name,
         }
     }
 
@@ -73,12 +73,12 @@ impl DataPath {
 
     #[inline]
     pub fn field_name(&self) -> &FieldOrComponent {
-        &self.field_name
+        &self.component_name
     }
 
     #[inline]
     pub fn is_arrow(&self) -> bool {
-        match self.field_name {
+        match self.component_name {
             FieldOrComponent::Field(_) => false,
             FieldOrComponent::Component(_) => true,
         }
@@ -90,6 +90,6 @@ impl std::fmt::Display for DataPath {
         use std::fmt::Write as _;
         self.obj_path.fmt(f)?;
         f.write_char('.')?;
-        self.field_name.fmt(f)
+        self.component_name.fmt(f)
     }
 }

@@ -15,7 +15,7 @@ impl DataUi for DataPath {
             ctx.obj_path_button(ui, None, &self.obj_path);
         });
 
-        if let FieldOrComponent::Component(component) = self.field_name {
+        if let FieldOrComponent::Component(component) = self.component_name {
             let store = &ctx.log_db.obj_db.arrow_store;
 
             match re_query::get_component_with_instances(store, query, self.obj_path(), component) {
