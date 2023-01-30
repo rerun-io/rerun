@@ -293,8 +293,8 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
-        self.rec_cfg.selection_state.set_hovered(hovered_objects);
+    pub fn set_hovered(&mut self, hovered: impl Iterator<Item = Selection>) {
+        self.rec_cfg.selection_state.set_hovered(hovered);
     }
 
     pub fn selection_state(&self) -> &super::SelectionState {

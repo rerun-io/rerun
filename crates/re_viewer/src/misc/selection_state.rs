@@ -348,19 +348,19 @@ impl SelectionState {
                         SelectionHighlight::SiblingSelection
                     };
 
-                    let highlighted_object = highlighted_entity_paths
+                    let highlighted_entity = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target =
                         if let Some(selected_index) = &selected_instance.instance_index {
-                            &mut highlighted_object
+                            &mut highlighted_entity
                                 .instances
                                 .entry(selected_index.hash())
                                 .or_default()
                                 .selection
                         } else {
-                            &mut highlighted_object.overall.selection
+                            &mut highlighted_entity.overall.selection
                         };
 
                     *highlight_target = (*highlight_target).max(highlight);
@@ -392,19 +392,19 @@ impl SelectionState {
                 }
 
                 Selection::Instance(_, selected_instance) => {
-                    let highlighted_object = highlighted_entity_paths
+                    let highlighted_entity = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target =
                         if let Some(selected_index) = &selected_instance.instance_index {
-                            &mut highlighted_object
+                            &mut highlighted_entity
                                 .instances
                                 .entry(selected_index.hash())
                                 .or_default()
                                 .hover
                         } else {
-                            &mut highlighted_object.overall.hover
+                            &mut highlighted_entity.overall.hover
                         };
 
                     *highlight_target = HoverHighlight::Hovered;
