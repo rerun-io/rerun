@@ -294,7 +294,7 @@ impl Viewport {
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceView) -> bool {
         for existing_view in self.space_views.values() {
             if existing_view.space_path == space_view_candidate.space_path {
-                if !existing_view.allow_auto_adding_more_object {
+                if !existing_view.allow_auto_adding_more_entities {
                     // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
                     // So let's skip that.
                     return false;
@@ -507,7 +507,7 @@ impl Viewport {
                                     .remove_entity(other_entity_path);
                             }
                         }
-                        single_image_space_view.allow_auto_adding_more_object = false;
+                        single_image_space_view.allow_auto_adding_more_entities = false;
                         space_views.push(single_image_space_view);
                     }
 

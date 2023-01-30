@@ -47,11 +47,11 @@ pub struct SpaceView {
     /// The "anchor point" of this space view.
     /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
-    /// Furthermore, this is the primary indicator for heuristics on what objects we show in this space view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_path: EntityPath,
 
-    /// The data blueprint tree, has blueprint settings for all blueprint groups and objects in this spaceview.
-    /// It determines which objects are part of the spaceview.
+    /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
+    /// It determines which entities are part of the spaceview.
     pub data_blueprint: DataBlueprintTree,
 
     pub view_state: ViewState,
@@ -59,8 +59,8 @@ pub struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `false` the first time the user messes around with the list of queried objects.
-    pub allow_auto_adding_more_object: bool,
+    /// Set to `false` the first time the user messes around with the list of queried entities.
+    pub allow_auto_adding_more_entities: bool,
 }
 
 impl SpaceView {
@@ -75,7 +75,7 @@ impl SpaceView {
         );
 
         let name = if queries_entities.len() == 1 {
-            // a single object in this space-view - name the space after it
+            // a single entity in this space-view - name the space after it
             queries_entities[0].to_string()
         } else {
             space_info.path.to_string()
@@ -93,13 +93,13 @@ impl SpaceView {
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
             category,
-            allow_auto_adding_more_object: true,
+            allow_auto_adding_more_entities: true,
         }
     }
 
-    /// List of objects a space view queries by default for a given category.
+    /// List of entities a space view queries by default for a given category.
     ///
-    /// These are all objects in the given space which have the requested category and are reachable by a transform.
+    /// These are all entities in the given space which have the requested category and are reachable by a transform.
     pub fn default_queries_entities(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
@@ -111,10 +111,10 @@ impl SpaceView {
         let timeline = Timeline::log_time();
         let log_db = &ctx.log_db;
 
-        let mut objects = Vec::new();
+        let mut entities = Vec::new();
 
         space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            objects.extend(
+            entities.extend(
                 space_info
                     .descendants_without_transform
                     .iter()
@@ -125,10 +125,10 @@ impl SpaceView {
             );
         });
 
-        objects
+        entities
     }
 
-    /// List of objects a space view queries by default for all any possible category.
+    /// List of entities a space view queries by default for all any possible category.
     pub fn default_queries_entities_by_category(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
@@ -166,8 +166,8 @@ impl SpaceView {
             return;
         };
 
-        if self.allow_auto_adding_more_object {
-            // Add objects that have been logged since we were created
+        if self.allow_auto_adding_more_entities {
+            // Add entities that have been logged since we were created
             let queries_entities =
                 Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
             self.data_blueprint
@@ -274,18 +274,18 @@ impl SpaceView {
                 UnreachableTransform::Unconnected =>
                      "No entity path connection from this space view.",
                 UnreachableTransform::NestedPinholeCameras =>
-                    "Can't display objects under nested pinhole cameras.",
+                    "Can't display entities under nested pinhole cameras.",
                 UnreachableTransform::UnknownTransform =>
-                    "Can't display objects that are connected via an unknown transform to this space.",
+                    "Can't display entities that are connected via an unknown transform to this space.",
                 UnreachableTransform::InversePinholeCameraWithoutResolution =>
-                    "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
+                    "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
             }).err();
         let response = if tree.is_leaf() {
             ui.horizontal(|ui| {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.entity_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    self.entity_path_button_ui(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
+                        self.add_entity_button_ui(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
                     }
                 });
             })
@@ -302,9 +302,9 @@ impl SpaceView {
             )
             .show_header(ui, |ui| {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.entity_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    self.entity_path_button_ui(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
+                        self.add_entity_button_ui(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
                     }
                 });
             })
@@ -319,7 +319,7 @@ impl SpaceView {
         }
     }
 
-    pub fn entity_path_button(
+    pub fn entity_path_button_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -350,7 +350,7 @@ impl SpaceView {
         }
     }
 
-    fn object_add_button(
+    fn add_entity_button_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -360,8 +360,8 @@ impl SpaceView {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Can't add things we already added.
 
-            // Insert the object itself and all its children as far as they haven't been added yet
-            let mut objects = Vec::new();
+            // Insert the entity itself and all its children as far as they haven't been added yet
+            let mut entities = Vec::new();
             entity_tree
                 .subtree(path)
                 .unwrap()
@@ -369,17 +369,17 @@ impl SpaceView {
                     if has_visualization_for_category(ctx, self.category, path)
                         && !self.data_blueprint.contains_entity(path)
                     {
-                        objects.push(path.clone());
+                        entities.push(path.clone());
                     }
                 });
 
-            ui.set_enabled(!objects.is_empty());
+            ui.set_enabled(!entities.is_empty());
 
             let response = ui.button("➕");
             if response.clicked() {
                 self.data_blueprint
-                    .insert_entities_according_to_hierarchy(objects.iter(), &self.space_path);
-                self.allow_auto_adding_more_object = false;
+                    .insert_entities_according_to_hierarchy(entities.iter(), &self.space_path);
+                self.allow_auto_adding_more_entities = false;
             }
             response.on_hover_text("Add to this Space View's query")
         });
