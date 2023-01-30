@@ -1,4 +1,4 @@
-VERSION=0.1
+VERSION=0.2 # Bump on each new version
 
 # The build needs to run from top of repo to access the requirments.txt
 cd `git rev-parse --show-toplevel`
