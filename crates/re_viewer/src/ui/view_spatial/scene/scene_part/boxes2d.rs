@@ -34,7 +34,7 @@ impl Boxes2DPart {
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
-        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -50,7 +50,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            object_highlight.index_highlight(instance_hash.instance_index_hash),
+            entity_highlight.index_highlight(instance_hash.instance_index_hash),
         );
 
         let mut line_batch = scene
@@ -99,7 +99,7 @@ impl ScenePart for Boxes2DPart {
                 continue;
             };
 
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Rect2D, 6>(
                 &ctx.log_db.entity_db.arrow_store,
@@ -124,7 +124,7 @@ impl ScenePart for Boxes2DPart {
                             instance,
                             &entity_view,
                             &props,
-                            object_highlight,
+                            entity_highlight,
                         );
                         Self::visit_instance(
                             scene,
@@ -136,7 +136,7 @@ impl ScenePart for Boxes2DPart {
                             radius,
                             label,
                             class_id,
-                            object_highlight,
+                            entity_highlight,
                         );
                     })?;
                 }

@@ -30,7 +30,7 @@ impl Points2DPart {
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
@@ -58,7 +58,7 @@ impl Points2DPart {
                        class_id: Option<ClassId>,
                        keypoint_id: Option<KeypointId>| {
             let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
+                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
 
             let pos: glam::Vec2 = pos.into();
 
@@ -85,7 +85,7 @@ impl Points2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                object_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             point_batch
@@ -134,7 +134,7 @@ impl ScenePart for Points2DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point2D, 7>(
                 &ctx.log_db.entity_db.arrow_store,
@@ -161,7 +161,7 @@ impl ScenePart for Points2DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        object_highlight,
+                        entity_highlight,
                     )?;
                 }
                 Ok(())

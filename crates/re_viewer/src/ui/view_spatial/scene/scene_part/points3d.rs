@@ -139,7 +139,7 @@ impl Points3DPart {
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -178,7 +178,7 @@ impl Points3DPart {
                         instance,
                         entity_view,
                         properties,
-                        object_highlight,
+                        entity_highlight,
                     )
                 })
                 .collect::<Vec<_>>()
@@ -188,7 +188,7 @@ impl Points3DPart {
             crate::profile_scope!("highlights");
             instance_hashes
                 .iter()
-                .map(|hash| object_highlight.index_highlight(hash.instance_index_hash))
+                .map(|hash| entity_highlight.index_highlight(hash.instance_index_hash))
                 .collect::<Vec<_>>()
         };
 
@@ -228,7 +228,7 @@ impl ScenePart for Points3DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.entity_db.arrow_store,
@@ -255,7 +255,7 @@ impl ScenePart for Points3DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        object_highlight,
+                        entity_highlight,
                     )?;
                 }
                 Ok(())

@@ -48,10 +48,10 @@ pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
     instance: re_log_types::field_types::Instance,
     entity_view: &re_query::EntityView<T>,
     props: &EntityProperties,
-    object_highlight: OptionalSpaceViewEntityHighlight<'_>,
+    entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
 ) -> InstanceIdHash {
     if props.interactive {
-        if entity_view.num_instances() == 1 || !object_highlight.any_selection_highlight() {
+        if entity_view.num_instances() == 1 || !entity_highlight.any_selection_highlight() {
             InstanceIdHash::from_path_and_index(ent_path, re_log_types::IndexHash::NONE)
         } else {
             InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)

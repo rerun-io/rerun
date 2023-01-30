@@ -38,17 +38,17 @@ impl MeshPart {
 
         let _default_color = DefaultColor::EntityPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-        let object_highlight = highlights.object_highlight(ent_path.hash());
+        let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
         let visitor = |instance: Instance,
                        mesh: re_log_types::Mesh3D,
                        _color: Option<ColorRGBA>| {
             let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
+                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
 
             let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                 Color32::TRANSPARENT,
-                object_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             if let Some(mesh) = ctx

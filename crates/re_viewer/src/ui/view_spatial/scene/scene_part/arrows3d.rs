@@ -33,7 +33,7 @@ impl Arrows3DPart {
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
 
-        let object_highlight = highlights.object_highlight(ent_path.hash());
+        let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
         let mut line_batch = scene
             .primitives
@@ -47,7 +47,7 @@ impl Arrows3DPart {
                        radius: Option<Radius>,
                        _label: Option<Label>| {
             let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
+                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
 
             // TODO(andreas): support labels
             // TODO(andreas): support class ids for arrows
@@ -69,7 +69,7 @@ impl Arrows3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                object_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             line_batch

@@ -63,7 +63,7 @@ impl CamerasPart {
         instance_hash: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        object_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) {
         // The transform *at* this entity path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -149,7 +149,7 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            object_highlight.index_highlight(instance_hash.instance_index_hash),
+            entity_highlight.index_highlight(instance_hash.instance_index_hash),
         );
 
         scene
@@ -194,13 +194,13 @@ impl ScenePart for CamerasPart {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
-                    let object_highlight = highlights.object_highlight(ent_path.hash());
+                    let entity_highlight = highlights.entity_highlight(ent_path.hash());
                     let instance_hash = instance_hash_for_picking(
                         ent_path,
                         instance,
                         &entity_view,
                         &props,
-                        object_highlight,
+                        entity_highlight,
                     );
 
                     let view_coordinates = determine_view_coordinates(
@@ -217,7 +217,7 @@ impl ScenePart for CamerasPart {
                         instance_hash,
                         pinhole,
                         view_coordinates,
-                        object_highlight,
+                        entity_highlight,
                     );
                 })
             }) {

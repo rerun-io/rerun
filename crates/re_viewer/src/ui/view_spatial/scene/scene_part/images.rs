@@ -142,14 +142,14 @@ impl ImagesPart {
                     return Ok(());
                 }
 
-                let object_highlight = highlights.object_highlight(ent_path.hash());
+                let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
                 let instance_hash = instance_hash_for_picking(
                     ent_path,
                     instance,
                     entity_view,
                     properties,
-                    object_highlight,
+                    entity_highlight,
                 );
 
                 let annotations = scene.annotation_map.find(ent_path);
@@ -159,7 +159,7 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let highlight = object_highlight.index_highlight(instance_hash.instance_index_hash);
+                let highlight = entity_highlight.index_highlight(instance_hash.instance_index_hash);
                 if highlight.is_some() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,

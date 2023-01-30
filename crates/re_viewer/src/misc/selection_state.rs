@@ -107,22 +107,22 @@ pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighli
 impl<'a> OptionalSpaceViewEntityHighlight<'a> {
     pub fn index_highlight(&self, index: IndexHash) -> InteractionHighlight {
         match self.0 {
-            Some(object_highlight) => object_highlight
+            Some(entity_highlight) => entity_highlight
                 .instances
                 .get(&index)
                 .cloned()
                 .unwrap_or_default()
-                .max(object_highlight.overall),
+                .max(entity_highlight.overall),
             None => InteractionHighlight::default(),
         }
     }
 
     pub fn any_selection_highlight(&self) -> bool {
         match self.0 {
-            Some(object_highlight) => {
+            Some(entity_highlight) => {
                 // TODO(andreas): Could easily pre-compute this!
-                object_highlight.overall.selection.is_some()
-                    || object_highlight
+                entity_highlight.overall.selection.is_some()
+                    || entity_highlight
                         .instances
                         .values()
                         .any(|instance_highlight| instance_highlight.selection.is_some())
@@ -141,7 +141,7 @@ pub struct SpaceViewHighlights {
 }
 
 impl SpaceViewHighlights {
-    pub fn object_highlight(
+    pub fn entity_highlight(
         &self,
         entity_path_hash: EntityPathHash,
     ) -> OptionalSpaceViewEntityHighlight<'_> {
