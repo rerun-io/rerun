@@ -17,7 +17,7 @@ impl Profiler {
     }
 
     fn start_server(&mut self) {
-        let bind_addr = format!("0.0.0.0:{}", PORT);
+        let bind_addr = format!("0.0.0.0:{PORT}");
         self.server = match puffin_http::Server::new(&bind_addr) {
             Ok(puffin_server) => {
                 re_log::info!(

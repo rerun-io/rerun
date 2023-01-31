@@ -68,7 +68,7 @@ impl Time {
         } else {
             let secs = nanos_since_epoch as f64 * 1e-9;
             // assume relative time
-            format!("{:+.03}s", secs)
+            format!("{secs:+.03}s")
         }
     }
 
@@ -204,7 +204,7 @@ impl Duration {
 
         let days = seconds_remaining / Self::SEC_PER_DAY;
         if days > 0 {
-            write!(f, "{}d", days)?;
+            write!(f, "{days}d")?;
             seconds_remaining -= days * Self::SEC_PER_DAY;
             did_write = true;
         }
@@ -214,7 +214,7 @@ impl Duration {
             if did_write {
                 write!(f, " ")?;
             }
-            write!(f, "{}h", hours)?;
+            write!(f, "{hours}h")?;
             seconds_remaining -= hours * Self::SEC_PER_HOUR;
             did_write = true;
         }
@@ -224,7 +224,7 @@ impl Duration {
             if did_write {
                 write!(f, " ")?;
             }
-            write!(f, "{}m", minutes)?;
+            write!(f, "{minutes}m")?;
             seconds_remaining -= minutes * Self::SEC_PER_MINUTE;
             did_write = true;
         }
@@ -238,13 +238,13 @@ impl Duration {
             }
 
             if nanos == 0 {
-                write!(f, "{}s", seconds_remaining)?;
+                write!(f, "{seconds_remaining}s")?;
             } else if MAX_MILLISECOND_ACCURACY || nanos % 1_000_000 == 0 {
                 write!(f, "{}.{:03}s", seconds_remaining, nanos / 1_000_000)?;
             } else if MAX_MICROSECOND_ACCURACY || nanos % 1_000 == 0 {
                 write!(f, "{}.{:06}s", seconds_remaining, nanos / 1_000)?;
             } else {
-                write!(f, "{}.{:09}s", seconds_remaining, nanos)?;
+                write!(f, "{seconds_remaining}.{nanos:09}s")?;
             }
         }
 

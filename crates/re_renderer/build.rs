@@ -92,8 +92,8 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
             }
 
             let clause = line.parse::<ImportClause>()?;
-            let clause_path = dir_path.join(&clause.path);
-            let clause_path = std::fs::canonicalize(&clause_path)?;
+            let clause_path = dir_path.join(clause.path);
+            let clause_path = std::fs::canonicalize(clause_path)?;
             ensure!(
                 clause_path.starts_with(&root_path),
                 "trying to import {:?} which lives outside of the workspace, \

@@ -1,4 +1,4 @@
-FROM rust:1.65
+FROM rust:1.67
 LABEL maintainer="opensource@rerun.io"
 LABEL version="0.1"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"

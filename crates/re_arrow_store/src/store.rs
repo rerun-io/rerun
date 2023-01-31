@@ -547,7 +547,7 @@ impl std::fmt::Display for PersistentIndexTable {
             all_components: _,
         } = self;
 
-        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
+        f.write_fmt(format_args!("entity: {ent_path}\n"))?;
 
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
@@ -776,7 +776,7 @@ impl std::fmt::Display for IndexTable {
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
-        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
+        f.write_fmt(format_args!("entity: {ent_path}\n"))?;
 
         f.write_fmt(format_args!(
             "size: {} buckets for a total of {} across {} total rows\n",
@@ -1069,12 +1069,12 @@ impl std::fmt::Display for PersistentComponentTable {
             total_size_bytes,
         } = self;
 
-        f.write_fmt(format_args!("name: {}\n", name))?;
+        f.write_fmt(format_args!("name: {name}\n"))?;
         if matches!(
             std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
             Ok("1")
         ) {
-            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+            f.write_fmt(format_args!("datatype: {datatype:#?}\n"))?;
         }
 
         f.write_fmt(format_args!(
@@ -1223,12 +1223,12 @@ impl std::fmt::Display for ComponentTable {
             buckets,
         } = self;
 
-        f.write_fmt(format_args!("name: {}\n", name))?;
+        f.write_fmt(format_args!("name: {name}\n"))?;
         if matches!(
             std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
             Ok("1")
         ) {
-            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+            f.write_fmt(format_args!("datatype: {datatype:#?}\n"))?;
         }
 
         f.write_fmt(format_args!(

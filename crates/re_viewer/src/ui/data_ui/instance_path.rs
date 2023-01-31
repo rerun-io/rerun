@@ -48,7 +48,7 @@ impl DataUi for InstancePath {
 
                     match component_data {
                         Err(err) => {
-                            ui.label(ctx.re_ui.error_text(format!("Error: {}", err)));
+                            ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
                         }
                         Ok(component_data) => {
                             if self.instance_index.is_splat() {

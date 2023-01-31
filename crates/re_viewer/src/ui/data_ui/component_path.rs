@@ -28,7 +28,7 @@ impl DataUi for ComponentPath {
             }
             Err(err) => {
                 // Any other failure to get a component is unexpected
-                ui.label(ctx.re_ui.error_text(format!("Error: {}", err)));
+                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
             }
             Ok(component_data) => {
                 component_data.data_ui(ctx, ui, verbosity, query);

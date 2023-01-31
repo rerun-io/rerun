@@ -33,18 +33,18 @@ impl DataUi for ComponentWithInstances {
                         .num_columns(2)
                         .show(ui, |ui| {
                             for instance in instance_keys {
-                                ui.label(format!("{}", instance));
+                                ui.label(instance.to_string());
                                 ctx.component_ui_registry
                                     .ui(ctx, ui, verbosity, query, self, &instance);
                                 ui.end_row();
                             }
                         });
                 } else {
-                    ui.label(format!("{} values", num_instances));
+                    ui.label(format!("{num_instances} values"));
                 }
             }
             Err(err) => {
-                ui.label(ctx.re_ui.error_text(format!("Error: {}", err)));
+                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
             }
         }
     }

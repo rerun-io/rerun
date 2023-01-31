@@ -71,8 +71,8 @@ fn simple_query() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
@@ -137,8 +137,8 @@ fn timeless_query() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
@@ -201,8 +201,8 @@ fn no_instance_join_query() {
         let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
@@ -259,8 +259,8 @@ fn missing_column_join_query() {
         ];
         let expected = df_builder2(&instances, &points).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df1().unwrap());
     }
@@ -330,8 +330,8 @@ fn splatted_query() {
         let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }

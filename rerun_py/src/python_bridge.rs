@@ -210,8 +210,7 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
         Ok(())
     } else {
         Err(PyTypeError::new_err(format!(
-            "Invalid recording id - expected a UUID, got {:?}",
-            recording_id
+            "Invalid recording id - expected a UUID, got {recording_id:?}"
         )))
     }
 }
@@ -387,8 +386,7 @@ fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
         [r, g, b] => Ok([*r, *g, *b, 255]),
         [r, g, b, a] => Ok([*r, *g, *b, *a]),
         _ => Err(PyTypeError::new_err(format!(
-            "Expected color to be of length 3 or 4, got {:?}",
-            color
+            "Expected color to be of length 3 or 4, got {color:?}"
         ))),
     }
 }

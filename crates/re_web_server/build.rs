@@ -125,7 +125,7 @@ fn build_web() {
         cmd.arg("--release");
     }
 
-    eprintln!("wasm build cmd: {:?}", cmd);
+    eprintln!("wasm build cmd: {cmd:?}");
 
     let output = cmd
         .stdout(Stdio::inherit())
@@ -163,7 +163,7 @@ fn build_web() {
         "--no-typescript",
     ]);
 
-    eprintln!("wasm-bindgen cmd: {:?}", cmd);
+    eprintln!("wasm-bindgen cmd: {cmd:?}");
 
     let output = cmd
         .stdout(Stdio::inherit())
@@ -189,7 +189,7 @@ fn build_web() {
         cmd.current_dir(root_dir);
         cmd.args([wasm_path, "-O2", "--fast-math", "-o", wasm_path]);
 
-        eprintln!("wasm-opt cmd: {:?}", cmd);
+        eprintln!("wasm-opt cmd: {cmd:?}");
 
         let output = cmd
             .stdout(Stdio::inherit())
