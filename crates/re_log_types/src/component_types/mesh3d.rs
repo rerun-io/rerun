@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
 use arrow2::datatypes::DataType;
 use arrow2_convert::arrow_enable_vec_for_type;
@@ -72,25 +74,80 @@ impl ArrowDeserialize for MeshId {
 
 // ----------------------------------------------------------------------------
 
-// TODO(#749) Re-enable `RawMesh3D`
-// These seem totally unused at the moment and not even supported by the SDK
-#[derive(Clone, Debug, PartialEq)]
+// TODO(cmc): Let's make both mesh Component types use friendlier types for their inner elements
+// (e.g. positions should be a vec of Vec3D, transform should be a Mat4, etc).
+// This will also make error checking for invalid user data much nicer.
+//
+// But first let's do the python example and see how everything starts to take shape...
+
+// TODO(cmc): Let's move all the RefCounting stuff to the top-level.
+
+/// ```
+/// # use re_log_types::component_types::RawMesh3D;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field, UnionMode};
+/// assert_eq!(
+///     RawMesh3D::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("mesh_id", DataType::FixedSizeBinary(16), false),
+///         Field::new("positions", DataType::List(Box::new(
+///             Field::new("item", DataType::Float32, false)),
+///         ), false),
+///         Field::new("indices", DataType::List(Box::new(
+///             Field::new("item", DataType::UInt32, false)),
+///         ), true),
+///         Field::new("normals", DataType::List(Box::new(
+///             Field::new("item", DataType::Float32, false)),
+///         ), true),
+///     ]),
+/// );
+/// ```
+// TODO(cmc): This currently doesn't specify nor checks in any way that it expects triangle lists.
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
     pub mesh_id: MeshId,
-    pub positions: Vec<[f32; 3]>,
-    pub indices: Vec<[u32; 3]>,
+    pub positions: Vec<f32>,
+    pub indices: Option<Vec<u32>>,
+    pub normals: Option<Vec<f32>>,
+    // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
+    // hard to see anything with complex enough meshes (and hovering doesn't really help
+    // when everything's white).
+    // pub colors: Option<Vec<u8>>,
+    // pub texcoords: Option<Vec<f32>>,
 }
 
 // ----------------------------------------------------------------------------
 
 /// Compressed/encoded mesh format
+///
+/// ```
+/// # use re_log_types::component_types::EncodedMesh3D;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field, UnionMode};
+/// assert_eq!(
+///     EncodedMesh3D::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("mesh_id", DataType::FixedSizeBinary(16), false),
+///         Field::new("format", DataType::Union(vec![
+///             Field::new("Gltf", DataType::Boolean, false),
+///             Field::new("Glb", DataType::Boolean, false),
+///             Field::new("Obj", DataType::Boolean, false),
+///         ], None, UnionMode::Dense), false),
+///         Field::new("bytes", DataType::Binary, false),
+///         Field::new("transform", DataType::FixedSizeList(
+///             Box::new(Field::new("item", DataType::Float32, false)),
+///             12,
+///         ), false),
+///     ]),
+/// );
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EncodedMesh3D {
     pub mesh_id: MeshId,
     pub format: MeshFormat,
-    pub bytes: std::sync::Arc<[u8]>,
+    pub bytes: Arc<[u8]>,
     /// four columns of an affine transformation matrix
     pub transform: [[f32; 3]; 4],
 }
@@ -202,47 +259,20 @@ impl std::fmt::Display for MeshFormat {
     }
 }
 
-/// A Generic 3D Mesh
+/// A Generic 3D Mesh.
+///
+/// Cheaply clonable as it is all refcounted internally.
 ///
 /// ```
-/// # use re_log_types::component_types::Mesh3D;
+/// # use re_log_types::component_types::{Mesh3D, EncodedMesh3D, RawMesh3D};
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(
 ///     Mesh3D::data_type(),
-///     DataType::Union(
-///         vec![Field::new(
-///             "Encoded",
-///             DataType::Struct(vec![
-///                 Field::new("mesh_id", DataType::FixedSizeBinary(16), false),
-///                 Field::new(
-///                     "format",
-///                     DataType::Union(
-///                         vec![
-///                             Field::new("Gltf", DataType::Boolean, false),
-///                             Field::new("Glb", DataType::Boolean, false),
-///                             Field::new("Obj", DataType::Boolean, false)
-///                         ],
-///                         None,
-///                         UnionMode::Dense
-///                     ),
-///                     false
-///                 ),
-///                 Field::new("bytes", DataType::Binary, false),
-///                 Field::new(
-///                     "transform",
-///                     DataType::FixedSizeList(
-///                         Box::new(Field::new("item", DataType::Float32, false)),
-///                         12
-///                     ),
-///                     false
-///                 )
-///             ]),
-///             false
-///         )],
-///         None,
-///         UnionMode::Dense
-///     )
+///     DataType::Union(vec![
+///         Field::new("Encoded", EncodedMesh3D::data_type(), false),
+///         Field::new("Raw", RawMesh3D::data_type(), false),
+///     ], None, UnionMode::Dense),
 /// );
 /// ```
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
@@ -250,8 +280,7 @@ impl std::fmt::Display for MeshFormat {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
-    // TODO(#749) Re-enable `RawMesh3D`
-    // Raw(Arc<RawMesh3D>),
+    Raw(RawMesh3D),
 }
 
 impl Component for Mesh3D {
@@ -264,32 +293,50 @@ impl Mesh3D {
     pub fn mesh_id(&self) -> MeshId {
         match self {
             Mesh3D::Encoded(mesh) => mesh.mesh_id,
-            // TODO(#749) Re-enable `RawMesh3D`
-            // Mesh3D::Raw(mesh) => mesh.mesh_id,
+            Mesh3D::Raw(mesh) => mesh.mesh_id,
         }
     }
 }
 
-#[test]
-fn test_datatype() {}
+// #[test]
+// fn test_mesh_je() {
+//     dbg!(Mesh3D::data_type());
+//     assert!(false)
+// }
 
 #[test]
 fn test_mesh_roundtrip() {
     use arrow2::array::Array;
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
-    let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
-        mesh_id: MeshId::random(),
-        format: MeshFormat::Glb,
-        bytes: std::sync::Arc::new([5, 9, 13, 95, 38, 42, 98, 17]),
-        transform: [
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-            [10.0, 11.0, 12.],
-        ],
-    })];
-    let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
-    let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
-    assert_eq!(mesh_in, mesh_out);
+    // Encoded
+    {
+        let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
+            mesh_id: MeshId::random(),
+            format: MeshFormat::Glb,
+            bytes: std::sync::Arc::new([5, 9, 13, 95, 38, 42, 98, 17]),
+            transform: [
+                [1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0],
+                [7.0, 8.0, 9.0],
+                [10.0, 11.0, 12.],
+            ],
+        })];
+        let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
+        let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
+        assert_eq!(dbg!(mesh_in), dbg!(mesh_out));
+    }
+
+    // Raw
+    {
+        let mesh_in = vec![Mesh3D::Raw(RawMesh3D {
+            mesh_id: MeshId::random(),
+            positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
+            indices: vec![1, 2, 3].into(),
+            normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
+        })];
+        let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
+        let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
+        assert_eq!(mesh_in, mesh_out);
+    }
 }
