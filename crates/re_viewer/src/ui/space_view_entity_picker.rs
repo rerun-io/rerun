@@ -109,7 +109,7 @@ fn add_entities_tree_ui(
         let level = tree.path.len();
         let default_open = space_view.space_path.is_descendant_of(&tree.path)
             || tree.children.len() <= 3
-            || level < 1;
+            || level < 2;
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             ui.id().with(name),
@@ -165,9 +165,8 @@ fn add_entities_line_ui(
         };
         let add_info = entities_add_info.get(entity_path).unwrap();
 
-        // To be safe, let's put the add/remove button outside of this enabled block for the name display.
-        // (i.e. if for some reason it was already added, we want it to be still be removable!)
-        ui.add_enabled_ui(add_info.can_add_self_or_any_child, |ui| {
+        // Use "can_show_self_or_descendant" since we don't want to render disabled if this can't be shown but there are relevant children.
+        ui.add_enabled_ui(add_info.can_show_self_or_descendant, |ui| {
             let widget_text = if entity_path == &space_view.space_path {
                 egui::RichText::new(name).strong()
             } else {
@@ -191,7 +190,7 @@ fn add_entities_line_ui(
                 if ctx
                     .re_ui
                     .small_icon_button(ui, &re_ui::icons::REMOVE)
-                    .on_hover_text("Remove this Entity and all its children from the Space View")
+                    .on_hover_text("Remove this Entity and all its descendants from the Space View")
                     .clicked()
                 {
                     // Remove all entities at and under this path
@@ -205,14 +204,12 @@ fn add_entities_line_ui(
                 }
             } else {
                 let response = ui
-                    .add_enabled_ui(add_info.can_add_self_or_any_child, |ui| {
-                        let response = ctx
+                    .add_enabled_ui(add_info.can_add_self_or_descendant, |ui| {
+                        if ctx
                             .re_ui
                             .small_icon_button(ui, &re_ui::icons::ADD)
-                            .on_hover_text(
-                                "Add this Entity and all its children to the Space View",
-                            );
-                        if response.clicked() {
+                            .clicked()
+                        {
                             // Insert the entity it space_view and all its children as far as they haven't been added yet
                             let mut entities = Vec::new();
                             entity_tree
@@ -242,8 +239,16 @@ fn add_entities_line_ui(
                     })
                     .response;
 
-                if let Some(cannot_add_reason) = &add_info.cannot_add_reason {
-                    response.on_hover_text(cannot_add_reason);
+                if add_info.can_add_self_or_descendant {
+                    if add_info.cannot_show_reason.is_some() {
+                        response.on_hover_text("Add descendants of this Entity to the Space View");
+                    } else {
+                        response.on_hover_text(
+                            "Add this Entity and all its descendants to the Space View",
+                        );
+                    }
+                } else if let Some(cannot_show_reason) = &add_info.cannot_show_reason {
+                    response.on_hover_text(cannot_show_reason);
                 }
             }
         });
@@ -253,8 +258,13 @@ fn add_entities_line_ui(
 #[derive(Default)]
 struct EntityAddInfo {
     _categories: enumset::EnumSet<ViewCategory>, // TODO(andreas): Should use this to display icons
-    cannot_add_reason: Option<String>,
-    can_add_self_or_any_child: bool,
+    cannot_show_reason: Option<String>,
+
+    /// True if any item in the tree at this entity is allowed to be added to the space view.
+    can_show_self_or_descendant: bool,
+
+    /// Like `can_show_self_or_descendant` but requires self or any child to be not already part of the tree.
+    can_add_self_or_descendant: bool,
 }
 
 fn create_entity_add_info(
@@ -267,7 +277,7 @@ fn create_entity_add_info(
 
     tree.visit_children_recursively(&mut |entity_path| {
         let categories = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
-        let cannot_add_reason = if categories.contains(space_view.category) {
+        let cannot_show_reason = if categories.contains(space_view.category) {
             spaces_info
                 .is_reachable_by_transform(entity_path, &space_view.space_path)
                 .map_err(|reason| reason.to_string())
@@ -281,25 +291,29 @@ fn create_entity_add_info(
             ))
         };
 
-        if cannot_add_reason.is_none() {
+        let can_show_self_or_descendant = cannot_show_reason.is_none();
+        let can_add_self_or_descendant =
+            can_show_self_or_descendant && !space_view.data_blueprint.contains_entity(entity_path);
+
+        if cannot_show_reason.is_none() {
             // Mark parents that there is something that can be added.
             let mut path = entity_path.clone();
             while let Some(parent) = path.parent() {
-                meta_data
-                    .entry(parent.clone())
-                    .or_default()
-                    .can_add_self_or_any_child = true;
+                let data = meta_data.entry(parent.clone()).or_default();
+                data.can_show_self_or_descendant = true;
+                data.can_add_self_or_descendant =
+                    data.can_add_self_or_descendant || can_add_self_or_descendant;
                 path = parent;
             }
         }
 
-        let can_add_self_or_any_child = cannot_add_reason.is_none();
         meta_data.insert(
             entity_path.clone(),
             EntityAddInfo {
                 _categories: categories,
-                cannot_add_reason,
-                can_add_self_or_any_child,
+                cannot_show_reason,
+                can_show_self_or_descendant,
+                can_add_self_or_descendant,
             },
         );
     });
