@@ -298,12 +298,6 @@ impl Mesh3D {
     }
 }
 
-// #[test]
-// fn test_mesh_je() {
-//     dbg!(Mesh3D::data_type());
-//     assert!(false)
-// }
-
 #[test]
 fn test_mesh_roundtrip() {
     use arrow2::array::Array;
