@@ -187,6 +187,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          architecture: x64
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
 
