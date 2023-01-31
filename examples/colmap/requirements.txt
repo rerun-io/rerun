@@ -1,3 +1,4 @@
+einops
 numpy
 requests==2.28.1
 tqdm
