@@ -25,10 +25,7 @@ derive_more.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 directories-next = "2"
-reqwest = { workspace = true, features = [
-  "blocking",
-  "rustls-tls",
-] }
+reqwest = { workspace = true, features = ["blocking", "rustls-tls"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { version = "0.3.58", features = ["Storage"] }
