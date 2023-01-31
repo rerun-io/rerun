@@ -114,7 +114,7 @@ jobs:
         run: |
           pip install rerun-sdk --no-index --find-links dist --force-reinstall
           pip install pytest #TODO(john) move to requirements-build.txt
-          cd tests && pytest
+          cd rerun_py/tests && pytest
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -123,7 +123,8 @@ jobs:
           path: dist
 
   windows:
-    runs-on: windows-latest
+    name: Build Python Wheels for Windows
+    runs-on: windows-latest-8-cores
     strategy:
       matrix:
         target: [x64, x86]
@@ -157,7 +158,7 @@ jobs:
         run: |
           pip install rerun-sdk --no-index --find-links dist --force-reinstall
           pip install pytest
-          cd tests && pytest
+          cd rerun_py/tests && pytest
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -166,7 +167,10 @@ jobs:
           path: dist
 
   linux:
-    runs-on: ubuntu-latest
+    name: Build Python Wheels for Linux
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.3
     strategy:
       matrix:
         target: [x86_64, i686]
@@ -176,6 +180,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
@@ -208,7 +213,7 @@ jobs:
         run: |
           pip install rerun-sdk  --no-index --find-links dist --force-reinstall
           pip install pytest
-          cd tests && pytest
+          cd rerun_py/tests && pytest
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
