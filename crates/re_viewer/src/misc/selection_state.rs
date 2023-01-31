@@ -105,11 +105,11 @@ pub struct SpaceViewEntityHighlight {
 pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
 impl<'a> OptionalSpaceViewEntityHighlight<'a> {
-    pub fn index_highlight(&self, instance_index: InstanceKey) -> InteractionHighlight {
+    pub fn index_highlight(&self, instance_key: InstanceKey) -> InteractionHighlight {
         match self.0 {
             Some(entity_highlight) => entity_highlight
                 .instances
-                .get(&instance_index)
+                .get(&instance_key)
                 .cloned()
                 .unwrap_or_default()
                 .max(entity_highlight.overall),
@@ -294,8 +294,8 @@ impl SelectionState {
 
                         current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance_index.specific_index(),
-                                &test_instance_path.instance_index.specific_index(),
+                                &current_instance_path.instance_key.specific_index(),
+                                &test_instance_path.instance_key.specific_index(),
                             )
                             && either_none_or_same(current_space_view_id, test_space_view_id)
                     } else {
@@ -353,7 +353,7 @@ impl SelectionState {
                         .or_default();
 
                     let highlight_target = if let Some(selected_index) =
-                        selected_instance.instance_index.specific_index()
+                        selected_instance.instance_key.specific_index()
                     {
                         &mut highlighted_entity
                             .instances
@@ -398,7 +398,7 @@ impl SelectionState {
                         .or_default();
 
                     let highlight_target = if let Some(selected_index) =
-                        selected_instance.instance_index.specific_index()
+                        selected_instance.instance_key.specific_index()
                     {
                         &mut highlighted_entity
                             .instances

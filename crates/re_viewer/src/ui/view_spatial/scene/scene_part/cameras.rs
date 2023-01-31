@@ -151,7 +151,7 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            entity_highlight.index_highlight(instance_hash.instance_index),
+            entity_highlight.index_highlight(instance_hash.instance_key),
         );
 
         scene

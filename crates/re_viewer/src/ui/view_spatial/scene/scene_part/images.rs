@@ -162,7 +162,7 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let highlight = entity_highlight.index_highlight(instance_path_hash.instance_index);
+                let highlight = entity_highlight.index_highlight(instance_path_hash.instance_key);
                 if highlight.is_some() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,

@@ -52,7 +52,7 @@ impl MeshPart {
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,
-                    entity_highlight.index_highlight(instance_path_hash.instance_index),
+                    entity_highlight.index_highlight(instance_path_hash.instance_key),
                 );
 
                 if let Some(mesh) = ctx

@@ -104,19 +104,19 @@ impl ComponentUiRegistry {
         verbosity: crate::ui::UiVerbosity,
         query: &LatestAtQuery,
         component: &ComponentWithInstances,
-        instance_index: &InstanceKey,
+        instance_key: &InstanceKey,
     ) {
         if component.name() == InstanceKey::name() {
             // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
-            ui.label(instance_index.to_string());
+            ui.label(instance_key.to_string());
             return;
         }
 
         if let Some(ui_callback) = self.components.get(&component.name()) {
-            (*ui_callback)(ctx, ui, verbosity, query, component, instance_index);
+            (*ui_callback)(ctx, ui, verbosity, query, component, instance_key);
         } else {
             // No special ui implementation - use a generic one:
-            if let Some(value) = component.lookup_arrow(instance_index) {
+            if let Some(value) = component.lookup_arrow(instance_key) {
                 let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
                 if bytes < 256 {
                     // For small items, print them
