@@ -147,11 +147,12 @@ impl Viewport {
         )
         .show_header(ui, |ui| {
             let mut is_space_view_visible = self.visible.contains(space_view_id);
-            let visibility_changed = blueprint_row_with_visibility_button(
+            let mut visibility_changed = false;
+            blueprint_row_with_on_hover_buttons(
                 ctx.re_ui,
                 ui,
                 true,
-                &mut is_space_view_visible,
+                is_space_view_visible,
                 |ui| {
                     let label = format!("{} {}", space_view.category.icon(), space_view.name);
                     let response = ctx.space_view_button_to(ui, label, *space_view_id);
@@ -161,6 +162,19 @@ impl Viewport {
                         }
                     }
                     response
+                },
+                |re_ui, ui| {
+                    visibility_changed =
+                        visibility_button_ui(re_ui, ui, true, &mut is_space_view_visible).changed();
+                    if re_ui
+                        .small_icon_button(ui, &re_ui::icons::ADD)
+                        .on_hover_text("Manually add or remove entities from the Space View.")
+                        .clicked()
+                    {
+                        self.space_view_entity_window = Some(SpaceViewEntityWindow {
+                            space_view_id: *space_view_id,
+                        });
+                    }
                 },
             );
 
@@ -207,23 +221,31 @@ impl Viewport {
         for path in &entities {
             ui.horizontal(|ui| {
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
-                let visibility_changed = blueprint_row_with_visibility_button(
+                blueprint_row_with_on_hover_buttons(
                     ctx.re_ui,
                     ui,
                     group_is_visible,
-                    &mut properties.visible,
+                    properties.visible,
                     |ui| {
                         let name = path.iter().last().unwrap().to_string();
                         let label = format!("🔹 {name}");
                         ctx.data_blueprint_button_to(ui, label, *space_view_id, path)
                     },
+                    |re_ui, ui| {
+                        if visibility_button_ui(
+                            re_ui,
+                            ui,
+                            group_is_visible,
+                            &mut properties.visible,
+                        )
+                        .changed()
+                        {
+                            data_blueprint_tree
+                                .data_blueprints_individual()
+                                .set(path.clone(), properties);
+                        }
+                    },
                 );
-
-                if visibility_changed {
-                    data_blueprint_tree
-                        .data_blueprints_individual()
-                        .set(path.clone(), properties);
-                }
             });
         }
 
@@ -241,11 +263,11 @@ impl Viewport {
                 default_open,
             )
             .show_header(ui, |ui| {
-                blueprint_row_with_visibility_button(
+                blueprint_row_with_on_hover_buttons(
                     ctx.re_ui,
                     ui,
                     group_is_visible,
-                    &mut child_group.properties_individual.visible,
+                    child_group.properties_individual.visible,
                     |ui| {
                         let label = format!("📁 {}", child_group.display_name);
                         ctx.data_blueprint_group_button_to(
@@ -254,6 +276,14 @@ impl Viewport {
                             *space_view_id,
                             *child_group_handle,
                         )
+                    },
+                    |re_ui, ui| {
+                        visibility_button_ui(
+                            re_ui,
+                            ui,
+                            group_is_visible,
+                            &mut child_group.properties_individual.visible,
+                        );
                     },
                 );
             })
@@ -603,13 +633,14 @@ impl Viewport {
 /// and show a visibility button if the row is hovered.
 ///
 /// Returns true if visibility changed.
-fn blueprint_row_with_visibility_button(
+fn blueprint_row_with_on_hover_buttons(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     enabled: bool,
-    visible: &mut bool,
+    visible: bool,
     add_content: impl FnOnce(&mut egui::Ui) -> egui::Response,
-) -> bool {
+    add_on_hover_buttons: impl FnOnce(&re_ui::ReUi, &mut egui::Ui),
+) {
     let where_to_add_hover_rect = ui.painter().add(egui::Shape::Noop);
 
     // Make the main button span the whole width to make it easier to click:
@@ -640,7 +671,7 @@ fn blueprint_row_with_visibility_button(
                 ui.set_clip_rect(clip_rect);
             }
 
-            if !*visible || !enabled {
+            if !visible || !enabled {
                 // Dim the appearance of things added by `add_content`:
                 let widget_visuals = &mut ui.visuals_mut().widgets;
                 fn dim_color(color: &mut egui::Color32) {
@@ -661,12 +692,14 @@ fn blueprint_row_with_visibility_button(
     let button_hovered = ui
         .interact(main_button_rect, ui.id(), egui::Sense::hover())
         .hovered();
-
-    let visibility_button_changed = if button_hovered {
-        visibility_button_ui(re_ui, ui, enabled, visible).changed()
-    } else {
-        false
-    };
+    if button_hovered {
+        // Just put the buttons on top of the existing ui:
+        let mut ui = ui.child_ui(
+            ui.max_rect(),
+            egui::Layout::right_to_left(egui::Align::Center),
+        );
+        add_on_hover_buttons(re_ui, &mut ui);
+    }
 
     // The main button might have been highlighted because what it was referring
     // to was hovered somewhere else, and then we also want it highlighted here.
@@ -679,8 +712,6 @@ fn blueprint_row_with_visibility_button(
             egui::Shape::rect_filled(hover_rect, visuals.rounding, visuals.bg_fill),
         );
     }
-
-    visibility_button_changed
 }
 
 fn visibility_button_ui(
@@ -689,18 +720,12 @@ fn visibility_button_ui(
     enabled: bool,
     visible: &mut bool,
 ) -> egui::Response {
-    // Just put the button on top of the existing ui:
-    let mut ui = ui.child_ui(
-        ui.max_rect(),
-        egui::Layout::right_to_left(egui::Align::Center),
-    );
-
     ui.set_enabled(enabled);
 
     let mut response = if enabled && *visible {
-        re_ui.small_icon_button(&mut ui, &re_ui::icons::VISIBLE)
+        re_ui.small_icon_button(ui, &re_ui::icons::VISIBLE)
     } else {
-        re_ui.small_icon_button(&mut ui, &re_ui::icons::INVISIBLE)
+        re_ui.small_icon_button(ui, &re_ui::icons::INVISIBLE)
     };
 
     if response.clicked() {
