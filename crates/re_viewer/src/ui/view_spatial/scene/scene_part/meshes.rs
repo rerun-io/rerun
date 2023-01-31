@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use super::{instance_hash_for_picking, ScenePart};
+use super::{instance_path_hash_for_picking, ScenePart};
 
 pub struct MeshPart;
 
@@ -43,12 +43,12 @@ impl MeshPart {
         let visitor = |instance: Instance,
                        mesh: re_log_types::Mesh3D,
                        _color: Option<ColorRGBA>| {
-            let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
+            let instance_path_hash =
+                instance_path_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
 
             let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                 Color32::TRANSPARENT,
-                entity_highlight.index_highlight(instance_hash.instance_index),
+                entity_highlight.index_highlight(instance_path_hash.instance_index),
             );
 
             if let Some(mesh) = ctx
@@ -60,7 +60,7 @@ impl MeshPart {
                     ctx.render_ctx,
                 )
                 .map(|cpu_mesh| MeshSource {
-                    instance_path_hash: instance_hash,
+                    instance_path_hash,
                     world_from_mesh: world_from_obj_affine,
                     mesh: cpu_mesh,
                     additive_tint,

@@ -13,7 +13,9 @@ use crate::{
     },
     ui::{
         scene::SceneQuery,
-        view_spatial::{scene::scene_part::instance_hash_for_picking, SceneSpatial, SpaceCamera3D},
+        view_spatial::{
+            scene::scene_part::instance_path_hash_for_picking, SceneSpatial, SpaceCamera3D,
+        },
     },
 };
 
@@ -195,7 +197,7 @@ impl ScenePart for CamerasPart {
                         return;
                     };
                     let entity_highlight = highlights.entity_highlight(ent_path.hash());
-                    let instance_hash = instance_hash_for_picking(
+                    let instance_hash = instance_path_hash_for_picking(
                         ent_path,
                         instance,
                         &entity_view,

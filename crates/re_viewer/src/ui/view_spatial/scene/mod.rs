@@ -126,7 +126,10 @@ pub struct SceneSpatial {
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-fn instance_hash_if_interactive(entity_path: &EntityPath, interactive: bool) -> InstancePathHash {
+fn instance_path_hash_if_interactive(
+    entity_path: &EntityPath,
+    interactive: bool,
+) -> InstancePathHash {
     if interactive {
         InstancePathHash::entity_splat(entity_path)
     } else {
@@ -248,7 +251,7 @@ impl SceneSpatial {
         interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_hash = instance_hash_if_interactive(entity_path, interactive);
+        let instance_path_hash = instance_path_hash_if_interactive(entity_path, interactive);
 
         let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
 
@@ -274,7 +277,7 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
-                    .user_data(instance_hash);
+                    .user_data(instance_path_hash);
             }
         }
     }

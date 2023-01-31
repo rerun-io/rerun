@@ -33,9 +33,9 @@ pub struct PickingRayHit {
 }
 
 impl PickingRayHit {
-    fn from_instance_and_t(instance_hash: InstancePathHash, t: f32) -> Self {
+    fn from_instance_and_t(instance_path_hash: InstancePathHash, t: f32) -> Self {
         Self {
-            instance_path_hash: instance_hash,
+            instance_path_hash,
             ray_t: t,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,

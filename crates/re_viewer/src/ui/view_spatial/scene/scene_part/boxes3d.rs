@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{instance_hash_for_picking, ScenePart};
+use super::{instance_path_hash_for_picking, ScenePart};
 
 pub struct Boxes3DPart;
 
@@ -49,8 +49,13 @@ impl Boxes3DPart {
                        radius: Option<Radius>,
                        label: Option<Label>,
                        class_id: Option<ClassId>| {
-            let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
+            let instance_hash = instance_path_hash_for_picking(
+                ent_path,
+                instance,
+                entity_view,
+                props,
+                entity_highlight,
+            );
 
             let class_description = annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();

@@ -20,7 +20,7 @@ use crate::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
         view_spatial::{
-            scene::{scene_part::instance_hash_for_picking, Keypoints},
+            scene::{scene_part::instance_path_hash_for_picking, Keypoints},
             Label3D, SceneSpatial,
         },
         Annotations, DefaultColor,
@@ -173,7 +173,7 @@ impl Points3DPart {
             entity_view
                 .iter_instances()?
                 .map(|instance| {
-                    instance_hash_for_picking(
+                    instance_path_hash_for_picking(
                         ent_path,
                         instance,
                         entity_view,
