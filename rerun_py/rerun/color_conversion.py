@@ -1,5 +1,5 @@
 """Color conversion utilities."""
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
