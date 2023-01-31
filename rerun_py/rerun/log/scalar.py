@@ -50,8 +50,8 @@ def log_scalar(
 
     E.g. the following:
     ```
-    rerun.log_scalar("trig/sin", sin(t), label="sin(t)",
-    color=RED) rerun.log_scalar("trig/cos", cos(t), label="cos(t)", color=BLUE)
+    rerun.log_scalar("trig/sin", sin(t), label="sin(t)", color=RED)
+    rerun.log_scalar("trig/cos", cos(t), label="cos(t)", color=BLUE)
     ```
     will yield a single plot (space = `trig`), comprised of two lines
     (entity paths `trig/sin` and `trig/cos`).

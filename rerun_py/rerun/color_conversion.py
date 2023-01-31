@@ -1,5 +1,5 @@
 """Color conversion utilities."""
-from typing import Any, Sequence
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,7 +27,7 @@ def u8_array_to_rgba(arr: Sequence[int]) -> np.uint32:
     return np.uint32((red << 24) + (green << 16) + (blue << 8) + alpha)
 
 
-def linear_to_gamma_u8_value(linear: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.uint8]:
+def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
     """
     Transform color values from linear [0.0, 1.0] to gamma encoded [0, 255].
 
@@ -67,7 +67,7 @@ def linear_to_gamma_u8_value(linear: npt.NDArray[np.floating[Any]]) -> npt.NDArr
     return gamma.astype(np.uint8)
 
 
-def linear_to_gamma_u8_pixel(linear: npt.NDArray[np.floating[Any]]) -> npt.NDArray[np.uint8]:
+def linear_to_gamma_u8_pixel(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
     """
     Transform color pixels from linear [0, 1] to gamma encoded [0, 255].
 
