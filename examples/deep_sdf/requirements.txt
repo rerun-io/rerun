@@ -1,4 +1,4 @@
-rerun
+rerun-sdk
 mesh_to_sdf===0.0.14
 requests==2.28.1
 trimesh==3.15.2

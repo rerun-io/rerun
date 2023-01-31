@@ -46,43 +46,16 @@ jobs:
         run: |
           just py-lint
 
-  #py-run-examples:
-  #  name: Run Python examples (headless mode)
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - uses: actions/checkout@v3
-
-  #    - run: |
-  #        sudo apt-get update
-  #        sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
-
-  #    - name: Set up cargo cache
-  #      uses: Swatinem/rust-cache@v2
-  #      with:
-  #        # See: https://github.com/rerun-io/rerun/pull/497
-  #        save-if: ${{ github.event_name == 'push'}}
-
-  #    - name: Set up Python
-  #      uses: actions/setup-python@v4
-  #      with:
-  #        python-version: "3.8"
-  #        cache: "pip"
-  #        cache-dependency-path: "rerun_py/requirements-build.txt"
-
-  #    - name: Install Python dependencies
-  #      run: |
-  #        pip install --upgrade pip
-  #        pip install -r rerun_py/requirements-build.txt
-  #        pip install ./rerun_py
-
-  #    - name: Run Car example
-  #      run: |
-  #        pip install -r examples/car/requirements.txt && ./examples/car/main.py --headless
+  # ---------------------------------------------------------------------------
 
   macos:
     name: Build Python Wheels for MacOS
     runs-on: macos-latest
     #if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
+    strategy:
+      matrix:
+        target: ["x64", "universal2"]
+
     steps:
       - uses: actions/checkout@v3
 
@@ -100,7 +73,8 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-build.txt"
           architecture: x64
 
-      - name: Build wheel x86_64
+      - name: Build wheel - x86_64
+        if: matrix.target == "x64"
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
@@ -113,6 +87,7 @@ jobs:
             --sdist
 
       - name: Build wheel - universal2
+        if: matrix.target == "universal2"
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
@@ -135,12 +110,15 @@ jobs:
           name: wheels
           path: dist
 
+  # ---------------------------------------------------------------------------
+
   windows:
     name: Build Python Wheels for Windows
     runs-on: windows-latest-8-cores
     strategy:
       matrix:
-        target: [x64, x86]
+        #target: [x64, x86]
+        target: [x64]
     steps:
       - uses: actions/checkout@v3
 
@@ -179,6 +157,8 @@ jobs:
           name: wheels
           path: dist
 
+  # ---------------------------------------------------------------------------
+
   linux:
     name: Build Python Wheels for Linux
     runs-on: ubuntu-latest-16-cores
@@ -193,9 +173,8 @@ jobs:
 
       - name: Install Linux dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y lsb-release
-      #    sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+          apt-get update
+          apt-get install -y lsb-release
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
@@ -207,7 +186,6 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v4
         with:
-          #architecture: x64
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
@@ -230,15 +208,22 @@ jobs:
           pip install pytest
           cd rerun_py/tests && pytest
 
+      - name: Run Car example
+        run: |
+          pip install -r examples/car/requirements.txt && ./examples/car/main.py --headless
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist
 
+  # ---------------------------------------------------------------------------
+
   pre-release:
     name: Pre Release
     needs: [ macos, windows, linux ]
+    #if: github.ref == 'refs/heads/main'
     runs-on: "ubuntu-latest"
     steps:
       - name: Download Artifact
@@ -254,6 +239,8 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: dist/*
+
+  # ---------------------------------------------------------------------------
 
   release:
     name: Release
@@ -273,6 +260,8 @@ jobs:
         with:
           command: upload
           args: --skip-existing *
+
+  # ---------------------------------------------------------------------------
 
   py-docs:
     name: Build and deploy docs

@@ -208,36 +208,3 @@ jobs:
         with:
           command: deny
           args: --log-level=error check
-
-  # ---------------------------------------------------------------------------
-
-
-  # ---------------------------------------------------------------------------
-
-
-  # ---------------------------------------------------------------------------
-
-#  rs-maturin-macos:
-#    name: Build Rust SDK Maturin Wheel (macOS)
-#    runs-on: macos-latest
-#    if: "startsWith(github.ref, 'refs/tags/')" # slow and uses up a lot of CI minutes (charged 10x of ubuntu!)
-#    steps:
-#      - uses: actions/checkout@v3
-#
-#      - name: Set up cargo cache
-#        uses: Swatinem/rust-cache@v2
-#        with:
-#          # See: https://github.com/rerun-io/rerun/pull/497
-#          save-if: ${{ github.event_name == 'push'}}
-#
-#      - name: Setup python for building wheel
-#        uses: actions/setup-python@v4
-#        with:
-#          python-version: "3.8"
-#          cache: "pip"
-#
-#      - uses: messense/maturin-action@v1
-#        with:
-#          maturin-version: "0.13.5"
-#          command: build
-#          args: -m rerun_py/Cargo.toml  -o dist --universal2
