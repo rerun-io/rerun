@@ -45,6 +45,13 @@ impl ViewCategory {
     }
 }
 
+impl std::fmt::Display for ViewCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO(andreas): More than icon?
+        f.write_str(self.icon())
+    }
+}
+
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
 // TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered
