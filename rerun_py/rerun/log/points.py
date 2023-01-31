@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -117,7 +117,7 @@ def log_points(
     entity_path: str,
     positions: Union[Sequence[Sequence[float]], Optional[npt.NDArray[np.float32]]],
     *,
-    identifiers: Optional[Sequence[Union[str, int]]] = None,
+    identifiers: Optional[Union[Sequence[int], npt.NDArray[Any]]] = None,
     colors: Optional[Union[Color, Colors]] = None,
     radii: Optional[npt.ArrayLike] = None,
     labels: Optional[Sequence[str]] = None,
@@ -182,11 +182,10 @@ def log_points(
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
 
-    identifiers_np = np.array((), dtype="int64")
-    if identifiers:
+    identifiers_np = np.array((), dtype="uint64")
+    if identifiers is not None:
         try:
-            identifiers = [int(id) for id in identifiers]
-            identifiers_np = np.array(identifiers, dtype="int64")
+            identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
             _send_warning("Only integer identifies supported", 1)
 

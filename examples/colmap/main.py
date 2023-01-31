@@ -19,6 +19,8 @@ DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
 DATASET_NAME: Final = "colmap_rusty_car"
 DATASET_URL: Final = f"{DATASET_URL_BASE}/{DATASET_NAME}.zip"
+# When dataset filtering is turned on, drop views with less than this many valid points.
+FILTER_MIN_VISIBLE: Final = 500
 
 
 def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
@@ -92,29 +94,31 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         camera = cameras[image.camera_id]
         intrinsics = intrinsics_for_camera(camera)
 
-        unique_valid_3d_ids = set(id for id in image.point3D_ids if id != -1 and points3D.get(id) is not None)
-        sorted_3d_ids = sorted(unique_valid_3d_ids)
+        visible = [id != -1 and points3D.get(id) is not None for id in image.point3D_ids]
+        visible_ids = image.point3D_ids[visible]
 
-        visible_points = [points3D[id] for id in sorted_3d_ids]
-
-        if filter_output and len(visible_points) < 500:
+        if filter_output and len(visible_ids) < FILTER_MIN_VISIBLE:
             continue
+
+        visible_xyzs = [points3D[id] for id in visible_ids]
+        visible_xys = image.xys[visible]
 
         rr.set_time_sequence("frame", frame_idx)
 
-        points = [point.xyz for point in visible_points]  # type: ignore[union-attr]
-        point_colors = [point.rgb for point in visible_points]  # type: ignore[union-attr]
-        rr.log_points(f"world/points", points, identifiers=sorted_3d_ids, colors=point_colors)
+        points = [point.xyz for point in visible_xyzs]
+        point_colors = [point.rgb for point in visible_xyzs]
+
+        rr.log_points("world/points", points, colors=point_colors)
 
         rr.log_rigid3(
-            f"world/camera",
+            "world/camera",
             child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log camera intrinsics
         rr.log_pinhole(
-            f"world/camera/image",
+            "world/camera/image",
             child_from_parent=intrinsics,
             width=camera.width,
             height=camera.height,
@@ -122,7 +126,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
         rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
 
-        rr.log_points(f"world/camera/image/keypoints", image.xys)
+        rr.log_points(f"world/camera/image/keypoints", visible_xys, colors=point_colors)
 
 
 def main() -> None:
