@@ -1,7 +1,7 @@
 #[cfg(feature = "polars")]
 #[test]
 fn test_transform_to_polars() {
-    use re_log_types::{field_types::Quaternion, Pinhole, Rigid3, Transform};
+    use re_log_types::{component_types::Quaternion, Pinhole, Rigid3, Transform};
 
     let transforms = vec![
         Some(Transform::Pinhole(Pinhole {

@@ -6,7 +6,11 @@ from typing import Final, Iterable, Union, cast
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory, build_dense_union
+from rerun.components import (
+    REGISTERED_COMPONENT_NAMES,
+    ComponentTypeFactory,
+    build_dense_union,
+)
 
 from rerun import bindings
 
@@ -110,6 +114,6 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-TensorType = ComponentTypeFactory("TensorType", TensorArray, REGISTERED_FIELDS["rerun.tensor"])
+TensorType = ComponentTypeFactory("TensorType", TensorArray, REGISTERED_COMPONENT_NAMES["rerun.tensor"])
 
 pa.register_extension_type(TensorType())

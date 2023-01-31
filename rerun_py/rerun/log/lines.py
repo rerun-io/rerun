@@ -2,6 +2,10 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
+from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
+from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
 
 from rerun import bindings
@@ -13,7 +17,7 @@ __all__ = [
 
 
 def log_path(
-    obj_path: str,
+    entity_path: str,
     positions: Optional[npt.NDArray[np.float32]],
     *,
     stroke_width: Optional[float] = None,
@@ -26,22 +30,29 @@ def log_path(
     A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
-
+    ```
            2------3     5
           /        \   /
     0----1          \ /
                      4
+    ```
 
-    `positions`: a Nx3 array of points along the path.
-    `stroke_width`: width of the line.
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    Parameters
+    ----------
+    entity_path:
+        Path to the path in the space hierarchy
+    positions:
+        A Nx3 array of points along the path.
+    stroke_width:
+        Width of the line.
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    timeless:
+        If true, the path will be timeless (default: False).
+
     """
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.linestrip import LineStrip3DArray
-    from rerun.components.radius import RadiusArray
 
     comps = {}
 
@@ -57,11 +68,11 @@ def log_path(
         radii = _normalize_radii([stroke_width / 2])
         comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
 
 
 def log_line_segments(
-    obj_path: str,
+    entity_path: str,
     positions: npt.NDArray[np.float32],
     *,
     stroke_width: Optional[float] = None,
@@ -73,23 +84,30 @@ def log_line_segments(
 
     The points will be connected in even-odd pairs, like so:
 
+    ```
            2------3     5
                        /
     0----1            /
                      4
+    ```
 
-    `positions`: a Nx3 array of points along the path.
-    `stroke_width`: width of the line.
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    Parameters
+    ----------
+    entity_path:
+        Path to the line segments in the space hierarchy
+    positions:
+        A Nx3 array of points along the path.
+    stroke_width:
+        Width of the line.
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    timeless:
+        If true, the line segments will be timeless (default: False).
+
     """
     if positions is None:
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")
-
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.instance import InstanceArray
-    from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
-    from rerun.components.radius import RadiusArray
 
     # 0 = instanced, 1 = splat
     comps = [{}, {}]  # type: ignore[var-annotated]
@@ -122,8 +140,8 @@ def log_line_segments(
         radii = _normalize_radii([stroke_width / 2])
         comps[1]["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
         comps[1]["rerun.instance"] = InstanceArray.splat()
-        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)

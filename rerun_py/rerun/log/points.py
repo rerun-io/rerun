@@ -2,6 +2,11 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.annotation import ClassIdArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
+from rerun.components.label import LabelArray
+from rerun.components.point import Point2DArray, Point3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import (
     Color,
@@ -24,7 +29,7 @@ __all__ = [
 
 
 def log_point(
-    obj_path: str,
+    entity_path: str,
     position: Union[Sequence[float], npt.NDArray[np.float32], None],
     *,
     radius: Optional[float] = None,
@@ -37,37 +42,48 @@ def log_point(
     """
     Log a 2D or 3D point, with optional color.
 
-    Logging again to the same `obj_path` will replace the previous point.
-
-    * `position`: 2x1 or 3x1 array
-    * `radius`: Optional radius (make it a sphere)
-    * `color`: Optional color of the point
-    * `label`: Optional text to show with the point
-    * `class_id`: Optional class id for the point.
-        The class id provides color and label if not specified explicitly.
-    * `keypoint_id`: Optional key point id for the point, identifying it within a class.
-        If keypoint_id is passed but no class_id was specified, class_id will be set to 0.
-        This is useful to identify points within a single classification (which is identified with class_id).
-        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
+    Logging again to the same `entity_path` will replace the previous point.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
     or one color per point in a Nx3 or Nx4 numpy array.
 
-    Supported `dtype`s for `color`:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    Supported dtypes for `color`:
+    -----------------------------
+     - uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
-    * float32/float64: all color components should be in 0-1 linear space.
+     - float32/float64: all color components should be in 0-1 linear space.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the point in the space hierarchy.
+    position:
+        2x1 or 3x1 array.
+    radius:
+        Optional radius (make it a sphere).
+    color:
+        Optional color of the point.
+    label:
+        Optional text to show with the point.
+    class_id:
+        Optional class id for the point.
+        The class id provides color and label if not specified explicitly.
+        See [rerun.log_annotation_context][]
+    keypoint_id:
+        Optional key point id for the point, identifying it within a class.
+        If keypoint_id is passed but no class_id was specified, class_id will be set to 0.
+        This is useful to identify points within a single classification (which is identified with class_id).
+        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
+        See [rerun.log_annotation_context][]
+    timeless:
+        If true, the point will be timeless (default: False).
+
     """
     if keypoint_id is not None and class_id is None:
         class_id = 0
     if position is not None:
         position = np.require(position, dtype="float32")
-
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.point import Point2DArray, Point3DArray
 
     comps = {}
 
@@ -94,11 +110,11 @@ def log_point(
         class_ids = _normalize_ids([class_id])
         comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
 
 
 def log_points(
-    obj_path: str,
+    entity_path: str,
     positions: Union[Sequence[Sequence[float]], Optional[npt.NDArray[np.float32]]],
     *,
     identifiers: Optional[Sequence[Union[str, int]]] = None,
@@ -112,28 +128,45 @@ def log_points(
     """
     Log 2D or 3D points, with optional colors.
 
-    Logging again to the same `obj_path` will replace all the previous points.
-
-    * `positions`: Nx2 or Nx3 array
-    * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the points.
-      In the future these will be used to track the points over time.
-    * `color`: Optional colors of the points.
-    * `labels`: Optional per-point text to show with the points
-    * `class_ids`: Optional class ids for the points.
-        The class id provides colors and labels if not specified explicitly.
-    * `keypoint_ids`: Optional key point ids for the points, identifying them within a class.
-        If keypoint_ids are passed in but no class_ids were specified, class_id will be set to 0.
-        This is useful to identify points within a single classification (which is identified with class_id).
-        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
+    Logging again to the same `entity_path` will replace all the previous points.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
     or one color per point in a Nx3 or Nx4 numpy array.
 
-    Supported `dtype`s for `colors`:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    Supported dtypes for `colors`:
+    ------------------------------
+     - uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
-    * float32/float64: all color components should be in 0-1 linear space.
+     - float32/float64: all color components should be in 0-1 linear space.
+
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the points in the space hierarchy.
+    positions:
+        Nx2 or Nx3 array
+    identifiers:
+        Unique numeric id that shows up when you hover or select the point.
+    colors:
+        Optional colors of the points.
+    radii:
+        Optional radii (make it a sphere).
+    labels:
+        Optional per-point text to show with the points
+    class_ids:
+        Optional class ids for the points.
+        The class id provides colors and labels if not specified explicitly.
+        See [rerun.log_annotation_context][]
+    keypoint_ids:
+        Optional key point ids for the points, identifying them within a class.
+        If keypoint_ids are passed in but no class_ids were specified, class_id will be set to 0.
+        This is useful to identify points within a single classification (which is identified with class_id).
+        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
+        See [rerun.log_annotation_context][]
+    timeless:
+        If true, the points will be timeless (default: False).
 
     """
     if keypoint_ids is not None and class_ids is None:
@@ -148,12 +181,6 @@ def log_points(
     labels = _normalize_labels(labels)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
-
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.instance import InstanceArray
-    from rerun.components.label import LabelArray
-    from rerun.components.point import Point2DArray, Point3DArray
 
     identifiers_np = np.array((), dtype="int64")
     if identifiers:
@@ -199,8 +226,8 @@ def log_points(
         is_splat = len(keypoint_ids) == 1
         comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-    bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
         comps[1]["rerun.instance"] = InstanceArray.splat()
-        bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)

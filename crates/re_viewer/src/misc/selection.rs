@@ -1,15 +1,15 @@
 use itertools::Itertools;
-use re_data_store::{InstanceId, LogDb};
-use re_log_types::{DataPath, MsgId};
+use re_data_store::{InstancePath, LogDb};
+use re_log_types::{ComponentPath, MsgId};
 
 use crate::ui::SpaceViewId;
 
 #[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
     MsgId(MsgId),
-    DataPath(DataPath),
+    ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
-    Instance(Option<SpaceViewId>, InstanceId),
+    Instance(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
@@ -17,7 +17,7 @@ impl std::fmt::Debug for Selection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Selection::MsgId(s) => s.fmt(f),
-            Selection::DataPath(s) => s.fmt(f),
+            Selection::ComponentPath(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
             Selection::Instance(sid, path) => write!(f, "({sid:?}, {path})"),
             Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
@@ -29,7 +29,7 @@ impl Selection {
     /// If `false`, the selection is referring to data that is no longer present.
     pub(crate) fn is_valid(&self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) -> bool {
         match self {
-            Selection::DataPath(_) => true,
+            Selection::ComponentPath(_) => true,
             Selection::Instance(space_view_id, _) => space_view_id
                 .map(|space_view_id| blueprint.viewport.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
@@ -53,15 +53,19 @@ impl Selection {
     pub fn kind(self: &Selection) -> &'static str {
         match self {
             Selection::MsgId(_) => "Message",
-            Selection::Instance(space_view_id, _) => {
-                if space_view_id.is_some() {
-                    "Data Blueprint"
-                } else {
-                    "Instance"
+            Selection::Instance(space_view_id, instance_path) => {
+                match (
+                    instance_path.instance_index.is_specific(),
+                    space_view_id.is_some(),
+                ) {
+                    (true, true) => "Entity Instance Blueprint",
+                    (true, false) => "Entity Instance",
+                    (false, true) => "Entity Blueprint",
+                    (false, false) => "Entity",
                 }
             }
-            Selection::DataPath(_) => "Field",
-            Selection::SpaceView(_) => "SpaceView",
+            Selection::ComponentPath(_) => "Entity Component",
+            Selection::SpaceView(_) => "Space View",
             Selection::DataBlueprintGroup(_, _) => "Group",
         }
     }

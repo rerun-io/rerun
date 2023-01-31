@@ -2,6 +2,13 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.annotation import ClassIdArray
+from rerun.components.box import Box3DArray
+from rerun.components.color import ColorRGBAArray
+from rerun.components.label import LabelArray
+from rerun.components.quaternion import QuaternionArray
+from rerun.components.radius import RadiusArray
+from rerun.components.vec import Vec3DArray
 from rerun.log import _normalize_colors, _normalize_ids, _normalize_radii
 
 from rerun import bindings
@@ -12,7 +19,7 @@ __all__ = [
 
 
 def log_obb(
-    obj_path: str,
+    entity_path: str,
     half_size: Optional[npt.ArrayLike],
     position: Optional[npt.ArrayLike] = None,
     rotation_q: Optional[npt.ArrayLike] = None,
@@ -25,23 +32,28 @@ def log_obb(
     """
     Log a 3D oriented bounding box, defined by its half size.
 
-    `half_size`: Array with [x, y, z] half dimensions of the OBB.
-    `position`: Array with [x, y, z] position of the OBB in world space.
-    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
-    `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
-    `stroke_width`: Optional width of the OBB edges.
-    `label` Optional text label placed at `position`.
-    `class_id`: Optional class id for the OBB.
-                 The class id provides colors and labels if not specified explicitly.
-    """
-    from rerun.components.annotation import ClassIdArray
-    from rerun.components.box import Box3DArray
-    from rerun.components.color import ColorRGBAArray
-    from rerun.components.label import LabelArray
-    from rerun.components.quaternion import QuaternionArray
-    from rerun.components.radius import RadiusArray
-    from rerun.components.vec import Vec3DArray
+    Parameters
+    ----------
+    entity_path:
+        The path to the oriented bounding box in the space hierarchy.
+    half_size:
+        Array with [x, y, z] half dimensions of the OBB.
+    position:
+        Array with [x, y, z] position of the OBB in world space.
+    rotation_q:
+        Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    stroke_width:
+        Optional width of the OBB edges.
+    label:
+        Optional text label placed at `position`.
+    class_id:
+        Optional class id for the OBB.  The class id provides colors and labels if not specified explicitly.
+    timeless:
+        If true, the bounding box will be timeless (default: False).
 
+    """
     comps = {}
 
     if half_size is not None:
@@ -84,4 +96,4 @@ def log_obb(
         class_ids = _normalize_ids([class_id])
         comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(f"{obj_path}", components=comps, timeless=timeless)
+    bindings.log_arrow_msg(f"{entity_path}", components=comps, timeless=timeless)

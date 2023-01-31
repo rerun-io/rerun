@@ -1,6 +1,5 @@
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, DataMsg, LogMsg, LoggedData, PathOpMsg,
-    RecordingInfo, TypeMsg,
+    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, EntityPathOpMsg, LogMsg, RecordingInfo,
 };
 
 use crate::{misc::ViewerContext, ui::UiVerbosity};
@@ -17,9 +16,7 @@ impl DataUi for LogMsg {
     ) {
         match self {
             LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::EntityPathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::Goodbye(_) => {
                 ui.label("Goodbye");
@@ -70,23 +67,7 @@ impl DataUi for BeginRecordingMsg {
     }
 }
 
-impl DataUi for TypeMsg {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ui.horizontal(|ui| {
-            ui.code(self.type_path.to_string());
-            ui.label(" = ");
-            ui.code(format!("{:?}", self.obj_type));
-        });
-    }
-}
-
-impl DataUi for DataMsg {
+impl DataUi for EntityPathOpMsg {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -94,64 +75,7 @@ impl DataUi for DataMsg {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let DataMsg {
-            msg_id: _,
-            time_point,
-            data_path,
-            data,
-        } = self;
-
-        egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-            ui.monospace("data_path:");
-            ctx.data_path_button(ui, data_path);
-            ui.end_row();
-
-            ui.monospace("time_point:");
-            time_point.data_ui(ctx, ui, verbosity, query);
-            ui.end_row();
-
-            ui.monospace("data:");
-            data.data_ui(ctx, ui, verbosity, query);
-            ui.end_row();
-        });
-    }
-}
-
-impl DataUi for LoggedData {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            LoggedData::Null(data_type) => {
-                ui.label(format!("null: {:?}", data_type));
-            }
-            LoggedData::Batch { data, .. } => {
-                ui.label(format!("batch: {:?}", data));
-            }
-            LoggedData::Single(data) => data.data_ui(ctx, ui, verbosity, query),
-            LoggedData::BatchSplat(data) => {
-                ui.horizontal(|ui| {
-                    ui.label("Batch Splat:");
-                    data.data_ui(ctx, ui, verbosity, query);
-                });
-            }
-        }
-    }
-}
-
-impl DataUi for PathOpMsg {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        let PathOpMsg {
+        let EntityPathOpMsg {
             msg_id: _,
             time_point,
             path_op,
@@ -180,13 +104,13 @@ impl DataUi for ArrowMsg {
         match self.try_into() {
             Ok(MsgBundle {
                 msg_id: _,
-                obj_path,
+                entity_path,
                 time_point,
                 components,
             }) => {
                 egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-                    ui.monospace("obj_path:");
-                    ctx.obj_path_button(ui, None, &obj_path);
+                    ui.monospace("entity_path:");
+                    ctx.entity_path_button(ui, None, &entity_path);
                     ui.end_row();
 
                     ui.monospace("time_point:");
@@ -199,7 +123,7 @@ impl DataUi for ArrowMsg {
                 });
             }
             Err(e) => {
-                ui.label(format!("Error parsing ArrowMsg: {e}"));
+                ui.label(ctx.re_ui.error_text(format!("Error parsing ArrowMsg: {e}")));
             }
         }
     }

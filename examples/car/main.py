@@ -21,8 +21,8 @@ def log_car_data() -> None:
     rr.log_view_coordinates("world", up="-Y", timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
-        # This will assign logged objects a timeline called `frame_nr`.
-        # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
+        # This will assign logged entities a timeline called `frame_nr`.
+        # In the viewer you can select how to view entities - by frame_nr or the built-in `log_time`.
         rr.set_time_sequence("frame_nr", sample.frame_idx)
 
         # We log the projected points in the "world" space:

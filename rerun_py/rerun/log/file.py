@@ -17,27 +17,30 @@ __all__ = [
 
 
 class MeshFormat(Enum):
+    """Mesh file format."""
+
     # Needs some way of logging materials too, or adding some default material to the
     # viewer.
     # GLTF = "GLTF"
-
-    # Binary glTF
     GLB = "GLB"
+    """glTF binary format."""
 
     # Needs some way of logging materials too, or adding some default material to the
     # viewer.
-    # Wavefront .obj
     OBJ = "OBJ"
+    """Wavefront .obj format."""
 
 
 @dataclass
 class ImageFormat(Enum):
-    # """ jpeg """"
+    """Image file format."""
+
     JPEG = "jpeg"
+    """JPEG format."""
 
 
 def log_mesh_file(
-    obj_path: str,
+    entity_path: str,
     mesh_format: MeshFormat,
     mesh_file: bytes,
     *,
@@ -59,6 +62,19 @@ def log_mesh_file(
         [0, 0, 1, 0]])
     ```
 
+    Parameters
+    ----------
+    entity_path:
+        Path to the mesh in the space hierarchy
+    mesh_format:
+        Format of the mesh file
+    mesh_file:
+        Contents of the mesh file
+    transform:
+        Optional 3x4 affine transform matrix applied to the mesh
+    timeless:
+        If true, the mesh will be timeless (default: False)
+
     """
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
@@ -66,11 +82,11 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
+    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
-    obj_path: str,
+    entity_path: str,
     img_path: Path,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
@@ -79,8 +95,20 @@ def log_image_file(
     Log the contents of an image file (only JPEGs supported for now).
 
     If no `img_format` is specified, we will try and guess it.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the image in the space hierarchy.
+    img_path:
+        Path to the image file.
+    img_format:
+        Format of the image file.
+    timeless:
+        If true, the image will be timeless (default: False).
+
     """
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(obj_path, img_path, img_format, timeless)
+    bindings.log_image_file(entity_path, img_path, img_format, timeless)

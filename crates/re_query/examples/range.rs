@@ -6,10 +6,10 @@
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
 use re_log_types::{
+    component_types::{Instance, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{try_build_msg_bundle1, Component as _},
-    MsgId, ObjPath as EntityPath, TimeType,
+    EntityPath, MsgId, TimeType,
 };
 use re_query::range_entity_with_primary;
 

@@ -285,7 +285,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
 #[cfg(feature = "web")]
 async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
     let web_port = 9090;
-    let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, rerun_ws_server_url);
+    let viewer_url = format!("http://127.0.0.1:{web_port}?url={rerun_ws_server_url}");
 
     let web_server = re_web_server::WebServer::new(web_port);
     let web_server_handle = tokio::spawn(web_server.serve());

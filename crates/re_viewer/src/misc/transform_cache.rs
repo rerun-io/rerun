@@ -1,10 +1,10 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, ObjectsProperties};
+use re_data_store::{log_db::EntityDb, query_transform, EntityPath, EntityPropertyMap, EntityTree};
 
 use crate::misc::TimeControl;
 
-/// Provides transforms from an object to a chosen reference space for all elements in the scene
+/// Provides transforms from an entity to a chosen reference space for all elements in the scene
 /// for the currently selected time & timeline.
 ///
 /// The renderer then uses this reference space as its world space,
@@ -15,16 +15,16 @@ use crate::misc::TimeControl;
 pub struct TransformCache {
     /// All transforms provided are relative to this reference path.
     #[allow(dead_code)]
-    reference_path: ObjPath,
+    reference_path: EntityPath,
 
-    /// Alll reachable objects.
-    reference_from_obj_per_object: IntMap<ObjPath, glam::Mat4>,
+    /// All reachable entities.
+    reference_from_entity_per_entity: IntMap<EntityPath, glam::Mat4>,
 
     /// All unreachable descendant paths of `reference_path`.
-    unreachable_descendants: Vec<(ObjPath, UnreachableTransform)>,
+    unreachable_descendants: Vec<(EntityPath, UnreachableTransform)>,
 
     /// The first parent of reference_path that is no longer reachable.
-    first_unreachable_parent: (ObjPath, UnreachableTransform),
+    first_unreachable_parent: (EntityPath, UnreachableTransform),
 }
 
 #[derive(Clone, Copy)]
@@ -40,29 +40,29 @@ pub enum UnreachableTransform {
 }
 
 impl TransformCache {
-    /// Determines transforms for all objects relative to a root path which serves as the "reference".
+    /// Determines transforms for all entities relative to a root path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///
-    /// This means that the objects in `reference_space` get the identity transform and all other
-    /// objects are transformed relative to it.
+    /// This means that the entities in `reference_space` get the identity transform and all other
+    /// entities are transformed relative to it.
     pub fn determine_transforms(
-        obj_db: &ObjDb,
+        entity_db: &EntityDb,
         time_ctrl: &TimeControl,
-        root_path: &ObjPath,
-        obj_properties: &ObjectsProperties,
+        root_path: &EntityPath,
+        entity_prop_map: &EntityPropertyMap,
     ) -> Self {
         crate::profile_function!();
 
         let mut transforms = TransformCache {
             reference_path: root_path.clone(),
-            reference_from_obj_per_object: Default::default(),
+            reference_from_entity_per_entity: Default::default(),
             unreachable_descendants: Default::default(),
-            first_unreachable_parent: (ObjPath::root(), UnreachableTransform::Unconnected),
+            first_unreachable_parent: (EntityPath::root(), UnreachableTransform::Unconnected),
         };
 
-        // Find the object path tree for the root.
+        // Find the entity path tree for the root.
         let mut parent_tree_stack = Vec::new();
-        let mut current_tree = &obj_db.tree;
+        let mut current_tree = &entity_db.tree;
         'outer: while &current_tree.path != root_path {
             for child_tree in current_tree.children.values() {
                 if root_path == &child_tree.path || root_path.is_descendant_of(&child_tree.path) {
@@ -73,7 +73,7 @@ impl TransformCache {
             }
             // Should never reach this
             re_log::warn_once!(
-                "Path {} doesn't seem to be part of the global object tree",
+                "Path {} doesn't seem to be part of the global entity tree",
                 root_path
             );
             return transforms;
@@ -84,9 +84,9 @@ impl TransformCache {
         // Child transforms of this space
         transforms.gather_descendants_transforms(
             current_tree,
-            obj_db,
+            entity_db,
             &query,
-            obj_properties,
+            entity_prop_map,
             glam::Mat4::IDENTITY,
             false,
         );
@@ -102,10 +102,14 @@ impl TransformCache {
                 break;
             }
 
-            // Note that the transform at the reference is the first that needs to be inversed to "break out" of its hierarchy.
+            // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
-            match inverse_transform_at(&current_tree.path, obj_db, &query, &mut encountered_pinhole)
-            {
+            match inverse_transform_at(
+                &current_tree.path,
+                entity_db,
+                &query,
+                &mut encountered_pinhole,
+            ) {
                 Err(unreachable_reason) => {
                     transforms.first_unreachable_parent =
                         (parent_tree.path.clone(), unreachable_reason);
@@ -120,9 +124,9 @@ impl TransformCache {
             // (skip over everything at and under `current_tree` automatically)
             transforms.gather_descendants_transforms(
                 parent_tree,
-                obj_db,
+                entity_db,
                 &query,
-                obj_properties,
+                entity_prop_map,
                 reference_from_ancestor,
                 encountered_pinhole,
             );
@@ -135,19 +139,22 @@ impl TransformCache {
 
     fn gather_descendants_transforms(
         &mut self,
-        tree: &ObjectTree,
-        obj_db: &ObjDb,
+        tree: &EntityTree,
+        entity_db: &EntityDb,
         query: &LatestAtQuery,
-        obj_properties: &ObjectsProperties,
-        reference_from_obj: glam::Mat4,
+        entity_properties: &EntityPropertyMap,
+        reference_from_entity: glam::Mat4,
         encountered_pinhole: bool,
     ) {
-        match self.reference_from_obj_per_object.entry(tree.path.clone()) {
+        match self
+            .reference_from_entity_per_entity
+            .entry(tree.path.clone())
+        {
             std::collections::hash_map::Entry::Occupied(_) => {
                 return;
             }
             std::collections::hash_map::Entry::Vacant(e) => {
-                e.insert(reference_from_obj);
+                e.insert(reference_from_entity);
             }
         }
 
@@ -155,8 +162,8 @@ impl TransformCache {
             let mut encountered_pinhole = encountered_pinhole;
             let reference_from_child = match transform_at(
                 &child_tree.path,
-                obj_db,
-                obj_properties,
+                entity_db,
+                entity_properties,
                 query,
                 &mut encountered_pinhole,
             ) {
@@ -165,44 +172,46 @@ impl TransformCache {
                         .push((child_tree.path.clone(), unreachable_reason));
                     continue;
                 }
-                Ok(None) => reference_from_obj,
-                Ok(Some(child_from_parent)) => reference_from_obj * child_from_parent,
+                Ok(None) => reference_from_entity,
+                Ok(Some(child_from_parent)) => reference_from_entity * child_from_parent,
             };
             self.gather_descendants_transforms(
                 child_tree,
-                obj_db,
+                entity_db,
                 query,
-                obj_properties,
+                entity_properties,
                 reference_from_child,
                 encountered_pinhole,
             );
         }
     }
 
-    /// Retrieves the transform of on object from its local system to the space of the reference.
+    /// Retrieves the transform of on entity from its local system to the space of the reference.
     ///
     /// Returns None if the path is not reachable.
-    pub fn reference_from_obj(&self, obj_path: &ObjPath) -> Option<macaw::Mat4> {
-        self.reference_from_obj_per_object.get(obj_path).cloned()
+    pub fn reference_from_entity(&self, entity_path: &EntityPath) -> Option<macaw::Mat4> {
+        self.reference_from_entity_per_entity
+            .get(entity_path)
+            .cloned()
     }
 
     // This method isn't currently implemented, but we might need it in the future.
     // All the necessary data on why a subtree isn't reachable is already stored.
     //
     // Returns why (if actually) a path isn't reachable.
-    // pub fn unreachable_reason(&self, _obj_path: &ObjPath) -> Option<UnreachableTransformReason> {
+    // pub fn unreachable_reason(&self, _entity_path: &EntityPath) -> Option<UnreachableTransformReason> {
     //     None
     // }
 }
 
 fn transform_at(
-    obj_path: &ObjPath,
-    obj_db: &ObjDb,
-    obj_properties: &ObjectsProperties,
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    entity_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(transform) = query_transform(obj_db, obj_path, query) {
+    if let Some(transform) = query_transform(entity_db, entity_path, query) {
         match transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().to_mat4())),
             // If we're connected via 'unknown' it's not reachable
@@ -218,8 +227,8 @@ fn transform_at(
                     // Images are spanned in their local x/y space.
                     // Center it and move it along z, scaling the further we move.
 
-                    let distance = obj_properties
-                        .get(obj_path)
+                    let distance = entity_properties
+                        .get(entity_path)
                         .pinhole_image_plane_distance(&pinhole);
 
                     let focal_length = pinhole.focal_length_in_pixels();
@@ -244,12 +253,12 @@ fn transform_at(
 }
 
 fn inverse_transform_at(
-    obj_path: &ObjPath,
-    obj_db: &ObjDb,
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(parent_transform) = query_transform(obj_db, obj_path, query) {
+    if let Some(parent_transform) = query_transform(entity_db, entity_path, query) {
         match parent_transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.child_from_parent().to_mat4())),
             // If we're connected via 'unknown', everything except whats under `parent_tree` is unreachable

@@ -16,7 +16,7 @@
 //! [`TimePoint`].
 //!
 //! The `components` schema is semi-flexible: it should be a [`StructArray`] with one column per
-//! component. Each component schema is defined in [`crate::field_types`].
+//! component. Each component schema is defined in [`crate::component_types`].
 
 use std::collections::BTreeMap;
 
@@ -65,7 +65,9 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{parse_obj_path, ArrowMsg, ComponentName, MsgId, ObjPath, PathParseError, TimePoint};
+use crate::{
+    parse_entity_path, ArrowMsg, ComponentName, EntityPath, MsgId, PathParseError, TimePoint,
+};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -91,7 +93,7 @@ pub trait Component: ArrowField {
 /// # Example
 ///
 /// ```
-/// # use re_log_types::{field_types::Point2D, msg_bundle::ComponentBundle};
+/// # use re_log_types::{component_types::Point2D, msg_bundle::ComponentBundle};
 /// let points = vec![Point2D { x: 0.0, y: 1.0 }];
 /// let bundle = ComponentBundle::try_from(points).unwrap();
 /// ```
@@ -159,14 +161,14 @@ where
 ///
 /// # Example
 ///
-/// Create a `MsgBundle` and add a component consisting of 2 [`crate::field_types::Rect2D`] values:
+/// Create a `MsgBundle` and add a component consisting of 2 [`crate::component_types::Rect2D`] values:
 /// ```
-/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
+/// # use re_log_types::{component_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
 /// let component = vec![
 ///     Rect2D::from_xywh(0.0, 0.0, 0.0, 0.0),
 ///     Rect2D::from_xywh(1.0, 1.0, 0.0, 0.0)
 /// ];
-/// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
+/// let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
 /// println!("{:?}", &bundle.components[0].value);
 /// ```
@@ -184,8 +186,8 @@ where
 /// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
 ///
 /// ```
-/// # use re_log_types::{ArrowMsg, field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
-/// # let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
+/// # use re_log_types::{ArrowMsg, component_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
+/// # let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
 /// let msg: ArrowMsg = bundle.try_into().unwrap();
 /// dbg!(&msg);
@@ -205,7 +207,7 @@ where
 pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
-    pub obj_path: ObjPath,
+    pub entity_path: EntityPath,
     pub time_point: TimePoint,
     pub components: Vec<ComponentBundle>,
 }
@@ -217,13 +219,13 @@ impl MsgBundle {
     /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
-        obj_path: ObjPath,
+        entity_path: EntityPath,
         time_point: TimePoint,
         components: Vec<ComponentBundle>,
     ) -> Self {
         let mut this = Self {
             msg_id,
-            obj_path,
+            entity_path,
             time_point,
             components,
         };
@@ -315,7 +317,7 @@ impl std::fmt::Display for MsgBundle {
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
             "MsgBundle '{}' @ {:?}:\n{table}",
-            self.obj_path, self.time_point
+            self.entity_path, self.time_point
         ))
     }
 }
@@ -363,12 +365,12 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             chunk,
         } = msg;
 
-        let obj_path_cmp = schema
+        let entity_path_cmp = schema
             .metadata
             .get(ENTITY_PATH_KEY)
             .ok_or(MsgBundleError::MissingEntityPath)
             .and_then(|path| {
-                parse_obj_path(path.as_str()).map_err(MsgBundleError::PathParseError)
+                parse_entity_path(path.as_str()).map_err(MsgBundleError::PathParseError)
             })?;
 
         let time_point = extract_timelines(schema, chunk)?;
@@ -376,7 +378,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
 
         Ok(Self {
             msg_id: *msg_id,
-            obj_path: obj_path_cmp.into(),
+            entity_path: entity_path_cmp.into(),
             time_point,
             components,
         })
@@ -392,7 +394,8 @@ impl TryFrom<MsgBundle> for ArrowMsg {
         let mut schema = Schema::default();
         let mut cols: Vec<Box<dyn Array>> = Vec::new();
 
-        schema.metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), bundle.obj_path.to_string())]);
+        schema.metadata =
+            BTreeMap::from([(ENTITY_PATH_KEY.into(), bundle.entity_path.to_string())]);
 
         // Build & pack timelines
         let timelines_field = Field::new(COL_TIMELINES, TimePoint::data_type(), false);
@@ -419,7 +422,7 @@ impl TryFrom<MsgBundle> for ArrowMsg {
 /// Extract a [`TimePoint`] from the "timelines" column. This function finds the "timelines" field
 /// in `chunk` and deserializes the values into a `TimePoint` using the
 /// [`arrow2_convert::deserialize::ArrowDeserialize`] trait.
-fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<TimePoint> {
+pub fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<TimePoint> {
     use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 
     let timelines = schema
@@ -489,19 +492,19 @@ pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
 /// Helper to build a `MessageBundle` from 1 component
 pub fn try_build_msg_bundle1<O, T, C0>(
     msg_id: MsgId,
-    into_obj_path: O,
+    into_entity_path: O,
     into_time_point: T,
     into_bundles: C0,
 ) -> Result<MsgBundle>
 where
-    O: Into<ObjPath>,
+    O: Into<EntityPath>,
     T: Into<TimePoint>,
     C0: TryInto<ComponentBundle>,
     MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
 {
     Ok(MsgBundle::new(
         msg_id,
-        into_obj_path.into(),
+        into_entity_path.into(),
         into_time_point.into(),
         vec![into_bundles.try_into()?],
     ))
@@ -510,12 +513,12 @@ where
 /// Helper to build a `MessageBundle` from 2 components
 pub fn try_build_msg_bundle2<O, T, C0, C1>(
     msg_id: MsgId,
-    into_obj_path: O,
+    into_entity_path: O,
     into_time_point: T,
     into_bundles: (C0, C1),
 ) -> Result<MsgBundle>
 where
-    O: Into<ObjPath>,
+    O: Into<EntityPath>,
     T: Into<TimePoint>,
     C0: TryInto<ComponentBundle>,
     C1: TryInto<ComponentBundle>,
@@ -524,7 +527,7 @@ where
 {
     Ok(MsgBundle::new(
         msg_id,
-        into_obj_path.into(),
+        into_entity_path.into(),
         into_time_point.into(),
         vec![into_bundles.0.try_into()?, into_bundles.1.try_into()?],
     ))
@@ -533,12 +536,12 @@ where
 /// Helper to build a `MessageBundle` from 3 components
 pub fn try_build_msg_bundle3<O, T, C0, C1, C2>(
     msg_id: MsgId,
-    into_obj_path: O,
+    into_entity_path: O,
     into_time_point: T,
     into_bundles: (C0, C1, C2),
 ) -> Result<MsgBundle>
 where
-    O: Into<ObjPath>,
+    O: Into<EntityPath>,
     T: Into<TimePoint>,
     C0: TryInto<ComponentBundle>,
     C1: TryInto<ComponentBundle>,
@@ -549,7 +552,7 @@ where
 {
     Ok(MsgBundle::new(
         msg_id,
-        into_obj_path.into(),
+        into_entity_path.into(),
         into_time_point.into(),
         vec![
             into_bundles.0.try_into()?,

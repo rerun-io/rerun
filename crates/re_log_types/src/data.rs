@@ -2,587 +2,9 @@ use std::sync::Arc;
 
 use half::f16;
 
-use crate::{field_types, impl_into_enum, AnnotationContext, Mesh3D, ObjPath, ViewCoordinates};
+use crate::component_types;
 
-pub use crate::field_types::{Arrow3D, Pinhole, Rigid3, Transform};
-
-// ----------------------------------------------------------------------------
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DataType {
-    // 1D:
-    Bool,
-    I32,
-    F32,
-    F64,
-    Color,
-    String,
-
-    // ----------------------------
-    // 2D:
-    Vec2,
-    BBox2D,
-
-    // ----------------------------
-    // 3D:
-    Vec3,
-    Box3,
-    Mesh3D,
-    Arrow3D,
-
-    // ----------------------------
-    // N-D:
-    Tensor,
-
-    /// A homogenous vector of data,
-    /// represented by [`DataVec`]
-    DataVec,
-
-    // ----------------------------
-    ObjPath,
-
-    Transform,
-    ViewCoordinates,
-    AnnotationContext,
-}
-
-// ----------------------------------------------------------------------------
-
-/// Marker traits for types we allow in the the data store.
-///
-/// Everything in [`data_types`] implement this, and nothing else.
-pub trait DataTrait: 'static + Clone {
-    fn data_typ() -> DataType;
-}
-
-pub mod data_types {
-    use crate::field_types::Mesh3D;
-
-    use super::DataTrait;
-    use super::DataType;
-    use super::Transform;
-
-    impl DataTrait for super::DataVec {
-        fn data_typ() -> DataType {
-            DataType::DataVec
-        }
-    }
-
-    impl DataTrait for bool {
-        fn data_typ() -> DataType {
-            DataType::Bool
-        }
-    }
-
-    impl DataTrait for i32 {
-        fn data_typ() -> DataType {
-            DataType::I32
-        }
-    }
-
-    impl DataTrait for f32 {
-        fn data_typ() -> DataType {
-            DataType::F32
-        }
-    }
-
-    impl DataTrait for f64 {
-        fn data_typ() -> DataType {
-            DataType::F64
-        }
-    }
-
-    // TODO(emilk): consider using `Arc<str>` or similar instead, for faster cloning.
-    impl DataTrait for String {
-        fn data_typ() -> DataType {
-            DataType::String
-        }
-    }
-
-    /// RGBA unmultiplied/separate alpha
-    pub type Color = [u8; 4];
-    impl DataTrait for Color {
-        fn data_typ() -> DataType {
-            DataType::Color
-        }
-    }
-
-    // ---
-
-    pub type Vec2 = [f32; 2];
-    impl DataTrait for Vec2 {
-        fn data_typ() -> DataType {
-            DataType::Vec2
-        }
-    }
-
-    impl DataTrait for crate::BBox2D {
-        fn data_typ() -> DataType {
-            DataType::BBox2D
-        }
-    }
-
-    impl DataTrait for crate::ClassicTensor {
-        fn data_typ() -> DataType {
-            DataType::Tensor
-        }
-    }
-
-    // ---
-
-    pub type Vec3 = [f32; 3];
-    impl DataTrait for Vec3 {
-        fn data_typ() -> DataType {
-            DataType::Vec3
-        }
-    }
-
-    impl DataTrait for crate::Box3 {
-        fn data_typ() -> DataType {
-            DataType::Box3
-        }
-    }
-
-    impl DataTrait for Mesh3D {
-        fn data_typ() -> DataType {
-            DataType::Mesh3D
-        }
-    }
-
-    impl DataTrait for crate::Arrow3D {
-        fn data_typ() -> DataType {
-            DataType::Arrow3D
-        }
-    }
-
-    // ---
-
-    impl DataTrait for crate::ObjPath {
-        fn data_typ() -> DataType {
-            DataType::ObjPath
-        }
-    }
-
-    impl DataTrait for Transform {
-        fn data_typ() -> DataType {
-            DataType::Transform
-        }
-    }
-
-    impl DataTrait for crate::ViewCoordinates {
-        fn data_typ() -> DataType {
-            DataType::ViewCoordinates
-        }
-    }
-
-    impl DataTrait for crate::AnnotationContext {
-        fn data_typ() -> DataType {
-            DataType::AnnotationContext
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Data {
-    // 1D:
-    Bool(bool),
-    I32(i32),
-    F32(f32),
-    F64(f64),
-    Color(data_types::Color),
-    String(String),
-
-    // ----------------------------
-    // 2D:
-    Vec2(data_types::Vec2),
-    BBox2D(BBox2D),
-
-    // ----------------------------
-    // 3D:
-    Vec3(data_types::Vec3),
-    Box3(Box3),
-    Mesh3D(Mesh3D),
-    Arrow3D(Arrow3D),
-
-    // ----------------------------
-    // N-D:
-    Tensor(ClassicTensor),
-
-    /// Homogenous vector
-    DataVec(DataVec),
-
-    // ----------------------------
-    // Meta:
-    /// One object referring to another (a pointer).
-    ObjPath(ObjPath),
-
-    Transform(crate::field_types::Transform),
-    ViewCoordinates(ViewCoordinates),
-    AnnotationContext(AnnotationContext),
-}
-
-impl Data {
-    #[inline]
-    pub fn data_type(&self) -> DataType {
-        match self {
-            Self::Bool(_) => DataType::Bool,
-            Self::I32(_) => DataType::I32,
-            Self::F32(_) => DataType::F32,
-            Self::F64(_) => DataType::F64,
-            Self::Color(_) => DataType::Color,
-            Self::String(_) => DataType::String,
-
-            Self::Vec2(_) => DataType::Vec2,
-            Self::BBox2D(_) => DataType::BBox2D,
-
-            Self::Vec3(_) => DataType::Vec3,
-            Self::Box3(_) => DataType::Box3,
-            Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Arrow3D(_) => DataType::Arrow3D,
-
-            Self::Tensor(_) => DataType::Tensor,
-            Self::DataVec(_) => DataType::DataVec,
-
-            Self::ObjPath(_) => DataType::ObjPath,
-
-            Self::Transform(_) => DataType::Transform,
-            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
-            Self::AnnotationContext(_) => DataType::AnnotationContext,
-        }
-    }
-}
-
-impl_into_enum!(bool, Data, Bool);
-impl_into_enum!(i32, Data, I32);
-impl_into_enum!(f32, Data, F32);
-impl_into_enum!(f64, Data, F64);
-impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(ClassicTensor, Data, Tensor);
-impl_into_enum!(Box3, Data, Box3);
-impl_into_enum!(Mesh3D, Data, Mesh3D);
-impl_into_enum!(ObjPath, Data, ObjPath);
-impl_into_enum!(Transform, Data, Transform);
-impl_into_enum!(ViewCoordinates, Data, ViewCoordinates);
-impl_into_enum!(AnnotationContext, Data, AnnotationContext);
-
-// ----------------------------------------------------------------------------
-
-/// Vectorized, type-erased version of [`Data`].
-// TODO(emilk): we should generalize this to a tensor.
-#[derive(Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DataVec {
-    Bool(Vec<bool>),
-    I32(Vec<i32>),
-    F32(Vec<f32>),
-    F64(Vec<f64>),
-    Color(Vec<data_types::Color>),
-    String(Vec<String>),
-
-    Vec2(Vec<data_types::Vec2>),
-    BBox2D(Vec<BBox2D>),
-
-    Vec3(Vec<data_types::Vec3>),
-    Box3(Vec<Box3>),
-    Mesh3D(Vec<Mesh3D>),
-    Arrow3D(Vec<Arrow3D>),
-
-    Tensor(Vec<ClassicTensor>),
-
-    /// A vector of [`DataVec`] (vector of vectors)
-    DataVec(Vec<DataVec>),
-
-    ObjPath(Vec<ObjPath>),
-
-    Transform(Vec<Transform>),
-    ViewCoordinates(Vec<ViewCoordinates>),
-    AnnotationContext(Vec<AnnotationContext>),
-}
-
-/// Do the same thing with all members of a [`Data`].
-///
-/// ```
-/// # use re_log_types::{Data, data_map};
-/// # let data: Data = Data::F32(0.0);
-/// data_map!(data, |data| { dbg!(data); });
-/// ```
-#[macro_export]
-macro_rules! data_map(
-    ($data: expr, |$value: pat_param| $action: expr) => ({
-        match $data {
-            $crate::Data::Bool($value) => $action,
-            $crate::Data::I32($value) => $action,
-            $crate::Data::F32($value) => $action,
-            $crate::Data::F64($value) => $action,
-            $crate::Data::Color($value) => $action,
-            $crate::Data::String($value) => $action,
-            $crate::Data::Vec2($value) => $action,
-            $crate::Data::BBox2D($value) => $action,
-            $crate::Data::Vec3($value) => $action,
-            $crate::Data::Box3($value) => $action,
-            $crate::Data::Mesh3D($value) => $action,
-            $crate::Data::Arrow3D($value) => $action,
-            $crate::Data::Tensor($value) => $action,
-            $crate::Data::DataVec($value) => $action,
-            $crate::Data::ObjPath($value) => $action,
-            $crate::Data::Transform($value) => $action,
-            $crate::Data::ViewCoordinates($value) => $action,
-            $crate::Data::AnnotationContext($value) => $action,
-        }
-    });
-);
-
-/// Map a [`DataType`] to the correct instance of `Option::<T>::None`.
-///
-/// ```
-/// # use re_log_types::{DataType, data_type_map_none};
-/// # let data_type: DataType = DataType::F32;
-/// data_type_map_none!(data_type, |data_none| { assert!(data_none.is_none()); });
-/// ```
-#[macro_export]
-macro_rules! data_type_map_none(
-    ($data_type: expr, |$value: pat_param| $action: expr) => ({
-        match $data_type {
-            $crate::DataType::Bool => {
-                let $value = Option::<bool>::None;
-                 $action
-            },
-            $crate::DataType::I32 => {
-                let $value = Option::<i32>::None;
-                $action
-            }
-            $crate::DataType::F32 => {
-                let $value = Option::<f32>::None;
-                $action
-            },
-            $crate::DataType::F64 => {
-                let $value = Option::<f64>::None;
-                $action
-            },
-            $crate::DataType::Color => {
-                let $value = Option::<$crate::data_types::Color>::None;
-                $action
-            },
-            $crate::DataType::String => {
-                let $value = Option::<String>::None;
-                $action
-            },
-            $crate::DataType::Vec2 => {
-                let $value = Option::<$crate::data_types::Vec2>::None;
-                $action
-            },
-            $crate::DataType::BBox2D => {
-                let $value = Option::<$crate::BBox2D>::None;
-                $action
-            },
-            $crate::DataType::Vec3 => {
-                let $value = Option::<$crate::data_types::Vec3>::None;
-                $action
-            },
-            $crate::DataType::Box3 => {
-                let $value = Option::<$crate::Box3>::None;
-                $action
-            },
-            $crate::DataType::Mesh3D => {
-                let $value = Option::<$crate::Mesh3D>::None;
-                $action
-            },
-            $crate::DataType::Arrow3D => {
-                let $value = Option::<$crate::Arrow3D>::None;
-                $action
-            },
-            $crate::DataType::Tensor => {
-                let $value = Option::<$crate::ClassicTensor>::None;
-                $action
-            },
-            $crate::DataType::DataVec => {
-                let $value = Option::<$crate::DataVec>::None;
-                $action
-            },
-            $crate::DataType::ObjPath => {
-                let $value = Option::<$crate::ObjPath>::None;
-                $action
-            },
-            $crate::DataType::Transform => {
-                let $value = Option::<$crate::field_types::Transform>::None;
-                $action
-            },
-            $crate::DataType::ViewCoordinates => {
-                let $value = Option::<$crate::ViewCoordinates>::None;
-                $action
-            },
-            $crate::DataType::AnnotationContext => {
-                let $value = Option::<$crate::AnnotationContext>::None;
-                $action
-            },
-        }
-    });
-);
-
-/// Do the same thing with all members of a [`DataVec`].
-///
-/// ```
-/// # use re_log_types::{DataVec, data_vec_map};
-/// # let data_vec: DataVec = DataVec::F32(vec![]);
-/// let length = data_vec_map!(data_vec, |vec| vec.len());
-/// ```
-#[macro_export]
-macro_rules! data_vec_map(
-    ($data_vec: expr, |$vec: pat_param| $action: expr) => ({
-        match $data_vec {
-            $crate::DataVec::Bool($vec) => $action,
-            $crate::DataVec::I32($vec) => $action,
-            $crate::DataVec::F32($vec) => $action,
-            $crate::DataVec::F64($vec) => $action,
-            $crate::DataVec::Color($vec) => $action,
-            $crate::DataVec::String($vec) => $action,
-            $crate::DataVec::Vec2($vec) => $action,
-            $crate::DataVec::BBox2D($vec) => $action,
-            $crate::DataVec::Vec3($vec) => $action,
-            $crate::DataVec::Box3($vec) => $action,
-            $crate::DataVec::Mesh3D($vec) => $action,
-            $crate::DataVec::Arrow3D($vec) => $action,
-            $crate::DataVec::Tensor($vec) => $action,
-            $crate::DataVec::DataVec($vec) => $action,
-            $crate::DataVec::ObjPath($vec) => $action,
-            $crate::DataVec::Transform($vec) => $action,
-            $crate::DataVec::ViewCoordinates($vec) => $action,
-            $crate::DataVec::AnnotationContext($vec) => $action,
-        }
-    });
-);
-
-impl DataVec {
-    #[inline]
-    pub fn element_data_type(&self) -> DataType {
-        match self {
-            Self::Bool(_) => DataType::Bool,
-            Self::I32(_) => DataType::I32,
-            Self::F32(_) => DataType::F32,
-            Self::F64(_) => DataType::F64,
-            Self::Color(_) => DataType::Color,
-            Self::String(_) => DataType::String,
-
-            Self::Vec2(_) => DataType::Vec2,
-            Self::BBox2D(_) => DataType::BBox2D,
-
-            Self::Vec3(_) => DataType::Vec3,
-            Self::Box3(_) => DataType::Box3,
-            Self::Mesh3D(_) => DataType::Mesh3D,
-            Self::Arrow3D(_) => DataType::Arrow3D,
-
-            Self::Tensor(_) => DataType::Tensor,
-            Self::DataVec(_) => DataType::DataVec,
-
-            Self::ObjPath(_) => DataType::ObjPath,
-
-            Self::Transform(_) => DataType::Transform,
-            Self::ViewCoordinates(_) => DataType::ViewCoordinates,
-            Self::AnnotationContext(_) => DataType::AnnotationContext,
-        }
-    }
-
-    pub fn empty_from_data_type(data_type: DataType) -> Self {
-        match data_type {
-            DataType::Bool => Self::Bool(vec![]),
-            DataType::I32 => Self::I32(vec![]),
-            DataType::F32 => Self::F32(vec![]),
-            DataType::F64 => Self::F64(vec![]),
-            DataType::Color => Self::Color(vec![]),
-            DataType::String => Self::String(vec![]),
-
-            DataType::Vec2 => Self::Vec2(vec![]),
-            DataType::BBox2D => Self::BBox2D(vec![]),
-
-            DataType::Vec3 => Self::Vec3(vec![]),
-            DataType::Box3 => Self::Box3(vec![]),
-            DataType::Mesh3D => Self::Mesh3D(vec![]),
-            DataType::Arrow3D => Self::Arrow3D(vec![]),
-
-            DataType::Tensor => Self::Tensor(vec![]),
-            DataType::DataVec => Self::DataVec(vec![]),
-
-            DataType::ObjPath => Self::ObjPath(vec![]),
-
-            DataType::Transform => Self::Transform(vec![]),
-            DataType::ViewCoordinates => Self::ViewCoordinates(vec![]),
-            DataType::AnnotationContext => Self::AnnotationContext(vec![]),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    pub fn len(&self) -> usize {
-        data_vec_map!(self, |vec| vec.len())
-    }
-
-    pub fn last(&self) -> Option<Data> {
-        match self {
-            Self::Bool(vec) => vec.last().cloned().map(Data::Bool),
-            Self::I32(vec) => vec.last().cloned().map(Data::I32),
-            Self::F32(vec) => vec.last().cloned().map(Data::F32),
-            Self::F64(vec) => vec.last().cloned().map(Data::F64),
-            Self::Color(vec) => vec.last().cloned().map(Data::Color),
-            Self::String(vec) => vec.last().cloned().map(Data::String),
-
-            Self::Vec2(vec) => vec.last().cloned().map(Data::Vec2),
-            Self::BBox2D(vec) => vec.last().cloned().map(Data::BBox2D),
-
-            Self::Vec3(vec) => vec.last().cloned().map(Data::Vec3),
-            Self::Box3(vec) => vec.last().cloned().map(Data::Box3),
-            Self::Mesh3D(vec) => vec.last().cloned().map(Data::Mesh3D),
-            Self::Arrow3D(vec) => vec.last().cloned().map(Data::Arrow3D),
-
-            Self::Tensor(vec) => vec.last().cloned().map(Data::Tensor),
-            Self::DataVec(vec) => vec.last().cloned().map(Data::DataVec),
-
-            Self::ObjPath(vec) => vec.last().cloned().map(Data::ObjPath),
-
-            Self::Transform(vec) => vec.last().cloned().map(Data::Transform),
-            Self::ViewCoordinates(vec) => vec.last().cloned().map(Data::ViewCoordinates),
-            Self::AnnotationContext(vec) => vec.last().cloned().map(Data::AnnotationContext),
-        }
-    }
-
-    pub fn as_vec_of_vec2(&self, what: &str) -> Option<&[[f32; 2]]> {
-        if let DataVec::Vec2(vec) = self {
-            Some(vec)
-        } else {
-            re_log::warn_once!(
-                "Expected {what} to be Vec<Vec2>, got Vec<{:?}>",
-                self.element_data_type()
-            );
-            None
-        }
-    }
-
-    pub fn as_vec_of_vec3(&self, what: &str) -> Option<&[[f32; 3]]> {
-        if let DataVec::Vec3(vec) = self {
-            Some(vec)
-        } else {
-            re_log::warn_once!(
-                "Expected {what} to be Vec<Vec3>, got Vec<{:?}>",
-                self.element_data_type()
-            );
-            None
-        }
-    }
-}
-
-impl std::fmt::Debug for DataVec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DataVec")
-            .field("len", &self.len())
-            .field("data_type", &self.element_data_type())
-            .finish_non_exhaustive()
-    }
-}
+pub use crate::component_types::{Arrow3D, Pinhole, Rigid3, Transform};
 
 // ----------------------------------------------------------------------------
 
@@ -880,7 +302,7 @@ impl std::fmt::Debug for TensorDataStore {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ClassicTensor {
     /// Unique identifier for the tensor
-    tensor_id: field_types::TensorId,
+    tensor_id: component_types::TensorId,
 
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
@@ -890,7 +312,7 @@ pub struct ClassicTensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    shape: Vec<field_types::TensorDimension>,
+    shape: Vec<component_types::TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -898,18 +320,18 @@ pub struct ClassicTensor {
 
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
-    pub meaning: field_types::TensorDataMeaning,
+    pub meaning: component_types::TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
 }
 
-impl field_types::TensorTrait for ClassicTensor {
-    fn id(&self) -> field_types::TensorId {
+impl component_types::TensorTrait for ClassicTensor {
+    fn id(&self) -> component_types::TensorId {
         self.tensor_id
     }
 
-    fn shape(&self) -> &[field_types::TensorDimension] {
+    fn shape(&self) -> &[component_types::TensorDimension] {
         self.shape.as_slice()
     }
 
@@ -925,7 +347,7 @@ impl field_types::TensorTrait for ClassicTensor {
         self.is_vector()
     }
 
-    fn meaning(&self) -> field_types::TensorDataMeaning {
+    fn meaning(&self) -> component_types::TensorDataMeaning {
         self.meaning
     }
 
@@ -936,10 +358,10 @@ impl field_types::TensorTrait for ClassicTensor {
 
 impl ClassicTensor {
     pub fn new(
-        tensor_id: field_types::TensorId,
-        shape: Vec<field_types::TensorDimension>,
+        tensor_id: component_types::TensorId,
+        shape: Vec<component_types::TensorDimension>,
         dtype: TensorDataType,
-        meaning: field_types::TensorDataMeaning,
+        meaning: component_types::TensorDataMeaning,
         data: TensorDataStore,
     ) -> Self {
         Self {
@@ -952,12 +374,12 @@ impl ClassicTensor {
     }
 
     #[inline]
-    pub fn id(&self) -> field_types::TensorId {
+    pub fn id(&self) -> component_types::TensorId {
         self.tensor_id
     }
 
     #[inline]
-    pub fn shape(&self) -> &[field_types::TensorDimension] {
+    pub fn shape(&self) -> &[component_types::TensorDimension] {
         self.shape.as_slice()
     }
 
@@ -967,7 +389,7 @@ impl ClassicTensor {
     }
 
     #[inline]
-    pub fn meaning(&self) -> field_types::TensorDataMeaning {
+    pub fn meaning(&self) -> component_types::TensorDataMeaning {
         self.meaning
     }
 
@@ -1033,7 +455,7 @@ impl ClassicTensor {
             TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
-                for (field_types::TensorDimension { size, name: _ }, index) in
+                for (component_types::TensorDimension { size, name: _ }, index) in
                     self.shape.iter().zip(index).rev()
                 {
                     if size <= index {

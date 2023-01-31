@@ -1,9 +1,9 @@
 use clap::Parser;
 
 use re_log_types::{
-    field_types::{ColorRGBA, TextEntry},
+    component_types::{ColorRGBA, TextEntry},
     msg_bundle::MsgBundle,
-    LogMsg, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline,
+    EntityPath, LogMsg, MsgId, Time, TimePoint, TimeType, Timeline,
 };
 use rerun::Session;
 use rerun_sdk as rerun;
@@ -54,7 +54,7 @@ fn main() -> std::process::ExitCode {
         }
     }
 
-    let path = ObjPath::from("my/text/logs");
+    let path = EntityPath::from("my/text/logs");
 
     // Send a single text entry.
     let text_entries = Some(vec![
@@ -147,11 +147,11 @@ impl From<LogLevel> for String {
 /// TODO(cmc): Make this fancier and move into the SDK
 fn log_text_entries(
     session: &mut Session,
-    obj_path: &ObjPath,
+    entity_path: &EntityPath,
     text_entries: Option<Vec<TextEntry>>,
     colors: Option<Vec<ColorRGBA>>,
 ) {
-    // Capture the log_time and object_path
+    // Capture the log_time and entity_path
     let time_point = TimePoint::from([
         (Timeline::log_time(), Time::now().into()),
         (Timeline::new("frame_nr", TimeType::Sequence), 42.into()),
@@ -159,7 +159,7 @@ fn log_text_entries(
 
     let bundle = MsgBundle::new(
         MsgId::random(),
-        obj_path.clone(),
+        entity_path.clone(),
         time_point,
         [
             text_entries.map(|te| te.try_into().unwrap()),

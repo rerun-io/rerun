@@ -15,7 +15,7 @@ __all__ = [
 
 
 def log_image(
-    obj_path: str,
+    entity_path: str,
     image: Tensor,
     *,
     timeless: bool = False,
@@ -25,12 +25,22 @@ def log_image(
 
     The image should either have 1, 3 or 4 channels (gray, RGB or RGBA).
 
-    Supported `dtype`s:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    Supported dtypes
+    ----------------
+     - uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
-    * uint16: color components should be in 0-65535 sRGB gamma space, except for alpha which should be in 0-65535
+     - uint16: color components should be in 0-65535 sRGB gamma space, except for alpha which should be in 0-65535
     linear space.
-    * float32/float64: all color components should be in 0-1 linear space.
+     - float32, float64: all color components should be in 0-1 linear space.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the image in the space hierarchy.
+    image:
+        A [Tensor][rerun.log.tensor.Tensor] representing the image to log.
+    timeless:
+        If true, the image will be timeless (default: False).
 
     """
     image = _to_numpy(image)
@@ -57,11 +67,11 @@ def log_image(
     if interpretable_as_image and num_non_empty_dims != len(shape):
         image = np.squeeze(image)
 
-    _log_tensor(obj_path, image, timeless=timeless)
+    _log_tensor(entity_path, image, timeless=timeless)
 
 
 def log_depth_image(
-    obj_path: str,
+    entity_path: str,
     image: Tensor,
     *,
     meter: Optional[float] = None,
@@ -70,11 +80,24 @@ def log_depth_image(
     """
     Log a depth image.
 
-    The image must be a 2D array. Supported `dtype`:s are: uint8, uint16, float32, float64
+    The image must be a 2D array.
 
-    meter: How long is a meter in the given dtype?
-           For instance: with uint16, perhaps meter=1000 which would mean
-           you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
+    Supported dtypes
+    ----------------
+    uint8, uint16, float32, float64
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the image in the space hierarchy.
+    image:
+        A [Tensor][rerun.log.tensor.Tensor] representing the depth image to log.
+    meter:
+        How long is a meter in the given dtype?
+        For instance: with uint16, perhaps meter=1000 which would mean
+        you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
+    timeless:
+        If true, the image will be timeless (default: False).
 
     """
     image = _to_numpy(image)
@@ -90,16 +113,16 @@ def log_depth_image(
     # Catch some errors early:
     if num_non_empty_dims != 2:
         _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1)
-        _log_tensor(obj_path, image, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
+        _log_tensor(entity_path, image, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
     else:
         # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
         if num_non_empty_dims != len(shape):
             image = np.squeeze(image)
-        _log_tensor(obj_path, image, meter=meter, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
+        _log_tensor(entity_path, image, meter=meter, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
 
 
 def log_segmentation_image(
-    obj_path: str,
+    entity_path: str,
     image: npt.ArrayLike,
     *,
     timeless: bool = False,
@@ -108,6 +131,23 @@ def log_segmentation_image(
     Log an image made up of integer class-ids.
 
     The image should have 1 channel, i.e. be either `H x W` or `H x W x 1`.
+
+    See: [rerun.log_annotation_context][] for information on how to map the class-ids to
+    colors and labels.
+
+    Supported dtypes
+    ----------------
+    uint8, uint16
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the image in the space hierarchy.
+    image:
+        A [Tensor][rerun.log.tensor.Tensor] representing the segmentation image to log.
+    timeless:
+        If true, the image will be timeless (default: False).
+
     """
     image = np.array(image, dtype=np.uint16, copy=False)
     non_empty_dims = [d for d in image.shape if d != 1]
@@ -120,7 +160,7 @@ def log_segmentation_image(
             1,
         )
         _log_tensor(
-            obj_path,
+            entity_path,
             tensor=image,
             timeless=timeless,
         )
@@ -129,7 +169,7 @@ def log_segmentation_image(
         if num_non_empty_dims != len(image.shape):
             image = np.squeeze(image)
         _log_tensor(
-            obj_path,
+            entity_path,
             tensor=image,
             meaning=bindings.TensorDataMeaning.ClassId,
             timeless=timeless,

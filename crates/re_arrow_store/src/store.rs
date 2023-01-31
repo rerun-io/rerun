@@ -10,8 +10,7 @@ use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use re_format::{arrow, format_bytes, format_number};
 use re_log_types::{
-    ComponentName, MsgId, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimePoint,
-    TimeRange, Timeline,
+    ComponentName, EntityPath, EntityPathHash, MsgId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 // --- Indices & offsets ---
@@ -377,6 +376,30 @@ impl DataStore {
 
         Ok(())
     }
+
+    /// The oldest time for which we have any data.
+    ///
+    /// Ignores timeless data.
+    ///
+    /// Useful to call after a gc.
+    pub fn oldest_time_per_timeline(&self) -> BTreeMap<Timeline, TimeInt> {
+        crate::profile_function!();
+
+        let mut oldest_time_per_timeline = BTreeMap::default();
+
+        for component_table in self.components.values() {
+            for bucket in &component_table.buckets {
+                for (timeline, time_range) in &bucket.time_ranges {
+                    let entry = oldest_time_per_timeline
+                        .entry(*timeline)
+                        .or_insert(TimeInt::MAX);
+                    *entry = time_range.min.min(*entry);
+                }
+            }
+        }
+
+        oldest_time_per_timeline
+    }
 }
 
 impl std::fmt::Display for DataStore {
@@ -524,7 +547,7 @@ impl std::fmt::Display for PersistentIndexTable {
             all_components: _,
         } = self;
 
-        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
+        f.write_fmt(format_args!("entity: {ent_path}\n"))?;
 
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
@@ -753,7 +776,7 @@ impl std::fmt::Display for IndexTable {
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
-        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
+        f.write_fmt(format_args!("entity: {ent_path}\n"))?;
 
         f.write_fmt(format_args!(
             "size: {} buckets for a total of {} across {} total rows\n",
@@ -1046,12 +1069,12 @@ impl std::fmt::Display for PersistentComponentTable {
             total_size_bytes,
         } = self;
 
-        f.write_fmt(format_args!("name: {}\n", name))?;
+        f.write_fmt(format_args!("name: {name}\n"))?;
         if matches!(
             std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
             Ok("1")
         ) {
-            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+            f.write_fmt(format_args!("datatype: {datatype:#?}\n"))?;
         }
 
         f.write_fmt(format_args!(
@@ -1200,12 +1223,12 @@ impl std::fmt::Display for ComponentTable {
             buckets,
         } = self;
 
-        f.write_fmt(format_args!("name: {}\n", name))?;
+        f.write_fmt(format_args!("name: {name}\n"))?;
         if matches!(
             std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
             Ok("1")
         ) {
-            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+            f.write_fmt(format_args!("datatype: {datatype:#?}\n"))?;
         }
 
         f.write_fmt(format_args!(

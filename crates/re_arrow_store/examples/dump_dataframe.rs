@@ -6,13 +6,13 @@
 
 use re_arrow_store::{test_bundle, DataStore};
 use re_log_types::{
+    component_types::Instance,
     datagen::{
         build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
-    field_types::Instance,
     msg_bundle::Component as _,
-    ObjPath as EntityPath, Time,
+    EntityPath, Time,
 };
 
 // ---

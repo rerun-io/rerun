@@ -4,10 +4,10 @@ use lazy_static::lazy_static;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{FieldName, ObjPath, TimeQuery};
+use re_data_store::EntityPath;
 use re_log_types::{
+    component_types::{ClassId, KeypointId},
     context::{AnnotationInfo, ClassDescription},
-    field_types::{ClassId, KeypointId},
     msg_bundle::Component,
     AnnotationContext, MsgId,
 };
@@ -63,7 +63,7 @@ impl<'a> ResolvedClassDescription<'a> {
 pub enum DefaultColor<'a> {
     OpaqueWhite,
     TransparentBlack,
-    ObjPath(&'a ObjPath),
+    EntityPath(&'a EntityPath),
 }
 
 pub struct ResolvedAnnotationInfo(pub Option<AnnotationInfo>);
@@ -86,8 +86,8 @@ impl ResolvedAnnotationInfo {
             match default_color {
                 DefaultColor::TransparentBlack => re_renderer::Color32::TRANSPARENT,
                 DefaultColor::OpaqueWhite => re_renderer::Color32::WHITE,
-                DefaultColor::ObjPath(obj_path) => {
-                    auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16)
+                DefaultColor::EntityPath(entity_path) => {
+                    auto_color((entity_path.hash64() % std::u16::MAX as u64) as u16)
                 }
             }
         }
@@ -105,49 +105,28 @@ impl ResolvedAnnotationInfo {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
+pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 
 impl AnnotationMap {
-    fn load_classic(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-
-        for (obj_path, field_store) in
-            query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))
-        {
-            if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
-            {
-                let time_query = TimeQuery::LatestAt(query.latest_at.as_i64());
-                mono_field_store.query(&time_query, |_time, msg_id, context| {
-                    self.0.entry(obj_path.clone()).or_insert_with(|| {
-                        Arc::new(Annotations {
-                            msg_id: *msg_id,
-                            context: context.clone(),
-                        })
-                    });
-                });
-            }
-        }
-    }
-
-    /// For each `ObjPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
+    /// For each `EntityPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
     ///
-    /// An object is considered its own (nearest) ancestor.
-    fn load_arrow(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    /// An entity is considered its own (nearest) ancestor.
+    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let mut visited = IntSet::<ObjPath>::default();
+        let mut visited = IntSet::<EntityPath>::default();
 
-        let arrow_store = &ctx.log_db.obj_db.arrow_store;
+        let arrow_store = &ctx.log_db.entity_db.arrow_store;
         let arrow_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
-        for obj_path in query
-            .obj_paths
+        for entity_path in query
+            .entity_paths
             .iter()
-            .filter(|obj_path| query.obj_props.get(obj_path).visible)
+            .filter(|entity_path| query.entity_props_map.get(entity_path).visible)
         {
-            let mut next_parent = Some(obj_path.clone());
+            let mut next_parent = Some(entity_path.clone());
             while let Some(parent) = next_parent {
                 // If we've visited this parent before it's safe to break early.
                 // All of it's parents have have also been visited.
@@ -186,24 +165,16 @@ impl AnnotationMap {
                     }
                 }
                 // Finally recurse to the next parent up the path
-                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the object path
-                // given ObjPathImpl is already an Arc, consider pre-computing and storing parents
-                // for faster iteration.
+                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the entity path.
                 next_parent = parent.parent();
             }
         }
     }
 
-    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-        self.load_classic(ctx, query);
-        self.load_arrow(ctx, query);
-    }
-
-    // Search through the all prefixes of this object path until we find a
+    // Search through the all prefixes of this entity path until we find a
     // matching annotation. If we find nothing return the default `MISSING_ANNOTATIONS`.
-    pub fn find<'a>(&self, obj_path: impl Into<&'a ObjPath>) -> Arc<Annotations> {
-        let mut next_parent = Some(obj_path.into().clone());
+    pub fn find<'a>(&self, entity_path: impl Into<&'a EntityPath>) -> Arc<Annotations> {
+        let mut next_parent = Some(entity_path.into().clone());
         while let Some(parent) = next_parent {
             if let Some(legend) = self.0.get(&parent) {
                 return legend.clone();

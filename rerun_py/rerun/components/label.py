@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Sequence
 
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "LabelArray",
@@ -20,6 +20,6 @@ class LabelArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-LabelType = ComponentTypeFactory("LabelType", LabelArray, REGISTERED_FIELDS["rerun.label"])
+LabelType = ComponentTypeFactory("LabelType", LabelArray, REGISTERED_COMPONENT_NAMES["rerun.label"])
 
 pa.register_extension_type(LabelType())

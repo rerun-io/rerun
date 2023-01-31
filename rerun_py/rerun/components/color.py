@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from rerun.color_conversion import u8_array_to_rgba
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "ColorRGBAArray",
@@ -21,6 +21,6 @@ class ColorRGBAArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-ColorRGBAType = ComponentTypeFactory("ColorRGBAType", ColorRGBAArray, REGISTERED_FIELDS["rerun.colorrgba"])
+ColorRGBAType = ComponentTypeFactory("ColorRGBAType", ColorRGBAArray, REGISTERED_COMPONENT_NAMES["rerun.colorrgba"])
 
 pa.register_extension_type(ColorRGBAType())

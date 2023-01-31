@@ -24,10 +24,10 @@ pub(crate) use points3d::Points3DPart;
 
 use super::SceneSpatial;
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::scene::SceneQuery,
 };
-use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 
 pub trait ScenePart {
     fn load(
@@ -43,20 +43,20 @@ pub trait ScenePart {
 /// Computes the instance hash that should be used for picking (in turn for selecting/hover)
 ///
 /// Takes into account the currently the object properties, currently highlighted objects, and number of instances.
-pub fn instance_hash_for_picking<T: re_log_types::msg_bundle::Component>(
-    ent_path: &ObjPath,
-    instance: re_log_types::field_types::Instance,
+pub fn instance_path_hash_for_picking<T: re_log_types::msg_bundle::Component>(
+    ent_path: &EntityPath,
+    instance: re_log_types::component_types::Instance,
     entity_view: &re_query::EntityView<T>,
-    props: &ObjectProps,
-    object_highlight: OptionalSpaceViewObjectHighlight<'_>,
-) -> InstanceIdHash {
+    props: &EntityProperties,
+    entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+) -> InstancePathHash {
     if props.interactive {
-        if entity_view.num_instances() == 1 || !object_highlight.any_selection_highlight() {
-            InstanceIdHash::from_path_and_index(ent_path, re_log_types::IndexHash::NONE)
+        if entity_view.num_instances() == 1 || !entity_highlight.any_selection_highlight() {
+            InstancePathHash::entity_splat(ent_path)
         } else {
-            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+            InstancePathHash::instance(ent_path, instance)
         }
     } else {
-        InstanceIdHash::NONE
+        InstancePathHash::NONE
     }
 }

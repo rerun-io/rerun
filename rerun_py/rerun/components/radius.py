@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "RadiusArray",
@@ -20,6 +20,6 @@ class RadiusArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-RadiusType = ComponentTypeFactory("RadiusType", RadiusArray, REGISTERED_FIELDS["rerun.radius"])
+RadiusType = ComponentTypeFactory("RadiusType", RadiusArray, REGISTERED_COMPONENT_NAMES["rerun.radius"])
 
 pa.register_extension_type(RadiusType())

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Sequence
 
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "TextEntryArray",
@@ -20,6 +20,6 @@ class TextEntryArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-TextEntryType = ComponentTypeFactory("TextEntryType", TextEntryArray, REGISTERED_FIELDS["rerun.text_entry"])
+TextEntryType = ComponentTypeFactory("TextEntryType", TextEntryArray, REGISTERED_COMPONENT_NAMES["rerun.text_entry"])
 
 pa.register_extension_type(TextEntryType())

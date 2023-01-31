@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::RangeInclusive,
-};
+use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use egui::{
     lerp, pos2, remap, remap_clamp, show_tooltip_at_pointer, Align2, Color32, CursorIcon, Id,
@@ -9,9 +6,9 @@ use egui::{
 };
 use itertools::Itertools;
 
-use re_data_store::{InstanceId, ObjectTree};
+use re_data_store::{EntityTree, InstancePath};
 use re_log_types::{
-    DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
+    ComponentPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
     TimeType,
 };
 
@@ -23,16 +20,16 @@ use crate::{
 
 use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
 
-/// A panel that shows objects to the left, time on the top.
+/// A panel that shows entity names to the left, time on the top.
 ///
 /// This includes the timeline controls and streams view.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
-    /// Width of the object name columns previous frame.
+    /// Width of the entity name columns previous frame.
     prev_col_width: f32,
 
-    /// The right side of the object name column; updated during its painting.
+    /// The right side of the entity name column; updated during its painting.
     #[serde(skip)]
     next_col_right: f32,
 
@@ -276,7 +273,7 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
-        // All the object rows:
+        // All the entity rows:
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
@@ -335,7 +332,7 @@ impl TimePanel {
             blueprint,
             time_area_response,
             time_area_painter,
-            &ctx.log_db.obj_db.tree,
+            &ctx.log_db.entity_db.tree,
             ui,
         );
     }
@@ -347,9 +344,8 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        // the parent path of the name component
-        last_component: &ObjPathComp,
-        tree: &ObjectTree,
+        last_path_part: &EntityPathPart,
+        tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
         if !tree
@@ -357,14 +353,14 @@ impl TimePanel {
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
             && tree.num_timeless_messages() == 0
         {
-            return; // ignore objects that have no data for the current timeline and no timeless data.
+            return; // ignore entities that have no data for the current timeline, nor any timeless data.
         }
 
         // The last part of the the path component
         let text = if tree.is_leaf() {
-            last_component.to_string()
+            last_path_part.to_string()
         } else {
-            format!("{}/", last_component) // show we have children with a /
+            format!("{last_path_part}/") // show we have children with a /
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
@@ -375,7 +371,9 @@ impl TimePanel {
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
+            .show_header(ui, |ui| {
+                ctx.entity_path_button_to(ui, None, &tree.path, text)
+            })
             .body(|ui| {
                 self.show_children(
                     ctx,
@@ -413,11 +411,11 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            let empty_messages_over_time = BTreeMap::default();
-            let messages_over_time = tree
+            let empty = BTreeMap::default();
+            let num_messages_at_time = tree
                 .prefix_times
                 .get(ctx.rec_cfg.time_ctrl.timeline())
-                .unwrap_or(&empty_messages_over_time);
+                .unwrap_or(&empty);
 
             show_data_over_time(
                 ctx,
@@ -426,16 +424,10 @@ impl TimePanel {
                 time_area_painter,
                 ui,
                 tree.num_timeless_messages(),
-                messages_over_time,
+                num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Selection::Instance(
-                    None,
-                    InstanceId {
-                        obj_path: tree.path.clone(),
-                        instance_index: None,
-                    },
-                ),
+                Selection::Instance(None, InstancePath::entity_splat(tree.path.clone())),
             );
         }
     }
@@ -446,7 +438,7 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree: &ObjectTree,
+        tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
         for (last_component, child) in &tree.children {
@@ -461,18 +453,18 @@ impl TimePanel {
             );
         }
 
-        // If this is an object:
-        if !tree.fields.is_empty() {
+        // If this is an entity:
+        if !tree.components.is_empty() {
             let indent = ui.spacing().indent;
 
-            for (field_name, data) in &tree.fields {
+            for (component_name, data) in &tree.components {
                 if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
                     && data.num_timeless_messages() == 0
                 {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new_any(tree.path.clone(), *field_name);
+                let component_path = ComponentPath::new(tree.path.clone(), *component_name);
 
                 let response = ui
                     .horizontal(|ui| {
@@ -485,10 +477,10 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        ctx.data_path_button_to(
+                        ctx.component_path_button_to(
                             ui,
-                            super::format_field_or_component_name(field_name),
-                            &data_path,
+                            super::format_component_name(component_name),
+                            &component_path,
                         );
                     })
                     .response;
@@ -512,11 +504,11 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        let selection = Selection::DataPath(data_path.clone());
+                        let selection = Selection::ComponentPath(component_path.clone());
                         what_is_selected_ui(ui, ctx, blueprint, &selection);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
-                        data_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
+                        component_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
                 }
 
@@ -538,7 +530,7 @@ impl TimePanel {
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Selection::DataPath(data_path),
+                        Selection::ComponentPath(component_path),
                     );
                 }
             }
@@ -588,7 +580,7 @@ fn show_data_over_time(
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
     num_timeless_messages: usize,
-    messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
+    num_messages_at_time: &BTreeMap<TimeInt, usize>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
     select_on_click: Selection,
@@ -703,10 +695,10 @@ fn show_data_over_time(
             .map_or(TimeInt::MAX, |tf| tf.ceil()),
     };
 
-    for (&time, msg_ids) in
-        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
+    for (&time, &num_messages_at_time) in
+        num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
     {
-        if msg_ids.is_empty() {
+        if num_messages_at_time == 0 {
             continue;
         }
         let time_real = TimeReal::from(time);
@@ -719,7 +711,9 @@ fn show_data_over_time(
             {
                 // extend:
                 current_stretch.stop_time = time;
-                current_stretch.time_points.push((time, msg_ids.len()));
+                current_stretch
+                    .time_points
+                    .push((time, num_messages_at_time));
             } else {
                 // stop the previous…
                 paint_stretch(current_stretch);
@@ -735,7 +729,7 @@ fn show_data_over_time(
                     start_time: time,
                     stop_time: time,
                     selected,
-                    time_points: vec![(time, msg_ids.len())],
+                    time_points: vec![(time, num_messages_at_time)],
                 });
             }
         }
@@ -821,7 +815,9 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .log_db
-        .times_per_timeline()
+        .entity_db
+        .tree
+        .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
@@ -1886,19 +1882,19 @@ fn paint_time_range_ticks(
                     // so instead we switch to showing the time as milliseconds since the last whole second:
                     let ms = relative_ns as f64 * 1e-6;
                     if relative_ns % 1_000_000 == 0 {
-                        format!("{:+.0} ms", ms)
+                        format!("{ms:+.0} ms")
                     } else if relative_ns % 100_000 == 0 {
-                        format!("{:+.1} ms", ms)
+                        format!("{ms:+.1} ms")
                     } else if relative_ns % 10_000 == 0 {
-                        format!("{:+.2} ms", ms)
+                        format!("{ms:+.2} ms")
                     } else if relative_ns % 1_000 == 0 {
-                        format!("{:+.3} ms", ms)
+                        format!("{ms:+.3} ms")
                     } else if relative_ns % 100 == 0 {
-                        format!("{:+.4} ms", ms)
+                        format!("{ms:+.4} ms")
                     } else if relative_ns % 10 == 0 {
-                        format!("{:+.5} ms", ms)
+                        format!("{ms:+.5} ms")
                     } else {
-                        format!("{:+.6} ms", ms)
+                        format!("{ms:+.6} ms")
                     }
                 }
             }

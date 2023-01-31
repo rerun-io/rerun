@@ -6,12 +6,12 @@ use itertools::Itertools;
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_log_types::{
+    component_types::Instance,
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
         field::ArrowField,
         serialize::ArrowSerialize,
     },
-    field_types::Instance,
     msg_bundle::Component,
 };
 
@@ -202,7 +202,7 @@ where
 
 #[test]
 fn test_df_builder() {
-    use re_log_types::field_types::{ColorRGBA, Point2D};
+    use re_log_types::component_types::{ColorRGBA, Point2D};
 
     let points = vec![
         Some(Point2D { x: 1.0, y: 2.0 }),
@@ -219,7 +219,7 @@ fn test_df_builder() {
     ];
 
     let df = df_builder2(&points, &colors).unwrap();
-    // eprintln!("{:?}", df);
+    // eprintln!("{df:?}");
     //
     // ┌───────────┬────────────┐
     // │ point2d   ┆ colorrgba  │
@@ -237,7 +237,7 @@ fn test_df_builder() {
 
     // Unnesting the struct makes it easier to validate the results.
     let df = df.unnest([Point2D::name()]).unwrap();
-    // eprintln!("{:?}", df);
+    // eprintln!("{df:?}");
     //
     // ┌─────┬─────┬────────────┐
     // │ x   ┆ y   ┆ colorrgba  │

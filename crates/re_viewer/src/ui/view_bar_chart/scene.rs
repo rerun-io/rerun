@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::ObjPath as EntityPath;
+use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::field_types::{self, Instance, Tensor, TensorTrait as _};
+use re_log_types::component_types::{self, Instance, Tensor, TensorTrait as _};
 use re_query::query_entity_with_primary;
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
@@ -15,7 +15,7 @@ pub struct SceneBarChart {
 }
 
 impl SceneBarChart {
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         self.load_tensors(ctx, query);
@@ -24,7 +24,7 @@ impl SceneBarChart {
     fn load_tensors(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let store = &ctx.log_db.obj_db.arrow_store;
+        let store = &ctx.log_db.entity_db.arrow_store;
 
         for (ent_path, props) in query.iter_entities() {
             if !props.visible {
@@ -33,7 +33,7 @@ impl SceneBarChart {
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let ent_view =
-                query_entity_with_primary::<field_types::Tensor>(store, &query, ent_path, &[]);
+                query_entity_with_primary::<component_types::Tensor>(store, &query, ent_path, &[]);
             let Ok(ent_view) = ent_view else {
                 warn_once!("bar chart query failed for {:?}", ent_path);
                 continue;

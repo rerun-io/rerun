@@ -9,7 +9,7 @@ __all__ = [
 
 
 def log_pinhole(
-    obj_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
+    entity_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
 ) -> None:
     """
     Log a perspective camera model.
@@ -29,13 +29,23 @@ def log_pinhole(
     rerun.log_pinhole("world/camera/image", …)
     ```
 
-    `child_from_parent`: Row-major intrinsics matrix for projecting from camera space to image space
-    `resolution`: Array with [width, height] image resolution in pixels.
+    Parameters
+    ----------
+    entity_path:
+        Path to the child (image) space in the space hierarchy.
+    child_from_parent:
+        Row-major intrinsics matrix for projecting from camera space to image space.
+    width:
+        Horizontal resolution of the child space.
+    height:
+        Vertical resolution of the child space.
+    timeless:
+        If true, the camera will be timeless (default: False).
 
     """
     # Transform arrow handling happens inside the python bridge
     bindings.log_pinhole(
-        obj_path,
+        entity_path,
         resolution=[width, height],
         child_from_parent=np.asarray(child_from_parent).T.tolist(),
         timeless=timeless,

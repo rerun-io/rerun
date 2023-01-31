@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
+use re_log_types::{component_types::Instance, msg_bundle::Component, ComponentName, EntityPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, field_types::Point2D, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::Point2D, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -25,7 +25,7 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 /// # #[cfg(feature = "polars")]
 /// let df = component.as_df::<Point2D>().unwrap();
 ///
-/// //println!("{:?}", df);
+/// //println!("{df:?}");
 /// ```
 ///
 /// Outputs:
@@ -44,7 +44,7 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 pub fn get_component_with_instances(
     store: &DataStore,
     query: &LatestAtQuery,
-    ent_path: &ObjPath,
+    ent_path: &EntityPath,
     component: ComponentName,
 ) -> crate::Result<ComponentWithInstances> {
     let components = [Instance::name(), component];
@@ -74,7 +74,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, field_types::{Point2D, ColorRGBA}, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -91,7 +91,7 @@ pub fn get_component_with_instances(
 /// # #[cfg(feature = "polars")]
 /// let df = entity_view.as_df1().unwrap();
 ///
-/// //println!("{:?}", df);
+/// //println!("{df:?}");
 /// ```
 ///
 /// Outputs:
@@ -110,7 +110,7 @@ pub fn get_component_with_instances(
 pub fn query_entity_with_primary<Primary: Component>(
     store: &DataStore,
     query: &LatestAtQuery,
-    ent_path: &ObjPath,
+    ent_path: &EntityPath,
     components: &[ComponentName],
 ) -> crate::Result<EntityView<Primary>> {
     crate::profile_function!();
@@ -146,8 +146,8 @@ pub fn query_entity_with_primary<Primary: Component>(
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
     use re_log_types::{
+        component_types::{ColorRGBA, Point2D},
         datagen::build_frame_nr,
-        field_types::{ColorRGBA, Point2D},
         msg_bundle::try_build_msg_bundle2,
         MsgId,
     };
@@ -177,7 +177,7 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
-    use re_log_types::{field_types::Point2D, msg_bundle::Component as _, Timeline};
+    use re_log_types::{component_types::Point2D, msg_bundle::Component as _, Timeline};
 
     let store = __populate_example_store();
 
@@ -190,7 +190,7 @@ fn simple_get_component() {
     #[cfg(feature = "polars")]
     {
         let df = component.as_df::<Point2D>().unwrap();
-        eprintln!("{:?}", df);
+        eprintln!("{df:?}");
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];
         let points = vec![
@@ -213,7 +213,7 @@ fn simple_get_component() {
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::{
-        field_types::{ColorRGBA, Point2D},
+        component_types::{ColorRGBA, Point2D},
         msg_bundle::Component as _,
         Timeline,
     };
@@ -234,7 +234,7 @@ fn simple_query_entity() {
     #[cfg(feature = "polars")]
     {
         let df = entity_view.as_df2::<ColorRGBA>().unwrap();
-        eprintln!("{:?}", df);
+        eprintln!("{df:?}");
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];
         let points = vec![

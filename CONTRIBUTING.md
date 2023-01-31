@@ -19,7 +19,7 @@ All PR:s are merged with [`Squash and Merge`](https://docs.github.com/en/pull-re
 * Install the Rust toolchain: <https://rustup.rs/>
 * `git clone git@github.com:rerun-io/rerun.git && cd rerun`
 * Run `./scripts/setup_dev.sh`.
-* Make sure `cargo --version` prints `1.65.0` once you are done
+* Make sure `cargo --version` prints `1.67.0` once you are done
 
 ## Structure
 The main crates are found in the [`crates/`](crates) folder, with examples in the [`examples/`](examples) folder.
