@@ -208,7 +208,7 @@ fn single_visit() {
 
     let entity_view = EntityView::from_native((None, &points)).unwrap();
 
-    let mut instance_out = Vec::<InstanceKey>::new();
+    let mut instance_key_out = Vec::<InstanceKey>::new();
     let mut points_out = Vec::<Point2D>::new();
 
     let expected_instance = vec![
@@ -219,14 +219,14 @@ fn single_visit() {
     ];
 
     entity_view
-        .visit1(|instance: InstanceKey, point: Point2D| {
-            instance_out.push(instance);
+        .visit1(|instance_key: InstanceKey, point: Point2D| {
+            instance_key_out.push(instance_key);
             points_out.push(point);
         })
         .ok()
         .unwrap();
 
-    assert_eq!(instance_out, expected_instance);
+    assert_eq!(instance_key_out, expected_instance);
     assert_eq!(points, points_out);
 }
 

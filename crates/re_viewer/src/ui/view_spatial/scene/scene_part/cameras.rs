@@ -62,7 +62,7 @@ impl CamerasPart {
         entity_path: &EntityPath,
         props: &EntityProperties,
         transforms: &TransformCache,
-        instance_hash: InstancePathHash,
+        instance_path_hash: InstancePathHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
@@ -94,7 +94,7 @@ impl CamerasPart {
         //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
             entity_path: entity_path.clone(),
-            instance: instance_hash,
+            instance_path_hash,
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
@@ -151,7 +151,7 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            entity_highlight.index_highlight(instance_hash.instance_key),
+            entity_highlight.index_highlight(instance_path_hash.instance_key),
         );
 
         scene
@@ -167,7 +167,7 @@ impl CamerasPart {
                     | LineStripFlags::CAP_END_ROUND
                     | LineStripFlags::CAP_START_ROUND,
             )
-            .user_data(instance_hash);
+            .user_data(instance_path_hash);
     }
 }
 
@@ -192,14 +192,14 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
-                entity_view.visit1(|instance, transform| {
+                entity_view.visit1(|instance_key, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
                     let entity_highlight = highlights.entity_highlight(ent_path.hash());
                     let instance_hash = instance_path_hash_for_picking(
                         ent_path,
-                        instance,
+                        instance_key,
                         &entity_view,
                         &props,
                         entity_highlight,

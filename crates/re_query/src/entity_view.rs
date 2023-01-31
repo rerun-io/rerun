@@ -77,7 +77,7 @@ impl ComponentWithInstances {
     }
 
     /// Look up the value that corresponds to a given `InstanceKey` and convert to `Component`
-    pub fn lookup<C: Component>(&self, instance: &InstanceKey) -> crate::Result<C>
+    pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C>
     where
         C: ArrowDeserialize + ArrowField<Type = C> + 'static,
         C::ArrayType: ArrowArray,
@@ -90,7 +90,7 @@ impl ComponentWithInstances {
             });
         }
         let arr = self
-            .lookup_arrow(instance)
+            .lookup_arrow(instance_key)
             .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
         let mut iter = arrow_array_deserialize_iterator::<Option<C>>(arr.as_ref())?;
         let val = iter
@@ -101,15 +101,15 @@ impl ComponentWithInstances {
     }
 
     /// Look up the value that corresponds to a given `InstanceKey` and return as an arrow `Array`
-    pub fn lookup_arrow(&self, instance: &InstanceKey) -> Option<Box<dyn Array>> {
-        let offset = if let Some(keys) = &self.instance_keys {
+    pub fn lookup_arrow(&self, instance_key: &InstanceKey) -> Option<Box<dyn Array>> {
+        let offset = if let Some(instance_keys) = &self.instance_keys {
             // If `instance_keys` is set, extract the `PrimitiveArray`, and find
             // the index of the value by `binary_search`
 
             // The store should guarantee this for us but assert to be sure
-            debug_assert!(keys.is_sorted_and_unique().unwrap_or(false));
+            debug_assert!(instance_keys.is_sorted_and_unique().unwrap_or(false));
 
-            let keys = keys
+            let keys = instance_keys
                 .as_any()
                 .downcast_ref::<PrimitiveArray<u64>>()?
                 .values();
@@ -119,12 +119,12 @@ impl ComponentWithInstances {
                 0
             } else {
                 // Otherwise binary search to find the offset of the instance
-                keys.binary_search(&instance.0).ok()?
+                keys.binary_search(&instance_key.0).ok()?
             }
         } else {
             // If `instance_keys` is not set, then offset is the instance because the implicit
             // index is a sequential list
-            let offset = instance.0 as usize;
+            let offset = instance_key.0 as usize;
             (offset < self.values.len()).then_some(offset)?
         };
 
@@ -201,10 +201,10 @@ impl ComponentWithInstances {
 ///
 /// ```
 struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
-    primary_instance_iter: IIter1,
-    component_instance_iter: IIter2,
+    primary_instance_key_iter: IIter1,
+    component_instance_key_iter: IIter2,
     component_value_iter: VIter,
-    next_component_instance: Option<InstanceKey>,
+    next_component_instance_key: Option<InstanceKey>,
     splatted_component_value: Option<Val>,
 }
 
@@ -219,9 +219,9 @@ where
 
     fn next(&mut self) -> Option<Option<C>> {
         // For each value of primary_instance_iter we must find a result
-        if let Some(primary_key) = self.primary_instance_iter.next() {
+        if let Some(primary_key) = self.primary_instance_key_iter.next() {
             loop {
-                match &self.next_component_instance {
+                match &self.next_component_instance_key {
                     // If we have a next component key, we either...
                     Some(instance_key) => {
                         if instance_key.is_splat() {
@@ -236,15 +236,15 @@ where
                                 std::cmp::Ordering::Less => break Some(None),
                                 // Return the value if the keys match
                                 std::cmp::Ordering::Equal => {
-                                    self.next_component_instance =
-                                        self.component_instance_iter.next();
+                                    self.next_component_instance_key =
+                                        self.component_instance_key_iter.next();
                                     break self.component_value_iter.next();
                                 }
                                 // Skip this component if the key is behind the primary key
                                 std::cmp::Ordering::Greater => {
                                     _ = self.component_value_iter.next();
-                                    self.next_component_instance =
-                                        self.component_instance_iter.next();
+                                    self.next_component_instance_key =
+                                        self.component_instance_key_iter.next();
                                 }
                             }
                         }
@@ -303,7 +303,7 @@ where
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     /// Iterate over the instance keys
-    pub fn iter_instances(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
+    pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
         self.primary.iter_instance_keys()
     }
 
@@ -326,20 +326,20 @@ where
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let prim_instance_iter = self.primary.iter_instance_keys()?;
+            let primary_instance_key_iter = self.primary.iter_instance_keys()?;
 
-            let mut component_instance_iter = component.iter_instance_keys()?;
+            let mut component_instance_key_iter = component.iter_instance_keys()?;
 
             let component_value_iter =
                 arrow_array_deserialize_iterator::<Option<C>>(component.values.as_ref())?;
 
-            let next_component = component_instance_iter.next();
+            let next_component_instance_key = component_instance_key_iter.next();
 
             Ok(itertools::Either::Left(ComponentJoinedIterator {
-                primary_instance_iter: prim_instance_iter,
-                component_instance_iter,
+                primary_instance_key_iter,
+                component_instance_key_iter,
                 component_value_iter,
-                next_component_instance: next_component,
+                next_component_instance_key,
                 splatted_component_value: None,
             }))
         } else {

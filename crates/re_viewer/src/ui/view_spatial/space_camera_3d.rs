@@ -12,8 +12,8 @@ pub struct SpaceCamera3D {
     /// We expect the camera transform to apply to this entity and every path below it.
     pub entity_path: EntityPath,
 
-    /// The instance id hash of the entity that has the projection.
-    pub instance: InstancePathHash,
+    /// The instance that has the projection.
+    pub instance_path_hash: InstancePathHash,
 
     /// The coordinate system of the camera ("view-space").
     pub view_coordinates: ViewCoordinates,

@@ -46,10 +46,10 @@ impl SceneTensor {
         _props: &EntityProperties,
         entity_view: &EntityView<Tensor>,
     ) -> Result<(), QueryError> {
-        entity_view.visit1(|instance: InstanceKey, tensor: Tensor| {
+        entity_view.visit1(|instance_key: InstanceKey, tensor: Tensor| {
             let tensor = ClassicTensor::from(&tensor);
             if !tensor.is_shaped_like_an_image() {
-                let instance_path = InstancePath::instance(ent_path.clone(), instance);
+                let instance_path = InstancePath::instance(ent_path.clone(), instance_key);
                 self.tensors.insert(instance_path, tensor);
             }
         })

@@ -118,10 +118,10 @@ impl ScenePart for Boxes2DPart {
             )
             .and_then(|entities| {
                 for entity_view in entities {
-                    entity_view.visit5(|instance, rect, color, radius, label, class_id| {
+                    entity_view.visit5(|instance_key, rect, color, radius, label, class_id| {
                         let instance_hash = instance_path_hash_for_picking(
                             ent_path,
-                            instance,
+                            instance_key,
                             &entity_view,
                             &props,
                             entity_highlight,

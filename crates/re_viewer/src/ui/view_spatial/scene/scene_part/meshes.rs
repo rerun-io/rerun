@@ -41,10 +41,10 @@ impl MeshPart {
         let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
         let visitor =
-            |instance: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
+            |instance_key: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
                 let instance_path_hash = instance_path_hash_for_picking(
                     ent_path,
-                    instance,
+                    instance_key,
                     entity_view,
                     props,
                     entity_highlight,

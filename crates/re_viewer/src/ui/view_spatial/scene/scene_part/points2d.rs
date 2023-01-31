@@ -50,7 +50,7 @@ impl Points2DPart {
             .batch("2d points")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: InstanceKey,
+        let visitor = |instance_key: InstanceKey,
                        pos: Point2D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
@@ -59,7 +59,7 @@ impl Points2DPart {
                        keypoint_id: Option<KeypointId>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,

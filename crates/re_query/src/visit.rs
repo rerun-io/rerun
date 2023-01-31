@@ -86,9 +86,9 @@ macro_rules! create_visitor {
                     self.iter_component::<$CC>()?,
                 )*
             ).for_each(
-                |(instance, primary, $($cc,)*)| {
+                |(instance_key, primary, $($cc,)*)| {
                     if let Some(primary) = primary {
-                        visit(instance, primary, $($cc,)*);
+                        visit(instance_key, primary, $($cc,)*);
                     }
                 }
             );

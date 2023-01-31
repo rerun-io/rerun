@@ -134,8 +134,8 @@ impl ImagesPart {
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
-        for (instance, tensor, color) in itertools::izip!(
-            entity_view.iter_instances()?,
+        for (instance_key, tensor, color) in itertools::izip!(
+            entity_view.iter_instance_keys()?,
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
@@ -149,7 +149,7 @@ impl ImagesPart {
 
                 let instance_path_hash = instance_path_hash_for_picking(
                     ent_path,
-                    instance,
+                    instance_key,
                     entity_view,
                     properties,
                     entity_highlight,

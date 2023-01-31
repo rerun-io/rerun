@@ -45,7 +45,7 @@ pub trait ScenePart {
 /// Takes into account the currently the object properties, currently highlighted objects, and number of instances.
 pub fn instance_path_hash_for_picking<T: re_log_types::msg_bundle::Component>(
     ent_path: &EntityPath,
-    instance: re_log_types::component_types::InstanceKey,
+    instance_key: re_log_types::component_types::InstanceKey,
     entity_view: &re_query::EntityView<T>,
     props: &EntityProperties,
     entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
@@ -54,7 +54,7 @@ pub fn instance_path_hash_for_picking<T: re_log_types::msg_bundle::Component>(
         if entity_view.num_instances() == 1 || !entity_highlight.any_selection_highlight() {
             InstancePathHash::entity_splat(ent_path)
         } else {
-            InstancePathHash::instance(ent_path, instance)
+            InstancePathHash::instance(ent_path, instance_key)
         }
     } else {
         InstancePathHash::NONE

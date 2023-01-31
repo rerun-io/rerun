@@ -41,14 +41,14 @@ impl Arrows3DPart {
             .batch("arrows")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: InstanceKey,
+        let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,

@@ -39,13 +39,13 @@ impl Lines2DPart {
             .batch("lines 2d")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: InstanceKey,
+        let visitor = |instance_key: InstanceKey,
                        strip: LineStrip2D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,
