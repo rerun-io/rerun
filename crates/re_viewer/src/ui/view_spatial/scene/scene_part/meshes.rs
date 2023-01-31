@@ -40,35 +40,39 @@ impl MeshPart {
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
         let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
-        let visitor = |instance: Instance,
-                       mesh: re_log_types::Mesh3D,
-                       _color: Option<ColorRGBA>| {
-            let instance_path_hash =
-                instance_path_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
+        let visitor =
+            |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
+                let instance_path_hash = instance_path_hash_for_picking(
+                    ent_path,
+                    instance,
+                    entity_view,
+                    props,
+                    entity_highlight,
+                );
 
-            let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
-                Color32::TRANSPARENT,
-                entity_highlight.index_highlight(instance_path_hash.instance_index),
-            );
+                let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
+                    Color32::TRANSPARENT,
+                    entity_highlight.index_highlight(instance_path_hash.instance_index),
+                );
 
-            if let Some(mesh) = ctx
-                .cache
-                .mesh
-                .load(
-                    &ent_path.to_string(),
-                    &MeshSourceData::Mesh3D(mesh),
-                    ctx.render_ctx,
-                )
-                .map(|cpu_mesh| MeshSource {
-                    instance_path_hash,
-                    world_from_mesh: world_from_obj_affine,
-                    mesh: cpu_mesh,
-                    additive_tint,
-                })
-            {
-                scene.primitives.meshes.push(mesh);
+                if let Some(mesh) = ctx
+                    .cache
+                    .mesh
+                    .load(
+                        &ent_path.to_string(),
+                        &MeshSourceData::Mesh3D(mesh),
+                        ctx.render_ctx,
+                    )
+                    .map(|cpu_mesh| MeshSource {
+                        instance_path_hash,
+                        world_from_mesh: world_from_obj_affine,
+                        mesh: cpu_mesh,
+                        additive_tint,
+                    })
+                {
+                    scene.primitives.meshes.push(mesh);
+                };
             };
-        };
 
         entity_view.visit2(visitor)?;
 
