@@ -24,18 +24,23 @@ class LogLevel:
     arbitrary strings as level (e.g. for user-defined levels).
     """
 
-    # """ Designates catastrophic failures. """
     CRITICAL: Final = "CRITICAL"
-    # """ Designates very serious errors. """
+    """ Designates catastrophic failures. """
+
     ERROR: Final = "ERROR"
-    # """ Designates hazardous situations. """
+    """ Designates very serious errors. """
+
     WARN: Final = "WARN"
-    # """ Designates useful information. """
+    """ Designates hazardous situations. """
+
     INFO: Final = "INFO"
-    # """ Designates lower priority information. """
+    """ Designates useful information. """
+
     DEBUG: Final = "DEBUG"
-    # """ Designates very low priority, often extremely verbose, information. """
+    """ Designates lower priority information. """
+
     TRACE: Final = "TRACE"
+    """ Designates very low priority, often extremely verbose, information. """
 
 
 class LoggingHandler(logging.Handler):
@@ -45,6 +50,8 @@ class LoggingHandler(logging.Handler):
     Because Rerun's data model doesn't match 1-to-1 with the different concepts from
     python's logging ecosystem, we need a way to map the latter to the former:
 
+    Mapping
+    -------
     * Root Entity: Optional root entity to gather all the logs under.
 
     * Entity path: the name of the logger responsible for the creation of the LogRecord
@@ -56,7 +63,8 @@ class LoggingHandler(logging.Handler):
             the LogRecord using the standard formatter of the logging package,
             unless it has been overridden by the user.
 
-    Read more about logging handlers at https://docs.python.org/3/howto/logging.html#handlers.
+    [Read more about logging handlers](https://docs.python.org/3/howto/logging.html#handlers)
+
     """
 
     LVL2NAME: Final = {
@@ -92,8 +100,21 @@ def log_text_entry(
     """
     Log a text entry, with optional level.
 
-    * If no `level` is given, it will default to `LogLevel.INFO`.
-    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    Parameters
+    ----------
+    entity_path:
+        The object path to log the text entry under.
+    text:
+        The text to log.
+    level:
+        The level of the text entry (default: `LogLevel.INFO`). Note this can technically
+        be an arbitrary string, but it's recommended to use one of the constants
+        from [LogLevel][rerun.log.text.LogLevel]
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    timeless:
+        Whether the text entry should be timeless.
+
     """
     comps = {}
     if text:

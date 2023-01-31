@@ -9,11 +9,12 @@ repo_url: https://github.com/rerun-io/rerun/
 theme:
   name: "material"
   features:
-    - navigation.tabs
-    - navigation.instant
-    - navigation.indexes
-    - navigation.tracking
     - navigation.expand
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.tracking
 
 plugins:
   - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
@@ -31,6 +32,7 @@ plugins:
             members_order: source
             heading_level: 3
             show_root_heading: true
+            merge_init_into_class: true
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_package_index.py

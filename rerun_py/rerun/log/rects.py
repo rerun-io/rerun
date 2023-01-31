@@ -39,13 +39,25 @@ def log_rect(
     """
     Log a 2D rectangle.
 
-    * `rect`: the recangle in [x, y, w, h], or some format you pick with the
-    `rect_format` argument.
-    * `rect_format`: how to interpret the `rect` argument
-    * `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
-    * `label`: Optional text to show inside the rectangle.
-    * `class_id`: Optional class id for the rectangle.
-       The class id provides color and label if not specified explicitly.
+    Parameters
+    ----------
+    entity_path:
+        Path to the rectangle in the space hierarchy.
+    rect:
+        the recangle in [x, y, w, h], or some format you pick with the `rect_format` argument.
+    rect_format:
+        how to interpret the `rect` argument
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    label:
+        Optional text to show inside the rectangle.
+    class_id:
+        Optional class id for the rectangle.
+        The class id provides color and label if not specified explicitly.
+        See [rerun.log_annotation_context][]
+    timeless:
+         If true, the rect will be timeless (default: False).
+
     """
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
@@ -74,7 +86,7 @@ def log_rects(
     rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    identifiers: Optional[Sequence[Union[str, int]]] = None,
+    identifiers: Optional[Sequence[int]] = None,
     colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
@@ -85,23 +97,36 @@ def log_rects(
 
     Logging again to the same `entity_path` will replace all the previous rectangles.
 
-    * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
-    argument.
-    * `rect_format`: how to interpret the `rect` argument
-    * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the rectangles.
-      In the future these will be used to track the rectangles over time.
-    * `labels`: Optional per-rectangle text to show inside the rectangle.
-    * `class_ids`: Optional class ids for the rectangles.
-      The class id provides colors and labels if not specified explicitly.
-
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
     or one color per point in a Nx3 or Nx4 numpy array.
 
     Supported `dtype`s for `colors`:
-    * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
+    --------------------------------
+     - uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
-    * float32/float64: all color components should be in 0-1 linear space.
+     - float32/float64: all color components should be in 0-1 linear space.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the rectangles in the space hierarchy.
+    rects:
+        Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format` argument.
+    rect_format:
+        how to interpret the `rect` argument
+    identifiers:
+        Unique numeric id that shows up when you hover or select the point.
+    colors:
+        Optional per-rectangle RGB or RGBA triplet in 0-255 sRGB.
+    labels:
+        Optional per-rectangle text to show inside the rectangle.
+    class_ids:
+        Optional class ids for the rectangles.
+        The class id provides colors and labels if not specified explicitly.
+        See [rerun.log_annotation_context][]
+    timeless:
+            If true, the rects will be timeless (default: False).
 
     """
     # Treat None the same as []

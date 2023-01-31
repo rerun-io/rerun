@@ -8,3 +8,8 @@ div.doc-contents:not(.first) {
 td code {
   word-break: normal !important;
 }
+
+/* Add extra spacing between doc-objects. */
+div.doc-object {
+  margin-bottom: 2rem;
+}
