@@ -71,7 +71,7 @@ impl SelectionPanel {
                         egui::CollapsingHeader::new("Data")
                             .default_open(true)
                             .show(ui, |ui| {
-                                selection.data_ui(ctx, ui, UiVerbosity::Large, &query);
+                                selection.data_ui(ctx, ui, UiVerbosity::All, &query);
                             });
 
                         egui::CollapsingHeader::new("Blueprint")

@@ -398,7 +398,7 @@ pub fn view_3d(
                     instance_path.data_ui(
                         ctx,
                         ui,
-                        crate::ui::UiVerbosity::Large,
+                        crate::ui::UiVerbosity::Reduced,
                         &ctx.current_query(),
                     );
                 })

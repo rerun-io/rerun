@@ -9,12 +9,15 @@ use crate::{
 
 use super::DataUi;
 
+const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] =
+    &["rerun.msg_id", "rerun.instance", "rerun.instance_key"];
+
 impl DataUi for InstancePath {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let store = &ctx.log_db.entity_db.arrow_store;
@@ -38,6 +41,17 @@ impl DataUi for InstancePath {
 
                     if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
                         continue; // no need to show components that are unset at this point in time
+                    }
+
+                    match verbosity {
+                        UiVerbosity::Small | UiVerbosity::MaxHeight(_) | UiVerbosity::Reduced => {
+                            if HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY
+                                .contains(&component_name.as_str())
+                            {
+                                continue;
+                            }
+                        }
+                        UiVerbosity::All => {}
                     }
 
                     ctx.component_path_button_to(
