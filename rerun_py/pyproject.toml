@@ -1,38 +1,34 @@
-# https://maturin.rs/metadata.html
-
 [build-system]
 build-backend = "maturin"
 requires = ["maturin>=0.14.0,<0.15"]
 
 [project]
-name = "rerun-sdk"
-authors = [{ name = "Rerun.io", email = "opensource@rerun.io" }]
-classifiers = [
-  "Programming Language :: Rust",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
-  "Development Status :: 3 - Alpha",
-  "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "Topic :: Scientific/Engineering :: Visualization",
-]
+classifiers = ["Programming Language :: Rust", "Programming Language :: Python :: Implementation :: CPython", "Programming Language :: Python :: Implementation :: PyPy", "Development Status :: 3 - Alpha", "Topic :: Scientific/Engineering :: Artificial Intelligence", "Topic :: Scientific/Engineering :: Visualization"]
+dependencies = ["numpy>=1.23", "pyarrow==10.0.1"]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
-license = { text = "MIT OR Apache-2.0" }
+name = "rerun-sdk"
 requires-python = ">=3.8"
+version = "0.1.0+4c3e31a6"
 
-dependencies = ["numpy>=1.23", "pyarrow==10.0.1"]
+[[project.authors]]
+email = "opensource@rerun.io"
+name = "Rerun.io"
+
+[project.license]
+text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
 
 [project.urls]
-homepage = "https://www.rerun.io/"
 documentation = "https://github.com/rerun-io/rerun"
+homepage = "https://www.rerun.io/"
 repository = "https://github.com/rerun-io/rerun"
-
-[tool.maturin]
-locked = true
 
 [tool.black]
 line-length = 120
-target-version = ['py38']
+target-version = ["py38"]
+
+[tool.maturin]
+locked = true

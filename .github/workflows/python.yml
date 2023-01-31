@@ -149,9 +149,9 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: |
-          --manifest-path rerun_py/Cargo.toml
-          --release
-          --out dist
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --out dist
 
       - name: Install built wheel
         run: |
