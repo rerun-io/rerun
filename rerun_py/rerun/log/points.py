@@ -183,10 +183,9 @@ def log_points(
     keypoint_ids = _normalize_ids(keypoint_ids)
 
     identifiers_np = np.array((), dtype="int64")
-    if identifiers:
+    if identifiers is not None:
         try:
-            identifiers = [int(id) for id in identifiers]
-            identifiers_np = np.array(identifiers, dtype="int64")
+            identifiers_np = np.require(identifiers, dtype="int64")
         except ValueError:
             _send_warning("Only integer identifies supported", 1)
 
