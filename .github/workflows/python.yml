@@ -164,10 +164,6 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.3
-    strategy:
-      matrix:
-        #target: [x86_64, i686]
-        target: [x86_64]
     steps:
       - uses: actions/checkout@v3
 
