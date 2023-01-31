@@ -20,17 +20,14 @@ impl SpaceViewEntityWindow {
         ui: &mut egui::Ui,
         space_view: &mut SpaceView,
     ) -> bool {
-        egui::Window::new(format!(
-            "Add/remove entities to Space View \"{}\"",
-            space_view.name
-        ))
-        //.pivot(egui::Align2::CENTER_CENTER)
-        //.default_pos(ui.ctx().screen_rect().center())
-        .collapsible(false)
-        .show(ui.ctx(), |ui| {
-            self.add_entities_ui(ctx, ui, space_view);
-        })
-        .is_some()
+        egui::Window::new(format!("Add/remove entities to \"{}\"", space_view.name))
+            //.pivot(egui::Align2::CENTER_CENTER)
+            //.default_pos(ui.ctx().screen_rect().center())
+            .collapsible(false)
+            .show(ui.ctx(), |ui| {
+                self.add_entities_ui(ctx, ui, space_view);
+            })
+            .is_some()
     }
 
     #[allow(clippy::unused_self)]
@@ -166,17 +163,12 @@ impl SpaceViewEntityWindow {
                     .on_hover_text("Remove this path from the Space View")
                     .clicked()
                     {
-                        space_view.data_blueprint.remove_entity(entity_path);
-                        space_view.entities_determined_by_user = true;
-
-
-                        // TODO:
                         // Remove all entities at and under this path
-                        // entity_tree.subtree(entity_path)
-                        // .unwrap()
-                        // .visit_children_recursively(&mut |path: &EntityPath| {
-                        //     space_view.data_blueprint.remove_entity(path);
-                        // });
+                        entity_tree.subtree(entity_path)
+                        .unwrap()
+                        .visit_children_recursively(&mut |path: &EntityPath| {
+                            space_view.data_blueprint.remove_entity(path);
+                        });
                     }
                 } else {
                     let entity_category = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
@@ -202,24 +194,19 @@ impl SpaceViewEntityWindow {
                     let response = ui.add_enabled_ui(cannot_add_reason.is_none(), |ui| {
                         let response = ui.button("➕").on_hover_text("Add this entity to the Space View");
                         if response.clicked() {
-                            // Insert the entity itspace_view and all its children as far as they haven't been added yet
-                            // TODO:
-                            // let mut entities = Vec::new();
-                            // entity_tree
-                            //     .subtree(entity_path)
-                            //     .unwrap()
-                            //     .visit_children_recursively(&mut |path: &EntityPath| {
-                            //         if has_visualization_for_category(ctx, space_view.category, path)
-                            //             && !space_view.data_blueprint.contains_entity(path)
-                            //             && spaces_info.is_reachable_by_transform(path, &space_view.space_path).is_ok()
-                            //         {
-                            //             entities.push(path.clone());
-                            //         }
-                            //     });
-                            space_view.data_blueprint.insert_entities_according_to_hierarchy(
-                                std::iter::once(entity_path),
-                                &space_view.space_path,
-                            );
+                            // Insert the entity it space_view and all its children as far as they haven't been added yet
+                            let mut entities = Vec::new();
+                            entity_tree
+                                .subtree(entity_path)
+                                .unwrap()
+                                .visit_children_recursively(&mut |path: &EntityPath| {
+                                    if has_visualization_for_category(ctx, space_view.category, path)
+                                        && !space_view.data_blueprint.contains_entity(path)
+                                        && spaces_info.is_reachable_by_transform(path, &space_view.space_path).is_ok()
+                                    {
+                                        entities.push(path.clone());
+                                    }
+                                });
                             space_view.entities_determined_by_user = true;
                         }
                     }).response;
