@@ -92,19 +92,22 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         camera = cameras[image.camera_id]
         intrinsics = intrinsics_for_camera(camera)
 
-        unique_valid_3d_ids = set(id for id in image.point3D_ids if id != -1 and points3D.get(id) is not None)
-        sorted_3d_ids = sorted(unique_valid_3d_ids)
+        visible = [id != -1 and points3D.get(id) is not None for id in image.point3D_ids]
+        visible_ids = image.point3D_ids[visible]
 
-        visible_points = [points3D[id] for id in sorted_3d_ids]
-
-        if filter_output and len(visible_points) < 500:
+        if filter_output and len(visible_ids) < 500:
             continue
+
+        visible_ids, sort_indices = np.unique(visible_ids, return_index=True)
+        visible_xyzs = [points3D[id] for id in visible_ids]
+        visible_xys = image.xys[visible][sort_indices]
 
         rr.set_time_sequence("frame", frame_idx)
 
-        points = [point.xyz for point in visible_points]  # type: ignore[union-attr]
-        point_colors = [point.rgb for point in visible_points]  # type: ignore[union-attr]
-        rr.log_points(f"world/points", points, identifiers=sorted_3d_ids, colors=point_colors)
+        points = [point.xyz for point in visible_xyzs]
+        point_colors = [point.rgb for point in visible_xyzs]
+
+        rr.log_points(f"world/points", points, identifiers=visible_ids, colors=point_colors)
 
         rr.log_rigid3(
             f"world/camera",
@@ -122,7 +125,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
         rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
 
-        rr.log_points(f"world/camera/image/keypoints", image.xys)
+        rr.log_points(f"world/camera/image/keypoints", visible_xys, identifiers=visible_ids, colors=point_colors)
 
 
 def main() -> None:
