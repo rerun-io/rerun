@@ -119,7 +119,6 @@ def init(application_id: str, spawn_and_connect: bool = False) -> None:
         For instance, if you have one application doing object detection
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-
     spawn_and_connect : bool
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn_and_connect` separately.
