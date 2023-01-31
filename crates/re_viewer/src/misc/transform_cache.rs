@@ -30,6 +30,7 @@ pub struct TransformCache {
 #[derive(Clone, Copy)]
 pub enum UnreachableTransform {
     /// Not part of the hierarchy at all.
+    /// TODO(andreas): Remove
     Unconnected,
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,

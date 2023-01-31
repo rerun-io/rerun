@@ -36,9 +36,9 @@ impl SpaceViewEntityPicker {
 
         // Close window using escape button.
         let mut open = ui.input(|i| !i.key_pressed(egui::Key::Escape));
-        let title = format!("Pick Entities shown in \"{}\"", space_view.name);
+        let title = "Add/remove Entities";
 
-        egui::Window::new(&title)
+        let response = egui::Window::new(title)
             // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken. Also, should reset every time
             .default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
@@ -48,6 +48,17 @@ impl SpaceViewEntityPicker {
                 title_bar(ctx.re_ui, ui, title, &mut open);
                 add_entities_ui(ctx, ui, space_view);
             });
+
+        // HACK: Fake modality - any click outside causes the window to close.
+        let cursor_was_over_window = if let Some(response) = response {
+            response.response.hovered()
+        } else {
+            false
+        };
+        if !cursor_was_over_window && ui.input(|i| i.pointer.any_pressed()) {
+            open = false;
+        }
+
         open
     }
 }
@@ -107,17 +118,15 @@ fn add_entities_tree_ui(
                         || child_tree.path.is_descendant_of(&space_view.space_path)),
                 )
             }) {
-                if !child_tree.path.is_descendant_of(&space_view.space_path) {
-                    add_entities_tree_ui(
-                        ctx,
-                        ui,
-                        spaces_info,
-                        &path_comp.to_string(),
-                        child_tree,
-                        space_view,
-                        level,
-                    );
-                }
+                add_entities_tree_ui(
+                    ctx,
+                    ui,
+                    spaces_info,
+                    &path_comp.to_string(),
+                    child_tree,
+                    space_view,
+                    level,
+                );
             }
         });
     };
@@ -143,14 +152,17 @@ fn add_entities_line_ui(
         } else {
             egui::RichText::new(name)
         };
-        ctx.instance_path_button_to(ui, space_view_id, &InstancePath::entity_splat(entity_path.clone()), widget_text);
+        let response = ctx.instance_path_button_to(ui, space_view_id, &InstancePath::entity_splat(entity_path.clone()), widget_text);
+        if entity_path == &space_view.space_path {
+            response.highlight();
+        }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let entity_tree = &ctx.log_db.entity_db.tree;
 
             if space_view.data_blueprint.contains_entity(entity_path) {
                 if ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
-                .on_hover_text("Remove this path from the Space View")
+                .on_hover_text("Remove this Entity from the Space View")
                 .clicked()
                 {
                     // Remove all entities at and under this path
@@ -211,7 +223,7 @@ fn add_entities_line_ui(
     });
 }
 
-fn title_bar(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, title: String, open: &mut bool) {
+fn title_bar(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, title: &str, open: &mut bool) {
     ui.horizontal(|ui| {
         ui.heading(title);
 
