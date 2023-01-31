@@ -313,3 +313,18 @@ impl ReUi {
         self.large_button_impl(ui, icon, bg_fill, tint)
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "egui_dock")]
+pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
+    let mut dock_style = egui_dock::Style::from_egui(style);
+    dock_style.separator_width = 2.0;
+    dock_style.default_inner_margin = 0.0.into();
+    dock_style.show_close_buttons = false;
+    dock_style.tab_include_scrollarea = false;
+    // dock_style.expand_tabs = true; looks good, but decreases readability
+    dock_style.tab_text_color_unfocused = dock_style.tab_text_color_focused; // We don't treat focused tabs differently
+    dock_style.tab_background_color = style.visuals.panel_fill;
+    dock_style
+}

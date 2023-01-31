@@ -4103,6 +4103,7 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "egui_dock",
  "egui_extras",
  "image",
  "parking_lot",

@@ -388,15 +388,6 @@ impl Viewport {
                 });
             }
         } else {
-            let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
-            dock_style.separator_width = 2.0;
-            dock_style.default_inner_margin = 0.0.into();
-            dock_style.show_close_buttons = false;
-            dock_style.tab_include_scrollarea = false;
-            // dock_style.expand_tabs = true; looks good, but decreases readability
-            dock_style.tab_text_color_unfocused = dock_style.tab_text_color_focused; // We don't treat focused tabs differently
-            dock_style.tab_background_color = ui.visuals().panel_fill;
-
             let mut tab_viewer = TabViewer {
                 ctx,
                 spaces_info,
@@ -406,7 +397,7 @@ impl Viewport {
             };
 
             egui_dock::DockArea::new(tree)
-                .style(dock_style)
+                .style(re_ui::egui_dock_style(ui.style()))
                 .show_inside(ui, &mut tab_viewer);
         }
     }
