@@ -42,6 +42,8 @@ pub struct SpaceView {
     pub name: String,
 
     /// Everything under this root *can* be shown in the space view.
+    ///
+    /// TODO(andreas): We decided to remove this concept.
     pub root_path: EntityPath,
 
     /// The "anchor point" of this space view.

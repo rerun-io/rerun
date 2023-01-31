@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath};
 
@@ -53,6 +54,7 @@ impl SpaceViewEntityPicker {
 
 fn add_entities_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
     let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
+    // TODO(andreas): remove use space_view.root_path, just show everything
     if let Some(tree) = ctx.log_db.entity_db.tree.subtree(&space_view.root_path) {
         add_entities_tree_ui(
             ctx,
@@ -97,16 +99,25 @@ fn add_entities_tree_ui(
             add_entities_line_ui(ctx, ui, spaces_info, name, &tree.path, space_view);
         })
         .body(|ui| {
-            for (path_comp, child_tree) in &tree.children {
-                add_entities_tree_ui(
-                    ctx,
-                    ui,
-                    spaces_info,
-                    &path_comp.to_string(),
-                    child_tree,
-                    space_view,
-                    level + 1,
-                );
+            let level = level + 1;
+            for (path_comp, child_tree) in tree.children.iter().sorted_by_key(|(_, child_tree)| {
+                // Put descendants of the space path always first
+                i32::from(
+                    !(child_tree.path == space_view.space_path
+                        || child_tree.path.is_descendant_of(&space_view.space_path)),
+                )
+            }) {
+                if !child_tree.path.is_descendant_of(&space_view.space_path) {
+                    add_entities_tree_ui(
+                        ctx,
+                        ui,
+                        spaces_info,
+                        &path_comp.to_string(),
+                        child_tree,
+                        space_view,
+                        level,
+                    );
+                }
             }
         });
     };
