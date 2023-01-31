@@ -106,17 +106,17 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         points = [point.xyz for point in visible_xyzs]
         point_colors = [point.rgb for point in visible_xyzs]
 
-        rr.log_points(f"world/points", points, colors=point_colors)
+        rr.log_points("world/points", points, colors=point_colors)
 
         rr.log_rigid3(
-            f"world/camera",
+            "world/camera",
             child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log camera intrinsics
         rr.log_pinhole(
-            f"world/camera/image",
+            "world/camera/image",
             child_from_parent=intrinsics,
             width=camera.width,
             height=camera.height,
