@@ -45,24 +45,26 @@ impl ViewTensorState {
 
     pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(tensor) = &self.tensor {
-            ui.collapsing("Dimension Mapping", |ui| {
-                crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
-                ui.add_space(12.0);
+            egui::CollapsingHeader::new("Dimension Mapping")
+                .default_open(true)
+                .show(ui, |ui| {
+                    crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
+                    ui.add_space(12.0);
 
-                dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
+                    dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
 
-                let default_mapping = DimensionMapping::create(tensor.shape());
-                if ui
-                    .add_enabled(
-                        self.dimension_mapping != default_mapping,
-                        egui::Button::new("Auto-map"),
-                    )
-                    .on_disabled_hover_text("The default is already set up")
-                    .clicked()
-                {
-                    self.dimension_mapping = DimensionMapping::create(tensor.shape());
-                }
-            });
+                    let default_mapping = DimensionMapping::create(tensor.shape());
+                    if ui
+                        .add_enabled(
+                            self.dimension_mapping != default_mapping,
+                            egui::Button::new("Auto-map"),
+                        )
+                        .on_disabled_hover_text("The default is already set up")
+                        .clicked()
+                    {
+                        self.dimension_mapping = DimensionMapping::create(tensor.shape());
+                    }
+                });
         }
 
         self.texture_settings.show(ui);
