@@ -283,8 +283,8 @@ impl SelectionState {
                 | Selection::SpaceView(_)
                 | Selection::DataBlueprintGroup(_, _) => current == test,
 
-                Selection::Instance(current_space_view_id, current_instance_path) => {
-                    if let Selection::Instance(test_space_view_id, test_instance_path) = test {
+                Selection::InstancePath(current_space_view_id, current_instance_path) => {
+                    if let Selection::InstancePath(test_space_view_id, test_instance_path) = test {
                         // For both space view id and instance index we want to be inclusive,
                         // but if both are set to Some, and set to different, then we count that
                         // as a miss.
@@ -341,7 +341,7 @@ impl SelectionState {
                     }
                 }
 
-                Selection::Instance(selected_space_view_context, selected_instance) => {
+                Selection::InstancePath(selected_space_view_context, selected_instance) => {
                     let highlight = if *selected_space_view_context == Some(space_view_id) {
                         SelectionHighlight::Selection
                     } else {
@@ -392,7 +392,7 @@ impl SelectionState {
                     }
                 }
 
-                Selection::Instance(_, selected_instance) => {
+                Selection::InstancePath(_, selected_instance) => {
                     let highlighted_entity = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();

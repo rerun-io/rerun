@@ -442,7 +442,7 @@ fn view_2d_scrollable(
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
                 pick.instance_path_hash
                     .resolve(&ctx.log_db.entity_db)
-                    .map(|instance| Selection::Instance(Some(space_view_id), instance))
+                    .map(|instance| Selection::InstancePath(Some(space_view_id), instance))
             }));
         }
     }

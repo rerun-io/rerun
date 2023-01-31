@@ -408,7 +408,7 @@ pub fn view_3d(
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
             pick.instance_path_hash
                 .resolve(&ctx.log_db.entity_db)
-                .map(|instance| Selection::Instance(Some(space_view_id), instance))
+                .map(|instance| Selection::InstancePath(Some(space_view_id), instance))
         }));
         state.state_3d.hovered_point = picking_result
             .opaque_hit
@@ -426,7 +426,7 @@ pub fn view_3d(
         state.state_3d.tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Selection::Instance(_, instance_path)) = ctx.hovered().first() {
+        if let Some(Selection::InstancePath(_, instance_path)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.clone());
