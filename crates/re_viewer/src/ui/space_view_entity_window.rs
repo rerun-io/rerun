@@ -47,6 +47,7 @@ fn add_entities_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &
             &tree.path.to_string(),
             tree,
             space_view,
+            0,
         );
     }
 }
@@ -58,6 +59,7 @@ fn add_entities_tree_ui(
     name: &str,
     tree: &EntityTree,
     space_view: &mut SpaceView,
+    level: u32,
 ) {
     if tree.is_leaf() {
         add_entities_line_ui(
@@ -69,8 +71,9 @@ fn add_entities_tree_ui(
             space_view,
         );
     } else {
-        let default_open =
-            space_view.space_path.is_descendant_of(&tree.path) || tree.children.len() <= 3;
+        let default_open = space_view.space_path.is_descendant_of(&tree.path)
+            || tree.children.len() <= 3
+            || level < 1;
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             ui.id().with(name),
@@ -88,6 +91,7 @@ fn add_entities_tree_ui(
                     &path_comp.to_string(),
                     child_tree,
                     space_view,
+                    level + 1,
                 );
             }
         });
@@ -130,6 +134,7 @@ fn add_entities_line_ui(
                     .unwrap()
                     .visit_children_recursively(&mut |path: &EntityPath| {
                         space_view.data_blueprint.remove_entity(path);
+                        space_view.entities_determined_by_user = true;
                     });
                 }
             } else {
