@@ -123,7 +123,7 @@ impl DataUi for ArrowMsg {
                 });
             }
             Err(e) => {
-                ui.label(format!("Error parsing ArrowMsg: {e}"));
+                ui.label(ctx.re_ui.error_text(format!("Error parsing ArrowMsg: {e}")));
             }
         }
     }
