@@ -148,7 +148,7 @@ impl Viewport {
         .show_header(ui, |ui| {
             let mut is_space_view_visible = self.visible.contains(space_view_id);
             let mut visibility_changed = false;
-            blueprint_row_with_on_hover_buttons(
+            blueprint_row_with_buttons(
                 ctx.re_ui,
                 ui,
                 true,
@@ -221,7 +221,7 @@ impl Viewport {
         for path in &entities {
             ui.horizontal(|ui| {
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
-                blueprint_row_with_on_hover_buttons(
+                blueprint_row_with_buttons(
                     ctx.re_ui,
                     ui,
                     group_is_visible,
@@ -263,7 +263,7 @@ impl Viewport {
                 default_open,
             )
             .show_header(ui, |ui| {
-                blueprint_row_with_on_hover_buttons(
+                blueprint_row_with_buttons(
                     ctx.re_ui,
                     ui,
                     group_is_visible,
@@ -633,7 +633,7 @@ impl Viewport {
 /// and show a visibility button if the row is hovered.
 ///
 /// Returns true if visibility changed.
-fn blueprint_row_with_on_hover_buttons(
+fn blueprint_row_with_buttons(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     enabled: bool,
@@ -663,11 +663,11 @@ fn blueprint_row_with_on_hover_buttons(
                 .interact(ui.max_rect(), ui.id(), egui::Sense::hover())
                 .hovered()
             {
-                // Clip the main button so that the visibility button has room to cover it.
+                // Clip the main button so that the buttons have room to cover it.
                 // Ideally we would only clip the button _text_, not the button background, but that's not possible.
                 let mut clip_rect = ui.max_rect();
-                let visibility_button_width = 16.0;
-                clip_rect.max.x -= visibility_button_width;
+                let buttons_width = 36.0;
+                clip_rect.max.x -= buttons_width;
                 ui.set_clip_rect(clip_rect);
             }
 
