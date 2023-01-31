@@ -6,7 +6,7 @@ use egui::{
 };
 use itertools::Itertools;
 
-use re_data_store::{EntityTree, InstanceId};
+use re_data_store::{EntityTree, InstancePath};
 use re_log_types::{
     ComponentPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
     TimeType,
@@ -360,7 +360,7 @@ impl TimePanel {
         let text = if tree.is_leaf() {
             last_path_part.to_string()
         } else {
-            format!("{}/", last_path_part) // show we have children with a /
+            format!("{last_path_part}/") // show we have children with a /
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
@@ -427,13 +427,7 @@ impl TimePanel {
                 num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Selection::Instance(
-                    None,
-                    InstanceId {
-                        entity_path: tree.path.clone(),
-                        instance_index: None,
-                    },
-                ),
+                Selection::Instance(None, InstancePath::entity_splat(tree.path.clone())),
             );
         }
     }
@@ -1888,19 +1882,19 @@ fn paint_time_range_ticks(
                     // so instead we switch to showing the time as milliseconds since the last whole second:
                     let ms = relative_ns as f64 * 1e-6;
                     if relative_ns % 1_000_000 == 0 {
-                        format!("{:+.0} ms", ms)
+                        format!("{ms:+.0} ms")
                     } else if relative_ns % 100_000 == 0 {
-                        format!("{:+.1} ms", ms)
+                        format!("{ms:+.1} ms")
                     } else if relative_ns % 10_000 == 0 {
-                        format!("{:+.2} ms", ms)
+                        format!("{ms:+.2} ms")
                     } else if relative_ns % 1_000 == 0 {
-                        format!("{:+.3} ms", ms)
+                        format!("{ms:+.3} ms")
                     } else if relative_ns % 100 == 0 {
-                        format!("{:+.4} ms", ms)
+                        format!("{ms:+.4} ms")
                     } else if relative_ns % 10 == 0 {
-                        format!("{:+.5} ms", ms)
+                        format!("{ms:+.5} ms")
                     } else {
-                        format!("{:+.6} ms", ms)
+                        format!("{ms:+.6} ms")
                     }
                 }
             }

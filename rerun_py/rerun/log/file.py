@@ -17,23 +17,26 @@ __all__ = [
 
 
 class MeshFormat(Enum):
+    """Mesh file format."""
+
     # Needs some way of logging materials too, or adding some default material to the
     # viewer.
     # GLTF = "GLTF"
-
-    # Binary glTF
     GLB = "GLB"
+    """glTF binary format."""
 
     # Needs some way of logging materials too, or adding some default material to the
     # viewer.
-    # Wavefront .obj
     OBJ = "OBJ"
+    """Wavefront .obj format."""
 
 
 @dataclass
 class ImageFormat(Enum):
-    # """ jpeg """"
+    """Image file format."""
+
     JPEG = "jpeg"
+    """JPEG format."""
 
 
 def log_mesh_file(
@@ -59,6 +62,19 @@ def log_mesh_file(
         [0, 0, 1, 0]])
     ```
 
+    Parameters
+    ----------
+    entity_path:
+        Path to the mesh in the space hierarchy
+    mesh_format:
+        Format of the mesh file
+    mesh_file:
+        Contents of the mesh file
+    transform:
+        Optional 3x4 affine transform matrix applied to the mesh
+    timeless:
+        If true, the mesh will be timeless (default: False)
+
     """
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
@@ -79,6 +95,18 @@ def log_image_file(
     Log the contents of an image file (only JPEGs supported for now).
 
     If no `img_format` is specified, we will try and guess it.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the image in the space hierarchy.
+    img_path:
+        Path to the image file.
+    img_format:
+        Format of the image file.
+    timeless:
+        If true, the image will be timeless (default: False).
+
     """
     img_format = getattr(img_format, "value", None)
 

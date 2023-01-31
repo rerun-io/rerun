@@ -315,8 +315,8 @@ impl MemoryPanel {
 
         egui::plot::Plot::new("mem_history_plot")
             .min_size(egui::Vec2::splat(200.0))
-            .label_formatter(|name, value| format!("{}: {}", name, format_bytes(value.y)))
-            .x_axis_formatter(|time, _| format!("{} s", time))
+            .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
+            .x_axis_formatter(|time, _| format!("{time} s"))
             .y_axis_formatter(|bytes, _| format_bytes(bytes))
             .show_x(false)
             .legend(egui::plot::Legend::default().position(egui::plot::Corner::LeftTop))

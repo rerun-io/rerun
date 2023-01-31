@@ -1400,7 +1400,7 @@ fn save_database_to_file(
 
         use anyhow::Context as _;
         let file = std::fs::File::create(path.as_path())
-            .with_context(|| format!("Failed to create file at {:?}", path))?;
+            .with_context(|| format!("Failed to create file at {path:?}"))?;
 
         re_log_types::encoding::encode(msgs.iter(), file).map(|_| path)
     }

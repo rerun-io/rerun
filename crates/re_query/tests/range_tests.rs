@@ -115,8 +115,8 @@ fn simple_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -135,8 +135,8 @@ fn simple_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -199,8 +199,8 @@ fn simple_range() {
         let colors: Vec<Option<ColorRGBA>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -219,8 +219,8 @@ fn simple_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -383,8 +383,8 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -403,8 +403,8 @@ fn timeless_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -476,8 +476,8 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(122), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -496,8 +496,8 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -516,8 +516,8 @@ fn timeless_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -595,8 +595,8 @@ fn timeless_range() {
         let colors: Vec<Option<ColorRGBA>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(&None, time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -614,8 +614,8 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(&None, time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -634,8 +634,8 @@ fn timeless_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -654,8 +654,8 @@ fn timeless_range() {
         let colors = vec![Some(ColorRGBA(0xff000000)), None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -697,7 +697,7 @@ fn simple_splatted_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with a splatted instance
-        let color_instances = vec![Instance::splat()];
+        let color_instances = vec![Instance::SPLAT];
         let colors = vec![ColorRGBA(0x00ff0000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -770,8 +770,8 @@ fn simple_splatted_range() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -790,8 +790,8 @@ fn simple_splatted_range() {
         let colors = vec![Some(ColorRGBA(0x00ff0000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -854,8 +854,8 @@ fn simple_splatted_range() {
         let colors: Vec<Option<ColorRGBA>> = vec![None, None];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
@@ -874,8 +874,8 @@ fn simple_splatted_range() {
         let colors = vec![Some(ColorRGBA(0x00ff0000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());

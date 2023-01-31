@@ -356,7 +356,7 @@ fn view_2d_scrollable(
         );
 
         for hit in picking_result.iter_hits() {
-            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.entity_db)
+            let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
 
             // Special hover ui for images.
@@ -365,7 +365,7 @@ fn view_2d_scrollable(
                     .ui
                     .images
                     .iter()
-                    .find(|image| image.instance_hash == hit.instance_hash)
+                    .find(|image| image.instance_path_hash == hit.instance_path_hash)
                     .map(|image| (image, uv))
             } else {
                 None
@@ -389,8 +389,13 @@ fn view_2d_scrollable(
                         ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
-                            ui.label(instance_id.to_string());
-                            instance_id.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+                            ui.label(instance_path.to_string());
+                            instance_path.data_ui(
+                                ctx,
+                                ui,
+                                UiVerbosity::Small,
+                                &ctx.current_query(),
+                            );
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 &image.tensor,
@@ -424,8 +429,8 @@ fn view_2d_scrollable(
             } else {
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
-                    instance_id.data_ui(
+                    ctx.instance_path_button(ui, Some(space_view_id), &instance_path);
+                    instance_path.data_ui(
                         ctx,
                         ui,
                         crate::ui::UiVerbosity::Large,
@@ -435,7 +440,7 @@ fn view_2d_scrollable(
             };
 
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
-                pick.instance_hash
+                pick.instance_path_hash
                     .resolve(&ctx.log_db.entity_db)
                     .map(|instance| Selection::Instance(Some(space_view_id), instance))
             }));
@@ -511,7 +516,7 @@ fn create_labels(
 
         let hightlight = highlights
             .entity_highlight(label.labled_instance.entity_path_hash)
-            .index_highlight(label.labled_instance.instance_index_hash);
+            .index_highlight(label.labled_instance.instance_index);
         let fill_color = match hightlight.hover {
             crate::misc::HoverHighlight::None => match hightlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,

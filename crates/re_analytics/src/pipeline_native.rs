@@ -58,7 +58,7 @@ impl Pipeline {
             .create(true)
             .truncate(true)
             .read(true)
-            .open(&session_file_path)?;
+            .open(session_file_path)?;
 
         // NOTE: We purposefully drop the handles and just forget about all pipeline threads.
         //
@@ -208,7 +208,7 @@ fn realtime_pipeline(
             // will result in duplicated data that we'll be able to deduplicate at query time.
             return;
         }
-        if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
+        if let Err(err) = session_file.rewind() {
             // We couldn't reset the session file... That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
@@ -284,7 +284,7 @@ fn flush_events(
     session_id: &str,
     sink: &PostHogSink,
 ) -> Result<(), SinkError> {
-    if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
+    if let Err(err) = session_file.rewind() {
         warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
         return Err(err.into());
     }

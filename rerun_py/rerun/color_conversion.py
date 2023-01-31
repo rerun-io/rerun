@@ -6,7 +6,20 @@ import numpy.typing as npt
 
 
 def u8_array_to_rgba(arr: Sequence[int]) -> np.uint32:
-    """Convert an array[4] of uint8 values into a uint32."""
+    """
+    Convert an array[4] of uint8 values into a uint32.
+
+    Parameters
+    ----------
+    arr : Sequence[int]
+        The array of uint8 values to convert in RGBA order.
+
+    Returns
+    -------
+    int
+        The uint32 value as 0xRRGGBBAA.
+
+    """
     red = arr[0]
     green = arr[1]
     blue = arr[2]
@@ -16,9 +29,9 @@ def u8_array_to_rgba(arr: Sequence[int]) -> np.uint32:
 
 def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:
     """
-    Transform color values from linear [0, 1] to gamma encoded [0, 255].
+    Transform color values from linear [0.0, 1.0] to gamma encoded [0, 255].
 
-    Linear colors are expected to have dtype np.float32 or np.float64.
+    Linear colors are expected to have dtype [numpy.floating][]
 
     Intended to implement the following per color value:
     ```Rust
@@ -32,6 +45,17 @@ def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]])
         255
     }
     ```
+
+    Parameters
+    ----------
+    linear:
+        The linear color values to transform.
+
+    Returns
+    -------
+    np.ndarray[np.uint8]
+        The gamma encoded color values.
+
     """
     gamma = linear.clip(min=0, max=1)
     below = gamma <= 0.0031308
@@ -52,6 +76,17 @@ def linear_to_gamma_u8_pixel(linear: npt.NDArray[Union[np.float32, np.float64]])
     The last dimension of the colors array `linear` is expected to represent a single pixel color.
     - 3 colors means RGB
     - 4 colors means RGBA
+
+    Parameters
+    ----------
+    linear:
+        The linear color pixels to transform.
+
+    Returns
+    -------
+    np.ndarray[np.uint8]
+        The gamma encoded color pixels.
+
     """
     num_channels = linear.shape[-1]
     assert num_channels in (3, 4)

@@ -96,6 +96,7 @@ impl ComponentUiRegistry {
         );
     }
 
+    /// Show a ui for this instance of this component.
     pub fn ui(
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
@@ -103,13 +104,19 @@ impl ComponentUiRegistry {
         verbosity: crate::ui::UiVerbosity,
         query: &LatestAtQuery,
         component: &ComponentWithInstances,
-        instance: &Instance,
+        instance_index: &Instance,
     ) {
+        if component.name() == Instance::name() {
+            // The user wants to show a ui for the `Instance` component - well, that's easy:
+            ui.label(instance_index.to_string());
+            return;
+        }
+
         if let Some(ui_callback) = self.components.get(&component.name()) {
-            (*ui_callback)(ctx, ui, verbosity, query, component, instance);
+            (*ui_callback)(ctx, ui, verbosity, query, component, instance_index);
         } else {
             // No special ui implementation - use a generic one:
-            if let Some(value) = component.lookup_arrow(instance) {
+            if let Some(value) = component.lookup_arrow(instance_index) {
                 let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
                 if bytes < 256 {
                     // For small items, print them
@@ -118,7 +125,7 @@ impl ComponentUiRegistry {
                     display(&mut repr, 0).unwrap();
                     ui.label(repr);
                 } else {
-                    ui.label(format!("{} bytes", bytes));
+                    ui.label(format!("{bytes} bytes"));
                 }
             } else {
                 ui.weak("(null)");

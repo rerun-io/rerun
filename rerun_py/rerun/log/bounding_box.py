@@ -32,14 +32,27 @@ def log_obb(
     """
     Log a 3D oriented bounding box, defined by its half size.
 
-    `half_size`: Array with [x, y, z] half dimensions of the OBB.
-    `position`: Array with [x, y, z] position of the OBB in world space.
-    `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
-    `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
-    `stroke_width`: Optional width of the OBB edges.
-    `label` Optional text label placed at `position`.
-    `class_id`: Optional class id for the OBB.
-                 The class id provides colors and labels if not specified explicitly.
+    Parameters
+    ----------
+    entity_path:
+        The path to the oriented bounding box in the space hierarchy.
+    half_size:
+        Array with [x, y, z] half dimensions of the OBB.
+    position:
+        Array with [x, y, z] position of the OBB in world space.
+    rotation_q:
+        Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
+    color:
+        Optional RGB or RGBA triplet in 0-255 sRGB.
+    stroke_width:
+        Optional width of the OBB edges.
+    label:
+        Optional text label placed at `position`.
+    class_id:
+        Optional class id for the OBB.  The class id provides colors and labels if not specified explicitly.
+    timeless:
+        If true, the bounding box will be timeless (default: False).
+
     """
     comps = {}
 

@@ -355,9 +355,7 @@ fn table_ui(
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
                 // store, which is a costly operation.
                 // Doing this here guarantees that it only happens for visible rows.
-                let time_point = if let Some(time_point) = get_time_point(ctx, text_entry) {
-                    time_point
-                } else {
+                let Some(time_point) = get_time_point(ctx, text_entry) else {
                     row.col(|ui| {
                         ui.colored_label(
                             Color32::RED,

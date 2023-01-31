@@ -944,11 +944,11 @@ impl IndexBucket {
     }
 
     /// Returns an empty iterator if no data could be found for any reason.
-    pub fn range<'a, const N: usize>(
-        &'a self,
+    pub fn range<const N: usize>(
+        &self,
         time_range: TimeRange,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + '_ {
         self.sort_indices_if_needed();
 
         let IndexBucketIndices {

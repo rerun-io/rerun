@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstanceId, InstanceIdHash};
+use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
@@ -36,7 +36,7 @@ pub struct View3DState {
     orbit_eye: Option<OrbitEye>,
 
     /// Currently tracked camera.
-    tracked_camera: Option<InstanceId>,
+    tracked_camera: Option<InstancePath>,
 
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
@@ -255,7 +255,7 @@ impl SpaceSpecs {
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceIdHash) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
@@ -341,7 +341,7 @@ pub fn view_3d(
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
 
         for hit in picking_result.iter_hits() {
-            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.entity_db)
+            let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
 
             // Special hover ui for images.
@@ -350,7 +350,7 @@ pub fn view_3d(
                     .ui
                     .images
                     .iter()
-                    .find(|image| image.instance_hash == hit.instance_hash)
+                    .find(|image| image.instance_path_hash == hit.instance_path_hash)
                     .map(|image| (image, uv))
             } else {
                 None
@@ -362,8 +362,13 @@ pub fn view_3d(
                         ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
-                            ui.label(instance_id.to_string());
-                            instance_id.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+                            ui.label(instance_path.to_string());
+                            instance_path.data_ui(
+                                ctx,
+                                ui,
+                                UiVerbosity::Small,
+                                &ctx.current_query(),
+                            );
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 &image.tensor,
@@ -389,8 +394,8 @@ pub fn view_3d(
             } else {
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
-                    instance_id.data_ui(
+                    ctx.instance_path_button(ui, Some(space_view_id), &instance_path);
+                    instance_path.data_ui(
                         ctx,
                         ui,
                         crate::ui::UiVerbosity::Large,
@@ -401,7 +406,7 @@ pub fn view_3d(
         }
 
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
-            pick.instance_hash
+            pick.instance_path_hash
                 .resolve(&ctx.log_db.entity_db)
                 .map(|instance| Selection::Instance(Some(space_view_id), instance))
         }));
@@ -421,10 +426,10 @@ pub fn view_3d(
         state.state_3d.tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Selection::Instance(_, instance_id)) = ctx.hovered().first() {
-            if let Some(camera) = find_camera(&scene.space_cameras, &instance_id.hash()) {
+        if let Some(Selection::Instance(_, instance_path)) = ctx.hovered().first() {
+            if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
-                state.state_3d.tracked_camera = Some(instance_id.clone());
+                state.state_3d.tracked_camera = Some(instance_path.clone());
             } else if let Some(clicked_point) = state.state_3d.hovered_point {
                 if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
                     // TODO(andreas): It would be nice if we could focus on the center of the entity rather than the clicked point.
@@ -451,7 +456,7 @@ pub fn view_3d(
         let axis_length = 1.0; // The axes are also a measuring stick
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
-            InstanceIdHash::NONE,
+            InstancePathHash::NONE,
             axis_length,
         );
     }

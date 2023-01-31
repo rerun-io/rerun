@@ -25,7 +25,7 @@ impl DataUi for [u8; 4] {
             1.0,
             ui.visuals().widgets.noninteractive.fg_stroke,
         );
-        response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a));
+        response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
     }
 }
 
@@ -45,7 +45,7 @@ impl DataUi for ColorRGBA {
             1.0,
             ui.visuals().widgets.noninteractive.fg_stroke,
         );
-        response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a));
+        response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
     }
 }
 

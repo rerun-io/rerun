@@ -1,5 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, Index, InstanceId};
+use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{
     component_types::{Instance, Tensor},
     ClassicTensor,
@@ -13,7 +13,7 @@ use crate::{misc::ViewerContext, ui::SceneQuery};
 /// A tensor scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneTensor {
-    pub tensors: std::collections::BTreeMap<InstanceId, ClassicTensor>,
+    pub tensors: std::collections::BTreeMap<InstancePath, ClassicTensor>,
 }
 
 impl SceneTensor {
@@ -49,9 +49,8 @@ impl SceneTensor {
         entity_view.visit1(|instance: Instance, tensor: Tensor| {
             let tensor = ClassicTensor::from(&tensor);
             if !tensor.is_shaped_like_an_image() {
-                let instance_id =
-                    InstanceId::new(ent_path.clone(), Some(Index::ArrowInstance(instance)));
-                self.tensors.insert(instance_id, tensor);
+                let instance_path = InstancePath::instance(ent_path.clone(), instance);
+                self.tensors.insert(instance_path, tensor);
             }
         })
     }

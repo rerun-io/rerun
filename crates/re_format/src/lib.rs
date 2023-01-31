@@ -40,12 +40,12 @@ fn test_format_number() {
 pub fn format_f64(value: f64) -> String {
     let is_integer = value.round() == value;
     if is_integer {
-        return format!("{:.0}", value);
+        return format!("{value:.0}");
     }
 
     let magnitude = value.abs().log10();
     let num_decimals = (3.5 - magnitude).round().max(1.0) as usize;
-    format!("{:.*}", num_decimals, value)
+    format!("{value:.num_decimals$}")
 }
 
 /// Format a number with a decent number of decimals.
@@ -83,7 +83,7 @@ pub fn format_large_number(number: f64) -> String {
     }
 
     if number < 1000.0 {
-        format!("{:.0}", number)
+        format!("{number:.0}")
     } else if number < 1_000_000.0 {
         let decimals = (number < 10_000.0) as usize;
         format!("{:.*}k", decimals, number / 1_000.0)
@@ -136,7 +136,7 @@ pub fn format_bytes(number_of_bytes: f64) -> String {
     }
 
     if number_of_bytes < 10.0_f64.exp2() {
-        format!("{:.0} B", number_of_bytes)
+        format!("{number_of_bytes:.0} B")
     } else if number_of_bytes < 20.0_f64.exp2() {
         let decimals = (10.0 * number_of_bytes < 20.0_f64.exp2()) as usize;
         format!("{:.*} kiB", decimals, number_of_bytes / 10.0_f64.exp2())

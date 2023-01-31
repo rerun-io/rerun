@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, EntityTree, InstanceId, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 
 use crate::{
     misc::{
@@ -478,13 +478,13 @@ fn has_visualization_for_category(
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct ViewState {
     /// Selects in [`Self::state_tensors`].
-    selected_tensor: Option<InstanceId>,
+    selected_tensor: Option<InstancePath>,
 
     state_text: view_text::ViewTextState,
     state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
-    state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
+    state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
 impl ViewState {
@@ -540,10 +540,10 @@ impl ViewState {
                 if scene.tensors.len() > 1 {
                     // Show radio buttons for the different tensors we have in this view - better than nothing!
                     ui.horizontal(|ui| {
-                        for instance_id in scene.tensors.keys() {
-                            let is_selected = self.selected_tensor.as_ref() == Some(instance_id);
-                            if ui.radio(is_selected, instance_id.to_string()).clicked() {
-                                self.selected_tensor = Some(instance_id.clone());
+                        for instance_path in scene.tensors.keys() {
+                            let is_selected = self.selected_tensor.as_ref() == Some(instance_path);
+                            if ui.radio(is_selected, instance_path.to_string()).clicked() {
+                                self.selected_tensor = Some(instance_path.clone());
                             }
                         }
                     });
