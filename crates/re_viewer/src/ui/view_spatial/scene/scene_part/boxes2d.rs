@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    component_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
+    component_types::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, QueryError};
@@ -50,7 +50,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            entity_highlight.index_highlight(instance_path_hash.instance_index),
+            entity_highlight.index_highlight(instance_path_hash.instance_key),
         );
 
         let mut line_batch = scene
@@ -109,7 +109,7 @@ impl ScenePart for Boxes2DPart {
                 ent_path,
                 [
                     Rect2D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),
@@ -118,10 +118,10 @@ impl ScenePart for Boxes2DPart {
             )
             .and_then(|entities| {
                 for entity_view in entities {
-                    entity_view.visit5(|instance, rect, color, radius, label, class_id| {
+                    entity_view.visit5(|instance_key, rect, color, radius, label, class_id| {
                         let instance_hash = instance_path_hash_for_picking(
                             ent_path,
-                            instance,
+                            instance_key,
                             &entity_view,
                             &props,
                             entity_highlight,

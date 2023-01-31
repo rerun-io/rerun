@@ -22,9 +22,15 @@ impl DataUi for ComponentWithInstances {
                 if num_instances == 0 {
                     ui.weak("(empty)");
                 } else if num_instances == 1 {
-                    if let Some(instance) = instance_keys.next() {
-                        ctx.component_ui_registry
-                            .ui(ctx, ui, verbosity, query, self, &instance);
+                    if let Some(instance_key) = instance_keys.next() {
+                        ctx.component_ui_registry.ui(
+                            ctx,
+                            ui,
+                            verbosity,
+                            query,
+                            self,
+                            &instance_key,
+                        );
                     } else {
                         ui.label(ctx.re_ui.error_text("Error: missing instance key"));
                     }
@@ -32,10 +38,16 @@ impl DataUi for ComponentWithInstances {
                     egui::Grid::new("component_instances")
                         .num_columns(2)
                         .show(ui, |ui| {
-                            for instance in instance_keys {
-                                ui.label(instance.to_string());
-                                ctx.component_ui_registry
-                                    .ui(ctx, ui, verbosity, query, self, &instance);
+                            for instance_key in instance_keys {
+                                ui.label(instance_key.to_string());
+                                ctx.component_ui_registry.ui(
+                                    ctx,
+                                    ui,
+                                    verbosity,
+                                    query,
+                                    self,
+                                    &instance_key,
+                                );
                                 ui.end_row();
                             }
                         });

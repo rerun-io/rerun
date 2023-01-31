@@ -16,7 +16,7 @@ use re_arrow_store::{
     RangeQuery, TimeRange, WriteError,
 };
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Point2D},
+    component_types::{ColorRGBA, InstanceKey, Point2D},
     datagen::{
         build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
@@ -38,7 +38,7 @@ fn write_errors() {
     {
         use arrow2::compute::concatenate::concatenate;
 
-        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut store = DataStore::new(InstanceKey::name(), Default::default());
         let mut bundle = test_bundle!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_some_instances(10), build_some_point2d(10)
@@ -60,7 +60,7 @@ fn write_errors() {
     {
         use arrow2::compute::concatenate::concatenate;
 
-        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut store = DataStore::new(InstanceKey::name(), Default::default());
         let mut bundle = test_bundle!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_some_instances(10), build_some_point2d(10)
@@ -83,12 +83,12 @@ fn write_errors() {
         pub fn build_sparse_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from(vec![Some(1), None, Some(3)]).boxed());
             ComponentBundle {
-                name: Instance::name(),
+                name: InstanceKey::name(),
                 value: ids.boxed(),
             }
         }
 
-        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut store = DataStore::new(InstanceKey::name(), Default::default());
         let bundle = test_bundle!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_sparse_instances(), build_some_point2d(3)
@@ -103,19 +103,19 @@ fn write_errors() {
         pub fn build_unsorted_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 3, 2]).boxed());
             ComponentBundle {
-                name: Instance::name(),
+                name: InstanceKey::name(),
                 value: ids.boxed(),
             }
         }
         pub fn build_duped_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 2, 2]).boxed());
             ComponentBundle {
-                name: Instance::name(),
+                name: InstanceKey::name(),
                 value: ids.boxed(),
             }
         }
 
-        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut store = DataStore::new(InstanceKey::name(), Default::default());
         {
             let bundle = test_bundle!(ent_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => [
@@ -139,7 +139,7 @@ fn write_errors() {
     }
 
     {
-        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut store = DataStore::new(InstanceKey::name(), Default::default());
         let bundle = test_bundle!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_some_instances(4), build_some_point2d(3)
@@ -158,7 +158,7 @@ fn latest_at_emptiness_edge_cases() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(Instance::name(), config.clone());
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
         latest_at_emptiness_edge_cases_impl(&mut store);
     }
 }
@@ -195,8 +195,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let row_indices = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &ent_path,
-            Instance::name(),
-            &[Instance::name()],
+            InstanceKey::name(),
+            &[InstanceKey::name()],
         );
         assert!(row_indices.is_none());
     }
@@ -206,8 +206,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let row_indices = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &ent_path,
-            Instance::name(),
-            &[Instance::name()],
+            InstanceKey::name(),
+            &[InstanceKey::name()],
         );
         assert!(row_indices.is_none());
     }
@@ -217,8 +217,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let row_indices = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            Instance::name(),
-            &[Instance::name()],
+            InstanceKey::name(),
+            &[InstanceKey::name()],
         );
         assert!(row_indices.is_none());
     }
@@ -230,7 +230,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
-                Instance::name(),
+                InstanceKey::name(),
                 components,
             )
             .unwrap();
@@ -244,7 +244,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
-                Instance::name(),
+                InstanceKey::name(),
                 &[],
             )
             .unwrap();
@@ -256,8 +256,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let row_indices = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            Instance::name(),
-            &[Instance::name()],
+            InstanceKey::name(),
+            &[InstanceKey::name()],
         );
         assert!(row_indices.is_none());
     }
@@ -267,8 +267,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let row_indices = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
-            Instance::name(),
-            &[Instance::name()],
+            InstanceKey::name(),
+            &[InstanceKey::name()],
         );
         assert!(row_indices.is_none());
     }
@@ -289,7 +289,7 @@ fn range_join_across_single_row() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(Instance::name(), config.clone());
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
         range_join_across_single_row_impl(&mut store);
     }
 }
@@ -307,7 +307,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         timeline_frame_nr,
         TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let dfs = polars_util::range_components(
         store,
         &query,
@@ -319,14 +319,14 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     .collect::<Vec<_>>();
 
     let df_expected = {
-        let instances: Box<dyn Array> = vec![Instance(0), Instance(1), Instance(2)]
+        let instances: Box<dyn Array> = vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]
             .try_into_arrow()
             .unwrap();
         let points: Box<dyn Array> = points.try_into_arrow().unwrap();
         let colors: Box<dyn Array> = colors.try_into_arrow().unwrap();
 
         DataFrame::new(vec![
-            Series::try_from((Instance::name().as_str(), instances)).unwrap(),
+            Series::try_from((InstanceKey::name().as_str(), instances)).unwrap(),
             Series::try_from((Point2D::name().as_str(), points)).unwrap(),
             Series::try_from((ColorRGBA::name().as_str(), colors)).unwrap(),
         ])
@@ -346,7 +346,7 @@ fn gc_correct() {
     init_logs();
 
     let mut store = DataStore::new(
-        Instance::name(),
+        InstanceKey::name(),
         DataStoreConfig {
             component_bucket_nb_rows: 0,
             ..Default::default()

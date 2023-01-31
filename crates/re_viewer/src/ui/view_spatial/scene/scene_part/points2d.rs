@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point2D, Radius},
+    component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -50,7 +50,7 @@ impl Points2DPart {
             .batch("2d points")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance_key: InstanceKey,
                        pos: Point2D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
@@ -59,7 +59,7 @@ impl Points2DPart {
                        keypoint_id: Option<KeypointId>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,
@@ -90,7 +90,7 @@ impl Points2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_index),
+                entity_highlight.index_highlight(instance_hash.instance_key),
             );
 
             point_batch
@@ -149,7 +149,7 @@ impl ScenePart for Points2DPart {
                 ent_path,
                 [
                     Point2D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),

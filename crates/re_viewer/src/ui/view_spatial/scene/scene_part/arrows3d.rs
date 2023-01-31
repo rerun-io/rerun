@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Label, Radius},
+    component_types::{ColorRGBA, InstanceKey, Label, Radius},
     msg_bundle::Component,
     Arrow3D,
 };
@@ -41,14 +41,14 @@ impl Arrows3DPart {
             .batch("arrows")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,
@@ -74,7 +74,7 @@ impl Arrows3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_index),
+                entity_highlight.index_highlight(instance_hash.instance_key),
             );
 
             line_batch
@@ -115,7 +115,7 @@ impl ScenePart for Arrows3DPart {
                 ent_path,
                 [
                     Arrow3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),

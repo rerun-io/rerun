@@ -5,7 +5,7 @@ use glam::{Mat4, Vec3};
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
+    component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -168,14 +168,14 @@ impl Points3DPart {
             &annotations,
             point_positions.as_slice(),
         )?;
-        let instance_hashes = {
+        let instance_path_hashes = {
             crate::profile_scope!("instance_hashes");
             entity_view
-                .iter_instances()?
-                .map(|instance| {
+                .iter_instance_keys()?
+                .map(|instance_key| {
                     instance_path_hash_for_picking(
                         ent_path,
-                        instance,
+                        instance_key,
                         entity_view,
                         properties,
                         entity_highlight,
@@ -186,9 +186,9 @@ impl Points3DPart {
 
         let highlights = {
             crate::profile_scope!("highlights");
-            instance_hashes
+            instance_path_hashes
                 .iter()
-                .map(|hash| entity_highlight.index_highlight(hash.instance_index))
+                .map(|hash| entity_highlight.index_highlight(hash.instance_key))
                 .collect::<Vec<_>>()
         };
 
@@ -197,7 +197,7 @@ impl Points3DPart {
         let radii = Self::process_radii(entity_view, &highlights)?;
         let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
-        if show_labels && instance_hashes.len() <= self.max_labels {
+        if show_labels && instance_path_hashes.len() <= self.max_labels {
             scene.ui.labels_3d.extend(labels);
         }
 
@@ -205,7 +205,7 @@ impl Points3DPart {
             .add_points(point_positions.into_iter())
             .colors(colors)
             .radii(radii)
-            .user_data(instance_hashes.into_iter());
+            .user_data(instance_path_hashes.into_iter());
 
         scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
 
@@ -238,7 +238,7 @@ impl ScenePart for Points3DPart {
                 ent_path,
                 [
                     Point3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),

@@ -51,7 +51,7 @@ impl DataUi for InstancePath {
                             ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
                         }
                         Ok(component_data) => {
-                            if self.instance_index.is_splat() {
+                            if self.instance_key.is_splat() {
                                 component_data.data_ui(ctx, ui, UiVerbosity::Small, query);
                             } else {
                                 ctx.component_ui_registry.ui(
@@ -60,7 +60,7 @@ impl DataUi for InstancePath {
                                     UiVerbosity::Small,
                                     query,
                                     &component_data,
-                                    &self.instance_index,
+                                    &self.instance_key,
                                 );
                             }
                         }
