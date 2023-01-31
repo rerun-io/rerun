@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Final
 
+from einops import rearrange
 import numpy as np
 import numpy.typing as npt
 import requests
@@ -88,7 +89,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
         frame_idx = int(image.name[0:4])  # COLMAP sets image ids that don't match the original video frame
-        quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
+        quat_xyzw = rearrange(image.qvec, "z x y z -> x y z w")
         camera_from_world = (image.tvec, quat_xyzw)  # COLMAP's camera transform is "camera from world"
         camera = cameras[image.camera_id]
         intrinsics = intrinsics_for_camera(camera)
