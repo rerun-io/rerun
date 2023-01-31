@@ -50,7 +50,7 @@ fn main() -> std::process::ExitCode {
                 session.connect(addr);
             }
             Err(err) => {
-                eprintln!("Bad address: {:?}. {:?}", args.addr, err);
+                eprintln!("Bad address: {:?}. {err}", args.addr);
                 return std::process::ExitCode::FAILURE;
             }
         }

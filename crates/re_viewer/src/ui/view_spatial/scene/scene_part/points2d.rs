@@ -173,7 +173,7 @@ impl ScenePart for Points2DPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                 }
             }
         }

@@ -132,7 +132,7 @@ async fn handle_connection(
                         re_log::debug!("Received message: {:?}", msg);
                     }
                     Some(Err(err)) => {
-                        re_log::warn!("Error message: {err:?}");
+                        re_log::warn!("Error message: {err}");
                         break;
                     }
                     None => {
