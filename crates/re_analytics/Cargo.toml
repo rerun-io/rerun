@@ -25,7 +25,7 @@ derive_more.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 directories-next = "2"
-reqwest = { workspace = true, default-features = false, features = [
+reqwest = { workspace = true, features = [
   "blocking",
   "rustls-tls",
 ] }

@@ -1,6 +1,10 @@
 //! This example demonstrates how to use the Rerun Rust SDK to log raw 3D meshes (so-called
 //! "triangle soups") and their transform hierarchy.
 //!
+//! Usage:
+//! ```
+//! cargo run -p raw_mesh
+//! ```
 
 #![allow(clippy::doc_markdown)]
 
