@@ -14,7 +14,7 @@ use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlight
 
 use super::{
     data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
-    space_view_entity_window::SpaceViewEntityWindow,
+    space_view_entity_picker::SpaceViewEntityPicker,
     view_category::ViewCategory,
     SpaceView, SpaceViewId,
 };
@@ -50,7 +50,7 @@ pub struct Viewport {
     has_been_user_edited: bool,
 
     #[serde(skip)]
-    space_view_entity_window: Option<SpaceViewEntityWindow>,
+    space_view_entity_window: Option<SpaceViewEntityPicker>,
 }
 
 impl Viewport {
@@ -171,7 +171,7 @@ impl Viewport {
                         .on_hover_text("Manually add or remove entities from the Space View.")
                         .clicked()
                     {
-                        self.space_view_entity_window = Some(SpaceViewEntityWindow {
+                        self.space_view_entity_window = Some(SpaceViewEntityPicker {
                             space_view_id: *space_view_id,
                         });
                     }
@@ -313,7 +313,7 @@ impl Viewport {
     }
 
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
-        self.space_view_entity_window = Some(SpaceViewEntityWindow { space_view_id });
+        self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 
     pub fn on_frame_start(

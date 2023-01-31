@@ -9,11 +9,11 @@ use super::{
 };
 
 /// Window for adding/removing entities from a space view.
-pub struct SpaceViewEntityWindow {
+pub struct SpaceViewEntityPicker {
     pub space_view_id: SpaceViewId,
 }
 
-impl SpaceViewEntityWindow {
+impl SpaceViewEntityPicker {
     #[allow(clippy::unused_self)]
     pub fn ui(
         &mut self,
@@ -22,7 +22,7 @@ impl SpaceViewEntityWindow {
         space_view: &mut SpaceView,
     ) -> bool {
         let mut open = true;
-        let title = format!("Add/remove entities to \"{}\"", space_view.name);
+        let title = format!("Pick Entities shown in \"{}\"", space_view.name);
         egui::Window::new(&title)
             // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken
             .default_pos(ui.ctx().screen_rect().center())
