@@ -25,7 +25,7 @@ impl Default for ServerOptions {
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
-/// let log_msg_rx = serve("127.0.0.1:80", ServerOptions::default())?;
+/// let log_msg_rx = serve("0.0.0.0:80", ServerOptions::default())?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn serve(
