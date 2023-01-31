@@ -32,10 +32,8 @@ use crate::msg_bundle::Component;
 pub struct Instance(pub u64);
 
 impl Instance {
-    /// A special value indicating that this [`Instance]` is referring to all instances,
-    /// for instance all points in a point cloud entity.
-    ///
-    /// In some contexts it is also used to mean no instances.
+    /// A special value indicating that this [`Instance]` is referring to all instances of an entity,
+    /// for example all points in a point cloud entity.
     pub const SPLAT: Self = Self(u64::MAX);
 
     /// Are we referring to all instances of the entity (e.g. all points in a point cloud entity)?
