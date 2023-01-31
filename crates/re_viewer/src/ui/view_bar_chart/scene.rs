@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::component_types::{self, Instance, Tensor, TensorTrait as _};
+use re_log_types::component_types::{self, InstanceKey, Tensor, TensorTrait as _};
 use re_query::query_entity_with_primary;
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
@@ -11,7 +11,7 @@ use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneBarChart {
-    pub charts: BTreeMap<(EntityPath, Instance), Tensor>,
+    pub charts: BTreeMap<(EntityPath, InstanceKey), Tensor>,
 }
 
 impl SceneBarChart {

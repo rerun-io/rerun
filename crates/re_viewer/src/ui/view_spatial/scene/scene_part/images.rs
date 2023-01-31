@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Tensor, TensorTrait},
+    component_types::{ColorRGBA, InstanceKey, Tensor, TensorTrait},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -228,7 +228,7 @@ impl ScenePart for ImagesPart {
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
-                [Tensor::name(), Instance::name(), ColorRGBA::name()],
+                [Tensor::name(), InstanceKey::name(), ColorRGBA::name()],
             )
             .and_then(|entities| {
                 for entity in entities {

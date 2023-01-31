@@ -5,14 +5,14 @@ use crate::msg_bundle::Component;
 /// A number used to specify a specific instance in an entity.
 ///
 /// Each entity can have many component of the same type.
-/// These are identified with [`Instance`].
+/// These are identified with [`InstanceKey`].
 ///
 /// ```
-/// use re_log_types::component_types::Instance;
+/// use re_log_types::component_types::InstanceKey;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
-/// assert_eq!(Instance::data_type(), DataType::UInt64);
+/// assert_eq!(InstanceKey::data_type(), DataType::UInt64);
 /// ```
 #[derive(
     Copy,
@@ -29,10 +29,10 @@ use crate::msg_bundle::Component;
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
-pub struct Instance(pub u64);
+pub struct InstanceKey(pub u64);
 
-impl Instance {
-    /// A special value indicating that this [`Instance]` is referring to all instances of an entity,
+impl InstanceKey {
+    /// A special value indicating that this [`InstanceKey]` is referring to all instances of an entity,
     /// for example all points in a point cloud entity.
     pub const SPLAT: Self = Self(u64::MAX);
 
@@ -53,12 +53,12 @@ impl Instance {
     }
 
     /// Returns `None` if splat, otherwise the index.
-    pub fn specific_index(self) -> Option<Instance> {
+    pub fn specific_index(self) -> Option<InstanceKey> {
         self.is_specific().then_some(self)
     }
 }
 
-impl std::fmt::Display for Instance {
+impl std::fmt::Display for InstanceKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_splat() {
             "splat".fmt(f)
@@ -69,7 +69,7 @@ impl std::fmt::Display for Instance {
     }
 }
 
-impl Component for Instance {
+impl Component for InstanceKey {
     fn name() -> crate::ComponentName {
         "rerun.instance".into()
     }

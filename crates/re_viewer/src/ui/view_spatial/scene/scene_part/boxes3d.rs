@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{Box3D, ClassId, ColorRGBA, Instance, Label, Quaternion, Radius, Vec3D},
+    component_types::{Box3D, ClassId, ColorRGBA, InstanceKey, Label, Quaternion, Radius, Vec3D},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -41,7 +41,7 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance: InstanceKey,
                        half_size: Box3D,
                        position: Option<Vec3D>,
                        rotation: Option<Quaternion>,
@@ -118,7 +118,7 @@ impl ScenePart for Boxes3DPart {
                 ent_path,
                 [
                     Box3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     Vec3D::name(),      // obb.position
                     Quaternion::name(), // obb.rotation
                     ColorRGBA::name(),

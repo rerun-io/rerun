@@ -6,7 +6,7 @@ use itertools::Itertools;
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
         field::ArrowField,
@@ -157,12 +157,13 @@ impl ComponentWithInstances {
             });
         }
 
-        let instances: Vec<Option<Instance>> = self.iter_instance_keys()?.map(Some).collect_vec();
+        let instances: Vec<Option<InstanceKey>> =
+            self.iter_instance_keys()?.map(Some).collect_vec();
 
         let values =
             arrow_array_deserialize_iterator::<Option<C0>>(self.values.as_ref())?.collect_vec();
 
-        df_builder2::<Instance, C0>(&instances, &values)
+        df_builder2::<InstanceKey, C0>(&instances, &values)
     }
 }
 
@@ -178,7 +179,7 @@ where
         let primary_values =
             arrow_array_deserialize_iterator(self.primary.values.as_ref())?.collect_vec();
 
-        df_builder2::<Instance, Primary>(&instances, &primary_values)
+        df_builder2::<InstanceKey, Primary>(&instances, &primary_values)
     }
 
     pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
@@ -196,7 +197,7 @@ where
 
         let c1_values = self.iter_component::<C1>()?.collect_vec();
 
-        df_builder3::<Instance, Primary, C1>(&instances, &primary_values, &c1_values)
+        df_builder3::<InstanceKey, Primary, C1>(&instances, &primary_values, &c1_values)
     }
 }
 

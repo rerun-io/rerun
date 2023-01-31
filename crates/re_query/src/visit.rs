@@ -1,13 +1,13 @@
 //! Visit the primary and joined components of an [`EntityView`]
 //!
-//! The function signature for the visitor must always use [`Instance`] for
+//! The function signature for the visitor must always use [`InstanceKey`] for
 //! the first argument, the primary [`Component`] for the second argument,
 //! and then any additional components as `Option`s.
 //!
 //! # Usage
 //! ```
 //! # use re_query::EntityView;
-//! # use re_log_types::component_types::{ColorRGBA, Instance, Point2D};
+//! # use re_log_types::component_types::{ColorRGBA, InstanceKey, Point2D};
 //!
 //! let points = vec![
 //!     Point2D { x: 1.0, y: 2.0 },
@@ -31,7 +31,7 @@
 //! let mut colors_out = Vec::<ColorRGBA>::new();
 //!
 //! entity_view
-//!     .visit2(|_: Instance, point: Point2D, color: Option<ColorRGBA>| {
+//!     .visit2(|_: InstanceKey, point: Point2D, color: Option<ColorRGBA>| {
 //!         points_out.push(point);
 //!         colors_out.push(color.unwrap());
 //!     })
@@ -43,7 +43,7 @@
 //! ```
 
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     external::arrow2_convert::{
         deserialize::{ArrowArray, ArrowDeserialize},
         field::ArrowField,
@@ -65,7 +65,7 @@ macro_rules! create_visitor {
         pub fn $name < $( $CC: Component, )* >(
             &self,
             mut visit: impl FnMut(
-                Instance,
+                InstanceKey,
                 Primary,
                 $(Option<$CC>),*
             )

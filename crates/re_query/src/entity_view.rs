@@ -4,7 +4,7 @@ use arrow2::array::{Array, MutableArray, PrimitiveArray};
 use re_arrow_store::ArrayExt;
 use re_format::arrow;
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
         field::ArrowField,
@@ -16,7 +16,7 @@ use re_log_types::{
 
 use crate::QueryError;
 
-/// A type-erased array of [`Component`] values and the corresponding [`Instance`] keys.
+/// A type-erased array of [`Component`] values and the corresponding [`InstanceKey`] keys.
 ///
 /// `instance_keys` must always be sorted if present. If not present we assume implicit
 /// instance keys that are equal to the row-number.
@@ -47,12 +47,12 @@ impl ComponentWithInstances {
     /// Iterate over the instance keys
     ///
     /// If the instance keys don't exist, generate them based on array-index position of the values
-    pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = Instance> + '_> {
+    pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
         if let Some(keys) = &self.instance_keys {
-            let iter = arrow_array_deserialize_iterator::<Instance>(keys.as_ref())?;
+            let iter = arrow_array_deserialize_iterator::<InstanceKey>(keys.as_ref())?;
             Ok(itertools::Either::Left(iter))
         } else {
-            let auto_num = (0..self.len()).map(|i| Instance(i as u64));
+            let auto_num = (0..self.len()).map(|i| InstanceKey(i as u64));
             Ok(itertools::Either::Right(auto_num))
         }
     }
@@ -76,8 +76,8 @@ impl ComponentWithInstances {
         )?)
     }
 
-    /// Look up the value that corresponds to a given `Instance` and convert to `Component`
-    pub fn lookup<C: Component>(&self, instance: &Instance) -> crate::Result<C>
+    /// Look up the value that corresponds to a given `InstanceKey` and convert to `Component`
+    pub fn lookup<C: Component>(&self, instance: &InstanceKey) -> crate::Result<C>
     where
         C: ArrowDeserialize + ArrowField<Type = C> + 'static,
         C::ArrayType: ArrowArray,
@@ -100,8 +100,8 @@ impl ComponentWithInstances {
         Ok(val)
     }
 
-    /// Look up the value that corresponds to a given `Instance` and return as an arrow `Array`
-    pub fn lookup_arrow(&self, instance: &Instance) -> Option<Box<dyn Array>> {
+    /// Look up the value that corresponds to a given `InstanceKey` and return as an arrow `Array`
+    pub fn lookup_arrow(&self, instance: &InstanceKey) -> Option<Box<dyn Array>> {
         let offset = if let Some(keys) = &self.instance_keys {
             // If `instance_keys` is set, extract the `PrimitiveArray`, and find
             // the index of the value by `binary_search`
@@ -115,7 +115,7 @@ impl ComponentWithInstances {
                 .values();
 
             // If the value is splatted, return the offset of the splat
-            if keys.len() == 1 && keys[0] == Instance::SPLAT.0 {
+            if keys.len() == 1 && keys[0] == InstanceKey::SPLAT.0 {
                 0
             } else {
                 // Otherwise binary search to find the offset of the instance
@@ -133,7 +133,7 @@ impl ComponentWithInstances {
 
     /// Produce a `ComponentWithInstances` from native component types
     pub fn from_native<C>(
-        instance_keys: Option<&Vec<Instance>>,
+        instance_keys: Option<&Vec<InstanceKey>>,
         values: &Vec<C>,
     ) -> crate::Result<ComponentWithInstances>
     where
@@ -144,8 +144,10 @@ impl ComponentWithInstances {
 
         let instance_keys = if let Some(keys) = instance_keys {
             Some(
-                arrow_serialize_to_mutable_array::<Instance, Instance, &Vec<Instance>>(keys)?
-                    .as_box(),
+                arrow_serialize_to_mutable_array::<InstanceKey, InstanceKey, &Vec<InstanceKey>>(
+                    keys,
+                )?
+                .as_box(),
             )
         } else {
             None
@@ -202,14 +204,14 @@ struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     primary_instance_iter: IIter1,
     component_instance_iter: IIter2,
     component_value_iter: VIter,
-    next_component_instance: Option<Instance>,
+    next_component_instance: Option<InstanceKey>,
     splatted_component_value: Option<Val>,
 }
 
 impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
-    IIter1: Iterator<Item = Instance>,
-    IIter2: Iterator<Item = Instance>,
+    IIter1: Iterator<Item = InstanceKey>,
+    IIter2: Iterator<Item = InstanceKey>,
     VIter: Iterator<Item = Option<C>>,
     C: Clone,
 {
@@ -301,7 +303,7 @@ where
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     /// Iterate over the instance keys
-    pub fn iter_instances(&self) -> crate::Result<impl Iterator<Item = Instance> + '_> {
+    pub fn iter_instances(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
         self.primary.iter_instance_keys()
     }
 
@@ -347,7 +349,7 @@ where
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
-    pub fn from_native(c0: (Option<&Vec<Instance>>, &Vec<Primary>)) -> crate::Result<Self> {
+    pub fn from_native(c0: (Option<&Vec<InstanceKey>>, &Vec<Primary>)) -> crate::Result<Self> {
         let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
 
         Ok(Self {
@@ -359,8 +361,8 @@ where
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
     pub fn from_native2<C>(
-        primary: (Option<&Vec<Instance>>, &Vec<Primary>),
-        component: (Option<&Vec<Instance>>, &Vec<C>),
+        primary: (Option<&Vec<InstanceKey>>, &Vec<Primary>),
+        component: (Option<&Vec<InstanceKey>>, &Vec<C>),
     ) -> crate::Result<Self>
     where
         C: Component + 'static,
@@ -381,7 +383,7 @@ where
 
 #[test]
 fn lookup_value() {
-    use re_log_types::component_types::{Instance, Point2D, Rect2D};
+    use re_log_types::component_types::{InstanceKey, Point2D, Rect2D};
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //
@@ -393,10 +395,10 @@ fn lookup_value() {
 
     let component = ComponentWithInstances::from_native(None, &points).unwrap();
 
-    let missing_value = component.lookup_arrow(&Instance(5));
+    let missing_value = component.lookup_arrow(&InstanceKey(5));
     assert_eq!(missing_value, None);
 
-    let value = component.lookup_arrow(&Instance(2)).unwrap();
+    let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
     let expected_point = vec![points[2].clone()];
     let expected_arrow =
@@ -407,19 +409,19 @@ fn lookup_value() {
     assert_eq!(expected_arrow, value);
 
     let instance_keys = vec![
-        Instance(17),
-        Instance(47),
-        Instance(48),
-        Instance(99),
-        Instance(472),
+        InstanceKey(17),
+        InstanceKey(47),
+        InstanceKey(48),
+        InstanceKey(99),
+        InstanceKey(472),
     ];
 
     let component = ComponentWithInstances::from_native(Some(&instance_keys), &points).unwrap();
 
-    let missing_value = component.lookup_arrow(&Instance(46));
+    let missing_value = component.lookup_arrow(&InstanceKey(46));
     assert_eq!(missing_value, None);
 
-    let value = component.lookup_arrow(&Instance(99)).unwrap();
+    let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
     let expected_point = vec![points[3].clone()];
     let expected_arrow =
@@ -431,16 +433,16 @@ fn lookup_value() {
 
     // Lookups with serialization
 
-    let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
+    let value = component.lookup::<Point2D>(&InstanceKey(99)).unwrap();
     assert_eq!(expected_point[0], value);
 
-    let missing_value = component.lookup::<Point2D>(&Instance(46));
+    let missing_value = component.lookup::<Point2D>(&InstanceKey(46));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::ComponentNotFound
     ));
 
-    let missing_value = component.lookup::<Rect2D>(&Instance(99));
+    let missing_value = component.lookup::<Rect2D>(&InstanceKey(99));
     assert!(matches!(
         missing_value.err().unwrap(),
         QueryError::TypeMismatch { .. }
@@ -449,9 +451,9 @@ fn lookup_value() {
 
 #[test]
 fn lookup_splat() {
-    use re_log_types::component_types::{Instance, Point2D};
+    use re_log_types::component_types::{InstanceKey, Point2D};
     let instances = vec![
-        Instance::SPLAT, //
+        InstanceKey::SPLAT, //
     ];
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //
@@ -460,9 +462,9 @@ fn lookup_splat() {
     let component = ComponentWithInstances::from_native(Some(&instances), &points).unwrap();
 
     // Any instance we look up will return the slatted value
-    let value = component.lookup::<Point2D>(&Instance(1)).unwrap();
+    let value = component.lookup::<Point2D>(&InstanceKey(1)).unwrap();
     assert_eq!(points[0], value);
 
-    let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
+    let value = component.lookup::<Point2D>(&InstanceKey(99)).unwrap();
     assert_eq!(points[0], value);
 }

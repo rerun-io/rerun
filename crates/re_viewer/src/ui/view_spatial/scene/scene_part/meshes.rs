@@ -3,7 +3,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance},
+    component_types::{ColorRGBA, InstanceKey},
     msg_bundle::Component,
     Mesh3D,
 };
@@ -41,7 +41,7 @@ impl MeshPart {
         let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
         let visitor =
-            |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
+            |instance: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
                 let instance_path_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance,
@@ -102,7 +102,7 @@ impl ScenePart for MeshPart {
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
-                [Mesh3D::name(), Instance::name(), ColorRGBA::name()],
+                [Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()],
             )
             .and_then(|entities| {
                 for entity in entities {

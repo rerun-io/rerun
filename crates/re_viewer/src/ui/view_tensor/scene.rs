@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{
-    component_types::{Instance, Tensor},
+    component_types::{InstanceKey, Tensor},
     ClassicTensor,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
@@ -46,7 +46,7 @@ impl SceneTensor {
         _props: &EntityProperties,
         entity_view: &EntityView<Tensor>,
     ) -> Result<(), QueryError> {
-        entity_view.visit1(|instance: Instance, tensor: Tensor| {
+        entity_view.visit1(|instance: InstanceKey, tensor: Tensor| {
             let tensor = ClassicTensor::from(&tensor);
             if !tensor.is_shaped_like_an_image() {
                 let instance_path = InstancePath::instance(ent_path.clone(), instance);

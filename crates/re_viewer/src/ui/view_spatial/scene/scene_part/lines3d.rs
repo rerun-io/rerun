@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, LineStrip3D, Radius},
+    component_types::{ColorRGBA, InstanceKey, LineStrip3D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -39,7 +39,7 @@ impl Lines3DPart {
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance: InstanceKey,
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
@@ -102,7 +102,7 @@ impl ScenePart for Lines3DPart {
                 ent_path,
                 [
                     LineStrip3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                 ],

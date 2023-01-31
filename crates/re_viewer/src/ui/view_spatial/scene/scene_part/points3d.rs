@@ -5,7 +5,7 @@ use glam::{Mat4, Vec3};
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
+    component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -238,7 +238,7 @@ impl ScenePart for Points3DPart {
                 ent_path,
                 [
                     Point3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),

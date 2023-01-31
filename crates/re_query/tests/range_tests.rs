@@ -2,7 +2,7 @@ mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
     msg_bundle::try_build_msg_bundle1,
@@ -14,7 +14,7 @@ use re_query::range_entity_with_primary;
 
 #[test]
 fn simple_range() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -27,7 +27,7 @@ fn simple_range() {
         store.insert(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(1)];
+        let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -42,7 +42,7 @@ fn simple_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(0)];
+        let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -72,7 +72,7 @@ fn simple_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -107,7 +107,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -127,7 +127,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -156,7 +156,7 @@ fn simple_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -191,7 +191,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -211,7 +211,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -234,7 +234,7 @@ fn simple_range() {
 
 #[test]
 fn timeless_range() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -251,7 +251,7 @@ fn timeless_range() {
         store.insert(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(1)];
+        let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -276,7 +276,7 @@ fn timeless_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(0)];
+        let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -340,7 +340,7 @@ fn timeless_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -375,7 +375,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -395,7 +395,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -424,7 +424,7 @@ fn timeless_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -468,7 +468,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -488,7 +488,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -508,7 +508,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -535,7 +535,7 @@ fn timeless_range() {
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -587,7 +587,7 @@ fn timeless_range() {
         let (time, ent_view) = &results[0];
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -606,7 +606,7 @@ fn timeless_range() {
         let (time, ent_view) = &results[1];
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -626,7 +626,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -646,7 +646,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -669,7 +669,7 @@ fn timeless_range() {
 
 #[test]
 fn simple_splatted_range() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -682,7 +682,7 @@ fn simple_splatted_range() {
         store.insert(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(1)];
+        let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -697,7 +697,7 @@ fn simple_splatted_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with a splatted instance
-        let color_instances = vec![Instance::SPLAT];
+        let color_instances = vec![InstanceKey::SPLAT];
         let colors = vec![ColorRGBA(0x00ff0000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -727,7 +727,7 @@ fn simple_splatted_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -762,7 +762,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -782,7 +782,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -811,7 +811,7 @@ fn simple_splatted_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -846,7 +846,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -866,7 +866,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),

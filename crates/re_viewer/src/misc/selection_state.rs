@@ -2,7 +2,7 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, LogDb};
-use re_log_types::{component_types::Instance, EntityPathHash};
+use re_log_types::{component_types::InstanceKey, EntityPathHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -98,14 +98,14 @@ impl InteractionHighlight {
 #[derive(Default)]
 pub struct SpaceViewEntityHighlight {
     overall: InteractionHighlight,
-    instances: ahash::HashMap<Instance, InteractionHighlight>,
+    instances: ahash::HashMap<InstanceKey, InteractionHighlight>,
 }
 
 #[derive(Copy, Clone)]
 pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
 impl<'a> OptionalSpaceViewEntityHighlight<'a> {
-    pub fn index_highlight(&self, instance_index: Instance) -> InteractionHighlight {
+    pub fn index_highlight(&self, instance_index: InstanceKey) -> InteractionHighlight {
         match self.0 {
             Some(entity_highlight) => entity_highlight
                 .instances

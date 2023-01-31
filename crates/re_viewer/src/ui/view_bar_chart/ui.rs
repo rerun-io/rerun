@@ -4,7 +4,7 @@ use egui::util::hash;
 
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::component_types::{self, Instance};
+use re_log_types::component_types::{self, InstanceKey};
 
 use crate::{misc::ViewerContext, ui::annotations::auto_color};
 
@@ -34,7 +34,7 @@ pub(crate) fn view_bar_chart(
         .show(ui, |plot_ui| {
             fn create_bar_chart<N: Into<f64>>(
                 ent_path: &EntityPath,
-                instance: &Instance,
+                instance: &InstanceKey,
                 values: impl Iterator<Item = N>,
             ) -> BarChart {
                 let color = auto_color(hash((ent_path, instance)) as _);

@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    component_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
+    component_types::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, QueryError};
@@ -109,7 +109,7 @@ impl ScenePart for Boxes2DPart {
                 ent_path,
                 [
                     Rect2D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),

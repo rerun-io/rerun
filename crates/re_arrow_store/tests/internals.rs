@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use re_arrow_store::{DataStore, DataStoreConfig};
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     datagen::{build_frame_nr, build_some_instances},
     msg_bundle::{Component as _, MsgBundle},
     EntityPath, MsgId, TimePoint,
@@ -28,14 +28,14 @@ fn pathological_bucket_topology() {
     init_logs();
 
     let mut store_forward = DataStore::new(
-        Instance::name(),
+        InstanceKey::name(),
         DataStoreConfig {
             index_bucket_nb_rows: 10,
             ..Default::default()
         },
     );
     let mut store_backward = DataStore::new(
-        Instance::name(),
+        InstanceKey::name(),
         DataStoreConfig {
             index_bucket_nb_rows: 10,
             ..Default::default()

@@ -4,7 +4,7 @@ use crate::{
 };
 use re_arrow_store::TimeRange;
 use re_log_types::{
-    component_types::{self, Instance},
+    component_types::{self, InstanceKey},
     msg_bundle::Component,
 };
 use re_query::{range_entity_with_primary, QueryError};
@@ -92,7 +92,7 @@ impl SceneTimeSeries {
             );
 
             let components = [
-                Instance::name(),
+                InstanceKey::name(),
                 component_types::Scalar::name(),
                 component_types::ScalarPlotProps::name(),
                 component_types::ColorRGBA::name(),

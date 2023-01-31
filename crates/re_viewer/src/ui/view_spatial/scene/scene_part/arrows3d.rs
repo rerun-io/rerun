@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Label, Radius},
+    component_types::{ColorRGBA, InstanceKey, Label, Radius},
     msg_bundle::Component,
     Arrow3D,
 };
@@ -41,7 +41,7 @@ impl Arrows3DPart {
             .batch("arrows")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance: InstanceKey,
                        arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
@@ -115,7 +115,7 @@ impl ScenePart for Arrows3DPart {
                 ent_path,
                 [
                     Arrow3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),

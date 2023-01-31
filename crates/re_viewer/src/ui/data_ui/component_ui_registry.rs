@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     external::arrow2,
     external::arrow2_convert::{
         deserialize::{ArrowArray, ArrowDeserialize},
@@ -24,7 +24,7 @@ type ComponentUiCallback = Box<
         UiVerbosity,
         &LatestAtQuery,
         &ComponentWithInstances,
-        &Instance,
+        &InstanceKey,
     ),
 >;
 
@@ -47,7 +47,7 @@ impl Default for ComponentUiRegistry {
         // registry.add::<re_log_types::component_types::Box3D>();
         // registry.add::<re_log_types::component_types::ClassId>();
         registry.add::<re_log_types::component_types::ColorRGBA>();
-        // registry.add::<re_log_types::component_types::Instance>();
+        // registry.add::<re_log_types::component_types::InstanceKey>();
         // registry.add::<re_log_types::component_types::KeypointId>();
         // registry.add::<re_log_types::component_types::Label>();
         // registry.add::<re_log_types::component_types::LineStrip2D>();
@@ -104,10 +104,10 @@ impl ComponentUiRegistry {
         verbosity: crate::ui::UiVerbosity,
         query: &LatestAtQuery,
         component: &ComponentWithInstances,
-        instance_index: &Instance,
+        instance_index: &InstanceKey,
     ) {
-        if component.name() == Instance::name() {
-            // The user wants to show a ui for the `Instance` component - well, that's easy:
+        if component.name() == InstanceKey::name() {
+            // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
             ui.label(instance_index.to_string());
             return;
         }

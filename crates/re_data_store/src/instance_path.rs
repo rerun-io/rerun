@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use re_log_types::{component_types::Instance, EntityPath, EntityPathHash};
+use re_log_types::{component_types::InstanceKey, EntityPath, EntityPathHash};
 
 use crate::log_db::EntityDb;
 
@@ -14,8 +14,8 @@ pub struct InstancePath {
 
     /// If this is a concrete instance, what instance index are we?
     ///
-    /// If we refer to all instance, [`Instance::SPLAT`] is used.
-    pub instance_index: Instance,
+    /// If we refer to all instance, [`InstanceKey::SPLAT`] is used.
+    pub instance_index: InstanceKey,
 }
 
 impl InstancePath {
@@ -26,14 +26,14 @@ impl InstancePath {
     pub fn entity_splat(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            instance_index: Instance::SPLAT,
+            instance_index: InstanceKey::SPLAT,
         }
     }
 
     /// Indicate a specific instance of the entity,
     /// e.g. a specific point in a point cloud entity.
     #[inline]
-    pub fn instance(entity_path: EntityPath, instance_index: Instance) -> Self {
+    pub fn instance(entity_path: EntityPath, instance_index: InstanceKey) -> Self {
         Self {
             entity_path,
             instance_index,
@@ -78,10 +78,10 @@ pub struct InstancePathHash {
 
     /// If this is a concrete instance, what instance index are we?
     ///
-    /// If we refer to all instance, [`Instance::SPLAT`] is used.
+    /// If we refer to all instance, [`InstanceKey::SPLAT`] is used.
     ///
     /// Note that this is NOT hashed, because we don't need to (it's already small).
-    pub instance_index: Instance,
+    pub instance_index: InstanceKey,
 }
 
 impl std::hash::Hash for InstancePathHash {
@@ -103,7 +103,7 @@ impl std::cmp::PartialEq for InstancePathHash {
 impl InstancePathHash {
     pub const NONE: Self = Self {
         entity_path_hash: EntityPathHash::NONE,
-        instance_index: Instance::SPLAT,
+        instance_index: InstanceKey::SPLAT,
     };
 
     /// Indicate the whole entity (all instances of it) - i.e. a splat.
@@ -113,14 +113,14 @@ impl InstancePathHash {
     pub fn entity_splat(entity_path: &EntityPath) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
-            instance_index: Instance::SPLAT,
+            instance_index: InstanceKey::SPLAT,
         }
     }
 
     /// Indicate a specific instance of the entity,
     /// e.g. a specific point in a point cloud entity.
     #[inline]
-    pub fn instance(entity_path: &EntityPath, instance_index: Instance) -> Self {
+    pub fn instance(entity_path: &EntityPath, instance_index: InstanceKey) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
             instance_index,
