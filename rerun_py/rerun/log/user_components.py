@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from rerun.components.instance import InstanceArray
 from rerun.log.error_utils import _send_warning
@@ -8,12 +9,56 @@ from rerun.log.error_utils import _send_warning
 from rerun import bindings
 
 __all__ = [
+    "_add_user_components",
     "log_user_components",
 ]
 
 USER_PREFIX = "user."
 
 USER_COMPONENT_TYPES: Dict[str, Any] = {}
+
+
+def _add_user_components(
+    instanced: Dict[str, Any],
+    splats: Dict[str, Any],
+    user_components: Dict[str, Any],
+    identifiers: Optional[npt.NDArray[np.uint64]],
+) -> None:
+    for name, value in user_components.items():
+
+        # Don't log empty components
+        if value is None:
+            continue
+
+        # Add the user prefix, unless it's already there
+        if not name.startswith(USER_PREFIX):
+            name = USER_PREFIX + name
+
+        np_type, pa_type = USER_COMPONENT_TYPES.get(name, (None, None))
+
+        try:
+            if np_type is not None:
+                np_value = np.atleast_1d(np.array(value, copy=False, dtype=np_type))
+                pa_value = pa.array(np_value, type=pa_type)
+            else:
+                np_value = np.atleast_1d(np.array(value, copy=False))
+                pa_value = pa.array(np_value)
+                USER_COMPONENT_TYPES[name] = (np_value.dtype, pa_value.type)
+        except Exception as ex:
+            _send_warning(
+                "Error converting user data to arrow for component {}. Dropping.\n{}: {}".format(
+                    name, type(ex).__name__, ex
+                ),
+                1,
+            )
+            continue
+
+        is_splat = (len(np_value) == 1) and (len(identifiers or []) != 1)
+
+        if is_splat:
+            splats[name] = pa_value
+        else:
+            instanced[name] = pa_value
 
 
 def log_user_components(
@@ -71,47 +116,17 @@ def log_user_components(
         except ValueError:
             _send_warning("Only integer identifies supported", 1)
 
-    # 0 = instanced, 1 = splat
-    comps = [{}, {}]  # type: ignore[var-annotated]
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if len(identifiers_np):
-        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
+        instanced["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
 
-    for name, value in user_components.items():
+    _add_user_components(instanced, splats, user_components, identifiers_np)
 
-        # Don't log empty components
-        if value is None:
-            continue
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
-        # Add the user prefix, unless it's already there
-        if not name.startswith(USER_PREFIX):
-            name = USER_PREFIX + name
-
-        np_type, pa_type = USER_COMPONENT_TYPES.get(name, (None, None))
-
-        try:
-            if np_type is not None:
-                np_value = np.atleast_1d(np.array(value, copy=False, dtype=np_type))
-                pa_value = pa.array(np_value, type=pa_type)
-            else:
-                np_value = np.atleast_1d(np.array(value, copy=False))
-                pa_value = pa.array(np_value)
-                USER_COMPONENT_TYPES[name] = (np_value.dtype, pa_value.type)
-        except Exception as ex:
-            _send_warning(
-                "Error converting user data to arrow for component {}. Dropping.\n{}: {}".format(
-                    name, type(ex).__name__, ex
-                ),
-                1,
-            )
-            continue
-
-        is_splat = (len(value) == 1) and (len(identifiers_np) != 1)
-
-        comps[is_splat][name] = pa_value
-
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
-
-    if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

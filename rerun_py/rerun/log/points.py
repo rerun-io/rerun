@@ -1,4 +1,4 @@
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +19,7 @@ from rerun.log import (
     _normalize_radii,
 )
 from rerun.log.error_utils import _send_warning
+from rerun.log.user_components import _add_user_components
 
 from rerun import bindings
 
@@ -123,6 +124,7 @@ def log_points(
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
+    user_components: Dict[str, Any] = {},
     timeless: bool = False,
 ) -> None:
     """
@@ -165,6 +167,8 @@ def log_points(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
     timeless:
         If true, the points will be timeless (default: False).
 
@@ -224,6 +228,9 @@ def log_points(
     if len(keypoint_ids):
         is_splat = len(keypoint_ids) == 1
         comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+
+    if user_components:
+        _add_user_components(comps[0], comps[1], user_components, identifiers_np)
 
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 

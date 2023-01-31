@@ -247,6 +247,7 @@ def run_user_component() -> None:
 
     # Single point
     rr.log_point("user_components/point", np.array([64, 64]), color=(255, 0, 0))
+    # Separate user-component
     rr.log_user_components("user_components/point", {"confidence": 0.9})
 
     # Batch points
@@ -255,10 +256,7 @@ def run_user_component() -> None:
         "user_components/points",
         np.array([[32, 32], [32, 96], [96, 32], [96, 96]]),
         colors=(0, 255, 0),
-    )
-    rr.log_user_components(
-        "user_components/points",
-        {"corner": ["upper left", "lower left", "upper right", "lower right"], "training": True},
+        user_components={"corner": ["upper left", "lower left", "upper right", "lower right"], "training": True},
     )
 
 
