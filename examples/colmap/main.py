@@ -19,6 +19,7 @@ DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
 DATASET_NAME: Final = "colmap_rusty_car"
 DATASET_URL: Final = f"{DATASET_URL_BASE}/{DATASET_NAME}.zip"
+# When dataset filtering is turned on, drop views with less than this many valid points.
 FILTER_MIN_VISIBLE: Final = 500
 
 
