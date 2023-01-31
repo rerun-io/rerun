@@ -13,6 +13,8 @@ from typing import Optional
 
 todo_pattern = re.compile(r"TODO([^(]|$)")
 
+debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
+
 
 def lint_line(line: str) -> Optional[str]:
     if "NOLINT" in line:
@@ -39,6 +41,9 @@ def lint_line(line: str) -> Optional[str]:
     if "rerurn" in line.lower():
         return "Emil: you put an extra 'r' in 'Rerun' again!"
 
+    if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
+        return "Format errors with re_error::format or using Display - NOT Debug formatting!"
+
     return None
 
 
@@ -50,6 +55,10 @@ def test_lint() -> None:
         "todo lowercase is fine",
         'todo!("macro is ok with text")',
         "TODO(emilk):",
+        'eprintln!("{:?}, {err}", foo)',
+        'eprintln!("{:#?}, {err}", foo)',
+        'eprintln!("{err}")',
+        'eprintln!("{}", err)',
     ]
 
     should_error = [
@@ -59,6 +68,10 @@ def test_lint() -> None:
         "TODO:",
         "todo!()" "unimplemented!()",
         'unimplemented!("even with text!")',
+        'eprintln!("{err:?}")',
+        'eprintln!("{err:#?}")',
+        'eprintln!("{:?}", err)',
+        'eprintln!("{:#?}", err)',
     ]
 
     for line in should_pass:
@@ -84,6 +97,8 @@ def lint_file(filepath: str) -> int:
 
 
 if __name__ == "__main__":
+    test_lint() # Make sure we are bug free before we run!
+
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
         "files",
