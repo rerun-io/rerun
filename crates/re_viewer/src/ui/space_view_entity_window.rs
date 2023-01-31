@@ -20,14 +20,23 @@ impl SpaceViewEntityWindow {
         ui: &mut egui::Ui,
         space_view: &mut SpaceView,
     ) -> bool {
+        let visuals_before = ui.visuals().clone();
+        ui.visuals_mut().window_fill = visuals_before.widgets.inactive.bg_fill;
+        ui.visuals_mut().window_stroke = visuals_before.widgets.active.fg_stroke;
+
+        let mut open = true;
         egui::Window::new(format!("Add/remove entities to \"{}\"", space_view.name))
             //.pivot(egui::Align2::CENTER_CENTER)
             //.default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
+            .open(&mut open)
             .show(ui.ctx(), |ui| {
                 self.add_entities_ui(ctx, ui, space_view);
-            })
-            .is_some()
+            });
+
+        *ui.visuals_mut() = visuals_before;
+
+        open
     }
 
     #[allow(clippy::unused_self)]
@@ -37,54 +46,19 @@ impl SpaceViewEntityWindow {
         ui: &mut egui::Ui,
         space_view: &mut SpaceView,
     ) {
-        // We'd like to see the reference space path by default.
         let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
-        let entity_tree = &ctx.log_db.entity_db.tree;
-
-        // All entities at the space path and below.
-        if let Some(tree) = entity_tree.subtree(&space_view.space_path) {
+        if let Some(tree) = ctx.log_db.entity_db.tree.subtree(&space_view.root_path) {
             self.add_entities_tree_ui(
                 ctx,
                 ui,
                 &spaces_info,
                 &tree.path.to_string(),
                 tree,
-                true,
                 space_view,
             );
         }
-
-        // All entities above
-        let mut num_steps_up = 0; // I.e. the number of inverse transforms we had to do!
-        let mut previous_path = space_view.space_path.clone();
-        while let Some(parent) = previous_path.parent() {
-            // Don't allow breaking out of the root
-            if parent.is_root() {
-                break;
-            }
-
-            num_steps_up += 1;
-            if let Some(tree) = entity_tree.subtree(&parent) {
-                for (path_comp, child_tree) in &tree.children {
-                    if child_tree.path != space_view.space_path {
-                        self.add_entities_tree_ui(
-                            ctx,
-                            ui,
-                            &spaces_info,
-                            &format!("{}{}", "../".repeat(num_steps_up), path_comp),
-                            child_tree,
-                            false,
-                            space_view,
-                        );
-                    }
-                }
-            }
-
-            previous_path = parent;
-        }
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[allow(clippy::unused_self)]
     fn add_entities_tree_ui(
         &mut self,
@@ -93,7 +67,6 @@ impl SpaceViewEntityWindow {
         spaces_info: &SpaceInfoCollection,
         name: &str,
         tree: &EntityTree,
-        default_open: bool,
         space_view: &mut SpaceView,
     ) {
         if tree.is_leaf() {
@@ -106,10 +79,12 @@ impl SpaceViewEntityWindow {
                 space_view,
             );
         } else {
+            let default_open =
+                space_view.space_path.is_descendant_of(&tree.path) || tree.children.len() <= 3;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 ui.id().with(name),
-                default_open && tree.children.len() <= 3,
+                default_open,
             )
             .show_header(ui, |ui| {
                 self.add_entities_line_ui(ctx, ui, spaces_info, name, &tree.path, space_view);
@@ -122,7 +97,6 @@ impl SpaceViewEntityWindow {
                         spaces_info,
                         &path_comp.to_string(),
                         child_tree,
-                        default_open,
                         space_view,
                     );
                 }
@@ -207,6 +181,7 @@ impl SpaceViewEntityWindow {
                                         entities.push(path.clone());
                                     }
                                 });
+                            space_view.data_blueprint.insert_entities_according_to_hierarchy(entities.iter(), &space_view.space_path);
                             space_view.entities_determined_by_user = true;
                         }
                     }).response;
