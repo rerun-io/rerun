@@ -21,7 +21,7 @@ pub struct InstancePath {
 impl InstancePath {
     /// Indicate the whole entity (all instances of it) - i.e. a splat.
     ///
-    /// For instance: the whole point cloud, rather than a specific point.
+    /// For example: the whole point cloud, rather than a specific point.
     #[inline]
     pub fn entity_splat(entity_path: EntityPath) -> Self {
         Self {
@@ -42,7 +42,7 @@ impl InstancePath {
 
     /// Do we refer to the whole entity (all instances of it)?
     ///
-    /// For instance: the whole point cloud, rather than a specific point.
+    /// For example: the whole point cloud, rather than a specific point.
     #[inline]
     pub fn is_splat(&self) -> bool {
         self.instance_key.is_splat()
@@ -107,7 +107,7 @@ impl InstancePathHash {
 
     /// Indicate the whole entity (all instances of it) - i.e. a splat.
     ///
-    /// For instance: the whole point cloud, rather than a specific point.
+    /// For example: the whole point cloud, rather than a specific point.
     #[inline]
     pub fn entity_splat(entity_path: &EntityPath) -> Self {
         Self {
