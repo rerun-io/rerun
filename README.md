@@ -7,7 +7,10 @@ Rerun is visualization infrastructure for computer vision.
 
 This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently Python only) to log rich data that is streamed to the viewer, where it is visualized live or after the fact.
 
-# Documentation
+# Documentation (Coming soon!)
+
+## WARNING: The following links don't all work yet
+TODO(jleibs): Clean up this section and remove warnign when all links are live
 
 High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs).
 
