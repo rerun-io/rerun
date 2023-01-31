@@ -22,6 +22,7 @@ command = [
   "cranky",
   "-p=re_viewer",
   "--target=wasm32-unknown-unknown",
+  "--target-dir=target_wasm",
   "--all-features",
   "--color=always",
 ]
