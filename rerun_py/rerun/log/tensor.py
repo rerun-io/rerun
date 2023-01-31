@@ -2,11 +2,12 @@ from typing import Any, Dict, Iterable, Optional, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.instance import InstanceArray
 from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
+from rerun.log.user_components import _add_user_components
 
 from rerun import bindings
-from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "log_tensor",
@@ -41,7 +42,7 @@ def log_tensor(
     tensor: npt.ArrayLike,
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -79,7 +80,7 @@ def _log_tensor(
     names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     meaning: bindings.TensorDataMeaning = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
@@ -131,4 +132,5 @@ def _log_tensor(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

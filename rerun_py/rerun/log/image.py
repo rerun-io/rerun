@@ -18,7 +18,7 @@ def log_image(
     entity_path: str,
     image: Tensor,
     *,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -78,7 +78,7 @@ def log_depth_image(
     image: Tensor,
     *,
     meter: Optional[float] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -138,7 +138,7 @@ def log_segmentation_image(
     entity_path: str,
     image: npt.ArrayLike,
     *,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """

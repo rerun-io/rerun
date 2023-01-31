@@ -4,12 +4,13 @@ import numpy as np
 import numpy.typing as npt
 from rerun.components.arrow import Arrow3DArray
 from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log.user_components import _add_user_components
 
 from rerun import bindings
-from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "log_arrow",
@@ -24,7 +25,7 @@ def log_arrow(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -84,4 +85,5 @@ def log_arrow(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

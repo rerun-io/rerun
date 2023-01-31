@@ -38,7 +38,7 @@ def log_point(
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     keypoint_id: Optional[int] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -122,6 +122,7 @@ def log_point(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
@@ -135,7 +136,7 @@ def log_points(
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """

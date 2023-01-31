@@ -16,9 +16,9 @@ from rerun.log import (
     _normalize_labels,
 )
 from rerun.log.error_utils import _send_warning
+from rerun.log.user_components import _add_user_components
 
 from rerun import bindings
-from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "RectFormat",
@@ -35,7 +35,7 @@ def log_rect(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -92,6 +92,7 @@ def log_rect(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
@@ -104,7 +105,7 @@ def log_rects(
     colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """

@@ -2,13 +2,14 @@ from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import _normalize_colors
+from rerun.log.user_components import _add_user_components
 
 from rerun import bindings
-from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "log_scalar",
@@ -22,7 +23,7 @@ def log_scalar(
     color: Optional[Sequence[int]] = None,
     radius: Optional[float] = None,
     scattered: Optional[bool] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Log a double-precision scalar that will be visualized as a timeseries plot.
@@ -131,4 +132,5 @@ def log_scalar(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=False)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=False)

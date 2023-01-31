@@ -3,10 +3,10 @@ from typing import Any, Dict, Optional, Sequence
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components.instance import InstanceArray
 
 # Fully qualified to avoid circular import
 import rerun.log.error_utils
+from rerun.components.instance import InstanceArray
 
 from rerun import bindings
 
@@ -116,7 +116,7 @@ def log_user_components(
             identifiers = [int(id) for id in identifiers]
             identifiers_np = np.array(identifiers, dtype="uint64")
         except ValueError:
-            _send_warning("Only integer identifies supported", 1)
+            rerun.log.error_utils._send_warning("Only integer identifies supported", 1)
 
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}

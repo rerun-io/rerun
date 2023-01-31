@@ -2,14 +2,14 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Final, Optional, Sequence
 
+# Fully qualified to avoid circular import
+import rerun.log.user_components
 from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import _normalize_colors
 
 from rerun import bindings
-
-# Fully qualified to avoid circular import
-import rerun.log.user_components
 
 __all__ = [
     "LogLevel",
@@ -98,7 +98,7 @@ def log_text_entry(
     text: str,
     level: Optional[str] = LogLevel.INFO,
     color: Optional[Sequence[int]] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -141,4 +141,5 @@ def log_text_entry(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

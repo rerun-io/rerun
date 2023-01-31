@@ -7,9 +7,9 @@ from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log.user_components import _add_user_components
 
 from rerun import bindings
-from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "log_path",
@@ -23,7 +23,7 @@ def log_path(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     r"""
@@ -80,6 +80,7 @@ def log_path(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
@@ -89,7 +90,7 @@ def log_line_segments(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
-    user_components: Dict[str, Any] = {},
+    user_components: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     r"""
@@ -162,4 +163,5 @@ def log_line_segments(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
     if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
