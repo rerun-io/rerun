@@ -171,10 +171,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Linux dependencies
-        run: |
-          apt-get update
-          apt-get install -y lsb-release
+      #- name: Install Linux dependencies
+      #  run: |
+      #    apt-get update
+      #    apt-get install -y lsb-release
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
@@ -183,13 +183,13 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
+      #- name: Setup python
+      #  uses: actions/setup-python@v4
+      #  with:
+      #    python-version: ${{ env.PYTHON_VERSION }}
+      #    architecture: x64
+      #    cache: "pip"
+      #    cache-dependency-path: "rerun_py/requirements-build.txt"
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
