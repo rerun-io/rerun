@@ -21,16 +21,30 @@ impl SpaceViewEntityPicker {
         ui: &mut egui::Ui,
         space_view: &mut SpaceView,
     ) -> bool {
-        let mut open = true;
+        // HACK: We want to dim everything a little bit. So draw one large rectangle over everything.
+        let painter = egui::Painter::new(
+            ui.ctx().clone(),
+            egui::LayerId::new(egui::Order::PanelResizeLine, egui::Id::new("DimLayer")),
+            egui::Rect::EVERYTHING,
+        );
+        painter.add(egui::Shape::rect_filled(
+            ui.ctx().screen_rect(),
+            egui::Rounding::none(),
+            egui::Color32::from_black_alpha(128),
+        ));
+
+        // Close window using escape button.
+        let mut open = ui.input(|i| !i.key_pressed(egui::Key::Escape));
         let title = format!("Pick Entities shown in \"{}\"", space_view.name);
+
         egui::Window::new(&title)
-            // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken
+            // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken. Also, should reset every time
             .default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
             .frame(ctx.re_ui.panel_frame())
-            .title_bar(false) // Fake the title bar to get better styling
+            .title_bar(false) // We do a custom title bar for better adhoc styling.
             .show(ui.ctx(), |ui| {
-                title_bar(ui, title, &mut open);
+                title_bar(ctx.re_ui, ui, title, &mut open);
                 add_entities_ui(ctx, ui, space_view);
             });
         open
@@ -124,8 +138,7 @@ fn add_entities_line_ui(
             let entity_tree = &ctx.log_db.entity_db.tree;
 
             if space_view.data_blueprint.contains_entity(entity_path) {
-                if ui
-                .button("➖")
+                if ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
                 .on_hover_text("Remove this path from the Space View")
                 .clicked()
                 {
@@ -159,7 +172,7 @@ fn add_entities_line_ui(
                 };
 
                 let response = ui.add_enabled_ui(cannot_add_reason.is_none(), |ui| {
-                    let response = ui.button("➕").on_hover_text("Add this entity to the Space View");
+                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD).on_hover_text("Add this entity to the Space View");
                     if response.clicked() {
                         // Insert the entity it space_view and all its children as far as they haven't been added yet
                         let mut entities = Vec::new();
@@ -187,7 +200,7 @@ fn add_entities_line_ui(
     });
 }
 
-fn title_bar(ui: &mut egui::Ui, title: String, open: &mut bool) {
+fn title_bar(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, title: String, open: &mut bool) {
     ui.horizontal(|ui| {
         ui.heading(title);
 
@@ -197,11 +210,10 @@ fn title_bar(ui: &mut egui::Ui, title: String, open: &mut bool) {
             ui.max_rect(),
             egui::Layout::right_to_left(egui::Align::Center),
         );
-        let close_button_rect = egui::Rect::from_min_max(
-            ui.next_widget_position() + egui::vec2(-20.0, -10.0),
-            ui.next_widget_position() + egui::vec2(0.0, 10.0),
-        );
-        if close_button(&mut ui, close_button_rect).clicked() {
+        if re_ui
+            .small_icon_button(&mut ui, &re_ui::icons::CLOSE)
+            .clicked()
+        {
             *open = false;
         }
     });
@@ -215,20 +227,4 @@ fn has_visualization_for_category(
 ) -> bool {
     let log_db = &ctx.log_db;
     categorize_entity_path(Timeline::log_time(), log_db, entity_path).contains(category)
-}
-
-// Close button ui from egui::Window
-fn close_button(ui: &mut egui::Ui, rect: egui::Rect) -> egui::Response {
-    let close_id = ui.auto_id_with("window_close_button");
-    let response = ui.interact(rect, close_id, egui::Sense::click());
-    ui.expand_to_include_rect(response.rect);
-
-    let visuals = ui.style().interact(&response);
-    let rect = rect.shrink(2.0).expand(visuals.expansion);
-    let stroke = visuals.fg_stroke;
-    ui.painter() // paints \
-        .line_segment([rect.left_top(), rect.right_bottom()], stroke);
-    ui.painter() // paints /
-        .line_segment([rect.right_top(), rect.left_bottom()], stroke);
-    response
 }

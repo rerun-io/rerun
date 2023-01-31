@@ -518,16 +518,40 @@ fn paint_view(
 ) {
     crate::profile_function!();
 
+    // Determine view port resolution and position.
+    let pixels_from_point = ui.ctx().pixels_per_point();
+    let resolution_in_pixel = get_viewport(rect, pixels_from_point);
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return;
+    }
+    let target_config = TargetConfiguration {
+        name: name.into(),
+
+        resolution_in_pixel,
+
+        view_from_world: eye.world_from_view.inverse(),
+        projection_from_view: Projection::Perspective {
+            vertical_fov: eye.fov_y.unwrap(),
+            near_plane_distance: eye.near(),
+        },
+
+        pixels_from_point,
+        auto_size_config,
+    };
+
+    let Ok(callback) = create_scene_paint_callback(
+        render_ctx,
+        target_config,
+        rect,
+        &scene.primitives, &ScreenBackground::GenericSkybox)
+    else {
+        return;
+    };
+    ui.painter().add(callback);
+
     // Draw labels:
     {
-        let painter = ui
-            .painter()
-            .clone()
-            .with_layer_id(egui::LayerId::new(
-                egui::Order::Foreground,
-                egui::Id::new("LabelsLayer"),
-            ))
-            .with_clip_rect(ui.max_rect());
+        let painter = ui.painter().with_clip_rect(ui.max_rect());
 
         crate::profile_function!("labels");
         let ui_from_world = eye.ui_from_world(&rect);
@@ -563,37 +587,6 @@ fn paint_view(
             painter.add(egui::Shape::galley(text_rect.min, galley));
         }
     }
-
-    // Determine view port resolution and position.
-    let pixels_from_point = ui.ctx().pixels_per_point();
-    let resolution_in_pixel = get_viewport(rect, pixels_from_point);
-    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return;
-    }
-    let target_config = TargetConfiguration {
-        name: name.into(),
-
-        resolution_in_pixel,
-
-        view_from_world: eye.world_from_view.inverse(),
-        projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y.unwrap(),
-            near_plane_distance: eye.near(),
-        },
-
-        pixels_from_point,
-        auto_size_config,
-    };
-
-    let Ok(callback) = create_scene_paint_callback(
-        render_ctx,
-        target_config,
-        rect,
-        &scene.primitives, &ScreenBackground::GenericSkybox)
-    else {
-        return;
-    };
-    ui.painter().add(callback);
 }
 
 fn show_projections_from_2d_space(
