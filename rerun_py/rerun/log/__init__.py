@@ -21,6 +21,7 @@ __all__ = [
     "tensor",
     "text",
     "transform",
+    "user_components",
 ]
 
 
