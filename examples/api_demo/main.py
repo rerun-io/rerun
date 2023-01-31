@@ -240,6 +240,28 @@ def run_bounding_box() -> None:
     )
 
 
+def run_user_component() -> None:
+    rr.set_time_seconds("sim_time", 0)
+    # Hack to establish 2d view bounds
+    rr.log_rect("user_components", [0, 0, 128, 128])
+
+    # Single point
+    rr.log_point("user_components/point", np.array([64, 64]), color=(255, 0, 0))
+    rr.log_user_components("user_components/point", {"confidence": 0.9})
+
+    # Batch points
+    rr.set_time_seconds("sim_time", 1)
+    rr.log_points(
+        "user_components/points",
+        np.array([[32, 32], [32, 96], [96, 32], [96, 96]]),
+        colors=(0, 255, 0),
+    )
+    rr.log_user_components(
+        "user_components/points",
+        {"corner": ["upper left", "lower left", "upper right", "lower right"], "training": True},
+    )
+
+
 def main() -> None:
     demos = {
         "3d_points": run_points_3d,
@@ -249,6 +271,7 @@ def main() -> None:
         "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
         "bbox": run_bounding_box,
+        "user_components": run_user_component,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
