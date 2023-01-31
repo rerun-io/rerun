@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use re_data_store::{EntityPath, InstanceIdHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, KeypointId, Tensor},
     MeshId,
@@ -51,7 +51,7 @@ impl MeshSourceData {
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
-    pub instance_hash: InstanceIdHash,
+    pub instance_path_hash: InstancePathHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
@@ -59,7 +59,7 @@ pub struct MeshSource {
 }
 
 pub struct Image {
-    pub instance_hash: InstanceIdHash,
+    pub instance_path_hash: InstancePathHash,
 
     pub tensor: Tensor,
     /// If this is a depth map, how long is a meter?
@@ -87,7 +87,7 @@ pub struct Label2D {
     /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
-    pub labled_instance: InstanceIdHash,
+    pub labled_instance: InstancePathHash,
 }
 
 pub struct Label3D {
@@ -104,7 +104,7 @@ pub struct SceneSpatialUiData {
 
     /// Picking any any of these rects cause the referred instance to be hovered.
     /// Only use this for 2d overlays!
-    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
+    pub pickable_ui_rects: Vec<(egui::Rect, InstancePathHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -126,11 +126,14 @@ pub struct SceneSpatial {
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-fn instance_hash_if_interactive(entity_path: &EntityPath, interactive: bool) -> InstanceIdHash {
+fn instance_path_hash_if_interactive(
+    entity_path: &EntityPath,
+    interactive: bool,
+) -> InstancePathHash {
     if interactive {
-        InstanceIdHash::from_path(entity_path)
+        InstancePathHash::entity_splat(entity_path)
     } else {
-        InstanceIdHash::NONE
+        InstancePathHash::NONE
     }
 }
 
@@ -248,7 +251,7 @@ impl SceneSpatial {
         interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_hash = instance_hash_if_interactive(entity_path, interactive);
+        let instance_path_hash = instance_path_hash_if_interactive(entity_path, interactive);
 
         let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
 
@@ -274,7 +277,7 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
-                    .user_data(instance_hash);
+                    .user_data(instance_path_hash);
             }
         }
     }

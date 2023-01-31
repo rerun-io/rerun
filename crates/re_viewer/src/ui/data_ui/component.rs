@@ -1,61 +1,51 @@
-use re_log_types::{component_types::Instance, msg_bundle::Component};
 use re_query::ComponentWithInstances;
 
-pub(crate) fn arrow_component_ui(
-    ctx: &mut crate::misc::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    component: &ComponentWithInstances,
-    verbosity: crate::ui::UiVerbosity,
-    query: &re_arrow_store::LatestAtQuery,
-) {
-    let count = component.len();
+use super::DataUi;
 
-    let max_elems = match verbosity {
-        crate::ui::UiVerbosity::Small | crate::ui::UiVerbosity::MaxHeight(_) => 1,
-        crate::ui::UiVerbosity::Large => 20,
-    };
+impl DataUi for ComponentWithInstances {
+    fn data_ui(
+        &self,
+        ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: super::UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        let num_instances = self.len();
 
-    match component.iter_instance_keys() {
-        Ok(mut instance_keys) => {
-            if count == 0 {
-                ui.weak("(empty)");
-            } else if count == 1 {
-                if let Some(instance) = instance_keys.next() {
-                    arrow_component_elem_ui(ctx, ui, verbosity, query, component, &instance);
-                } else {
-                    ui.label("Error: missing instance key");
-                }
-            } else if count <= max_elems {
-                egui::Grid::new("component").num_columns(2).show(ui, |ui| {
-                    for instance in instance_keys {
-                        ui.label(format!("{instance}"));
-                        arrow_component_elem_ui(ctx, ui, verbosity, query, component, &instance);
-                        ui.end_row();
+        let max_elems = match verbosity {
+            crate::ui::UiVerbosity::Small | crate::ui::UiVerbosity::MaxHeight(_) => 1,
+            crate::ui::UiVerbosity::Large => 20,
+        };
+
+        match self.iter_instance_keys() {
+            Ok(mut instance_keys) => {
+                if num_instances == 0 {
+                    ui.weak("(empty)");
+                } else if num_instances == 1 {
+                    if let Some(instance) = instance_keys.next() {
+                        ctx.component_ui_registry
+                            .ui(ctx, ui, verbosity, query, self, &instance);
+                    } else {
+                        ui.label(ctx.re_ui.error_text("Error: missing instance key"));
                     }
-                });
-            } else {
-                ui.label(format!("{count} values"));
+                } else if num_instances <= max_elems {
+                    egui::Grid::new("component_instances")
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            for instance in instance_keys {
+                                ui.label(instance.to_string());
+                                ctx.component_ui_registry
+                                    .ui(ctx, ui, verbosity, query, self, &instance);
+                                ui.end_row();
+                            }
+                        });
+                } else {
+                    ui.label(format!("{num_instances} values"));
+                }
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
             }
         }
-        Err(err) => {
-            ui.label(format!("Error: {err}"));
-        }
-    }
-}
-
-pub(crate) fn arrow_component_elem_ui(
-    ctx: &mut crate::misc::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    verbosity: crate::ui::UiVerbosity,
-    query: &re_arrow_store::LatestAtQuery,
-    component: &ComponentWithInstances,
-    instance: &Instance,
-) {
-    if component.name() == Instance::name() {
-        // No reason to do another lookup -- this is the instance itself
-        ui.label(instance.to_string());
-    } else {
-        ctx.component_ui_registry
-            .ui(ctx, ui, verbosity, query, component, instance);
     }
 }

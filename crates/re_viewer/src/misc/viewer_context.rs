@@ -1,4 +1,4 @@
-use re_data_store::{log_db::LogDb, InstanceId};
+use re_data_store::{log_db::LogDb, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, MsgId, TimeInt, Timeline};
 
 use crate::ui::{
@@ -55,10 +55,10 @@ impl<'a> ViewerContext<'a> {
         space_view_id: Option<SpaceViewId>,
         entity_path: &EntityPath,
     ) -> egui::Response {
-        self.instance_id_button_to(
+        self.instance_path_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(entity_path.clone(), None),
+            &InstancePath::entity_splat(entity_path.clone()),
             entity_path.to_string(),
         )
     }
@@ -71,44 +71,45 @@ impl<'a> ViewerContext<'a> {
         entity_path: &EntityPath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.instance_id_button_to(
+        self.instance_path_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(entity_path.clone(), None),
+            &InstancePath::entity_splat(entity_path.clone()),
             text,
         )
     }
 
     /// Show an instance id and make it selectable.
-    pub fn instance_id_button(
+    pub fn instance_path_button(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstanceId,
+        instance_path: &InstancePath,
     ) -> egui::Response {
-        self.instance_id_button_to(ui, space_view_id, instance_id, instance_id.to_string())
+        self.instance_path_button_to(ui, space_view_id, instance_path, instance_path.to_string())
     }
 
     /// Show an instance id and make it selectable.
-    pub fn instance_id_button_to(
+    pub fn instance_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstanceId,
+        instance_path: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Selection::Instance(space_view_id, instance_id.clone());
-        let subtype_string = match instance_id.instance_index {
-            Some(_) => "Entity Instance",
-            None => "Entity",
+        let selection = Selection::Instance(space_view_id, instance_path.clone());
+        let subtype_string = if instance_path.instance_index.is_splat() {
+            "Entity"
+        } else {
+            "Entity Instance"
         };
 
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong(subtype_string);
-                ui.label(format!("Path: {instance_id}"));
-                instance_id.data_ui(
+                ui.label(format!("Path: {instance_path}"));
+                instance_path.data_ui(
                     self,
                     ui,
                     crate::ui::UiVerbosity::Large,
@@ -177,7 +178,7 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         let selection = Selection::Instance(
             Some(space_view_id),
-            InstanceId::new(entity_path.clone(), None),
+            InstancePath::entity_splat(entity_path.clone()),
         );
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)

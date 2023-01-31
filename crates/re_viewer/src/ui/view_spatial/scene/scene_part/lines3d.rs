@@ -13,7 +13,7 @@ use crate::{
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::{instance_hash_for_picking, ScenePart};
+use super::{instance_path_hash_for_picking, ScenePart};
 
 pub struct Lines3DPart;
 
@@ -43,8 +43,13 @@ impl Lines3DPart {
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, entity_highlight);
+            let instance_hash = instance_path_hash_for_picking(
+                ent_path,
+                instance,
+                entity_view,
+                props,
+                entity_highlight,
+            );
 
             let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
 
@@ -56,7 +61,7 @@ impl Lines3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index),
             );
 
             line_batch

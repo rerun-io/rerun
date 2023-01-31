@@ -1,5 +1,5 @@
 use egui::Color32;
-use re_data_store::InstanceIdHash;
+use re_data_store::InstancePathHash;
 use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
 
 use super::MeshSource;
@@ -17,11 +17,11 @@ pub struct SceneSpatialPrimitives {
 
     // TODO(andreas): Storing extra data like so is unsafe and not future proof either
     //                (see also above comment on the need to separate cpu-readable data)
-    pub textured_rectangles_ids: Vec<InstanceIdHash>,
+    pub textured_rectangles_ids: Vec<InstancePathHash>,
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
-    pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
-    pub points: PointCloudBuilder<InstanceIdHash>,
+    pub line_strips: LineStripSeriesBuilder<InstancePathHash>,
+    pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
 }
@@ -117,7 +117,7 @@ impl SceneSpatialPrimitives {
     pub fn add_axis_lines(
         &mut self,
         transform: macaw::IsoTransform,
-        instance: InstanceIdHash,
+        instance_path_hash: InstancePathHash,
         axis_length: f32,
     ) {
         use re_renderer::renderer::LineStripFlags;
@@ -135,7 +135,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_X)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance);
+            .user_data(instance_path_hash);
         line_batch
             .add_segment(
                 origin,
@@ -144,7 +144,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance);
+            .user_data(instance_path_hash);
         line_batch
             .add_segment(
                 origin,
@@ -153,6 +153,6 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance);
+            .user_data(instance_path_hash);
     }
 }

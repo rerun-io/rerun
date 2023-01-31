@@ -4,7 +4,7 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
@@ -16,7 +16,7 @@ use crate::{
     misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{scene::scene_part::instance_hash_for_picking, Image, SceneSpatial},
+        view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
         Annotations, DefaultColor,
     },
 };
@@ -28,7 +28,7 @@ fn push_tensor_texture<T: AsDynamicImage>(
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
-    instance_hash: InstanceIdHash,
+    instance_path_hash: InstancePathHash,
     tensor: &T,
     tint: egui::Rgba,
 ) {
@@ -55,7 +55,10 @@ fn push_tensor_texture<T: AsDynamicImage>(
                 // Push to background. Mostly important for mouse picking order!
                 depth_offset: -1,
             });
-        scene.primitives.textured_rectangles_ids.push(instance_hash);
+        scene
+            .primitives
+            .textured_rectangles_ids
+            .push(instance_path_hash);
     }
 }
 
@@ -144,7 +147,7 @@ impl ImagesPart {
 
                 let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
-                let instance_hash = instance_hash_for_picking(
+                let instance_path_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance,
                     entity_view,
@@ -159,7 +162,7 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let highlight = entity_highlight.index_highlight(instance_hash.instance_index_hash);
+                let highlight = entity_highlight.index_highlight(instance_path_hash.instance_index);
                 if highlight.is_some() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,
@@ -182,7 +185,7 @@ impl ImagesPart {
                     ctx,
                     &annotations,
                     world_from_obj,
-                    instance_hash,
+                    instance_path_hash,
                     &tensor,
                     color.into(),
                 );
@@ -191,7 +194,7 @@ impl ImagesPart {
                 let meter = tensor.meter;
 
                 scene.ui.images.push(Image {
-                    instance_hash,
+                    instance_path_hash,
                     tensor,
                     meter,
                     annotations,

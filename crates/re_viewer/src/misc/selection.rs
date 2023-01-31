@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use re_data_store::{InstanceId, LogDb};
+use re_data_store::{InstancePath, LogDb};
 use re_log_types::{ComponentPath, MsgId};
 
 use crate::ui::SpaceViewId;
@@ -9,7 +9,7 @@ pub enum Selection {
     MsgId(MsgId),
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
-    Instance(Option<SpaceViewId>, InstanceId),
+    Instance(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
@@ -53,9 +53,9 @@ impl Selection {
     pub fn kind(self: &Selection) -> &'static str {
         match self {
             Selection::MsgId(_) => "Message",
-            Selection::Instance(space_view_id, instance_id) => {
+            Selection::Instance(space_view_id, instance_path) => {
                 match (
-                    instance_id.instance_index.is_some(),
+                    instance_path.instance_index.is_specific(),
                     space_view_id.is_some(),
                 ) {
                     (true, true) => "Entity Instance Blueprint",

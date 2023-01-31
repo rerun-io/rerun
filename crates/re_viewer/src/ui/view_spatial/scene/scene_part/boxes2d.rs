@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, InstanceIdHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
@@ -12,7 +12,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         view_spatial::{
-            scene::scene_part::instance_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
+            scene::scene_part::instance_path_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
         },
         DefaultColor,
     },
@@ -28,7 +28,7 @@ impl Boxes2DPart {
         scene: &mut SceneSpatial,
         entity_path: &EntityPath,
         world_from_obj: Mat4,
-        instance_hash: InstanceIdHash,
+        instance_path_hash: InstancePathHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
         radius: Option<Radius>,
@@ -50,7 +50,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            entity_highlight.index_highlight(instance_hash.instance_index_hash),
+            entity_highlight.index_highlight(instance_path_hash.instance_index),
         );
 
         let mut line_batch = scene
@@ -67,7 +67,7 @@ impl Boxes2DPart {
             )
             .color(color)
             .radius(radius)
-            .user_data(instance_hash);
+            .user_data(instance_path_hash);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
@@ -77,7 +77,7 @@ impl Boxes2DPart {
                     rect.top_left_corner().into(),
                     egui::vec2(rect.width(), rect.height()),
                 )),
-                labled_instance: instance_hash,
+                labled_instance: instance_path_hash,
             });
         }
     }
@@ -119,7 +119,7 @@ impl ScenePart for Boxes2DPart {
             .and_then(|entities| {
                 for entity_view in entities {
                     entity_view.visit5(|instance, rect, color, radius, label, class_id| {
-                        let instance_hash = instance_hash_for_picking(
+                        let instance_hash = instance_path_hash_for_picking(
                             ent_path,
                             instance,
                             &entity_view,

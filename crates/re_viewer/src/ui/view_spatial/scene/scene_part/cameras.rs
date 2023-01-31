@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, EntityProperties, InstanceIdHash};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
     Pinhole, Transform, ViewCoordinates,
@@ -13,7 +13,9 @@ use crate::{
     },
     ui::{
         scene::SceneQuery,
-        view_spatial::{scene::scene_part::instance_hash_for_picking, SceneSpatial, SpaceCamera3D},
+        view_spatial::{
+            scene::scene_part::instance_path_hash_for_picking, SceneSpatial, SpaceCamera3D,
+        },
     },
 };
 
@@ -60,7 +62,7 @@ impl CamerasPart {
         entity_path: &EntityPath,
         props: &EntityProperties,
         transforms: &TransformCache,
-        instance_hash: InstanceIdHash,
+        instance_hash: InstancePathHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
@@ -149,7 +151,7 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            entity_highlight.index_highlight(instance_hash.instance_index_hash),
+            entity_highlight.index_highlight(instance_hash.instance_index),
         );
 
         scene
@@ -195,7 +197,7 @@ impl ScenePart for CamerasPart {
                         return;
                     };
                     let entity_highlight = highlights.entity_highlight(ent_path.hash());
-                    let instance_hash = instance_hash_for_picking(
+                    let instance_hash = instance_path_hash_for_picking(
                         ent_path,
                         instance,
                         &entity_view,

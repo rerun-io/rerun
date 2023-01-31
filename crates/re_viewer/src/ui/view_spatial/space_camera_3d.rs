@@ -1,7 +1,7 @@
 use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
-use re_data_store::{EntityPath, InstanceIdHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::ViewCoordinates;
 
 /// A logged camera that connects spaces.
@@ -13,7 +13,7 @@ pub struct SpaceCamera3D {
     pub entity_path: EntityPath,
 
     /// The instance id hash of the entity that has the projection.
-    pub instance: InstanceIdHash,
+    pub instance: InstancePathHash,
 
     /// The coordinate system of the camera ("view-space").
     pub view_coordinates: ViewCoordinates,
