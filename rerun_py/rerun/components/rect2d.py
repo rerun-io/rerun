@@ -1,15 +1,43 @@
 from __future__ import annotations
 
+from enum import Enum
+
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory, build_dense_union
-from rerun.log.rects import RectFormat
+from rerun.components import (
+    REGISTERED_COMPONENT_NAMES,
+    ComponentTypeFactory,
+    build_dense_union,
+)
 
 __all__ = [
     "Rect2DArray",
     "Rect2DType",
+    "RectFormat",
 ]
+
+
+class RectFormat(Enum):
+    """How to specify rectangles (axis-aligned bounding boxes)."""
+
+    XYWH = "XYWH"
+    """[x,y,w,h], with x,y = left,top."""
+
+    YXHW = "YXHW"
+    """[y,x,h,w], with x,y = left,top."""
+
+    XYXY = "XYXY"
+    """[x0, y0, x1, y1], with x0,y0 = left,top and x1,y1 = right,bottom."""
+
+    YXYX = "YXYX"
+    """[y0, x0, y1, x1], with x0,y0 = left,top and x1,y1 = right,bottom."""
+
+    XCYCWH = "XCYCWH"
+    """[x_center, y_center, width, height]."""
+
+    XCYCW2H2 = "XCYCW2H2"
+    """[x_center, y_center, width/2, height/2]."""
 
 
 class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
@@ -25,6 +53,6 @@ class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-Rect2DType = ComponentTypeFactory("Rect2DType", Rect2DArray, REGISTERED_FIELDS["rerun.rect2d"])
+Rect2DType = ComponentTypeFactory("Rect2DType", Rect2DArray, REGISTERED_COMPONENT_NAMES["rerun.rect2d"])
 
 pa.register_extension_type(Rect2DType())

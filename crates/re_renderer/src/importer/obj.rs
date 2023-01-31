@@ -10,7 +10,8 @@ use crate::{
     Color32, RenderContext,
 };
 
-/// Loads an obj into the mesh & texture manager.
+/// Load a [Wavefront .obj file](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
+/// into the mesh & texture manager.
 pub fn load_obj_from_buffer(
     buffer: &[u8],
     lifetime: ResourceLifeTime,

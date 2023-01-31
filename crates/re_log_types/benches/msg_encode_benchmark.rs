@@ -6,8 +6,9 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
+    entity_path,
     msg_bundle::{try_build_msg_bundle2, MsgBundle},
-    obj_path, ArrowMsg, Index, LogMsg, MsgId,
+    ArrowMsg, Index, LogMsg, MsgId,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -64,7 +65,7 @@ fn mono_points_arrow(c: &mut Criterion) {
             .map(|i| {
                 try_build_msg_bundle2(
                     MsgId::ZERO,
-                    obj_path!("points", Index::Sequence(i as _)),
+                    entity_path!("points", Index::Sequence(i as _)),
                     [build_frame_nr(0.into())],
                     (build_some_point2d(1), build_some_colors(1)),
                 )
@@ -116,7 +117,7 @@ fn batch_points_arrow(c: &mut Criterion) {
     fn generate_message_bundles() -> Vec<MsgBundle> {
         vec![try_build_msg_bundle2(
             MsgId::ZERO,
-            obj_path!("points"),
+            entity_path!("points"),
             [build_frame_nr(0.into())],
             (
                 build_some_point2d(NUM_POINTS),

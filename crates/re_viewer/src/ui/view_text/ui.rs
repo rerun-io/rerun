@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use egui::{Color32, RichText};
 
-use re_data_store::{ObjPath, Timeline};
+use re_data_store::{EntityPath, Timeline};
 use re_log_types::TimePoint;
 
 use crate::ViewerContext;
@@ -87,29 +87,32 @@ pub struct ViewTextFilters {
     // Column filters: which columns should be visible?
     // Timelines are special: each one has a dedicated column.
     pub col_timelines: BTreeMap<Timeline, bool>,
-    pub col_obj_path: bool,
+    pub col_entity_path: bool,
     pub col_log_level: bool,
 
     // Row filters: which rows should be visible?
-    pub row_obj_paths: BTreeMap<ObjPath, bool>,
+    pub row_entity_paths: BTreeMap<EntityPath, bool>,
     pub row_log_levels: BTreeMap<String, bool>,
 }
 
 impl Default for ViewTextFilters {
     fn default() -> Self {
         Self {
-            col_obj_path: true,
+            col_entity_path: true,
             col_log_level: true,
             col_timelines: Default::default(),
-            row_obj_paths: Default::default(),
+            row_entity_paths: Default::default(),
             row_log_levels: Default::default(),
         }
     }
 }
 
 impl ViewTextFilters {
-    pub fn is_obj_path_visible(&self, obj_path: &ObjPath) -> bool {
-        self.row_obj_paths.get(obj_path).copied().unwrap_or(true)
+    pub fn is_entity_path_visible(&self, entity_path: &EntityPath) -> bool {
+        self.row_entity_paths
+            .get(entity_path)
+            .copied()
+            .unwrap_or(true)
     }
 
     pub fn is_log_level_visible(&self, level: &str) -> bool {
@@ -123,9 +126,9 @@ impl ViewTextFilters {
 
         let Self {
             col_timelines,
-            col_obj_path: _,
+            col_entity_path: _,
             col_log_level: _,
-            row_obj_paths,
+            row_entity_paths,
             row_log_levels,
         } = self;
 
@@ -133,8 +136,8 @@ impl ViewTextFilters {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
-        for obj_path in text_entries.iter().map(|te| &te.obj_path) {
-            row_obj_paths.entry(obj_path.clone()).or_insert(true);
+        for entity_path in text_entries.iter().map(|te| &te.entity_path) {
+            row_entity_paths.entry(entity_path.clone()).or_insert(true);
         }
 
         for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
@@ -148,18 +151,18 @@ impl ViewTextFilters {
 
         let Self {
             col_timelines,
-            col_obj_path,
+            col_entity_path,
             col_log_level,
-            row_obj_paths,
+            row_entity_paths,
             row_log_levels,
         } = self;
 
-        let has_obj_path_row_filters = row_obj_paths.values().filter(|v| **v).count() > 0;
+        let has_entity_path_row_filters = row_entity_paths.values().filter(|v| **v).count() > 0;
         let has_log_lvl_row_filters = row_log_levels.values().filter(|v| **v).count() > 0;
-        let has_any_row_filters = has_obj_path_row_filters || has_log_lvl_row_filters;
+        let has_any_row_filters = has_entity_path_row_filters || has_log_lvl_row_filters;
 
         let has_timeline_col_filters = col_timelines.values().filter(|v| **v).count() > 0;
-        let has_any_col_filters = has_timeline_col_filters || *col_obj_path || *col_log_level;
+        let has_any_col_filters = has_timeline_col_filters || *col_entity_path || *col_log_level;
 
         let clear_or_select = ["Select all", "Clear all"];
 
@@ -175,7 +178,7 @@ impl ViewTextFilters {
                     for v in col_timelines.values_mut() {
                         *v = !has_any_col_filters;
                     }
-                    *col_obj_path = !has_any_col_filters;
+                    *col_entity_path = !has_any_col_filters;
                     *col_log_level = !has_any_col_filters;
                 }
             });
@@ -185,7 +188,7 @@ impl ViewTextFilters {
             for (timeline, visible) in col_timelines {
                 ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
             }
-            ui.checkbox(col_obj_path, "Object path");
+            ui.checkbox(col_entity_path, "Entity path");
             ui.checkbox(col_log_level, "Log level");
         });
 
@@ -198,7 +201,7 @@ impl ViewTextFilters {
                     .button(clear_or_select[has_any_row_filters as usize])
                     .clicked()
                 {
-                    for v in row_obj_paths.values_mut() {
+                    for v in row_entity_paths.values_mut() {
                         *v = !has_any_row_filters;
                     }
                     for v in row_log_levels.values_mut() {
@@ -211,19 +214,19 @@ impl ViewTextFilters {
 
             ui.group(|ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Object paths");
+                    ui.label("Entity paths");
                     if ui
-                        .button(clear_or_select[has_obj_path_row_filters as usize])
+                        .button(clear_or_select[has_entity_path_row_filters as usize])
                         .clicked()
                     {
-                        for v in row_obj_paths.values_mut() {
-                            *v = !has_obj_path_row_filters;
+                        for v in row_entity_paths.values_mut() {
+                            *v = !has_entity_path_row_filters;
                         }
                     }
                 });
-                for (obj_path, visible) in row_obj_paths {
+                for (entity_path, visible) in row_entity_paths {
                     ui.horizontal(|ui| {
-                        ui.checkbox(visible, &obj_path.to_string());
+                        ui.checkbox(visible, &entity_path.to_string());
                     });
                 }
             });
@@ -255,13 +258,13 @@ impl ViewTextFilters {
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
     if let Some(time_point) = ctx
         .log_db
-        .obj_db
+        .entity_db
         .arrow_store
         .get_msg_metadata(&entry.msg_id)
     {
         Some(time_point.clone())
     } else {
-        re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path);
+        re_log::warn_once!("Missing LogMsg for {:?}", entry.entity_path);
         None
     }
 }
@@ -307,8 +310,8 @@ fn table_ui(
         table_builder =
             table_builder.columns(Column::auto().clip(true).at_least(32.0), timelines.len());
 
-        // object path
-        if state.filters.col_obj_path {
+        // entity path
+        if state.filters.col_entity_path {
             table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
         }
         // log level
@@ -326,9 +329,9 @@ fn table_ui(
                     ctx.timeline_button(ui, timeline);
                 });
             }
-            if state.filters.col_obj_path {
+            if state.filters.col_entity_path {
                 header.col(|ui| {
-                    ui.strong("Object Path");
+                    ui.strong("Entity path");
                 });
             }
             if state.filters.col_log_level {
@@ -352,9 +355,7 @@ fn table_ui(
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
                 // store, which is a costly operation.
                 // Doing this here guarantees that it only happens for visible rows.
-                let time_point = if let Some(time_point) = get_time_point(ctx, text_entry) {
-                    time_point
-                } else {
+                let Some(time_point) = get_time_point(ctx, text_entry) else {
                     row.col(|ui| {
                         ui.colored_label(
                             Color32::RED,
@@ -391,9 +392,9 @@ fn table_ui(
                 }
 
                 // path
-                if state.filters.col_obj_path {
+                if state.filters.col_entity_path {
                     row.col(|ui| {
-                        ctx.obj_path_button(ui, None, &text_entry.obj_path);
+                        ctx.entity_path_button(ui, None, &text_entry.entity_path);
                     });
                 }
 

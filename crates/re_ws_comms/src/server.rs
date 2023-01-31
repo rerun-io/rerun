@@ -27,13 +27,13 @@ impl Server {
     pub async fn new(port: u16) -> anyhow::Result<Self> {
         use anyhow::Context as _;
 
-        let bind_addr = format!("127.0.0.1:{}", port);
+        let bind_addr = format!("127.0.0.1:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
-            .with_context(|| format!("Can't listen on {:?}", bind_addr))?;
+            .with_context(|| format!("Can't listen on {bind_addr:?}"))?;
 
-        eprintln!("Listening for websocket traffic on: {}", bind_addr);
+        eprintln!("Listening for websocket traffic on: {bind_addr}");
 
         Ok(Self { listener })
     }

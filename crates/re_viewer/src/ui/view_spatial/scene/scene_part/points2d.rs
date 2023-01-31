@@ -1,15 +1,15 @@
 use glam::Mat4;
 
-use re_data_store::{ObjPath, ObjectProps};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point2D, Radius},
+    component_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point2D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::Keypoints, Label2D, Label2DTarget, SceneSpatial},
@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{instance_hash_for_picking, ScenePart};
+use super::{instance_path_hash_for_picking, ScenePart};
 
 pub struct Points2DPart;
 
@@ -26,11 +26,11 @@ impl Points2DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &ObjectProps,
+        props: &EntityProperties,
         entity_view: &EntityView<Point2D>,
-        ent_path: &ObjPath,
+        ent_path: &EntityPath,
         world_from_obj: Mat4,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
@@ -38,7 +38,7 @@ impl Points2DPart {
         let max_num_labels = 10;
 
         let annotations = scene.annotation_map.find(ent_path);
-        let default_color = DefaultColor::ObjPath(ent_path);
+        let default_color = DefaultColor::EntityPath(ent_path);
 
         // If keypoints ids show up we may need to connect them later!
         // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -57,8 +57,13 @@ impl Points2DPart {
                        label: Option<Label>,
                        class_id: Option<ClassId>,
                        keypoint_id: Option<KeypointId>| {
-            let instance_hash =
-                instance_hash_for_picking(ent_path, instance, entity_view, props, object_highlight);
+            let instance_hash = instance_path_hash_for_picking(
+                ent_path,
+                instance,
+                entity_view,
+                props,
+                entity_highlight,
+            );
 
             let pos: glam::Vec2 = pos.into();
 
@@ -85,7 +90,7 @@ impl Points2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                object_highlight.index_highlight(instance_hash.instance_index_hash),
+                entity_highlight.index_highlight(instance_hash.instance_index),
             );
 
             point_batch
@@ -131,13 +136,13 @@ impl ScenePart for Points2DPart {
         crate::profile_scope!("Points2DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point2D, 7>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
@@ -161,7 +166,7 @@ impl ScenePart for Points2DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        object_highlight,
+                        entity_highlight,
                     )?;
                 }
                 Ok(())

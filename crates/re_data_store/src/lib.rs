@@ -4,19 +4,19 @@
 #![doc = document_features::document_features!()]
 //!
 
-mod instance;
+pub mod entity_properties;
+pub mod entity_tree;
+mod instance_path;
 pub mod log_db;
-pub mod object_properties;
-pub mod object_tree;
 
-pub use instance::*;
+pub use entity_properties::*;
+pub use entity_tree::*;
+pub use instance_path::*;
 pub use log_db::LogDb;
-pub use object_properties::*;
-pub use object_tree::*;
 
 use re_log_types::msg_bundle;
 
-pub use re_log_types::{ComponentName, Index, ObjPath, ObjPathComp, TimeInt, Timeline};
+pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt, Timeline};
 
 // ----------------------------------------------------------------------------
 
@@ -47,7 +47,7 @@ pub enum TimeQuery<Time> {
     /// one before the start of the interval.
     ///
     /// Motivation: all data is considered alive until the next logging
-    /// to the same data path.
+    /// to the same component path.
     Range(std::ops::RangeInclusive<Time>),
 }
 

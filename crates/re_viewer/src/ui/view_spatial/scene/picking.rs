@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_data_store::InstanceIdHash;
+use re_data_store::InstancePathHash;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
@@ -18,10 +18,10 @@ pub enum AdditionalPickingInfo {
 }
 
 pub struct PickingRayHit {
-    /// What object got hit by the picking ray.
+    /// What entity or instance got hit by the picking ray.
     ///
-    /// The ray hit position may not actually be on this object, as we allow snapping to closest object!
-    pub instance_hash: InstanceIdHash,
+    /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
+    pub instance_path_hash: InstancePathHash,
 
     /// Where along the picking ray the hit occurred.
     pub ray_t: f32,
@@ -33,9 +33,9 @@ pub struct PickingRayHit {
 }
 
 impl PickingRayHit {
-    fn from_instance_and_t(instance_hash: InstanceIdHash, t: f32) -> Self {
+    fn from_instance_and_t(instance_path_hash: InstancePathHash, t: f32) -> Self {
         Self {
-            instance_hash,
+            instance_path_hash,
             ray_t: t,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
@@ -148,7 +148,7 @@ pub fn picking(
     let mut state = PickingState {
         closest_opaque_side_ui_dist_sq: max_side_ui_dist_sq,
         closest_opaque_pick: PickingRayHit {
-            instance_hash: InstanceIdHash::NONE,
+            instance_path_hash: InstancePathHash::NONE,
             ray_t: f32::INFINITY,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
@@ -182,7 +182,7 @@ pub fn picking(
     PickingResult {
         opaque_hit: state
             .closest_opaque_pick
-            .instance_hash
+            .instance_path_hash
             .is_some()
             .then_some(state.closest_opaque_pick),
         transparent_hits: state.transparent_hits,
@@ -193,7 +193,7 @@ pub fn picking(
 fn picking_points(
     context: &PickingContext,
     state: &mut PickingState,
-    points: &re_renderer::PointCloudBuilder<InstanceIdHash>,
+    points: &re_renderer::PointCloudBuilder<InstancePathHash>,
 ) {
     crate::profile_function!();
 
@@ -227,7 +227,7 @@ fn picking_points(
 fn picking_lines(
     context: &PickingContext,
     state: &mut PickingState,
-    line_strips: &re_renderer::LineStripSeriesBuilder<InstanceIdHash>,
+    line_strips: &re_renderer::LineStripSeriesBuilder<InstancePathHash>,
 ) {
     crate::profile_function!();
 
@@ -278,7 +278,7 @@ fn picking_meshes(
     crate::profile_function!();
 
     for mesh in meshes {
-        if !mesh.instance_hash.is_some() {
+        if !mesh.instance_path_hash.is_some() {
             continue;
         }
         let ray_in_mesh = (mesh.world_from_mesh.inverse() * context.ray_in_world).normalize();
@@ -288,7 +288,7 @@ fn picking_meshes(
             let side_ui_dist_sq = 0.0;
             state.check_hit(
                 side_ui_dist_sq,
-                PickingRayHit::from_instance_and_t(mesh.instance_hash, t),
+                PickingRayHit::from_instance_and_t(mesh.instance_path_hash, t),
                 false,
             );
         }
@@ -299,7 +299,7 @@ fn picking_textured_rects(
     context: &PickingContext,
     state: &mut PickingState,
     textured_rectangles: &[re_renderer::renderer::TexturedRect],
-    textured_rectangles_ids: &[InstanceIdHash],
+    textured_rectangles_ids: &[InstancePathHash],
 ) {
     crate::profile_function!();
 
@@ -329,7 +329,7 @@ fn picking_textured_rects(
 
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
             let picking_hit = PickingRayHit {
-                instance_hash: *id,
+                instance_path_hash: *id,
                 ray_t: t,
                 info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
@@ -352,7 +352,7 @@ fn picking_ui_rects(
         state.check_hit(
             side_ui_dist_sq,
             PickingRayHit {
-                instance_hash: *instance_hash,
+                instance_path_hash: *instance_hash,
                 ray_t: 0.0,
                 info: AdditionalPickingInfo::GuiOverlay,
                 depth_offset: 0,

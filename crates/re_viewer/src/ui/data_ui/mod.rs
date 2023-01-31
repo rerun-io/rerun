@@ -1,6 +1,4 @@
-//! The `DataUi` trait and implementations provide methods for representing Rerun data objects and
-//! types in `egui`.
-//!
+//! The `DataUi` trait and implementations provide methods for representing data using [`egui`].
 
 use itertools::Itertools;
 use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
@@ -9,13 +7,14 @@ use crate::{misc::ViewerContext, ui::format_component_name};
 
 mod annotation_context;
 mod component;
+mod component_path;
 mod component_ui_registry;
 mod data;
-mod data_path;
+mod entity_path;
 pub(crate) mod image;
+mod instance_path;
 mod log_msg;
 mod msg_id;
-mod object;
 
 pub(crate) use component_ui_registry::ComponentUiRegistry;
 
@@ -112,8 +111,12 @@ impl DataUi for PathOp {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
-            PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),
+            PathOp::ClearComponents(entity_path) => {
+                ui.label(format!("ClearComponents: {entity_path}"))
+            }
+            PathOp::ClearRecursive(entity_path) => {
+                ui.label(format!("ClearRecursive: {entity_path}"))
+            }
         };
     }
 }

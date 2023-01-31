@@ -17,16 +17,22 @@ class AnnotationInfo:
     """
     Annotation info annotating a class id or key-point id.
 
-    Color and label will be used to annotate objects/keypoints which reference the id.
+    Color and label will be used to annotate entities/keypoints which reference the id.
     The id refers either to a class or key-point id
     """
 
     id: int = 0
+    """The id of the class or key-point to annotate"""
+
     label: Optional[str] = None
+    """The label that will be shown in the UI"""
+
     color: Optional[Color] = None
+    """The color that will be applied to the annotated entity"""
 
 
 AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
+"""Type helper representing the different ways to specify an [AnnotationInfo][rerun.log.annotation.AnnotationInfo]"""
 
 
 def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
@@ -47,11 +53,17 @@ class ClassDescription:
     """
 
     info: Optional[AnnotationInfoLike] = None
+    """The annotation info for the class"""
+
     keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
+    """The annotation infos for the all key-points"""
+
     keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]] = None
+    """The connections between key-points"""
 
 
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
+"""Type helper representing the different ways to specify a [ClassDescription][rerun.log.annotation.ClassDescription]"""
 
 
 def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
@@ -62,23 +74,23 @@ def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
 
 
 def log_annotation_context(
-    obj_path: str,
+    entity_path: str,
     class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
     *,
     timeless: bool = True,
 ) -> None:
     """
-    Log an annotation context made up of a collection of ClassDescriptions.
+    Log an annotation context made up of a collection of [ClassDescription][rerun.log.annotation.ClassDescription]s.
 
-    Any object needing to access the annotation context will find it by searching the
-    path upward. If all objects share the same you can simply log it to the
-    root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
-    your object.
+    Any entity needing to access the annotation context will find it by searching the
+    path upward. If all entities share the same you can simply log it to the
+    root ("/"), or if you want a per-entity ClassDescriptions log it to the same path as
+    your entity.
 
-    Each ClassDescription must include an annotation info with an id, which will be used for matching
-    the class and may optionally include a label and color. Colors should
-    either be in 0-255 gamma space or in 0-1 linear space. Colors can be RGB or
-    RGBA.
+    Each ClassDescription must include an annotation info with an id, which will
+    be used for matching the class and may optionally include a label and color.
+    Colors should either be in 0-255 gamma space or in 0-1 linear space. Colors
+    can be RGB or RGBA.
 
     These can either be specified verbosely as:
     ```
@@ -91,6 +103,16 @@ def log_annotation_context(
     ```
 
     Unspecified colors will be filled in by the visualizer randomly.
+
+    Parameters
+    ----------
+    entity_path:
+        The path to the annotation context in the space hierarchy.
+    class_descriptions:
+        A single ClassDescription or a collection of ClassDescriptions.
+    timeless:
+        If true, the annotation context will be timeless (default: True).
+
     """
     if not isinstance(class_descriptions, Iterable):
         class_descriptions = [class_descriptions]
@@ -128,4 +150,4 @@ def log_annotation_context(
     ]
 
     # AnnotationContext arrow handling happens inside the python bridge
-    bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+    bindings.log_annotation_context(entity_path, tuple_class_descriptions, timeless)

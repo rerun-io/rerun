@@ -13,7 +13,7 @@ pub mod encoding;
 pub mod datagen;
 
 pub mod arrow_msg;
-pub mod field_types;
+pub mod component_types;
 pub use arrow_msg::ArrowMsg;
 mod data;
 pub mod hash;
@@ -30,14 +30,14 @@ pub mod external {
     pub use arrow2_convert;
 }
 
+pub use self::component_types::context;
+pub use self::component_types::coordinates;
+pub use self::component_types::AnnotationContext;
+pub use self::component_types::Arrow3D;
+pub use self::component_types::MsgId;
+pub use self::component_types::ViewCoordinates;
+pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::data::*;
-pub use self::field_types::context;
-pub use self::field_types::coordinates;
-pub use self::field_types::AnnotationContext;
-pub use self::field_types::Arrow3D;
-pub use self::field_types::MsgId;
-pub use self::field_types::ViewCoordinates;
-pub use self::field_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::index::*;
 pub use self::path::*;
 pub use self::time::{Duration, Time};
@@ -135,13 +135,14 @@ impl ApplicationId {
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
     /// A new recording has begun.
+    ///
     /// Should usually be the first message sent.
     BeginRecordingMsg(BeginRecordingMsg),
 
-    /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
-    PathOpMsg(PathOpMsg),
+    /// Server-backed operation on an [`EntityPath`].
+    EntityPathOpMsg(EntityPathOpMsg),
 
-    /// Log an arrow message to a [`DataPath`].
+    /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(ArrowMsg),
 
     /// Sent when the client shuts down the connection.
@@ -152,7 +153,7 @@ impl LogMsg {
     pub fn id(&self) -> MsgId {
         match self {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
-            Self::PathOpMsg(msg) => msg.msg_id,
+            Self::EntityPathOpMsg(msg) => msg.msg_id,
             Self::ArrowMsg(msg) => msg.msg_id,
             Self::Goodbye(msg_id) => *msg_id,
         }
@@ -160,7 +161,7 @@ impl LogMsg {
 }
 
 impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
-impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
+impl_into_enum!(EntityPathOpMsg, LogMsg, EntityPathOpMsg);
 impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
 // ----------------------------------------------------------------------------
@@ -214,46 +215,47 @@ impl std::fmt::Display for RecordingSource {
 }
 
 // ----------------------------------------------------------------------------
-/// The message sent to specify the data of a single field of an object.
+
+/// An operation (like a 'clear') on an [`EntityPath`].
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct PathOpMsg {
-    /// A unique id per [`PathOpMsg`].
+pub struct EntityPathOpMsg {
+    /// A unique id per [`EntityPathOpMsg`].
     pub msg_id: MsgId,
 
-    /// Time information (when it was logged, when it was received, …)
+    /// Time information (when it was logged, when it was received, …).
     ///
-    /// If this is empty, no operation will be performed as ObjPathOps
-    /// cannot be Timeless in a meaningful way.
+    /// If this is empty, no operation will be performed as we
+    /// cannot be timeless in a meaningful way.
     pub time_point: TimePoint,
 
-    /// The value of this.
+    /// What operation.
     pub path_op: PathOp,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum PathOp {
-    // Clear all the fields stored at an [`ObjPath`]
-    ClearFields(ObjPath),
+    // Clear all the components stored at an [`EntityPath`]
+    ClearComponents(EntityPath),
 
-    // Clear all the fields of an `[ObjPath]` and any descendents.
-    ClearRecursive(ObjPath),
+    // Clear all the components of an `[EntityPath]` and any descendants.
+    ClearRecursive(EntityPath),
 }
 
 impl PathOp {
-    pub fn clear(recursive: bool, obj_path: ObjPath) -> Self {
+    pub fn clear(recursive: bool, entity_path: EntityPath) -> Self {
         if recursive {
-            PathOp::ClearRecursive(obj_path)
+            PathOp::ClearRecursive(entity_path)
         } else {
-            PathOp::ClearFields(obj_path)
+            PathOp::ClearComponents(entity_path)
         }
     }
 
-    pub fn obj_path(&self) -> &ObjPath {
+    pub fn entity_path(&self) -> &EntityPath {
         match &self {
-            PathOp::ClearFields(path) | PathOp::ClearRecursive(path) => path,
+            PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
         }
     }
 }

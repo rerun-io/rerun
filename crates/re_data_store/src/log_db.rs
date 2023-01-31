@@ -2,38 +2,38 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
+    component_types::Instance,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, DataPath, LogMsg, MsgId, ObjPath, ObjPathHash, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimePoint, Timeline,
+    ArrowMsg, BeginRecordingMsg, ComponentPath, EntityPath, EntityPathHash, EntityPathOpMsg,
+    LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
-/// Stored objects and their types, with easy indexing of the paths.
-pub struct ObjDb {
+/// Stored entities with easy indexing of the paths.
+pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
-    pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
+    pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
     /// Used for time control
     pub times_per_timeline: TimesPerTimeline,
 
-    /// A tree-view (split on path components) of the objects.
-    pub tree: crate::ObjectTree,
+    /// A tree-view (split on path components) of the entities.
+    pub tree: crate::EntityTree,
 
     /// The arrow store of data.
     pub arrow_store: re_arrow_store::DataStore,
 }
 
-impl Default for ObjDb {
+impl Default for EntityDb {
     fn default() -> Self {
         Self {
-            obj_path_from_hash: Default::default(),
+            entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
-            tree: crate::ObjectTree::root(),
+            tree: crate::EntityTree::root(),
             arrow_store: re_arrow_store::DataStore::new(
                 Instance::name(),
                 DataStoreConfig {
@@ -46,16 +46,16 @@ impl Default for ObjDb {
     }
 }
 
-impl ObjDb {
+impl EntityDb {
     #[inline]
-    pub fn obj_path_from_hash(&self, obj_path_hash: &ObjPathHash) -> Option<&ObjPath> {
-        self.obj_path_from_hash.get(obj_path_hash)
+    pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
+        self.entity_path_from_hash.get(entity_path_hash)
     }
 
-    fn register_obj_path(&mut self, obj_path: &ObjPath) {
-        self.obj_path_from_hash
-            .entry(obj_path.hash())
-            .or_insert_with(|| obj_path.clone());
+    fn register_entity_path(&mut self, entity_path: &EntityPath) {
+        self.entity_path_from_hash
+            .entry(entity_path.hash())
+            .or_insert_with(|| entity_path.clone());
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
@@ -65,14 +65,16 @@ impl ObjDb {
             self.times_per_timeline.insert(timeline, time_int);
         }
 
-        self.register_obj_path(&msg_bundle.obj_path);
+        self.register_entity_path(&msg_bundle.entity_path);
 
         for component in &msg_bundle.components {
-            let data_path = DataPath::new(msg_bundle.obj_path.clone(), component.name);
+            let component_path = ComponentPath::new(msg_bundle.entity_path.clone(), component.name);
             if component.name == MsgId::name() {
                 continue;
             }
-            let pending_clears = self.tree.add_data_msg(&msg_bundle.time_point, &data_path);
+            let pending_clears = self
+                .tree
+                .add_data_msg(&msg_bundle.time_point, &component_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
@@ -81,14 +83,14 @@ impl ObjDb {
                     ComponentBundle::new_empty(component.name, component.data_type().clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
-                    msg_bundle.obj_path.clone(),
+                    msg_bundle.entity_path.clone(),
                     time_point.clone(),
                     vec![bundle],
                 );
                 self.arrow_store.insert(&msg_bundle).ok();
 
-                // Also update the object tree with the clear-event
-                self.tree.add_data_msg(&time_point, &data_path);
+                // Also update the tree with the clear-event
+                self.tree.add_data_msg(&time_point, &component_path);
             }
         }
 
@@ -98,21 +100,24 @@ impl ObjDb {
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
-        for data_path in cleared_paths {
-            if let Some(data_type) = self.arrow_store.lookup_data_type(&data_path.component_name) {
+        for component_path in cleared_paths {
+            if let Some(data_type) = self
+                .arrow_store
+                .lookup_data_type(&component_path.component_name)
+            {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let bundle =
-                    ComponentBundle::new_empty(data_path.component_name, data_type.clone());
+                    ComponentBundle::new_empty(component_path.component_name, data_type.clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
-                    data_path.obj_path.clone(),
+                    component_path.entity_path.clone(),
                     time_point.clone(),
                     vec![bundle],
                 );
                 self.arrow_store.insert(&msg_bundle).ok();
-                // Also update the object tree with the clear-event
-                self.tree.add_data_msg(time_point, &data_path);
+                // Also update the tree with the clear-event
+                self.tree.add_data_msg(time_point, &component_path);
             }
         }
     }
@@ -125,7 +130,7 @@ impl ObjDb {
         crate::profile_function!();
 
         let Self {
-            obj_path_from_hash: _,
+            entity_path_from_hash: _,
             times_per_timeline,
             tree,
             arrow_store: _, // purged before this function is called
@@ -159,8 +164,8 @@ pub struct LogDb {
 
     recording_info: Option<RecordingInfo>,
 
-    /// Where we store the objects.
-    pub obj_db: ObjDb,
+    /// Where we store the entities.
+    pub entity_db: EntityDb,
 }
 
 impl LogDb {
@@ -181,11 +186,11 @@ impl LogDb {
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.obj_db.times_per_timeline
+        &self.entity_db.times_per_timeline
     }
 
     pub fn num_timeless_messages(&self) -> usize {
-        self.obj_db.tree.num_timeless_messages()
+        self.entity_db.tree.num_timeless_messages()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -196,16 +201,16 @@ impl LogDb {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::PathOpMsg(msg) => {
-                let PathOpMsg {
+            LogMsg::EntityPathOpMsg(msg) => {
+                let EntityPathOpMsg {
                     msg_id,
                     time_point,
                     path_op,
                 } = msg;
-                self.obj_db.add_path_op(*msg_id, time_point, path_op);
+                self.entity_db.add_path_op(*msg_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(msg) => {
-                self.obj_db.try_add_arrow_data_msg(msg)?;
+                self.entity_db.try_add_arrow_data_msg(msg)?;
             }
             LogMsg::Goodbye(_) => {}
         }
@@ -239,7 +244,7 @@ impl LogDb {
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let drop_msg_ids = {
-            let msg_id_chunks = self.obj_db.arrow_store.gc(
+            let msg_id_chunks = self.entity_db.arrow_store.gc(
                 GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
                 Timeline::log_time(),
                 MsgId::name(),
@@ -254,14 +259,14 @@ impl LogDb {
                 .collect::<ahash::HashSet<_>>()
         };
 
-        let cutoff_times = self.obj_db.arrow_store.oldest_time_per_timeline();
+        let cutoff_times = self.entity_db.arrow_store.oldest_time_per_timeline();
 
         let Self {
             chronological_message_ids,
             log_messages,
             timeless_message_ids,
             recording_info: _,
-            obj_db,
+            entity_db,
         } = self;
 
         {
@@ -278,6 +283,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.purge(&cutoff_times, &drop_msg_ids);
+        entity_db.purge(&cutoff_times, &drop_msg_ids);
     }
 }

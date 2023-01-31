@@ -2,9 +2,9 @@ mod common;
 
 use re_arrow_store::DataStore;
 use re_log_types::{
+    component_types::Instance,
+    component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
-    field_types::Instance,
-    field_types::{ColorRGBA, Point2D},
     msg_bundle::try_build_msg_bundle1,
     msg_bundle::try_build_msg_bundle2,
     msg_bundle::Component,
@@ -71,8 +71,8 @@ fn simple_query() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
@@ -137,8 +137,8 @@ fn timeless_query() {
         let colors = vec![None, Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
@@ -201,8 +201,8 @@ fn no_instance_join_query() {
         let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0x00ff0000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
@@ -259,8 +259,8 @@ fn missing_column_join_query() {
         ];
         let expected = df_builder2(&instances, &points).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df1().unwrap());
     }
@@ -284,7 +284,7 @@ fn splatted_query() {
     store.insert(&bundle).unwrap();
 
     // Assign all of them a color via splat
-    let color_instances = vec![Instance::splat()];
+    let color_instances = vec![Instance::SPLAT];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle = try_build_msg_bundle2(
         MsgId::random(),
@@ -330,8 +330,8 @@ fn splatted_query() {
         let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0xff000000))];
         let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-        //eprintln!("{:?}", df);
-        //eprintln!("{:?}", expected);
+        //eprintln!("{df:?}");
+        //eprintln!("{expected:?}");
 
         common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }

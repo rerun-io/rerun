@@ -172,11 +172,11 @@ impl ViewBuilder {
 
     /// Depth format used for the main target of the view builder.
     ///
-    /// Consider using 32bit float depth buffer in the future if depth issues come up.
-    /// It is widely supported and has the best possible precision (with reverse infinite z projection which we're already using).
-    /// However, performance advice is still to use 24 bit depth buffering, see [Nvidia's Vulkan dos and dont's](https://developer.nvidia.com/blog/vulkan-dos-donts/):
-    /// > Don’t use 32-bit floating point depth formats, due to the performance cost, unless improved precision is actually required.
-    pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+    /// [`wgpu::TextureFormat::Depth24Plus`] would be preferable for performance, see [Nvidia's Vulkan dos and dont's](https://developer.nvidia.com/blog/vulkan-dos-donts/).
+    /// However, the problem with being "24Plus" is that we no longer know what format we'll actually get, which is a problem e.g. for vertex shader determined depth offsets.
+    /// (This is a real concern - for example on Metal we always get a floating point target with this!)
+    /// [`wgpu::TextureFormat::Depth32Float`] on the other hand is widely supported and has the best possible precision (with reverse infinite z projection which we're already using).
+    pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
     ///
@@ -385,7 +385,7 @@ impl ViewBuilder {
 
         // See `depth_offset.wgsl`.
         // Factor applied to depth offsets.
-        let depth_offset_factor = f32::EPSILON;
+        let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
 
         ctx.queue.write_buffer(
             ctx.gpu_resources

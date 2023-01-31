@@ -1,18 +1,18 @@
 use glam::Mat4;
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
+    component_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{
-            scene::scene_part::instance_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
+            scene::scene_part::instance_path_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
         },
         DefaultColor,
     },
@@ -26,23 +26,23 @@ impl Boxes2DPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        obj_path: &ObjPath,
+        entity_path: &EntityPath,
         world_from_obj: Mat4,
-        instance_hash: InstanceIdHash,
+        instance_path_hash: InstancePathHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
-        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
     ) {
         scene.num_logged_2d_objects += 1;
 
-        let annotations = scene.annotation_map.find(obj_path);
+        let annotations = scene.annotation_map.find(entity_path);
         let annotation_info = annotations.class_description(class_id).annotation_info();
         let mut color = annotation_info.color(
             color.map(|c| c.to_array()).as_ref(),
-            DefaultColor::ObjPath(obj_path),
+            DefaultColor::EntityPath(entity_path),
         );
         let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
         let label = annotation_info.label(label.map(|l| l.0).as_ref());
@@ -50,7 +50,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            object_highlight.index_highlight(instance_hash.instance_index_hash),
+            entity_highlight.index_highlight(instance_path_hash.instance_index),
         );
 
         let mut line_batch = scene
@@ -67,7 +67,7 @@ impl Boxes2DPart {
             )
             .color(color)
             .radius(radius)
-            .user_data(instance_hash);
+            .user_data(instance_path_hash);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
@@ -77,7 +77,7 @@ impl Boxes2DPart {
                     rect.top_left_corner().into(),
                     egui::vec2(rect.width(), rect.height()),
                 )),
-                labled_instance: instance_hash,
+                labled_instance: instance_path_hash,
             });
         }
     }
@@ -95,14 +95,14 @@ impl ScenePart for Boxes2DPart {
         crate::profile_scope!("Boxes2DPart");
 
         for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
 
-            let object_highlight = highlights.object_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Rect2D, 6>(
-                &ctx.log_db.obj_db.arrow_store,
+                &ctx.log_db.entity_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
@@ -119,12 +119,12 @@ impl ScenePart for Boxes2DPart {
             .and_then(|entities| {
                 for entity_view in entities {
                     entity_view.visit5(|instance, rect, color, radius, label, class_id| {
-                        let instance_hash = instance_hash_for_picking(
+                        let instance_hash = instance_path_hash_for_picking(
                             ent_path,
                             instance,
                             &entity_view,
                             &props,
-                            object_highlight,
+                            entity_highlight,
                         );
                         Self::visit_instance(
                             scene,
@@ -136,7 +136,7 @@ impl ScenePart for Boxes2DPart {
                             radius,
                             label,
                             class_id,
-                            object_highlight,
+                            entity_highlight,
                         );
                     })?;
                 }

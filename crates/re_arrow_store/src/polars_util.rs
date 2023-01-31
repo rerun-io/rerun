@@ -2,7 +2,7 @@ use arrow2::array::Array;
 use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::*;
-use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
+use re_log_types::{ComponentName, EntityPath, TimeInt};
 
 use crate::{ArrayExt, DataStore, LatestAtQuery, RangeQuery};
 

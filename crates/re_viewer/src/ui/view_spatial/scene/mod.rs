@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    field_types::{ClassId, KeypointId, Tensor},
-    IndexHash, MeshId,
+    component_types::{ClassId, KeypointId, Tensor},
+    MeshId,
 };
 use re_renderer::{Color32, Size};
 
@@ -51,7 +51,7 @@ impl MeshSourceData {
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
-    pub instance_hash: InstanceIdHash,
+    pub instance_path_hash: InstancePathHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
@@ -59,7 +59,7 @@ pub struct MeshSource {
 }
 
 pub struct Image {
-    pub instance_hash: InstanceIdHash,
+    pub instance_path_hash: InstancePathHash,
 
     pub tensor: Tensor,
     /// If this is a depth map, how long is a meter?
@@ -87,7 +87,7 @@ pub struct Label2D {
     /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
-    pub labled_instance: InstanceIdHash,
+    pub labled_instance: InstancePathHash,
 }
 
 pub struct Label3D {
@@ -104,7 +104,7 @@ pub struct SceneSpatialUiData {
 
     /// Picking any any of these rects cause the referred instance to be hovered.
     /// Only use this for 2d overlays!
-    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
+    pub pickable_ui_rects: Vec<(egui::Rect, InstancePathHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -126,18 +126,14 @@ pub struct SceneSpatial {
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-fn instance_hash_if_interactive(
-    obj_path: &ObjPath,
-    instance_index: Option<&IndexHash>,
+fn instance_path_hash_if_interactive(
+    entity_path: &EntityPath,
     interactive: bool,
-) -> InstanceIdHash {
+) -> InstancePathHash {
     if interactive {
-        InstanceIdHash::from_path_and_index(
-            obj_path,
-            instance_index.copied().unwrap_or(IndexHash::NONE),
-        )
+        InstancePathHash::entity_splat(entity_path)
     } else {
-        InstanceIdHash::NONE
+        InstancePathHash::NONE
     }
 }
 
@@ -145,7 +141,7 @@ pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
-    pub(crate) fn load_objects(
+    pub(crate) fn load(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -249,13 +245,13 @@ impl SceneSpatial {
 
     fn load_keypoint_connections(
         &mut self,
-        obj_path: &re_data_store::ObjPath,
+        entity_path: &re_data_store::EntityPath,
         keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_hash = instance_hash_if_interactive(obj_path, None, interactive);
+        let instance_path_hash = instance_path_hash_if_interactive(entity_path, interactive);
 
         let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
 
@@ -273,7 +269,7 @@ impl SceneSpatial {
                 let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                     re_log::warn_once!(
                         "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                        a, b, obj_path
+                        a, b, entity_path
                     );
                     continue;
                 };
@@ -281,18 +277,18 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
-                    .user_data(instance_hash);
+                    .user_data(instance_path_hash);
             }
         }
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-    pub fn preferred_navigation_mode(&self, space_info_path: &ObjPath) -> SpatialNavigationMode {
+    pub fn preferred_navigation_mode(&self, space_info_path: &EntityPath) -> SpatialNavigationMode {
         // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
         if self
             .space_cameras
             .iter()
-            .any(|camera| &camera.obj_path != space_info_path)
+            .any(|camera| &camera.entity_path != space_info_path)
         {
             return SpatialNavigationMode::ThreeD;
         }

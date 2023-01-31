@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use re_log::{debug, trace};
 use re_log_types::{
     msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+    ComponentName, EntityPath, MsgId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 use crate::{
@@ -72,7 +72,7 @@ impl DataStore {
 
         let MsgBundle {
             msg_id,
-            obj_path: ent_path,
+            entity_path: ent_path,
             time_point,
             components,
         } = bundle;

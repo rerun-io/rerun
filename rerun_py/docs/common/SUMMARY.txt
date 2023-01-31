@@ -2,5 +2,6 @@
 * [Initialization](initialization.md)
 * [Logging Primitives](primitives.md)
 * [Logging Images](images.md)
+* [Annotations](annotation.md)
 * [Plotting](plotting.md)
 * [Transforms](transforms.md)

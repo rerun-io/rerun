@@ -7,6 +7,20 @@ Rerun is visualization infrastructure for computer vision.
 
 This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently Python only) to log rich data that is streamed to the viewer, where it is visualized live or after the fact.
 
+# Documentation (Coming soon!)
+
+## WARNING: The following links don't all work yet
+TODO(jleibs): Clean up this section and remove warnign when all links are live
+
+High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs).
+
+The documentation is built from a separate [Rerun-Docs Repository](https://github.com/rerun-io/rerun-docs)
+
+Rust and Python APIs are documented in the code via docstrings.
+ - The [Rust API docs](https://docs.rs/rerun/) are built via cargo and hosted on docs.rs
+ - The [Python API docs](https://rerun-io.github.io/rerun) are built via mkdocs and hosted on github:
+   - For more information on the python doc-system see: [Writing Docs](https://rerun-io.github.io/rerun/latest/docs)
+
 # For our users
 
 We don't have any pre-built binaries yet, so you need to build Rerun from source. There is some setup involved, but most of it should be pretty painless.
@@ -16,14 +30,14 @@ We don't have any pre-built binaries yet, so you need to build Rerun from source
 - Install the Rust toolchain: <https://rustup.rs/>
 - `git clone git@github.com:rerun-io/rerun.git && cd rerun`
 - Run `./scripts/setup.sh`.
-- Make sure `cargo --version` prints `1.65.0` once you are done
+- Make sure `cargo --version` prints `1.67.0` once you are done
 
 ### Apple-silicon Macs
 
 If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.65
+rustup set default-host aarch64-apple-darwin && rustup install 1.67
 ```
 
 ## Build and install the Rerun Python SDK
@@ -108,27 +122,6 @@ You can set `--memory-limit=16GB` to tell the Rerun Viewer to purge older log da
 
 It is still possible to log data faster than the Rerun Viewer can process it, and in those cases you may still run out of memory unless you also set `--drop-at-latency=200ms` or similar.
 
-## Documentation
-
-Our documentation lives in Markdown files inside `/docs`. Contributions are welcome. Changes frequently go live on our website, but not automatically.
-
-### Special syntax
-
-Code examples can be rendered in multiple languages by placing them in `docs/code-examples`, like so:
-
-```
-/docs
-    /code-examples
-        /my-example
-            /example.py
-            /example.rs
-```
-
-The can then be referenced in Markdown using this syntax:
-
-```
-code-example: my-example
-```
 
 # Development
 

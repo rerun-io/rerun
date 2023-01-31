@@ -6,9 +6,10 @@ use egui::{
 };
 use itertools::Itertools;
 
-use re_data_store::{InstanceId, ObjectTree};
+use re_data_store::{EntityTree, InstancePath};
 use re_log_types::{
-    DataPath, Duration, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
+    ComponentPath, Duration, EntityPathPart, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
+    TimeType,
 };
 
 use crate::{
@@ -19,16 +20,16 @@ use crate::{
 
 use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
 
-/// A panel that shows objects to the left, time on the top.
+/// A panel that shows entity names to the left, time on the top.
 ///
 /// This includes the timeline controls and streams view.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
-    /// Width of the object name columns previous frame.
+    /// Width of the entity name columns previous frame.
     prev_col_width: f32,
 
-    /// The right side of the object name column; updated during its painting.
+    /// The right side of the entity name column; updated during its painting.
     #[serde(skip)]
     next_col_right: f32,
 
@@ -272,7 +273,7 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
-        // All the object rows:
+        // All the entity rows:
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
@@ -331,7 +332,7 @@ impl TimePanel {
             blueprint,
             time_area_response,
             time_area_painter,
-            &ctx.log_db.obj_db.tree,
+            &ctx.log_db.entity_db.tree,
             ui,
         );
     }
@@ -343,9 +344,8 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        // the parent path of the name component
-        last_component: &ObjPathComp,
-        tree: &ObjectTree,
+        last_path_part: &EntityPathPart,
+        tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
         if !tree
@@ -353,14 +353,14 @@ impl TimePanel {
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
             && tree.num_timeless_messages() == 0
         {
-            return; // ignore objects that have no data for the current timeline and no timeless data.
+            return; // ignore entities that have no data for the current timeline, nor any timeless data.
         }
 
         // The last part of the the path component
         let text = if tree.is_leaf() {
-            last_component.to_string()
+            last_path_part.to_string()
         } else {
-            format!("{}/", last_component) // show we have children with a /
+            format!("{last_path_part}/") // show we have children with a /
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
@@ -371,7 +371,9 @@ impl TimePanel {
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
+            .show_header(ui, |ui| {
+                ctx.entity_path_button_to(ui, None, &tree.path, text)
+            })
             .body(|ui| {
                 self.show_children(
                     ctx,
@@ -425,13 +427,7 @@ impl TimePanel {
                 num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Selection::Instance(
-                    None,
-                    InstanceId {
-                        obj_path: tree.path.clone(),
-                        instance_index: None,
-                    },
-                ),
+                Selection::Instance(None, InstancePath::entity_splat(tree.path.clone())),
             );
         }
     }
@@ -442,7 +438,7 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree: &ObjectTree,
+        tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
         for (last_component, child) in &tree.children {
@@ -457,7 +453,7 @@ impl TimePanel {
             );
         }
 
-        // If this is an object:
+        // If this is an entity:
         if !tree.components.is_empty() {
             let indent = ui.spacing().indent;
 
@@ -468,7 +464,7 @@ impl TimePanel {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new(tree.path.clone(), *component_name);
+                let component_path = ComponentPath::new(tree.path.clone(), *component_name);
 
                 let response = ui
                     .horizontal(|ui| {
@@ -481,10 +477,10 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        ctx.data_path_button_to(
+                        ctx.component_path_button_to(
                             ui,
                             super::format_component_name(component_name),
-                            &data_path,
+                            &component_path,
                         );
                     })
                     .response;
@@ -508,11 +504,11 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        let selection = Selection::DataPath(data_path.clone());
+                        let selection = Selection::ComponentPath(component_path.clone());
                         what_is_selected_ui(ui, ctx, blueprint, &selection);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
-                        data_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
+                        component_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
                 }
 
@@ -534,7 +530,7 @@ impl TimePanel {
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Selection::DataPath(data_path),
+                        Selection::ComponentPath(component_path),
                     );
                 }
             }
@@ -819,7 +815,7 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .log_db
-        .obj_db
+        .entity_db
         .tree
         .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())
@@ -1886,19 +1882,19 @@ fn paint_time_range_ticks(
                     // so instead we switch to showing the time as milliseconds since the last whole second:
                     let ms = relative_ns as f64 * 1e-6;
                     if relative_ns % 1_000_000 == 0 {
-                        format!("{:+.0} ms", ms)
+                        format!("{ms:+.0} ms")
                     } else if relative_ns % 100_000 == 0 {
-                        format!("{:+.1} ms", ms)
+                        format!("{ms:+.1} ms")
                     } else if relative_ns % 10_000 == 0 {
-                        format!("{:+.2} ms", ms)
+                        format!("{ms:+.2} ms")
                     } else if relative_ns % 1_000 == 0 {
-                        format!("{:+.3} ms", ms)
+                        format!("{ms:+.3} ms")
                     } else if relative_ns % 100 == 0 {
-                        format!("{:+.4} ms", ms)
+                        format!("{ms:+.4} ms")
                     } else if relative_ns % 10 == 0 {
-                        format!("{:+.5} ms", ms)
+                        format!("{ms:+.5} ms")
                     } else {
-                        format!("{:+.6} ms", ms)
+                        format!("{ms:+.6} ms")
                     }
                 }
             }

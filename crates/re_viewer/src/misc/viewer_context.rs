@@ -1,5 +1,5 @@
-use re_data_store::{log_db::LogDb, InstanceId};
-use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
+use re_data_store::{log_db::LogDb, InstancePath};
+use re_log_types::{ComponentPath, EntityPath, MsgId, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
@@ -48,67 +48,68 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
-    /// Show an obj path and make it selectable.
-    pub fn obj_path_button(
+    /// Show an entity path and make it selectable.
+    pub fn entity_path_button(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        obj_path: &ObjPath,
+        entity_path: &EntityPath,
     ) -> egui::Response {
-        self.instance_id_button_to(
+        self.instance_path_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(obj_path.clone(), None),
-            obj_path.to_string(),
+            &InstancePath::entity_splat(entity_path.clone()),
+            entity_path.to_string(),
         )
     }
 
-    /// Show an obj path and make it selectable.
-    pub fn obj_path_button_to(
+    /// Show an entity path and make it selectable.
+    pub fn entity_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        obj_path: &ObjPath,
+        entity_path: &EntityPath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.instance_id_button_to(
+        self.instance_path_button_to(
             ui,
             space_view_id,
-            &InstanceId::new(obj_path.clone(), None),
+            &InstancePath::entity_splat(entity_path.clone()),
             text,
         )
     }
 
     /// Show an instance id and make it selectable.
-    pub fn instance_id_button(
+    pub fn instance_path_button(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstanceId,
+        instance_path: &InstancePath,
     ) -> egui::Response {
-        self.instance_id_button_to(ui, space_view_id, instance_id, instance_id.to_string())
+        self.instance_path_button_to(ui, space_view_id, instance_path, instance_path.to_string())
     }
 
     /// Show an instance id and make it selectable.
-    pub fn instance_id_button_to(
+    pub fn instance_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         space_view_id: Option<SpaceViewId>,
-        instance_id: &InstanceId,
+        instance_path: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Selection::Instance(space_view_id, instance_id.clone());
-        let subtype_string = match instance_id.instance_index {
-            Some(_) => "Object Instance",
-            None => "Object",
+        let selection = Selection::Instance(space_view_id, instance_path.clone());
+        let subtype_string = if instance_path.instance_index.is_splat() {
+            "Entity"
+        } else {
+            "Entity Instance"
         };
 
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong(subtype_string);
-                ui.label(format!("Path: {instance_id}"));
-                instance_id.data_ui(
+                ui.label(format!("Path: {instance_path}"));
+                instance_path.data_ui(
                     self,
                     ui,
                     crate::ui::UiVerbosity::Large,
@@ -119,19 +120,23 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
-    /// Show a data path and make it selectable.
-    pub fn data_path_button(&mut self, ui: &mut egui::Ui, data_path: &DataPath) -> egui::Response {
-        self.data_path_button_to(ui, data_path.to_string(), data_path)
+    /// Show a component path and make it selectable.
+    pub fn component_path_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        component_path: &ComponentPath,
+    ) -> egui::Response {
+        self.component_path_button_to(ui, component_path.to_string(), component_path)
     }
 
-    /// Show a data path and make it selectable.
-    pub fn data_path_button_to(
+    /// Show a component path and make it selectable.
+    pub fn component_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
-        data_path: &DataPath,
+        component_path: &ComponentPath,
     ) -> egui::Response {
-        let selection = Selection::DataPath(data_path.clone());
+        let selection = Selection::ComponentPath(component_path.clone());
         let response = ui.selectable_label(self.selection().contains(&selection), text);
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -169,16 +174,18 @@ impl<'a> ViewerContext<'a> {
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
-        obj_path: &ObjPath,
+        entity_path: &EntityPath,
     ) -> egui::Response {
-        let selection =
-            Selection::Instance(Some(space_view_id), InstanceId::new(obj_path.clone(), None));
+        let selection = Selection::Instance(
+            Some(space_view_id),
+            InstancePath::entity_splat(entity_path.clone()),
+        );
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
-                ui.strong("Space View Object");
-                ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
+                ui.strong("Space View Entity");
+                ui.label(format!("Path: {entity_path}"));
+                entity_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
             });
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -291,8 +298,8 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
-        self.rec_cfg.selection_state.set_hovered(hovered_objects);
+    pub fn set_hovered(&mut self, hovered: impl Iterator<Item = Selection>) {
+        self.rec_cfg.selection_state.set_hovered(hovered);
     }
 
     pub fn selection_state(&self) -> &super::SelectionState {

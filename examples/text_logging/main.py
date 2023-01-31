@@ -56,7 +56,7 @@ def log_stuff(frame_offset: int) -> None:
         logging.info(f"Log second thing during the same frame {frame_nr}")
         logging.info(f"Log third thing during the same frame {frame_nr}")
 
-    # Use child loggers to map to arbitrary object paths
+    # Use child loggers to map to arbitrary entity paths
     inner_logger = logging.getLogger("foo.bar.baz")
     inner_logger.info("hey")
 

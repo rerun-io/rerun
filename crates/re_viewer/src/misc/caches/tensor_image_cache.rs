@@ -4,7 +4,7 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    field_types::{self, ClassId, TensorDataMeaning},
+    component_types::{self, ClassId, TensorDataMeaning},
     ClassicTensor, MsgId, TensorDataStore, TensorDataType,
 };
 use re_renderer::{
@@ -27,7 +27,7 @@ use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 /// the native Tensor type A -> Color32 which is stored for the cached dynamic /
 /// retained images.
 pub struct TensorImageView<'store, 'cache> {
-    /// Borrowed tensor from the object store
+    /// Borrowed tensor from the data store
     pub tensor: &'store dyn AsDynamicImage,
 
     /// Annotations used to create the view
@@ -47,7 +47,7 @@ pub struct TensorImageView<'store, 'cache> {
 // changes to the annotations
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
-    tensor_id: field_types::TensorId,
+    tensor_id: component_types::TensorId,
     annotation_msg_id: MsgId,
 }
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
@@ -235,11 +235,11 @@ impl CachedImage {
 }
 
 //TODO(john) this should live in re_log_types along with annotations-related stuff
-pub trait AsDynamicImage: field_types::TensorTrait {
+pub trait AsDynamicImage: component_types::TensorTrait {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage>;
 }
 
-impl AsDynamicImage for field_types::Tensor {
+impl AsDynamicImage for component_types::Tensor {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
         crate::profile_function!();
         let classic_tensor = ClassicTensor::from(self);

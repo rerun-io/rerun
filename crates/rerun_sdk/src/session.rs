@@ -94,12 +94,12 @@ impl Session {
             });
 
             let ws_server_url = re_ws_comms::default_server_url();
-            let viewer_url = format!("http://127.0.0.1:{}?url={}", web_port, ws_server_url);
+            let viewer_url = format!("http://127.0.0.1:{web_port}?url={ws_server_url}");
             let open = true;
             if open {
                 webbrowser::open(&viewer_url).ok();
             } else {
-                re_log::info!("Web server is running - view it at {}", viewer_url);
+                re_log::info!("Web server is running - view it at {viewer_url}");
             }
 
             ws_server_handle.await.unwrap().unwrap();
@@ -181,7 +181,7 @@ impl Session {
 
     // convenience
     pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
-        self.send(LogMsg::PathOpMsg(re_log_types::PathOpMsg {
+        self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
             msg_id: MsgId::random(),
             time_point: time_point.clone(),
             path_op,

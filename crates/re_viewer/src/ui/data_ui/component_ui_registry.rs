@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
+    component_types::Instance,
     external::arrow2,
     external::arrow2_convert::{
         deserialize::{ArrowArray, ArrowDeserialize},
         field::ArrowField,
     },
-    field_types::Instance,
     msg_bundle::Component,
     ComponentName,
 };
@@ -42,31 +42,31 @@ impl Default for ComponentUiRegistry {
         // The things that are out-commented are components we have, but
         // where the default arrow-format for them looks good enough (at least for now).
         // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
-        registry.add::<re_log_types::field_types::AnnotationContext>();
-        // registry.add::<re_log_types::field_types::Arrow3D>();
-        // registry.add::<re_log_types::field_types::Box3D>();
-        // registry.add::<re_log_types::field_types::ClassId>();
-        registry.add::<re_log_types::field_types::ColorRGBA>();
-        // registry.add::<re_log_types::field_types::Instance>();
-        // registry.add::<re_log_types::field_types::KeypointId>();
-        // registry.add::<re_log_types::field_types::Label>();
-        // registry.add::<re_log_types::field_types::LineStrip2D>();
-        // registry.add::<re_log_types::field_types::LineStrip3D>();
-        registry.add::<re_log_types::field_types::Mesh3D>();
-        registry.add::<re_log_types::field_types::MsgId>();
-        // registry.add::<re_log_types::field_types::Point2D>();
-        // registry.add::<re_log_types::field_types::Point3D>();
-        // registry.add::<re_log_types::field_types::Quaternion>();
-        // registry.add::<re_log_types::field_types::Radius>();
-        // registry.add::<re_log_types::field_types::Rect2D>();
-        // registry.add::<re_log_types::field_types::Scalar>();
-        // registry.add::<re_log_types::field_types::ScalarPlotProps>();
-        // registry.add::<re_log_types::field_types::Size3D>();
-        registry.add::<re_log_types::field_types::Tensor>();
-        registry.add::<re_log_types::field_types::TextEntry>();
-        registry.add::<re_log_types::field_types::Transform>();
-        // registry.add::<re_log_types::field_types::Vec2D>();
-        // registry.add::<re_log_types::field_types::Vec3D>();
+        registry.add::<re_log_types::component_types::AnnotationContext>();
+        // registry.add::<re_log_types::component_types::Arrow3D>();
+        // registry.add::<re_log_types::component_types::Box3D>();
+        // registry.add::<re_log_types::component_types::ClassId>();
+        registry.add::<re_log_types::component_types::ColorRGBA>();
+        // registry.add::<re_log_types::component_types::Instance>();
+        // registry.add::<re_log_types::component_types::KeypointId>();
+        // registry.add::<re_log_types::component_types::Label>();
+        // registry.add::<re_log_types::component_types::LineStrip2D>();
+        // registry.add::<re_log_types::component_types::LineStrip3D>();
+        registry.add::<re_log_types::component_types::Mesh3D>();
+        registry.add::<re_log_types::component_types::MsgId>();
+        // registry.add::<re_log_types::component_types::Point2D>();
+        // registry.add::<re_log_types::component_types::Point3D>();
+        // registry.add::<re_log_types::component_types::Quaternion>();
+        // registry.add::<re_log_types::component_types::Radius>();
+        // registry.add::<re_log_types::component_types::Rect2D>();
+        // registry.add::<re_log_types::component_types::Scalar>();
+        // registry.add::<re_log_types::component_types::ScalarPlotProps>();
+        // registry.add::<re_log_types::component_types::Size3D>();
+        registry.add::<re_log_types::component_types::Tensor>();
+        registry.add::<re_log_types::component_types::TextEntry>();
+        registry.add::<re_log_types::component_types::Transform>();
+        // registry.add::<re_log_types::component_types::Vec2D>();
+        // registry.add::<re_log_types::component_types::Vec3D>();
         registry.add::<re_log_types::ViewCoordinates>();
 
         registry
@@ -96,6 +96,7 @@ impl ComponentUiRegistry {
         );
     }
 
+    /// Show a ui for this instance of this component.
     pub fn ui(
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
@@ -103,13 +104,19 @@ impl ComponentUiRegistry {
         verbosity: crate::ui::UiVerbosity,
         query: &LatestAtQuery,
         component: &ComponentWithInstances,
-        instance: &Instance,
+        instance_index: &Instance,
     ) {
+        if component.name() == Instance::name() {
+            // The user wants to show a ui for the `Instance` component - well, that's easy:
+            ui.label(instance_index.to_string());
+            return;
+        }
+
         if let Some(ui_callback) = self.components.get(&component.name()) {
-            (*ui_callback)(ctx, ui, verbosity, query, component, instance);
+            (*ui_callback)(ctx, ui, verbosity, query, component, instance_index);
         } else {
             // No special ui implementation - use a generic one:
-            if let Some(value) = component.lookup_arrow(instance) {
+            if let Some(value) = component.lookup_arrow(instance_index) {
                 let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
                 if bytes < 256 {
                     // For small items, print them
@@ -118,7 +125,7 @@ impl ComponentUiRegistry {
                     display(&mut repr, 0).unwrap();
                     ui.label(repr);
                 } else {
-                    ui.label(format!("{} bytes", bytes));
+                    ui.label(format!("{bytes} bytes"));
                 }
             } else {
                 ui.weak("(null)");
@@ -129,7 +136,7 @@ impl ComponentUiRegistry {
 
 // ----------------------------------------------------------------------------
 
-impl DataUi for re_log_types::field_types::TextEntry {
+impl DataUi for re_log_types::component_types::TextEntry {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -167,7 +174,7 @@ impl DataUi for re_log_types::field_types::TextEntry {
     }
 }
 
-impl DataUi for re_log_types::field_types::Mesh3D {
+impl DataUi for re_log_types::component_types::Mesh3D {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -181,7 +188,7 @@ impl DataUi for re_log_types::field_types::Mesh3D {
     }
 }
 
-impl DataUi for re_log_types::field_types::EncodedMesh3D {
+impl DataUi for re_log_types::component_types::EncodedMesh3D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
