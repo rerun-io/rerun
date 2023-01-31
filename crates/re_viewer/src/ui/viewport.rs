@@ -14,6 +14,7 @@ use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlight
 
 use super::{
     data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
+    space_view_entity_window::SpaceViewEntityWindow,
     view_category::ViewCategory,
     SpaceView, SpaceViewId,
 };
@@ -47,6 +48,9 @@ pub struct Viewport {
     /// Before this is set we automatically add new spaces to the viewport
     /// when they show up in the data.
     has_been_user_edited: bool,
+
+    #[serde(skip)]
+    space_view_entity_window: Option<SpaceViewEntityWindow>,
 }
 
 impl Viewport {
@@ -76,7 +80,14 @@ impl Viewport {
             trees,
             maximized,
             has_been_user_edited,
+            space_view_entity_window,
         } = self;
+
+        if let Some(window) = space_view_entity_window {
+            if window.space_view_id == *space_view_id {
+                *space_view_entity_window = None;
+            }
+        }
 
         *has_been_user_edited = true;
 
@@ -271,6 +282,10 @@ impl Viewport {
         id
     }
 
+    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
+        self.space_view_entity_window = Some(SpaceViewEntityWindow { space_view_id });
+    }
+
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -321,6 +336,17 @@ impl Viewport {
         spaces_info: &SpaceInfoCollection,
         selection_panel_expanded: &mut bool,
     ) {
+        if let Some(window) = &mut self.space_view_entity_window {
+            if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
+                if !window.ui(ctx, ui, space_view) {
+                    self.space_view_entity_window = None;
+                }
+            } else {
+                // The space view no longer exist, close the window!
+                self.space_view_entity_window = None;
+            }
+        }
+
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
         if is_zero_sized_viewport {
             return;

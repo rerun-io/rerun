@@ -12,6 +12,7 @@ mod view_tensor;
 mod view_text;
 mod view_time_series;
 mod viewport;
+mod space_view_entity_window;
 
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;
