@@ -98,21 +98,34 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
+          architecture: x64
 
-      - name: Build wheel
+      - name: Build wheel x86_64
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
           command: build
-          target: aarch64-apple-darwin
+          target: x86_64
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
             --out dist
+            --sdist
+
+      - name: Build wheel - universal2
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --out dist
+            --universal2
 
       - name: Install built wheel
         run: |
-          pip install rerun-sdk --no-index --find-links dist --force-reinstall
+          pip install rerun-sdk --find-links dist --force-reinstall
           pip install pytest #TODO(john) move to requirements-build.txt
           cd rerun_py/tests && pytest
 
@@ -156,7 +169,7 @@ jobs:
 
       - name: Install built wheel
         run: |
-          pip install rerun-sdk --no-index --find-links dist --force-reinstall
+          pip install rerun-sdk --find-links dist --force-reinstall
           pip install pytest
           cd rerun_py/tests && pytest
 
@@ -173,9 +186,16 @@ jobs:
       image: rerunio/ci_docker:0.3
     strategy:
       matrix:
-        target: [x86_64, i686]
+        #target: [x86_64, i686]
+        target: [x86_64]
     steps:
       - uses: actions/checkout@v3
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lsb-release
+      #    sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
@@ -187,15 +207,10 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v4
         with:
-          architecture: x64
+          #architecture: x64
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -211,7 +226,7 @@ jobs:
       - name: Install built wheel
         if: matrix.target == 'x86_64'
         run: |
-          pip install rerun-sdk  --no-index --find-links dist --force-reinstall
+          pip install rerun-sdk --find-links dist --force-reinstall
           pip install pytest
           cd rerun_py/tests && pytest
 
