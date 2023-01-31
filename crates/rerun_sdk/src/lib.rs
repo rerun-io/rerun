@@ -29,7 +29,7 @@ pub use re_log_types::component_types::Arrow3D;
 pub use re_log_types::component_types::Box3D;
 pub use re_log_types::component_types::ClassId;
 pub use re_log_types::component_types::ColorRGBA;
-pub use re_log_types::component_types::Instance;
+pub use re_log_types::component_types::InstanceKey;
 pub use re_log_types::component_types::KeypointId;
 pub use re_log_types::component_types::Label;
 pub use re_log_types::component_types::Mat3x3;
