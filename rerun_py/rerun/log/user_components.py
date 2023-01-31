@@ -101,7 +101,7 @@ def log_user_components(
     Parameters
     ----------
     entity_path:
-        Path to the point in the space hierarchy.
+        Path to the user component in the space hierarchy.
     user_components:
         A dictionary of user-defined components.
     identifiers:
