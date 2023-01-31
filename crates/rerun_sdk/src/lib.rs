@@ -4,6 +4,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod args;
+pub use self::args::{RerunArgs, RerunArgsError};
+
 // Work with timestamps
 pub mod time;
 pub use time::log_time;

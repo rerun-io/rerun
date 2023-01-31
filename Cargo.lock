@@ -3740,6 +3740,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "clap 4.0.26",
  "gltf",
  "mimalloc",
  "reqwest",
@@ -4370,6 +4371,7 @@ dependencies = [
  "re_viewer",
  "re_web_server",
  "re_ws_comms",
+ "thiserror",
  "tokio",
  "webbrowser",
 ]

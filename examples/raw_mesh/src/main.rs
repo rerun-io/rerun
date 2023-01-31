@@ -11,10 +11,12 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
+use clap::Parser;
+
 use rerun::{
     reexports::{re_log, re_memory::AccountingAllocator},
-    EntityPath, LogMsg, Mesh3D, MeshId, MsgBundle, MsgId, RawMesh3D, Session, Time, TimePoint,
-    TimeType, Timeline, Transform, ViewCoordinates,
+    EntityPath, LogMsg, Mesh3D, MeshId, MsgBundle, MsgId, RawMesh3D, RerunArgs, Session, Time,
+    TimePoint, TimeType, Timeline, Transform, ViewCoordinates,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -147,6 +149,14 @@ fn log_axis(session: &mut Session, ent_path: &EntityPath) {
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    /// Name of the scene to load (e.g. "Buggy", "BrainStem", "Avocado", etc).
+    #[clap(long, default_value = "Buggy")]
+    scene: String,
+}
+
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
@@ -154,8 +164,12 @@ fn main() -> anyhow::Result<()> {
     // give us back our actual CLI flags.
     // The name of the gltf sample to load should then come from there.
 
+    // TODO: disabled is gonna be a tough one tho
+    let (rr_args, rest) = RerunArgs::from_args_then_env(std::env::args(), None, std::env::vars())?;
+    let app_args = Args::parse_from(rest);
+
     // Load glTF asset
-    let bytes = download_gltf_sample("Buggy").unwrap();
+    let bytes = download_gltf_sample(app_args.scene).unwrap();
 
     // Parse glTF asset
     let (doc, buffers, _) = gltf::import_slice(bytes).unwrap();
@@ -169,10 +183,24 @@ fn main() -> anyhow::Result<()> {
         log_node(&mut session, root);
     }
 
+    dbg!(&rr_args);
+
     // TODO(cmc): provide high-level tools to pick and handle the different modes.
     // TODO(cmc): connect, spawn_and_connect; show() probably doesn't make sense with pure rust
-    let log_messages = session.drain_log_messages_buffer();
-    rerun::viewer::show(log_messages).context("failed to start viewer")
+    if let Some(addr) = rr_args.connect_to {
+        session.flush();
+    } else if let Some(path) = rr_args.save_to {
+        // TODO
+    } else if let Some(addr) = rr_args.serve_on {
+        // TODO
+    } else {
+        let log_messages = session.drain_log_messages_buffer();
+        // TODO: that one should probably have been running in a background thread since the
+        // beginning... unless we're gonna have UI thread issues?
+        rerun::viewer::show(log_messages).context("failed to start viewer")?;
+    };
+
+    Ok(())
 }
 
 // --- glTF parsing ---
