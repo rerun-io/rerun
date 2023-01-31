@@ -71,6 +71,6 @@ impl std::fmt::Display for InstanceKey {
 
 impl Component for InstanceKey {
     fn name() -> crate::ComponentName {
-        "rerun.instance".into()
+        "rerun.instance_key".into()
     }
 }

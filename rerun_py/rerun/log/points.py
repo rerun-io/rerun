@@ -202,7 +202,7 @@ def log_points(
             raise TypeError("Positions should be either Nx2 or Nx3")
 
     if len(identifiers_np):
-        comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
+        comps[0]["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)
 
     if len(colors):
         is_splat = len(colors.shape) == 1
@@ -229,5 +229,5 @@ def log_points(
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
-        comps[1]["rerun.instance"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
