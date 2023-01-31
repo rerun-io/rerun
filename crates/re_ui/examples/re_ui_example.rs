@@ -85,9 +85,15 @@ impl eframe::App for ExampleApp {
             },
         );
 
-        egui::CentralPanel::default().show(egui_ctx, |ui| {
-            tabs_ui(ui, &mut self.tree);
-        });
+        let central_panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.panel_fill,
+            ..Default::default()
+        };
+        egui::CentralPanel::default()
+            .frame(central_panel_frame)
+            .show(egui_ctx, |ui| {
+                tabs_ui(ui, &mut self.tree);
+            });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
             self.pending_commands.push(cmd);

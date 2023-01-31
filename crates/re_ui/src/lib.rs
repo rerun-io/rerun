@@ -324,8 +324,24 @@ pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
     dock_style.show_close_buttons = false;
     dock_style.tab_include_scrollarea = false;
     dock_style.show_context_menu = false;
-    // dock_style.expand_tabs = true; looks good, but decreases readability
-    dock_style.tab_text_color_unfocused = dock_style.tab_text_color_focused; // We don't treat focused tabs differently
+    dock_style.expand_tabs = false; // expand_tabs looks good, but decreases readability
+
+    // Tabs can be "focused", meaning it was the last clicked (of any tab). We don't care about that.
+    // Tabs can also be "active", meaning it is the selected tab within its sibling tabs. We want to highlight that.
+    let inactive_text_color = style.visuals.widgets.noninteractive.text_color();
+    let active_text_color = style.visuals.widgets.active.text_color();
+
+    dock_style.tab_text_color_unfocused = inactive_text_color;
+    dock_style.tab_text_color_focused = inactive_text_color;
+    dock_style.tab_text_color_active_unfocused = active_text_color;
+    dock_style.tab_text_color_active_focused = active_text_color;
+
+    // Don't show tabs
+    dock_style.tab_bar_background_color = style.visuals.panel_fill;
     dock_style.tab_background_color = style.visuals.panel_fill;
+
+    // The active tab has no special outline:
+    dock_style.tab_outline_color = Color32::TRANSPARENT;
+
     dock_style
 }
