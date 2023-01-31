@@ -2,7 +2,7 @@ use itertools::Itertools;
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath};
 
-use crate::misc::{space_info::SpaceInfoCollection, UnreachableTransform, ViewerContext};
+use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 
 use super::{
     view_category::{categorize_entity_path, ViewCategory},
@@ -51,7 +51,11 @@ impl SpaceViewEntityPicker {
 
         // HACK: Fake modality - any click outside causes the window to close.
         let cursor_was_over_window = if let Some(response) = response {
-            response.response.hovered()
+            if let Some(interact_pos) = ui.input(|i| i.pointer.interact_pos()) {
+                response.response.rect.contains(interact_pos)
+            } else {
+                false
+            }
         } else {
             false
         };
@@ -152,7 +156,12 @@ fn add_entities_line_ui(
         } else {
             egui::RichText::new(name)
         };
-        let response = ctx.instance_path_button_to(ui, space_view_id, &InstancePath::entity_splat(entity_path.clone()), widget_text);
+        let response = ctx.instance_path_button_to(
+            ui,
+            space_view_id,
+            &InstancePath::entity_splat(entity_path.clone()),
+            widget_text,
+        );
         if entity_path == &space_view.space_path {
             response.highlight();
         }
@@ -161,59 +170,73 @@ fn add_entities_line_ui(
             let entity_tree = &ctx.log_db.entity_db.tree;
 
             if space_view.data_blueprint.contains_entity(entity_path) {
-                if ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
-                .on_hover_text("Remove this Entity from the Space View")
-                .clicked()
+                if ctx
+                    .re_ui
+                    .small_icon_button(ui, &re_ui::icons::REMOVE)
+                    .on_hover_text("Remove this Entity from the Space View")
+                    .clicked()
                 {
                     // Remove all entities at and under this path
-                    entity_tree.subtree(entity_path)
-                    .unwrap()
-                    .visit_children_recursively(&mut |path: &EntityPath| {
-                        space_view.data_blueprint.remove_entity(path);
-                        space_view.entities_determined_by_user = true;
-                    });
+                    entity_tree
+                        .subtree(entity_path)
+                        .unwrap()
+                        .visit_children_recursively(&mut |path: &EntityPath| {
+                            space_view.data_blueprint.remove_entity(path);
+                            space_view.entities_determined_by_user = true;
+                        });
                 }
             } else {
-                let entity_category = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
+                let entity_category =
+                    categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
                 let cannot_add_reason = if entity_category.contains(space_view.category) {
-                    spaces_info.is_reachable_by_transform(entity_path, &space_view.space_path).map_err
-                    (|reason| match reason {
-                        // Should never happen
-                        UnreachableTransform::Unconnected =>
-                             "No entity path connection from this space view.",
-                        UnreachableTransform::NestedPinholeCameras =>
-                            "Can't display entities under nested pinhole cameras.",
-                        UnreachableTransform::UnknownTransform =>
-                            "Can't display entities that are connected via an unknown transform to this space.",
-                        UnreachableTransform::InversePinholeCameraWithoutResolution =>
-                            "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
-                    }).err()
+                    spaces_info
+                        .is_reachable_by_transform(entity_path, &space_view.space_path)
+                        .map_err(|reason| reason.to_string())
+                        .err()
                 } else if entity_category.is_empty() {
-                    Some("Entity does not have any components")
+                    Some("Entity does not have any components".to_owned())
                 } else {
-                    Some("Entity category can't be displayed by this type of spatial view")
+                    Some(
+                        "Entity category can't be displayed by this type of spatial view"
+                            .to_owned(),
+                    )
                 };
 
-                let response = ui.add_enabled_ui(cannot_add_reason.is_none(), |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD).on_hover_text("Add this entity to the Space View");
-                    if response.clicked() {
-                        // Insert the entity it space_view and all its children as far as they haven't been added yet
-                        let mut entities = Vec::new();
-                        entity_tree
-                            .subtree(entity_path)
-                            .unwrap()
-                            .visit_children_recursively(&mut |path: &EntityPath| {
-                                if has_visualization_for_category(ctx, space_view.category, path)
-                                    && !space_view.data_blueprint.contains_entity(path)
-                                    && spaces_info.is_reachable_by_transform(path, &space_view.space_path).is_ok()
-                                {
-                                    entities.push(path.clone());
-                                }
-                            });
-                        space_view.data_blueprint.insert_entities_according_to_hierarchy(entities.iter(), &space_view.space_path);
-                        space_view.entities_determined_by_user = true;
-                    }
-                }).response;
+                let response = ui
+                    .add_enabled_ui(cannot_add_reason.is_none(), |ui| {
+                        let response = ctx
+                            .re_ui
+                            .small_icon_button(ui, &re_ui::icons::ADD)
+                            .on_hover_text("Add this Entity to the Space View");
+                        if response.clicked() {
+                            // Insert the entity it space_view and all its children as far as they haven't been added yet
+                            let mut entities = Vec::new();
+                            entity_tree
+                                .subtree(entity_path)
+                                .unwrap()
+                                .visit_children_recursively(&mut |path: &EntityPath| {
+                                    if has_visualization_for_category(
+                                        ctx,
+                                        space_view.category,
+                                        path,
+                                    ) && !space_view.data_blueprint.contains_entity(path)
+                                        && spaces_info
+                                            .is_reachable_by_transform(path, &space_view.space_path)
+                                            .is_ok()
+                                    {
+                                        entities.push(path.clone());
+                                    }
+                                });
+                            space_view
+                                .data_blueprint
+                                .insert_entities_according_to_hierarchy(
+                                    entities.iter(),
+                                    &space_view.space_path,
+                                );
+                            space_view.entities_determined_by_user = true;
+                        }
+                    })
+                    .response;
 
                 if let Some(cannot_add_reason) = cannot_add_reason {
                     response.on_hover_text(cannot_add_reason);

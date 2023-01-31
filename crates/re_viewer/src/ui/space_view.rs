@@ -61,7 +61,7 @@ pub struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// True if the user is expected to add elements themselves. False otherwise.
+    /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
 }
 

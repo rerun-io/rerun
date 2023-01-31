@@ -40,6 +40,21 @@ pub enum UnreachableTransform {
     UnknownTransform,
 }
 
+impl std::fmt::Display for UnreachableTransform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str( match self {
+        UnreachableTransform::Unconnected =>
+        "No entity path connection from this space view.",
+   UnreachableTransform::NestedPinholeCameras =>
+       "Can't display entities under nested pinhole cameras.",
+   UnreachableTransform::UnknownTransform =>
+       "Can't display entities that are connected via an unknown transform to this space.",
+   UnreachableTransform::InversePinholeCameraWithoutResolution =>
+       "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
+        })
+    }
+}
+
 impl TransformCache {
     /// Determines transforms for all entities relative to a root path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"

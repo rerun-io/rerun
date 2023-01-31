@@ -336,7 +336,7 @@ impl DataBlueprintTree {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
                 group.entities.remove(path);
-                self.remove_empty_group_recursively(*group_handle);
+                self.remove_empty_groups_recursively(*group_handle);
             }
         }
         self.path_to_group.remove(path);
@@ -382,7 +382,7 @@ impl DataBlueprintTree {
         }
     }
 
-    fn remove_empty_group_recursively(&mut self, group_handle: DataBlueprintGroupHandle) {
+    fn remove_empty_groups_recursively(&mut self, group_handle: DataBlueprintGroupHandle) {
         let Some(group) = self.groups.get(group_handle) else {
             return;
         };
@@ -392,14 +392,15 @@ impl DataBlueprintTree {
                 parent_group
                     .children
                     .retain(|child_group| *child_group != group_handle);
-                self.remove_empty_group_recursively(parent_group_handle);
+                self.remove_empty_groups_recursively(parent_group_handle);
             }
         }
     }
 }
 
 fn path_to_group_name(path: &EntityPath, base_path: &EntityPath) -> String {
-    let name = path.iter().last().map_or(String::new(), |c| c.to_string());
+    // Root should never be pasesd in here, but handle it gracefully regardless.
+    let name = path.iter().last().map_or("/".to_owned(), |c| c.to_string());
 
     // How many steps until a common ancestor?
     let mut num_steps_until_common_ancestor = 0;
