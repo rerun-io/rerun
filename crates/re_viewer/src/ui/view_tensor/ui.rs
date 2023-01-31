@@ -6,7 +6,7 @@ use half::f16;
 use ndarray::{Axis, Ix2};
 
 use re_log_types::{component_types, ClassicTensor, TensorDataType};
-use re_tensor_ops::dimension_mapping::DimensionMapping;
+use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 use super::dimension_mapping_ui;
 
@@ -51,19 +51,25 @@ impl ViewTensorState {
                     crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
                     ui.add_space(12.0);
 
-                    dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
-
                     let default_mapping = DimensionMapping::create(tensor.shape());
                     if ui
                         .add_enabled(
                             self.dimension_mapping != default_mapping,
-                            egui::Button::new("Auto-map"),
+                            egui::Button::new("Reset mapping"),
                         )
-                        .on_disabled_hover_text("The default is already set up")
+                        .on_disabled_hover_text("The default is already set up.")
+                        .on_hover_text("Reset dimension mapping to the default.")
                         .clicked()
                     {
                         self.dimension_mapping = DimensionMapping::create(tensor.shape());
                     }
+
+                    dimension_mapping_ui(
+                        ctx.re_ui,
+                        ui,
+                        &mut self.dimension_mapping,
+                        tensor.shape(),
+                    );
                 });
         }
 
@@ -572,11 +578,11 @@ fn selected_tensor_slice<'a, T: Copy>(
         .height
         .into_iter()
         .chain(dim_mapping.width.into_iter())
-        .chain(dim_mapping.selectors.iter().copied())
+        .chain(dim_mapping.selectors.iter().map(|s| s.dim_idx))
         .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
 
-    for dim_idx in &dim_mapping.selectors {
+    for DimensionSelector { dim_idx, .. } in &dim_mapping.selectors {
         let selector_value = state
             .selector_values
             .get(dim_idx)
@@ -729,13 +735,17 @@ fn image_ui(
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &ClassicTensor) {
-    for &dim_idx in &state.dimension_mapping.selectors {
-        let dim = &tensor.shape()[dim_idx];
+    for selector in &state.dimension_mapping.selectors {
+        if !selector.visible {
+            continue;
+        }
+
+        let dim = &tensor.shape()[selector.dim_idx];
         let size = dim.size;
 
         let selector_value = state
             .selector_values
-            .entry(dim_idx)
+            .entry(selector.dim_idx)
             .or_insert_with(|| size / 2); // start in the middle
 
         if size > 0 {
@@ -745,7 +755,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
         if size > 1 {
             ui.horizontal(|ui| {
                 let name = dim.name.as_ref().map_or_else(
-                    || format!("dimension {dim_idx}"),
+                    || format!("dimension {}", selector.dim_idx),
                     |name| format!("{name:?}"),
                 );
 
