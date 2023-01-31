@@ -134,6 +134,10 @@ impl Viewport {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
+        let mut visibility_changed = false;
+        let mut removed_space_view = false;
+        let mut is_space_view_visible = self.visible.contains(space_view_id);
+
         let root_group = space_view.data_blueprint.root_group();
         let default_open = root_group.children.len() + root_group.entities.len()
             <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
@@ -144,8 +148,6 @@ impl Viewport {
             default_open,
         )
         .show_header(ui, |ui| {
-            let mut is_space_view_visible = self.visible.contains(space_view_id);
-            let mut visibility_changed = false;
             blueprint_row_with_buttons(
                 ctx.re_ui,
                 ui,
@@ -164,26 +166,12 @@ impl Viewport {
                 |re_ui, ui| {
                     visibility_changed =
                         visibility_button_ui(re_ui, ui, true, &mut is_space_view_visible).changed();
-                    if re_ui
-                        .small_icon_button(ui, &re_ui::icons::ADD)
-                        .on_hover_text("Manually add or remove entities from the Space View.")
-                        .clicked()
-                    {
-                        self.space_view_entity_window = Some(SpaceViewEntityPicker {
-                            space_view_id: *space_view_id,
-                        });
-                    }
+                    removed_space_view = re_ui
+                        .small_icon_button(ui, &re_ui::icons::REMOVE)
+                        .on_hover_text("Remove Space View from the viewport.")
+                        .clicked();
                 },
             );
-
-            if visibility_changed {
-                self.has_been_user_edited = true;
-                if is_space_view_visible {
-                    self.visible.insert(*space_view_id);
-                } else {
-                    self.visible.remove(space_view_id);
-                }
-            }
         })
         .body(|ui| {
             Self::data_blueprint_tree_ui(
@@ -194,6 +182,19 @@ impl Viewport {
                 self.visible.contains(space_view_id),
             );
         });
+
+        if removed_space_view {
+            self.remove(space_view_id);
+        }
+
+        if visibility_changed {
+            self.has_been_user_edited = true;
+            if is_space_view_visible {
+                self.visible.insert(*space_view_id);
+            } else {
+                self.visible.remove(space_view_id);
+            }
+        }
     }
 
     fn data_blueprint_tree_ui(
