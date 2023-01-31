@@ -142,7 +142,7 @@ impl Viewport {
                 true,
                 &mut is_space_view_visible,
                 |ui| {
-                    let label = format!("{} {}", space_view.category.icon(), space_view.name);
+                    let label = space_view.display_text();
                     let response = ctx.space_view_button_to(ui, label, *space_view_id);
                     if response.clicked() {
                         if let Some(tree) = self.trees.get_mut(&self.visible) {
@@ -739,7 +739,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .space_views
             .get_mut(tab)
             .expect("Should have been populated beforehand");
-        space_view.name.clone().into()
+        space_view.display_text()
     }
 }
 
