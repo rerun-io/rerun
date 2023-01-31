@@ -97,8 +97,8 @@ async fn accept_connection(
 
     re_log::info!("New WebSocket connection");
 
-    if let Err(e) = handle_connection(log_stream, tcp_stream, history).await {
-        match e {
+    if let Err(err) = handle_connection(log_stream, tcp_stream, history).await {
+        match err {
             Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
             err => re_log::error!("Error processing connection: {err}"),
         }
