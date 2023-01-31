@@ -23,7 +23,8 @@ impl SpaceViewEntityPicker {
         ui: &mut egui::Ui,
         space_view: &mut SpaceView,
     ) -> bool {
-        // HACK: We want to dim everything a little bit. So draw one large rectangle over everything.
+        // We want to dim everything a little bit. So draw one large rectangle over everything.
+        // TODO(andreas): This is very hacky, egui needs direct support for this.
         let painter = egui::Painter::new(
             ui.ctx().clone(),
             egui::LayerId::new(egui::Order::PanelResizeLine, egui::Id::new("DimLayer")),
@@ -44,13 +45,14 @@ impl SpaceViewEntityPicker {
             .default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
             .frame(ctx.re_ui.panel_frame())
-            .title_bar(false) // We do a custom title bar for better adhoc styling.
+            .title_bar(false) // We do a custom title bar for better adhoc styling. TODO(andreas): Need direct support for this?
             .show(ui.ctx(), |ui| {
                 title_bar(ctx.re_ui, ui, title, &mut open);
                 add_entities_ui(ctx, ui, space_view);
             });
 
-        // HACK: Fake modality - any click outside causes the window to close.
+        // Fake modality - any click outside causes the window to close.
+        // TODO(andreas): Egui needs to be direct support for this.
         let cursor_was_over_window = if let Some(response) = response {
             if let Some(interact_pos) = ui.input(|i| i.pointer.interact_pos()) {
                 response.response.rect.contains(interact_pos)
