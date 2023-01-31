@@ -152,7 +152,7 @@ def log_points(
     colors:
         Optional colors of the points.
     radii:
-        Optional radii (make it a circle).
+        Optional radii (make it a sphere).
     labels:
         Optional per-point text to show with the points
     class_ids:
