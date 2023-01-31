@@ -103,29 +103,30 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     let lorenz_points = lorenz_points(seconds_since_startup);
 
     let mut builder = LineStripSeriesBuilder::<()>::default();
-    let mut batch = builder.batch("lines without transform");
+    {
+        let mut batch = builder.batch("lines without transform");
 
-    // Complex orange line.
-    batch
-        .add_strip(lorenz_points.into_iter())
-        .color(Color32::from_rgb(255, 191, 0))
-        .radius(Size::new_points(1.0));
+        // Complex orange line.
+        batch
+            .add_strip(lorenz_points.into_iter())
+            .color(Color32::from_rgb(255, 191, 0))
+            .radius(Size::new_points(1.0));
 
-    // Green Zig-Zag arrow
-    batch
-        .add_strip(
-            [
-                glam::vec3(0.0, -1.0, 0.0),
-                glam::vec3(1.0, 0.0, 0.0),
-                glam::vec3(2.0, -1.0, 0.0),
-                glam::vec3(3.0, 0.0, 0.0),
-            ]
-            .into_iter(),
-        )
-        .color(Color32::GREEN)
-        .radius(Size::new_scene(0.05))
-        .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
-    drop(batch);
+        // Green Zig-Zag arrow
+        batch
+            .add_strip(
+                [
+                    glam::vec3(0.0, -1.0, 0.0),
+                    glam::vec3(1.0, 0.0, 0.0),
+                    glam::vec3(2.0, -1.0, 0.0),
+                    glam::vec3(3.0, 0.0, 0.0),
+                ]
+                .into_iter(),
+            )
+            .color(Color32::GREEN)
+            .radius(Size::new_scene(0.05))
+            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
+    }
 
     // Blue spiral, rotating
     builder
