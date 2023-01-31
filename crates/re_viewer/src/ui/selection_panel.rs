@@ -117,9 +117,9 @@ pub fn what_is_selected_ui(
                 });
             }
         }
-        Selection::Instance(space_view_id, instance_path) => {
+        Selection::InstancePath(space_view_id, instance_path) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
-                if instance_path.instance_index.is_splat() {
+                if instance_path.instance_key.is_splat() {
                     ui.label("Entity:");
                 } else {
                     ui.label("Entity instance:");
@@ -177,7 +177,7 @@ impl DataUi for Selection {
             Selection::ComponentPath(component_path) => {
                 component_path.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::Instance(_, instance_path) => {
+            Selection::InstancePath(_, instance_path) => {
                 instance_path.data_ui(ctx, ui, verbosity, query);
             }
         }
@@ -241,11 +241,11 @@ fn blueprint_ui(
             }
         }
 
-        Selection::Instance(space_view_id, instance_path) => {
+        Selection::InstancePath(space_view_id, instance_path) => {
             if let Some(space_view) = space_view_id
                 .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
             {
-                if instance_path.instance_index.is_specific() {
+                if instance_path.instance_key.is_specific() {
                     ui.horizontal(|ui| {
                         ui.label("Part of");
                         ctx.entity_path_button(ui, *space_view_id, &instance_path.entity_path);

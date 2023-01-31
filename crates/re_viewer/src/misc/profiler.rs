@@ -37,7 +37,7 @@ impl Profiler {
 }
 
 fn start_puffin_viewer() {
-    let url = format!("127.0.0.1:{PORT}");
+    let url = format!("0.0.0.0:{PORT}");
     let child = std::process::Command::new("puffin_viewer")
         .arg("--url")
         .arg(&url)

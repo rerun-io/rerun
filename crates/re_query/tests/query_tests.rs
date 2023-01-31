@@ -2,7 +2,7 @@ mod common;
 
 use re_arrow_store::DataStore;
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
     msg_bundle::try_build_msg_bundle1,
@@ -14,7 +14,7 @@ use re_query::query_entity_with_primary;
 
 #[test]
 fn simple_query() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -25,7 +25,7 @@ fn simple_query() {
     store.insert(&bundle).unwrap();
 
     // Assign one of them a color with an explicit instance
-    let color_instances = vec![Instance(1)];
+    let color_instances = vec![InstanceKey(1)];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle = try_build_msg_bundle2(
         MsgId::random(),
@@ -63,7 +63,7 @@ fn simple_query() {
         use re_query::dataframe_util::df_builder3;
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -85,7 +85,7 @@ fn simple_query() {
 
 #[test]
 fn timeless_query() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -96,7 +96,7 @@ fn timeless_query() {
     store.insert(&bundle).unwrap();
 
     // Assign one of them a color with an explicit instance.. timelessly!
-    let color_instances = vec![Instance(1)];
+    let color_instances = vec![InstanceKey(1)];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle =
         try_build_msg_bundle2(MsgId::random(), ent_path, [], (color_instances, colors)).unwrap();
@@ -129,7 +129,7 @@ fn timeless_query() {
         use re_query::dataframe_util::df_builder3;
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -151,7 +151,7 @@ fn timeless_query() {
 
 #[test]
 fn no_instance_join_query() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -193,7 +193,7 @@ fn no_instance_join_query() {
         use re_query::dataframe_util::df_builder3;
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -215,7 +215,7 @@ fn no_instance_join_query() {
 
 #[test]
 fn missing_column_join_query() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -252,7 +252,7 @@ fn missing_column_join_query() {
         use re_query::dataframe_util::df_builder2;
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -273,7 +273,7 @@ fn missing_column_join_query() {
 
 #[test]
 fn splatted_query() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -284,7 +284,7 @@ fn splatted_query() {
     store.insert(&bundle).unwrap();
 
     // Assign all of them a color via splat
-    let color_instances = vec![Instance::SPLAT];
+    let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle = try_build_msg_bundle2(
         MsgId::random(),
@@ -322,7 +322,7 @@ fn splatted_query() {
         use re_query::dataframe_util::df_builder3;
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),

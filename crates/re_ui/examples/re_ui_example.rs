@@ -12,6 +12,8 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
+    let tree = egui_dock::Tree::new(vec![1, 2, 3]);
+
     eframe::run_native(
         "re_ui example app",
         native_options,
@@ -19,6 +21,8 @@ fn main() -> eframe::Result<()> {
             let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
             Box::new(ExampleApp {
                 re_ui,
+
+                tree,
 
                 left_panel: true,
                 right_panel: true,
@@ -36,6 +40,8 @@ fn main() -> eframe::Result<()> {
 
 pub struct ExampleApp {
     re_ui: re_ui::ReUi,
+
+    tree: egui_dock::Tree<Tab>,
 
     left_panel: bool,
     right_panel: bool,
@@ -60,31 +66,34 @@ impl eframe::App for ExampleApp {
         self.top_bar(egui_ctx, frame);
 
         egui::SidePanel::left("left_panel").show_animated(egui_ctx, self.left_panel, |ui| {
-            ui.label("Left panel");
+            ui.strong("Left panel");
             ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
                 ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
             });
+            ui.label(format!("Latest command: {}", self.latest_cmd));
         });
         egui::SidePanel::right("right_panel").show_animated(egui_ctx, self.right_panel, |ui| {
-            ui.label("Right panel");
+            ui.strong("Right panel");
             selection_buttons(ui);
         });
         egui::TopBottomPanel::bottom("bottom_panel").show_animated(
             egui_ctx,
             self.bottom_panel,
             |ui| {
-                ui.label("Bottom panel");
+                ui.strong("Bottom panel");
             },
         );
 
-        egui::CentralPanel::default().show(egui_ctx, |ui| {
-            egui::warn_if_debug_build(ui);
-            ui.label("Hover me for a tooltip")
-                .on_hover_text("This is a tooltip");
-
-            ui.label(format!("Latest command: {}", self.latest_cmd));
-        });
+        let central_panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.panel_fill,
+            ..Default::default()
+        };
+        egui::CentralPanel::default()
+            .frame(central_panel_frame)
+            .show(egui_ctx, |ui| {
+                tabs_ui(ui, &mut self.tree);
+            });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
             self.pending_commands.push(cmd);
@@ -204,4 +213,29 @@ fn selection_buttons(ui: &mut egui::Ui) {
                 });
             });
     });
+}
+
+fn tabs_ui(ui: &mut egui::Ui, tree: &mut egui_dock::Tree<Tab>) {
+    let mut my_tab_viewer = MyTabViewer {};
+    egui_dock::DockArea::new(tree)
+        .style(re_ui::egui_dock_style(ui.style()))
+        .show_inside(ui, &mut my_tab_viewer);
+}
+
+pub type Tab = i32;
+
+struct MyTabViewer {}
+
+impl egui_dock::TabViewer for MyTabViewer {
+    type Tab = Tab;
+
+    fn ui(&mut self, ui: &mut egui::Ui, _tab: &mut Self::Tab) {
+        egui::warn_if_debug_build(ui);
+        ui.label("Hover me for a tooltip")
+            .on_hover_text("This is a tooltip");
+    }
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        format!("This is tab {tab}").into()
+    }
 }

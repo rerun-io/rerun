@@ -7,14 +7,14 @@
 use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
 use re_log_types::{
-    component_types::{Instance, Point2D, Rect2D},
+    component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     msg_bundle::Component as _,
     EntityPath, TimeType, Timeline,
 };
 
 fn main() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = EntityPath::from("this/that");
 
@@ -56,7 +56,7 @@ fn main() {
         &query,
         &ent_path,
         Rect2D::name(),
-        [Instance::name(), Rect2D::name(), Point2D::name()],
+        [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -78,7 +78,7 @@ fn main() {
         &query,
         &ent_path,
         Point2D::name(),
-        [Instance::name(), Rect2D::name(), Point2D::name()],
+        [InstanceKey::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {

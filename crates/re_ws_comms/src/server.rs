@@ -27,7 +27,7 @@ impl Server {
     pub async fn new(port: u16) -> anyhow::Result<Self> {
         use anyhow::Context as _;
 
-        let bind_addr = format!("127.0.0.1:{port}");
+        let bind_addr = format!("0.0.0.0:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
@@ -97,8 +97,8 @@ async fn accept_connection(
 
     re_log::info!("New WebSocket connection");
 
-    if let Err(e) = handle_connection(log_stream, tcp_stream, history).await {
-        match e {
+    if let Err(err) = handle_connection(log_stream, tcp_stream, history).await {
+        match err {
             Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
             err => re_log::error!("Error processing connection: {err}"),
         }
@@ -132,7 +132,7 @@ async fn handle_connection(
                         re_log::debug!("Received message: {:?}", msg);
                     }
                     Some(Err(err)) => {
-                        re_log::warn!("Error message: {err:?}");
+                        re_log::warn!("Error message: {err}");
                         break;
                     }
                     None => {

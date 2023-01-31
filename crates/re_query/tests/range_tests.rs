@@ -2,7 +2,7 @@ mod common;
 
 use re_arrow_store::{DataStore, TimeInt, TimeRange};
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
     msg_bundle::try_build_msg_bundle1,
@@ -14,7 +14,7 @@ use re_query::range_entity_with_primary;
 
 #[test]
 fn simple_range() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -27,7 +27,7 @@ fn simple_range() {
         store.insert(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(1)];
+        let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -42,7 +42,7 @@ fn simple_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(0)];
+        let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -72,7 +72,7 @@ fn simple_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -80,22 +80,22 @@ fn simple_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -107,7 +107,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -127,7 +127,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -156,7 +156,7 @@ fn simple_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -164,22 +164,22 @@ fn simple_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -191,7 +191,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -211,7 +211,7 @@ fn simple_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -234,7 +234,7 @@ fn simple_range() {
 
 #[test]
 fn timeless_range() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -251,7 +251,7 @@ fn timeless_range() {
         store.insert(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(1)];
+        let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -276,7 +276,7 @@ fn timeless_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(0)];
+        let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -311,25 +311,25 @@ fn timeless_range() {
         store.insert(&bundle).unwrap();
     }
 
-    // ┌───────────┬──────────┬────────┬─────────────────┬────────────────┬──────────────────────┬────────────────────────────┐
-    // │ insert_id ┆ frame_nr ┆ entity ┆ rerun.colorrgba ┆ rerun.instance ┆ rerun.msg_id         ┆ rerun.point2d              │
-    // ╞═══════════╪══════════╪════════╪═════════════════╪════════════════╪══════════════════════╪════════════════════════════╡
-    // │ 2         ┆ null     ┆ point  ┆ null            ┆ [0, 1]         ┆ [{167328063302243... ┆ [{1.0,2.0}, {3.0,4.0}]     │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 4         ┆ null     ┆ point  ┆ [4278190080]    ┆ [1]            ┆ [{167328063302246... ┆ null                       │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 8         ┆ null     ┆ point  ┆ null            ┆ [0, 1]         ┆ [{167328063302249... ┆ [{10.0,20.0}, {30.0,40.0}] │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1         ┆ 123      ┆ point  ┆ null            ┆ [0, 1]         ┆ [{167328063302236... ┆ [{1.0,2.0}, {3.0,4.0}]     │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 3         ┆ 123      ┆ point  ┆ [4278190080]    ┆ [1]            ┆ [{167328063302245... ┆ null                       │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 5         ┆ 223      ┆ point  ┆ [4278190080]    ┆ [0]            ┆ [{167328063302247... ┆ null                       │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 6         ┆ 223      ┆ point  ┆ [4278190080]    ┆ [0]            ┆ [{167328063302248... ┆ null                       │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 7         ┆ 323      ┆ point  ┆ null            ┆ [0, 1]         ┆ [{167328063302248... ┆ [{10.0,20.0}, {30.0,40.0}] │
-    // └───────────┴──────────┴────────┴─────────────────┴────────────────┴──────────────────────┴────────────────────────────┘
+    // ┌───────────┬──────────┬────────┬─────────────────┬────────────────────┬──────────────────────┬────────────────────────────┐
+    // │ insert_id ┆ frame_nr ┆ entity ┆ rerun.colorrgba ┆ rerun.instance_key ┆ rerun.msg_id         ┆ rerun.point2d              │
+    // ╞═══════════╪══════════╪════════╪═════════════════╪════════════════════╪══════════════════════╪════════════════════════════╡
+    // │ 2         ┆ null     ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302243... ┆ [{1.0,2.0}, {3.0,4.0}]     │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 4         ┆ null     ┆ point  ┆ [4278190080]    ┆ [1]                ┆ [{167328063302246... ┆ null                       │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 8         ┆ null     ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302249... ┆ [{10.0,20.0}, {30.0,40.0}] │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1         ┆ 123      ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302236... ┆ [{1.0,2.0}, {3.0,4.0}]     │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 3         ┆ 123      ┆ point  ┆ [4278190080]    ┆ [1]                ┆ [{167328063302245... ┆ null                       │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 5         ┆ 223      ┆ point  ┆ [4278190080]    ┆ [0]                ┆ [{167328063302247... ┆ null                       │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 6         ┆ 223      ┆ point  ┆ [4278190080]    ┆ [0]                ┆ [{167328063302248... ┆ null                       │
+    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 7         ┆ 323      ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302248... ┆ [{10.0,20.0}, {30.0,40.0}] │
+    // └───────────┴──────────┴────────┴─────────────────┴────────────────────┴──────────────────────┴────────────────────────────┘
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
@@ -340,7 +340,7 @@ fn timeless_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -348,22 +348,22 @@ fn timeless_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -375,7 +375,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -395,7 +395,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -424,7 +424,7 @@ fn timeless_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -432,31 +432,31 @@ fn timeless_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Frame #122:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ 4278190080      │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -468,7 +468,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -488,7 +488,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -508,7 +508,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -535,7 +535,7 @@ fn timeless_range() {
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -543,40 +543,40 @@ fn timeless_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Timeless #1:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Timeless #2:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ 4278190080      │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -587,7 +587,7 @@ fn timeless_range() {
         let (time, ent_view) = &results[0];
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -606,7 +606,7 @@ fn timeless_range() {
         let (time, ent_view) = &results[1];
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -626,7 +626,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -646,7 +646,7 @@ fn timeless_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -669,7 +669,7 @@ fn timeless_range() {
 
 #[test]
 fn simple_splatted_range() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -682,7 +682,7 @@ fn simple_splatted_range() {
         store.insert(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
-        let color_instances = vec![Instance(1)];
+        let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -697,7 +697,7 @@ fn simple_splatted_range() {
     let timepoint2 = [build_frame_nr(223.into())];
     {
         // Assign one of them a color with a splatted instance
-        let color_instances = vec![Instance::SPLAT];
+        let color_instances = vec![InstanceKey::SPLAT];
         let colors = vec![ColorRGBA(0x00ff0000)];
         let bundle = try_build_msg_bundle2(
             MsgId::random(),
@@ -727,7 +727,7 @@ fn simple_splatted_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -735,22 +735,22 @@ fn simple_splatted_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 16711680        │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ 16711680        │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 16711680        │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ 16711680        │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -762,7 +762,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -782,7 +782,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),
@@ -811,7 +811,7 @@ fn simple_splatted_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
@@ -819,22 +819,22 @@ fn simple_splatted_range() {
     // We expect this to generate the following `DataFrame`s:
     //
     // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {3.0,4.0}     ┆ null            │
+    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 16711680        │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ 16711680        │
-    // └────────────────┴───────────────┴─────────────────┘
+    // ┌────────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance_key ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════════╪═══════════════╪═════════════════╡
+    // │ 0                  ┆ {10.0,20.0}   ┆ 16711680        │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1                  ┆ {30.0,40.0}   ┆ 16711680        │
+    // └────────────────────┴───────────────┴─────────────────┘
 
     #[cfg(feature = "polars")]
     {
@@ -846,7 +846,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -866,7 +866,7 @@ fn simple_splatted_range() {
         let time = time.unwrap();
 
         // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let points = vec![
             Some(Point2D { x: 10.0, y: 20.0 }),
             Some(Point2D { x: 30.0, y: 40.0 }),

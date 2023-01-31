@@ -6,7 +6,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Point2D},
+    component_types::{ColorRGBA, InstanceKey, Point2D},
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     entity_path,
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
@@ -107,7 +107,7 @@ fn build_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
 }
 
 fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
@@ -127,7 +127,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Point> {
     for path in paths.iter() {
         query_entity_with_primary::<Point2D>(store, &query, path, &[ColorRGBA::name()])
             .and_then(|entity_view| {
-                entity_view.visit2(|_: Instance, pos: Point2D, color: Option<ColorRGBA>| {
+                entity_view.visit2(|_: InstanceKey, pos: Point2D, color: Option<ColorRGBA>| {
                     points.push(Point {
                         _pos: pos,
                         _color: color,

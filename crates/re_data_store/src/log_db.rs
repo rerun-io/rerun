@@ -2,7 +2,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
-    component_types::Instance,
+    component_types::InstanceKey,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
     ArrowMsg, BeginRecordingMsg, ComponentPath, EntityPath, EntityPathHash, EntityPathOpMsg,
@@ -35,7 +35,7 @@ impl Default for EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             arrow_store: re_arrow_store::DataStore::new(
-                Instance::name(),
+                InstanceKey::name(),
                 DataStoreConfig {
                     component_bucket_size_bytes: 1024 * 1024, // 1 MiB
                     index_bucket_size_bytes: 1024,            // 1KiB

@@ -97,8 +97,8 @@ impl<'a> ViewerContext<'a> {
         instance_path: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Selection::Instance(space_view_id, instance_path.clone());
-        let subtype_string = if instance_path.instance_index.is_splat() {
+        let selection = Selection::InstancePath(space_view_id, instance_path.clone());
+        let subtype_string = if instance_path.instance_key.is_splat() {
             "Entity"
         } else {
             "Entity Instance"
@@ -176,7 +176,7 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         entity_path: &EntityPath,
     ) -> egui::Response {
-        let selection = Selection::Instance(
+        let selection = Selection::InstancePath(
             Some(space_view_id),
             InstancePath::entity_splat(entity_path.clone()),
         );

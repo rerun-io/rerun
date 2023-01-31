@@ -12,7 +12,7 @@ impl StaticImageCache {
             .entry(id)
             .or_insert_with(|| {
                 let color_image = load_image_bytes(image_bytes)
-                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err:?}"));
+                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err}"));
                 let retained_img = RetainedImage::from_color_image(id, color_image);
                 Arc::new(retained_img)
             })

@@ -15,7 +15,9 @@ include = [
 
 
 [features]
-default = []
+default = ["egui_dock"]
+
+egui_dock = ["dep:egui_dock"]
 
 
 [dependencies]
@@ -29,6 +31,8 @@ strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 sublime_fuzzy = "0.7"
 
+## Optional dependencies:
+egui_dock = { version = "0.3", optional = true, features = ["serde"] }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }

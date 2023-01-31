@@ -2,7 +2,7 @@ use ahash::{HashMap, HashSet};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, LogDb};
-use re_log_types::{component_types::Instance, EntityPathHash};
+use re_log_types::{component_types::InstanceKey, EntityPathHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -98,18 +98,18 @@ impl InteractionHighlight {
 #[derive(Default)]
 pub struct SpaceViewEntityHighlight {
     overall: InteractionHighlight,
-    instances: ahash::HashMap<Instance, InteractionHighlight>,
+    instances: ahash::HashMap<InstanceKey, InteractionHighlight>,
 }
 
 #[derive(Copy, Clone)]
 pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
 impl<'a> OptionalSpaceViewEntityHighlight<'a> {
-    pub fn index_highlight(&self, instance_index: Instance) -> InteractionHighlight {
+    pub fn index_highlight(&self, instance_key: InstanceKey) -> InteractionHighlight {
         match self.0 {
             Some(entity_highlight) => entity_highlight
                 .instances
-                .get(&instance_index)
+                .get(&instance_key)
                 .cloned()
                 .unwrap_or_default()
                 .max(entity_highlight.overall),
@@ -283,8 +283,8 @@ impl SelectionState {
                 | Selection::SpaceView(_)
                 | Selection::DataBlueprintGroup(_, _) => current == test,
 
-                Selection::Instance(current_space_view_id, current_instance_path) => {
-                    if let Selection::Instance(test_space_view_id, test_instance_path) = test {
+                Selection::InstancePath(current_space_view_id, current_instance_path) => {
+                    if let Selection::InstancePath(test_space_view_id, test_instance_path) = test {
                         // For both space view id and instance index we want to be inclusive,
                         // but if both are set to Some, and set to different, then we count that
                         // as a miss.
@@ -294,8 +294,8 @@ impl SelectionState {
 
                         current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance_index.specific_index(),
-                                &test_instance_path.instance_index.specific_index(),
+                                &current_instance_path.instance_key.specific_index(),
+                                &test_instance_path.instance_key.specific_index(),
                             )
                             && either_none_or_same(current_space_view_id, test_space_view_id)
                     } else {
@@ -341,7 +341,7 @@ impl SelectionState {
                     }
                 }
 
-                Selection::Instance(selected_space_view_context, selected_instance) => {
+                Selection::InstancePath(selected_space_view_context, selected_instance) => {
                     let highlight = if *selected_space_view_context == Some(space_view_id) {
                         SelectionHighlight::Selection
                     } else {
@@ -353,7 +353,7 @@ impl SelectionState {
                         .or_default();
 
                     let highlight_target = if let Some(selected_index) =
-                        selected_instance.instance_index.specific_index()
+                        selected_instance.instance_key.specific_index()
                     {
                         &mut highlighted_entity
                             .instances
@@ -392,13 +392,13 @@ impl SelectionState {
                     }
                 }
 
-                Selection::Instance(_, selected_instance) => {
+                Selection::InstancePath(_, selected_instance) => {
                     let highlighted_entity = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
 
                     let highlight_target = if let Some(selected_index) =
-                        selected_instance.instance_index.specific_index()
+                        selected_instance.instance_key.specific_index()
                     {
                         &mut highlighted_entity
                             .instances

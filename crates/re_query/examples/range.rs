@@ -6,7 +6,7 @@
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
 use re_log_types::{
-    component_types::{Instance, Point2D, Rect2D},
+    component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     msg_bundle::{try_build_msg_bundle1, Component as _},
     EntityPath, MsgId, TimeType,
@@ -14,7 +14,7 @@ use re_log_types::{
 use re_query::range_entity_with_primary;
 
 fn main() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path: EntityPath = "point".into();
 
@@ -53,7 +53,7 @@ fn main() {
 
     println!("\n-----\n");
 
-    let components = [Instance::name(), Rect2D::name(), Point2D::name()];
+    let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
     let ent_views = range_entity_with_primary::<Rect2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
@@ -69,7 +69,7 @@ fn main() {
 
     println!("\n-----\n");
 
-    let components = [Instance::name(), Rect2D::name(), Point2D::name()];
+    let components = [InstanceKey::name(), Rect2D::name(), Point2D::name()];
     let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(

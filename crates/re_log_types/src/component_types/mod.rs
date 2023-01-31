@@ -22,7 +22,7 @@ mod class_id;
 mod color;
 pub mod context;
 pub mod coordinates;
-mod instance;
+mod instance_key;
 mod keypoint_id;
 mod label;
 mod linestrip;
@@ -46,7 +46,7 @@ pub use class_id::ClassId;
 pub use color::ColorRGBA;
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
-pub use instance::Instance;
+pub use instance_key::InstanceKey;
 pub use keypoint_id::KeypointId;
 pub use label::Label;
 pub use linestrip::{LineStrip2D, LineStrip3D};
@@ -72,7 +72,7 @@ lazy_static! {
         <Box3D as Component>::field(),
         <ClassId as Component>::field(),
         <ColorRGBA as Component>::field(),
-        <Instance as Component>::field(),
+        <InstanceKey as Component>::field(),
         <KeypointId as Component>::field(),
         <Label as Component>::field(),
         <LineStrip2D as Component>::field(),

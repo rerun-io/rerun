@@ -14,7 +14,7 @@ use re_arrow_store::{
     RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Point2D, Rect2D},
+    component_types::{ColorRGBA, InstanceKey, Point2D, Rect2D},
     datagen::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
@@ -65,7 +65,7 @@ fn all_components() {
     // One big bucket, demonstrating the easier-to-reason-about cases.
     {
         let mut store = DataStore::new(
-            Instance::name(),
+            InstanceKey::name(),
             DataStoreConfig {
                 component_bucket_nb_rows: u64::MAX,
                 index_bucket_nb_rows: u64::MAX,
@@ -120,7 +120,7 @@ fn all_components() {
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
     {
         let mut store = DataStore::new(
-            Instance::name(),
+            InstanceKey::name(),
             DataStoreConfig {
                 component_bucket_nb_rows: 0,
                 index_bucket_nb_rows: 0,
@@ -190,7 +190,7 @@ fn all_components() {
     // reason about, it is technically incorrect.
     {
         let mut store = DataStore::new(
-            Instance::name(),
+            InstanceKey::name(),
             DataStoreConfig {
                 component_bucket_nb_rows: 0,
                 index_bucket_nb_rows: 0,
@@ -271,7 +271,7 @@ fn latest_at() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(Instance::name(), config.clone());
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
         latest_at_impl(&mut store);
         store.gc(
             GarbageCollectionTarget::DropAtLeastPercentage(1.0),
@@ -380,7 +380,7 @@ fn range() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(Instance::name(), config.clone());
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
         range_impl(&mut store);
     }
 }
@@ -476,7 +476,7 @@ fn range_impl(store: &mut DataStore) {
 
             store.sort_indices_if_needed(); // for assertions below
 
-            let components = [Instance::name(), components[0], components[1]];
+            let components = [InstanceKey::name(), components[0], components[1]];
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let dfs = polars_util::range_components(
                 store,
@@ -913,7 +913,7 @@ fn gc() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(Instance::name(), config.clone());
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
         gc_impl(&mut store);
     }
 }

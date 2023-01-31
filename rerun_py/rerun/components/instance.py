@@ -26,6 +26,6 @@ class InstanceArray(pa.ExtensionArray):  # type: ignore[misc]
         return storage  # type: ignore[no-any-return]
 
 
-InstanceType = ComponentTypeFactory("InstanceType", InstanceArray, REGISTERED_COMPONENT_NAMES["rerun.instance"])
+InstanceType = ComponentTypeFactory("InstanceType", InstanceArray, REGISTERED_COMPONENT_NAMES["rerun.instance_key"])
 
 pa.register_extension_type(InstanceType())

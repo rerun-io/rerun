@@ -8,14 +8,14 @@ use polars_core::prelude::*;
 use re_arrow_store::polars_util::latest_components;
 use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
 use re_log_types::{
-    component_types::{Instance, Point2D, Rect2D},
+    component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     msg_bundle::Component,
     EntityPath,
 };
 
 fn main() {
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = EntityPath::from("my/entity");
 

@@ -6,7 +6,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
 use re_log_types::{
-    component_types::{Instance, Rect2D},
+    component_types::{InstanceKey, Rect2D},
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
     msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
     ComponentName, EntityPath, MsgId, TimeType, Timeline,
@@ -35,7 +35,7 @@ fn insert(c: &mut Criterion) {
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(Instance::name(), msgs.iter()));
+            b.iter(|| insert_messages(InstanceKey::name(), msgs.iter()));
         });
     }
 }
@@ -43,7 +43,7 @@ fn insert(c: &mut Criterion) {
 fn latest_at_batch(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(Instance::name(), msgs.iter());
+        let store = insert_messages(InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
@@ -64,7 +64,7 @@ fn latest_at_batch(c: &mut Criterion) {
 fn latest_at_missing_components(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(Instance::name(), msgs.iter());
+        let store = insert_messages(InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("primary", |b| {
@@ -78,7 +78,7 @@ fn latest_at_missing_components(c: &mut Criterion) {
 
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(Instance::name(), msgs.iter());
+        let store = insert_messages(InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("secondaries", |b| {
@@ -103,7 +103,7 @@ fn latest_at_missing_components(c: &mut Criterion) {
 fn range_batch(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(Instance::name(), msgs.iter());
+        let store = insert_messages(InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/range/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
