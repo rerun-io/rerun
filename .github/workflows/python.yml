@@ -46,84 +46,41 @@ jobs:
         run: |
           just py-lint
 
-  py-run-examples:
-    name: Run Python examples (headless mode)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+  #py-run-examples:
+  #  name: Run Python examples (headless mode)
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - uses: actions/checkout@v3
 
-      - run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+  #    - run: |
+  #        sudo apt-get update
+  #        sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
 
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
+  #    - name: Set up cargo cache
+  #      uses: Swatinem/rust-cache@v2
+  #      with:
+  #        # See: https://github.com/rerun-io/rerun/pull/497
+  #        save-if: ${{ github.event_name == 'push'}}
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
+  #    - name: Set up Python
+  #      uses: actions/setup-python@v4
+  #      with:
+  #        python-version: "3.8"
+  #        cache: "pip"
+  #        cache-dependency-path: "rerun_py/requirements-build.txt"
 
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-build.txt
-          pip install ./rerun_py
+  #    - name: Install Python dependencies
+  #      run: |
+  #        pip install --upgrade pip
+  #        pip install -r rerun_py/requirements-build.txt
+  #        pip install ./rerun_py
 
-      - name: Run Car example
-        run: |
-          pip install -r examples/car/requirements.txt && ./examples/car/main.py --headless
+  #    - name: Run Car example
+  #      run: |
+  #        pip install -r examples/car/requirements.txt && ./examples/car/main.py --headless
 
-  py-pip-install-linux:
-    name: Pip install Rerun SDK (Linux)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - run: |
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
-
-      - name: Setup python for building wheel
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-          cache: "pip"
-
-      - name: Install rerun_py
-        run: pip install ./rerun_py
-
-  py-pip-install-windows:
-    name: Pip install Rerun SDK (Windows)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Setup python for building wheel
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-          cache: "pip"
-
-      - name: Install rerun_py
-        run: pip install ./rerun_py
-
-  py-wheel-macos-aarch64:
-    name: Build Python Wheel for MacOS/aarch64
+  macos:
+    name: Build Python Wheels for MacOS
     runs-on: macos-latest
     #if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
     steps:
@@ -135,7 +92,7 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
-      - name: Setup python for building wheel
+      - name: Setup python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -147,17 +104,155 @@ jobs:
         with:
           maturin-version: "0.14.10"
           command: build
+          target: aarch64-apple-darwin
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --strip
-            --target aarch64-apple-darwin
+            --out dist
 
-      - name: Upload Artifact
+      - name: Install built wheel
+        run: |
+          pip install rerun-sdk --no-index --find-links dist --force-reinstall
+          pip install pytest #TODO(john) move to requirements-build.txt
+          cd tests && pytest
+
+      - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          name: rerun-sdk-wheel
-          path: target/wheels/*.whl
+          name: wheels
+          path: dist
+
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          architecture: ${{ matrix.target }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-build.txt"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: |
+          --manifest-path rerun_py/Cargo.toml
+          --release
+          --out dist
+
+      - name: Install built wheel
+        run: |
+          pip install rerun-sdk --no-index --find-links dist --force-reinstall
+          pip install pytest
+          cd tests && pytest
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64, i686]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          architecture: x64
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-build.txt"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev # eframe reqs
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          target: ${{ matrix.target }}
+          manylinux: auto
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --out dist
+
+      - name: Install built wheel
+        if: matrix.target == 'x86_64'
+        run: |
+          pip install rerun-sdk  --no-index --find-links dist --force-reinstall
+          pip install pytest
+          cd tests && pytest
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  pre-release:
+    name: Pre Release
+    needs: [ macos, windows, linux ]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: wheels
+
+      - name: Github Release
+        uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: dist/*
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: [ macos, windows, linux ]
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: wheels
+
+      - name: Publish to PyPI
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
+        uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --skip-existing *
 
   py-docs:
     name: Build and deploy docs

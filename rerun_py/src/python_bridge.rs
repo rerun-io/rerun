@@ -471,7 +471,7 @@ fn log_transform(
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
-#[pyo3(signature = (obj_path, xyz, right_handed, timeless))]
+#[pyo3(signature = (entity_path, xyz, right_handed = None, timeless = false))]
 fn log_view_coordinates_xyz(
     entity_path: &str,
     xyz: &str,
@@ -642,7 +642,7 @@ fn log_mesh_file(
 ///
 /// If no `img_format` is specified, we will try and guess it.
 #[pyfunction]
-#[pyo3(signature = (obj_path, img_path, img_format = "None", timeless = false))]
+#[pyo3(signature = (entity_path, img_path, img_format = None, timeless = false))]
 fn log_image_file(
     entity_path: &str,
     img_path: PathBuf,
