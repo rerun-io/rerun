@@ -343,6 +343,45 @@ impl DataBlueprintTree {
         self.entity_paths.remove(path);
     }
 
+    /// Removes a group and all its entities and subgroups from the blueprint tree
+    pub fn remove_group(&mut self, group_handle: DataBlueprintGroupHandle) {
+        crate::profile_function!();
+
+        let Some(group) = self.groups.get(group_handle) else {
+            return;
+        };
+
+        // Clone group to work around borrow checker issues.
+        let group = group.clone();
+
+        // Remove all child groups.
+        for child_group in &group.children {
+            self.remove_group(*child_group);
+        }
+
+        // Remove all child entities.
+        for entity_path in &group.entities {
+            self.entity_paths.remove(entity_path);
+        }
+
+        // Remove from `path_to_group` map.
+        // `path_to_group` may map arbitrary paths to this group, some of which aren't in the entity_paths list!
+        self.path_to_group
+            .retain(|_, group_mapping| *group_mapping != group_handle);
+
+        // Remove group from parent group
+        if let Some(parent_group) = self.groups.get_mut(group.parent) {
+            parent_group
+                .children
+                .retain(|child_group| *child_group != group_handle);
+        }
+
+        // Never completely remove the root group.
+        if group_handle != self.root_group_handle {
+            self.groups.remove(group_handle);
+        }
+    }
+
     fn remove_empty_group_recursively(&mut self, group_handle: DataBlueprintGroupHandle) {
         let Some(group) = self.groups.get(group_handle) else {
             return;

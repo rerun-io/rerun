@@ -13,10 +13,8 @@ use re_log_types::component_types::{Tensor, TensorTrait};
 use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
 
 use super::{
-    data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
-    space_view_entity_picker::SpaceViewEntityPicker,
-    view_category::ViewCategory,
-    SpaceView, SpaceViewId,
+    data_blueprint::DataBlueprintGroupHandle, space_view_entity_picker::SpaceViewEntityPicker,
+    view_category::ViewCategory, SpaceView, SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -192,8 +190,7 @@ impl Viewport {
                 ctx,
                 ui,
                 space_view.data_blueprint.root_handle(),
-                &mut space_view.data_blueprint,
-                space_view_id,
+                space_view,
                 self.visible.contains(space_view_id),
             );
         });
@@ -203,11 +200,10 @@ impl Viewport {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         group_handle: DataBlueprintGroupHandle,
-        data_blueprint_tree: &mut DataBlueprintTree,
-        space_view_id: &SpaceViewId,
+        space_view: &mut SpaceView,
         space_view_visible: bool,
     ) {
-        let Some(group) = data_blueprint_tree.group(group_handle) else {
+        let Some(group) = space_view.data_blueprint.group(group_handle) else {
             debug_assert!(false, "Invalid group handle in blueprint group tree");
             return;
         };
@@ -218,18 +214,21 @@ impl Viewport {
         let group_name = group.display_name.clone();
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
-        for path in &entities {
+        for entity_path in &entities {
             ui.horizontal(|ui| {
-                let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
+                let mut properties = space_view
+                    .data_blueprint
+                    .data_blueprints_individual()
+                    .get(entity_path);
                 blueprint_row_with_buttons(
                     ctx.re_ui,
                     ui,
                     group_is_visible,
                     properties.visible,
                     |ui| {
-                        let name = path.iter().last().unwrap().to_string();
+                        let name = entity_path.iter().last().unwrap().to_string();
                         let label = format!("🔹 {name}");
-                        ctx.data_blueprint_button_to(ui, label, *space_view_id, path)
+                        ctx.data_blueprint_button_to(ui, label, space_view.id, entity_path)
                     },
                     |re_ui, ui| {
                         if visibility_button_ui(
@@ -240,9 +239,18 @@ impl Viewport {
                         )
                         .changed()
                         {
-                            data_blueprint_tree
+                            space_view
+                                .data_blueprint
                                 .data_blueprints_individual()
-                                .set(path.clone(), properties);
+                                .set(entity_path.clone(), properties);
+                        }
+                        if re_ui
+                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .on_hover_text("Remove group and all its children from the space view.")
+                            .clicked()
+                        {
+                            space_view.data_blueprint.remove_entity(entity_path);
+                            space_view.entities_determined_by_user = true;
                         }
                     },
                 );
@@ -250,11 +258,12 @@ impl Viewport {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = data_blueprint_tree.group_mut(*child_group_handle) else {
+            let Some(child_group) = space_view.data_blueprint.group_mut(*child_group_handle) else {
                 debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
                 continue;
             };
 
+            let mut remove_group = false;
             let default_open = child_group.children.len() + child_group.entities.len()
                 <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
             egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -273,7 +282,7 @@ impl Viewport {
                         ctx.data_blueprint_group_button_to(
                             ui,
                             label,
-                            *space_view_id,
+                            space_view.id,
                             *child_group_handle,
                         )
                     },
@@ -284,6 +293,13 @@ impl Viewport {
                             group_is_visible,
                             &mut child_group.properties_individual.visible,
                         );
+                        if re_ui
+                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .on_hover_text("Remove Entity from the space view.")
+                            .clicked()
+                        {
+                            remove_group = true;
+                        }
                     },
                 );
             })
@@ -292,11 +308,14 @@ impl Viewport {
                     ctx,
                     ui,
                     *child_group_handle,
-                    data_blueprint_tree,
-                    space_view_id,
+                    space_view,
                     space_view_visible,
                 );
             });
+            if remove_group {
+                space_view.data_blueprint.remove_group(*child_group_handle);
+                space_view.entities_determined_by_user = true;
+            }
         }
     }
 
