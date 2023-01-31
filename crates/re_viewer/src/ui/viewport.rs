@@ -414,7 +414,16 @@ impl Viewport {
             for (category, entity_paths) in
                 SpaceView::default_queries_entities_by_category(ctx, spaces_info, space_info)
             {
-                space_views.push(SpaceView::new(category, space_info, &entity_paths));
+                // For tensors create one space view for each tensor.
+                if category == ViewCategory::Tensor {
+                    for entity_path in entity_paths {
+                        let mut space_view = SpaceView::new(category, space_info, &[entity_path]);
+                        space_view.allow_auto_adding_more_entities = false;
+                        space_views.push(space_view);
+                    }
+                } else {
+                    space_views.push(SpaceView::new(category, space_info, &entity_paths));
+                }
             }
         }
 
