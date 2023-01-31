@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 from rerun.components.color import ColorRGBAArray
@@ -8,6 +8,7 @@ from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import _normalize_colors
 
 from rerun import bindings
+from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "log_scalar",
@@ -21,6 +22,7 @@ def log_scalar(
     color: Optional[Sequence[int]] = None,
     radius: Optional[float] = None,
     scattered: Optional[bool] = None,
+    user_components: Dict[str, Any] = {},
 ) -> None:
     """
     Log a double-precision scalar that will be visualized as a timeseries plot.
@@ -99,22 +101,34 @@ def log_scalar(
         Points within a single line do not have to all share the same scatteredness:
         the line will switch between a scattered and a continuous representation as
         required.
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
 
     """
-    comps = {"rerun.scalar": ScalarArray.from_numpy(np.array([scalar]))}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
+
+    instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
 
     if label:
-        comps["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = LabelArray.new([label])
 
     if color:
         colors = _normalize_colors(np.array([color]))
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:
-        comps["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
+        instanced["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
 
     if scattered:
         props = [{"scattered": scattered}]
-        comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
+        instanced["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=False)
+    if user_components:
+        _add_user_components(instanced, splats, user_components, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=False)
+
+    if splats:
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=False)

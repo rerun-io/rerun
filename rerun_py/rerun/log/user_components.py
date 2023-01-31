@@ -4,7 +4,9 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from rerun.components.instance import InstanceArray
-from rerun.log.error_utils import _send_warning
+
+# Fully qualified to avoid circular import
+import rerun.log.error_utils
 
 from rerun import bindings
 
@@ -45,7 +47,7 @@ def _add_user_components(
                 pa_value = pa.array(np_value)
                 USER_COMPONENT_TYPES[name] = (np_value.dtype, pa_value.type)
         except Exception as ex:
-            _send_warning(
+            rerun.log.error_utils._send_warning(
                 "Error converting user data to arrow for component {}. Dropping.\n{}: {}".format(
                     name, type(ex).__name__, ex
                 ),

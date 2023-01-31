@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -9,6 +9,7 @@ from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
 
 from rerun import bindings
+from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "log_arrow",
@@ -23,6 +24,7 @@ def log_arrow(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
+    user_components: Dict[str, Any] = {},
     timeless: bool = False,
 ) -> None:
     """
@@ -48,28 +50,38 @@ def log_arrow(
         An optional text to show beside the arrow.
     width_scale
         An optional scaling factor, default=1.0.
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
     timeless
         The entity is not time-dependent, and will be visible at any time point.
 
     """
-    comps = {}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if origin is not None:
         if vector is None:
             raise TypeError("Must provide both origin and vector")
         origin = np.require(origin, dtype="float32")
         vector = np.require(vector, dtype="float32")
-        comps["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
+        instanced["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if label:
-        comps["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = LabelArray.new([label])
 
     if width_scale:
         radii = _normalize_radii([width_scale / 2])
-        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if user_components:
+        _add_user_components(instanced, splats, user_components, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

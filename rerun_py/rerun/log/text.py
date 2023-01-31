@@ -1,12 +1,15 @@
 import logging
 from dataclasses import dataclass
-from typing import Final, Optional, Sequence
+from typing import Any, Dict, Final, Optional, Sequence
 
 from rerun.components.color import ColorRGBAArray
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import _normalize_colors
 
 from rerun import bindings
+
+# Fully qualified to avoid circular import
+import rerun.log.user_components
 
 __all__ = [
     "LogLevel",
@@ -95,6 +98,7 @@ def log_text_entry(
     text: str,
     level: Optional[str] = LogLevel.INFO,
     color: Optional[Sequence[int]] = None,
+    user_components: Dict[str, Any] = {},
     timeless: bool = False,
 ) -> None:
     """
@@ -112,18 +116,29 @@ def log_text_entry(
         from [LogLevel][rerun.log.text.LogLevel]
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
     timeless:
         Whether the text entry should be timeless.
 
     """
-    comps = {}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
+
     if text:
-        comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
+        instanced["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
     else:
         logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if user_components:
+        rerun.log.user_components._add_user_components(instanced, splats, user_components, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

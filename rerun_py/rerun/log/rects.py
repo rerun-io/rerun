@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -18,6 +18,7 @@ from rerun.log import (
 from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
+from rerun.log.user_components import _add_user_components
 
 __all__ = [
     "RectFormat",
@@ -34,6 +35,7 @@ def log_rect(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
+    user_components: Dict[str, Any] = {},
     timeless: bool = False,
 ) -> None:
     """
@@ -55,6 +57,8 @@ def log_rect(
         Optional class id for the rectangle.
         The class id provides color and label if not specified explicitly.
         See [rerun.log_annotation_context][]
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
     timeless:
          If true, the rect will be timeless (default: False).
 
@@ -65,20 +69,30 @@ def log_rect(
         rects = np.zeros((0, 4), dtype="float32")
     assert type(rects) is np.ndarray
 
-    comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
+
+    instanced["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if label:
-        comps["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = LabelArray.new([label])
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if user_components:
+        _add_user_components(instanced, splats, user_components, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
 def log_rects(
@@ -90,6 +104,7 @@ def log_rects(
     colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
+    user_components: Dict[str, Any] = {},
     timeless: bool = False,
 ) -> None:
     """
@@ -125,6 +140,8 @@ def log_rects(
         Optional class ids for the rectangles.
         The class id provides colors and labels if not specified explicitly.
         See [rerun.log_annotation_context][]
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
     timeless:
             If true, the rects will be timeless (default: False).
 
@@ -168,6 +185,9 @@ def log_rects(
     if len(class_ids):
         is_splat = len(class_ids) == 1
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+
+    if user_components:
+        _add_user_components(comps[0], comps[1], user_components, identifiers_np)
 
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 

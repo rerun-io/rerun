@@ -38,6 +38,7 @@ def log_point(
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     keypoint_id: Optional[int] = None,
+    user_components: Dict[str, Any] = {},
     timeless: bool = False,
 ) -> None:
     """
@@ -77,6 +78,8 @@ def log_point(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
+    user_components:
+        Optional dictionary of user components. See [rerun.log_user_components][]
     timeless:
         If true, the point will be timeless (default: False).
 
@@ -86,32 +89,40 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    comps = {}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if position is not None:
         if position.shape[0] == 2:
-            comps["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
+            instanced["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
         elif position.shape[0] == 3:
-            comps["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
+            instanced["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
         else:
             raise TypeError("Positions should be either 1x2 or 1x3")
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:
         radii = _normalize_radii([radius])
-        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
     if label:
-        comps["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = LabelArray.new([label])
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if user_components:
+        _add_user_components(instanced, splats, user_components, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
 def log_points(
