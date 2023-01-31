@@ -19,6 +19,7 @@ DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
 DATASET_NAME: Final = "colmap_rusty_car"
 DATASET_URL: Final = f"{DATASET_URL_BASE}/{DATASET_NAME}.zip"
+FILTER_MIN_VISIBLE: Final = 500
 
 
 def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
@@ -95,7 +96,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         visible = [id != -1 and points3D.get(id) is not None for id in image.point3D_ids]
         visible_ids = image.point3D_ids[visible]
 
-        if filter_output and len(visible_ids) < 500:
+        if filter_output and len(visible_ids) < FILTER_MIN_VISIBLE:
             continue
 
         visible_xyzs = [points3D[id] for id in visible_ids]
