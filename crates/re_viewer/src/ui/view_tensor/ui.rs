@@ -747,7 +747,8 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                     |name| format!("{name:?}"),
                 );
 
-                ui.weak(format!("Slice selector for {name}:"));
+                let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
+                ui.weak(format!("{name}:")).on_hover_text(&slider_tooltip);
 
                 // If the range is big (say, 2048) then we would need
                 // a slider that is 2048 pixels wide to get the good precision.
@@ -757,7 +758,9 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                         .clamp_range(0..=size - 1)
                         .speed(0.5),
                 )
-                .on_hover_text("Drag to precisely control the slice index");
+                .on_hover_text(format!(
+                    "Drag to precisely control the slice index of the {name} dimension"
+                ));
 
                 // Make the slider as big as needed:
                 const MIN_SLIDER_WIDTH: f32 = 64.0;
@@ -765,7 +768,8 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                     ui.spacing_mut().slider_width = (size as f32 * 2.0)
                         .at_least(MIN_SLIDER_WIDTH)
                         .at_most(ui.available_width());
-                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false));
+                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
+                        .on_hover_text(slider_tooltip);
                 }
             });
         }
