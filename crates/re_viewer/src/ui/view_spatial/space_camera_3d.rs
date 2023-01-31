@@ -46,7 +46,7 @@ impl SpaceCamera3D {
         match from_rub_quat(self.view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
-                re_log::warn_once!("Camera {:?}: {}", self.entity_path, err);
+                re_log::warn_once!("Camera {:?}: {err}", self.entity_path);
                 None
             }
         }
