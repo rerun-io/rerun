@@ -123,7 +123,7 @@ fn log_axis(session: &mut Session, ent_path: &EntityPath) {
     let bundle = MsgBundle::new(
         MsgId::random(),
         ent_path.clone(),
-        [].into(), // TODO: SDK
+        [].into(), // TODO(cmc): doing timeless stuff shouldn't be so weird
         vec![vec![view_coords].try_into().unwrap()],
     );
 
