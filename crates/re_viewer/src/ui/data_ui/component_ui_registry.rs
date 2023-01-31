@@ -118,7 +118,7 @@ impl ComponentUiRegistry {
                     display(&mut repr, 0).unwrap();
                     ui.label(repr);
                 } else {
-                    ui.label(format!("{} bytes", bytes));
+                    ui.label(format!("{bytes} bytes"));
                 }
             } else {
                 ui.weak("(null)");

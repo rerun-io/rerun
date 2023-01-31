@@ -72,7 +72,7 @@ impl DataUi for InstanceId {
                         }
                         // Any other failure to get a component is unexpected
                         (Err(err), _) => {
-                            ui.label(format!("Error: {}", err));
+                            ui.label(format!("Error: {err}"));
                         }
                         // If an `instance_index` wasn't provided, just report the number of values
                         (Ok(component_data), None) => {

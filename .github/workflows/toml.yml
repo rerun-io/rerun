@@ -20,7 +20,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.65.0
+          toolchain: 1.67.0
           override: true
 
       - name: Set up cargo cache

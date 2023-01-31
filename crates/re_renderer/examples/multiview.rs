@@ -21,8 +21,8 @@ use winit::event::{ElementState, VirtualKeyCode};
 
 mod framework;
 
-fn draw_view<'a, D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
-    re_ctx: &'a mut RenderContext,
+fn draw_view<D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
+    re_ctx: &mut RenderContext,
     target_cfg: TargetConfiguration,
     skybox: &GenericSkyboxDrawData,
     draw_data: &D,
@@ -128,7 +128,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
 
     // Blue spiral, rotating
     builder
-        .batch("blue sprial")
+        .batch("blue spiral")
         .world_from_obj(glam::Mat4::from_rotation_x(seconds_since_startup * 10.0))
         .add_strip((0..1000).map(|i| {
             glam::vec3(

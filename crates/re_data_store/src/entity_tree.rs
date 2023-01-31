@@ -192,10 +192,8 @@ impl EntityTree {
 
                 // For every existing field return a clear event
                 leaf.components
-                    .iter()
-                    .map(|(component_name, _components)| {
-                        ComponentPath::new(entity_path.clone(), *component_name)
-                    })
+                    .keys()
+                    .map(|component_name| ComponentPath::new(entity_path.clone(), *component_name))
                     .collect_vec()
             }
             PathOp::ClearRecursive(_) => {
@@ -220,7 +218,7 @@ impl EntityTree {
 
                     // For every existing field append a clear event into the
                     // results
-                    results.extend(next.components.iter().map(|(component_name, _components)| {
+                    results.extend(next.components.keys().map(|component_name| {
                         ComponentPath::new(next.path.clone(), *component_name)
                     }));
                 }

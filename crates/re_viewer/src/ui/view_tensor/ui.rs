@@ -747,7 +747,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                     |name| format!("{name:?}"),
                 );
 
-                ui.weak(format!("Slice selector for {}:", name));
+                ui.weak(format!("Slice selector for {name}:"));
 
                 // If the range is big (say, 2048) then we would need
                 // a slider that is 2048 pixels wide to get the good precision.

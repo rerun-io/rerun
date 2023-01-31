@@ -65,7 +65,7 @@ impl ReadableBacktrace {
 }
 
 fn format_backtrace(backtrace: &Backtrace) -> Arc<str> {
-    let stack = format!("{:?}", backtrace);
+    let stack = format!("{backtrace:?}");
     let mut stack = stack.as_str();
     let start_pattern = "re_memory::accounting_allocator::note_alloc\n";
     if let Some(start_offset) = stack.find(start_pattern) {
