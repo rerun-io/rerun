@@ -706,7 +706,7 @@ fn image_ui(
             let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
             let text_color = ui.visuals().text_color();
 
-            painter.set_clip_rect(egui::Rect::EVERYTHING); // Allow panting axis names outside of our bounds!
+            painter.set_clip_rect(egui::Rect::EVERYTHING); // Allow painting axis names outside of our bounds!
 
             // TOOD(emilk): put X-axis at Y=0, and Y-axis at X=0
 
