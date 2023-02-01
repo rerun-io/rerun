@@ -9,6 +9,8 @@ on:
   push:
     branches:
       - "main"
+    tags:
+      - "v*"
 
 env:
   PYTHON_VERSION: "3.8"
@@ -266,7 +268,7 @@ jobs:
 
       - name: Publish to PyPI
         env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         uses: PyO3/maturin-action@v1
         with:
           command: upload
