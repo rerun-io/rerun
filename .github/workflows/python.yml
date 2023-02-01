@@ -141,6 +141,28 @@ jobs:
       - name: Install rerun_py
         run: pip install ./rerun_py
 
+  py-test-docs:
+    name: Verify the docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
+
+      - name: Build via mkdocs
+        run: |
+          mkdocs build -f rerun_py/mkdocs.yml
+
   py-docs:
     name: Build and deploy docs
     if: ${{ github.event_name == 'push' }}
