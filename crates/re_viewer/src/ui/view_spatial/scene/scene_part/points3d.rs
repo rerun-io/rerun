@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
+use itertools::Itertools as _;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
@@ -97,7 +98,8 @@ impl Points3DPart {
         entity_view: &'a EntityView<Point3D>,
         highlights: &'a [InteractionHighlight],
     ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
-        let radii = itertools::izip!(highlights.iter(), entity_view.iter_component::<Radius>()?,)
+        crate::profile_function!();
+        let radii = itertools::izip!(highlights.iter(), entity_view.iter_component::<Radius>()?)
             .map(move |(highlight, radius)| {
                 SceneSpatial::apply_hover_and_selection_effect_size(
                     radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0)),
@@ -112,6 +114,7 @@ impl Points3DPart {
         annotation_infos: &'a [ResolvedAnnotationInfo],
         world_from_obj: Mat4,
     ) -> Result<impl Iterator<Item = Label3D> + 'a, QueryError> {
+        crate::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
             entity_view.iter_primary()?,
@@ -148,35 +151,40 @@ impl Points3DPart {
         let annotations = scene.annotation_map.find(ent_path);
         let show_labels = true;
 
-        let point_positions = {
-            crate::profile_scope!("collect_points");
-            entity_view
-                .iter_primary()?
-                .filter_map(|pt| pt.map(glam::Vec3::from))
-                .collect::<Vec<_>>()
-        };
-
-        let (annotation_infos, keypoints) = Self::process_annotations(
-            query,
-            entity_view,
-            &annotations,
-            point_positions.as_slice(),
-        )?;
-        let instance_path_hashes = {
-            crate::profile_scope!("instance_hashes");
-            entity_view
-                .iter_instance_keys()?
-                .map(|instance_key| {
-                    instance_path_hash_for_picking(
-                        ent_path,
-                        instance_key,
+        let ((point_positions, annotation_infos, keypoints), instance_path_hashes) =
+            try_parallel2::<QueryError, _, _>(
+                || {
+                    let point_positions = {
+                        crate::profile_scope!("collect_points");
+                        entity_view
+                            .iter_primary()?
+                            .filter_map(|pt| pt.map(glam::Vec3::from))
+                            .collect::<Vec<_>>()
+                    };
+                    let (annotation_infos, keypoints) = Self::process_annotations(
+                        query,
                         entity_view,
-                        properties,
-                        entity_highlight,
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
+                        &annotations,
+                        point_positions.as_slice(),
+                    )?;
+                    Ok((point_positions, annotation_infos, keypoints))
+                },
+                || {
+                    crate::profile_scope!("instance_hashes");
+                    Ok(entity_view
+                        .iter_instance_keys()?
+                        .map(|instance_key| {
+                            instance_path_hash_for_picking(
+                                ent_path,
+                                instance_key,
+                                entity_view,
+                                properties,
+                                entity_highlight,
+                            )
+                        })
+                        .collect::<Vec<_>>())
+                },
+            )?;
 
         let highlights = {
             crate::profile_scope!("highlights");
@@ -186,10 +194,22 @@ impl Points3DPart {
                 .collect::<Vec<_>>()
         };
 
-        let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
-
-        let radii = Self::process_radii(entity_view, &highlights)?;
-        let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
+        let (colors, radii, labels) = try_parallel3(
+            || {
+                crate::profile_scope!("colors");
+                Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)
+                    .map(|it| it.collect_vec())
+            },
+            || {
+                crate::profile_scope!("radii");
+                Self::process_radii(entity_view, &highlights).map(|it| it.collect_vec())
+            },
+            || {
+                crate::profile_scope!("labels");
+                Self::process_labels(entity_view, &annotation_infos, world_from_obj)
+                    .map(|it| it.collect_vec())
+            },
+        )?;
 
         if show_labels && instance_path_hashes.len() <= self.max_labels {
             scene.ui.labels_3d.extend(labels);
@@ -201,8 +221,8 @@ impl Points3DPart {
             .batch("3d points")
             .world_from_obj(world_from_obj)
             .add_points(point_positions.into_iter())
-            .colors(colors)
-            .radii(radii)
+            .colors(colors.into_iter())
+            .radii(radii.into_iter())
             .user_data(instance_path_hashes.into_iter());
 
         scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
@@ -265,4 +285,45 @@ impl ScenePart for Points3DPart {
             }
         }
     }
+}
+
+// ----
+
+#[cfg(not(target_arch = "wasm32"))]
+fn parallel2<A: Send, B: Send>(
+    a: impl Send + FnOnce() -> A,
+    b: impl Send + FnOnce() -> B,
+) -> (A, B) {
+    rayon::join(a, b)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parallel2<A, B>(a: impl FnOnce() -> A, b: impl FnOnce() -> B) -> (A, B) {
+    ((a)(), (b)())
+}
+
+fn parallel3<A: Send, B: Send, C: Send>(
+    a: impl Send + FnOnce() -> A,
+    b: impl Send + FnOnce() -> B,
+    c: impl Send + FnOnce() -> C,
+) -> (A, B, C) {
+    let ((a, b), c) = parallel2(|| parallel2(a, b), c);
+    (a, b, c)
+}
+
+fn try_parallel2<Error: Send, A: Send, B: Send>(
+    a: impl Send + FnOnce() -> Result<A, Error>,
+    b: impl Send + FnOnce() -> Result<B, Error>,
+) -> Result<(A, B), Error> {
+    let (a, b) = parallel2(a, b);
+    Ok((a?, b?))
+}
+
+fn try_parallel3<Error: Send, A: Send, B: Send, C: Send>(
+    a: impl Send + FnOnce() -> Result<A, Error>,
+    b: impl Send + FnOnce() -> Result<B, Error>,
+    c: impl Send + FnOnce() -> Result<C, Error>,
+) -> Result<(A, B, C), Error> {
+    let ((a, b), c) = parallel2(|| parallel2(a, b), c);
+    Ok((a?, b?, c?))
 }
