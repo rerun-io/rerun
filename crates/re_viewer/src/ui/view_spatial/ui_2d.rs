@@ -442,7 +442,9 @@ fn view_2d_scrollable(
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
                 pick.instance_path_hash
                     .resolve(&ctx.log_db.entity_db)
-                    .map(|instance| Selection::Instance(Some(space_view_id), instance))
+                    .map(|instance_path| {
+                        Selection::InstancePath(Some(space_view_id), instance_path)
+                    })
             }));
         }
     }
@@ -516,7 +518,7 @@ fn create_labels(
 
         let hightlight = highlights
             .entity_highlight(label.labled_instance.entity_path_hash)
-            .index_highlight(label.labled_instance.instance_index);
+            .index_highlight(label.labled_instance.instance_key);
         let fill_color = match hightlight.hover {
             crate::misc::HoverHighlight::None => match hightlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,

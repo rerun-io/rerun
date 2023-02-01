@@ -3,7 +3,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance},
+    component_types::{ColorRGBA, InstanceKey},
     msg_bundle::Component,
     Mesh3D,
 };
@@ -41,10 +41,10 @@ impl MeshPart {
         let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
         let visitor =
-            |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
+            |instance_key: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
                 let instance_path_hash = instance_path_hash_for_picking(
                     ent_path,
-                    instance,
+                    instance_key,
                     entity_view,
                     props,
                     entity_highlight,
@@ -52,7 +52,7 @@ impl MeshPart {
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,
-                    entity_highlight.index_highlight(instance_path_hash.instance_index),
+                    entity_highlight.index_highlight(instance_path_hash.instance_key),
                 );
 
                 if let Some(mesh) = ctx
@@ -102,7 +102,7 @@ impl ScenePart for MeshPart {
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
-                [Mesh3D::name(), Instance::name(), ColorRGBA::name()],
+                [Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()],
             )
             .and_then(|entities| {
                 for entity in entities {
@@ -121,7 +121,7 @@ impl ScenePart for MeshPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                 }
             }
         }

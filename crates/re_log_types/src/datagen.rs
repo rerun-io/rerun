@@ -1,7 +1,7 @@
 //! Generate random data for tests and benchmarks.
 
 use crate::{
-    component_types::{self, Instance},
+    component_types::{self, InstanceKey},
     Time, TimeInt, TimeType, Timeline,
 };
 
@@ -52,8 +52,8 @@ pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
     (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }
 
-/// Create `len` dummy `Instance` keys. These keys will be sorted.
-pub fn build_some_instances(nb_instances: usize) -> Vec<Instance> {
+/// Create `len` dummy `InstanceKey` keys. These keys will be sorted.
+pub fn build_some_instances(nb_instances: usize) -> Vec<InstanceKey> {
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
 
@@ -65,12 +65,12 @@ pub fn build_some_instances(nb_instances: usize) -> Vec<Instance> {
 
     sorted_instances
         .into_iter()
-        .map(|id| Instance(id as u64))
+        .map(|id| InstanceKey(id as u64))
         .collect()
 }
 
-pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Vec<Instance> {
-    let mut instances = instances.into_iter().map(Instance).collect::<Vec<_>>();
+pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Vec<InstanceKey> {
+    let mut instances = instances.into_iter().map(InstanceKey).collect::<Vec<_>>();
     instances.sort();
     instances
 }

@@ -40,10 +40,7 @@ impl TcpClient {
             match TcpStream::connect(&self.addrs[..]) {
                 Ok(mut stream) => {
                     if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
-                        anyhow::bail!(
-                            "Failed to send to Rerun server at {:?}: {err:?}",
-                            self.addrs
-                        );
+                        anyhow::bail!("Failed to send to Rerun server at {:?}: {err}", self.addrs);
                     } else {
                         self.stream = Some(stream);
                         Ok(())
@@ -51,7 +48,7 @@ impl TcpClient {
                 }
                 Err(err) => {
                     anyhow::bail!(
-                        "Failed to connect to Rerun server at {:?}: {err:?}",
+                        "Failed to connect to Rerun server at {:?}: {err}",
                         self.addrs
                     );
                 }
@@ -69,18 +66,12 @@ impl TcpClient {
             re_log::trace!("Sending a packet of size {}…", packet.len());
             if let Err(err) = stream.write(&(packet.len() as u32).to_le_bytes()) {
                 self.stream = None;
-                anyhow::bail!(
-                    "Failed to send to Rerun server at {:?}: {err:?}",
-                    self.addrs
-                );
+                anyhow::bail!("Failed to send to Rerun server at {:?}: {err}", self.addrs);
             }
 
             if let Err(err) = stream.write(packet) {
                 self.stream = None;
-                anyhow::bail!(
-                    "Failed to send to Rerun server at {:?}: {err:?}",
-                    self.addrs
-                );
+                anyhow::bail!("Failed to send to Rerun server at {:?}: {err}", self.addrs);
             }
 
             Ok(())
@@ -93,7 +84,7 @@ impl TcpClient {
     pub fn flush(&mut self) {
         if let Some(stream) = &mut self.stream {
             if let Err(err) = stream.flush() {
-                re_log::warn!("Failed to flush: {err:?}");
+                re_log::warn!("Failed to flush: {err}");
             }
         }
         re_log::trace!("TCP stream flushed.");

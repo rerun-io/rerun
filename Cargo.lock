@@ -1396,7 +1396,7 @@ dependencies = [
 [[package]]
 name = "egui_dock"
 version = "0.3.1"
-source = "git+https://github.com/rerun-io/egui_dock?rev=1355a9f24e99518ef7b9546872a0f25ffe1f91d2#1355a9f24e99518ef7b9546872a0f25ffe1f91d2"
+source = "git+https://github.com/rerun-io/egui_dock?rev=69f52c752695165243d8900b8e11a84df812d67f#69f52c752695165243d8900b8e11a84df812d67f"
 dependencies = [
  "egui",
  "serde",
@@ -4122,6 +4122,7 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "egui_dock",
  "egui_extras",
  "image",
  "parking_lot",

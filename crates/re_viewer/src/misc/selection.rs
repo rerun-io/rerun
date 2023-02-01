@@ -9,7 +9,7 @@ pub enum Selection {
     MsgId(MsgId),
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
-    Instance(Option<SpaceViewId>, InstancePath),
+    InstancePath(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
@@ -19,7 +19,7 @@ impl std::fmt::Debug for Selection {
             Selection::MsgId(s) => s.fmt(f),
             Selection::ComponentPath(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
-            Selection::Instance(sid, path) => write!(f, "({sid:?}, {path})"),
+            Selection::InstancePath(sid, path) => write!(f, "({sid:?}, {path})"),
             Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
         }
     }
@@ -30,7 +30,7 @@ impl Selection {
     pub(crate) fn is_valid(&self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) -> bool {
         match self {
             Selection::ComponentPath(_) => true,
-            Selection::Instance(space_view_id, _) => space_view_id
+            Selection::InstancePath(space_view_id, _) => space_view_id
                 .map(|space_view_id| blueprint.viewport.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Selection::MsgId(msg_id) => log_db.get_log_msg(msg_id).is_some(),
@@ -53,9 +53,9 @@ impl Selection {
     pub fn kind(self: &Selection) -> &'static str {
         match self {
             Selection::MsgId(_) => "Message",
-            Selection::Instance(space_view_id, instance_path) => {
+            Selection::InstancePath(space_view_id, instance_path) => {
                 match (
-                    instance_path.instance_index.is_specific(),
+                    instance_path.instance_key.is_specific(),
                     space_view_id.is_some(),
                 ) {
                     (true, true) => "Entity Instance Blueprint",

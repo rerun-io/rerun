@@ -354,7 +354,7 @@ fn save(path: &str) -> PyResult<()> {
 /// Set the current time globally. Used for all subsequent logging,
 /// until the next call to `set_time_sequence`.
 ///
-/// For instance: `set_time_sequence("frame_nr", frame_nr)`.
+/// For example: `set_time_sequence("frame_nr", frame_nr)`.
 ///
 /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 #[pyfunction]

@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{Box3D, ClassId, ColorRGBA, Instance, Label, Quaternion, Radius, Vec3D},
+    component_types::{Box3D, ClassId, ColorRGBA, InstanceKey, Label, Quaternion, Radius, Vec3D},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -41,7 +41,7 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance_key: InstanceKey,
                        half_size: Box3D,
                        position: Option<Vec3D>,
                        rotation: Option<Quaternion>,
@@ -51,7 +51,7 @@ impl Boxes3DPart {
                        class_id: Option<ClassId>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,
@@ -67,7 +67,7 @@ impl Boxes3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_index),
+                entity_highlight.index_highlight(instance_hash.instance_key),
             );
 
             let scale = glam::Vec3::from(half_size);
@@ -118,7 +118,7 @@ impl ScenePart for Boxes3DPart {
                 ent_path,
                 [
                     Box3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     Vec3D::name(),      // obb.position
                     Quaternion::name(), // obb.rotation
                     ColorRGBA::name(),
@@ -142,7 +142,7 @@ impl ScenePart for Boxes3DPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                 }
             }
         }

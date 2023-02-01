@@ -181,7 +181,7 @@ impl SceneSpatial {
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
     const SELECTION_COLOR: Color32 = Color32::from_rgb(255, 170, 170);
     const SIBLING_SELECTION_COLOR: Color32 = Color32::from_rgb(255, 140, 140);
-    const CAMERA_COLOR: Color32 = Color32::from_rgb(255, 128, 128);
+    const CAMERA_COLOR: Color32 = Color32::from_rgb(150, 150, 150);
 
     fn size_boost(size: Size) -> Size {
         if size.is_auto() {

@@ -209,7 +209,7 @@ fn table_row(
                 });
             }
             Err(err) => {
-                re_log::error_once!("Bad arrow payload: {:?}", err);
+                re_log::error_once!("Bad arrow payload: {err}",);
                 row.col(|ui| {
                     ui.label("Bad Arrow Payload".to_owned());
                 });

@@ -25,7 +25,7 @@ impl Default for ServerOptions {
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
-/// let log_msg_rx = serve("127.0.0.1:80", ServerOptions::default())?;
+/// let log_msg_rx = serve("0.0.0.0:80", ServerOptions::default())?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn serve(
@@ -46,7 +46,7 @@ pub fn serve(
                         spawn_client(stream, tx, options);
                     }
                     Err(err) => {
-                        re_log::warn!("Failed to accept incoming SDK client: {err:?}");
+                        re_log::warn!("Failed to accept incoming SDK client: {err}");
                     }
                 }
             }
@@ -66,7 +66,7 @@ fn spawn_client(stream: std::net::TcpStream, tx: Sender<LogMsg>, options: Server
             re_log::info!("New SDK client connected: {:?}", stream.peer_addr());
 
             if let Err(err) = run_client(stream, &tx, options) {
-                re_log::warn!("Closing connection to client: {err:?}");
+                re_log::warn!("Closing connection to client: {err}");
             }
         })
         .expect("Failed to spawn thread");

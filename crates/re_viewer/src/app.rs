@@ -547,7 +547,7 @@ impl App {
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
                 if let Err(err) = log_db.add(msg) {
-                    re_log::error!("Failed to add incoming msg: {:?}", err);
+                    re_log::error!("Failed to add incoming msg: {err}");
                 };
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap

@@ -143,5 +143,5 @@ def log_line_segments(
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 
     if comps[1]:
-        comps[1]["rerun.instance"] = InstanceArray.splat()
+        comps[1]["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)

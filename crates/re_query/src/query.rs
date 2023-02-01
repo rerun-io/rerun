@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{component_types::Instance, msg_bundle::Component, ComponentName, EntityPath};
+use re_log_types::{
+    component_types::InstanceKey, msg_bundle::Component, ComponentName, EntityPath,
+};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -47,7 +49,7 @@ pub fn get_component_with_instances(
     ent_path: &EntityPath,
     component: ComponentName,
 ) -> crate::Result<ComponentWithInstances> {
-    let components = [Instance::name(), component];
+    let components = [InstanceKey::name(), component];
 
     let row_indices = store
         .latest_at(query, ent_path, component, &components)
@@ -124,9 +126,9 @@ pub fn query_entity_with_primary<Primary: Component>(
 
     let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
         .iter()
-        // Filter out `Primary` and `Instance` from the component list since are
+        // Filter out `Primary` and `InstanceKey` from the component list since are
         // always queried above when creating the primary.
-        .filter(|component| *component != &Primary::name() && *component != &Instance::name())
+        .filter(|component| *component != &Primary::name() && *component != &InstanceKey::name())
         .filter_map(|component| {
             match get_component_with_instances(store, query, ent_path, *component) {
                 Ok(component_result) => Some(Ok((*component, component_result))),
@@ -152,19 +154,19 @@ pub fn __populate_example_store() -> DataStore {
         MsgId,
     };
 
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
 
-    let instances = vec![Instance(42), Instance(96)];
+    let instances = vec![InstanceKey(42), InstanceKey(96)];
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
 
     let bundle =
         try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (&instances, &points)).unwrap();
     store.insert(&bundle).unwrap();
 
-    let instances = vec![Instance(96)];
+    let instances = vec![InstanceKey(96)];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle =
         try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (instances, colors)).unwrap();
@@ -192,7 +194,7 @@ fn simple_get_component() {
         let df = component.as_df::<Point2D>().unwrap();
         eprintln!("{df:?}");
 
-        let instances = vec![Some(Instance(42)), Some(Instance(96))];
+        let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),
@@ -236,7 +238,7 @@ fn simple_query_entity() {
         let df = entity_view.as_df2::<ColorRGBA>().unwrap();
         eprintln!("{df:?}");
 
-        let instances = vec![Some(Instance(42)), Some(Instance(96))];
+        let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
         let points = vec![
             Some(Point2D { x: 1.0, y: 2.0 }),
             Some(Point2D { x: 3.0, y: 4.0 }),

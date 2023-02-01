@@ -1,7 +1,7 @@
 use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::{
-    component_types::{self, Instance},
+    component_types::{self, InstanceKey},
     msg_bundle::Component,
     MsgId,
 };
@@ -60,7 +60,7 @@ impl SceneText {
             );
 
             let components = [
-                Instance::name(),
+                InstanceKey::name(),
                 MsgId::name(),
                 component_types::TextEntry::name(),
                 component_types::ColorRGBA::name(),
@@ -96,7 +96,7 @@ impl SceneText {
                 ) {
                     Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                     Err(err) => {
-                        re_log::error_once!("Unexpected error querying '{ent_path:?}': {err:?}");
+                        re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                     }
                 }
             }

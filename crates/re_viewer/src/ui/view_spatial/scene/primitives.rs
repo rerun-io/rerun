@@ -104,10 +104,10 @@ impl SceneSpatialPrimitives {
                 mesh.mesh
                     .mesh_instances
                     .iter()
-                    .map(move |instance| MeshInstance {
-                        gpu_mesh: instance.gpu_mesh.clone(),
+                    .map(move |mesh_instance| MeshInstance {
+                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
                         mesh: None, // Don't care.
-                        world_from_mesh: base_transform * instance.world_from_mesh,
+                        world_from_mesh: base_transform * mesh_instance.world_from_mesh,
                         additive_tint: mesh.additive_tint,
                     })
             })

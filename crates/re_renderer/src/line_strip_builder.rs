@@ -97,6 +97,15 @@ where
 
 pub struct LineBatchBuilder<'a, PerStripUserData>(&'a mut LineStripSeriesBuilder<PerStripUserData>);
 
+impl<'a, PerStripUserData> Drop for LineBatchBuilder<'a, PerStripUserData> {
+    fn drop(&mut self) {
+        // Remove batch again if it wasn't actually used.
+        if self.0.batches.last().unwrap().line_vertex_count == 0 {
+            self.0.batches.pop();
+        }
+    }
+}
+
 impl<'a, PerStripUserData> LineBatchBuilder<'a, PerStripUserData>
 where
     PerStripUserData: Default + Copy,

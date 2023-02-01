@@ -184,7 +184,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     } else {
         #[cfg(feature = "server")]
         {
-            let bind_addr = format!("127.0.0.1:{}", args.port);
+            let bind_addr = format!("0.0.0.0:{}", args.port);
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
             };

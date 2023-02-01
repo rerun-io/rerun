@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, Tensor, TensorTrait},
+    component_types::{ColorRGBA, InstanceKey, Tensor, TensorTrait},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -134,8 +134,8 @@ impl ImagesPart {
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
-        for (instance, tensor, color) in itertools::izip!(
-            entity_view.iter_instances()?,
+        for (instance_key, tensor, color) in itertools::izip!(
+            entity_view.iter_instance_keys()?,
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
@@ -149,7 +149,7 @@ impl ImagesPart {
 
                 let instance_path_hash = instance_path_hash_for_picking(
                     ent_path,
-                    instance,
+                    instance_key,
                     entity_view,
                     properties,
                     entity_highlight,
@@ -162,7 +162,7 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let highlight = entity_highlight.index_highlight(instance_path_hash.instance_index);
+                let highlight = entity_highlight.index_highlight(instance_path_hash.instance_key);
                 if highlight.is_some() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,
@@ -228,7 +228,7 @@ impl ScenePart for ImagesPart {
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
-                [Tensor::name(), Instance::name(), ColorRGBA::name()],
+                [Tensor::name(), InstanceKey::name(), ColorRGBA::name()],
             )
             .and_then(|entities| {
                 for entity in entities {
@@ -246,7 +246,7 @@ impl ScenePart for ImagesPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                 }
             }
         }

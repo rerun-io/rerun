@@ -259,7 +259,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Op
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if &camera.instance == needle {
+        if &camera.instance_path_hash == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
@@ -331,7 +331,7 @@ pub fn view_3d(
                 eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
             scene
                 .primitives
-                .add_axis_lines(transform, camera.instance, axis_length);
+                .add_axis_lines(transform, camera.instance_path_hash, axis_length);
         }
     }
 
@@ -408,7 +408,7 @@ pub fn view_3d(
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
             pick.instance_path_hash
                 .resolve(&ctx.log_db.entity_db)
-                .map(|instance| Selection::Instance(Some(space_view_id), instance))
+                .map(|instance_path| Selection::InstancePath(Some(space_view_id), instance_path))
         }));
         state.state_3d.hovered_point = picking_result
             .opaque_hit
@@ -426,7 +426,7 @@ pub fn view_3d(
         state.state_3d.tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Selection::Instance(_, instance_path)) = ctx.hovered().first() {
+        if let Some(Selection::InstancePath(_, instance_path)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.clone());

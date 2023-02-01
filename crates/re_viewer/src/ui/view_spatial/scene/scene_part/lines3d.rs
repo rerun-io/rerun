@@ -2,7 +2,7 @@ use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, Instance, LineStrip3D, Radius},
+    component_types::{ColorRGBA, InstanceKey, LineStrip3D, Radius},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -39,13 +39,13 @@ impl Lines3DPart {
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
 
-        let visitor = |instance: Instance,
+        let visitor = |instance_key: InstanceKey,
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
             let instance_hash = instance_path_hash_for_picking(
                 ent_path,
-                instance,
+                instance_key,
                 entity_view,
                 props,
                 entity_highlight,
@@ -61,7 +61,7 @@ impl Lines3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_index),
+                entity_highlight.index_highlight(instance_hash.instance_key),
             );
 
             line_batch
@@ -102,7 +102,7 @@ impl ScenePart for Lines3DPart {
                 ent_path,
                 [
                     LineStrip3D::name(),
-                    Instance::name(),
+                    InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                 ],
@@ -123,7 +123,7 @@ impl ScenePart for Lines3DPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                 }
             }
         }
