@@ -767,12 +767,11 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
 
         if size > 1 {
             ui.horizontal(|ui| {
-                let name = dim.name.as_ref().map_or_else(
-                    || format!("dimension {dim_idx}"),
-                    |name| format!("{name:?}"),
-                );
-
-                ui.weak(format!("Slice selector for {name}:"));
+                if let Some(name) = &dim.name {
+                    ui.weak(name);
+                } else {
+                    ui.weak(format!("dimension {dim_idx}"));
+                }
 
                 // If the range is big (say, 2048) then we would need
                 // a slider that is 2048 pixels wide to get the good precision.
