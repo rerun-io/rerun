@@ -102,7 +102,7 @@ fn add_entities_tree_ui(
             ui,
             spaces_info,
             &format!("🔹 {name}"),
-            &tree.path,
+            tree,
             space_view,
             entities_add_info,
         );
@@ -122,7 +122,7 @@ fn add_entities_tree_ui(
                 ui,
                 spaces_info,
                 name,
-                &tree.path,
+                tree,
                 space_view,
                 entities_add_info,
             );
@@ -153,11 +153,13 @@ fn add_entities_line_ui(
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
     name: &str,
-    entity_path: &EntityPath,
+    entity_tree: &EntityTree,
     space_view: &mut SpaceView,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     ui.horizontal(|ui| {
+        let entity_path = &entity_tree.path;
+
         let space_view_id = if space_view.data_blueprint.contains_entity(entity_path) {
             Some(space_view.id)
         } else {
@@ -184,8 +186,6 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let entity_tree = &ctx.log_db.entity_db.tree;
-
             if space_view.data_blueprint.contains_entity(entity_path) {
                 if ctx
                     .re_ui
@@ -193,14 +193,7 @@ fn add_entities_line_ui(
                     .on_hover_text("Remove this Entity and all its descendants from the Space View")
                     .clicked()
                 {
-                    // Remove all entities at and under this path
-                    entity_tree
-                        .subtree(entity_path)
-                        .unwrap()
-                        .visit_children_recursively(&mut |path: &EntityPath| {
-                            space_view.data_blueprint.remove_entity(path);
-                            space_view.entities_determined_by_user = true;
-                        });
+                    space_view.remove_entity_subtree(entity_tree);
                 }
             } else {
                 let response = ui
@@ -210,31 +203,7 @@ fn add_entities_line_ui(
                             .small_icon_button(ui, &re_ui::icons::ADD)
                             .clicked()
                         {
-                            // Insert the entity it space_view and all its children as far as they haven't been added yet
-                            let mut entities = Vec::new();
-                            entity_tree
-                                .subtree(entity_path)
-                                .unwrap()
-                                .visit_children_recursively(&mut |path: &EntityPath| {
-                                    if has_visualization_for_category(
-                                        ctx,
-                                        space_view.category,
-                                        path,
-                                    ) && !space_view.data_blueprint.contains_entity(path)
-                                        && spaces_info
-                                            .is_reachable_by_transform(path, &space_view.space_path)
-                                            .is_ok()
-                                    {
-                                        entities.push(path.clone());
-                                    }
-                                });
-                            space_view
-                                .data_blueprint
-                                .insert_entities_according_to_hierarchy(
-                                    entities.iter(),
-                                    &space_view.space_path,
-                                );
-                            space_view.entities_determined_by_user = true;
+                            space_view.add_entity_subtree(entity_tree, spaces_info, ctx.log_db);
                         }
                     })
                     .response;
@@ -339,13 +308,4 @@ fn title_bar(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, title: &str, open: &mut boo
         }
     });
     ui.separator();
-}
-
-fn has_visualization_for_category(
-    ctx: &ViewerContext<'_>,
-    category: ViewCategory,
-    entity_path: &EntityPath,
-) -> bool {
-    let log_db = &ctx.log_db;
-    categorize_entity_path(Timeline::log_time(), log_db, entity_path).contains(category)
 }

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, InstancePath, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 
 use crate::{
     misc::{
@@ -287,6 +287,51 @@ impl SpaceView {
                 self.view_state.ui_tensor(ctx, ui, &scene);
             }
         };
+    }
+
+    /// Removes a subtree of entities from the blueprint tree.
+    ///
+    /// Ignores all entities that aren't part of the blueprint.
+    pub fn remove_entity_subtree(&mut self, tree: &EntityTree) {
+        crate::profile_function!();
+
+        tree.visit_children_recursively(&mut |path: &EntityPath| {
+            self.data_blueprint.remove_entity(path);
+            self.entities_determined_by_user = true;
+        });
+    }
+
+    /// Adds a subtree of entities to the blueprint tree and creates groups as needed.
+    ///
+    /// Ignores all entities that can't be added or are already added.
+    pub fn add_entity_subtree(
+        &mut self,
+        tree: &EntityTree,
+        spaces_info: &SpaceInfoCollection,
+        log_db: &re_data_store::LogDb,
+    ) {
+        crate::profile_function!();
+
+        let mut entities = Vec::new();
+        tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
+            let entity_categories =
+                categorize_entity_path(Timeline::log_time(), log_db, entity_path);
+
+            if entity_categories.contains(self.category)
+                && !self.data_blueprint.contains_entity(entity_path)
+                && spaces_info
+                    .is_reachable_by_transform(entity_path, &self.space_path)
+                    .is_ok()
+            {
+                entities.push(entity_path.clone());
+            }
+        });
+
+        if !entities.is_empty() {
+            self.data_blueprint
+                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_path);
+            self.entities_determined_by_user = true;
+        }
     }
 }
 
