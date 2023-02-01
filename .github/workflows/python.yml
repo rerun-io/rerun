@@ -174,10 +174,6 @@ jobs:
           version: 1.0
           execute_install_scripts: true
 
-      - name: Test fontconfig
-        run: |
-          "pkg-config" "--libs" "--cflags" "fontconfig" "fontconfig >= 2.11.1"
-
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -199,6 +195,7 @@ jobs:
           maturin-version: "0.14.10"
           target: ${{ matrix.target }}
           manylinux: auto
+          container: off
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
