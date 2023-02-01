@@ -1,8 +1,9 @@
 use egui::Vec2;
 
+use itertools::Itertools;
 use re_log_types::{
     component_types::ColorRGBA,
-    component_types::{Mat3x3, Rect2D, Vec4D},
+    component_types::{LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D},
     Pinhole, Rigid3, Transform, ViewCoordinates,
 };
 
@@ -198,6 +199,30 @@ impl DataUi for Mat3x3 {
     }
 }
 
+impl DataUi for Vec2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for Vec3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
 impl DataUi for Rect2D {
     fn data_ui(
         &self,
@@ -216,11 +241,121 @@ impl DataUi for Rect2D {
                 format!("top: {top}, left: {left}, right: {right}, bottom: {bottom}")
             }
             Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
-                format!("center: [x:{center_x}, y:{center_y}], width: {width}, height: {height}")
+                format!(
+                    "center: {}, width: {width}, height: {height}",
+                    Vec2D([*center_x, *center_y])
+                )
             }
             Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
-                format!("center: [x:{center_x}, y:{center_y}], half-width: {half_width}, half-height: {half_height}")
+                format!(
+                    "center: {}, half-width: {half_width}, half-height: {half_height}",
+                    Vec2D([*center_x, *center_y])
+                )
             }
-        }).on_hover_text(format!("area: {}", self.width() * self.height()));
+        })
+        .on_hover_text(format!("area: {}", self.width() * self.height()));
+    }
+}
+
+impl DataUi for LineStrip2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        const MAX_NUM_ELEMENTS_SINGLE_LINE: usize = 2;
+        const MAX_NUM_ELEMENTS_MULTI_LINE: usize = 10;
+
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+                let label = self
+                    .0
+                    .iter()
+                    .take(MAX_NUM_ELEMENTS_SINGLE_LINE)
+                    .map(|p| p.to_string())
+                    .join(", ");
+                let label = if self.0.len() > MAX_NUM_ELEMENTS_SINGLE_LINE {
+                    format!("{label}, ..")
+                } else {
+                    label
+                };
+                ui.label(label)
+                    .on_hover_text(format!("{} positions", self.0.len()));
+            }
+            UiVerbosity::All => {
+                egui::Grid::new("linestrip2d")
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        ui.strong("x");
+                        ui.strong("y");
+                        ui.end_row();
+                        for p in self.0.iter().take(MAX_NUM_ELEMENTS_MULTI_LINE) {
+                            ui.label(p.x().to_string());
+                            ui.label(p.y().to_string());
+                        }
+                    });
+                if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
+                    ui.label(format!(
+                        "...{} more elements available",
+                        self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
+                    ));
+                }
+            }
+        }
+    }
+}
+
+impl DataUi for LineStrip3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        const MAX_NUM_ELEMENTS_SINGLE_LINE: usize = 1;
+        const MAX_NUM_ELEMENTS_MULTI_LINE: usize = 10;
+
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+                let label = self
+                    .0
+                    .iter()
+                    .take(MAX_NUM_ELEMENTS_SINGLE_LINE)
+                    .map(|p| p.to_string())
+                    .join(", ");
+                let label = if self.0.len() > MAX_NUM_ELEMENTS_SINGLE_LINE {
+                    format!("{label}, ..")
+                } else {
+                    label
+                };
+                ui.label(label)
+                    .on_hover_text(format!("{} positions", self.0.len()));
+            }
+            UiVerbosity::All => {
+                egui::Grid::new("linestrip3d")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        ui.strong("x");
+                        ui.strong("y");
+                        ui.strong("z");
+                        ui.end_row();
+                        for p in self.0.iter().take(MAX_NUM_ELEMENTS_MULTI_LINE) {
+                            ui.label(p.x().to_string());
+                            ui.label(p.y().to_string());
+                            ui.label(p.z().to_string());
+                            ui.end_row();
+                        }
+                    });
+                if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
+                    ui.label(format!(
+                        "...{} more elements available",
+                        self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
+                    ));
+                }
+            }
+        }
     }
 }
