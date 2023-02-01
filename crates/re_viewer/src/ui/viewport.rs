@@ -364,7 +364,7 @@ impl Viewport {
         };
 
         ui.scope(|ui| {
-            // we use a scope, because egui_dock messes with the ui clip rect :facepalm:
+            // we use a scope, because egui_dock unfortunately messes with the ui clip rect
             egui_dock::DockArea::new(tree)
                 .style(re_ui::egui_dock_style(ui.style()))
                 .show_inside(ui, &mut tab_viewer);
