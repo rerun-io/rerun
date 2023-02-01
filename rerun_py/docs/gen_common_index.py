@@ -32,14 +32,9 @@ from pathlib import Path
 import griffe
 import mkdocs_gen_files
 
-rerun_pkg = griffe.load("rerun")
 
-root = Path(__file__).parent.parent.resolve()
-common_dir = Path("common2")
-
-nav = mkdocs_gen_files.Nav()
-nav["Index"] = "index.md"
-
+# This is the list of sections and functions that will be included in the index
+# for each of them.
 section_table = [
     (
         "Initialization",
@@ -71,6 +66,20 @@ section_table = [
     ),
 ]
 
+# Virual folder where we will generate the md files
+root = Path(__file__).parent.parent.resolve()
+common_dir = Path("common")
+
+# We use griffe to access docstrings
+# Lots of other potentially interesting stuff we could pull out in the future
+# This is what mkdocstrings uses under the hood
+rerun_pkg = griffe.load("rerun")
+
+# Create the nav for this section
+nav = mkdocs_gen_files.Nav()
+nav["index"] = "index.md"
+
+# This is the top-level index which will include a table-view of each sub-section
 index_path = common_dir.joinpath("index.md")
 
 
@@ -86,12 +95,12 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
 
     for (heading, func_list) in section_table:
 
-        # Turn the heading into a slug
+        # Turn the heading into a slug and add it to the nav
         md_name = make_slug(heading)
         md_file = md_name + ".md"
         nav[heading] = md_file
 
-        # Write out the contents of his section
+        # Write out the contents of this section
         write_path = common_dir.joinpath(md_file)
         with mkdocs_gen_files.open(write_path, "w") as fd:
             for func_name in func_list:
