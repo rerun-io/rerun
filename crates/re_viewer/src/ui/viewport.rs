@@ -833,30 +833,6 @@ fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
     }
 }
 
-fn space_view_options_link(
-    ctx: &mut ViewerContext<'_>,
-    selection_panel_expanded: &mut bool,
-    space_view_id: SpaceViewId,
-    ui: &mut egui::Ui,
-    text: &str,
-) {
-    let selection = Selection::SpaceView(space_view_id);
-    let is_selected = ctx.selection().contains(&selection) && *selection_panel_expanded;
-    if ui
-        .selectable_label(is_selected, text)
-        .on_hover_text("Space View options")
-        .clicked()
-    {
-        if is_selected {
-            ctx.selection_state_mut().clear_current();
-            *selection_panel_expanded = false;
-        } else {
-            ctx.set_single_selection(selection);
-            *selection_panel_expanded = true;
-        }
-    }
-}
-
 /// Shown in the right of the tab panel
 fn space_view_options_ui(
     ctx: &mut ViewerContext<'_>,
@@ -874,8 +850,6 @@ fn space_view_options_ui(
             let where_to_put_background = ui.painter().add(egui::Shape::Noop);
 
             ui.add_space(4.0);
-
-            space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
 
             if viewport.maximized == Some(space_view_id) {
                 // Show minimize-button:
