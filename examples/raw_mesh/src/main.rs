@@ -10,7 +10,8 @@
 
 use std::path::PathBuf;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
+use bytes::Bytes;
 use rerun::{
     reexports::{re_log, re_memory::AccountingAllocator},
     EntityPath, LogMsg, Mesh3D, MeshId, MsgBundle, MsgId, RawMesh3D, Session, Time, TimePoint,
@@ -154,8 +155,13 @@ fn main() -> anyhow::Result<()> {
     // give us back our actual CLI flags.
     // The name of the gltf sample to load should then come from there.
 
-    // Load glTF asset
-    let bytes = download_gltf_sample("Buggy").unwrap();
+    // Read glTF asset
+    let args = std::env::args().collect::<Vec<_>>();
+    let bytes = if let Some(path) = args.get(1) {
+        Bytes::from(std::fs::read(path)?)
+    } else {
+        bail!("Usage: {} <path_to_mesh>", args[0]);
+    };
 
     // Parse glTF asset
     let (doc, buffers, _) = gltf::import_slice(bytes).unwrap();
@@ -296,35 +302,4 @@ fn load_gltf<'data>(
                 .collect(),
         }
     })
-}
-
-// --- Assets ---
-
-// TODO(cmc): This needs to be implemented and exposed by the SDK (probably behind a feature flag),
-// and can probably be re-used by the Python examples too.
-fn download_gltf_sample(name: impl AsRef<str>) -> anyhow::Result<bytes::Bytes> {
-    const GLTF_SAMPLE_URL: &str = "https://github.com/KhronosGroup/glTF-Sample-Models/blob/db9ff67c1116cfe28eb36320916bccd8c4127cc1/2.0/_NAME_/glTF-Binary/_NAME_.glb?raw=true";
-
-    let url = GLTF_SAMPLE_URL.replace("_NAME_", name.as_ref());
-
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("dataset/samples");
-    let path = dir.join(format!("{}.glb", name.as_ref().to_lowercase()));
-
-    std::fs::create_dir_all(&dir)
-        .with_context(|| format!("failed to create asset directory: {dir:?}"))?;
-
-    if let Ok(bytes) = std::fs::read(&path) {
-        re_log::info!(asset = ?path, "loading asset from disk cache...");
-        Ok(bytes::Bytes::from(bytes))
-    } else {
-        re_log::info!(asset = ?path, "loading asset from network...");
-        let res = reqwest::blocking::get(&url)
-            .with_context(|| format!("failed to fetch asset: {url}"))?;
-        let bytes = res
-            .bytes()
-            .with_context(|| format!("failed to fetch asset: {url}"))?;
-        std::fs::write(&path, &bytes)
-            .with_context(|| format!("failed to write asset to disk: {path:?}"))?;
-        Ok(bytes)
-    }
 }
