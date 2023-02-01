@@ -39,7 +39,7 @@ impl<'a> ViewerContext<'a> {
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
         let selection = Selection::MsgId(msg_id);
         let response = ui
-            .selectable_label(self.selection().contains(&selection), msg_id.to_string())
+            .selectable_label(self.selection().contains(&selection), msg_id.short_string())
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
