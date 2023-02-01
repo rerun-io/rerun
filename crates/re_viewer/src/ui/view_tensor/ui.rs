@@ -708,25 +708,47 @@ fn image_ui(
 
             painter.set_clip_rect(egui::Rect::EVERYTHING); // Allow painting axis names outside of our bounds!
 
-            // TOOD(emilk): put X-axis at Y=0, and Y-axis at X=0
+            // We make sure that the label for the X axis is always at Y=0,
+            // and that the label for the Y axis is always at X=0, no matter what inversions.
+            //
+            // For instance, with origin in the top right:
+            //
+            // foo ⬅
+            // ..........
+            // ..........
+            // ..........
+            // .......... ↓
+            // .......... b
+            // .......... a
+            // .......... r
 
             // Label for X axis:
             {
                 let text_background = painter.add(egui::Shape::Noop);
                 let text_rect = if invert_width {
                     // On left, pointing left:
+                    let (pos, align) = if invert_height {
+                        (image_rect.left_bottom(), Align2::LEFT_TOP)
+                    } else {
+                        (image_rect.left_top(), Align2::LEFT_BOTTOM)
+                    };
                     painter.text(
-                        image_rect.left_top(),
-                        Align2::LEFT_BOTTOM,
+                        pos,
+                        align,
                         format!("{width_name} ⬅"),
                         font_id.clone(),
                         text_color,
                     )
                 } else {
                     // On right, pointing right:
+                    let (pos, align) = if invert_height {
+                        (image_rect.right_bottom(), Align2::RIGHT_TOP)
+                    } else {
+                        (image_rect.right_top(), Align2::RIGHT_BOTTOM)
+                    };
                     painter.text(
-                        image_rect.right_top(),
-                        Align2::RIGHT_BOTTOM,
+                        pos,
+                        align,
                         format!("➡ {width_name}"),
                         font_id.clone(),
                         text_color,
@@ -746,7 +768,11 @@ fn image_ui(
                     let galley =
                         painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
                     let galley_size = galley.size();
-                    let pos = image_rect.left_top() - egui::vec2(galley_size.y, -galley_size.x);
+                    let pos = if invert_width {
+                        image_rect.right_top() - egui::vec2(0.0, -galley_size.x)
+                    } else {
+                        image_rect.left_top() - egui::vec2(galley_size.y, -galley_size.x)
+                    };
                     painter.add(TextShape {
                         pos,
                         galley,
@@ -763,7 +789,11 @@ fn image_ui(
                     let galley =
                         painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
                     let galley_size = galley.size();
-                    let pos = image_rect.left_bottom() - egui::vec2(galley_size.y, 0.0);
+                    let pos = if invert_width {
+                        image_rect.right_bottom()
+                    } else {
+                        image_rect.left_bottom() - egui::vec2(galley_size.y, 0.0)
+                    };
                     painter.add(TextShape {
                         pos,
                         galley,
