@@ -27,15 +27,16 @@ The Summary should look like:
 """
 
 import re
+import sys
 from pathlib import Path
-from typing import Final
+from typing import Final, List, Tuple
 
 import griffe
 import mkdocs_gen_files
 
 # This is the list of sections and functions that will be included in the index
 # for each of them.
-SECTION_TABLE: Final[list[tuple[str, list[str]]]] = [
+SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
     (
         "Initialization",
         ["init", "set_recording_id", "connect", "spawn_and_connect"],
@@ -73,7 +74,9 @@ common_dir = Path("common")
 # We use griffe to access docstrings
 # Lots of other potentially interesting stuff we could pull out in the future
 # This is what mkdocstrings uses under the hood
-rerun_pkg = griffe.load("rerun")
+search_paths = [path for path in sys.path if path]  # eliminate empty path
+search_paths.insert(0, root.as_posix())
+rerun_pkg = griffe.load("rerun", search_paths=search_paths)
 
 # Create the nav for this section
 nav = mkdocs_gen_files.Nav()
