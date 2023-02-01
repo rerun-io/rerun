@@ -23,7 +23,7 @@ pub mod mesh_vertices {
 
     /// Mesh vertex as used in gpu residing vertex buffers.
     #[repr(C, packed)]
-    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MeshVertexData {
         pub normal: glam::Vec3, // TODO(andreas): Compress. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
         pub texcoord: glam::Vec2,

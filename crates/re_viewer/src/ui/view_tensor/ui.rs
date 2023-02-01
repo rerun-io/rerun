@@ -6,7 +6,7 @@ use half::f16;
 use ndarray::{Axis, Ix2};
 
 use re_log_types::{component_types, ClassicTensor, TensorDataType};
-use re_tensor_ops::dimension_mapping::DimensionMapping;
+use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 use super::dimension_mapping_ui;
 
@@ -45,24 +45,32 @@ impl ViewTensorState {
 
     pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(tensor) = &self.tensor {
-            ui.collapsing("Dimension Mapping", |ui| {
-                crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
-                ui.add_space(12.0);
+            egui::CollapsingHeader::new("Dimension Mapping")
+                .default_open(true)
+                .show(ui, |ui| {
+                    crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
+                    ui.add_space(12.0);
 
-                dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
+                    let default_mapping = DimensionMapping::create(tensor.shape());
+                    if ui
+                        .add_enabled(
+                            self.dimension_mapping != default_mapping,
+                            egui::Button::new("Reset mapping"),
+                        )
+                        .on_disabled_hover_text("The default is already set up.")
+                        .on_hover_text("Reset dimension mapping to the default.")
+                        .clicked()
+                    {
+                        self.dimension_mapping = DimensionMapping::create(tensor.shape());
+                    }
 
-                let default_mapping = DimensionMapping::create(tensor.shape());
-                if ui
-                    .add_enabled(
-                        self.dimension_mapping != default_mapping,
-                        egui::Button::new("Auto-map"),
-                    )
-                    .on_disabled_hover_text("The default is already set up")
-                    .clicked()
-                {
-                    self.dimension_mapping = DimensionMapping::create(tensor.shape());
-                }
-            });
+                    dimension_mapping_ui(
+                        ctx.re_ui,
+                        ui,
+                        &mut self.dimension_mapping,
+                        tensor.shape(),
+                    );
+                });
         }
 
         self.texture_settings.show(ui);
@@ -579,11 +587,11 @@ fn selected_tensor_slice<'a, T: Copy>(
         .height
         .into_iter()
         .chain(dim_mapping.width.into_iter())
-        .chain(dim_mapping.selectors.iter().copied())
+        .chain(dim_mapping.selectors.iter().map(|s| s.dim_idx))
         .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
 
-    for dim_idx in &dim_mapping.selectors {
+    for DimensionSelector { dim_idx, .. } in &dim_mapping.selectors {
         let selector_value = state
             .selector_values
             .get(dim_idx)
@@ -778,13 +786,17 @@ fn image_ui(
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &ClassicTensor) {
-    for &dim_idx in &state.dimension_mapping.selectors {
-        let dim = &tensor.shape()[dim_idx];
+    for selector in &state.dimension_mapping.selectors {
+        if !selector.visible {
+            continue;
+        }
+
+        let dim = &tensor.shape()[selector.dim_idx];
         let size = dim.size;
 
         let selector_value = state
             .selector_values
-            .entry(dim_idx)
+            .entry(selector.dim_idx)
             .or_insert_with(|| size / 2); // start in the middle
 
         if size > 0 {
@@ -793,11 +805,13 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
 
         if size > 1 {
             ui.horizontal(|ui| {
-                if let Some(name) = &dim.name {
-                    ui.label(format!("{name}:"));
-                } else {
-                    ui.label(format!("dimension {dim_idx}:"));
-                }
+                let name = dim
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| selector.dim_idx.to_string());
+
+                let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
+                ui.label(format!("{name}:")).on_hover_text(&slider_tooltip);
 
                 // If the range is big (say, 2048) then we would need
                 // a slider that is 2048 pixels wide to get the good precision.
@@ -807,7 +821,9 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                         .clamp_range(0..=size - 1)
                         .speed(0.5),
                 )
-                .on_hover_text("Drag to precisely control the slice index");
+                .on_hover_text(format!(
+                    "Drag to precisely control the slice index of the {name} dimension"
+                ));
 
                 // Make the slider as big as needed:
                 const MIN_SLIDER_WIDTH: f32 = 64.0;
@@ -815,7 +831,8 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                     ui.spacing_mut().slider_width = (size as f32 * 4.0)
                         .at_least(MIN_SLIDER_WIDTH)
                         .at_most(ui.available_width());
-                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false));
+                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
+                        .on_hover_text(slider_tooltip);
                 }
             });
         }

@@ -86,21 +86,16 @@ impl CamerasPart {
             return;
         };
 
-        // Actual primitives are generated later.
-        // Currently, we need information about viewport to display it correctly.
-        // TODO(andreas): Would be great if we add all the lines etc. right away!
-        //                  Let's attempt this as part of
-        //                  https://github.com/rerun-io/rerun/issues/681 (Improve camera frustum length heuristic & editability)
-        //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
+        let frustum_length = props.pinhole_image_plane_distance(&pinhole);
+
         scene.space_cameras.push(SpaceCamera3D {
             entity_path: entity_path.clone(),
             instance_path_hash,
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
+            picture_plane_distance: Some(frustum_length),
         });
-
-        let frustum_length = props.pinhole_image_plane_distance(&pinhole);
 
         // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
         let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);

@@ -1,12 +1,14 @@
-from typing import Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
 from rerun.components.arrow import Arrow3DArray
 from rerun.components.color import ColorRGBAArray
+from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -23,6 +25,7 @@ def log_arrow(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -48,28 +51,39 @@ def log_arrow(
         An optional text to show beside the arrow.
     width_scale
         An optional scaling factor, default=1.0.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless
         The entity is not time-dependent, and will be visible at any time point.
 
     """
-    comps = {}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if origin is not None:
         if vector is None:
             raise TypeError("Must provide both origin and vector")
         origin = np.require(origin, dtype="float32")
         vector = np.require(vector, dtype="float32")
-        comps["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
+        instanced["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if label:
-        comps["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = LabelArray.new([label])
 
     if width_scale:
         radii = _normalize_radii([width_scale / 2])
-        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
