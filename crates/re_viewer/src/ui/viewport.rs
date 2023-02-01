@@ -384,7 +384,6 @@ impl Viewport {
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
-        selection_panel_expanded: &mut bool,
     ) {
         if let Some(window) = &mut self.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
@@ -476,15 +475,7 @@ impl Viewport {
 
             for (space_view_id, tab_bar_rect) in tab_bars {
                 // rect/viewport can be invalid for the first frame
-                space_view_options_ui(
-                    ctx,
-                    ui,
-                    self,
-                    tab_bar_rect,
-                    selection_panel_expanded,
-                    space_view_id,
-                    num_space_views,
-                );
+                space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
             }
         }
     }
@@ -839,7 +830,6 @@ fn space_view_options_ui(
     ui: &mut egui::Ui,
     viewport: &mut Viewport,
     tab_bar_rect: egui::Rect,
-    selection_panel_expanded: &mut bool,
     space_view_id: SpaceViewId,
     num_space_views: usize,
 ) {
