@@ -32,6 +32,9 @@ documentation = "https://github.com/rerun-io/rerun"
 homepage = "https://www.rerun.io/"
 repository = "https://github.com/rerun-io/rerun"
 
+[project.scripts]
+rerun = "rerun.__main__:main"
+
 [tool.black]
 line-length = 120
 target-version = ["py38"]

@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  py-lint:
+  lint:
     name: Python lints (black, mypy, flake8)
     runs-on: ubuntu-latest
     steps:
@@ -49,10 +49,11 @@ jobs:
   # ---------------------------------------------------------------------------
 
   macos:
-    # This build is really slow (>30 mins); uses up a lot of CI minutes
     name: Build Python Wheels for MacOS
     runs-on: macos-latest
-    #if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    # This build is really slow (>30 mins); uses up a lot of CI minutes
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    needs: [ lint ]
     strategy:
       matrix:
         target: [x64, universal2]
@@ -85,7 +86,6 @@ jobs:
             --manifest-path rerun_py/Cargo.toml
             --release
             --out dist
-            --sdist
 
       - name: Build wheel - universal2
         if: matrix.target == 'universal2'
@@ -116,9 +116,9 @@ jobs:
   windows:
     name: Build Python Wheels for Windows
     runs-on: windows-latest-8-cores
+    needs: [ lint ]
     strategy:
       matrix:
-        #target: [x64, x86]
         target: [x64]
     steps:
       - uses: actions/checkout@v3
@@ -163,7 +163,7 @@ jobs:
   linux:
     name: Build Python Wheels for Linux
     runs-on: ubuntu-latest-16-cores
-
+    needs: [ lint ]
     steps:
       - uses: actions/checkout@v3
 
@@ -199,6 +199,7 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
+            --sdist
             --out dist
 
       - name: Install built wheel
@@ -223,7 +224,7 @@ jobs:
   pre-release:
     name: Pre Release
     needs: [ macos, windows, linux ]
-    #if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: "ubuntu-latest"
     steps:
       - name: Download Artifact
@@ -239,14 +240,15 @@ jobs:
           automatic_release_tag: "latest"
           prerelease: true
           title: "Development Build"
-          files: dist/*
+          files: dist/* CHANGELOG.md
 
   # ---------------------------------------------------------------------------
 
-  release:
+  # This job is run on tags starting with "v", e.g., "v0.1.0"
+  tagged-release:
     name: Release
     runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [ macos, windows, linux ]
     steps:
       - name: Download Artifact
@@ -254,6 +256,13 @@ jobs:
         with:
           name: wheels
           path: dist
+
+      - name: Github Release
+        uses: "marvinpinto/action-automatic-releases@1.2.1"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: dist/* CHANGELOG.md
 
       - name: Publish to PyPI
         env:
