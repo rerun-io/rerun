@@ -14,7 +14,8 @@ impl DataUi for ComponentWithInstances {
 
         let max_elems = match verbosity {
             crate::ui::UiVerbosity::Small | crate::ui::UiVerbosity::MaxHeight(_) => 1,
-            crate::ui::UiVerbosity::Large => 20,
+            crate::UiVerbosity::Reduced => 10,
+            crate::ui::UiVerbosity::All => 20,
         };
 
         match self.iter_instance_keys() {
