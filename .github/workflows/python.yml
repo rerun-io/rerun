@@ -49,9 +49,11 @@ jobs:
   # ---------------------------------------------------------------------------
 
   macos:
+    # This build is really slow (>30 mins); uses up a lot of CI minutes
     name: Build Python Wheels for MacOS
     runs-on: macos-latest
-    if: "startsWith(github.ref, 'refs/tags/')" # slow; uses up a lot of CI minutes
+    #if: "startsWith(github.ref, 'refs/tags/')"
+    #if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         target: [x64, universal2]
@@ -209,7 +211,8 @@ jobs:
 
       - name: Run Car example
         run: |
-          pip install -r examples/car/requirements.txt && ./examples/car/main.py --headless
+          pip install -r examples/car/requirements.txt
+          ./examples/car/main.py --headless
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -230,6 +233,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: dist
 
       - name: Github Release
         uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -252,6 +256,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: dist
 
       - name: Publish to PyPI
         env:
