@@ -3,13 +3,19 @@ build-backend = "maturin"
 requires = ["maturin>=0.14.0,<0.15"]
 
 [project]
-classifiers = ["Programming Language :: Rust", "Programming Language :: Python :: Implementation :: CPython", "Programming Language :: Python :: Implementation :: PyPy", "Development Status :: 3 - Alpha", "Topic :: Scientific/Engineering :: Artificial Intelligence", "Topic :: Scientific/Engineering :: Visualization"]
+classifiers = [
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Development Status :: 3 - Alpha",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
 dependencies = ["numpy>=1.23", "pyarrow==10.0.1"]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
 requires-python = ">=3.8"
-version = "0.1.0+4c3e31a6"
 
 [[project.authors]]
 email = "opensource@rerun.io"
