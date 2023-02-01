@@ -699,8 +699,11 @@ fn image_ui(
 
             painter.set_clip_rect(egui::Rect::EVERYTHING); // Allow panting axis names outside of our bounds!
 
-            // Label for X axis, on top:
+            // TOOD(emilk): put X-axis at Y=0, and Y-axis at X=0
+
+            // Label for X axis:
             if invert_width {
+                // On left, pointing left:
                 painter.text(
                     image_rect.left_top(),
                     Align2::LEFT_BOTTOM,
@@ -709,6 +712,7 @@ fn image_ui(
                     text_color,
                 );
             } else {
+                // On right, pointing right:
                 painter.text(
                     image_rect.right_top(),
                     Align2::RIGHT_BOTTOM,
@@ -718,8 +722,9 @@ fn image_ui(
                 );
             }
 
-            // Label for Y axis, on the left:
+            // Label for Y axis:
             if invert_height {
+                // On top, pointing up:
                 let galley =
                     painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
                 painter.add(TextShape {
@@ -730,6 +735,7 @@ fn image_ui(
                     override_text_color: None,
                 });
             } else {
+                // On bottom, pointing down:
                 let galley =
                     painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
                 painter.add(TextShape {
