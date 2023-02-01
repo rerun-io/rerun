@@ -44,7 +44,6 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             world_from_mesh = node_data[0]
             t = trimesh.transformations.translation_from_matrix(world_from_mesh)
             q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
-            q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
             # `trimesh` stores quaternions in `wxyz` format, we need `xyzw`
             q = np.array([q[1], q[2], q[3], q[0]])
             rr.log_rigid3(path, parent_from_child=(t, q))
