@@ -351,7 +351,7 @@ fn test_mesh_roundtrip() {
         })];
         let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
         let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
-        assert_eq!(dbg!(mesh_in), dbg!(mesh_out));
+        assert_eq!(mesh_in, mesh_out);
     }
 
     // Raw
