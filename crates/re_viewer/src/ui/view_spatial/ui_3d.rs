@@ -602,45 +602,42 @@ fn show_projections_from_2d_space(
     scene_bbox_accum: &BoundingBox,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = ctx.selection_state().hovered_space() {
-        let mut point_batch = scene
-            .primitives
-            .points
-            .batch("projection from 2d hit points");
+        let mut line_batch = scene.primitives.line_strips.batch("picking ray");
 
         for cam in &scene.space_cameras {
             if &cam.entity_path == space_2d {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
-                    // TODO(emilk): better visualization of a ray
-                    let mut hit_pos = None;
-                    if pos.z.is_finite() && pos.z > 0.0 {
-                        if let Some(world_from_image) = cam.world_from_image() {
-                            let pos = world_from_image
-                                .transform_point3(glam::vec3(pos.x, pos.y, 1.0) * pos.z);
-                            hit_pos = Some(pos);
-                        }
-                    }
-                    let length = if let Some(hit_pos) = hit_pos {
-                        hit_pos.distance(cam.position())
+                    // Render a thick line to the actual z value if any and a weaker one as an extension
+                    // If we don't have a z value, we only render the thick one.
+                    let thick_ray_length = if pos.z.is_finite() && pos.z > 0.0 {
+                        Some(pos.z)
                     } else {
-                        4.0 * scene_bbox_accum.half_size().length() // should be long enough
+                        cam.picture_plane_distance
                     };
+
                     let origin = ray.point_along(0.0);
-                    let end = ray.point_along(length);
-                    let radius = Size::new_points(1.5);
+                    // No harm in making this ray _very_ long. (Infinite messes with things though!)
+                    let fallback_ray_end = ray.point_along(scene_bbox_accum.size().length() * 10.0);
 
-                    scene
-                        .primitives
-                        .line_strips
-                        .batch("ray")
-                        .add_segment(origin, end)
-                        .radius(radius);
-
-                    if let Some(pos) = hit_pos {
-                        // Show where the ray hits the depth map:
-                        point_batch
-                            .add_point(pos)
-                            .radius(radius * 3.0)
-                            .color(egui::Color32::WHITE);
+                    if let Some(line_length) = thick_ray_length {
+                        let main_ray_end = ray.point_along(line_length);
+                        line_batch
+                            .add_segment(origin, main_ray_end)
+                            .color(egui::Color32::WHITE)
+                            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+                            .radius(Size::new_points(1.0));
+                        line_batch
+                            .add_segment(main_ray_end, fallback_ray_end)
+                            .color(egui::Color32::DARK_GRAY)
+                            // TODO(andreas): Make this dashed.
+                            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+                            .radius(Size::new_points(0.5));
+                    } else {
+                        line_batch
+                            .add_segment(origin, fallback_ray_end)
+                            .color(egui::Color32::WHITE)
+                            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+                            .radius(Size::new_points(1.0));
                     }
                 }
             }
