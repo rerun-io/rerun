@@ -3,12 +3,10 @@
 //!
 //! Usage:
 //! ```
-//! cargo run -p raw_mesh
+//! cargo run -p raw_mesh <path_to_gltf_scene>
 //! ```
 
 #![allow(clippy::doc_markdown)]
-
-use std::path::PathBuf;
 
 use anyhow::{bail, Context};
 use bytes::Bytes;
@@ -160,7 +158,7 @@ fn main() -> anyhow::Result<()> {
     let bytes = if let Some(path) = args.get(1) {
         Bytes::from(std::fs::read(path)?)
     } else {
-        bail!("Usage: {} <path_to_mesh>", args[0]);
+        bail!("Usage: {} <path_to_gltf_scene>", args[0]);
     };
 
     // Parse glTF asset
@@ -233,8 +231,6 @@ impl GltfNode {
 
 fn node_name(node: &gltf::Node<'_>) -> String {
     node.name()
-        // TODO(cmc): now that index-paths and instance-keys are decorrelated, maybe we can use
-        // those here.
         .map_or_else(|| format!("node_#{}", node.index()), ToOwned::to_owned)
 }
 
@@ -281,8 +277,6 @@ fn load_gltf<'data>(
     doc.scenes().map(move |scene| {
         let name = scene
             .name()
-            // TODO(cmc): now that index-paths and instance-keys are decorrelated, maybe we can use
-            // those here.
             .map_or_else(|| format!("scene_#{}", scene.index()), ToOwned::to_owned);
 
         re_log::info!(scene = name, "parsing glTF scene");
