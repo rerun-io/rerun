@@ -607,7 +607,9 @@ fn show_projections_from_2d_space(
         for cam in &scene.space_cameras {
             if &cam.entity_path == space_2d {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
-                    let line_length = if pos.z.is_finite() && pos.z > 0.0 {
+                    // Render a thick line to the actual z value if any and a weaker one as an extension
+                    // If we don't have a z value, we only render the thick one.
+                    let thick_ray_length = if pos.z.is_finite() && pos.z > 0.0 {
                         Some(pos.z)
                     } else {
                         cam.picture_plane_distance
@@ -617,7 +619,7 @@ fn show_projections_from_2d_space(
                     // No harm in making this ray _very_ long. (Infinite messes with things though!)
                     let fallback_ray_end = ray.point_along(scene_bbox_accum.size().length() * 10.0);
 
-                    if let Some(line_length) = line_length {
+                    if let Some(line_length) = thick_ray_length {
                         let main_ray_end = ray.point_along(line_length);
                         line_batch
                             .add_segment(origin, main_ray_end)
