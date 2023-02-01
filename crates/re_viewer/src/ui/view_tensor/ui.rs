@@ -722,6 +722,8 @@ fn image_ui(
             // .......... a
             // .......... r
 
+            // TODO(emilk): draw actual arrows behind the text instead of the ugly emoji arrows
+
             // Label for X axis:
             {
                 let text_background = painter.add(egui::Shape::Noop);
