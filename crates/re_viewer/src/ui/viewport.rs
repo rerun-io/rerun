@@ -384,7 +384,6 @@ impl Viewport {
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
-        selection_panel_expanded: &mut bool,
     ) {
         if let Some(window) = &mut self.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
@@ -476,15 +475,7 @@ impl Viewport {
 
             for (space_view_id, tab_bar_rect) in tab_bars {
                 // rect/viewport can be invalid for the first frame
-                space_view_options_ui(
-                    ctx,
-                    ui,
-                    self,
-                    tab_bar_rect,
-                    selection_panel_expanded,
-                    space_view_id,
-                    num_space_views,
-                );
+                space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
             }
         }
     }
@@ -800,7 +791,23 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .space_views
             .get_mut(tab)
             .expect("Should have been populated beforehand");
-        space_view.display_text()
+
+        let mut text = space_view.display_text();
+
+        if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
+            // Show that it is selected:
+            let egui_ctx = &self.ctx.re_ui.egui_ctx;
+            let selection_bg_color = egui_ctx.style().visuals.selection.bg_fill;
+            text = text.background_color(selection_bg_color);
+        }
+
+        text
+    }
+
+    fn on_tab_button(&mut self, tab: &mut Self::Tab, response: &egui::Response) {
+        if response.clicked() {
+            self.ctx.set_single_selection(Selection::SpaceView(*tab));
+        }
     }
 }
 
@@ -817,37 +824,12 @@ fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
     }
 }
 
-fn space_view_options_link(
-    ctx: &mut ViewerContext<'_>,
-    selection_panel_expanded: &mut bool,
-    space_view_id: SpaceViewId,
-    ui: &mut egui::Ui,
-    text: &str,
-) {
-    let selection = Selection::SpaceView(space_view_id);
-    let is_selected = ctx.selection().contains(&selection) && *selection_panel_expanded;
-    if ui
-        .selectable_label(is_selected, text)
-        .on_hover_text("Space View options")
-        .clicked()
-    {
-        if is_selected {
-            ctx.selection_state_mut().clear_current();
-            *selection_panel_expanded = false;
-        } else {
-            ctx.set_single_selection(selection);
-            *selection_panel_expanded = true;
-        }
-    }
-}
-
 /// Shown in the right of the tab panel
 fn space_view_options_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     viewport: &mut Viewport,
     tab_bar_rect: egui::Rect,
-    selection_panel_expanded: &mut bool,
     space_view_id: SpaceViewId,
     num_space_views: usize,
 ) {
@@ -858,8 +840,6 @@ fn space_view_options_ui(
             let where_to_put_background = ui.painter().add(egui::Shape::Noop);
 
             ui.add_space(4.0);
-
-            space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
 
             if viewport.maximized == Some(space_view_id) {
                 // Show minimize-button:
