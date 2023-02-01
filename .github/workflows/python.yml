@@ -171,7 +171,7 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         with:
           packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
-          version: 1.0
+          version: 1.1
           execute_install_scripts: true
 
       - name: Set up cargo cache
