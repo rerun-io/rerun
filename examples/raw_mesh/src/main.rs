@@ -274,11 +274,6 @@ fn node_primitives<'data>(
     })
 }
 
-// TODO(cmc): This is unfortunately _not_ the right way to load a glTF scene.
-// We need to load the the default skinning transforms if they exist, and traverse the scene
-// differently in that case.
-// It's apparently very common for glTF meshes in the wild to define default skinning transforms
-// for their initial orientation.
 fn load_gltf<'data>(
     doc: &'data gltf::Document,
     buffers: &'data [gltf::buffer::Data],

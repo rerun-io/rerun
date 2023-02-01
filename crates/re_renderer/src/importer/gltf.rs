@@ -16,11 +16,6 @@ use crate::{
 };
 
 /// Loads both gltf and glb into the mesh & texture manager.
-//
-// TODO(cmc): We need to load the the default skinning transforms if they exist, and traverse
-// the scene differently in that case.
-// It's apparently very common for glTF meshes in the wild to define default skinning transforms
-// for their initial orientation.
 pub fn load_gltf_from_buffer(
     mesh_name: &str,
     buffer: &[u8],
