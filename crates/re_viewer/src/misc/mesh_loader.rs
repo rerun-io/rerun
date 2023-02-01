@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext};
 
@@ -101,10 +102,8 @@ impl LoadedMesh {
             normals,
         } = raw_mesh;
 
-        let positions = positions
-            .chunks_exact(3)
-            .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))
-            .collect::<Vec<_>>();
+        let positions: Vec<glam::Vec3> =
+            bytemuck::try_cast_vec(positions.clone()).map_err(|(err, _)| anyhow!(err))?;
         let nb_positions = positions.len();
 
         let indices = if let Some(indices) = indices {

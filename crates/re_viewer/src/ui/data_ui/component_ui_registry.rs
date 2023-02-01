@@ -211,7 +211,7 @@ impl DataUi for re_log_types::component_types::RawMesh3D {
     ) {
         ui.label(format!(
             "mesh ({} triangles)",
-            re_format::format_number(self.positions.len() / 3)
+            re_format::format_number(self.num_triangles())
         ));
     }
 }

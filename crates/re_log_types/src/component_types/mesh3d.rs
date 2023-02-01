@@ -82,6 +82,8 @@ impl ArrowDeserialize for MeshId {
 
 // TODO(cmc): Let's move all the RefCounting stuff to the top-level.
 
+/// A raw "triangle soup" mesh.
+///
 /// ```
 /// # use re_log_types::component_types::RawMesh3D;
 /// # use arrow2_convert::field::ArrowField;
@@ -102,19 +104,50 @@ impl ArrowDeserialize for MeshId {
 ///     ]),
 /// );
 /// ```
-// TODO(cmc): This currently doesn't specify nor checks in any way that it expects triangle lists.
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
     pub mesh_id: MeshId,
+    /// The flattened positions array of this mesh.
+    ///
+    /// Meshes are always triangle lists, i.e. the length of this vector should always be
+    /// divisible by 3.
     pub positions: Vec<f32>,
+    /// Optionally, the flattened indices array for this mesh.
+    ///
+    /// Meshes are always triangle lists, i.e. the length of this vector should always be
+    /// divisible by 3.
     pub indices: Option<Vec<u32>>,
+    /// Optionally, the flattened normals array for this mesh.
+    ///
+    /// If specified, this must match the length of `Self::positions`.
     pub normals: Option<Vec<f32>>,
     // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
     // hard to see anything with complex enough meshes (and hovering doesn't really help
     // when everything's white).
     // pub colors: Option<Vec<u8>>,
     // pub texcoords: Option<Vec<f32>>,
+}
+
+impl RawMesh3D {
+    pub fn sanity_check(&self) {
+        assert!(self.positions.len() % 3 == 0);
+        if let Some(indices) = &self.indices {
+            assert!(indices.len() % 3 == 0);
+        }
+        if let Some(normals) = &self.normals {
+            assert!(normals.len() == self.positions.len());
+        }
+    }
+
+    pub fn num_triangles(&self) -> usize {
+        // TODO(cmc): will need to properly expose actual mesh-related errors all the way down to
+        // the SDKs soon, but right now this will do.
+        #[cfg(debug_assertions)]
+        self.sanity_check();
+
+        self.positions.len() / 3
+    }
 }
 
 // ----------------------------------------------------------------------------
