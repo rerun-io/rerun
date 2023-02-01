@@ -167,8 +167,7 @@ fn add_entities_line_ui(
         };
         let add_info = entities_add_info.get(entity_path).unwrap();
 
-        // Use "can_show_self_or_descendant" since we want this enabled if there are relevant children.
-        ui.add_enabled_ui(add_info.can_show_self_or_descendant, |ui| {
+        ui.add_enabled_ui(add_info.can_add_self_or_descendant.is_compatible(), |ui| {
             let widget_text = if entity_path == &space_view.space_path {
                 egui::RichText::new(name).strong()
             } else {
@@ -196,44 +195,94 @@ fn add_entities_line_ui(
                     space_view.remove_entity_subtree(entity_tree);
                 }
             } else {
-                let response = ui
-                    .add_enabled_ui(add_info.can_add_self_or_descendant, |ui| {
-                        if ctx
-                            .re_ui
-                            .small_icon_button(ui, &re_ui::icons::ADD)
-                            .clicked()
-                        {
+                ui.add_enabled_ui(
+                    add_info
+                        .can_add_self_or_descendant
+                        .is_compatible_and_missing(),
+                    |ui| {
+                        let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
+                        if response.clicked() {
                             space_view.add_entity_subtree(entity_tree, spaces_info, ctx.log_db);
                         }
-                    })
-                    .response;
 
-                if add_info.can_add_self_or_descendant {
-                    if add_info.cannot_show_reason.is_some() {
-                        response.on_hover_text("Add descendants of this Entity to the Space View");
-                    } else {
-                        response.on_hover_text(
-                            "Add this Entity and all its descendants to the Space View",
-                        );
-                    }
-                } else if let Some(cannot_show_reason) = &add_info.cannot_show_reason {
-                    response.on_hover_text(cannot_show_reason);
-                }
+                        if add_info
+                            .can_add_self_or_descendant
+                            .is_compatible_and_missing()
+                        {
+                            if add_info.can_add.is_compatible_and_missing() {
+                                response.on_hover_text(
+                                    "Add this Entity and all its descendants to the Space View",
+                                );
+                            } else {
+                                response.on_hover_text(
+                                    "Add descendants of this Entity to the Space View",
+                                );
+                            }
+                        } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
+                            response.on_disabled_hover_text(reason);
+                        }
+                    },
+                );
             }
         });
     });
 }
 
+/// Describes if an entity path can be added to a space view.
+#[derive(Clone, PartialEq, Eq)]
+enum CanAddToSpaceView {
+    Compatible { already_added: bool },
+    No { reason: String },
+}
+
+impl Default for CanAddToSpaceView {
+    fn default() -> Self {
+        Self::Compatible {
+            already_added: false,
+        }
+    }
+}
+
+impl CanAddToSpaceView {
+    /// Can be generally added but space view might already have this element.
+    pub fn is_compatible(&self) -> bool {
+        match self {
+            CanAddToSpaceView::Compatible { .. } => true,
+            CanAddToSpaceView::No { .. } => false,
+        }
+    }
+
+    /// Can be added and spaceview doesn't have it already.
+    pub fn is_compatible_and_missing(&self) -> bool {
+        self == &CanAddToSpaceView::Compatible {
+            already_added: false,
+        }
+    }
+
+    pub fn join(&self, other: &CanAddToSpaceView) -> CanAddToSpaceView {
+        match self {
+            CanAddToSpaceView::Compatible { already_added } => {
+                let already_added = if let CanAddToSpaceView::Compatible {
+                    already_added: already_added_other,
+                } = other
+                {
+                    *already_added && *already_added_other
+                } else {
+                    *already_added
+                };
+                CanAddToSpaceView::Compatible { already_added }
+            }
+            CanAddToSpaceView::No { .. } => other.clone(),
+        }
+    }
+}
+
 #[derive(Default)]
 struct EntityAddInfo {
-    _categories: enumset::EnumSet<ViewCategory>, // TODO(andreas): Should use this to display icons
-    cannot_show_reason: Option<String>,
-
-    /// True if any item in the tree at this entity is allowed to be added to the space view.
-    can_show_self_or_descendant: bool,
-
-    /// Like `can_show_self_or_descendant` but requires self or any child to be not already part of the tree.
-    can_add_self_or_descendant: bool,
+    #[allow(dead_code)]
+    categories: enumset::EnumSet<ViewCategory>,
+    can_add: CanAddToSpaceView,
+    can_add_self_or_descendant: CanAddToSpaceView,
 }
 
 fn create_entity_add_info(
@@ -246,42 +295,44 @@ fn create_entity_add_info(
 
     tree.visit_children_recursively(&mut |entity_path| {
         let categories = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
-        let cannot_show_reason = if categories.contains(space_view.category) {
-            spaces_info
-                .is_reachable_by_transform(entity_path, &space_view.space_path)
-                .map_err(|reason| reason.to_string())
-                .err()
+        let can_add: CanAddToSpaceView = if categories.contains(space_view.category) {
+            match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_path) {
+                Ok(()) => CanAddToSpaceView::Compatible {
+                    already_added: space_view.data_blueprint.contains_entity(entity_path),
+                },
+                Err(reason) => CanAddToSpaceView::No {
+                    reason: reason.to_string(),
+                },
+            }
         } else if categories.is_empty() {
-            Some("Entity does not have any components".to_owned())
+            CanAddToSpaceView::No {
+                reason: "Entity does not have any components".to_owned(),
+            }
         } else {
-            Some(format!(
-                "Entity can't be displayed by this type of Space View {}",
-                space_view.category
-            ))
+            CanAddToSpaceView::No {
+                reason: format!(
+                    "Entity can't be displayed by this type of Space View {}",
+                    space_view.category.icon()
+                ),
+            }
         };
 
-        let can_show_self_or_descendant = cannot_show_reason.is_none();
-        let can_add_self_or_descendant =
-            can_show_self_or_descendant && !space_view.data_blueprint.contains_entity(entity_path);
-
-        if cannot_show_reason.is_none() {
-            // Mark parents that there is something that can be added.
+        if can_add.is_compatible() {
+            // Mark parents aware that there is some descendant that is compatible
             let mut path = entity_path.clone();
             while let Some(parent) = path.parent() {
                 let data = meta_data.entry(parent.clone()).or_default();
-                data.can_show_self_or_descendant = true;
-                data.can_add_self_or_descendant =
-                    data.can_add_self_or_descendant || can_add_self_or_descendant;
+                data.can_add_self_or_descendant = data.can_add_self_or_descendant.join(&can_add);
                 path = parent;
             }
         }
 
+        let can_add_self_or_descendant = can_add.clone();
         meta_data.insert(
             entity_path.clone(),
             EntityAddInfo {
-                _categories: categories,
-                cannot_show_reason,
-                can_show_self_or_descendant,
+                categories,
+                can_add,
                 can_add_self_or_descendant,
             },
         );
@@ -292,7 +343,7 @@ fn create_entity_add_info(
 
 fn title_bar(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, title: &str, open: &mut bool) {
     ui.horizontal(|ui| {
-        ui.heading(title);
+        ui.strong(title);
 
         ui.add_space(16.0);
 
