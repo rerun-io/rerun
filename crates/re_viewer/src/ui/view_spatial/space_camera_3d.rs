@@ -25,6 +25,9 @@ pub struct SpaceCamera3D {
     // Optional projection-related things:
     /// The projection transform of a child-entity.
     pub pinhole: Option<re_log_types::Pinhole>,
+
+    /// Optional distance of a picture plane from the camera.
+    pub picture_plane_distance: Option<f32>,
 }
 
 impl SpaceCamera3D {

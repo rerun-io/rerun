@@ -1,4 +1,4 @@
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +19,7 @@ from rerun.log import (
     _normalize_radii,
 )
 from rerun.log.error_utils import _send_warning
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -37,6 +38,7 @@ def log_point(
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     keypoint_id: Optional[int] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -76,6 +78,8 @@ def log_point(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the point will be timeless (default: False).
 
@@ -85,32 +89,41 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    comps = {}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if position is not None:
         if position.shape[0] == 2:
-            comps["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
+            instanced["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
         elif position.shape[0] == 3:
-            comps["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
+            instanced["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
         else:
             raise TypeError("Positions should be either 1x2 or 1x3")
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:
         radii = _normalize_radii([radius])
-        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
     if label:
-        comps["rerun.label"] = LabelArray.new([label])
+        instanced["rerun.label"] = LabelArray.new([label])
 
     if class_id:
         class_ids = _normalize_ids([class_id])
-        comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+        instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
 def log_points(
@@ -123,6 +136,7 @@ def log_points(
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -165,6 +179,8 @@ def log_points(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the points will be timeless (default: False).
 
@@ -187,7 +203,7 @@ def log_points(
         try:
             identifiers_np = np.require(identifiers, dtype="uint64")
         except ValueError:
-            _send_warning("Only integer identifies supported", 1)
+            _send_warning("Only integer identifiers supported", 1)
 
     # 0 = instanced, 1 = splat
     comps = [{}, {}]  # type: ignore[var-annotated]
@@ -224,6 +240,9 @@ def log_points(
     if len(keypoint_ids):
         is_splat = len(keypoint_ids) == 1
         comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+
+    if ext:
+        _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 

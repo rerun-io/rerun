@@ -3,5 +3,6 @@
 * [Logging Primitives](primitives.md)
 * [Logging Images](images.md)
 * [Annotations](annotation.md)
+* [Extension Components](extension_components.md)
 * [Plotting](plotting.md)
 * [Transforms](transforms.md)

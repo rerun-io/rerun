@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -18,6 +18,7 @@ def log_image(
     entity_path: str,
     image: Tensor,
     *,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -39,6 +40,8 @@ def log_image(
         Path to the image in the space hierarchy.
     image:
         A [Tensor][rerun.log.tensor.Tensor] representing the image to log.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the image will be timeless (default: False).
 
@@ -67,7 +70,7 @@ def log_image(
     if interpretable_as_image and num_non_empty_dims != len(shape):
         image = np.squeeze(image)
 
-    _log_tensor(entity_path, image, timeless=timeless)
+    _log_tensor(entity_path, image, ext=ext, timeless=timeless)
 
 
 def log_depth_image(
@@ -75,6 +78,7 @@ def log_depth_image(
     image: Tensor,
     *,
     meter: Optional[float] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -96,6 +100,8 @@ def log_depth_image(
         How long is a meter in the given dtype?
         For instance: with uint16, perhaps meter=1000 which would mean
         you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the image will be timeless (default: False).
 
@@ -118,13 +124,21 @@ def log_depth_image(
         # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
         if num_non_empty_dims != len(shape):
             image = np.squeeze(image)
-        _log_tensor(entity_path, image, meter=meter, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
+        _log_tensor(
+            entity_path,
+            image,
+            meter=meter,
+            ext=ext,
+            timeless=timeless,
+            meaning=bindings.TensorDataMeaning.Depth,
+        )
 
 
 def log_segmentation_image(
     entity_path: str,
     image: npt.ArrayLike,
     *,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -145,6 +159,8 @@ def log_segmentation_image(
         Path to the image in the space hierarchy.
     image:
         A [Tensor][rerun.log.tensor.Tensor] representing the segmentation image to log.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the image will be timeless (default: False).
 
@@ -162,6 +178,7 @@ def log_segmentation_image(
         _log_tensor(
             entity_path,
             tensor=image,
+            ext=ext,
             timeless=timeless,
         )
     else:
@@ -172,5 +189,6 @@ def log_segmentation_image(
             entity_path,
             tensor=image,
             meaning=bindings.TensorDataMeaning.ClassId,
+            ext=ext,
             timeless=timeless,
         )

@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -7,6 +7,7 @@ from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -22,6 +23,7 @@ def log_path(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     r"""
@@ -47,6 +49,8 @@ def log_path(
         Width of the line.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the path will be timeless (default: False).
 
@@ -54,21 +58,30 @@ def log_path(
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
-    comps = {}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if positions is not None:
-        comps["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays([positions])
+        instanced["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays([positions])
 
     if color:
         colors = _normalize_colors([color])
-        comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+        instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
 def log_line_segments(
@@ -77,6 +90,7 @@ def log_line_segments(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     r"""
@@ -101,6 +115,8 @@ def log_line_segments(
         Width of the line.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the line segments will be timeless (default: False).
 
@@ -109,8 +125,8 @@ def log_line_segments(
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")
 
-    # 0 = instanced, 1 = splat
-    comps = [{}, {}]  # type: ignore[var-annotated]
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
     if positions is not None:
         # If not a multiple of 2, drop the last row
@@ -121,11 +137,11 @@ def log_line_segments(
             # [[a00, a01], [a10, a11], [b00, b01], [b10, b11]]
             # -> [[[a00, a01], [a10, a11]], [[b00, b01], [b10, b11]]]
             positions = positions.reshape([len(positions) // 2, 2, 2])
-            comps[0]["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(positions)
+            instanced["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(positions)
         elif positions.shape[1] == 3:
             # Same as above but for 3d points
             positions = positions.reshape([len(positions) // 2, 2, 3])
-            comps[0]["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(positions)
+            instanced["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(positions)
         else:
             raise TypeError("Positions should be either Nx2 or Nx3")
 
@@ -133,15 +149,19 @@ def log_line_segments(
     # require that we do so.
     if color:
         colors = _normalize_colors([color])
-        comps[1]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     # We store the stroke_width in radius
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
-        comps[1]["rerun.radius"] = RadiusArray.from_numpy(radii)
+        splats["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
-    if comps[1]:
-        comps[1]["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)

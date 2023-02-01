@@ -146,7 +146,7 @@ impl DataBlueprintTree {
     }
 
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
-        self.path_to_group.contains_key(path)
+        self.entity_paths.contains(path)
     }
 
     /// List of all entities that we query via this data blueprint collection.
@@ -221,7 +221,7 @@ impl DataBlueprintTree {
             } else {
                 // Otherwise, create a new group which only contains this entity and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
-                    display_name: path_to_group_name(path),
+                    display_name: path_to_group_name(path, base_path),
                     ..Default::default()
                 });
                 self.add_group_to_hierarchy_recursively(new_group, path, base_path);
@@ -289,7 +289,7 @@ impl DataBlueprintTree {
 
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
-                    display_name: path_to_group_name(&parent_path),
+                    display_name: path_to_group_name(&parent_path, base_path),
                     children: smallvec![new_group],
                     ..Default::default()
                 });
@@ -336,13 +336,80 @@ impl DataBlueprintTree {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
                 group.entities.remove(path);
+                self.remove_group_if_empty(*group_handle);
             }
         }
         self.path_to_group.remove(path);
         self.entity_paths.remove(path);
     }
+
+    /// Removes a group and all its entities and subgroups from the blueprint tree
+    pub fn remove_group(&mut self, group_handle: DataBlueprintGroupHandle) {
+        crate::profile_function!();
+
+        let Some(group) = self.groups.get(group_handle) else {
+            return;
+        };
+
+        // Clone group to work around borrow checker issues.
+        let group = group.clone();
+
+        // Remove all child groups.
+        for child_group in &group.children {
+            self.remove_group(*child_group);
+        }
+
+        // Remove all child entities.
+        for entity_path in &group.entities {
+            self.entity_paths.remove(entity_path);
+        }
+
+        // Remove from `path_to_group` map.
+        // `path_to_group` may map arbitrary paths to this group, some of which aren't in the entity_paths list!
+        self.path_to_group
+            .retain(|_, group_mapping| *group_mapping != group_handle);
+
+        // Remove group from parent group
+        if let Some(parent_group) = self.groups.get_mut(group.parent) {
+            parent_group
+                .children
+                .retain(|child_group| *child_group != group_handle);
+        }
+
+        // Never completely remove the root group.
+        if group_handle != self.root_group_handle {
+            self.groups.remove(group_handle);
+        }
+    }
+
+    fn remove_group_if_empty(&mut self, group_handle: DataBlueprintGroupHandle) {
+        let Some(group) = self.groups.get(group_handle) else {
+            return;
+        };
+        if group.entities.is_empty() && group.children.is_empty() {
+            let parent_group_handle = group.parent;
+            if let Some(parent_group) = self.groups.get_mut(parent_group_handle) {
+                parent_group
+                    .children
+                    .retain(|child_group| *child_group != group_handle);
+                self.remove_group_if_empty(parent_group_handle);
+            }
+        }
+    }
 }
 
-fn path_to_group_name(path: &EntityPath) -> String {
-    path.iter().last().map_or(String::new(), |c| c.to_string())
+fn path_to_group_name(path: &EntityPath, base_path: &EntityPath) -> String {
+    // Root should never be pasesd in here, but handle it gracefully regardless.
+    let name = path.iter().last().map_or("/".to_owned(), |c| c.to_string());
+
+    // How many steps until a common ancestor?
+    let mut num_steps_until_common_ancestor = 0;
+    let mut common_ancestor = base_path.clone();
+    while !path.is_descendant_of(&common_ancestor) {
+        // Can never go beyond root because everything is a descendent of root, therefore this is safe.
+        common_ancestor = common_ancestor.parent().unwrap();
+        num_steps_until_common_ancestor += 1;
+    }
+
+    format!("{}{}", "../".repeat(num_steps_until_common_ancestor), name)
 }
