@@ -9,8 +9,8 @@ use crate::{
 
 use super::DataUi;
 
-const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] =
-    &["rerun.msg_id", "rerun.instance", "rerun.instance_key"];
+const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.instance_key"];
+const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &["rerun.msg_id"];
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -43,6 +43,10 @@ impl DataUi for InstancePath {
                         continue; // no need to show components that are unset at this point in time
                     }
 
+                    // Certain fields are hidden.
+                    if HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY.contains(&component_name.as_str()) {
+                        continue;
+                    }
                     match verbosity {
                         UiVerbosity::Small | UiVerbosity::MaxHeight(_) | UiVerbosity::Reduced => {
                             if HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY
