@@ -164,7 +164,7 @@ def log_rects(
             identifiers = [int(id) for id in identifiers]
             identifiers_np = np.array(identifiers, dtype="int64")
         except ValueError:
-            _send_warning("Only integer identifies supported", 1)
+            _send_warning("Only integer identifiers supported", 1)
 
     # 0 = instanced, 1 = splat
     comps = [{}, {}]  # type: ignore[var-annotated]

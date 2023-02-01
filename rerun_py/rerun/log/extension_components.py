@@ -116,7 +116,7 @@ def log_extension_components(
             identifiers = [int(id) for id in identifiers]
             identifiers_np = np.array(identifiers, dtype="uint64")
         except ValueError:
-            rerun.log.error_utils._send_warning("Only integer identifies supported", 1)
+            rerun.log.error_utils._send_warning("Only integer identifiers supported", 1)
 
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
