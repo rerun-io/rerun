@@ -703,49 +703,75 @@ fn image_ui(
             // TOOD(emilk): put X-axis at Y=0, and Y-axis at X=0
 
             // Label for X axis:
-            if invert_width {
-                // On left, pointing left:
-                painter.text(
-                    image_rect.left_top(),
-                    Align2::LEFT_BOTTOM,
-                    format!("{width_name} ⬅"),
-                    font_id.clone(),
-                    text_color,
-                );
-            } else {
-                // On right, pointing right:
-                painter.text(
-                    image_rect.right_top(),
-                    Align2::RIGHT_BOTTOM,
-                    format!("➡ {width_name}"),
-                    font_id.clone(),
-                    text_color,
+            {
+                let text_background = painter.add(egui::Shape::Noop);
+                let text_rect = if invert_width {
+                    // On left, pointing left:
+                    painter.text(
+                        image_rect.left_top(),
+                        Align2::LEFT_BOTTOM,
+                        format!("{width_name} ⬅"),
+                        font_id.clone(),
+                        text_color,
+                    )
+                } else {
+                    // On right, pointing right:
+                    painter.text(
+                        image_rect.right_top(),
+                        Align2::RIGHT_BOTTOM,
+                        format!("➡ {width_name}"),
+                        font_id.clone(),
+                        text_color,
+                    )
+                };
+                painter.set(
+                    text_background,
+                    egui::Shape::rect_filled(text_rect, 2.0, ui.visuals().panel_fill),
                 );
             }
 
             // Label for Y axis:
-            if invert_height {
-                // On top, pointing up:
-                let galley =
-                    painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
-                painter.add(TextShape {
-                    pos: image_rect.left_top() - egui::vec2(galley.size().y, -galley.size().x),
-                    galley,
-                    angle: -std::f32::consts::TAU / 4.0,
-                    underline: Default::default(),
-                    override_text_color: None,
-                });
-            } else {
-                // On bottom, pointing down:
-                let galley =
-                    painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
-                painter.add(TextShape {
-                    pos: image_rect.left_bottom() - egui::vec2(galley.size().y, 0.0),
-                    galley,
-                    angle: -std::f32::consts::TAU / 4.0,
-                    underline: Default::default(),
-                    override_text_color: None,
-                });
+            {
+                let text_background = painter.add(egui::Shape::Noop);
+                let text_rect = if invert_height {
+                    // On top, pointing up:
+                    let galley =
+                        painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
+                    let galley_size = galley.size();
+                    let pos = image_rect.left_top() - egui::vec2(galley_size.y, -galley_size.x);
+                    painter.add(TextShape {
+                        pos,
+                        galley,
+                        angle: -std::f32::consts::TAU / 4.0,
+                        underline: Default::default(),
+                        override_text_color: None,
+                    });
+                    egui::Rect::from_min_size(
+                        pos - galley_size.x * egui::Vec2::Y,
+                        egui::vec2(galley_size.y, galley_size.x),
+                    )
+                } else {
+                    // On bottom, pointing down:
+                    let galley =
+                        painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+                    let galley_size = galley.size();
+                    let pos = image_rect.left_bottom() - egui::vec2(galley_size.y, 0.0);
+                    painter.add(TextShape {
+                        pos,
+                        galley,
+                        angle: -std::f32::consts::TAU / 4.0,
+                        underline: Default::default(),
+                        override_text_color: None,
+                    });
+                    egui::Rect::from_min_size(
+                        pos - galley_size.x * egui::Vec2::Y,
+                        egui::vec2(galley_size.y, galley_size.x),
+                    )
+                };
+                painter.set(
+                    text_background,
+                    egui::Shape::rect_filled(text_rect, 2.0, ui.visuals().panel_fill),
+                );
             }
         }
     });
