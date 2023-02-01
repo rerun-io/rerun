@@ -1,1 +1,0 @@
-::: rerun.log_scalar
