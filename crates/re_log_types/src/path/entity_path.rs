@@ -126,6 +126,16 @@ impl EntityPath {
     pub fn parent(&self) -> Option<Self> {
         self.path.parent().map(Self::from)
     }
+
+    pub fn join(&self, other: &Self) -> Self {
+        self.iter().chain(other.iter()).cloned().collect()
+    }
+}
+
+impl FromIterator<EntityPathPart> for EntityPath {
+    fn from_iter<T: IntoIterator<Item = EntityPathPart>>(parts: T) -> Self {
+        Self::new(parts.into_iter().collect())
+    }
 }
 
 impl From<EntityPathImpl> for EntityPath {

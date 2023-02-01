@@ -3735,6 +3735,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "raw_mesh"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "gltf",
+ "mimalloc",
+ "reqwest",
+ "rerun_sdk",
+]
+
+[[package]]
 name = "rawpointer"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
