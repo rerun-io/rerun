@@ -6,7 +6,7 @@ use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpaceInfoCollection},
-        SpaceViewHighlights, TransformCache, UnreachableTransform, ViewerContext,
+        SpaceViewHighlights, TransformCache, ViewerContext,
     },
     ui::view_category::categorize_entity_path,
 };
@@ -42,6 +42,8 @@ pub struct SpaceView {
     pub name: String,
 
     /// Everything under this root *can* be shown in the space view.
+    ///
+    /// TODO(andreas): We decided to remove this concept.
     pub root_path: EntityPath,
 
     /// The "anchor point" of this space view.
@@ -59,8 +61,8 @@ pub struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `false` the first time the user messes around with the list of queried entities.
-    pub allow_auto_adding_more_entities: bool,
+    /// True if the user is expected to add entities themselves. False otherwise.
+    pub entities_determined_by_user: bool,
 }
 
 impl SpaceView {
@@ -93,7 +95,7 @@ impl SpaceView {
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
             category,
-            allow_auto_adding_more_entities: true,
+            entities_determined_by_user: false,
         }
     }
 
@@ -171,7 +173,7 @@ impl SpaceView {
             return;
         };
 
-        if self.allow_auto_adding_more_entities {
+        if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
                 Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
@@ -181,17 +183,13 @@ impl SpaceView {
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        ui.label("Space path:");
-        // specify no space view id since the path itself is not part of the space view.
-        ctx.entity_path_button(ui, None, &self.space_path);
-        ui.end_row();
-
-        ui.separator();
-
-        ui.strong("Query tree");
-        self.query_tree_ui(ctx, ui);
-
-        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Space path:").on_hover_text(
+                "Root path of this space view. All transformations are relative this.",
+            );
+            // specify no space view id since the path itself is not part of the space view.
+            ctx.entity_path_button(ui, None, &self.space_path);
+        });
 
         match self.category {
             ViewCategory::Text => {
@@ -223,171 +221,6 @@ impl SpaceView {
                 }
             }
         }
-    }
-
-    fn query_tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        let entity_tree = &ctx.log_db.entity_db.tree;
-
-        // We'd like to see the reference space path by default.
-        let default_open = self.root_path != self.space_path;
-        let collapsing_header_id = ui.make_persistent_id(self.id);
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            collapsing_header_id,
-            default_open,
-        )
-        .show_header(ui, |ui| {
-            ui.label(self.root_path.to_string());
-        })
-        .body(|ui| {
-            if let Some(subtree) = entity_tree.subtree(&self.root_path) {
-                let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
-                self.entity_tree_children_ui(ctx, ui, &spaces_info, subtree);
-            }
-        });
-    }
-
-    fn entity_tree_children_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpaceInfoCollection,
-        tree: &EntityTree,
-    ) {
-        if tree.children.is_empty() {
-            ui.weak("(nothing)");
-            return;
-        }
-
-        for (path_comp, child_tree) in &tree.children {
-            self.entity_tree_ui(ctx, ui, spaces_info, &path_comp.to_string(), child_tree);
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn entity_tree_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpaceInfoCollection,
-        name: &str,
-        tree: &EntityTree,
-    ) {
-        let unreachable_reason = spaces_info.is_reachable_by_transform(&tree.path, &self.root_path).map_err
-            (|reason| match reason {
-                // Should never happen
-                UnreachableTransform::Unconnected =>
-                     "No entity path connection from this space view.",
-                UnreachableTransform::NestedPinholeCameras =>
-                    "Can't display entities under nested pinhole cameras.",
-                UnreachableTransform::UnknownTransform =>
-                    "Can't display entities that are connected via an unknown transform to this space.",
-                UnreachableTransform::InversePinholeCameraWithoutResolution =>
-                    "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
-            }).err();
-        let response = if tree.is_leaf() {
-            ui.horizontal(|ui| {
-                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.entity_path_button_ui(ctx, ui, &tree.path, spaces_info, name);
-                    if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.add_entity_button_ui(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
-                    }
-                });
-            })
-            .response
-        } else {
-            let collapsing_header_id = ui.id().with(&tree.path);
-
-            // Default open so that the reference path is visible.
-            let default_open = self.space_path.is_descendant_of(&tree.path);
-            egui::collapsing_header::CollapsingState::load_with_default_open(
-                ui.ctx(),
-                collapsing_header_id,
-                default_open,
-            )
-            .show_header(ui, |ui| {
-                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
-                    self.entity_path_button_ui(ctx, ui, &tree.path, spaces_info, name);
-                    if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.add_entity_button_ui(ctx, ui, &tree.path, &ctx.log_db.entity_db.tree);
-                    }
-                });
-            })
-            .body(|ui| {
-                self.entity_tree_children_ui(ctx, ui, spaces_info, tree);
-            })
-            .0
-        };
-
-        if let Some(unreachable_reason) = unreachable_reason {
-            response.on_hover_text(unreachable_reason);
-        }
-    }
-
-    pub fn entity_path_button_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        path: &EntityPath,
-        spaces_info: &SpaceInfoCollection,
-        name: &str,
-    ) {
-        let mut is_space_info = false;
-        let label_text = if spaces_info.get(path).is_some() {
-            is_space_info = true;
-            let label_text = egui::RichText::new(format!("📐 {name}"));
-            if *path == self.space_path {
-                label_text.strong()
-            } else {
-                label_text
-            }
-        } else {
-            egui::RichText::new(name)
-        };
-
-        if ctx
-            .data_blueprint_button_to(ui, label_text, self.id, path)
-            .double_clicked()
-            && is_space_info
-        {
-            // TODO(andreas): Can't yet change the reference space.
-            //*reference_space = path.clone();
-        }
-    }
-
-    fn add_entity_button_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        path: &EntityPath,
-        entity_tree: &EntityTree,
-    ) {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Can't add things we already added.
-
-            // Insert the entity itself and all its children as far as they haven't been added yet
-            let mut entities = Vec::new();
-            entity_tree
-                .subtree(path)
-                .unwrap()
-                .visit_children_recursively(&mut |path: &EntityPath| {
-                    if has_visualization_for_category(ctx, self.category, path)
-                        && !self.data_blueprint.contains_entity(path)
-                    {
-                        entities.push(path.clone());
-                    }
-                });
-
-            ui.set_enabled(!entities.is_empty());
-
-            let response = ui.button("➕");
-            if response.clicked() {
-                self.data_blueprint
-                    .insert_entities_according_to_hierarchy(entities.iter(), &self.space_path);
-                self.allow_auto_adding_more_entities = false;
-            }
-            response.on_hover_text("Add to this Space View's query")
-        });
     }
 
     pub(crate) fn scene_ui(
@@ -453,15 +286,51 @@ impl SpaceView {
             }
         };
     }
-}
 
-fn has_visualization_for_category(
-    ctx: &ViewerContext<'_>,
-    category: ViewCategory,
-    entity_path: &EntityPath,
-) -> bool {
-    let log_db = &ctx.log_db;
-    categorize_entity_path(Timeline::log_time(), log_db, entity_path).contains(category)
+    /// Removes a subtree of entities from the blueprint tree.
+    ///
+    /// Ignores all entities that aren't part of the blueprint.
+    pub fn remove_entity_subtree(&mut self, tree: &EntityTree) {
+        crate::profile_function!();
+
+        tree.visit_children_recursively(&mut |path: &EntityPath| {
+            self.data_blueprint.remove_entity(path);
+            self.entities_determined_by_user = true;
+        });
+    }
+
+    /// Adds a subtree of entities to the blueprint tree and creates groups as needed.
+    ///
+    /// Ignores all entities that can't be added or are already added.
+    pub fn add_entity_subtree(
+        &mut self,
+        tree: &EntityTree,
+        spaces_info: &SpaceInfoCollection,
+        log_db: &re_data_store::LogDb,
+    ) {
+        crate::profile_function!();
+
+        let mut entities = Vec::new();
+        tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
+            let entity_categories =
+                categorize_entity_path(Timeline::log_time(), log_db, entity_path);
+
+            if entity_categories.contains(self.category)
+                && !self.data_blueprint.contains_entity(entity_path)
+                && spaces_info
+                    .is_reachable_by_transform(entity_path, &self.space_path)
+                    .is_ok()
+            {
+                entities.push(entity_path.clone());
+            }
+        });
+
+        if !entities.is_empty() {
+            self.data_blueprint
+                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_path);
+            self.entities_determined_by_user = true;
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
