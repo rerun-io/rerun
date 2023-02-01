@@ -172,7 +172,7 @@ fn table_row(
                     timeline,
                     time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
                 );
-                path_op.data_ui(ctx, ui, UiVerbosity::Large, &query);
+                path_op.data_ui(ctx, ui, UiVerbosity::All, &query);
             });
         }
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {

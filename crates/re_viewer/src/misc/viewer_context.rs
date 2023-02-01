@@ -39,7 +39,7 @@ impl<'a> ViewerContext<'a> {
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
         let selection = Selection::MsgId(msg_id);
         let response = ui
-            .selectable_label(self.selection().contains(&selection), msg_id.to_string())
+            .selectable_label(self.selection().contains(&selection), msg_id.short_string())
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
@@ -112,7 +112,7 @@ impl<'a> ViewerContext<'a> {
                 instance_path.data_ui(
                     self,
                     ui,
-                    crate::ui::UiVerbosity::Large,
+                    crate::ui::UiVerbosity::Reduced,
                     &self.current_query(),
                 );
             });
@@ -185,7 +185,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Space View Entity");
                 ui.label(format!("Path: {entity_path}"));
-                entity_path.data_ui(self, ui, UiVerbosity::Large, &self.current_query());
+                entity_path.data_ui(self, ui, UiVerbosity::Reduced, &self.current_query());
             });
         self.cursor_interact_with_selectable(response, selection)
     }

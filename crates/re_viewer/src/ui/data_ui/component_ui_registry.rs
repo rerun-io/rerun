@@ -157,7 +157,7 @@ impl DataUi for re_log_types::component_types::TextEntry {
                     ui.label(format!("{body:?}")); // Debug format to get quotes and escapes
                 });
             }
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 egui::Grid::new("text_entry").num_columns(2).show(ui, |ui| {
                     ui.label("level:");
                     if let Some(level) = level {

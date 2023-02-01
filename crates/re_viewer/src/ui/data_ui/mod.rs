@@ -27,8 +27,11 @@ pub enum UiVerbosity {
     /// At most this height
     MaxHeight(f32),
 
-    /// As large as you want.
-    Large,
+    /// Display a reduced set, used for hovering.
+    Reduced,
+
+    /// Display everything, as large as you want. Used for selection panel.
+    All,
 }
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].
@@ -82,7 +85,7 @@ impl DataUi for [ComponentBundle] {
                 ui.label(sorted.iter().map(format_component_bundle).join(", "));
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_component_bundle(component_bundle));

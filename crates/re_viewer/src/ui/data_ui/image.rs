@@ -42,7 +42,7 @@ impl DataUi for ClassicTensor {
                     if let Some(retained_img) = tensor_view.retained_img {
                         let max_height = match verbosity {
                             UiVerbosity::Small => 24.0,
-                            UiVerbosity::Large => 128.0,
+                            UiVerbosity::All | UiVerbosity::Reduced => 128.0,
                             UiVerbosity::MaxHeight(height) => height,
                         };
                         retained_img
@@ -61,7 +61,7 @@ impl DataUi for ClassicTensor {
                 });
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
                     tensor_dtype_and_shape_ui(ui, self);

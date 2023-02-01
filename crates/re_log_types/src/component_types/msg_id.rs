@@ -58,6 +58,15 @@ impl MsgId {
     pub fn as_u128(&self) -> u128 {
         self.0.as_u128()
     }
+
+    /// A shortened string representation of the message id.
+    pub fn short_string(&self) -> String {
+        // We still want this to look like a part of the full message id (i.e. what is printed on std::fmt::Display).
+        // Per Thread randomness plus increment is in the last part, so show only that.
+        // (the first half is time in nanoseconds which for the _most part_ doesn't change that often)
+        let str = self.to_string();
+        str[(str.len() - 8)..].to_string()
+    }
 }
 
 impl Component for MsgId {

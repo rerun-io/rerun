@@ -79,7 +79,7 @@ impl DataUi for ViewCoordinates {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.label(self.describe());
             }
         }
@@ -98,11 +98,11 @@ impl DataUi for Rigid3 {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::Large, query);
+                    self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 let pose = self.parent_from_child(); // TODO(emilk): which one to show?
                 let rotation = pose.rotation();
                 let translation = pose.translation();
@@ -137,11 +137,11 @@ impl DataUi for Pinhole {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::Large, query);
+                    self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 let Pinhole {
                     image_from_cam: image_from_view,
                     resolution,
