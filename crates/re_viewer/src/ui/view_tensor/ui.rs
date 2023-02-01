@@ -811,7 +811,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                     .unwrap_or_else(|| selector.dim_idx.to_string());
 
                 let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
-                ui.label(format!("{name}:")).on_hover_text(&slider_tooltip);
+                ui.label(name).on_hover_text(&slider_tooltip);
 
                 // If the range is big (say, 2048) then we would need
                 // a slider that is 2048 pixels wide to get the good precision.
