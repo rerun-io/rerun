@@ -112,6 +112,7 @@ impl Points2DPart {
         };
 
         entity_view.visit6(visitor)?;
+        drop(point_batch); // Drop batch so we have access to the scene again (batches need to be dropped before starting new ones).
 
         if label_batch.len() < max_num_labels {
             scene.ui.labels_2d.extend(label_batch.into_iter());
@@ -173,7 +174,7 @@ impl ScenePart for Points2DPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
                 }
             }
         }
