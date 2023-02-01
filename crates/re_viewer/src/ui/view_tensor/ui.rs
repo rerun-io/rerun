@@ -87,6 +87,15 @@ pub(crate) fn view_tensor(
 
     selectors_ui(ui, state, tensor);
 
+    tensor_ui(ctx, ui, state, tensor);
+}
+
+fn tensor_ui(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut ViewTensorState,
+    tensor: &ClassicTensor,
+) {
     let tensor_shape = tensor.shape();
 
     let tensor_stats = ctx.cache.tensor_stats(tensor);
