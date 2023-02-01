@@ -695,10 +695,10 @@ fn image_ui(
     egui::ScrollArea::both().show(ui, |ui| {
         let font_id = egui::TextStyle::Body.resolve(ui.style());
 
+        let margin = egui::vec2(0.0, 12.0); // Add some margin for the arrow overlay.
+
         let (response, mut painter, image_rect) =
-            view_state
-                .texture_settings
-                .paint_image(ui, egui::Vec2::ZERO, image);
+            view_state.texture_settings.paint_image(ui, margin, image);
 
         let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
         if response.hovered() && !is_anything_being_dragged {
