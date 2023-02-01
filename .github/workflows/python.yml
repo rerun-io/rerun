@@ -170,9 +170,8 @@ jobs:
       - name: Cache APT Packages
         uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
+          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
           version: 1.0
-        #libatk-bridge2.0 libfontconfig1-dev libfreetype6-dev libglib2.0-dev
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
