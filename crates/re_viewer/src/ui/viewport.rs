@@ -674,11 +674,11 @@ fn blueprint_row_with_buttons(
                 .interact(ui.max_rect(), ui.id(), egui::Sense::hover())
                 .hovered()
             {
-                // Clip the main button so that the buttons have room to cover it.
+                // Clip the main button so that the on-hover buttons have room to cover it.
                 // Ideally we would only clip the button _text_, not the button background, but that's not possible.
                 let mut clip_rect = ui.max_rect();
-                let buttons_width = 36.0;
-                clip_rect.max.x -= buttons_width;
+                let on_hover_buttons_width = 36.0;
+                clip_rect.max.x -= on_hover_buttons_width;
                 ui.set_clip_rect(clip_rect);
             }
 
