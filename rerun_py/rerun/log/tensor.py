@@ -1,9 +1,11 @@
-from typing import Any, Iterable, Optional, Protocol, Union
+from typing import Any, Dict, Iterable, Optional, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.instance import InstanceArray
 from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -40,6 +42,7 @@ def log_tensor(
     tensor: npt.ArrayLike,
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -55,11 +58,20 @@ def log_tensor(
         Optional names for each dimension of the tensor.
     meter:
         Optional scale of the tensor (e.g. meters per cell).
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the tensor will be timeless (default: False).
 
     """
-    _log_tensor(entity_path, tensor=_to_numpy(tensor), names=names, meter=meter, timeless=timeless)
+    _log_tensor(
+        entity_path,
+        tensor=_to_numpy(tensor),
+        names=names,
+        meter=meter,
+        ext=ext,
+        timeless=timeless,
+    )
 
 
 def _log_tensor(
@@ -68,6 +80,7 @@ def _log_tensor(
     names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     meaning: bindings.TensorDataMeaning = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
@@ -107,6 +120,17 @@ def _log_tensor(
         _send_warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.", 2)
         return
 
-    comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
 
-    bindings.log_arrow_msg(entity_path, components=comps, timeless=timeless)
+    instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter)
+
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
