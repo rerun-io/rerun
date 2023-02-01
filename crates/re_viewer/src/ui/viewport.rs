@@ -328,6 +328,12 @@ impl Viewport {
 
         self.trees.retain(|_, tree| is_tree_valid(tree));
 
+        if let Some(space_view_id) = self.maximized {
+            if !self.space_views.contains_key(&space_view_id) {
+                self.maximized = None;
+            }
+        }
+
         let visible_space_views = if let Some(space_view_id) = self.maximized {
             std::iter::once(space_view_id).collect()
         } else {
