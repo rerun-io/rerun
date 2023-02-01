@@ -9,6 +9,7 @@ from rerun.log.annotation import log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
 from rerun.log.camera import log_pinhole
+from rerun.log.extension_components import log_extension_components
 from rerun.log.file import log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
 from rerun.log.lines import log_line_segments, log_path
@@ -18,7 +19,6 @@ from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
-from rerun.log.extension_components import log_extension_components
 
 __all__ = [
     "bindings",
