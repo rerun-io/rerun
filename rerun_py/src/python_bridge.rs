@@ -15,7 +15,7 @@ use re_log_types::{
     context, coordinates,
     msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, EncodedMesh3D, EntityPath, LogMsg, Mesh3D, MeshFormat,
-    MeshId, MsgId, PathOp, RecordingId, Time, TimeInt, TimePoint, TimeType, Timeline,
+    MeshId, MsgId, PathOp, RawMesh3D, RecordingId, Time, TimeInt, TimePoint, TimeType, Timeline,
     ViewCoordinates,
 };
 
@@ -105,6 +105,8 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
     m.add_function(wrap_pyfunction!(log_pinhole, m)?)?;
+
+    m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
@@ -558,6 +560,68 @@ enum TensorDataMeaning {
 }
 
 // ----------------------------------------------------------------------------
+
+#[pyfunction]
+fn log_meshes(
+    entity_path_str: &str,
+    positions: Vec<numpy::PyReadonlyArray1<'_, f32>>,
+    indices: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
+    normals: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
+    timeless: bool,
+) -> PyResult<()> {
+    let entity_path = parse_entity_path(entity_path_str)?;
+
+    if positions.len() != indices.len() || positions.len() != normals.len() {
+        return Err(PyTypeError::new_err(format!(
+            "Top-level `positions`, `indices` & `normals` arrays must be same the length, \
+                got positions={}, indices={} & normals={} instead",
+            positions.len(),
+            indices.len(),
+            normals.len(),
+        )));
+    }
+
+    let mut session = global_session();
+
+    let time_point = time(timeless);
+
+    let mut meshes = Vec::with_capacity(positions.len());
+    for (i, positions) in positions.into_iter().enumerate() {
+        let raw = RawMesh3D {
+            mesh_id: MeshId::random(),
+            positions: positions.as_array().to_vec(),
+            indices: indices[i]
+                .as_ref()
+                .map(|indices| indices.as_array().to_vec()),
+            normals: normals[i]
+                .as_ref()
+                .map(|normals| normals.as_array().to_vec()),
+        };
+        raw.sanity_check()
+            .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+        meshes.push(Mesh3D::Raw(raw));
+    }
+
+    // We currently log `Mesh3D` from inside the bridge.
+    //
+    // Pyarrow handling of nested unions was causing more grief that it was
+    // worth fighting with in the short term.
+    //
+    // TODO(jleibs) replace with python-native implementation
+
+    let bundle = MsgBundle::new(
+        MsgId::random(),
+        entity_path,
+        time_point,
+        vec![meshes.try_into().unwrap()],
+    );
+
+    let msg = bundle.try_into().unwrap();
+
+    session.send(LogMsg::ArrowMsg(msg));
+
+    Ok(())
+}
 
 #[pyfunction]
 fn log_mesh_file(

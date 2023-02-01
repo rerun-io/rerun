@@ -23,7 +23,7 @@ use rerun::{
 // Declare how to turn a glTF primitive into a Rerun component (`Mesh3D`).
 impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
-        Mesh3D::Raw(RawMesh3D {
+        let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             indices: primitive.indices,
             positions: primitive.positions.into_iter().flatten().collect(),
@@ -39,7 +39,11 @@ impl From<GltfPrimitive> for Mesh3D {
             // texcoords: primitive
             //     .texcoords
             //     .map(|texcoords| texcoords.into_iter().flatten().collect()),
-        })
+        };
+
+        raw.sanity_check().uwnrap();
+
+        Mesh3D::Raw(raw)
     }
 }
 
