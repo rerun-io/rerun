@@ -251,6 +251,7 @@ def run_extension_component() -> None:
     rr.log_extension_components("extension_components/point", {"confidence": 0.9})
 
     # Batch points with extension
+    # Note: each extension component must either be length 1 (a splat) or the same length as the batch
     rr.set_time_seconds("sim_time", 1)
     rr.log_points(
         "extension_components/points",
