@@ -141,8 +141,8 @@ fn log_axis(session: &mut Session, ent_path: &EntityPath) {
 
 // --- Init ---
 
-// Use MiMalloc as global allocator, wrapped in Rerun's allocation tracker for easily monitor
-// what's going on.
+// Use MiMalloc as global allocator (because it is fast), wrapped in Rerun's allocation tracker
+// so that the rerun viewer can show how much memory it is using when calling `show`.
 #[global_allocator]
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
