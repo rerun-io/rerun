@@ -447,8 +447,6 @@ impl SpaceView {
             }
 
             ViewCategory::Tensor => {
-                ui.add_space(16.0); // Extra headroom required for the hovering controls at the top of the space view.
-
                 let mut scene = view_tensor::SceneTensor::default();
                 scene.load(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
