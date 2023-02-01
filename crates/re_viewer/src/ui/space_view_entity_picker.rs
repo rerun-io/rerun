@@ -23,8 +23,9 @@ impl SpaceViewEntityPicker {
         ui: &mut egui::Ui,
         space_view: &mut SpaceView,
     ) -> bool {
-        // We want to dim everything a little bit. So draw one large rectangle over everything.
-        // TODO(andreas): This is very hacky, egui needs direct support for this.
+        // This function fakes a modal window, since egui doesn't have them yet: https://github.com/emilk/egui/issues/686
+
+        // In particular, we dim the background and close the window when the user clicks outside it
         let painter = egui::Painter::new(
             ui.ctx().clone(),
             egui::LayerId::new(egui::Order::PanelResizeLine, egui::Id::new("DimLayer")),
@@ -45,23 +46,21 @@ impl SpaceViewEntityPicker {
             .default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
             .frame(ctx.re_ui.panel_frame())
-            .title_bar(false) // We do a custom title bar for better adhoc styling. TODO(andreas): Need direct support for this?
+            // We do a custom title bar for better adhoc styling.
+            // TODO(andreas): Ideally the default title bar would already adhere to that style
+            .title_bar(false)
             .show(ui.ctx(), |ui| {
                 title_bar(ctx.re_ui, ui, title, &mut open);
                 add_entities_ui(ctx, ui, space_view);
             });
 
-        // Fake modality - any click outside causes the window to close.
-        // TODO(andreas): Egui needs to be direct support for this.
-        let cursor_was_over_window = if let Some(response) = response {
-            if let Some(interact_pos) = ui.input(|i| i.pointer.interact_pos()) {
-                response.response.rect.contains(interact_pos)
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        // Any click outside causes the window to close.
+        let cursor_was_over_window = response
+            .and_then(|response| {
+                ui.input(|i| i.pointer.interact_pos())
+                    .map(|interact_pos| response.response.rect.contains(interact_pos))
+            })
+            .unwrap_or(false);
         if !cursor_was_over_window && ui.input(|i| i.pointer.any_pressed()) {
             open = false;
         }
@@ -131,10 +130,9 @@ fn add_entities_tree_ui(
         .body(|ui| {
             for (path_comp, child_tree) in tree.children.iter().sorted_by_key(|(_, child_tree)| {
                 // Put descendants of the space path always first
-                i32::from(
-                    !(child_tree.path == space_view.space_path
-                        || child_tree.path.is_descendant_of(&space_view.space_path)),
-                )
+                let put_first = child_tree.path == space_view.space_path
+                    || child_tree.path.is_descendant_of(&space_view.space_path);
+                !put_first
             }) {
                 add_entities_tree_ui(
                     ctx,
@@ -167,7 +165,7 @@ fn add_entities_line_ui(
         };
         let add_info = entities_add_info.get(entity_path).unwrap();
 
-        // Use "can_show_self_or_descendant" since we don't want to render disabled if this can't be shown but there are relevant children.
+        // Use "can_show_self_or_descendant" since we want this enabled if there are relevant children.
         ui.add_enabled_ui(add_info.can_show_self_or_descendant, |ui| {
             let widget_text = if entity_path == &space_view.space_path {
                 egui::RichText::new(name).strong()

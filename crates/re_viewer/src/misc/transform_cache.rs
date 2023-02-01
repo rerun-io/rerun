@@ -30,7 +30,9 @@ pub struct TransformCache {
 #[derive(Clone, Copy)]
 pub enum UnreachableTransform {
     /// Not part of the hierarchy at all.
-    /// TODO(andreas): Remove
+    /// TODO(andreas): This is only needed for the "breaking out of the root" case that we want to scrap.
+    ///                 After that it's impossible to be unreachable since there can always be an identity matrix.
+    ///                 We already allow walking over unlogged paths (because why not)
     Unconnected,
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,
@@ -42,15 +44,15 @@ pub enum UnreachableTransform {
 
 impl std::fmt::Display for UnreachableTransform {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str( match self {
-        UnreachableTransform::Unconnected =>
-        "No entity path connection from this space view.",
-   UnreachableTransform::NestedPinholeCameras =>
-       "Can't display entities under nested pinhole cameras.",
-   UnreachableTransform::UnknownTransform =>
-       "Can't display entities that are connected via an unknown transform to this space.",
-   UnreachableTransform::InversePinholeCameraWithoutResolution =>
-       "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
+        f.write_str(match self {
+            Self::Unconnected =>
+                "No entity path connection from this space view.",
+            Self::NestedPinholeCameras =>
+                "Can't display entities under nested pinhole cameras.",
+            Self::UnknownTransform =>
+                "Can't display entities that are connected via an unknown transform to this space.",
+            Self::InversePinholeCameraWithoutResolution =>
+                "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
         })
     }
 }

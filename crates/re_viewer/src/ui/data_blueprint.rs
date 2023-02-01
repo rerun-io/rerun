@@ -336,7 +336,7 @@ impl DataBlueprintTree {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
                 group.entities.remove(path);
-                self.remove_empty_groups_recursively(*group_handle);
+                self.remove_group_if_empty(*group_handle);
             }
         }
         self.path_to_group.remove(path);
@@ -382,7 +382,7 @@ impl DataBlueprintTree {
         }
     }
 
-    fn remove_empty_groups_recursively(&mut self, group_handle: DataBlueprintGroupHandle) {
+    fn remove_group_if_empty(&mut self, group_handle: DataBlueprintGroupHandle) {
         let Some(group) = self.groups.get(group_handle) else {
             return;
         };
@@ -392,7 +392,7 @@ impl DataBlueprintTree {
                 parent_group
                     .children
                     .retain(|child_group| *child_group != group_handle);
-                self.remove_empty_groups_recursively(parent_group_handle);
+                self.remove_group_if_empty(parent_group_handle);
             }
         }
     }
