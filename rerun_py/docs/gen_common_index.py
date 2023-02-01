@@ -32,7 +32,6 @@ from pathlib import Path
 import griffe
 import mkdocs_gen_files
 
-
 # This is the list of sections and functions that will be included in the index
 # for each of them.
 section_table = [
@@ -91,7 +90,15 @@ def make_slug(s: str) -> str:
 
 with mkdocs_gen_files.open(index_path, "w") as index_file:
 
-    index_file.write("# Common APIs\n\n")
+    # Hide the TOC for the index since it's identical to the left nav-bar
+    index_file.write(
+        """---
+hide:
+    - toc
+---
+# Common APIs
+"""
+    )
 
     for (heading, func_list) in section_table:
 
