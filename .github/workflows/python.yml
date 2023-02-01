@@ -170,10 +170,12 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Cache APT Packages
-        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
+        #uses: awalsh128/cache-apt-pkgs-action@v1.2.2
+        #TODO(john) merge upstream
+        uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
         with:
           packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
-          version: 1.1
+          version: 1.0
           execute_install_scripts: true
 
       - name: Set up cargo cache
