@@ -800,7 +800,23 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .space_views
             .get_mut(tab)
             .expect("Should have been populated beforehand");
-        space_view.display_text()
+
+        let mut text = space_view.display_text();
+
+        if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
+            // Show that it is selected:
+            let egui_ctx = &self.ctx.re_ui.egui_ctx;
+            let selection_bg_color = egui_ctx.style().visuals.selection.bg_fill;
+            text = text.background_color(selection_bg_color);
+        }
+
+        text
+    }
+
+    fn on_tab_button(&mut self, tab: &mut Self::Tab, response: &egui::Response) {
+        if response.clicked() {
+            self.ctx.set_single_selection(Selection::SpaceView(*tab));
+        }
     }
 }
 
