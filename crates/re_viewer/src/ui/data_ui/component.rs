@@ -35,11 +35,13 @@ impl DataUi for ComponentWithInstances {
                     } else {
                         ui.label(ctx.re_ui.error_text("Error: missing instance key"));
                     }
-                } else if num_instances <= max_elems {
+                } else if max_elems == 1 {
+                    ui.label(format!("{num_instances} values"));
+                } else {
                     egui::Grid::new("component_instances")
                         .num_columns(2)
                         .show(ui, |ui| {
-                            for instance_key in instance_keys {
+                            for instance_key in instance_keys.take(max_elems) {
                                 ui.label(instance_key.to_string());
                                 ctx.component_ui_registry.ui(
                                     ctx,
@@ -52,8 +54,14 @@ impl DataUi for ComponentWithInstances {
                                 ui.end_row();
                             }
                         });
-                } else {
-                    ui.label(format!("{num_instances} values"));
+                    // TODO(andreas): There should be a button leaving to a full view.
+                    //                  Or once we figure out how to do full views of this just show everything in a scroll area
+                    if num_instances > max_elems {
+                        ui.label(format!(
+                            ".. {} more values available",
+                            num_instances - max_elems
+                        ));
+                    }
                 }
             }
             Err(err) => {
