@@ -141,8 +141,8 @@ fn log_axis(session: &mut Session, ent_path: &EntityPath) {
 
 // --- Init ---
 
-// TODO(cmc): This should probably just be a compile flag of the SDK; if it's enabled, then the
-// global allocator is properly set by the SDK directly.
+// Use MiMalloc as global allocator, wrapped in Rerun's allocation tracker for easily monitor
+// what's going on.
 #[global_allocator]
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
