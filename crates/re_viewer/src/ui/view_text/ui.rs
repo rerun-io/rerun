@@ -67,9 +67,6 @@ pub(crate) fn view_text(
     state.latest_time = time;
 
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        ui.label(format!("{} text entries", scene.text_entries.len()));
-        ui.separator();
-
         egui::ScrollArea::horizontal().show(ui, |ui| {
             crate::profile_scope!("render table");
             table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);

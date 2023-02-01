@@ -328,77 +328,88 @@ impl Viewport {
 
         self.trees.retain(|_, tree| is_tree_valid(tree));
 
-        // Lazily create a layout tree based on which SpaceViews are currently visible:
-        let tree = self.trees.entry(self.visible.clone()).or_insert_with(|| {
-            super::auto_layout::tree_from_space_views(
-                ui.available_size(),
-                &self.visible,
-                &self.space_views,
-            )
-        });
+        if let Some(space_view_id) = self.maximized {
+            if !self.space_views.contains_key(&space_view_id) {
+                self.maximized = None; // protect against bad deserialized data
+            }
+        }
+
+        let visible_space_views = if let Some(space_view_id) = self.maximized {
+            std::iter::once(space_view_id).collect()
+        } else {
+            self.visible.clone()
+        };
+
+        // Lazily create a layout tree based on which SpaceViews should be visible:
+        let tree = self
+            .trees
+            .entry(visible_space_views.clone())
+            .or_insert_with(|| {
+                super::auto_layout::tree_from_space_views(
+                    ui.available_size(),
+                    &visible_space_views,
+                    &self.space_views,
+                )
+            });
 
         let num_space_views = tree.num_tabs();
         if num_space_views == 0 {
-            // nothing to show
-        } else if num_space_views == 1 {
-            let space_view_id = *tree.tabs().next().unwrap();
-            let highlights = ctx
-                .selection_state()
-                .highlights_for_space_view(space_view_id, &self.space_views);
-            let space_view = self
-                .space_views
-                .get_mut(&space_view_id)
-                .expect("Should have been populated beforehand");
-            let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
-                .response;
+            return;
+        }
 
-            if ctx.app_options.show_spaceview_controls() {
-                let frame = ctx.re_ui.hovering_frame();
-                hovering_panel(ui, frame, response.rect, |ui| {
-                    space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
-                    help_text_ui(ui, space_view);
-                });
-            }
-        } else if let Some(space_view_id) = self.maximized {
-            let highlights = ctx
-                .selection_state()
-                .highlights_for_space_view(space_view_id, &self.space_views);
-            let space_view = self
-                .space_views
-                .get_mut(&space_view_id)
-                .expect("Should have been populated beforehand");
-            let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
-                .response;
+        let mut tab_viewer = TabViewer {
+            ctx,
+            spaces_info,
+            space_views: &mut self.space_views,
+        };
 
-            if ctx.app_options.show_spaceview_controls() {
-                let frame = ctx.re_ui.hovering_frame();
-                hovering_panel(ui, frame, response.rect, |ui| {
-                    if ctx
-                        .re_ui
-                        .small_icon_button(ui, &re_ui::icons::MINIMIZE)
-                        .on_hover_text("Restore - show all spaces")
-                        .clicked()
-                    {
-                        self.maximized = None;
-                    }
-                    space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
-                    help_text_ui(ui, space_view);
-                });
-            }
-        } else {
-            let mut tab_viewer = TabViewer {
-                ctx,
-                spaces_info,
-                space_views: &mut self.space_views,
-                maximized: &mut self.maximized,
-                selection_panel_expanded,
-            };
-
+        ui.scope(|ui| {
+            // we use a scope, because egui_dock unfortunately messes with the ui clip rect
             egui_dock::DockArea::new(tree)
                 .style(re_ui::egui_dock_style(ui.style()))
                 .show_inside(ui, &mut tab_viewer);
+        });
+
+        if ctx.app_options.show_spaceview_controls() {
+            // Two passes so we avoid borrowing issues:
+            let tab_bars = tree
+                .iter()
+                .filter_map(|node| {
+                    let egui_dock::Node::Leaf {
+                        rect,
+                        viewport,
+                        tabs,
+                        active,
+                    } = node else {
+                        return None;
+                    };
+
+                    let space_view_id = tabs.get(active.0)?;
+
+                    // `rect` includes the tab area, while `viewport` is just the tab body.
+                    // so the tab bar rect is:
+                    let tab_bar_rect =
+                        egui::Rect::from_x_y_ranges(rect.x_range(), rect.top()..=viewport.top());
+
+                    // rect/viewport can be invalid for the first frame
+                    tab_bar_rect
+                        .is_finite()
+                        .then_some((*space_view_id, tab_bar_rect))
+                })
+                .collect_vec();
+
+            for (space_view_id, tab_bar_rect) in tab_bars {
+                // rect/viewport can be invalid for the first frame
+                space_view_options_ui(
+                    ctx,
+                    ui,
+                    self,
+                    tab_bar_rect,
+                    selection_panel_expanded,
+                    space_view_id,
+                    num_space_views,
+                );
+            }
         }
     }
 
@@ -682,8 +693,6 @@ struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     spaces_info: &'a SpaceInfoCollection,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
-    maximized: &'a mut Option<SpaceViewId>,
-    selection_panel_expanded: &'a mut bool,
 }
 
 impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
@@ -701,37 +710,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
-        let response = ui
-            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights))
-            .response;
-
-        if self.ctx.app_options.show_spaceview_controls() {
-            // Show buttons for maximize and space view options:
-            let frame = self.ctx.re_ui.hovering_frame();
-            hovering_panel(ui, frame, response.rect, |ui| {
-                if self
-                    .ctx
-                    .re_ui
-                    .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
-                    .on_hover_text("Maximize Space View")
-                    .clicked()
-                {
-                    *self.maximized = Some(*space_view_id);
-                    self.ctx
-                        .set_single_selection(Selection::SpaceView(*space_view_id));
-                }
-
-                space_view_options_link(
-                    self.ctx,
-                    self.selection_panel_expanded,
-                    *space_view_id,
-                    ui,
-                    "⛭",
-                );
-
-                help_text_ui(ui, space_view);
-            });
-        }
+        space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights);
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
@@ -780,19 +759,62 @@ fn space_view_options_link(
     }
 }
 
-fn hovering_panel(
+/// Shown in the right of the tab panel
+fn space_view_options_ui(
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    frame: egui::Frame,
-    rect: egui::Rect,
-    add_contents: impl FnOnce(&mut egui::Ui),
+    viewport: &mut Viewport,
+    tab_bar_rect: egui::Rect,
+    selection_panel_expanded: &mut bool,
+    space_view_id: SpaceViewId,
+    num_space_views: usize,
 ) {
-    let height = 28.0; // TODO(emilk): remove this hard-coded monstrosity
-    let mut max_rect = rect;
-    max_rect.max.y = max_rect.min.y + height;
+    let Some(space_view) = viewport.space_views.get(&space_view_id) else { return; };
 
-    ui.allocate_ui_at_rect(max_rect, |ui| {
-        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-            frame.show(ui, add_contents);
+    ui.allocate_ui_at_rect(tab_bar_rect, |ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let where_to_put_background = ui.painter().add(egui::Shape::Noop);
+
+            ui.add_space(4.0);
+
+            space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+
+            if viewport.maximized == Some(space_view_id) {
+                // Show minimize-button:
+                if ctx
+                    .re_ui
+                    .small_icon_button(ui, &re_ui::icons::MINIMIZE)
+                    .on_hover_text("Restore - show all spaces")
+                    .clicked()
+                {
+                    viewport.maximized = None;
+                }
+            } else if num_space_views > 1 {
+                // Show maximize-button:
+                if ctx
+                    .re_ui
+                    .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
+                    .on_hover_text("Maximize Space View")
+                    .clicked()
+                {
+                    viewport.maximized = Some(space_view_id);
+                    ctx.set_single_selection(Selection::SpaceView(space_view_id));
+                }
+            }
+
+            // Show help last, since not all space views have help text
+            help_text_ui(ui, space_view);
+
+            // Put a frame so that the buttons cover any labels they intersect with:
+            let rect = ui.min_rect().expand2(egui::vec2(1.0, -2.0));
+            ui.painter().set(
+                where_to_put_background,
+                egui::Shape::rect_filled(
+                    rect,
+                    0.0,
+                    re_ui::egui_dock_style(ui.style()).tab_bar_background_color,
+                ),
+            );
         });
     });
 }
