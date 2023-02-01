@@ -119,20 +119,6 @@ impl ReUi {
         }
     }
 
-    /// Used for the hovering controls over a Space View
-    #[allow(clippy::unused_self)]
-    pub fn hovering_frame(&self) -> egui::Frame {
-        let style = self.egui_ctx.style();
-        egui::Frame {
-            inner_margin: egui::style::Margin::symmetric(4.0, 2.0),
-            outer_margin: egui::style::Margin::same(2.0),
-            rounding: Self::small_rounding().into(),
-            fill: style.visuals.window_fill(),
-            stroke: style.visuals.window_stroke(),
-            ..Default::default()
-        }
-    }
-
     #[must_use]
     #[allow(clippy::unused_self)]
     pub fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
