@@ -779,8 +779,7 @@ fn space_view_options_ui(
 
             space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
 
-            let we_are_maximized = viewport.maximized == Some(space_view_id);
-            if we_are_maximized {
+            if viewport.maximized == Some(space_view_id) {
                 // Show minimize-button:
                 if ctx
                     .re_ui
