@@ -768,9 +768,9 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
         if size > 1 {
             ui.horizontal(|ui| {
                 if let Some(name) = &dim.name {
-                    ui.weak(name);
+                    ui.label(format!("{name}:"));
                 } else {
-                    ui.weak(format!("dimension {dim_idx}"));
+                    ui.label(format!("dimension {dim_idx}:"));
                 }
 
                 // If the range is big (say, 2048) then we would need
