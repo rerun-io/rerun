@@ -692,7 +692,8 @@ fn image_ui(
                 .texture_settings
                 .paint_image(ui, egui::Vec2::ZERO, image);
 
-        if response.hovered() {
+        let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+        if response.hovered() && !is_anything_being_dragged {
             // Show axis names etc:
             let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
             let text_color = ui.visuals().text_color();
