@@ -58,7 +58,7 @@ impl Default for ComponentUiRegistry {
         // registry.add::<re_log_types::component_types::Point3D>();
         // registry.add::<re_log_types::component_types::Quaternion>();
         // registry.add::<re_log_types::component_types::Radius>();
-        // registry.add::<re_log_types::component_types::Rect2D>();
+        registry.add::<re_log_types::component_types::Rect2D>();
         // registry.add::<re_log_types::component_types::Scalar>();
         // registry.add::<re_log_types::component_types::ScalarPlotProps>();
         // registry.add::<re_log_types::component_types::Size3D>();

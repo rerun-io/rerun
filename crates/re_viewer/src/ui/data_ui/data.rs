@@ -1,8 +1,9 @@
 use egui::Vec2;
 
 use re_log_types::{
-    component_types::ColorRGBA, component_types::Mat3x3, Pinhole, Rigid3, Transform,
-    ViewCoordinates,
+    component_types::ColorRGBA,
+    component_types::{Mat3x3, Rect2D, Vec4D},
+    Pinhole, Rigid3, Transform, ViewCoordinates,
 };
 
 use crate::ui::UiVerbosity;
@@ -194,5 +195,32 @@ impl DataUi for Mat3x3 {
             ui.monospace(self[2][2].to_string());
             ui.end_row();
         });
+    }
+}
+
+impl DataUi for Rect2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(match self {
+            Rect2D::XYWH(Vec4D([top, left, width, height]))
+            | Rect2D::YXHW(Vec4D([left, top, width, height])) => {
+                format!("top: {top}, left: {left}, width: {width}, height: {height}")
+            }
+            Rect2D::XYXY(Vec4D([left, top, right, bottom]))
+            | Rect2D::YXYX(Vec4D([top, left, bottom, right])) => {
+                format!("top: {top}, left: {left}, right: {right}, bottom: {bottom}")
+            }
+            Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
+                format!("center: [x:{center_x}, y:{center_y}], width: {width}, height: {height}")
+            }
+            Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
+                format!("center: [x:{center_x}, y:{center_y}], half-width: {half_width}, half-height: {half_height}")
+            }
+        }).on_hover_text(format!("area: {}", self.width() * self.height()));
     }
 }
