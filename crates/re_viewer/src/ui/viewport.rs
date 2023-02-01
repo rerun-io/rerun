@@ -330,7 +330,7 @@ impl Viewport {
 
         if let Some(space_view_id) = self.maximized {
             if !self.space_views.contains_key(&space_view_id) {
-                self.maximized = None;
+                self.maximized = None; // protect against bad deserialized data
             }
         }
 
@@ -773,9 +773,9 @@ fn space_view_options_ui(
 
     ui.allocate_ui_at_rect(tab_bar_rect, |ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.add_space(4.0);
+            let where_to_put_background = ui.painter().add(egui::Shape::Noop);
 
-            help_text_ui(ui, space_view);
+            ui.add_space(4.0);
 
             space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
 
@@ -802,6 +802,20 @@ fn space_view_options_ui(
                     ctx.set_single_selection(Selection::SpaceView(space_view_id));
                 }
             }
+
+            // Show help last, since not all space views have help text
+            help_text_ui(ui, space_view);
+
+            // Put a frame so that the buttons cover any labels they intersect with:
+            let rect = ui.min_rect().expand2(egui::vec2(1.0, -2.0));
+            ui.painter().set(
+                where_to_put_background,
+                egui::Shape::rect_filled(
+                    rect,
+                    0.0,
+                    re_ui::egui_dock_style(ui.style()).tab_bar_background_color,
+                ),
+            );
         });
     });
 }
