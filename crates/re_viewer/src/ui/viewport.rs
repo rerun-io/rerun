@@ -505,7 +505,7 @@ impl Viewport {
                 if category == ViewCategory::Tensor {
                     for entity_path in entity_paths {
                         let mut space_view = SpaceView::new(category, space_info, &[entity_path]);
-                        space_view.allow_auto_adding_more_entities = false;
+                        space_view.entities_determined_by_user = true;
                         space_views.push(space_view);
                     }
                 } else {
