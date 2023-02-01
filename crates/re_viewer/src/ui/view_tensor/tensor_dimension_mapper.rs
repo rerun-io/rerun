@@ -194,10 +194,6 @@ pub fn dimension_mapping_ui(
         ui.vertical(|ui| {
             ui.strong("Image:");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Width:");
-                    ui.toggle_value(&mut dim_mapping.invert_width, "Flip");
-                });
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
@@ -208,12 +204,12 @@ pub fn dimension_mapping_ui(
                     &mut drop_source,
                     &mut drop_target,
                 );
+                ui.horizontal(|ui| {
+                    ui.toggle_value(&mut dim_mapping.invert_width, "Flip");
+                    ui.label("width");
+                });
                 ui.end_row();
 
-                ui.horizontal(|ui| {
-                    ui.label("Height:");
-                    ui.toggle_value(&mut dim_mapping.invert_height, "Flip");
-                });
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
@@ -224,6 +220,10 @@ pub fn dimension_mapping_ui(
                     &mut drop_source,
                     &mut drop_target,
                 );
+                ui.horizontal(|ui| {
+                    ui.toggle_value(&mut dim_mapping.invert_height, "Flip");
+                    ui.label("height");
+                });
                 ui.end_row();
             });
         });
