@@ -21,6 +21,7 @@ use rerun::{
 // --- Rerun logging ---
 
 // Declare how to turn a glTF primitive into a Rerun component (`Mesh3D`).
+#[allow(clippy::fallible_impl_from)]
 impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
         let raw = RawMesh3D {
@@ -41,7 +42,7 @@ impl From<GltfPrimitive> for Mesh3D {
             //     .map(|texcoords| texcoords.into_iter().flatten().collect()),
         };
 
-        raw.sanity_check().uwnrap();
+        raw.sanity_check().unwrap();
 
         Mesh3D::Raw(raw)
     }
