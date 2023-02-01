@@ -17,7 +17,7 @@ impl DimensionSelector {
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct DimensionMapping {
-    /// Which dimensions have selectors and are visible?
+    /// Which dimensions have selectors, and are they visible?
     pub selectors: Vec<DimensionSelector>,
 
     // Which dim?
@@ -55,7 +55,8 @@ impl DimensionMapping {
             _ => {
                 let (width, height) = find_width_height_dim_indices(shape);
                 let selectors = (0..shape.len())
-                    .filter_map(|i| (i != width && i != height).then(|| DimensionSelector::new(i)))
+                    .filter(|i| *i != width && *i != height)
+                    .map(DimensionSelector::new)
                     .collect();
 
                 let invert_width = shape[width]

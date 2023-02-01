@@ -7,8 +7,6 @@ enum DragDropAddress {
     Width,
     Height,
     Selector(usize),
-    // TODO(andreas): Unused right now but we'll add it back once we have more ways of pushing dimensions.
-    #[allow(dead_code)]
     NewSelector,
 }
 
@@ -256,24 +254,24 @@ pub fn dimension_mapping_ui(
                                 .small_icon_button(ui, &re_ui::icons::INVISIBLE)
                                 .on_hover_text("Show selector ui in the Space View.")
                         };
-                        if visibility_button.clicked() {
-                            selector.visible = !selector.visible;
-                        }
+                        selector.visible ^= visibility_button.clicked();
                         ui.end_row();
                     }
                     // Don't expose `NewSelector` for the moment since it doesn't add any value.
                     // We might need it again though if there is a way to park a selector somewhere else than width/height/selector!
-                    // tensor_dimension_ui(
-                    //     ui,
-                    //     drag_context_id,
-                    //     can_accept_dragged,
-                    //     None,
-                    //     DragDropAddress::NewSelector,
-                    //     shape,
-                    //     &mut drop_source,
-                    //     &mut drop_target,
-                    // );
-                    // ui.end_row();
+                    if false {
+                        tensor_dimension_ui(
+                            ui,
+                            drag_context_id,
+                            can_accept_dragged,
+                            None,
+                            DragDropAddress::NewSelector,
+                            shape,
+                            &mut drop_source,
+                            &mut drop_target,
+                        );
+                        ui.end_row();
+                    }
                 });
         });
     });
