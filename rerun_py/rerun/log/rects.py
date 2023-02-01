@@ -16,7 +16,7 @@ from rerun.log import (
     _normalize_labels,
 )
 from rerun.log.error_utils import _send_warning
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -35,7 +35,7 @@ def log_rect(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -57,8 +57,8 @@ def log_rect(
         Optional class id for the rectangle.
         The class id provides color and label if not specified explicitly.
         See [rerun.log_annotation_context][]
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
          If true, the rect will be timeless (default: False).
 
@@ -85,8 +85,8 @@ def log_rect(
         class_ids = _normalize_ids([class_id])
         instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
@@ -105,7 +105,7 @@ def log_rects(
     colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -141,8 +141,8 @@ def log_rects(
         Optional class ids for the rectangles.
         The class id provides colors and labels if not specified explicitly.
         See [rerun.log_annotation_context][]
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
             If true, the rects will be timeless (default: False).
 
@@ -187,8 +187,8 @@ def log_rects(
         is_splat = len(class_ids) == 1
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    if user_components:
-        _add_user_components(comps[0], comps[1], user_components, identifiers_np)
+    if ext:
+        _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 

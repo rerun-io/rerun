@@ -8,7 +8,7 @@ from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -25,7 +25,7 @@ def log_arrow(
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -51,8 +51,8 @@ def log_arrow(
         An optional text to show beside the arrow.
     width_scale
         An optional scaling factor, default=1.0.
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless
         The entity is not time-dependent, and will be visible at any time point.
 
@@ -78,8 +78,8 @@ def log_arrow(
         radii = _normalize_radii([width_scale / 2])
         instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

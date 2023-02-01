@@ -11,7 +11,7 @@ from rerun.components.quaternion import QuaternionArray
 from rerun.components.radius import RadiusArray
 from rerun.components.vec import Vec3DArray
 from rerun.log import _normalize_colors, _normalize_ids, _normalize_radii
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -29,7 +29,7 @@ def log_obb(
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -53,8 +53,8 @@ def log_obb(
         Optional text label placed at `position`.
     class_id:
         Optional class id for the OBB.  The class id provides colors and labels if not specified explicitly.
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the bounding box will be timeless (default: False).
 
@@ -102,8 +102,8 @@ def log_obb(
         class_ids = _normalize_ids([class_id])
         instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

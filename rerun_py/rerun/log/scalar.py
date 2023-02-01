@@ -7,7 +7,7 @@ from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import _normalize_colors
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -23,7 +23,7 @@ def log_scalar(
     color: Optional[Sequence[int]] = None,
     radius: Optional[float] = None,
     scattered: Optional[bool] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Log a double-precision scalar that will be visualized as a timeseries plot.
@@ -102,8 +102,8 @@ def log_scalar(
         Points within a single line do not have to all share the same scatteredness:
         the line will switch between a scattered and a continuous representation as
         required.
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
 
     """
     instanced: Dict[str, Any] = {}
@@ -125,8 +125,8 @@ def log_scalar(
         props = [{"scattered": scattered}]
         instanced["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=False)

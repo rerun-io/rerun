@@ -19,7 +19,7 @@ from rerun.log import (
     _normalize_radii,
 )
 from rerun.log.error_utils import _send_warning
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -38,7 +38,7 @@ def log_point(
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     keypoint_id: Optional[int] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -78,8 +78,8 @@ def log_point(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the point will be timeless (default: False).
 
@@ -115,8 +115,8 @@ def log_point(
         class_ids = _normalize_ids([class_id])
         instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
@@ -136,7 +136,7 @@ def log_points(
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -179,8 +179,8 @@ def log_points(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the points will be timeless (default: False).
 
@@ -241,8 +241,8 @@ def log_points(
         is_splat = len(keypoint_ids) == 1
         comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-    if user_components:
-        _add_user_components(comps[0], comps[1], user_components, identifiers_np)
+    if ext:
+        _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
 

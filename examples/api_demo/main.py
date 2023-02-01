@@ -240,23 +240,23 @@ def run_bounding_box() -> None:
     )
 
 
-def run_user_component() -> None:
+def run_extension_component() -> None:
     rr.set_time_seconds("sim_time", 0)
     # Hack to establish 2d view bounds
-    rr.log_rect("user_components", [0, 0, 128, 128])
+    rr.log_rect("extension_components", [0, 0, 128, 128])
 
     # Single point
-    rr.log_point("user_components/point", np.array([64, 64]), color=(255, 0, 0))
-    # Separate user-component
-    rr.log_user_components("user_components/point", {"confidence": 0.9})
+    rr.log_point("extension_components/point", np.array([64, 64]), color=(255, 0, 0))
+    # Separate extension component
+    rr.log_extension_components("extension_components/point", {"confidence": 0.9})
 
-    # Batch points
+    # Batch points with extension
     rr.set_time_seconds("sim_time", 1)
     rr.log_points(
-        "user_components/points",
+        "extension_components/points",
         np.array([[32, 32], [32, 96], [96, 32], [96, 96]]),
         colors=(0, 255, 0),
-        user_components={"corner": ["upper left", "lower left", "upper right", "lower right"], "training": True},
+        ext={"corner": ["upper left", "lower left", "upper right", "lower right"], "training": True},
     )
 
 
@@ -269,7 +269,7 @@ def main() -> None:
         "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
         "bbox": run_bounding_box,
-        "user_components": run_user_component,
+        "extension_components": run_extension_component,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

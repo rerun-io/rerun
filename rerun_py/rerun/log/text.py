@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Final, Optional, Sequence
 
 # Fully qualified to avoid circular import
-import rerun.log.user_components
+import rerun.log.extension_components
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
@@ -98,7 +98,7 @@ def log_text_entry(
     text: str,
     level: Optional[str] = LogLevel.INFO,
     color: Optional[Sequence[int]] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -116,8 +116,8 @@ def log_text_entry(
         from [LogLevel][rerun.log.text.LogLevel]
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         Whether the text entry should be timeless.
 
@@ -134,8 +134,8 @@ def log_text_entry(
         colors = _normalize_colors([color])
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-    if user_components:
-        rerun.log.user_components._add_user_components(instanced, splats, user_components, None)
+    if ext:
+        rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

@@ -7,7 +7,7 @@ from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -23,7 +23,7 @@ def log_path(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     r"""
@@ -49,8 +49,8 @@ def log_path(
         Width of the line.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the path will be timeless (default: False).
 
@@ -73,8 +73,8 @@ def log_path(
         radii = _normalize_radii([stroke_width / 2])
         instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
@@ -90,7 +90,7 @@ def log_line_segments(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     r"""
@@ -115,8 +115,8 @@ def log_line_segments(
         Width of the line.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the line segments will be timeless (default: False).
 
@@ -156,8 +156,8 @@ def log_line_segments(
         radii = _normalize_radii([stroke_width / 2])
         splats["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

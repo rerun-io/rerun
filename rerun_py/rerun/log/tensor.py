@@ -5,7 +5,7 @@ import numpy.typing as npt
 from rerun.components.instance import InstanceArray
 from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
-from rerun.log.user_components import _add_user_components
+from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
 
@@ -42,7 +42,7 @@ def log_tensor(
     tensor: npt.ArrayLike,
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -58,8 +58,8 @@ def log_tensor(
         Optional names for each dimension of the tensor.
     meter:
         Optional scale of the tensor (e.g. meters per cell).
-    user_components:
-        Optional dictionary of user components. See [rerun.log_user_components][]
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the tensor will be timeless (default: False).
 
@@ -69,7 +69,7 @@ def log_tensor(
         tensor=_to_numpy(tensor),
         names=names,
         meter=meter,
-        user_components=user_components,
+        ext=ext,
         timeless=timeless,
     )
 
@@ -80,7 +80,7 @@ def _log_tensor(
     names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     meaning: bindings.TensorDataMeaning = None,
-    user_components: Optional[Dict[str, Any]] = None,
+    ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
@@ -125,8 +125,8 @@ def _log_tensor(
 
     instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter)
 
-    if user_components:
-        _add_user_components(instanced, splats, user_components, None)
+    if ext:
+        _add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
