@@ -28,13 +28,14 @@ The Summary should look like:
 
 import re
 from pathlib import Path
+from typing import Final
 
 import griffe
 import mkdocs_gen_files
 
 # This is the list of sections and functions that will be included in the index
 # for each of them.
-section_table = [
+SECTION_TABLE: Final[list[tuple[str, list[str]]]] = [
     (
         "Initialization",
         ["init", "set_recording_id", "connect", "spawn_and_connect"],
@@ -100,7 +101,7 @@ hide:
 """
     )
 
-    for (heading, func_list) in section_table:
+    for (heading, func_list) in SECTION_TABLE:
 
         # Turn the heading into a slug and add it to the nav
         md_name = make_slug(heading)
