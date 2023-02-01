@@ -2,26 +2,34 @@ fn main() {
     // Required for `cargo build` to work on mac: https://pyo3.rs/v0.14.2/building_and_distribution.html#macos
     pyo3_build_config::add_extension_module_link_args();
 
-    generate_dev_version();
+    if let Ok(ref ref_type) = std::env::var("GITHUB_REF_TYPE") {
+        // We're in CI
+        if ref_type == "branch" {
+            // A branch build, so we're building a development version.
+
+            let new_version = {
+                let pkg_version = std::env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| {
+                    eprintln!("cargo:warning=Version not set!");
+                    "0.0.0".to_owned()
+                });
+                let git_sha = std::process::Command::new("git")
+                    .args(["rev-parse", "--short", "HEAD"])
+                    .output()
+                    .expect("Failed to run git rev-parse")
+                    .stdout;
+                let git_sha = String::from_utf8(git_sha).unwrap();
+                toml::Value::String(format!("{pkg_version}+{}", git_sha.trim()))
+            };
+
+            eprintln!("cargo:warning=Overriding packaged wheel version to a development version: {new_version}.");
+            generate_dev_version(new_version);
+        }
+    }
 }
 
 /// Generates a development version number for the Python package based on the Cargo package version and the current git SHA.
 /// This results in a version number like `0.1.0+abcdefg`.
-fn generate_dev_version() {
-    let new_version = {
-        let pkg_version = std::env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| {
-            eprintln!("cargo:warning=Version not set!");
-            "0.0.0".to_owned()
-        });
-        let git_sha = std::process::Command::new("git")
-            .args(["rev-parse", "--short", "HEAD"])
-            .output()
-            .expect("Failed to run git rev-parse")
-            .stdout;
-        let git_sha = String::from_utf8(git_sha).unwrap();
-        toml::Value::String(format!("{pkg_version}+{}", git_sha.trim()))
-    };
-
+fn generate_dev_version(new_version: toml::Value) {
     let pyproject_toml =
         std::fs::read_to_string("pyproject.toml").expect("Failed to read pyproject.toml");
     let mut pyproject_toml: toml::Value =

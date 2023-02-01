@@ -4,25 +4,6 @@ on:
   push:
     tags:
       - "*.*.*" # on release tag
-  pull_request:
-    branches:
-      - "main"
-    paths:
-      - ".github/workflows/release.yml"
-
-  workflow_dispatch:
-    inputs:
-      pyindex:
-        description: "PyPI Index"
-        required: true
-        default: "testpypi"
-        type: choice
-        options:
-          - testpypi
-          - pypi
-
-env:
-  PYTHON_VERSION: "3.8"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.8"
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-doc.txt"
 
@@ -61,80 +42,3 @@ jobs:
       - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
           mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages -u ${{github.ref_name}} latest
-
-  py-wheel-macos-aarch64:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
-
-      - name: Set up Rust targets
-        run: rustup target add aarch64-apple-darwin
-
-      - name: Publish wheel
-        uses: PyO3/maturin-action@v1
-        env:
-          #MATURIN_PASSWORD: ${{ secrets.PYPI_PASS }}
-        with:
-          maturin-version: "0.14.10"
-          command: build
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --strip
-            --target aarch64-apple-darwin
-          #--skip-existing
-          #--no-sdist
-          #--repository ${{ inputs.pyindex }}
-          #--username john.rerun.io
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: rerun-sdk-wheel
-          path: target/wheels/*.whl
-
-  py-wheel-manylinux-x64_64:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Publish wheel
-        uses: PyO3/maturin-action@v1
-        env:
-          #MATURIN_PASSWORD: ${{ secrets.PYPI_PASS }}
-          RUSTFLAGS: -C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma
-        with:
-          maturin-version: '0.14.10'
-          command: build
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --strip
-          #--skip-existing
-          #--repository ${{ inputs.pyindex }}
-          #--username john.rerun.io
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: rerun-sdk-wheel
-          path: target/wheels/*.whl
