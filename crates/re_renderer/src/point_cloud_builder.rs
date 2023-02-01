@@ -113,6 +113,15 @@ pub struct PointCloudBatchBuilder<'a, PerPointUserData>(
     &'a mut PointCloudBuilder<PerPointUserData>,
 );
 
+impl<'a, PerPointUserData> Drop for PointCloudBatchBuilder<'a, PerPointUserData> {
+    fn drop(&mut self) {
+        // Remove batch again if it wasn't actually used.
+        if self.0.batches.last().unwrap().point_count == 0 {
+            self.0.batches.pop();
+        }
+    }
+}
+
 impl<'a, PerPointUserData> PointCloudBatchBuilder<'a, PerPointUserData>
 where
     PerPointUserData: Default + Copy,
