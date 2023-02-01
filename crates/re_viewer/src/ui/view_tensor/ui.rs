@@ -476,7 +476,7 @@ impl TextureSettings {
         ui: &mut egui::Ui,
         margin: Vec2,
         image: ColorImage,
-    ) -> (egui::Painter, egui::Rect) {
+    ) -> (egui::Response, egui::Painter, egui::Rect) {
         let img_size = egui::vec2(image.size[0] as _, image.size[1] as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
         let desired_size = match self.scaling {
@@ -505,7 +505,7 @@ impl TextureSettings {
 
         painter.add(mesh);
 
-        (painter, image_rect)
+        (response, painter, image_rect)
     }
 }
 
@@ -686,51 +686,60 @@ fn image_ui(
 
     egui::ScrollArea::both().show(ui, |ui| {
         let font_id = egui::TextStyle::Body.resolve(ui.style());
-        let margin = Vec2::splat(font_id.size + 2.0);
 
-        let (painter, image_rect) = view_state.texture_settings.paint_image(ui, margin, image);
+        let (response, mut painter, image_rect) =
+            view_state
+                .texture_settings
+                .paint_image(ui, egui::Vec2::ZERO, image);
 
-        let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
-        let text_color = ui.visuals().text_color();
+        if response.hovered() {
+            // Show axis names etc:
+            let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
+            let text_color = ui.visuals().text_color();
 
-        // Label for X axis, on top:
-        if invert_width {
-            painter.text(
-                image_rect.left_top(),
-                Align2::LEFT_BOTTOM,
-                format!("{width_name} ⬅"),
-                font_id.clone(),
-                text_color,
-            );
-        } else {
-            painter.text(
-                image_rect.right_top(),
-                Align2::RIGHT_BOTTOM,
-                format!("➡ {width_name}"),
-                font_id.clone(),
-                text_color,
-            );
-        }
+            painter.set_clip_rect(egui::Rect::EVERYTHING); // Allow panting axis names outside of our bounds!
 
-        // Label for Y axis, on the left:
-        if invert_height {
-            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
-            painter.add(TextShape {
-                pos: image_rect.left_top() - egui::vec2(galley.size().y, -galley.size().x),
-                galley,
-                angle: -std::f32::consts::TAU / 4.0,
-                underline: Default::default(),
-                override_text_color: None,
-            });
-        } else {
-            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
-            painter.add(TextShape {
-                pos: image_rect.left_bottom() - egui::vec2(galley.size().y, 0.0),
-                galley,
-                angle: -std::f32::consts::TAU / 4.0,
-                underline: Default::default(),
-                override_text_color: None,
-            });
+            // Label for X axis, on top:
+            if invert_width {
+                painter.text(
+                    image_rect.left_top(),
+                    Align2::LEFT_BOTTOM,
+                    format!("{width_name} ⬅"),
+                    font_id.clone(),
+                    text_color,
+                );
+            } else {
+                painter.text(
+                    image_rect.right_top(),
+                    Align2::RIGHT_BOTTOM,
+                    format!("➡ {width_name}"),
+                    font_id.clone(),
+                    text_color,
+                );
+            }
+
+            // Label for Y axis, on the left:
+            if invert_height {
+                let galley =
+                    painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
+                painter.add(TextShape {
+                    pos: image_rect.left_top() - egui::vec2(galley.size().y, -galley.size().x),
+                    galley,
+                    angle: -std::f32::consts::TAU / 4.0,
+                    underline: Default::default(),
+                    override_text_color: None,
+                });
+            } else {
+                let galley =
+                    painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+                painter.add(TextShape {
+                    pos: image_rect.left_bottom() - egui::vec2(galley.size().y, 0.0),
+                    galley,
+                    angle: -std::f32::consts::TAU / 4.0,
+                    underline: Default::default(),
+                    override_text_color: None,
+                });
+            }
         }
     });
 }
