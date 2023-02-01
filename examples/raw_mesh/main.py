@@ -13,7 +13,7 @@ examples/raw_mesh/main.py
 
 import argparse
 from pathlib import Path
-from typing import cast
+from typing import Optional, cast
 
 import numpy as np
 import trimesh
@@ -30,7 +30,7 @@ def load_scene(path: Path) -> trimesh.Scene:
 
 # NOTE: The scene hierarchy will look different compared to the Rust example, as this is using the
 # trimesh hierarchy, not the raw glTF hierarchy.
-def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
+def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> None:
     path = path + "/" + node if path else node
 
     parent = scene.graph.transforms.parents.get(node)
