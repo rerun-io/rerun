@@ -33,6 +33,9 @@ def lint_line(line: str) -> Optional[str]:
     if "todo!()" in line:
         return 'todo!() should be written as todo!("$details")'
 
+    if "dbg!(" in line and not line.startswith('//'):
+        return 'No dbg!( in production code'
+
     if "unimplemented!" in line:
         return "unimplemented!(): either implement this, or rewrite it as a todo!()"
 
