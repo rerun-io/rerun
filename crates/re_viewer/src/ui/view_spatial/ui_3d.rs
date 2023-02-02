@@ -33,7 +33,7 @@ use super::{
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View3DState {
-    orbit_eye: Option<OrbitEye>,
+    pub orbit_eye: Option<OrbitEye>,
 
     /// Currently tracked camera.
     tracked_camera: Option<InstancePath>,
@@ -46,8 +46,8 @@ pub struct View3DState {
     hovered_point: Option<glam::Vec3>,
 
     // options:
-    spin: bool,
-    show_axes: bool,
+    pub spin: bool,
+    pub show_axes: bool,
 
     #[serde(skip)]
     last_eye_interact_time: f64,
@@ -76,6 +76,11 @@ impl Default for View3DState {
 }
 
 impl View3DState {
+    pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
+        self.interpolate_to_eye(default_eye(scene_bbox_accum, &self.space_specs).to_eye());
+        self.tracked_camera = None;
+    }
+
     fn update_eye(
         &mut self,
         response: &egui::Response,
@@ -165,58 +170,6 @@ impl View3DState {
             self.orbit_eye = Some(target);
         }
     }
-
-    pub fn settings_ui(&mut self, ui: &mut egui::Ui, scene_bbox_accum: &BoundingBox) {
-        {
-            let up_response = if let Some(up) = self.space_specs.up {
-                if up == Vec3::X {
-                    ui.label("Up: +X")
-                } else if up == -Vec3::X {
-                    ui.label("Up: -X")
-                } else if up == Vec3::Y {
-                    ui.label("Up: +Y")
-                } else if up == -Vec3::Y {
-                    ui.label("Up: -Y")
-                } else if up == Vec3::Z {
-                    ui.label("Up: +Z")
-                } else if up == -Vec3::Z {
-                    ui.label("Up: -Z")
-                } else if up != Vec3::ZERO {
-                    ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
-                } else {
-                    ui.label("Up: —")
-                }
-            } else {
-                ui.label("Up: —")
-            };
-
-            up_response.on_hover_ui(|ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("Set with ");
-                    ui.code("rerun.log_view_coordinates");
-                    ui.label(".");
-                });
-            });
-        }
-
-        if ui
-            .button("Reset virtual camera")
-            .on_hover_text(
-                "Resets camera position & orientation.\nYou can also double-click the 3D view",
-            )
-            .clicked()
-        {
-            self.orbit_eye = Some(default_eye(scene_bbox_accum, &self.space_specs));
-            self.eye_interpolation = None;
-            // TODO(emilk): reset tracking camera too
-        }
-
-        ui.checkbox(&mut self.spin, "Spin virtual camera")
-            .on_hover_text("Spin view");
-        ui.checkbox(&mut self.show_axes, "Show origin axes")
-            .on_hover_text("Show X-Y-Z axes");
-    }
 }
 
 #[derive(Clone)]
@@ -242,8 +195,8 @@ impl EyeInterpolation {
 
 #[derive(Clone, Default)]
 pub struct SpaceSpecs {
-    up: Option<glam::Vec3>,
-    right: Option<glam::Vec3>,
+    pub up: Option<glam::Vec3>,
+    pub right: Option<glam::Vec3>,
 }
 
 impl SpaceSpecs {
@@ -443,10 +396,7 @@ pub fn view_3d(
         }
         // Without hovering, resets the camera.
         else {
-            state.state_3d.interpolate_to_orbit_eye(default_eye(
-                &state.scene_bbox_accum,
-                &state.state_3d.space_specs,
-            ));
+            state.state_3d.reset_camera(&state.scene_bbox_accum);
         }
     }
 
