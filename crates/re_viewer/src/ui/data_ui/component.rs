@@ -44,7 +44,7 @@ impl DataUi for ComponentWithInstances {
                         .resizable(false)
                         .vscroll(true)
                         .auto_shrink([false, true])
-                        .max_scroll_height(300.0)
+                        .max_scroll_height(100.0)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                         .columns(egui_extras::Column::auto(), 2)
                         .header(re_ui::ReUi::table_header_height(), |mut header| {

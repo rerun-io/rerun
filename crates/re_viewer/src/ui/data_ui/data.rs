@@ -1,5 +1,6 @@
 use egui::Vec2;
 
+use re_format::format_f32;
 use re_log_types::{
     component_types::ColorRGBA,
     component_types::{LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D},
@@ -9,6 +10,9 @@ use re_log_types::{
 use crate::ui::UiVerbosity;
 
 use super::DataUi;
+
+/// Default number of ui points to show a number.
+const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 
 impl DataUi for [u8; 4] {
     fn data_ui(
@@ -264,30 +268,42 @@ impl DataUi for LineStrip2D {
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        const MAX_NUM_ELEMENTS_MULTI_LINE: usize = 10;
-
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
                 ui.label(format!("{} positions", self.0.len()));
             }
             UiVerbosity::All => {
-                egui::Grid::new("linestrip2d")
-                    .num_columns(2)
-                    .show(ui, |ui| {
-                        ui.strong("x");
-                        ui.strong("y");
-                        ui.end_row();
-                        for p in self.0.iter().take(MAX_NUM_ELEMENTS_MULTI_LINE) {
-                            ui.label(p.x().to_string());
-                            ui.label(p.y().to_string());
-                        }
+                use egui_extras::{Column, TableBuilder};
+                TableBuilder::new(ui)
+                    .resizable(true)
+                    .vscroll(true)
+                    .auto_shrink([false, true])
+                    .max_scroll_height(100.0)
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
+                    .header(re_ui::ReUi::table_header_height(), |mut header| {
+                        re_ui::ReUi::setup_table_header(&mut header);
+                        header.col(|ui| {
+                            ui.label("x");
+                        });
+                        header.col(|ui| {
+                            ui.label("y");
+                        });
+                    })
+                    .body(|mut body| {
+                        re_ui::ReUi::setup_table_body(&mut body);
+                        let row_height = re_ui::ReUi::table_line_height();
+                        body.rows(row_height, self.0.len(), |index, mut row| {
+                            if let Some(pos) = self.0.get(index) {
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.x()));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.y()));
+                                });
+                            }
+                        });
                     });
-                if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
-                    ui.label(format!(
-                        "...plus {} more",
-                        self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
-                    ));
-                }
             }
         }
     }
@@ -301,33 +317,48 @@ impl DataUi for LineStrip3D {
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        const MAX_NUM_ELEMENTS_MULTI_LINE: usize = 10;
-
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
                 ui.label(format!("{} positions", self.0.len()));
             }
             UiVerbosity::All => {
-                egui::Grid::new("linestrip3d")
-                    .num_columns(3)
-                    .show(ui, |ui| {
-                        ui.strong("x");
-                        ui.strong("y");
-                        ui.strong("z");
-                        ui.end_row();
-                        for p in self.0.iter().take(MAX_NUM_ELEMENTS_MULTI_LINE) {
-                            ui.label(p.x().to_string());
-                            ui.label(p.y().to_string());
-                            ui.label(p.z().to_string());
-                            ui.end_row();
-                        }
+                use egui_extras::{Column, TableBuilder};
+                TableBuilder::new(ui)
+                    .resizable(true)
+                    .vscroll(true)
+                    .auto_shrink([false, true])
+                    .max_scroll_height(100.0)
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
+                    .header(re_ui::ReUi::table_header_height(), |mut header| {
+                        re_ui::ReUi::setup_table_header(&mut header);
+                        header.col(|ui| {
+                            ui.label("x");
+                        });
+                        header.col(|ui| {
+                            ui.label("y");
+                        });
+                        header.col(|ui| {
+                            ui.label("z");
+                        });
+                    })
+                    .body(|mut body| {
+                        re_ui::ReUi::setup_table_body(&mut body);
+                        let row_height = re_ui::ReUi::table_line_height();
+                        body.rows(row_height, self.0.len(), |index, mut row| {
+                            if let Some(pos) = self.0.get(index) {
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.x()));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.y()));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.z()));
+                                });
+                            }
+                        });
                     });
-                if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
-                    ui.label(format!(
-                        "...plus {} more",
-                        self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
-                    ));
-                }
             }
         }
     }
