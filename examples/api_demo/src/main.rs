@@ -3,37 +3,23 @@ use std::f32::consts::PI;
 use anyhow::{bail, Context};
 use clap::Parser;
 use rerun::{
-    external::{re_log, re_log_types::ApplicationId, re_memory::AccountingAllocator, re_sdk_comms},
-    Box3D, ColorRGBA, EntityPath, Label, Mesh3D, MeshId, MsgSender, Quaternion, Radius, RawMesh3D,
-    Rigid3, Session, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
+    external::{
+        re_log,
+        re_log_types::{
+            external::{arrow2, arrow2_convert},
+            ApplicationId,
+        },
+        re_memory::AccountingAllocator,
+        re_sdk_comms,
+    },
+    Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, Mesh3D, MeshId, MsgSender,
+    Point2D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, TimeType, Timeline, Transform,
+    Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
 
 fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
-    // def run_bounding_box() -> None:
-    //     rr.set_time_seconds("sim_time", 0)
-    //     rr.log_obb(
-    //         "bbox_demo/bbox",
-    //         half_size=[1.0, 0.5, 0.25],
-    //         position=np.array([0.0, 0.0, 0.0]),
-    //         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
-    //         color=[0, 255, 0],
-    //         stroke_width=0.01,
-    //         label="box/t0",
-    //     )
-
-    //     rr.set_time_seconds("sim_time", 1)
-    //     rr.log_obb(
-    //         "bbox_demo/bbox",
-    //         half_size=[1.0, 0.5, 0.25],
-    //         position=np.array([1.0, 0.0, 0.0]),
-    //         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
-    //         color=[255, 255, 0],
-    //         stroke_width=0.02,
-    //         label="box/t1",
-    //     )
-
     let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
 
     MsgSender::new("bbox_demo/bbox")
@@ -58,6 +44,77 @@ fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
         .with_component(&[ColorRGBA::from([255, 255, 0, 255])])?
         .with_component(&[Radius(0.02)])?
         .with_component(&[Label("box/t1".to_owned())])?
+        .send(session)?;
+
+    Ok(())
+}
+
+fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    // Hack to establish 2d view bounds
+    MsgSender::new("extension_components")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Rect2D::from_xywh(0.0, 0.0, 128.0, 128.0)])?
+        .send(session)?;
+
+    // Separate extension component
+    // TODO(cmc): not that great to have to dig around for arrow2-* reexports :/
+    // TODO(cmc): not that great either to have all that boilerplate just to declare the component
+    // name.
+    #[derive(arrow2_convert::ArrowField, arrow2_convert::ArrowSerialize)]
+    #[arrow_field(transparent)]
+    struct Confidence(f32);
+    impl Component for Confidence {
+        fn name() -> ComponentName {
+            "ext.confidence".into()
+        }
+    }
+
+    // Single point with our custom component!
+    MsgSender::new("extension_components/point")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Point2D::new(64.0, 64.0)])?
+        .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
+        .with_component(&[Confidence(0.9)])?
+        .send(session)?;
+
+    // Batch points with extension
+
+    // Separate extension components
+    #[derive(arrow2_convert::ArrowField, arrow2_convert::ArrowSerialize)]
+    #[arrow_field(transparent)]
+    struct Corner(String);
+    impl Component for Corner {
+        fn name() -> ComponentName {
+            "ext.corner".into()
+        }
+    }
+    #[derive(arrow2_convert::ArrowField, arrow2_convert::ArrowSerialize)]
+    #[arrow_field(transparent)]
+    struct Training(bool);
+    impl Component for Training {
+        fn name() -> ComponentName {
+            "ext.training".into()
+        }
+    }
+
+    MsgSender::new("extension_components/points")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[
+            Point2D::new(32.0, 32.0),
+            Point2D::new(32.0, 96.0),
+            Point2D::new(96.0, 32.0),
+            Point2D::new(96.0, 96.0),
+        ])?
+        .with_splat(ColorRGBA::from([0, 255, 0, 255]))?
+        .with_component(&[
+            Corner("upper left".into()),
+            Corner("lower left".into()),
+            Corner("upper right".into()),
+            Corner("lower right".into()),
+        ])?
+        .with_splat(Training(true))?
         .send(session)?;
 
     Ok(())
@@ -138,6 +195,7 @@ fn main() -> anyhow::Result<()> {
     // TODO: handle demo arg
 
     demo_bbox(&mut session)?;
+    demo_extension_components(&mut session)?;
 
     // TODO: spawn_and_connect
     // If not connected, show the GUI inline

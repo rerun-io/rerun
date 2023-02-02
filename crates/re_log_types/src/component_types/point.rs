@@ -2,6 +2,8 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
+// TODO(cmc): Points should just be containers of Vecs.
+
 /// A point in 2D space.
 ///
 /// ```
@@ -21,6 +23,13 @@ use crate::msg_bundle::Component;
 pub struct Point2D {
     pub x: f32,
     pub y: f32,
+}
+
+impl Point2D {
+    #[inline]
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
 }
 
 impl Component for Point2D {
@@ -57,6 +66,13 @@ pub struct Point3D {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl Point3D {
+    #[inline]
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
+    }
 }
 
 impl Component for Point3D {
