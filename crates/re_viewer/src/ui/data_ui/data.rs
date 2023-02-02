@@ -232,7 +232,7 @@ impl DataUi for Rect2D {
     ) {
         ui.label(match self {
             Rect2D::XYWH(Vec4D([top, left, width, height]))
-            | Rect2D::YXHW(Vec4D([left, top, width, height])) => {
+            | Rect2D::YXHW(Vec4D([left, top, height, width])) => {
                 format!("top: {top}, left: {left}, width: {width}, height: {height}")
             }
             Rect2D::XYXY(Vec4D([left, top, right, bottom]))
