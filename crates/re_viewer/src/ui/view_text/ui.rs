@@ -37,10 +37,9 @@ impl ViewTextState {
             row_log_levels,
         } = &mut self.filters;
 
-        egui::Grid::new("log_config")
+        re_ui
+            .selection_grid(ui, "log_config")
             .num_columns(2)
-            // Spread rows a bit to make it easier to see the groupings
-            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
             .show(ui, |ui| {
                 re_ui.grid_left_hand_label(ui, "Columns");
                 ui.vertical(|ui| {

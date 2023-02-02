@@ -147,9 +147,7 @@ impl ViewSpatialState {
         space_path: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
-        egui::Grid::new("spatial_settings_ui")
-            // Spread rows a bit to make it easier to see the groupings
-            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
+        ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
@@ -215,15 +213,14 @@ impl ViewSpatialState {
                     });
 
                 if self.nav_mode == SpatialNavigationMode::ThreeD {
-                    ui.checkbox(&mut self.state_3d.spin, "Spin")
-                        .on_hover_text("Spin view");
-
                     if ui.button("Reset").on_hover_text(
                         "Resets camera position & orientation.\nYou can also double-click the 3D view")
                         .clicked()
                     {
                         self.state_3d.reset_camera(&self.scene_bbox_accum);
                     }
+                    ui.checkbox(&mut self.state_3d.spin, "Spin")
+                        .on_hover_text("Spin camera around the orbit center");
                 }
             });
             ui.end_row();
