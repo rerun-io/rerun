@@ -255,7 +255,9 @@ jobs:
           automatic_release_tag: "latest"
           prerelease: true
           title: "Development Build"
-          files: dist/* CHANGELOG.md
+          files: |
+            dist/*
+            CHANGELOG.md
 
   # ---------------------------------------------------------------------------
 
@@ -280,7 +282,9 @@ jobs:
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: dist/* CHANGELOG.md
+          files: |
+            dist/*
+            CHANGELOG.md
 
       - name: Publish to PyPI
         env:
