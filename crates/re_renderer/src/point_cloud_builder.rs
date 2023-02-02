@@ -147,6 +147,8 @@ where
         self
     }
 
+    /// Each time we `add_points`, or upon builder drop, make sure that we
+    /// fill in any additional colors and user-data to have matched vectors.
     fn extend_defaults(&mut self) {
         if self.0.colors.len() < self.0.vertices.len() {
             self.0.colors.extend(
@@ -191,8 +193,11 @@ where
 
         let new_range = old_size..self.0.vertices.len();
 
+        let max_points = self.0.vertices.len();
+
         PointsBuilder {
             vertices: &mut self.0.vertices[new_range],
+            max_points,
             colors: &mut self.0.colors,
             user_data: &mut self.0.user_data,
         }
@@ -275,6 +280,7 @@ pub struct PointsBuilder<'a, PerPointUserData> {
 
     // Colors and user-data are the Vec we append
     // the data to if provided.
+    max_points: usize,
     colors: &'a mut Vec<Color32>,
     user_data: &'a mut Vec<PerPointUserData>,
 }
@@ -305,7 +311,8 @@ where
     #[inline]
     pub fn colors(self, colors: impl Iterator<Item = Color32>) -> Self {
         crate::profile_function!();
-        self.colors.extend(colors);
+        self.colors
+            .extend(colors.take(self.max_points - self.colors.len()));
         self
     }
 
@@ -315,7 +322,8 @@ where
     #[inline]
     pub fn user_data(self, data: impl Iterator<Item = PerPointUserData>) -> Self {
         crate::profile_function!();
-        self.user_data.extend(data);
+        self.user_data
+            .extend(data.take(self.max_points - self.user_data.len()));
         self
     }
 }
