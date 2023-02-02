@@ -12,7 +12,7 @@ use instant::Instant;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
     /// The source if a file on disk
-    File,
+    File { path: std::path::PathBuf },
 
     /// The source is the logging sdk directly, same process.
     Sdk,
@@ -32,7 +32,7 @@ pub enum Source {
 impl Source {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File | Self::Sdk => false,
+            Self::File { .. } | Self::Sdk => false,
             Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }

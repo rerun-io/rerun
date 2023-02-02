@@ -263,7 +263,9 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File {
+        path: path.to_owned(),
+    });
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())

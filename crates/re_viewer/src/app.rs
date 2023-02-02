@@ -474,7 +474,9 @@ impl eframe::App for App {
                         }
 
                         let text = match rx.source() {
-                            re_smart_channel::Source::File => "Loading file…".to_owned(),
+                            re_smart_channel::Source::File { path } => {
+                                format!("Loading {}…", path.display())
+                            }
                             re_smart_channel::Source::Sdk => {
                                 ready_and_waiting("Waiting for logging data from SDK")
                             }

@@ -36,7 +36,7 @@ pub fn run_native_viewer_with_messages(
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
 ) -> eframe::Result<()> {
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
     for log_msg in log_messages {
         tx.send(log_msg).ok();
     }
