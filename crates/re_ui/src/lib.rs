@@ -387,6 +387,7 @@ impl ReUi {
         state.show_body_unindented(ui, |ui| {
             ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
             add_body(ui);
+            ui.add_space(4.0); // Same here
         });
     }
 }
