@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 
 use anyhow::{bail, Context};
 use clap::Parser;
@@ -12,9 +12,10 @@ use rerun::{
         re_memory::AccountingAllocator,
         re_sdk_comms,
     },
-    log_time, Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, Mesh3D, MeshId,
-    MsgSender, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, Tensor,
-    TextEntry, Time, TimeInt, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
+    log_time, Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, LineStrip3D, Mesh3D,
+    MeshId, MsgSender, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session,
+    SignedAxis3, Tensor, TextEntry, Time, TimeInt, TimeType, Timeline, Transform, Vec3D,
+    ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -274,6 +275,136 @@ fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    let sun_to_planet_distance = 6.0;
+    let planet_to_moon_distance = 3.0;
+    let rotation_speed_planet = 2.0;
+    let rotation_speed_moon = 5.0;
+
+    fn log_coordinate_space(
+        session: &mut Session,
+        ent_path: impl Into<EntityPath>,
+    ) -> anyhow::Result<()> {
+        let view_coords = ViewCoordinates::from_up_and_handedness(
+            SignedAxis3::POSITIVE_Z,
+            rerun::Handedness::Right,
+        );
+        MsgSender::new(ent_path.into())
+            .with_timeless(true)
+            .with_component(&[view_coords])?
+            .with_component(&[ColorRGBA::from([255, 215, 0, 255])])?
+            .send(session)
+            .map_err(Into::into)
+    }
+    // Planetary motion is typically in the XY plane.
+    log_coordinate_space(session, "transforms3d")?;
+    log_coordinate_space(session, "transforms3d/sun")?;
+    log_coordinate_space(session, "transforms3d/sun/planet")?;
+    log_coordinate_space(session, "transforms3d/sun/planet/moon")?;
+
+    fn log_point(
+        session: &mut Session,
+        ent_path: impl Into<EntityPath>,
+        radius: f32,
+        color: [u8; 3],
+    ) -> anyhow::Result<()> {
+        let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+        MsgSender::new(ent_path.into())
+            .with_time(timeline_sim_time, 0)
+            .with_component(&[Point3D::ZERO])?
+            .with_component(&[Radius(radius)])?
+            .with_component(&[ColorRGBA::from([color[0], color[1], color[2], 255])])?
+            .send(session)
+            .map_err(Into::into)
+    }
+    // All are in the center of their own space:
+    log_point(session, "transforms3d/sun", 1.0, [255, 200, 10])?;
+    log_point(session, "transforms3d/sun/planet", 0.4, [40, 80, 200])?;
+    log_point(
+        session,
+        "transforms3d/sun/planet/moon",
+        0.15,
+        [180, 180, 180],
+    )?;
+
+    // "dust" around the "planet" (and inside, don't care)
+    // distribution is quadratically higher in the middle
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+    let points = std::iter::from_fn(|| {
+        let radius = rng.gen::<f32>() * planet_to_moon_distance * 0.5;
+        let angle = rng.gen::<f32>() * TAU;
+        let height = rng.gen::<f32>().powf(0.2) * 0.5 - 0.5;
+        Some(Point3D::new(
+            radius * angle.sin(),
+            radius * angle.cos(),
+            height,
+        ))
+    })
+    .take(200)
+    .collect::<Vec<_>>();
+    MsgSender::new("transforms3d/sun/planet/dust")
+        .with_time(timeline_sim_time, 0)
+        .with_component(&points)?
+        .with_splat(Radius(0.025))?
+        .with_splat(ColorRGBA::from([80, 80, 80, 255]))?
+        .send(session)?;
+
+    let create_path = |distance: f32| {
+        LineStrip3D(
+            (0..=100)
+                .map(|i| {
+                    let angle = i as f32 * 0.01 * TAU;
+                    Vec3D::new(angle.sin() * distance, angle.cos() * distance, 0.0)
+                })
+                .collect(),
+        )
+    };
+    MsgSender::new("transforms3d/sun/planet_path")
+        .with_time(timeline_sim_time, 0)
+        .with_component(&[create_path(sun_to_planet_distance)])?
+        .send(session)?;
+    MsgSender::new("transforms3d/sun/planet/moon_path")
+        .with_time(timeline_sim_time, 0)
+        .with_component(&[create_path(planet_to_moon_distance)])?
+        .send(session)?;
+
+    for i in 0..6 * 120 {
+        let time = i as f32 / 120.0;
+
+        MsgSender::new("transforms3d/sun/planet")
+            .with_time(timeline_sim_time, (time * 1e9) as i64) // TODO
+            .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
+            .with_component(&[Transform::Rigid3(Rigid3 {
+                rotation: Quaternion::new(0.0, 0.0, 0.0, 1.0), // TODO
+                translation: Vec3D::new(
+                    (time * rotation_speed_planet).sin() * sun_to_planet_distance,
+                    (time * rotation_speed_planet).cos() * sun_to_planet_distance,
+                    0.0,
+                ),
+            })])?
+            .send(session)?;
+
+        // TODO: inverse
+        MsgSender::new("transforms3d/sun/planet/moon")
+            .with_time(timeline_sim_time, (time * 1e9) as i64) // TODO
+            .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
+            .with_component(&[Transform::Rigid3(Rigid3 {
+                rotation: Quaternion::new(0.0, 0.0, 0.0, 1.0), // TODO
+                translation: Vec3D::new(
+                    (time * rotation_speed_moon).sin() * planet_to_moon_distance,
+                    (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                    0.0,
+                ),
+            })])?
+            .send(session)?;
+    }
+
+    Ok(())
+}
+
 // --- Init ---
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -355,6 +486,7 @@ fn main() -> anyhow::Result<()> {
     demo_rects(&mut session)?;
     demo_segmentation(&mut session)?;
     demo_text_logs(&mut session)?;
+    demo_transforms_3d(&mut session)?;
 
     // TODO: spawn_and_connect
     // If not connected, show the GUI inline

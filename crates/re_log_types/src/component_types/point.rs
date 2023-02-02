@@ -26,6 +26,8 @@ pub struct Point2D {
 }
 
 impl Point2D {
+    pub const ZERO: Point2D = Point2D { x: 0.0, y: 0.0 };
+
     #[inline]
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
@@ -69,6 +71,12 @@ pub struct Point3D {
 }
 
 impl Point3D {
+    pub const ZERO: Point3D = Point3D {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+
     #[inline]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }

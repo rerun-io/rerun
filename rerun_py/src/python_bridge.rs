@@ -407,6 +407,7 @@ fn log_rigid3(
     translation: [f32; 3],
     timeless: bool,
 ) -> PyResult<()> {
+    // TODO: that kind of logic should be on Rigid3 and/or Transform
     let rotation = glam::Quat::from_slice(&rotation_q);
     let translation = glam::Vec3::from_slice(&translation);
     let transform = macaw::IsoTransform::from_rotation_translation(rotation, translation);
