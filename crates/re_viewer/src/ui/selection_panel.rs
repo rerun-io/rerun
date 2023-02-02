@@ -227,42 +227,33 @@ fn blueprint_ui(
         }
 
         Selection::SpaceView(space_view_id) => {
-            if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+            ui.horizontal(|ui| {
                 if ui
-                    .button("Remove from Viewport")
-                    .on_hover_text("All blueprint settings in this Space View will be lost.")
+                    .button("Add/remove entities")
+                    .on_hover_text("Manually add or remove entities from the Space View.")
                     .clicked()
                 {
-                    blueprint.viewport.remove(space_view_id);
-                    blueprint.viewport.mark_user_interaction();
-                    ctx.selection_state_mut().clear_current();
-                } else {
-                    if ui
-                        .button("Clone Space View")
-                        .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
-                        .clicked()
-                    {
+                    blueprint
+                        .viewport
+                        .show_add_remove_entities_window(*space_view_id);
+                }
+
+                if ui
+                    .button("Clone view")
+                    .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
+                    .clicked()
+                {
+                    if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
                         let mut new_space_view = space_view.clone();
                         new_space_view.id = super::SpaceViewId::random();
                         blueprint.viewport.add_space_view(new_space_view);
                         blueprint.viewport.mark_user_interaction();
                     }
-
-                    if ui
-                        .button("Add/remove entities")
-                        .on_hover_text("Manually add or remove entities from the Space View.")
-                        .clicked()
-                    {
-                        blueprint
-                            .viewport
-                            .show_add_remove_entities_window(*space_view_id);
-                    }
-
-                    if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                        ui.add_space(4.0);
-                        space_view.selection_ui(ctx, ui);
-                    }
                 }
+            });
+
+            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                space_view.selection_ui(ctx, ui);
             }
         }
 

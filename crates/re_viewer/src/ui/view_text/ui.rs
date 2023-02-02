@@ -26,7 +26,7 @@ pub struct ViewTextState {
 }
 
 impl ViewTextState {
-    pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn selection_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         let ViewTextFilters {
@@ -37,18 +37,11 @@ impl ViewTextState {
             row_log_levels,
         } = &mut self.filters;
 
-        fn top_left_label(ui: &mut egui::Ui, label: &str) {
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                ui.label(label);
-            });
-        }
-
-        egui::Grid::new("log_config")
+        re_ui
+            .selection_grid(ui, "log_config")
             .num_columns(2)
-            // Spread rows a bit to make it easier to see the groupings
-            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
             .show(ui, |ui| {
-                top_left_label(ui, "Columns");
+                re_ui.grid_left_hand_label(ui, "Columns");
                 ui.vertical(|ui| {
                     for (timeline, visible) in col_timelines {
                         ui.checkbox(visible, timeline.name().to_string());
@@ -58,7 +51,7 @@ impl ViewTextState {
                 });
                 ui.end_row();
 
-                top_left_label(ui, "Entity Filter");
+                re_ui.grid_left_hand_label(ui, "Entity Filter");
                 ui.vertical(|ui| {
                     for (entity_path, visible) in row_entity_paths {
                         ui.checkbox(visible, &entity_path.to_string());
@@ -66,7 +59,7 @@ impl ViewTextState {
                 });
                 ui.end_row();
 
-                top_left_label(ui, "Level Filter");
+                re_ui.grid_left_hand_label(ui, "Level Filter");
                 ui.vertical(|ui| {
                     for (log_level, visible) in row_log_levels {
                         ui.checkbox(visible, level_to_rich_text(ui, log_level));
@@ -74,7 +67,7 @@ impl ViewTextState {
                 });
                 ui.end_row();
 
-                top_left_label(ui, "Text style");
+                re_ui.grid_left_hand_label(ui, "Text style");
                 ui.vertical(|ui| {
                     ui.radio_value(&mut self.monospace, false, "Proportional");
                     ui.radio_value(&mut self.monospace, true, "Monospace");
