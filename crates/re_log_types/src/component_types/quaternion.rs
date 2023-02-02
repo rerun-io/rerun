@@ -34,12 +34,14 @@ pub struct Quaternion {
 
 impl Default for Quaternion {
     fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            w: 1.0,
-        }
+        Self::new(0.0, 0.0, 0.0, 1.0)
+    }
+}
+
+impl Quaternion {
+    #[inline]
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
     }
 }
 

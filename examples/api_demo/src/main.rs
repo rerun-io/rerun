@@ -1,10 +1,67 @@
+use std::f32::consts::PI;
+
 use anyhow::{bail, Context};
 use clap::Parser;
 use rerun::{
     external::{re_log, re_log_types::ApplicationId, re_memory::AccountingAllocator, re_sdk_comms},
-    EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, Session, TimeType, Timeline, Transform,
-    ViewCoordinates,
+    Box3D, ColorRGBA, EntityPath, Label, Mesh3D, MeshId, MsgSender, Quaternion, Radius, RawMesh3D,
+    Rigid3, Session, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
 };
+
+// --- Rerun logging ---
+
+fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
+    // def run_bounding_box() -> None:
+    //     rr.set_time_seconds("sim_time", 0)
+    //     rr.log_obb(
+    //         "bbox_demo/bbox",
+    //         half_size=[1.0, 0.5, 0.25],
+    //         position=np.array([0.0, 0.0, 0.0]),
+    //         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+    //         color=[0, 255, 0],
+    //         stroke_width=0.01,
+    //         label="box/t0",
+    //     )
+
+    //     rr.set_time_seconds("sim_time", 1)
+    //     rr.log_obb(
+    //         "bbox_demo/bbox",
+    //         half_size=[1.0, 0.5, 0.25],
+    //         position=np.array([1.0, 0.0, 0.0]),
+    //         rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+    //         color=[255, 255, 0],
+    //         stroke_width=0.02,
+    //         label="box/t1",
+    //     )
+
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    MsgSender::new("bbox_demo/bbox")
+        .with_time(timeline_sim_time, 0)
+        .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
+        .with_component(&[Transform::Rigid3(Rigid3 {
+            rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
+            translation: Vec3D::default(),
+        })])?
+        .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
+        .with_component(&[Radius(0.01)])?
+        .with_component(&[Label("box/t0".to_owned())])?
+        .send(session)?;
+
+    MsgSender::new("bbox_demo/bbox")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
+        .with_component(&[Transform::Rigid3(Rigid3 {
+            rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
+            translation: Vec3D::new(1.0, 0.0, 0.0),
+        })])?
+        .with_component(&[ColorRGBA::from([255, 255, 0, 255])])?
+        .with_component(&[Radius(0.02)])?
+        .with_component(&[Label("box/t1".to_owned())])?
+        .send(session)?;
+
+    Ok(())
+}
 
 // --- Init ---
 
@@ -51,6 +108,7 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
+
     // Arg-parsing boiler-plate
     let args = Args::parse();
     dbg!(&args);
@@ -76,6 +134,10 @@ fn main() -> anyhow::Result<()> {
             }
         }
     }
+
+    // TODO: handle demo arg
+
+    demo_bbox(&mut session)?;
 
     // TODO: spawn_and_connect
     // If not connected, show the GUI inline
