@@ -52,8 +52,12 @@ pub struct ViewSpatialState {
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
-    #[serde(skip, default = "default_scene_bbox_accum")]
+    #[serde(skip, default = "default_scene_bbox")]
     pub scene_bbox_accum: BoundingBox,
+    /// Estimated bounding box of all data for the last scene query.
+    #[serde(skip, default = "default_scene_bbox")]
+    pub scene_bbox: BoundingBox,
+
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     #[serde(skip)]
     pub scene_num_primitives: usize,
@@ -65,7 +69,7 @@ pub struct ViewSpatialState {
     auto_size_config: re_renderer::AutoSizeConfig,
 }
 
-fn default_scene_bbox_accum() -> BoundingBox {
+fn default_scene_bbox() -> BoundingBox {
     BoundingBox::nothing()
 }
 
@@ -73,7 +77,8 @@ impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
             nav_mode: SpatialNavigationMode::ThreeD,
-            scene_bbox_accum: default_scene_bbox_accum(),
+            scene_bbox_accum: default_scene_bbox(),
+            scene_bbox: default_scene_bbox(),
             scene_num_primitives: 0,
             state_2d: Default::default(),
             state_3d: Default::default(),
@@ -151,7 +156,8 @@ impl ViewSpatialState {
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Space root");
+            ctx.re_ui.grid_left_hand_label(ui, "Space root")
+                .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
             // Specify space view id only if this is actually part of the space view itself.
             // (otherwise we get a somewhat broken link)
             ctx.entity_path_button(
@@ -192,7 +198,8 @@ impl ViewSpatialState {
             });
             ui.end_row();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Camera");
+            ctx.re_ui.grid_left_hand_label(ui, "Camera")
+                .on_hover_text("The virtual camera which controls what is shown on screen.");
             ui.vertical(|ui| {
                 egui::ComboBox::from_id_source("nav_mode")
                     .selected_text(self.nav_mode)
@@ -214,19 +221,20 @@ impl ViewSpatialState {
 
                 if self.nav_mode == SpatialNavigationMode::ThreeD {
                     if ui.button("Reset").on_hover_text(
-                        "Resets camera position & orientation.\nYou can also double-click the 3D view")
+                        "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
                         self.state_3d.reset_camera(&self.scene_bbox_accum);
                     }
                     ui.checkbox(&mut self.state_3d.spin, "Spin")
-                        .on_hover_text("Spin camera around the orbit center");
+                        .on_hover_text("Spin camera around the orbit center.");
                 }
             });
             ui.end_row();
 
             if self.nav_mode == SpatialNavigationMode::ThreeD {
-                ctx.re_ui.grid_left_hand_label(ui, "Coordinates");
+                ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
+                    .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
                     let up_response = if let Some(up) = self.state_3d.space_specs.up {
                         if up == glam::Vec3::X {
@@ -262,9 +270,10 @@ impl ViewSpatialState {
                 ui.end_row();
             }
 
-            ctx.re_ui.grid_left_hand_label(ui, "Bounding box");
+            ctx.re_ui.grid_left_hand_label(ui, "Bounding box")
+                .on_hover_text("The bounding box encompassing all Entities in the view right now.");
             ui.vertical(|ui| {
-                let BoundingBox { min, max } = self.scene_bbox_accum; // TODO:
+                let BoundingBox { min, max } = self.scene_bbox;
                 ui.label(format!(
                     "x [{} - {}]",
                     format_f32(min.x),
@@ -299,13 +308,14 @@ impl ViewSpatialState {
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
     ) {
+        self.scene_bbox = scene.primitives.bounding_box();
         // If this is the first time the bounding box is set, (re-)determine the nav_mode.
         // TODO(andreas): Keep track of user edits
         if self.scene_bbox_accum.is_nothing() {
-            self.scene_bbox_accum = scene.primitives.bounding_box();
+            self.scene_bbox_accum = self.scene_bbox;
             self.nav_mode = scene.preferred_navigation_mode(space);
         } else {
-            self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
+            self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
         }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
