@@ -97,7 +97,7 @@ pub enum AnalyticsCommands {
     Config,
 }
 
-// Run the reun application and return an exit code
+// Run the rerun application and return an exit code
 // If we be nice to use `std::process::ExitCode` here but
 // then there's no good way to get back at the exit code from
 // python

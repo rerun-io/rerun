@@ -67,7 +67,16 @@ impl DataUi for InstancePath {
                         }
                         Ok(component_data) => {
                             if self.instance_key.is_splat() {
-                                component_data.data_ui(ctx, ui, UiVerbosity::Small, query);
+                                super::component::EntityComponentWithInstances {
+                                    entity_path: self.entity_path.clone(),
+                                    component_data,
+                                }
+                                .data_ui(
+                                    ctx,
+                                    ui,
+                                    UiVerbosity::Small,
+                                    query,
+                                );
                             } else {
                                 ctx.component_ui_registry.ui(
                                     ctx,
