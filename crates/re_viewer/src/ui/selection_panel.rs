@@ -68,15 +68,7 @@ impl SelectionPanel {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
 
-                        let has_data_section = match selection {
-                            Selection::MsgId(_)
-                            | Selection::ComponentPath(_)
-                            | Selection::InstancePath(_, _) => true,
-                            // Skip data ui since we don't know yet what to show for these.
-                            Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => false,
-                        };
-
-                        if has_data_section {
+                        if has_data_section(selection) {
                             egui::CollapsingHeader::new("Data")
                                 .default_open(true)
                                 .show(ui, |ui| {
@@ -102,6 +94,14 @@ impl SelectionPanel {
                     });
                 }
             });
+    }
+}
+
+fn has_data_section(selection: &Selection) -> bool {
+    match selection {
+        Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::InstancePath(_, _) => true,
+        // Skip data ui since we don't know yet what to show for these.
+        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => false,
     }
 }
 
@@ -187,7 +187,7 @@ impl DataUi for Selection {
             Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
                 // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
-                ui.weak("(nothing)");
+                assert!(!has_data_section(self));
             }
             Selection::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
