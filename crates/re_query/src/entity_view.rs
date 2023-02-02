@@ -312,6 +312,13 @@ where
         self.primary.iter_values()
     }
 
+    /// Check if the entity has a component and its not empty
+    pub fn has_component<C: Component>(&self) -> bool {
+        self.components
+            .get(&C::name())
+            .map_or(false, |c| !c.is_empty())
+    }
+
     /// Iterate over the values of a `Component`.
     ///
     /// Always produces an iterator of length `self.primary.len()`

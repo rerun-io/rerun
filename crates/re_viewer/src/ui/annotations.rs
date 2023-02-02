@@ -66,6 +66,7 @@ pub enum DefaultColor<'a> {
     EntityPath(&'a EntityPath),
 }
 
+#[derive(Clone)]
 pub struct ResolvedAnnotationInfo(pub Option<AnnotationInfo>);
 
 impl ResolvedAnnotationInfo {
