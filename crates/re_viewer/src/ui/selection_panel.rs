@@ -6,7 +6,7 @@ use crate::{
     Selection, UiVerbosity, ViewerContext,
 };
 
-use super::{data_ui::DataUi, format_component_name, space_view::ViewState};
+use super::{data_ui::DataUi, space_view::ViewState};
 
 // ---
 
@@ -131,8 +131,8 @@ pub fn what_is_selected_ui(
                     ui.end_row();
 
                     ui.label("Component:");
-                    ui.label(format_component_name(component_name))
-                        .on_hover_text(component_name.to_string());
+                    ui.label(component_name.short_name())
+                        .on_hover_text(component_name.full_name());
                     ui.end_row();
                 });
         }
