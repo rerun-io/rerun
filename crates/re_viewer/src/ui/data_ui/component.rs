@@ -1,4 +1,4 @@
-use re_data_store::{ComponentName, EntityPath};
+use re_data_store::{ComponentName, EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
 
 use super::DataUi;
@@ -92,7 +92,14 @@ impl DataUi for EntityComponentWithInstances {
                             .and_then(|mut keys| keys.nth(index))
                         {
                             row.col(|ui| {
-                                ui.label(instance_key.to_string());
+                                let instance_path =
+                                    InstancePath::instance(self.entity_path.clone(), instance_key);
+                                ctx.instance_path_button_to(
+                                    ui,
+                                    None,
+                                    &instance_path,
+                                    instance_key.to_string(),
+                                );
                             });
                             row.col(|ui| {
                                 ctx.component_ui_registry.ui(
