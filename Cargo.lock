@@ -4041,38 +4041,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_sdk_python"
-version = "0.1.0"
-dependencies = [
- "ahash 0.8.2",
- "arrow2",
- "bytemuck",
- "crossbeam",
- "document-features",
- "glam",
- "half 1.8.2",
- "image",
- "itertools",
- "macaw",
- "mimalloc",
- "numpy",
- "pyo3",
- "pyo3-build-config",
- "rand",
- "re_error",
- "re_log",
- "re_log_types",
- "re_memory",
- "re_sdk_comms",
- "re_tensor_ops",
- "rerun",
- "rerun_sdk",
- "tokio",
- "toml 0.7.1",
- "uuid",
-]
-
-[[package]]
 name = "re_smart_channel"
 version = "0.1.0"
 dependencies = [
@@ -4349,6 +4317,38 @@ dependencies = [
  "re_ws_comms",
  "tokio",
  "webbrowser",
+]
+
+[[package]]
+name = "rerun_py"
+version = "0.1.0"
+dependencies = [
+ "ahash 0.8.2",
+ "arrow2",
+ "bytemuck",
+ "crossbeam",
+ "document-features",
+ "glam",
+ "half 1.8.2",
+ "image",
+ "itertools",
+ "macaw",
+ "mimalloc",
+ "numpy",
+ "pyo3",
+ "pyo3-build-config",
+ "rand",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_memory",
+ "re_sdk_comms",
+ "re_tensor_ops",
+ "rerun",
+ "rerun_sdk",
+ "tokio",
+ "toml 0.7.1",
+ "uuid",
 ]
 
 [[package]]

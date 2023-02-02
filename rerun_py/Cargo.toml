@@ -1,5 +1,5 @@
 [package]
-name = "re_sdk_python"        # name of the rust crate
+name = "rerun_py"             # name of the rust crate
 edition.workspace = true
 license.workspace = true
 publish = false

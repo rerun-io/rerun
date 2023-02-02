@@ -3,7 +3,7 @@
 Goal: an ergonomic Python library for logging rich data, over TCP, to a rerun server.
 
 ℹ️ Note:
-- The rust crate is called `re_sdk_python`, the Python module is called `rerun`, and the package published on PyPI is `rerun-sdk`.
+- The rust crate is called `rerun_py`, the Python module is called `rerun`, and the package published on PyPI is `rerun-sdk`.
 - These instructions assume you're running from the `rerun` root folder and have Python 3.8 or later available.
 
 ## Building from Source
