@@ -73,8 +73,7 @@ def log_meshes(
     timeless: bool = False,
 ) -> None:
     """
-    Log multiple raw 3D meshes by specifying their vertex buffers, and optionally their index and
-    normal buffers.
+    Log multiple raw 3D meshes by specifying their vertex buffers, and optionally their index and normal buffers.
 
     To learn more about how the data within these buffers is interpreted and laid out, refer
     to `log_mesh`'s documentation.
