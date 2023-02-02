@@ -2,7 +2,8 @@
 
 use std::time::Instant;
 
-use rand::{Rng, SeedableRng};
+use rand::{Rng as _, SeedableRng};
+
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
 

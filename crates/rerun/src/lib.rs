@@ -6,7 +6,7 @@
 #![doc = document_features::document_features!()]
 //!
 
-use anyhow::Context;
+use anyhow::Context as _;
 
 use clap::Subcommand;
 use re_format::parse_duration;
