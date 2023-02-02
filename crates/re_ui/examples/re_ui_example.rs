@@ -65,18 +65,30 @@ impl eframe::App for ExampleApp {
 
         self.top_bar(egui_ctx, frame);
 
-        egui::SidePanel::left("left_panel").show_animated(egui_ctx, self.left_panel, |ui| {
-            ui.strong("Left panel");
-            ui.horizontal(|ui| {
-                ui.label("Toggle switch:");
-                ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
+        egui::SidePanel::left("left_panel")
+            .default_width(500.0)
+            .show_animated(egui_ctx, self.left_panel, |ui| {
+                ui.strong("Left panel");
+                ui.horizontal(|ui| {
+                    ui.label("Toggle switch:");
+                    ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
+                });
+                ui.label(format!("Latest command: {}", self.latest_cmd));
+
+                self.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                    ui.label("Some data here");
+                });
+                self.re_ui
+                    .large_collapsing_header(ui, "Blueprint", true, |ui| {
+                        ui.label("Some blueprint stuff here");
+                    });
             });
-            ui.label(format!("Latest command: {}", self.latest_cmd));
-        });
+
         egui::SidePanel::right("right_panel").show_animated(egui_ctx, self.right_panel, |ui| {
             ui.strong("Right panel");
             selection_buttons(ui);
         });
+
         egui::TopBottomPanel::bottom("bottom_panel").show_animated(
             egui_ctx,
             self.bottom_panel,
