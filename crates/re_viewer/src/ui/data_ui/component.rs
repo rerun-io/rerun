@@ -57,10 +57,7 @@ impl DataUi for ComponentWithInstances {
                     // TODO(andreas): There should be a button leaving to a full view.
                     //                  Or once we figure out how to do full views of this just show everything in a scroll area
                     if num_instances > max_elems {
-                        ui.label(format!(
-                            ".. {} more values available",
-                            num_instances - max_elems
-                        ));
+                        ui.label(format!("...plus {} more", num_instances - max_elems));
                     }
                 }
             }
