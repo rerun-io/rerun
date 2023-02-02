@@ -1,8 +1,28 @@
+use re_data_store::{ComponentName, EntityPath};
 use re_query::ComponentWithInstances;
 
 use super::DataUi;
 
-impl DataUi for ComponentWithInstances {
+// We do NOT implement `DataUi` for just `ComponentWithInstances`
+// because we also want the context of what entity it is part of!
+
+/// All the values of a specific [`re_log_types::ComponentPath`].
+pub struct EntityComponentWithInstances {
+    pub entity_path: EntityPath,
+    pub component_data: ComponentWithInstances,
+}
+
+impl EntityComponentWithInstances {
+    pub fn component_name(&self) -> ComponentName {
+        self.component_data.name()
+    }
+
+    pub fn num_instances(&self) -> usize {
+        self.component_data.len()
+    }
+}
+
+impl DataUi for EntityComponentWithInstances {
     fn data_ui(
         &self,
         ctx: &mut crate::misc::ViewerContext<'_>,
@@ -10,9 +30,9 @@ impl DataUi for ComponentWithInstances {
         verbosity: super::UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        crate::profile_function!(self.name().full_name());
+        crate::profile_function!(self.component_name().full_name());
 
-        let num_instances = self.len();
+        let num_instances = self.num_instances();
 
         let max_elems = match verbosity {
             crate::ui::UiVerbosity::Small | crate::ui::UiVerbosity::MaxHeight(_) => 1,
@@ -20,7 +40,7 @@ impl DataUi for ComponentWithInstances {
             crate::ui::UiVerbosity::All => 20,
         };
 
-        match self.iter_instance_keys() {
+        match self.component_data.iter_instance_keys() {
             Ok(mut instance_keys) => {
                 if num_instances == 0 {
                     ui.weak("(empty)");
@@ -31,7 +51,7 @@ impl DataUi for ComponentWithInstances {
                             ui,
                             verbosity,
                             query,
-                            self,
+                            &self.component_data,
                             &instance_key,
                         );
                     } else {
@@ -53,7 +73,7 @@ impl DataUi for ComponentWithInstances {
                                 ui.label("Instance key");
                             });
                             header.col(|ui| {
-                                ui.label(self.name().short_name());
+                                ui.label(self.component_name().short_name());
                             });
                         })
                         .body(|mut body| {
@@ -61,6 +81,7 @@ impl DataUi for ComponentWithInstances {
                             let row_height = re_ui::ReUi::table_line_height();
                             body.rows(row_height, num_instances, |index, mut row| {
                                 if let Some(instance_key) = self
+                                    .component_data
                                     .iter_instance_keys()
                                     .ok()
                                     .and_then(|mut keys| keys.nth(index))
@@ -74,7 +95,7 @@ impl DataUi for ComponentWithInstances {
                                             ui,
                                             crate::ui::UiVerbosity::Small,
                                             query,
-                                            self,
+                                            &self.component_data,
                                             &instance_key,
                                         );
                                     });

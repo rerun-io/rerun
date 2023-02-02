@@ -26,7 +26,11 @@ impl DataUi for ComponentPath {
                 ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
             }
             Ok(component_data) => {
-                component_data.data_ui(ctx, ui, verbosity, query);
+                super::component::EntityComponentWithInstances {
+                    entity_path: self.entity_path.clone(),
+                    component_data,
+                }
+                .data_ui(ctx, ui, verbosity, query);
             }
         }
     }
