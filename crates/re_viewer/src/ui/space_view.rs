@@ -191,21 +191,13 @@ impl SpaceView {
             ViewCategory::TimeSeries => {}
             ViewCategory::BarChart => {}
             ViewCategory::Spatial => {
-                ui.horizontal(|ui| {
-                    ui.label("Space root:").on_hover_text(
-                        "Root path of this space view. All transformations are relative this.",
-                    );
-                    // Specify space view id only if this is actually part of the space view itself.
-                    // (otherwise we get a somewhat broken link)
-                    ctx.entity_path_button(
-                        ui,
-                        self.data_blueprint
-                            .contains_entity(&self.space_path)
-                            .then_some(self.id),
-                        &self.space_path,
-                    );
-                });
-                self.view_state.state_spatial.selection_ui(ctx, ui);
+                self.view_state.state_spatial.selection_ui(
+                    ctx,
+                    ui,
+                    &self.data_blueprint,
+                    &self.space_path,
+                    self.id,
+                );
             }
             ViewCategory::Tensor => {
                 if let Some(selected_tensor) = &self.view_state.selected_tensor {

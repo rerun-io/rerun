@@ -6,7 +6,7 @@ use macaw::BoundingBox;
 
 use crate::{
     misc::{space_info::SpaceInfo, SpaceViewHighlights, ViewerContext},
-    ui::SpaceViewId,
+    ui::{data_blueprint::DataBlueprintTree, SpaceViewId},
 };
 
 use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceSpecs};
@@ -139,82 +139,162 @@ impl ViewSpatialState {
         heuristic0.min(heuristic1)
     }
 
-    pub fn selection_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        egui::Grid::new("spatial_settings_ui").show(ui, |ui| {
+    pub fn selection_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        data_blueprint: &DataBlueprintTree,
+        space_path: &EntityPath,
+        space_view_id: SpaceViewId,
+    ) {
+        // TODO:
+        fn top_left_label(ui: &mut egui::Ui, label: &str) {
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                ui.label(label);
+            });
+        }
+
+        egui::Grid::new("spatial_settings_ui")
+            // Spread rows a bit to make it easier to see the groupings
+            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
+            .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
-            ui.label("Default point radius:")
-                .on_hover_text("Point radius used whenever not explicitly specified.");
-            ui.push_id("points", |ui| {
-                size_ui(
-                    ui,
-                    2.0,
-                    auto_size_world,
-                    &mut self.auto_size_config.point_radius,
-                );
-            });
+            ui.label("Space root");
+            // Specify space view id only if this is actually part of the space view itself.
+            // (otherwise we get a somewhat broken link)
+            ctx.entity_path_button(
+                ui,
+                data_blueprint
+                    .contains_entity(&space_path)
+                    .then_some(space_view_id),
+                &space_path,
+            );
             ui.end_row();
 
-            ui.label("Default line radius:")
-                .on_hover_text("Line radius used whenever not explicitly specified.");
-            ui.push_id("lines", |ui| {
-                size_ui(
-                    ui,
-                    1.5,
-                    auto_size_world,
-                    &mut self.auto_size_config.line_radius,
-                );
-            });
-            ui.end_row();
-
-            ui.label("Navigation mode:");
-            egui::ComboBox::from_id_source("nav_mode")
-                .selected_text(self.nav_mode)
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
-                    ui.selectable_value(
-                        &mut self.nav_mode,
-                        SpatialNavigationMode::TwoD,
-                        SpatialNavigationMode::TwoD,
-                    );
-                    ui.selectable_value(
-                        &mut self.nav_mode,
-                        SpatialNavigationMode::ThreeD,
-                        SpatialNavigationMode::ThreeD,
-                    );
+            top_left_label(ui, "Default size");
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    ui.push_id("points", |ui| {
+                        size_ui(
+                            ui,
+                            2.0,
+                            auto_size_world,
+                            &mut self.auto_size_config.point_radius,
+                        );
+                    });
+                    ui.label("Point radius")
+                    .on_hover_text("Point radius used whenever not explicitly specified.");
                 });
+                ui.horizontal(|ui| {
+                    ui.push_id("lines", |ui| {
+                        size_ui(
+                            ui,
+                            1.5,
+                            auto_size_world,
+                            &mut self.auto_size_config.line_radius,
+                        );
+                        ui.label("Line radius")
+                            .on_hover_text("Line radius used whenever not explicitly specified.");
+                    });
+                });
+            });
+            ui.end_row();
+
+            top_left_label(ui, "Camera");
+            ui.vertical(|ui| {
+                egui::ComboBox::from_id_source("nav_mode")
+                    .selected_text(self.nav_mode)
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        ui.selectable_value(
+                            &mut self.nav_mode,
+                            SpatialNavigationMode::TwoD,
+                            SpatialNavigationMode::TwoD,
+                        );
+                        ui.selectable_value(
+                            &mut self.nav_mode,
+                            SpatialNavigationMode::ThreeD,
+                            SpatialNavigationMode::ThreeD,
+                        );
+                    });
+
+                if self.nav_mode == SpatialNavigationMode::ThreeD {
+                    ui.checkbox(&mut self.state_3d.spin, "Spin")
+                        .on_hover_text("Spin view");
+
+                    if ui.button("Reset").on_hover_text(
+                        "Resets camera position & orientation.\nYou can also double-click the 3D view")
+                        .clicked()
+                    {
+                        self.state_3d.reset_camera(&self.scene_bbox_accum);
+                    }
+                }
+            });
+            ui.end_row();
+
+            if self.nav_mode == SpatialNavigationMode::ThreeD {
+                top_left_label(ui, "Coordinates");
+                ui.vertical(|ui|{
+                    let up_response = if let Some(up) = self.state_3d.space_specs.up {
+                        if up == glam::Vec3::X {
+                            ui.label("Up +X")
+                        } else if up == -glam::Vec3::X {
+                            ui.label("Up -X")
+                        } else if up == glam::Vec3::Y {
+                            ui.label("Up +Y")
+                        } else if up == -glam::Vec3::Y {
+                            ui.label("Up -Y")
+                        } else if up == glam::Vec3::Z {
+                            ui.label("Up +Z")
+                        } else if up == -glam::Vec3::Z {
+                            ui.label("Up -Z")
+                        } else if up != glam::Vec3::ZERO {
+                            ui.label(format!("[{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+                        } else {
+                            ui.label("Up —")
+                        }
+                    } else {
+                        ui.label("—")
+                    };
+                    up_response.on_hover_ui(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 0.0;
+                            ui.label("Set with ");
+                            ui.code("rerun.log_view_coordinates");
+                            ui.label(".");
+                        });
+                    });
+                    ui.checkbox(&mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
+                });
+                ui.end_row();
+            }
+
+            top_left_label(ui, "Bounding box");
+            ui.vertical(|ui| {
+                let BoundingBox { min, max } = self.scene_bbox_accum; // TODO:
+                ui.label(format!(
+                    "x [{} - {}]",
+                    format_f32(min.x),
+                    format_f32(max.x),
+                ));
+                ui.label(format!(
+                    "y [{} - {}]",
+                    format_f32(min.y),
+                    format_f32(max.y),
+                ));
+                if self.nav_mode == SpatialNavigationMode::ThreeD {
+                    ui.label(format!(
+                        "z [{} - {}]",
+                        format_f32(min.z),
+                        format_f32(max.z),
+                    ));
+                }
+            });
             ui.end_row();
         });
-
-        ui.separator();
-
-        let BoundingBox { min, max } = self.scene_bbox_accum;
-
-        match self.nav_mode {
-            SpatialNavigationMode::TwoD => {
-                ui.label(format!(
-                    "Bounding box:\n  x: [{} - {}]\n  y: [{} - {}]",
-                    format_f32(min.x),
-                    format_f32(max.x),
-                    format_f32(min.y),
-                    format_f32(max.y),
-                ));
-            }
-            SpatialNavigationMode::ThreeD => {
-                ui.label(format!(
-                    "Bounding box:\n  x: [{} - {}]\n  y: [{} - {}]\n  z: [{} - {}]",
-                    format_f32(min.x),
-                    format_f32(max.x),
-                    format_f32(min.y),
-                    format_f32(max.y),
-                    format_f32(min.z),
-                    format_f32(max.z)
-                ));
-                self.state_3d.settings_ui(ui, &self.scene_bbox_accum);
-            }
-        }
     }
 
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
