@@ -10,6 +10,8 @@ impl DataUi for ComponentWithInstances {
         verbosity: super::UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
+        crate::profile_function!(self.name().full_name());
+
         let num_instances = self.len();
 
         let max_elems = match verbosity {
