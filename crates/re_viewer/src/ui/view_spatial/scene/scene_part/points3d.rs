@@ -47,7 +47,10 @@ impl Points3DPart {
         // No need to process annotations if we don't have keypoints or class-ids
         if !entity_view.has_component::<KeypointId>() && !entity_view.has_component::<ClassId>() {
             let resolved_annotation = annotations.class_description(None).annotation_info();
-            return Ok((vec![resolved_annotation; entity_view.len()], keypoints));
+            return Ok((
+                vec![resolved_annotation; entity_view.num_instances()],
+                keypoints,
+            ));
         }
 
         let annotation_info = itertools::izip!(
@@ -202,7 +205,9 @@ impl Points3DPart {
             .points
             .batch("3d points")
             .world_from_obj(world_from_obj)
-            .add_full_points_fast(entity_view.len(), point_positions, colors, radii)
+            .add_points(entity_view.num_instances(), point_positions)
+            .colors(colors)
+            .radii(radii)
             .user_data(instance_path_hashes.into_iter());
 
         scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
