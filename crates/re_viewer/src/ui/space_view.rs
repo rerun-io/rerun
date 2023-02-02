@@ -39,6 +39,8 @@ impl SpaceViewId {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct SpaceView {
     pub id: SpaceViewId,
+
+    /// The user can change this.
     pub name: String,
 
     /// Everything under this root *can* be shown in the space view.
@@ -76,11 +78,20 @@ impl SpaceView {
             |c| EntityPath::from(vec![c.clone()]),
         );
 
-        let name = if queries_entities.len() == 1 {
-            // a single entity in this space-view - name the space after it
-            queries_entities[0].to_string()
-        } else {
-            space_info.path.to_string()
+        let name = {
+            let entity_path = if queries_entities.len() == 1 {
+                // a single entity in this space-view - name the space after it
+                &queries_entities[0]
+            } else {
+                &space_info.path
+            };
+
+            if let Some(last_comp) = entity_path.last() {
+                format!("{last_comp} {}", category.short_name())
+            } else {
+                // The root path - we can only name it after the category.
+                category.short_name().to_owned()
+            }
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();

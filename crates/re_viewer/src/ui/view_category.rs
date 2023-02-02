@@ -38,14 +38,25 @@ impl ViewCategory {
         matches!(self, Self::Spatial2D | Self::Spatial3D)
     }
 
+    pub fn short_name(&self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::TimeSeries => "plot",
+            Self::BarChart => "chart",
+            Self::Spatial2D => "2D",
+            Self::Spatial3D => "3D",
+            Self::Tensor => "tensor",
+        }
+    }
+
     pub fn icon(&self) -> &'static str {
         match self {
-            ViewCategory::Text => "📃",
-            ViewCategory::TimeSeries => "📈",
-            ViewCategory::BarChart => "📊",
-            ViewCategory::Spatial2D => "🖼",
-            ViewCategory::Spatial3D => "🔭",
-            ViewCategory::Tensor => "🇹",
+            Self::Text => "📃",
+            Self::TimeSeries => "📈",
+            Self::BarChart => "📊",
+            Self::Spatial2D => "🖼",
+            Self::Spatial3D => "🔭",
+            Self::Tensor => "🇹",
         }
     }
 }

@@ -82,27 +82,6 @@ impl EntityPath {
         Self::from(parts)
     }
 
-    #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
-        self.path.iter()
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[EntityPathPart] {
-        self.path.as_slice()
-    }
-
-    #[inline]
-    pub fn is_root(&self) -> bool {
-        self.path.is_root()
-    }
-
-    // Is this a strict descendant of the given path.
-    #[inline]
-    pub fn is_descendant_of(&self, other: &EntityPath) -> bool {
-        other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
-    }
-
     /// Number of parts
     #[inline]
     #[allow(clippy::len_without_is_empty)]
@@ -119,6 +98,35 @@ impl EntityPath {
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.hash.hash64()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
+        self.path.iter()
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[EntityPathPart] {
+        self.path.as_slice()
+    }
+
+    /// The last path part, e.g. `baz` of `foo/bar/baz`.
+    ///
+    /// Returns `None` if this is the root.
+    #[must_use]
+    pub fn last(&self) -> Option<&EntityPathPart> {
+        self.path.as_slice().last()
+    }
+
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        self.path.is_root()
+    }
+
+    // Is this a strict descendant of the given path.
+    #[inline]
+    pub fn is_descendant_of(&self, other: &EntityPath) -> bool {
+        other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
     /// Return [`None`] if root.
