@@ -564,20 +564,23 @@ enum TensorDataMeaning {
 #[pyfunction]
 fn log_meshes(
     entity_path_str: &str,
-    positions: Vec<numpy::PyReadonlyArray1<'_, f32>>,
-    indices: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
-    normals: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
+    position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
+    index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
+    normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     timeless: bool,
 ) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path_str)?;
 
-    if positions.len() != indices.len() || positions.len() != normals.len() {
+    // Make sure we have as many position buffers as index buffers, etc.
+    if position_buffers.len() != index_buffers.len()
+        || position_buffers.len() != normal_buffers.len()
+    {
         return Err(PyTypeError::new_err(format!(
-            "Top-level `positions`, `indices` & `normals` arrays must be same the length, \
+            "Top-level position/index/normal buffer arrays must be same the length, \
                 got positions={}, indices={} & normals={} instead",
-            positions.len(),
-            indices.len(),
-            normals.len(),
+            position_buffers.len(),
+            index_buffers.len(),
+            normal_buffers.len(),
         )));
     }
 
@@ -585,15 +588,15 @@ fn log_meshes(
 
     let time_point = time(timeless);
 
-    let mut meshes = Vec::with_capacity(positions.len());
-    for (i, positions) in positions.into_iter().enumerate() {
+    let mut meshes = Vec::with_capacity(position_buffers.len());
+    for (i, positions) in position_buffers.into_iter().enumerate() {
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             positions: positions.as_array().to_vec(),
-            indices: indices[i]
+            indices: index_buffers[i]
                 .as_ref()
                 .map(|indices| indices.as_array().to_vec()),
-            normals: normals[i]
+            normals: normal_buffers[i]
                 .as_ref()
                 .map(|normals| normals.as_array().to_vec()),
         };

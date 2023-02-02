@@ -127,9 +127,7 @@ fn log_node(session: &mut Session, node: GltfNode) {
 
 // TODO(cmc): The SDK should make this call so trivial that it doesn't require this helper at all.
 fn log_axis(session: &mut Session, ent_path: &EntityPath) {
-    // From the glTF spec:
-    // > glTF uses a right-handed coordinate system. glTF defines +Y as up, +Z as forward, and
-    // > -X as right; the front of a glTF asset faces +Z.
+    // glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
     let view_coords: ViewCoordinates = "RUB".parse().unwrap();
 
     let bundle = MsgBundle::new(

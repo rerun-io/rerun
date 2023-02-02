@@ -44,7 +44,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
             world_from_mesh = node_data[0]
             t = trimesh.transformations.translation_from_matrix(world_from_mesh)
             q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
-            # `trimesh` stores quaternions in `wxyz` format, we need `xyzw`
+            # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
             q = np.array([q[1], q[2], q[3], q[0]])
             rr.log_rigid3(path, parent_from_child=(t, q))
 
@@ -105,9 +105,7 @@ def main() -> None:
 
     root = next(iter(scene.graph.nodes))
 
-    # From the glTF spec:
-    # > glTF uses a right-handed coordinate system. glTF defines +Y as up, +Z as forward, and
-    # > -X as right; the front of a glTF asset faces +Z.
+    # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
     rr.log_view_coordinates(root, xyz="RUB", timeless=True)
     log_scene(scene, root)
 
