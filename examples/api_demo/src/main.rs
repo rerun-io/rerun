@@ -13,8 +13,8 @@ use rerun::{
         re_sdk_comms,
     },
     log_time, Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, Mesh3D, MeshId,
-    MsgSender, Point2D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, Time, TimeInt,
-    TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
+    MsgSender, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, Time,
+    TimeInt, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -189,6 +189,61 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    MsgSender::new("3d_points/single_point_unlabeled")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
+        .send(session)?;
+
+    MsgSender::new("3d_points/single_point_labeled")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Point3D::new(0.0, 0.0, 0.0)])?
+        .with_component(&[Label("labeled point".to_owned())])?
+        .send(session)?;
+
+    fn create_points(
+        n: usize,
+        x: impl Fn(f32) -> f32,
+        y: impl Fn(f32) -> f32,
+        z: impl Fn(f32) -> f32,
+    ) -> (Vec<Label>, Vec<Point3D>, Vec<Radius>, Vec<ColorRGBA>) {
+        use rand::Rng as _;
+        let mut rng = rand::thread_rng();
+        itertools::multiunzip((0..n).map(|i| {
+            let i = i as f32;
+            let t = i / (n - 1) as f32;
+            (
+                Label(i.to_string()),
+                Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
+                Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
+                ColorRGBA::from([rng.gen(), rng.gen(), rng.gen(), 255]),
+            )
+        }))
+    }
+
+    let (labels, points, radii, _) =
+        create_points(9, |x| x * 5.0, |y| y * 5.0 + 10.0, |z| z * 4.0 - 5.0);
+    MsgSender::new("3d_points/spiral_small")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&points)?
+        .with_component(&labels)?
+        .with_component(&radii)?
+        .send(session)?;
+
+    let (labels, points, _, colors) =
+        create_points(100, |x| x * 5.0, |y| y * 5.0 - 10.0, |z| z * 0.4 - 5.0);
+    MsgSender::new("3d_points/spiral_big")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&points)?
+        .with_component(&labels)?
+        .with_component(&colors)?
+        .send(session)?;
+
+    Ok(())
+}
+
 // --- Init ---
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -266,6 +321,7 @@ fn main() -> anyhow::Result<()> {
     demo_bbox(&mut session)?;
     demo_extension_components(&mut session)?;
     demo_log_cleared(&mut session)?;
+    demo_3d_points(&mut session)?;
 
     // TODO: spawn_and_connect
     // If not connected, show the GUI inline

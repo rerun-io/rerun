@@ -9,7 +9,9 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
+itertools = "0.10"
 mimalloc = "0.1"
+rand = "0.8"
 
 # TODO(cmc): is the crate actually gonna be called just 'rerun' in the end?
 rerun = { package = "rerun_sdk", path = "../../crates/rerun_sdk" }
