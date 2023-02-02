@@ -61,15 +61,13 @@ impl Points3DPart {
         .map(|(position, keypoint_id, class_id)| {
             let class_description = annotations.class_description(class_id);
 
-            if let Some(keypoint_id) = keypoint_id {
-                if let Some(class_id) = class_id {
-                    if let Some(position) = position {
-                        keypoints
-                            .entry((class_id, query.latest_at.as_i64()))
-                            .or_insert_with(Default::default)
-                            .insert(keypoint_id, position.into());
-                    }
-                }
+            if let (Some(keypoint_id), Some(class_id), Some(position)) =
+                (keypoint_id, class_id, position)
+            {
+                keypoints
+                    .entry((class_id, query.latest_at.as_i64()))
+                    .or_insert_with(Default::default)
+                    .insert(keypoint_id, position.into());
                 class_description.annotation_info_with_keypoint(keypoint_id)
             } else {
                 class_description.annotation_info()
