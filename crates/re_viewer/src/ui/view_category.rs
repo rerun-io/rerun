@@ -104,7 +104,7 @@ pub fn categorize_arrow_entity_path(
             {
                 set.insert(ViewCategory::Spatial);
             } else if component == Tensor::name() {
-                let timeline_query = LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
+                let timeline_query = LatestAtQuery::new(*timeline, TimeInt::MAX);
 
                 if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
                     &log_db.entity_db.arrow_store,

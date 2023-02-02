@@ -515,7 +515,7 @@ impl Viewport {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
-        let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
+        let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::MAX);
 
         let mut space_views = Vec::new();
 
