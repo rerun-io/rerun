@@ -68,17 +68,25 @@ impl SelectionPanel {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
 
-                        egui::CollapsingHeader::new("Data")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                selection.data_ui(ctx, ui, UiVerbosity::All, &query);
-                            });
+                        if has_data_section(selection) {
+                            egui::CollapsingHeader::new("Data")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    selection.data_ui(ctx, ui, UiVerbosity::All, &query);
+                                });
 
-                        egui::CollapsingHeader::new("Blueprint")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                blueprint_ui(ui, ctx, blueprint, selection);
-                            });
+                            egui::CollapsingHeader::new("Blueprint")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    blueprint_ui(ui, ctx, blueprint, selection);
+                                });
+                        } else {
+                            // If there is no data section, there's no point in showing the blueprint collapsing header either!
+                            // TODO(andreas): This separator makes it a bit inconsistent, but without it it's unclear where the `what_is_selected` part ends.
+                            //                Imminent design changes might make this unnecessary.
+                            ui.separator();
+                            blueprint_ui(ui, ctx, blueprint, selection);
+                        }
 
                         if num_selections > i + 1 {
                             ui.add(egui::Separator::default().spacing(12.0));
@@ -86,6 +94,14 @@ impl SelectionPanel {
                     });
                 }
             });
+    }
+}
+
+fn has_data_section(selection: &Selection) -> bool {
+    match selection {
+        Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::InstancePath(_, _) => true,
+        // Skip data ui since we don't know yet what to show for these.
+        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => false,
     }
 }
 
@@ -180,7 +196,9 @@ impl DataUi for Selection {
     ) {
         match self {
             Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
-                ui.weak("(nothing)");
+                // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
+                // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
+                assert!(!has_data_section(self));
             }
             Selection::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
