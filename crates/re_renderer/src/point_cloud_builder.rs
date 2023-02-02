@@ -178,6 +178,49 @@ where
     }
 
     #[inline]
+    pub fn add_full_points_fast(
+        &mut self,
+        count: usize,
+        positions: impl Iterator<Item = glam::Vec3>,
+        colors: impl Iterator<Item = Color32>,
+        radii: impl Iterator<Item = Size>,
+    ) -> PointsBuilder<'_, PerPointUserData> {
+        crate::profile_function!();
+
+        debug_assert_eq!(self.0.vertices.len(), self.0.colors.len());
+        debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
+
+        let old_size = self.0.vertices.len();
+
+        let point_with_radius = positions.zip(radii).map(|(p, r)| PointCloudVertex {
+            position: p,
+            radius: r,
+        });
+
+        self.0.vertices.reserve(count);
+        self.0.vertices.extend(point_with_radius);
+
+        let num_points = self.0.vertices.len() - old_size;
+        self.batch_mut().point_count += num_points as u32;
+
+        self.0.colors.reserve(count);
+        self.0.colors.extend(colors);
+
+        self.0.user_data.reserve(count);
+        self.0
+            .user_data
+            .extend(std::iter::repeat(PerPointUserData::default()).take(num_points));
+
+        let new_range = old_size..self.0.vertices.len();
+
+        PointsBuilder {
+            vertices: &mut self.0.vertices[new_range.clone()],
+            colors: &mut self.0.colors[new_range.clone()],
+            user_data: &mut self.0.user_data[new_range],
+        }
+    }
+
+    #[inline]
     pub fn add_point(&mut self, position: glam::Vec3) -> PointBuilder<'_, PerPointUserData> {
         debug_assert_eq!(self.0.vertices.len(), self.0.colors.len());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());

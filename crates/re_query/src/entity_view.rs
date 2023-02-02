@@ -312,6 +312,23 @@ where
         self.primary.iter_values()
     }
 
+    /// The length of the entity is the length of its primary component
+    pub fn len(&self) -> usize {
+        self.primary.len()
+    }
+
+    // An entity with an empty primary component is considered empty
+    pub fn is_empty(&self) -> bool {
+        self.primary.is_empty()
+    }
+
+    /// Check if the entity has a component and its not empty
+    pub fn has_component<C: Component>(&self) -> bool {
+        self.components
+            .get(&C::name())
+            .map_or(false, |c| !c.is_empty())
+    }
+
     /// Iterate over the values of a `Component`.
     ///
     /// Always produces an iterator of length `self.primary.len()`
