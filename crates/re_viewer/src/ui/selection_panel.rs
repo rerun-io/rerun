@@ -198,7 +198,7 @@ impl DataUi for Selection {
             Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
                 // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
-                assert!(!has_data_section(self));
+                debug_assert!(!has_data_section(self));
             }
             Selection::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
