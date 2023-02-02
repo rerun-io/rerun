@@ -12,14 +12,12 @@ impl ComponentName {
         self.0.as_str()
     }
 
-    /// Excludes namespace, e.g. `color` or `confidence`.
+    /// Excludes the rerun namespace, so you'll get `color` but `ext.confidence`.
     ///
     /// Used for most UI elements.
     pub fn short_name(&self) -> &'static str {
         let full_name = self.0.as_str();
         if let Some(short_name) = full_name.strip_prefix("rerun.") {
-            short_name
-        } else if let Some(short_name) = full_name.strip_prefix("ext.") {
             short_name
         } else {
             full_name
