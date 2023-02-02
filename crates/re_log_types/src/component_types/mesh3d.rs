@@ -82,6 +82,19 @@ impl ArrowDeserialize for MeshId {
 
 // TODO(cmc): Let's move all the RefCounting stuff to the top-level.
 
+#[derive(thiserror::Error, Debug)]
+pub enum RawMeshError {
+    #[error("Positions array length must be divisible by 3 (triangle list), got {0}")]
+    PositionsNotDivisibleBy3(usize),
+    #[error("Indices array length must be divisible by 3 (triangle list), got {0}")]
+    IndicesNotDivisibleBy3(usize),
+    #[error(
+        "Positions & normals array must have the same length, \
+        got positions={0} vs. normals={1}"
+    )]
+    MismatchedPositionsNormals(usize, usize),
+}
+
 /// A raw "triangle soup" mesh.
 ///
 /// ```
@@ -130,21 +143,32 @@ pub struct RawMesh3D {
 }
 
 impl RawMesh3D {
-    pub fn sanity_check(&self) {
-        assert!(self.positions.len() % 3 == 0);
+    pub fn sanity_check(&self) -> Result<(), RawMeshError> {
+        if self.positions.len() % 3 != 0 {
+            return Err(RawMeshError::PositionsNotDivisibleBy3(self.positions.len()));
+        }
+
         if let Some(indices) = &self.indices {
-            assert!(indices.len() % 3 == 0);
+            if indices.len() % 3 != 0 {
+                return Err(RawMeshError::IndicesNotDivisibleBy3(indices.len()));
+            }
         }
+
         if let Some(normals) = &self.normals {
-            assert!(normals.len() == self.positions.len());
+            if normals.len() != self.positions.len() {
+                return Err(RawMeshError::MismatchedPositionsNormals(
+                    self.positions.len(),
+                    normals.len(),
+                ));
+            }
         }
+
+        Ok(())
     }
 
     pub fn num_triangles(&self) -> usize {
-        // TODO(cmc): will need to properly expose actual mesh-related errors all the way down to
-        // the SDKs soon, but right now this will do.
         #[cfg(debug_assertions)]
-        self.sanity_check();
+        self.sanity_check().unwrap();
 
         self.positions.len() / 3
     }

@@ -13,6 +13,7 @@ from rerun.log.extension_components import log_extension_components
 from rerun.log.file import log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
 from rerun.log.lines import log_line_segments, log_path
+from rerun.log.mesh import log_mesh, log_meshes
 from rerun.log.points import log_point, log_points
 from rerun.log.rects import log_rect, log_rects
 from rerun.log.scalar import log_scalar
@@ -31,6 +32,8 @@ __all__ = [
     "log_image",
     "log_image_file",
     "log_line_segments",
+    "log_mesh",
+    "log_meshes",
     "log_mesh_file",
     "log_obb",
     "log_path",
