@@ -194,20 +194,23 @@ impl SpaceView {
         match self.category {
             ViewCategory::Text => {
                 ui.strong("Text view");
-                ui.add_space(4.0);
+                ui.separator();
                 self.view_state.state_text.selection_ui(ui);
             }
 
             ViewCategory::TimeSeries => {
                 ui.strong("Time series view");
+                ui.separator();
             }
 
             ViewCategory::BarChart => {
                 ui.strong("Bar chart view");
+                ui.separator();
             }
 
             ViewCategory::Spatial => {
                 ui.strong("Spatial view");
+                ui.separator();
                 self.view_state.state_spatial.settings_ui(ctx, ui);
             }
             ViewCategory::Tensor => {
@@ -216,6 +219,7 @@ impl SpaceView {
                         self.view_state.state_tensors.get_mut(selected_tensor)
                     {
                         ui.strong("Tensor view");
+                        ui.separator();
                         state_tensor.ui(ctx, ui);
                     }
                 }

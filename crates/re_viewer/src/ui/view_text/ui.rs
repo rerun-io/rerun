@@ -27,12 +27,61 @@ pub struct ViewTextState {
 
 impl ViewTextState {
     pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
-        ui.group(|ui| {
-            ui.label("Text style");
-            ui.radio_value(&mut self.monospace, false, "Proportional");
-            ui.radio_value(&mut self.monospace, true, "Monospace");
-        });
-        self.filters.ui(ui);
+        crate::profile_function!();
+
+        let ViewTextFilters {
+            col_timelines,
+            col_entity_path,
+            col_log_level,
+            row_entity_paths,
+            row_log_levels,
+        } = &mut self.filters;
+
+        fn top_left_label(ui: &mut egui::Ui, label: &str) {
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                ui.label(label);
+            });
+        }
+
+        egui::Grid::new("log_config")
+            .num_columns(2)
+            // Spread rows  a bit to make it easier to see the groupings
+            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 2.0))
+            .show(ui, |ui| {
+                top_left_label(ui, "Columns");
+                ui.vertical(|ui| {
+                    // TODO: make them visibility check boxes.
+                    for (timeline, visible) in col_timelines {
+                        ui.checkbox(visible, timeline.name().to_string());
+                    }
+                    ui.checkbox(col_entity_path, "Entity path");
+                    ui.checkbox(col_log_level, "Log level");
+                });
+                ui.end_row();
+
+                top_left_label(ui, "Entity Filter");
+                ui.vertical(|ui| {
+                    for (entity_path, visible) in row_entity_paths {
+                        ui.checkbox(visible, &entity_path.to_string());
+                    }
+                });
+                ui.end_row();
+
+                top_left_label(ui, "Level Filter");
+                ui.vertical(|ui| {
+                    for (log_level, visible) in row_log_levels {
+                        ui.checkbox(visible, level_to_rich_text(ui, log_level));
+                    }
+                });
+                ui.end_row();
+
+                top_left_label(ui, "Text style");
+                ui.vertical(|ui| {
+                    ui.radio_value(&mut self.monospace, false, "Proportional");
+                    ui.radio_value(&mut self.monospace, true, "Monospace");
+                });
+                ui.end_row();
+            });
     }
 }
 
@@ -140,113 +189,6 @@ impl ViewTextFilters {
         for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
             row_log_levels.entry(level.clone()).or_insert(true);
         }
-    }
-
-    // Display the filter configuration UI (lotta checkboxes!).
-    pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
-        crate::profile_function!();
-
-        let Self {
-            col_timelines,
-            col_entity_path,
-            col_log_level,
-            row_entity_paths,
-            row_log_levels,
-        } = self;
-
-        let has_entity_path_row_filters = row_entity_paths.values().filter(|v| **v).count() > 0;
-        let has_log_lvl_row_filters = row_log_levels.values().filter(|v| **v).count() > 0;
-        let has_any_row_filters = has_entity_path_row_filters || has_log_lvl_row_filters;
-
-        let has_timeline_col_filters = col_timelines.values().filter(|v| **v).count() > 0;
-        let has_any_col_filters = has_timeline_col_filters || *col_entity_path || *col_log_level;
-
-        let clear_or_select = ["Select all", "Clear all"];
-
-        // ---
-
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                ui.strong("Visible columns");
-                if ui
-                    .button(clear_or_select[has_any_col_filters as usize])
-                    .clicked()
-                {
-                    for v in col_timelines.values_mut() {
-                        *v = !has_any_col_filters;
-                    }
-                    *col_entity_path = !has_any_col_filters;
-                    *col_log_level = !has_any_col_filters;
-                }
-            });
-
-            ui.add_space(2.0);
-
-            for (timeline, visible) in col_timelines {
-                ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
-            }
-            ui.checkbox(col_entity_path, "Entity path");
-            ui.checkbox(col_log_level, "Log level");
-        });
-
-        ui.add_space(4.0);
-
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                ui.strong("Row filters");
-                if ui
-                    .button(clear_or_select[has_any_row_filters as usize])
-                    .clicked()
-                {
-                    for v in row_entity_paths.values_mut() {
-                        *v = !has_any_row_filters;
-                    }
-                    for v in row_log_levels.values_mut() {
-                        *v = !has_any_row_filters;
-                    }
-                }
-            });
-
-            ui.add_space(4.0);
-
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Entity paths");
-                    if ui
-                        .button(clear_or_select[has_entity_path_row_filters as usize])
-                        .clicked()
-                    {
-                        for v in row_entity_paths.values_mut() {
-                            *v = !has_entity_path_row_filters;
-                        }
-                    }
-                });
-                for (entity_path, visible) in row_entity_paths {
-                    ui.horizontal(|ui| {
-                        ui.checkbox(visible, &entity_path.to_string());
-                    });
-                }
-            });
-
-            ui.add_space(4.0);
-
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Log levels");
-                    if ui
-                        .button(clear_or_select[has_log_lvl_row_filters as usize])
-                        .clicked()
-                    {
-                        for v in row_log_levels.values_mut() {
-                            *v = !has_log_lvl_row_filters;
-                        }
-                    }
-                });
-                for (log_level, visible) in row_log_levels {
-                    ui.checkbox(visible, level_to_rich_text(ui, log_level));
-                }
-            });
-        });
     }
 }
 
