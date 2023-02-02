@@ -55,7 +55,9 @@ pub fn serve(port: u16, options: ServerOptions) -> anyhow::Result<Receiver<LogMs
         })
         .expect("Failed to spawn thread");
 
-    re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
+    re_log::info!(
+        "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
+    );
 
     Ok(rx)
 }

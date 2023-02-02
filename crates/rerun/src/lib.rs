@@ -208,7 +208,6 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             }
 
             // This is the server which the web viewer will talk to:
-            re_log::info!("Starting a Rerun WebSocket Server…");
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
             let server_handle = tokio::spawn(ws_server.listen(rx));
 
