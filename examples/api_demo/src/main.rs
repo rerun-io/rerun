@@ -12,9 +12,9 @@ use rerun::{
         re_memory::AccountingAllocator,
         re_sdk_comms,
     },
-    Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, Mesh3D, MeshId, MsgSender,
-    Point2D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, TimeType, Timeline, Transform,
-    Vec3D, ViewCoordinates,
+    log_time, Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, Mesh3D, MeshId,
+    MsgSender, Point2D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, Time, TimeInt,
+    TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -120,6 +120,75 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    // rr.set_time_seconds("sim_time", 1)
+    // rr.log_rect("null_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
+    // rr.log_rect("null_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
+    //
+    // rr.set_time_seconds("sim_time", 2)
+    // rr.log_cleared("null_demo/rect/0")
+    //
+    // rr.set_time_seconds("sim_time", 3)
+    // rr.log_cleared("null_demo/rect", recursive=True)
+    //
+    // rr.set_time_seconds("sim_time", 4)
+    // rr.log_rect("null_demo/rect/0", [5, 5, 4, 4])
+    //
+    // rr.set_time_seconds("sim_time", 5)
+    // rr.log_rect("null_demo/rect/1", [10, 5, 4, 4])
+
+    // TODO(cmc): need abstractions for this
+    fn log_cleared(
+        session: &mut Session,
+        time: (Timeline, impl Into<TimeInt>),
+        ent_path: impl Into<EntityPath>,
+        recursive: bool,
+    ) {
+        use rerun::external::re_log_types::PathOp;
+        let timepoint = [
+            (Timeline::log_time(), Time::now().into()),
+            (time.0, time.1.into()),
+        ];
+        session.send_path_op(&timepoint.into(), PathOp::clear(recursive, ent_path.into()));
+    }
+
+    // sim_time = 1
+    MsgSender::new("null_demo/rect/0")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Rect2D::from_xywh(5.0, 4.0, 4.0, 4.0)])?
+        .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
+        .with_component(&[Label("Rect1".to_owned())])?
+        .send(session)?;
+    MsgSender::new("null_demo/rect/1")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
+        .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
+        .with_component(&[Label("Rect2".to_owned())])?
+        .send(session)?;
+
+    // sim_time = 2
+    log_cleared(session, (timeline_sim_time, 2), "null_demo/rect/0", false);
+
+    // sim_time = 3
+    log_cleared(session, (timeline_sim_time, 3), "null_demo/rect", true);
+
+    // sim_time = 4
+    MsgSender::new("null_demo/rect/0")
+        .with_time(timeline_sim_time, 4)
+        .with_component(&[Rect2D::from_xywh(5.0, 4.0, 4.0, 4.0)])?
+        .send(session)?;
+
+    // sim_time = 5
+    MsgSender::new("null_demo/rect/1")
+        .with_time(timeline_sim_time, 5)
+        .with_component(&[Rect2D::from_xywh(10.0, 4.0, 4.0, 4.0)])?
+        .send(session)?;
+
+    Ok(())
+}
+
 // --- Init ---
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -196,6 +265,7 @@ fn main() -> anyhow::Result<()> {
 
     demo_bbox(&mut session)?;
     demo_extension_components(&mut session)?;
+    demo_log_cleared(&mut session)?;
 
     // TODO: spawn_and_connect
     // If not connected, show the GUI inline
