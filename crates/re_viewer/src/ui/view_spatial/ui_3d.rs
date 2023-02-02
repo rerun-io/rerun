@@ -226,7 +226,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Op
 
 // ----------------------------------------------------------------------------
 
-pub const HELP_TEXT: &str = "Drag to rotate.\n\
+pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     Drag with secondary mouse button to pan.\n\
     Drag with middle mouse button to roll the view.\n\
     Scroll to zoom.\n\
