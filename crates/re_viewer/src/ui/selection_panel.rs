@@ -69,15 +69,11 @@ impl SelectionPanel {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
 
                         if has_data_section(selection) {
-                            egui::CollapsingHeader::new("Data")
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    selection.data_ui(ctx, ui, UiVerbosity::All, &query);
-                                });
-
-                            egui::CollapsingHeader::new("Blueprint")
-                                .default_open(true)
-                                .show(ui, |ui| {
+                            ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                                selection.data_ui(ctx, ui, UiVerbosity::All, &query);
+                            });
+                            ctx.re_ui
+                                .large_collapsing_header(ui, "Blueprint", true, |ui| {
                                     blueprint_ui(ui, ctx, blueprint, selection);
                                 });
                         } else {

@@ -315,6 +315,53 @@ impl ReUi {
         }
         response
     }
+
+    #[allow(clippy::unused_self)]
+    pub fn large_collapsing_header<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+    ) {
+        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            ui.make_persistent_id(label),
+            default_open,
+        );
+
+        // Draw custom header.
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), 28.0),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                let mut rect = ui.available_rect_before_wrap();
+                // if ui
+                //     .allocate_response(rect.size(), egui::Sense::click())
+                //     .clicked()
+                // {
+                //     state.toggle(ui);
+                // }
+
+                //let clip_before = ui.clip_rect();
+                // ui.set_clip_rect(Rect::EVERYTHING);
+                // rect.extend_with_x(rect.left() - ui.visuals().clip_rect_margin);
+                // rect.extend_with_x(rect.right() + ui.visuals().clip_rect_margin);
+                ui.painter()
+                    .rect_filled(rect, 0.0, ui.visuals().widgets.inactive.bg_fill);
+                //ui.set_clip_rect(clip_before);
+
+                ui.horizontal(|ui| {
+                    state.show_toggle_button(ui, egui::collapsing_header::paint_default_icon);
+                    ui.strong(label);
+                });
+            },
+        );
+        state.show_body_unindented(ui, |ui| {
+            ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
+            add_body(ui);
+        });
+    }
 }
 
 // ----------------------------------------------------------------------------
