@@ -37,7 +37,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use egui::{pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
+use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -330,31 +330,58 @@ impl ReUi {
             default_open,
         );
 
+        let openness = state.openness(ui.ctx());
+
+        let header_size = egui::vec2(ui.available_width(), 28.0);
+
         // Draw custom header.
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), 28.0),
+            header_size,
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
-                let mut rect = ui.available_rect_before_wrap();
-                // if ui
-                //     .allocate_response(rect.size(), egui::Sense::click())
-                //     .clicked()
-                // {
-                //     state.toggle(ui);
-                // }
+                let background_frame = ui.painter().add(egui::Shape::Noop);
 
-                //let clip_before = ui.clip_rect();
-                // ui.set_clip_rect(Rect::EVERYTHING);
-                // rect.extend_with_x(rect.left() - ui.visuals().clip_rect_margin);
-                // rect.extend_with_x(rect.right() + ui.visuals().clip_rect_margin);
+                let space_before_icon = 8.0;
+                let icon_width = ui.spacing().icon_width_inner;
+                let space_after_icon = ui.spacing().icon_spacing;
+
+                let font_id = egui::TextStyle::Button.resolve(ui.style());
+                let galley = ui.painter().layout_no_wrap(
+                    label.to_owned(),
+                    font_id,
+                    Color32::TEMPORARY_COLOR,
+                );
+
+                let desired_size = header_size.at_least(
+                    egui::vec2(space_before_icon + icon_width + space_after_icon, 0.0)
+                        + galley.size(),
+                );
+                let header_response = ui.allocate_response(desired_size, egui::Sense::click());
+                let rect = header_response.rect;
+
+                let icon_rect = egui::Rect::from_center_size(
+                    header_response.rect.left_center()
+                        + egui::vec2(space_before_icon + icon_width / 2.0, 0.0),
+                    egui::Vec2::splat(icon_width),
+                );
+                let icon_response = header_response.clone().with_new_rect(icon_rect);
+                egui::collapsing_header::paint_default_icon(ui, openness, &icon_response);
+
+                let visuals = ui.style().interact(&header_response);
+
+                let text_pos = icon_response.rect.right_center()
+                    + egui::vec2(space_after_icon, -0.5 * galley.size().y);
                 ui.painter()
-                    .rect_filled(rect, 0.0, ui.visuals().widgets.inactive.bg_fill);
-                //ui.set_clip_rect(clip_before);
+                    .galley_with_color(text_pos, galley, visuals.text_color());
 
-                ui.horizontal(|ui| {
-                    state.show_toggle_button(ui, egui::collapsing_header::paint_default_icon);
-                    ui.strong(label);
-                });
+                ui.painter().set(
+                    background_frame,
+                    Shape::rect_filled(rect, visuals.rounding, visuals.bg_fill),
+                );
+
+                if header_response.clicked() {
+                    state.toggle(ui);
+                }
             },
         );
         state.show_body_unindented(ui, |ui| {
