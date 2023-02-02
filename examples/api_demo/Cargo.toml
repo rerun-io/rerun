@@ -11,6 +11,7 @@ anyhow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
 itertools = "0.10"
 mimalloc = "0.1"
+ndarray.workspace = true
 rand = "0.8"
 
 # TODO(cmc): is the crate actually gonna be called just 'rerun' in the end?

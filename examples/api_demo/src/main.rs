@@ -13,8 +13,8 @@ use rerun::{
         re_sdk_comms,
     },
     log_time, Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, Mesh3D, MeshId,
-    MsgSender, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, Time,
-    TimeInt, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
+    MsgSender, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, Tensor,
+    TextEntry, Time, TimeInt, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -123,22 +123,6 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
 fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
     let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
 
-    // rr.set_time_seconds("sim_time", 1)
-    // rr.log_rect("null_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
-    // rr.log_rect("null_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
-    //
-    // rr.set_time_seconds("sim_time", 2)
-    // rr.log_cleared("null_demo/rect/0")
-    //
-    // rr.set_time_seconds("sim_time", 3)
-    // rr.log_cleared("null_demo/rect", recursive=True)
-    //
-    // rr.set_time_seconds("sim_time", 4)
-    // rr.log_rect("null_demo/rect/0", [5, 5, 4, 4])
-    //
-    // rr.set_time_seconds("sim_time", 5)
-    // rr.log_rect("null_demo/rect/1", [10, 5, 4, 4])
-
     // TODO(cmc): need abstractions for this
     fn log_cleared(
         session: &mut Session,
@@ -244,6 +228,52 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    // TODO(cmc): the python SDK has some higher-level logic to make life simpler (and safer) when
+    // logging images of all kind: standard (`log_image`), depth (see `log_depth_image`),
+    // (`log_segmentation_image`).
+    // We're gonna need some of that.
+
+    // TODO: have to bring out the big guns for this one
+
+    Ok(())
+}
+
+fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
+    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+
+    // TODO(cmc): the python SDK has some higher-level logic to make life simpler (and safer) when
+    // logging images of all kind: standard (`log_image`), depth (see `log_depth_image`),
+    // (`log_segmentation_image`).
+    // We're gonna need some of that.
+
+    // TODO: have to bring out the big guns for this one
+
+    Ok(())
+}
+
+// TODO(cmc): not working as expected afaict
+fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
+    // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
+    // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
+
+    MsgSender::new("logs")
+        .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
+        .with_component(&[ColorRGBA::from([255, 215, 0, 255])])?
+        .send(session)?;
+
+    MsgSender::new("logs")
+        .with_component(&[TextEntry::new(
+            "this entry has loglevel TRACE",
+            "TRACE".to_owned().into(),
+        )])?
+        .send(session)?;
+
+    Ok(())
+}
+
 // --- Init ---
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -322,6 +352,9 @@ fn main() -> anyhow::Result<()> {
     demo_extension_components(&mut session)?;
     demo_log_cleared(&mut session)?;
     demo_3d_points(&mut session)?;
+    demo_rects(&mut session)?;
+    demo_segmentation(&mut session)?;
+    demo_text_logs(&mut session)?;
 
     // TODO: spawn_and_connect
     // If not connected, show the GUI inline
