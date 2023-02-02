@@ -42,10 +42,9 @@ impl DataUi for EntityComponentWithInstances {
 
         let num_instances = self.num_instances();
 
-        let max_elems = match verbosity {
-            crate::ui::UiVerbosity::Small | crate::ui::UiVerbosity::MaxHeight(_) => 1,
-            crate::UiVerbosity::Reduced => 10,
-            crate::ui::UiVerbosity::All => 20,
+        let one_line = match verbosity {
+            crate::ui::UiVerbosity::Small | crate::ui::UiVerbosity::MaxHeight(_) => true,
+            crate::UiVerbosity::Reduced | crate::ui::UiVerbosity::All => false,
         };
 
         if num_instances == 0 {
@@ -63,7 +62,7 @@ impl DataUi for EntityComponentWithInstances {
             } else {
                 ui.label(ctx.re_ui.error_text("Error: missing instance key"));
             }
-        } else if max_elems == 1 {
+        } else if one_line {
             ui.label(format!("{num_instances} values"));
         } else {
             egui_extras::TableBuilder::new(ui)
