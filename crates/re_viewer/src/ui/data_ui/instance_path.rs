@@ -2,10 +2,7 @@ use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
 
-use crate::{
-    misc::ViewerContext,
-    ui::{format_component_name, UiVerbosity},
-};
+use crate::{misc::ViewerContext, ui::UiVerbosity};
 
 use super::DataUi;
 
@@ -60,7 +57,7 @@ impl DataUi for InstancePath {
 
                     ctx.component_path_button_to(
                         ui,
-                        format_component_name(&component_name),
+                        component_name.short_name(),
                         &ComponentPath::new(self.entity_path.clone(), component_name),
                     );
 

@@ -201,10 +201,8 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
             }
         }
         Selection::MsgId(msg_id) => msg_id.short_string(),
-        Selection::ComponentPath(path) => format!(
-            "{} {}",
-            path.entity_path,
-            super::format_component_name(&path.component_name),
-        ),
+        Selection::ComponentPath(path) => {
+            format!("{} {}", path.entity_path, path.component_name.short_name(),)
+        }
     }
 }

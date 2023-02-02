@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
 
-use crate::{misc::ViewerContext, ui::format_component_name};
+use crate::misc::ViewerContext;
 
 mod annotation_context;
 mod component;
@@ -102,7 +102,7 @@ fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
     use re_arrow_store::ArrayExt as _;
     let num_instances = value.get_child_length(0);
 
-    format!("{}x {}", num_instances, format_component_name(name))
+    format!("{}x {}", num_instances, name.short_name())
 }
 
 impl DataUi for PathOp {
