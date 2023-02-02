@@ -743,19 +743,8 @@ fn visibility_button_ui(
     visible: &mut bool,
 ) -> egui::Response {
     ui.set_enabled(enabled);
-
-    let mut response = if enabled && *visible {
-        re_ui.small_icon_button(ui, &re_ui::icons::VISIBLE)
-    } else {
-        re_ui.small_icon_button(ui, &re_ui::icons::INVISIBLE)
-    };
-
-    if response.clicked() {
-        *visible = !*visible;
-        response.mark_changed();
-    }
-
-    response
+    re_ui
+        .visibility_toggle_button(ui, visible)
         .on_hover_text("Toggle visibility")
         .on_disabled_hover_text("A parent is invisible")
 }

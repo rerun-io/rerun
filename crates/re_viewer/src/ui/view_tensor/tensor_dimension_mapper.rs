@@ -245,16 +245,13 @@ pub fn dimension_mapping_ui(
                             &mut drop_source,
                             &mut drop_target,
                         );
-                        let visibility_button = if selector.visible {
-                            re_ui
-                                .small_icon_button(ui, &re_ui::icons::VISIBLE)
-                                .on_hover_text("Hide selector ui from the Space View.")
+
+                        let response = re_ui.visibility_toggle_button(ui, &mut selector.visible);
+                        if selector.visible {
+                            response.on_hover_text("Hide selector ui from the Space View.")
                         } else {
-                            re_ui
-                                .small_icon_button(ui, &re_ui::icons::INVISIBLE)
-                                .on_hover_text("Show selector ui in the Space View.")
+                            response.on_hover_text("Show selector ui in the Space View.")
                         };
-                        selector.visible ^= visibility_button.clicked();
                         ui.end_row();
                     }
                     // Don't expose `NewSelector` for the moment since it doesn't add any value.
