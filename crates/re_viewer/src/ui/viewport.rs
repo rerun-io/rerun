@@ -445,12 +445,11 @@ impl Viewport {
                 .show_inside(ui, &mut tab_viewer);
         });
 
-        if ctx.app_options.show_spaceview_controls() {
-            // Two passes so we avoid borrowing issues:
-            let tab_bars = tree
-                .iter()
-                .filter_map(|node| {
-                    let egui_dock::Node::Leaf {
+        // Two passes so we avoid borrowing issues:
+        let tab_bars = tree
+            .iter()
+            .filter_map(|node| {
+                let egui_dock::Node::Leaf {
                         rect,
                         viewport,
                         tabs,
@@ -459,24 +458,23 @@ impl Viewport {
                         return None;
                     };
 
-                    let space_view_id = tabs.get(active.0)?;
+                let space_view_id = tabs.get(active.0)?;
 
-                    // `rect` includes the tab area, while `viewport` is just the tab body.
-                    // so the tab bar rect is:
-                    let tab_bar_rect =
-                        egui::Rect::from_x_y_ranges(rect.x_range(), rect.top()..=viewport.top());
+                // `rect` includes the tab area, while `viewport` is just the tab body.
+                // so the tab bar rect is:
+                let tab_bar_rect =
+                    egui::Rect::from_x_y_ranges(rect.x_range(), rect.top()..=viewport.top());
 
-                    // rect/viewport can be invalid for the first frame
-                    tab_bar_rect
-                        .is_finite()
-                        .then_some((*space_view_id, tab_bar_rect))
-                })
-                .collect_vec();
-
-            for (space_view_id, tab_bar_rect) in tab_bars {
                 // rect/viewport can be invalid for the first frame
-                space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
-            }
+                tab_bar_rect
+                    .is_finite()
+                    .then_some((*space_view_id, tab_bar_rect))
+            })
+            .collect_vec();
+
+        for (space_view_id, tab_bar_rect) in tab_bars {
+            // rect/viewport can be invalid for the first frame
+            space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
         }
     }
 
