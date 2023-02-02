@@ -28,8 +28,8 @@ text = "MIT OR Apache-2.0"
 tests = ["pytest==7.1.2"]
 
 [project.urls]
-documentation = "https://github.com/rerun-io/rerun"
-homepage = "https://www.rerun.io/"
+documentation = "https://www.rerun.io/docs"
+homepage = "https://www.rerun.io"
 repository = "https://github.com/rerun-io/rerun"
 
 [project.scripts]

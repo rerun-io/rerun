@@ -26,7 +26,8 @@ We tag all data files (`.rrd` files) and communication protocols with the rerun 
 
 
 ## Releases
-When doing a normal release, we create a branch off of `main`. If we are doing a patch release, we do a branch off of the latest release tag (e.g. `0.3.0`) and cherry-pick any fixes we want into that branch.
+Release builds of the Python Wheels are triggered by pushing a release tag to github in the form `v0.2.0`.
+When doing a normal release, we tag the release commit on the `main` branch. If we are doing a patch release, we do a branch off of the latest release tag (e.g. `v0.3.0`) and cherry-pick any fixes we want into that branch.
 
 ### Release checklist
 Copy this checklist to the the PR description, go through it from top to bottom, and check each item before moving onto the next. This is a living document. Strive to improve it on each new release.
@@ -48,9 +49,9 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Publish new Rust crates
 * [ ] Publish new Python wheels
 * [ ] Merge PR
-* [ ] `git tag -a 0.x.y -m 'Release 0.x.y - summary'`
+* [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
 * [ ] `git push && git push --tags`
-* [ ] Do a GitHub release: https://github.com/rerun-io/rerun/releases/new
+* [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
 * [ ] Post on:
   * [ ] Community Discord
   * [ ] Rerun Twitter
@@ -58,13 +59,16 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 
 
 ### Testing a release
-* [ ] `just py-run-all`
-* [ ] Test the web viewer:
-    * [ ] `cargo run -p rerun --features web -- --web-viewer ../nyud.rrd`
-    * [ ] Test on:
-        * [ ] Chromium
-        * [ ] Firefox
-        * [ ] Mobile
+* Before pushing the release tag:
+    * [ ] `just py-run-all`
+    * [ ] Test the web viewer:
+        * [ ] `cargo run -p rerun --features web -- --web-viewer ../nyud.rrd`
+        * [ ] Test on:
+            * [ ] Chromium
+            * [ ] Firefox
+            * [ ] Mobile
+* After tagging and the CI has published:
+    * [ ] Test the Python packages from PyPI: `pip install -U rerun-sdk`
 
 
 ## To do before first release
