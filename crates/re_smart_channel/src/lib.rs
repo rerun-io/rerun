@@ -14,8 +14,8 @@ pub enum Source {
     /// The source if a file on disk
     File,
 
-    /// The source is some unknown network
-    Network,
+    /// The source is the logging sdk directly, same process.
+    Sdk,
 
     /// We are a WebSocket client connected to a rerun server.
     ///
@@ -32,8 +32,8 @@ pub enum Source {
 impl Source {
     pub fn is_network(&self) -> bool {
         match self {
-            Source::File => false,
-            Source::Network | Source::WsClient { .. } | Source::TcpServer { .. } => true,
+            Self::File | Self::Sdk => false,
+            Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }
 }
@@ -179,7 +179,7 @@ impl<T: Send> Receiver<T> {
 
 #[test]
 fn test_smart_channel() {
-    let (tx, rx) = smart_channel(Source::Network);
+    let (tx, rx) = smart_channel(Source::Sdk); // whatever source
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);

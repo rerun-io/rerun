@@ -469,22 +469,22 @@ impl eframe::App for App {
             if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.centered_and_justified(|ui| {
+                        fn ready_and_waiting(txt: &str) -> String {
+                            format!("Ready!\n\n{txt}")
+                        }
+
                         let text = match rx.source() {
                             re_smart_channel::Source::File => "Loading file…".to_owned(),
-                            re_smart_channel::Source::Network => "Waiting for data…".to_owned(),
+                            re_smart_channel::Source::Sdk => {
+                                ready_and_waiting("Waiting for logging data from SDK")
+                            }
                             re_smart_channel::Source::WsClient { ws_server_url } => {
                                 // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
-                                format!(
-                                    "Ready!\n\
-                                     \n\
-                                     Waiting for data from {ws_server_url}"
-                                )
+                                ready_and_waiting(&format!("Waiting for data from {ws_server_url}"))
                             }
-                            re_smart_channel::Source::TcpServer { port } => format!(
-                                "Ready!\n\
-                                 \n\
-                                 Listening on port {port}"
-                            ),
+                            re_smart_channel::Source::TcpServer { port } => {
+                                ready_and_waiting(&format!("Listening on port {port}"))
+                            }
                         };
                         ui.strong(text);
                     });
