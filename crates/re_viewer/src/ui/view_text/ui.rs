@@ -45,12 +45,11 @@ impl ViewTextState {
 
         egui::Grid::new("log_config")
             .num_columns(2)
-            // Spread rows  a bit to make it easier to see the groupings
-            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 2.0))
+            // Spread rows a bit to make it easier to see the groupings
+            .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
             .show(ui, |ui| {
                 top_left_label(ui, "Columns");
                 ui.vertical(|ui| {
-                    // TODO: make them visibility check boxes.
                     for (timeline, visible) in col_timelines {
                         ui.checkbox(visible, timeline.name().to_string());
                     }
