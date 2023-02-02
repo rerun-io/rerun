@@ -171,7 +171,7 @@ where
     ///
     /// Params:
     ///  - `size_hint`: The `PointBuilder` will pre-allocate buffers to accomodate up to this number of points.
-    ///                 The resulting point cloud, will still be determined by the length of the iterator.
+    ///                 The resulting point batch, will still be determined by the length of the iterator.
     ///  - `positions`: An iterable of the positions of the collection of points
     pub fn add_points(
         &mut self,
@@ -239,7 +239,7 @@ where
     ///
     /// Params:
     ///  - `size_hint`: The `PointBuilder` will pre-allocate buffers to accomodate up to this number of points.
-    ///                 The resulting point cloud, will be the size of the length of the `positions` iterator.
+    ///                 The resulting point batch, will be the size of the length of the `positions` iterator.
     ///  - `positions`: An iterable of the positions of the collection of points
     #[inline]
     pub fn add_points_2d(
