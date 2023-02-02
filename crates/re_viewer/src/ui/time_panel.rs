@@ -479,7 +479,7 @@ impl TimePanel {
                         );
                         ctx.component_path_button_to(
                             ui,
-                            super::format_component_name(component_name),
+                            component_name.short_name(),
                             &component_path,
                         );
                     })
@@ -785,7 +785,7 @@ fn show_msg_ids_tooltip(
             let timeline = *ctx.rec_cfg.time_ctrl.timeline();
             let time_int = time_points[0].0; // We want to show the selection at the time of whatever point we are hovering
             let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
-            selection.data_ui(ctx, ui, super::UiVerbosity::Large, &query);
+            selection.data_ui(ctx, ui, super::UiVerbosity::Reduced, &query);
         } else {
             ui.label(format!(
                 "{num_messages} messages at {num_times} points in time"

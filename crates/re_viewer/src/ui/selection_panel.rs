@@ -68,17 +68,25 @@ impl SelectionPanel {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
 
-                        egui::CollapsingHeader::new("Data")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                selection.data_ui(ctx, ui, UiVerbosity::Large, &query);
-                            });
+                        if has_data_section(selection) {
+                            egui::CollapsingHeader::new("Data")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    selection.data_ui(ctx, ui, UiVerbosity::All, &query);
+                                });
 
-                        egui::CollapsingHeader::new("Blueprint")
-                            .default_open(true)
-                            .show(ui, |ui| {
-                                blueprint_ui(ui, ctx, blueprint, selection);
-                            });
+                            egui::CollapsingHeader::new("Blueprint")
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    blueprint_ui(ui, ctx, blueprint, selection);
+                                });
+                        } else {
+                            // If there is no data section, there's no point in showing the blueprint collapsing header either!
+                            // TODO(andreas): This separator makes it a bit inconsistent, but without it it's unclear where the `what_is_selected` part ends.
+                            //                Imminent design changes might make this unnecessary.
+                            ui.separator();
+                            blueprint_ui(ui, ctx, blueprint, selection);
+                        }
 
                         if num_selections > i + 1 {
                             ui.add(egui::Separator::default().spacing(12.0));
@@ -86,6 +94,14 @@ impl SelectionPanel {
                     });
                 }
             });
+    }
+}
+
+fn has_data_section(selection: &Selection) -> bool {
+    match selection {
+        Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::InstancePath(_, _) => true,
+        // Skip data ui since we don't know yet what to show for these.
+        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => false,
     }
 }
 
@@ -103,11 +119,22 @@ pub fn what_is_selected_ui(
                 ctx.msg_id_button(ui, *msg_id);
             });
         }
-        Selection::ComponentPath(component_path) => {
-            ui.horizontal(|ui| {
-                ui.label("Entity component:");
-                ctx.component_path_button(ui, component_path);
-            });
+        Selection::ComponentPath(re_log_types::ComponentPath {
+            entity_path,
+            component_name,
+        }) => {
+            egui::Grid::new("component_path")
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("Entity:");
+                    ctx.entity_path_button(ui, None, entity_path);
+                    ui.end_row();
+
+                    ui.label("Component:");
+                    ui.label(component_name.short_name())
+                        .on_hover_text(component_name.full_name());
+                    ui.end_row();
+                });
         }
         Selection::SpaceView(space_view_id) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
@@ -169,7 +196,9 @@ impl DataUi for Selection {
     ) {
         match self {
             Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
-                ui.weak("(nothing)");
+                // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
+                // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
+                assert!(!has_data_section(self));
             }
             Selection::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
@@ -203,16 +232,34 @@ fn blueprint_ui(
 
         Selection::SpaceView(space_view_id) => {
             if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                if ui.button("Remove from Viewport").clicked() {
+                if ui
+                    .button("Remove from Viewport")
+                    .on_hover_text("All blueprint settings in this Space View will be lost.")
+                    .clicked()
+                {
                     blueprint.viewport.remove(space_view_id);
                     blueprint.viewport.mark_user_interaction();
                     ctx.selection_state_mut().clear_current();
                 } else {
-                    if ui.button("Clone Space View").clicked() {
+                    if ui
+                        .button("Clone Space View")
+                        .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
+                        .clicked()
+                    {
                         let mut new_space_view = space_view.clone();
                         new_space_view.id = super::SpaceViewId::random();
                         blueprint.viewport.add_space_view(new_space_view);
                         blueprint.viewport.mark_user_interaction();
+                    }
+
+                    if ui
+                        .button("Add/remove entities")
+                        .on_hover_text("Manually add or remove entities from the Space View.")
+                        .clicked()
+                    {
+                        blueprint
+                            .viewport
+                            .show_add_remove_entities_window(*space_view_id);
                     }
 
                     if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {

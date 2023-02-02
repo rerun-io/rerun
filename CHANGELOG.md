@@ -3,6 +3,7 @@
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
 * 2023-02-02: Automate Python Wheel deployments. The Rerun python package is renamed to `rerun-sdk`. [#996](https://github.com/rerun-io/rerun/pull/996)
+* 2023-02-02: Introduce extension_components [#1023](https://github.com/rerun-io/rerun/pull/1023)
 * 2023-01-27: Update wgpu to 0.15. [#954](https://github.com/rerun-io/rerun/pull/954)
 * 2023-01-25: Depth images are now color mapped with turbo color map. [#912](https://github.com/rerun-io/rerun/pull/912)
 * 2023-01-20: Arrow Storage is now the default storage backend for rerun. Use RERUN_STORE=classic to opt out. [#822](https://github.com/rerun-io/rerun/pull/822).

@@ -1,5 +1,5 @@
 use re_log_types::component_types::TensorDimension;
-use re_tensor_ops::dimension_mapping::DimensionMapping;
+use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {
@@ -21,7 +21,7 @@ impl DragDropAddress {
             DragDropAddress::Width => dimension_mapping.width,
             DragDropAddress::Height => dimension_mapping.height,
             DragDropAddress::Selector(selector_idx) => {
-                Some(dimension_mapping.selectors[*selector_idx])
+                Some(dimension_mapping.selectors[*selector_idx].dim_idx)
             }
             DragDropAddress::NewSelector => None,
         }
@@ -34,13 +34,15 @@ impl DragDropAddress {
             DragDropAddress::Height => dimension_mapping.height = dim_idx,
             DragDropAddress::Selector(selector_idx) => {
                 if let Some(dim_idx) = dim_idx {
-                    dimension_mapping.selectors[*selector_idx] = dim_idx;
+                    dimension_mapping.selectors[*selector_idx] = DimensionSelector::new(dim_idx);
                 } else {
                     dimension_mapping.selectors.remove(*selector_idx);
                 }
             }
             // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
-            DragDropAddress::NewSelector => dimension_mapping.selectors.push(dim_idx.unwrap()),
+            DragDropAddress::NewSelector => dimension_mapping
+                .selectors
+                .push(DimensionSelector::new(dim_idx.unwrap())),
         };
     }
 }
@@ -169,6 +171,7 @@ fn drop_target_ui<R>(
 }
 
 pub fn dimension_mapping_ui(
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     dim_mapping: &mut DimensionMapping,
     shape: &[TensorDimension],
@@ -185,14 +188,10 @@ pub fn dimension_mapping_ui(
         ui.memory(|mem| mem.is_being_dragged(drag_source_ui_id(drag_context_id, dim_idx)))
     });
 
-    ui.horizontal(|ui| {
+    ui.vertical(|ui| {
         ui.vertical(|ui| {
             ui.strong("Image:");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Width:");
-                    ui.toggle_value(&mut dim_mapping.invert_width, "Flip");
-                });
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
@@ -203,12 +202,12 @@ pub fn dimension_mapping_ui(
                     &mut drop_source,
                     &mut drop_target,
                 );
+                ui.horizontal(|ui| {
+                    ui.toggle_value(&mut dim_mapping.invert_width, "Flip");
+                    ui.label("width");
+                });
                 ui.end_row();
 
-                ui.horizontal(|ui| {
-                    ui.label("Height:");
-                    ui.toggle_value(&mut dim_mapping.invert_height, "Flip");
-                });
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
@@ -219,43 +218,57 @@ pub fn dimension_mapping_ui(
                     &mut drop_source,
                     &mut drop_target,
                 );
+                ui.horizontal(|ui| {
+                    ui.toggle_value(&mut dim_mapping.invert_height, "Flip");
+                    ui.label("height");
+                });
                 ui.end_row();
             });
         });
 
-        ui.add_space(24.0);
+        ui.add_space(4.0);
 
         ui.vertical(|ui| {
             ui.strong("Selectors:");
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
-                .num_columns(1)
+                .num_columns(2)
                 .show(ui, |ui| {
-                    for (selector_idx, &mut dim_idx) in dim_mapping.selectors.iter_mut().enumerate()
-                    {
+                    for (selector_idx, selector) in dim_mapping.selectors.iter_mut().enumerate() {
                         tensor_dimension_ui(
                             ui,
                             drag_context_id,
                             can_accept_dragged,
-                            Some(dim_idx),
+                            Some(selector.dim_idx),
                             DragDropAddress::Selector(selector_idx),
+                            shape,
+                            &mut drop_source,
+                            &mut drop_target,
+                        );
+
+                        let response = re_ui.visibility_toggle_button(ui, &mut selector.visible);
+                        if selector.visible {
+                            response.on_hover_text("Hide selector ui from the Space View.")
+                        } else {
+                            response.on_hover_text("Show selector ui in the Space View.")
+                        };
+                        ui.end_row();
+                    }
+                    // Don't expose `NewSelector` for the moment since it doesn't add any value.
+                    // We might need it again though if there is a way to park a selector somewhere else than width/height/selector!
+                    if false {
+                        tensor_dimension_ui(
+                            ui,
+                            drag_context_id,
+                            can_accept_dragged,
+                            None,
+                            DragDropAddress::NewSelector,
                             shape,
                             &mut drop_source,
                             &mut drop_target,
                         );
                         ui.end_row();
                     }
-                    tensor_dimension_ui(
-                        ui,
-                        drag_context_id,
-                        can_accept_dragged,
-                        None,
-                        DragDropAddress::NewSelector,
-                        shape,
-                        &mut drop_source,
-                        &mut drop_target,
-                    );
-                    ui.end_row();
                 });
         });
     });

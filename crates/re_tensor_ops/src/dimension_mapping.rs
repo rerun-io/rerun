@@ -1,9 +1,24 @@
 use re_log_types::component_types;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub struct DimensionSelector {
+    pub visible: bool,
+    pub dim_idx: usize,
+}
+
+impl DimensionSelector {
+    pub fn new(dim_idx: usize) -> Self {
+        DimensionSelector {
+            visible: true,
+            dim_idx,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct DimensionMapping {
-    /// Which dimensions have selectors?
-    pub selectors: Vec<usize>,
+    /// Which dimensions have selectors, and are they visible?
+    pub selectors: Vec<DimensionSelector>,
 
     // Which dim?
     pub width: Option<usize>,
@@ -30,7 +45,7 @@ impl DimensionMapping {
             },
 
             1 => DimensionMapping {
-                selectors: vec![0],
+                selectors: vec![DimensionSelector::new(0)],
                 width: None,
                 height: None,
                 invert_width: false,
@@ -40,7 +55,8 @@ impl DimensionMapping {
             _ => {
                 let (width, height) = find_width_height_dim_indices(shape);
                 let selectors = (0..shape.len())
-                    .filter(|&i| i != width && i != height)
+                    .filter(|i| *i != width && *i != height)
+                    .map(DimensionSelector::new)
                     .collect();
 
                 let invert_width = shape[width]
@@ -75,7 +91,8 @@ impl DimensionMapping {
             }
         }
 
-        let mut used_dimensions: ahash::HashSet<usize> = self.selectors.iter().copied().collect();
+        let mut used_dimensions: ahash::HashSet<usize> =
+            self.selectors.iter().map(|s| s.dim_idx).collect();
         if let Some(width) = self.width {
             used_dimensions.insert(width);
         }

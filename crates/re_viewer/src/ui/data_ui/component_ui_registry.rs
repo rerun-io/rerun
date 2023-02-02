@@ -50,23 +50,23 @@ impl Default for ComponentUiRegistry {
         // registry.add::<re_log_types::component_types::InstanceKey>();
         // registry.add::<re_log_types::component_types::KeypointId>();
         // registry.add::<re_log_types::component_types::Label>();
-        // registry.add::<re_log_types::component_types::LineStrip2D>();
-        // registry.add::<re_log_types::component_types::LineStrip3D>();
+        registry.add::<re_log_types::component_types::LineStrip2D>();
+        registry.add::<re_log_types::component_types::LineStrip3D>();
         registry.add::<re_log_types::component_types::Mesh3D>();
         registry.add::<re_log_types::component_types::MsgId>();
         // registry.add::<re_log_types::component_types::Point2D>();
         // registry.add::<re_log_types::component_types::Point3D>();
         // registry.add::<re_log_types::component_types::Quaternion>();
         // registry.add::<re_log_types::component_types::Radius>();
-        // registry.add::<re_log_types::component_types::Rect2D>();
+        registry.add::<re_log_types::component_types::Rect2D>();
         // registry.add::<re_log_types::component_types::Scalar>();
         // registry.add::<re_log_types::component_types::ScalarPlotProps>();
         // registry.add::<re_log_types::component_types::Size3D>();
         registry.add::<re_log_types::component_types::Tensor>();
         registry.add::<re_log_types::component_types::TextEntry>();
         registry.add::<re_log_types::component_types::Transform>();
-        // registry.add::<re_log_types::component_types::Vec2D>();
-        // registry.add::<re_log_types::component_types::Vec3D>();
+        registry.add::<re_log_types::component_types::Vec2D>();
+        registry.add::<re_log_types::component_types::Vec3D>();
         registry.add::<re_log_types::ViewCoordinates>();
 
         registry
@@ -157,7 +157,7 @@ impl DataUi for re_log_types::component_types::TextEntry {
                     ui.label(format!("{body:?}")); // Debug format to get quotes and escapes
                 });
             }
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 egui::Grid::new("text_entry").num_columns(2).show(ui, |ui| {
                     ui.label("level:");
                     if let Some(level) = level {
@@ -184,6 +184,7 @@ impl DataUi for re_log_types::component_types::Mesh3D {
     ) {
         match self {
             re_log_types::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
+            re_log_types::Mesh3D::Raw(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
@@ -197,5 +198,20 @@ impl DataUi for re_log_types::component_types::EncodedMesh3D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.label(format!("{} mesh", self.format));
+    }
+}
+
+impl DataUi for re_log_types::component_types::RawMesh3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(format!(
+            "mesh ({} triangles)",
+            re_format::format_number(self.num_triangles())
+        ));
     }
 }

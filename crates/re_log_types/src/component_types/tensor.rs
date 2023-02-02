@@ -549,11 +549,11 @@ fn test_ndarray() {
         data: TensorData::U16(vec![1, 2, 3, 4]),
     };
     let a0: ndarray::ArrayViewD<'_, u16> = (&t0).try_into().unwrap();
-    dbg!(a0);
+    dbg!(a0); // NOLINT
 
     let a = ndarray::Array3::<f64>::zeros((1, 2, 3));
     let t1 = Tensor::try_from(a.into_dyn().view());
-    dbg!(t1);
+    dbg!(t1); // NOLINT
 }
 
 #[test]

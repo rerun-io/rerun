@@ -6,6 +6,7 @@ mod scene;
 mod selection_history;
 mod selection_history_ui;
 mod space_view;
+mod space_view_entity_picker;
 mod view_bar_chart;
 mod view_category;
 mod view_tensor;
@@ -34,12 +35,3 @@ pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 pub use self::viewport::Viewport;
 
 pub(crate) use data_ui::UiVerbosity;
-
-pub fn format_component_name(name: &re_data_store::ComponentName) -> String {
-    let name = name.as_str();
-    if let Some(name) = name.strip_prefix("rerun.") {
-        name.into()
-    } else {
-        name.into()
-    }
-}

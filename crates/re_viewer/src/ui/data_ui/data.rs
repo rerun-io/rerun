@@ -1,8 +1,9 @@
 use egui::Vec2;
 
 use re_log_types::{
-    component_types::ColorRGBA, component_types::Mat3x3, Pinhole, Rigid3, Transform,
-    ViewCoordinates,
+    component_types::ColorRGBA,
+    component_types::{LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D},
+    Pinhole, Rigid3, Transform, ViewCoordinates,
 };
 
 use crate::ui::UiVerbosity;
@@ -79,7 +80,7 @@ impl DataUi for ViewCoordinates {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.label(self.describe());
             }
         }
@@ -98,11 +99,11 @@ impl DataUi for Rigid3 {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::Large, query);
+                    self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 let pose = self.parent_from_child(); // TODO(emilk): which one to show?
                 let rotation = pose.rotation();
                 let translation = pose.translation();
@@ -137,11 +138,11 @@ impl DataUi for Pinhole {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::Large, query);
+                    self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 let Pinhole {
                     image_from_cam: image_from_view,
                     resolution,
@@ -194,5 +195,140 @@ impl DataUi for Mat3x3 {
             ui.monospace(self[2][2].to_string());
             ui.end_row();
         });
+    }
+}
+
+impl DataUi for Vec2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for Vec3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for Rect2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(match self {
+            Rect2D::XYWH(Vec4D([top, left, width, height]))
+            | Rect2D::YXHW(Vec4D([left, top, height, width])) => {
+                format!("top: {top}, left: {left}, width: {width}, height: {height}")
+            }
+            Rect2D::XYXY(Vec4D([left, top, right, bottom]))
+            | Rect2D::YXYX(Vec4D([top, left, bottom, right])) => {
+                format!("top: {top}, left: {left}, right: {right}, bottom: {bottom}")
+            }
+            Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
+                format!(
+                    "center: {}, width: {width}, height: {height}",
+                    Vec2D([*center_x, *center_y])
+                )
+            }
+            Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
+                format!(
+                    "center: {}, half-width: {half_width}, half-height: {half_height}",
+                    Vec2D([*center_x, *center_y])
+                )
+            }
+        })
+        .on_hover_text(format!("area: {}", self.width() * self.height()));
+    }
+}
+
+impl DataUi for LineStrip2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        const MAX_NUM_ELEMENTS_MULTI_LINE: usize = 10;
+
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+                ui.label(format!("{} positions", self.0.len()));
+            }
+            UiVerbosity::All => {
+                egui::Grid::new("linestrip2d")
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        ui.strong("x");
+                        ui.strong("y");
+                        ui.end_row();
+                        for p in self.0.iter().take(MAX_NUM_ELEMENTS_MULTI_LINE) {
+                            ui.label(p.x().to_string());
+                            ui.label(p.y().to_string());
+                        }
+                    });
+                if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
+                    ui.label(format!(
+                        "...plus {} more",
+                        self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
+                    ));
+                }
+            }
+        }
+    }
+}
+
+impl DataUi for LineStrip3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        const MAX_NUM_ELEMENTS_MULTI_LINE: usize = 10;
+
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+                ui.label(format!("{} positions", self.0.len()));
+            }
+            UiVerbosity::All => {
+                egui::Grid::new("linestrip3d")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        ui.strong("x");
+                        ui.strong("y");
+                        ui.strong("z");
+                        ui.end_row();
+                        for p in self.0.iter().take(MAX_NUM_ELEMENTS_MULTI_LINE) {
+                            ui.label(p.x().to_string());
+                            ui.label(p.y().to_string());
+                            ui.label(p.z().to_string());
+                            ui.end_row();
+                        }
+                    });
+                if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
+                    ui.label(format!(
+                        "...plus {} more",
+                        self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
+                    ));
+                }
+            }
+        }
     }
 }

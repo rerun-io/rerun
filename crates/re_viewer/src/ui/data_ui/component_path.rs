@@ -10,11 +10,6 @@ impl DataUi for ComponentPath {
         verbosity: crate::ui::UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        ui.horizontal(|ui| {
-            ui.label("Entity path:");
-            ctx.entity_path_button(ui, None, &self.entity_path);
-        });
-
         let store = &ctx.log_db.entity_db.arrow_store;
 
         match re_query::get_component_with_instances(

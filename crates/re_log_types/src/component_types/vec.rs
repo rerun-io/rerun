@@ -3,6 +3,11 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use super::FixedSizeArrayField;
 use crate::msg_bundle::Component;
 
+/// Number of decimals shown for all vector display methods.
+const DISPLAY_PRECISION: usize = 3;
+
+// --- Vec2D ---
+
 /// A vector in 2D space.
 ///
 /// ```
@@ -70,6 +75,20 @@ impl From<glam::Vec2> for Vec2D {
         Self(v.to_array())
     }
 }
+
+impl std::fmt::Display for Vec2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{:.prec$}, {:.prec$}]",
+            self.x(),
+            self.y(),
+            prec = DISPLAY_PRECISION,
+        )
+    }
+}
+
+// --- Vec3D ---
 
 /// A vector in 3D space.
 ///
@@ -145,6 +164,21 @@ impl From<glam::Vec3> for Vec3D {
     }
 }
 
+impl std::fmt::Display for Vec3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{:.prec$}, {:.prec$}, {:.prec$}]",
+            self.x(),
+            self.y(),
+            self.z(),
+            prec = DISPLAY_PRECISION,
+        )
+    }
+}
+
+// --- Vec4D ---
+
 /// A vector in 4D space.
 ///
 /// ```
@@ -163,6 +197,20 @@ impl From<glam::Vec3> for Vec3D {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct Vec4D(#[arrow_field(type = "FixedSizeArrayField<f32,4>")] pub [f32; 4]);
+
+impl std::fmt::Display for Vec4D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{:.prec$}, {:.prec$}, {:.prec$}, {:.prec$}]",
+            self.0[0],
+            self.0[1],
+            self.0[2],
+            self.0[3],
+            prec = DISPLAY_PRECISION
+        )
+    }
+}
 
 #[test]
 fn test_vec4d() {

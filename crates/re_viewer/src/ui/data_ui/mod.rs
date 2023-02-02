@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
 
-use crate::{misc::ViewerContext, ui::format_component_name};
+use crate::misc::ViewerContext;
 
 mod annotation_context;
 mod component;
@@ -27,8 +27,11 @@ pub enum UiVerbosity {
     /// At most this height
     MaxHeight(f32),
 
-    /// As large as you want.
-    Large,
+    /// Display a reduced set, used for hovering.
+    Reduced,
+
+    /// Display everything, as large as you want. Used for selection panel.
+    All,
 }
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].
@@ -82,7 +85,7 @@ impl DataUi for [ComponentBundle] {
                 ui.label(sorted.iter().map(format_component_bundle).join(", "));
             }
 
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_component_bundle(component_bundle));
@@ -99,7 +102,7 @@ fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
     use re_arrow_store::ArrayExt as _;
     let num_instances = value.get_child_length(0);
 
-    format!("{}x {}", num_instances, format_component_name(name))
+    format!("{}x {}", num_instances, name.short_name())
 }
 
 impl DataUi for PathOp {

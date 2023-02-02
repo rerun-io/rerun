@@ -200,7 +200,9 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
                 "<group in removed space view>".to_owned()
             }
         }
-        Selection::MsgId(s) => s.to_string(),
-        Selection::ComponentPath(s) => s.to_string(),
+        Selection::MsgId(msg_id) => msg_id.short_string(),
+        Selection::ComponentPath(path) => {
+            format!("{} {}", path.entity_path, path.component_name.short_name(),)
+        }
     }
 }

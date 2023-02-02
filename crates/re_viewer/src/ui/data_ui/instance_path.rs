@@ -2,19 +2,19 @@ use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
 
-use crate::{
-    misc::ViewerContext,
-    ui::{format_component_name, UiVerbosity},
-};
+use crate::{misc::ViewerContext, ui::UiVerbosity};
 
 use super::DataUi;
+
+const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.instance_key"];
+const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &["rerun.msg_id"];
 
 impl DataUi for InstancePath {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let store = &ctx.log_db.entity_db.arrow_store;
@@ -40,9 +40,24 @@ impl DataUi for InstancePath {
                         continue; // no need to show components that are unset at this point in time
                     }
 
+                    // Certain fields are hidden.
+                    if HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY.contains(&component_name.as_str()) {
+                        continue;
+                    }
+                    match verbosity {
+                        UiVerbosity::Small | UiVerbosity::MaxHeight(_) | UiVerbosity::Reduced => {
+                            if HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY
+                                .contains(&component_name.as_str())
+                            {
+                                continue;
+                            }
+                        }
+                        UiVerbosity::All => {}
+                    }
+
                     ctx.component_path_button_to(
                         ui,
-                        format_component_name(&component_name),
+                        component_name.short_name(),
                         &ComponentPath::new(self.entity_path.clone(), component_name),
                     );
 

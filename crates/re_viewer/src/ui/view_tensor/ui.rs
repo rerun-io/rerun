@@ -6,7 +6,7 @@ use half::f16;
 use ndarray::{Axis, Ix2};
 
 use re_log_types::{component_types, ClassicTensor, TensorDataType};
-use re_tensor_ops::dimension_mapping::DimensionMapping;
+use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 use super::dimension_mapping_ui;
 
@@ -45,24 +45,32 @@ impl ViewTensorState {
 
     pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(tensor) = &self.tensor {
-            ui.collapsing("Dimension Mapping", |ui| {
-                crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
-                ui.add_space(12.0);
+            egui::CollapsingHeader::new("Dimension Mapping")
+                .default_open(true)
+                .show(ui, |ui| {
+                    crate::ui::data_ui::image::tensor_dtype_and_shape_ui(ui, tensor);
+                    ui.add_space(12.0);
 
-                dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
+                    let default_mapping = DimensionMapping::create(tensor.shape());
+                    if ui
+                        .add_enabled(
+                            self.dimension_mapping != default_mapping,
+                            egui::Button::new("Reset mapping"),
+                        )
+                        .on_disabled_hover_text("The default is already set up.")
+                        .on_hover_text("Reset dimension mapping to the default.")
+                        .clicked()
+                    {
+                        self.dimension_mapping = DimensionMapping::create(tensor.shape());
+                    }
 
-                let default_mapping = DimensionMapping::create(tensor.shape());
-                if ui
-                    .add_enabled(
-                        self.dimension_mapping != default_mapping,
-                        egui::Button::new("Auto-map"),
-                    )
-                    .on_disabled_hover_text("The default is already set up")
-                    .clicked()
-                {
-                    self.dimension_mapping = DimensionMapping::create(tensor.shape());
-                }
-            });
+                    dimension_mapping_ui(
+                        ctx.re_ui,
+                        ui,
+                        &mut self.dimension_mapping,
+                        tensor.shape(),
+                    );
+                });
         }
 
         self.texture_settings.show(ui);
@@ -87,6 +95,15 @@ pub(crate) fn view_tensor(
 
     selectors_ui(ui, state, tensor);
 
+    tensor_ui(ctx, ui, state, tensor);
+}
+
+fn tensor_ui(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut ViewTensorState,
+    tensor: &ClassicTensor,
+) {
     let tensor_shape = tensor.shape();
 
     let tensor_stats = ctx.cache.tensor_stats(tensor);
@@ -467,7 +484,7 @@ impl TextureSettings {
         ui: &mut egui::Ui,
         margin: Vec2,
         image: ColorImage,
-    ) -> (egui::Painter, egui::Rect) {
+    ) -> (egui::Response, egui::Painter, egui::Rect) {
         let img_size = egui::vec2(image.size[0] as _, image.size[1] as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
         let desired_size = match self.scaling {
@@ -496,7 +513,7 @@ impl TextureSettings {
 
         painter.add(mesh);
 
-        (painter, image_rect)
+        (response, painter, image_rect)
     }
 }
 
@@ -570,11 +587,11 @@ fn selected_tensor_slice<'a, T: Copy>(
         .height
         .into_iter()
         .chain(dim_mapping.width.into_iter())
-        .chain(dim_mapping.selectors.iter().copied())
+        .chain(dim_mapping.selectors.iter().map(|s| s.dim_idx))
         .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
 
-    for dim_idx in &dim_mapping.selectors {
+    for DimensionSelector { dim_idx, .. } in &dim_mapping.selectors {
         let selector_value = state
             .selector_values
             .get(dim_idx)
@@ -677,63 +694,141 @@ fn image_ui(
 
     egui::ScrollArea::both().show(ui, |ui| {
         let font_id = egui::TextStyle::Body.resolve(ui.style());
-        let margin = Vec2::splat(font_id.size + 2.0);
 
-        let (painter, image_rect) = view_state.texture_settings.paint_image(ui, margin, image);
+        let margin = egui::vec2(0.0, 12.0); // Add some margin for the arrow overlay.
 
-        let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
-        let text_color = ui.visuals().text_color();
+        let (response, mut painter, image_rect) =
+            view_state.texture_settings.paint_image(ui, margin, image);
 
-        // Label for X axis, on top:
-        if invert_width {
-            painter.text(
-                image_rect.left_top(),
-                Align2::LEFT_BOTTOM,
-                format!("{width_name} ⬅"),
-                font_id.clone(),
-                text_color,
-            );
-        } else {
-            painter.text(
-                image_rect.right_top(),
-                Align2::RIGHT_BOTTOM,
-                format!("➡ {width_name}"),
-                font_id.clone(),
-                text_color,
-            );
-        }
+        let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+        if response.hovered() && !is_anything_being_dragged {
+            // Show axis names etc:
+            let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
+            let text_color = ui.visuals().text_color();
 
-        // Label for Y axis, on the left:
-        if invert_height {
-            let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
-            painter.add(TextShape {
-                pos: image_rect.left_top() - egui::vec2(galley.size().y, -galley.size().x),
-                galley,
-                angle: -std::f32::consts::TAU / 4.0,
-                underline: Default::default(),
-                override_text_color: None,
-            });
-        } else {
-            let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
-            painter.add(TextShape {
-                pos: image_rect.left_bottom() - egui::vec2(galley.size().y, 0.0),
-                galley,
-                angle: -std::f32::consts::TAU / 4.0,
-                underline: Default::default(),
-                override_text_color: None,
-            });
+            painter.set_clip_rect(egui::Rect::EVERYTHING); // Allow painting axis names outside of our bounds!
+
+            // We make sure that the label for the X axis is always at Y=0,
+            // and that the label for the Y axis is always at X=0, no matter what inversions.
+            //
+            // For instance, with origin in the top right:
+            //
+            // foo ⬅
+            // ..........
+            // ..........
+            // ..........
+            // .......... ↓
+            // .......... b
+            // .......... a
+            // .......... r
+
+            // TODO(emilk): draw actual arrows behind the text instead of the ugly emoji arrows
+
+            // Label for X axis:
+            {
+                let text_background = painter.add(egui::Shape::Noop);
+                let text_rect = if invert_width {
+                    // On left, pointing left:
+                    let (pos, align) = if invert_height {
+                        (image_rect.left_bottom(), Align2::LEFT_TOP)
+                    } else {
+                        (image_rect.left_top(), Align2::LEFT_BOTTOM)
+                    };
+                    painter.text(
+                        pos,
+                        align,
+                        format!("{width_name} ⬅"),
+                        font_id.clone(),
+                        text_color,
+                    )
+                } else {
+                    // On right, pointing right:
+                    let (pos, align) = if invert_height {
+                        (image_rect.right_bottom(), Align2::RIGHT_TOP)
+                    } else {
+                        (image_rect.right_top(), Align2::RIGHT_BOTTOM)
+                    };
+                    painter.text(
+                        pos,
+                        align,
+                        format!("➡ {width_name}"),
+                        font_id.clone(),
+                        text_color,
+                    )
+                };
+                painter.set(
+                    text_background,
+                    egui::Shape::rect_filled(text_rect, 2.0, ui.visuals().panel_fill),
+                );
+            }
+
+            // Label for Y axis:
+            {
+                let text_background = painter.add(egui::Shape::Noop);
+                let text_rect = if invert_height {
+                    // On top, pointing up:
+                    let galley =
+                        painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
+                    let galley_size = galley.size();
+                    let pos = if invert_width {
+                        image_rect.right_top() - egui::vec2(0.0, -galley_size.x)
+                    } else {
+                        image_rect.left_top() - egui::vec2(galley_size.y, -galley_size.x)
+                    };
+                    painter.add(TextShape {
+                        pos,
+                        galley,
+                        angle: -std::f32::consts::TAU / 4.0,
+                        underline: Default::default(),
+                        override_text_color: None,
+                    });
+                    egui::Rect::from_min_size(
+                        pos - galley_size.x * egui::Vec2::Y,
+                        egui::vec2(galley_size.y, galley_size.x),
+                    )
+                } else {
+                    // On bottom, pointing down:
+                    let galley =
+                        painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
+                    let galley_size = galley.size();
+                    let pos = if invert_width {
+                        image_rect.right_bottom()
+                    } else {
+                        image_rect.left_bottom() - egui::vec2(galley_size.y, 0.0)
+                    };
+                    painter.add(TextShape {
+                        pos,
+                        galley,
+                        angle: -std::f32::consts::TAU / 4.0,
+                        underline: Default::default(),
+                        override_text_color: None,
+                    });
+                    egui::Rect::from_min_size(
+                        pos - galley_size.x * egui::Vec2::Y,
+                        egui::vec2(galley_size.y, galley_size.x),
+                    )
+                };
+                painter.set(
+                    text_background,
+                    egui::Shape::rect_filled(text_rect, 2.0, ui.visuals().panel_fill),
+                );
+            }
         }
     });
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &ClassicTensor) {
-    for &dim_idx in &state.dimension_mapping.selectors {
-        let dim = &tensor.shape()[dim_idx];
+    for selector in &state.dimension_mapping.selectors {
+        if !selector.visible {
+            continue;
+        }
+
+        let dim = &tensor.shape()[selector.dim_idx];
         let size = dim.size;
 
         let selector_value = state
             .selector_values
-            .entry(dim_idx)
+            .entry(selector.dim_idx)
             .or_insert_with(|| size / 2); // start in the middle
 
         if size > 0 {
@@ -742,12 +837,13 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
 
         if size > 1 {
             ui.horizontal(|ui| {
-                let name = dim.name.as_ref().map_or_else(
-                    || format!("dimension {dim_idx}"),
-                    |name| format!("{name:?}"),
-                );
+                let name = dim
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| selector.dim_idx.to_string());
 
-                ui.weak(format!("Slice selector for {name}:"));
+                let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
+                ui.label(&name).on_hover_text(&slider_tooltip);
 
                 // If the range is big (say, 2048) then we would need
                 // a slider that is 2048 pixels wide to get the good precision.
@@ -757,15 +853,18 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
                         .clamp_range(0..=size - 1)
                         .speed(0.5),
                 )
-                .on_hover_text("Drag to precisely control the slice index");
+                .on_hover_text(format!(
+                    "Drag to precisely control the slice index of the {name} dimension"
+                ));
 
                 // Make the slider as big as needed:
                 const MIN_SLIDER_WIDTH: f32 = 64.0;
                 if ui.available_width() >= MIN_SLIDER_WIDTH {
-                    ui.spacing_mut().slider_width = (size as f32 * 2.0)
+                    ui.spacing_mut().slider_width = (size as f32 * 4.0)
                         .at_least(MIN_SLIDER_WIDTH)
                         .at_most(ui.available_width());
-                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false));
+                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
+                        .on_hover_text(slider_tooltip);
                 }
             });
         }

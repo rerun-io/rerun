@@ -15,12 +15,14 @@ __all__ = [
     "file",
     "image",
     "lines",
+    "mesh",
     "points",
     "rects",
     "scalar",
     "tensor",
     "text",
     "transform",
+    "ext",
 ]
 
 

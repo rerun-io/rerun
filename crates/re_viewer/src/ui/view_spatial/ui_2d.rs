@@ -433,7 +433,7 @@ fn view_2d_scrollable(
                     instance_path.data_ui(
                         ctx,
                         ui,
-                        crate::ui::UiVerbosity::Large,
+                        crate::ui::UiVerbosity::Reduced,
                         &ctx.current_query(),
                     );
                 })

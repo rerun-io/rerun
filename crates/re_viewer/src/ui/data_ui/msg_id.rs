@@ -16,7 +16,7 @@ impl DataUi for MsgId {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ctx.msg_id_button(ui, *self);
             }
-            UiVerbosity::Large => {
+            UiVerbosity::All | UiVerbosity::Reduced => {
                 if let Some(msg) = ctx.log_db.get_log_msg(self) {
                     msg.data_ui(ctx, ui, verbosity, query);
                 } else {
