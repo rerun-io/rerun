@@ -40,27 +40,47 @@ impl DataUi for ComponentWithInstances {
                 } else if max_elems == 1 {
                     ui.label(format!("{num_instances} values"));
                 } else {
-                    egui::Grid::new("component_instances")
-                        .num_columns(2)
-                        .show(ui, |ui| {
-                            for instance_key in instance_keys.take(max_elems) {
-                                ui.label(instance_key.to_string());
-                                ctx.component_ui_registry.ui(
-                                    ctx,
-                                    ui,
-                                    verbosity,
-                                    query,
-                                    self,
-                                    &instance_key,
-                                );
-                                ui.end_row();
-                            }
+                    egui_extras::TableBuilder::new(ui)
+                        .resizable(false)
+                        .vscroll(true)
+                        .auto_shrink([false, true])
+                        .max_scroll_height(300.0)
+                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                        .columns(egui_extras::Column::auto(), 2)
+                        .header(re_ui::ReUi::table_header_height(), |mut header| {
+                            re_ui::ReUi::setup_table_header(&mut header);
+                            header.col(|ui| {
+                                ui.label("Instance key");
+                            });
+                            header.col(|ui| {
+                                ui.label(self.name().short_name());
+                            });
+                        })
+                        .body(|mut body| {
+                            re_ui::ReUi::setup_table_body(&mut body);
+                            let row_height = re_ui::ReUi::table_line_height();
+                            body.rows(row_height, num_instances, |index, mut row| {
+                                if let Some(instance_key) = self
+                                    .iter_instance_keys()
+                                    .ok()
+                                    .and_then(|mut keys| keys.nth(index))
+                                {
+                                    row.col(|ui| {
+                                        ui.label(instance_key.to_string());
+                                    });
+                                    row.col(|ui| {
+                                        ctx.component_ui_registry.ui(
+                                            ctx,
+                                            ui,
+                                            crate::ui::UiVerbosity::Small,
+                                            query,
+                                            self,
+                                            &instance_key,
+                                        );
+                                    });
+                                }
+                            });
                         });
-                    // TODO(andreas): There should be a button leaving to a full view.
-                    //                  Or once we figure out how to do full views of this just show everything in a scroll area
-                    if num_instances > max_elems {
-                        ui.label(format!("...plus {} more", num_instances - max_elems));
-                    }
                 }
             }
             Err(err) => {
