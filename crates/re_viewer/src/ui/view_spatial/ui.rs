@@ -147,32 +147,25 @@ impl ViewSpatialState {
         space_path: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
-        // TODO:
-        fn top_left_label(ui: &mut egui::Ui, label: &str) {
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                ui.label(label);
-            });
-        }
-
         egui::Grid::new("spatial_settings_ui")
             // Spread rows a bit to make it easier to see the groupings
             .spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
-            ui.label("Space root");
+            ctx.re_ui.grid_left_hand_label(ui, "Space root");
             // Specify space view id only if this is actually part of the space view itself.
             // (otherwise we get a somewhat broken link)
             ctx.entity_path_button(
                 ui,
                 data_blueprint
-                    .contains_entity(&space_path)
+                    .contains_entity(space_path)
                     .then_some(space_view_id),
-                &space_path,
+                space_path,
             );
             ui.end_row();
 
-            top_left_label(ui, "Default size");
+            ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.push_id("points", |ui| {
@@ -201,7 +194,7 @@ impl ViewSpatialState {
             });
             ui.end_row();
 
-            top_left_label(ui, "Camera");
+            ctx.re_ui.grid_left_hand_label(ui, "Camera");
             ui.vertical(|ui| {
                 egui::ComboBox::from_id_source("nav_mode")
                     .selected_text(self.nav_mode)
@@ -236,7 +229,7 @@ impl ViewSpatialState {
             ui.end_row();
 
             if self.nav_mode == SpatialNavigationMode::ThreeD {
-                top_left_label(ui, "Coordinates");
+                ctx.re_ui.grid_left_hand_label(ui, "Coordinates");
                 ui.vertical(|ui|{
                     let up_response = if let Some(up) = self.state_3d.space_specs.up {
                         if up == glam::Vec3::X {
@@ -272,7 +265,7 @@ impl ViewSpatialState {
                 ui.end_row();
             }
 
-            top_left_label(ui, "Bounding box");
+            ctx.re_ui.grid_left_hand_label(ui, "Bounding box");
             ui.vertical(|ui| {
                 let BoundingBox { min, max } = self.scene_bbox_accum; // TODO:
                 ui.label(format!(

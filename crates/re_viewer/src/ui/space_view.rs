@@ -186,7 +186,7 @@ impl SpaceView {
         #[allow(clippy::match_same_arms)]
         match self.category {
             ViewCategory::Text => {
-                self.view_state.state_text.selection_ui(ui);
+                self.view_state.state_text.selection_ui(ctx.re_ui, ui);
             }
             ViewCategory::TimeSeries => {}
             ViewCategory::BarChart => {}
