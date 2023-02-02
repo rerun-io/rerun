@@ -52,10 +52,10 @@ pub struct ViewSpatialState {
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
-    #[serde(skip, default = "default_scene_bbox")]
+    #[serde(skip, default = "BoundingBox::nothing")]
     pub scene_bbox_accum: BoundingBox,
     /// Estimated bounding box of all data for the last scene query.
-    #[serde(skip, default = "default_scene_bbox")]
+    #[serde(skip, default = "BoundingBox::nothing")]
     pub scene_bbox: BoundingBox,
 
     /// Estimated number of primitives last frame. Used to inform some heuristics.
@@ -69,16 +69,12 @@ pub struct ViewSpatialState {
     auto_size_config: re_renderer::AutoSizeConfig,
 }
 
-fn default_scene_bbox() -> BoundingBox {
-    BoundingBox::nothing()
-}
-
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
             nav_mode: SpatialNavigationMode::ThreeD,
-            scene_bbox_accum: default_scene_bbox(),
-            scene_bbox: default_scene_bbox(),
+            scene_bbox_accum: BoundingBox::nothing(),
+            scene_bbox: BoundingBox::nothing(),
             scene_num_primitives: 0,
             state_2d: Default::default(),
             state_3d: Default::default(),
@@ -236,28 +232,7 @@ impl ViewSpatialState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
-                    let up_response = if let Some(up) = self.state_3d.space_specs.up {
-                        if up == glam::Vec3::X {
-                            ui.label("Up +X")
-                        } else if up == -glam::Vec3::X {
-                            ui.label("Up -X")
-                        } else if up == glam::Vec3::Y {
-                            ui.label("Up +Y")
-                        } else if up == -glam::Vec3::Y {
-                            ui.label("Up -Y")
-                        } else if up == glam::Vec3::Z {
-                            ui.label("Up +Z")
-                        } else if up == -glam::Vec3::Z {
-                            ui.label("Up -Z")
-                        } else if up != glam::Vec3::ZERO {
-                            ui.label(format!("[{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
-                        } else {
-                            ui.label("Up —")
-                        }
-                    } else {
-                        ui.label("—")
-                    };
-                    up_response.on_hover_ui(|ui| {
+                    ui.label(format!("Up is {}", axis_name(self.state_3d.space_specs.up))).on_hover_ui(|ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.label("Set with ");
@@ -412,5 +387,29 @@ fn size_ui(
                 AutoSizeUnit::World => Size::new_scene(displayed_size),
             };
         }
+    }
+}
+
+fn axis_name(axis: Option<glam::Vec3>) -> String {
+    if let Some(axis) = axis {
+        if axis == glam::Vec3::X {
+            "+X".to_owned()
+        } else if axis == -glam::Vec3::X {
+            "-X".to_owned()
+        } else if axis == glam::Vec3::Y {
+            "+Y".to_owned()
+        } else if axis == -glam::Vec3::Y {
+            "-Y".to_owned()
+        } else if axis == glam::Vec3::Z {
+            "+Z".to_owned()
+        } else if axis == -glam::Vec3::Z {
+            "-Z".to_owned()
+        } else if axis != glam::Vec3::ZERO {
+            format!("Up is [{:.3} {:.3} {:.3}]", axis.x, axis.y, axis.z)
+        } else {
+            "—".to_owned()
+        }
+    } else {
+        "—".to_owned()
     }
 }
