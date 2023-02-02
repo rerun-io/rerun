@@ -80,7 +80,7 @@ impl std::fmt::Display for Vec2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[x:{:.prec$}, y:{:.prec$}]",
+            "[{:.prec$}, {:.prec$}]",
             self.x(),
             self.y(),
             prec = DISPLAY_PRECISION,
@@ -168,7 +168,7 @@ impl std::fmt::Display for Vec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[x:{:.prec$}, y:{:.prec$}, z:{:.prec$}]",
+            "[{:.prec$}, {:.prec$}, {:.prec$}]",
             self.x(),
             self.y(),
             self.z(),
@@ -202,7 +202,7 @@ impl std::fmt::Display for Vec4D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[x:{:.prec$}, y:{:.prec$}, z:{:.prec$}, w:{:.prec$}]",
+            "[{:.prec$}, {:.prec$}, {:.prec$}, {:.prec$}]",
             self.0[0],
             self.0[1],
             self.0[2],

@@ -284,7 +284,7 @@ impl DataUi for LineStrip2D {
                     });
                 if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
                     ui.label(format!(
-                        "...{} more positions available",
+                        "...plus {} more",
                         self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
                     ));
                 }
@@ -324,7 +324,7 @@ impl DataUi for LineStrip3D {
                     });
                 if self.0.len() > MAX_NUM_ELEMENTS_MULTI_LINE {
                     ui.label(format!(
-                        "...{} more positions available",
+                        "...plus {} more",
                         self.0.len() - MAX_NUM_ELEMENTS_MULTI_LINE
                     ));
                 }
