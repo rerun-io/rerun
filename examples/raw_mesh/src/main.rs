@@ -21,9 +21,10 @@ use rerun::{
 // --- Rerun logging ---
 
 // Declare how to turn a glTF primitive into a Rerun component (`Mesh3D`).
+#[allow(clippy::fallible_impl_from)]
 impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
-        Mesh3D::Raw(RawMesh3D {
+        let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             indices: primitive.indices,
             positions: primitive.positions.into_iter().flatten().collect(),
@@ -39,7 +40,11 @@ impl From<GltfPrimitive> for Mesh3D {
             // texcoords: primitive
             //     .texcoords
             //     .map(|texcoords| texcoords.into_iter().flatten().collect()),
-        })
+        };
+
+        raw.sanity_check().unwrap();
+
+        Mesh3D::Raw(raw)
     }
 }
 
@@ -122,9 +127,7 @@ fn log_node(session: &mut Session, node: GltfNode) {
 
 // TODO(cmc): The SDK should make this call so trivial that it doesn't require this helper at all.
 fn log_axis(session: &mut Session, ent_path: &EntityPath) {
-    // From the glTF spec:
-    // > glTF uses a right-handed coordinate system. glTF defines +Y as up, +Z as forward, and
-    // > -X as right; the front of a glTF asset faces +Z.
+    // glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
     let view_coords: ViewCoordinates = "RUB".parse().unwrap();
 
     let bundle = MsgBundle::new(

@@ -63,8 +63,7 @@ impl std::fmt::Display for InstanceKey {
         if self.is_splat() {
             "splat".fmt(f)
         } else {
-            let key = self.0;
-            format!("key:{key}").fmt(f)
+            self.0.fmt(f)
         }
     }
 }

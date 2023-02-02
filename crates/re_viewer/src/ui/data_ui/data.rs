@@ -1,13 +1,18 @@
 use egui::Vec2;
 
+use re_format::format_f32;
 use re_log_types::{
-    component_types::ColorRGBA, component_types::Mat3x3, Pinhole, Rigid3, Transform,
-    ViewCoordinates,
+    component_types::ColorRGBA,
+    component_types::{LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D},
+    Pinhole, Rigid3, Transform, ViewCoordinates,
 };
 
 use crate::ui::UiVerbosity;
 
 use super::DataUi;
+
+/// Default number of ui points to show a number.
+const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 
 impl DataUi for [u8; 4] {
     fn data_ui(
@@ -194,5 +199,167 @@ impl DataUi for Mat3x3 {
             ui.monospace(self[2][2].to_string());
             ui.end_row();
         });
+    }
+}
+
+impl DataUi for Vec2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for Vec3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for Rect2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        ui.label(match self {
+            Rect2D::XYWH(Vec4D([top, left, width, height]))
+            | Rect2D::YXHW(Vec4D([left, top, height, width])) => {
+                format!("top: {top}, left: {left}, width: {width}, height: {height}")
+            }
+            Rect2D::XYXY(Vec4D([left, top, right, bottom]))
+            | Rect2D::YXYX(Vec4D([top, left, bottom, right])) => {
+                format!("top: {top}, left: {left}, right: {right}, bottom: {bottom}")
+            }
+            Rect2D::XCYCWH(Vec4D([center_x, center_y, width, height])) => {
+                format!(
+                    "center: {}, width: {width}, height: {height}",
+                    Vec2D([*center_x, *center_y])
+                )
+            }
+            Rect2D::XCYCW2H2(Vec4D([center_x, center_y, half_width, half_height])) => {
+                format!(
+                    "center: {}, half-width: {half_width}, half-height: {half_height}",
+                    Vec2D([*center_x, *center_y])
+                )
+            }
+        })
+        .on_hover_text(format!("area: {}", self.width() * self.height()));
+    }
+}
+
+impl DataUi for LineStrip2D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+                ui.label(format!("{} positions", self.0.len()));
+            }
+            UiVerbosity::All => {
+                use egui_extras::{Column, TableBuilder};
+                TableBuilder::new(ui)
+                    .resizable(true)
+                    .vscroll(true)
+                    .auto_shrink([false, true])
+                    .max_scroll_height(100.0)
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
+                    .header(re_ui::ReUi::table_header_height(), |mut header| {
+                        re_ui::ReUi::setup_table_header(&mut header);
+                        header.col(|ui| {
+                            ui.label("x");
+                        });
+                        header.col(|ui| {
+                            ui.label("y");
+                        });
+                    })
+                    .body(|mut body| {
+                        re_ui::ReUi::setup_table_body(&mut body);
+                        let row_height = re_ui::ReUi::table_line_height();
+                        body.rows(row_height, self.0.len(), |index, mut row| {
+                            if let Some(pos) = self.0.get(index) {
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.x()));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.y()));
+                                });
+                            }
+                        });
+                    });
+            }
+        }
+    }
+}
+
+impl DataUi for LineStrip3D {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        _query: &re_arrow_store::LatestAtQuery,
+    ) {
+        match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+                ui.label(format!("{} positions", self.0.len()));
+            }
+            UiVerbosity::All => {
+                use egui_extras::{Column, TableBuilder};
+                TableBuilder::new(ui)
+                    .resizable(true)
+                    .vscroll(true)
+                    .auto_shrink([false, true])
+                    .max_scroll_height(100.0)
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
+                    .header(re_ui::ReUi::table_header_height(), |mut header| {
+                        re_ui::ReUi::setup_table_header(&mut header);
+                        header.col(|ui| {
+                            ui.label("x");
+                        });
+                        header.col(|ui| {
+                            ui.label("y");
+                        });
+                        header.col(|ui| {
+                            ui.label("z");
+                        });
+                    })
+                    .body(|mut body| {
+                        re_ui::ReUi::setup_table_body(&mut body);
+                        let row_height = re_ui::ReUi::table_line_height();
+                        body.rows(row_height, self.0.len(), |index, mut row| {
+                            if let Some(pos) = self.0.get(index) {
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.x()));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.y()));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format_f32(pos.z()));
+                                });
+                            }
+                        });
+                    });
+            }
+        }
     }
 }

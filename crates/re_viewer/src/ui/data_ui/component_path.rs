@@ -10,11 +10,6 @@ impl DataUi for ComponentPath {
         verbosity: crate::ui::UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        ui.horizontal(|ui| {
-            ui.label("Entity path:");
-            ctx.entity_path_button(ui, None, &self.entity_path);
-        });
-
         let store = &ctx.log_db.entity_db.arrow_store;
 
         match re_query::get_component_with_instances(
@@ -31,7 +26,11 @@ impl DataUi for ComponentPath {
                 ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
             }
             Ok(component_data) => {
-                component_data.data_ui(ctx, ui, verbosity, query);
+                super::component::EntityComponentWithInstances {
+                    entity_path: self.entity_path.clone(),
+                    component_data,
+                }
+                .data_ui(ctx, ui, verbosity, query);
             }
         }
     }

@@ -183,39 +183,27 @@ impl SpaceView {
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.label("Space path:").on_hover_text(
-                "Root path of this space view. All transformations are relative this.",
-            );
-            // specify no space view id since the path itself is not part of the space view.
-            ctx.entity_path_button(ui, None, &self.space_path);
-        });
-
+        #[allow(clippy::match_same_arms)]
         match self.category {
             ViewCategory::Text => {
-                ui.strong("Text view");
-                ui.add_space(4.0);
-                self.view_state.state_text.selection_ui(ui);
+                self.view_state.state_text.selection_ui(ctx.re_ui, ui);
             }
-
-            ViewCategory::TimeSeries => {
-                ui.strong("Time series view");
-            }
-
-            ViewCategory::BarChart => {
-                ui.strong("Bar chart view");
-            }
-
+            ViewCategory::TimeSeries => {}
+            ViewCategory::BarChart => {}
             ViewCategory::Spatial => {
-                ui.strong("Spatial view");
-                self.view_state.state_spatial.settings_ui(ctx, ui);
+                self.view_state.state_spatial.selection_ui(
+                    ctx,
+                    ui,
+                    &self.data_blueprint,
+                    &self.space_path,
+                    self.id,
+                );
             }
             ViewCategory::Tensor => {
                 if let Some(selected_tensor) = &self.view_state.selected_tensor {
                     if let Some(state_tensor) =
                         self.view_state.state_tensors.get_mut(selected_tensor)
                     {
-                        ui.strong("Tensor view");
                         state_tensor.ui(ctx, ui);
                     }
                 }

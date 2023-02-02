@@ -479,7 +479,7 @@ impl TimePanel {
                         );
                         ctx.component_path_button_to(
                             ui,
-                            super::format_component_name(component_name),
+                            component_name.short_name(),
                             &component_path,
                         );
                     })

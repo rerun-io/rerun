@@ -50,23 +50,23 @@ impl Default for ComponentUiRegistry {
         // registry.add::<re_log_types::component_types::InstanceKey>();
         // registry.add::<re_log_types::component_types::KeypointId>();
         // registry.add::<re_log_types::component_types::Label>();
-        // registry.add::<re_log_types::component_types::LineStrip2D>();
-        // registry.add::<re_log_types::component_types::LineStrip3D>();
+        registry.add::<re_log_types::component_types::LineStrip2D>();
+        registry.add::<re_log_types::component_types::LineStrip3D>();
         registry.add::<re_log_types::component_types::Mesh3D>();
         registry.add::<re_log_types::component_types::MsgId>();
         // registry.add::<re_log_types::component_types::Point2D>();
         // registry.add::<re_log_types::component_types::Point3D>();
         // registry.add::<re_log_types::component_types::Quaternion>();
         // registry.add::<re_log_types::component_types::Radius>();
-        // registry.add::<re_log_types::component_types::Rect2D>();
+        registry.add::<re_log_types::component_types::Rect2D>();
         // registry.add::<re_log_types::component_types::Scalar>();
         // registry.add::<re_log_types::component_types::ScalarPlotProps>();
         // registry.add::<re_log_types::component_types::Size3D>();
         registry.add::<re_log_types::component_types::Tensor>();
         registry.add::<re_log_types::component_types::TextEntry>();
         registry.add::<re_log_types::component_types::Transform>();
-        // registry.add::<re_log_types::component_types::Vec2D>();
-        // registry.add::<re_log_types::component_types::Vec3D>();
+        registry.add::<re_log_types::component_types::Vec2D>();
+        registry.add::<re_log_types::component_types::Vec3D>();
         registry.add::<re_log_types::ViewCoordinates>();
 
         registry
@@ -106,6 +106,8 @@ impl ComponentUiRegistry {
         component: &ComponentWithInstances,
         instance_key: &InstanceKey,
     ) {
+        crate::profile_function!(component.name().full_name());
+
         if component.name() == InstanceKey::name() {
             // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
             ui.label(instance_key.to_string());

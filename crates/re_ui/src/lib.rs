@@ -298,6 +298,39 @@ impl ReUi {
         let tint = selected.then(|| ui.visuals().selection.stroke.color);
         self.large_button_impl(ui, icon, bg_fill, tint)
     }
+
+    pub fn visibility_toggle_button(
+        &self,
+        ui: &mut egui::Ui,
+        visible: &mut bool,
+    ) -> egui::Response {
+        let mut response = if *visible && ui.is_enabled() {
+            self.small_icon_button(ui, &icons::VISIBLE)
+        } else {
+            self.small_icon_button(ui, &icons::INVISIBLE)
+        };
+        if response.clicked() {
+            response.mark_changed();
+            *visible = !*visible;
+        }
+        response
+    }
+
+    /// Workaround for putting a label into a grid at the top left of its row.
+    #[allow(clippy::unused_self)]
+    pub fn grid_left_hand_label(&self, ui: &mut egui::Ui, label: &str) -> egui::Response {
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+            ui.label(label)
+        })
+        .inner
+    }
+
+    /// Grid to be used in selection view.
+    #[allow(clippy::unused_self)]
+    pub fn selection_grid(&self, ui: &mut egui::Ui, id: &str) -> egui::Grid {
+        // Spread rows a bit to make it easier to see the groupings
+        egui::Grid::new(id).spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
+    }
 }
 
 // ----------------------------------------------------------------------------
