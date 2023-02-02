@@ -822,11 +822,13 @@ fn space_view_options_ui(
 ) {
     let Some(space_view) = viewport.space_views.get(&space_view_id) else { return; };
 
+    let tab_bar_rect = tab_bar_rect.shrink2(egui::vec2(4.0, 0.0)); // Add some side margin outside the frame
+
     ui.allocate_ui_at_rect(tab_bar_rect, |ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let where_to_put_background = ui.painter().add(egui::Shape::Noop);
 
-            ui.add_space(4.0);
+            ui.add_space(4.0); // margin within the frame
 
             if viewport.maximized == Some(space_view_id) {
                 // Show minimize-button:
