@@ -11,8 +11,13 @@ use instant::Instant;
 /// Where is the messages coming from?
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
-    Network,
     File,
+    Network,
+
+    /// We are a TCP server listening on this port
+    TcpServer {
+        port: u16,
+    },
 }
 
 pub fn smart_channel<T: Send>(source: Source) -> (Sender<T>, Receiver<T>) {

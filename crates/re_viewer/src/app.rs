@@ -466,10 +466,19 @@ impl eframe::App for App {
                 .unwrap();
             render_ctx.frame_maintenance();
 
-            if log_db.is_empty() && self.rx.is_some() {
+            if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.strong("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+                        let text = match rx.source() {
+                            re_smart_channel::Source::File => "Loading file…".to_owned(),
+                            re_smart_channel::Source::Network => "Waiting for data…".to_owned(),
+                            re_smart_channel::Source::TcpServer { port } => format!(
+                                "Ready!\n\
+                                 \n\
+                                 Listening on port {port}"
+                            ),
+                        };
+                        ui.strong(text);
                     });
                 });
             } else {
@@ -1074,8 +1083,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     if let Some(rx) = &app.rx {
         let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network => true, // presumable live
-            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+            re_smart_channel::Source::Network | re_smart_channel::Source::TcpServer { .. } => true, // presumable live
+            re_smart_channel::Source::File => false, // pre-recorded. latency doesn't matter
         };
 
         let queue_len = rx.len();

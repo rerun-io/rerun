@@ -2,7 +2,9 @@
 
 use std::time::Instant;
 
-use rand::{Rng, SeedableRng};
+use anyhow::Context as _;
+use rand::{Rng as _, SeedableRng};
+
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
 
@@ -28,13 +30,13 @@ impl Default for ServerOptions {
 /// let log_msg_rx = serve("0.0.0.0:80", ServerOptions::default())?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn serve(
-    addr: impl std::net::ToSocketAddrs,
-    options: ServerOptions,
-) -> anyhow::Result<Receiver<LogMsg>> {
-    let listener = std::net::TcpListener::bind(addr)?;
+pub fn serve(port: u16, options: ServerOptions) -> anyhow::Result<Receiver<LogMsg>> {
+    let bind_addr = format!("0.0.0.0:{port}");
 
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
+    let listener = std::net::TcpListener::bind(&bind_addr)
+        .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
+
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
 
     std::thread::Builder::new()
         .name("sdk-server".into())
@@ -52,6 +54,8 @@ pub fn serve(
             }
         })
         .expect("Failed to spawn thread");
+
+    re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
 
     Ok(rx)
 }

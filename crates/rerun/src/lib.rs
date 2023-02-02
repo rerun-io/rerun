@@ -184,14 +184,10 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     } else {
         #[cfg(feature = "server")]
         {
-            let bind_addr = format!("0.0.0.0:{}", args.port);
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
             };
-            let rx = re_sdk_comms::serve(&bind_addr, server_options)
-                .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
-            re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
-            rx
+            re_sdk_comms::serve(args.port, server_options)?
         }
 
         #[cfg(not(feature = "server"))]
