@@ -298,6 +298,23 @@ impl ReUi {
         let tint = selected.then(|| ui.visuals().selection.stroke.color);
         self.large_button_impl(ui, icon, bg_fill, tint)
     }
+
+    pub fn visibility_toggle_button(
+        &self,
+        ui: &mut egui::Ui,
+        visible: &mut bool,
+    ) -> egui::Response {
+        let mut response = if *visible && ui.is_enabled() {
+            self.small_icon_button(ui, &icons::VISIBLE)
+        } else {
+            self.small_icon_button(ui, &icons::INVISIBLE)
+        };
+        if response.clicked() {
+            response.mark_changed();
+            *visible = !*visible;
+        }
+        response
+    }
 }
 
 // ----------------------------------------------------------------------------
