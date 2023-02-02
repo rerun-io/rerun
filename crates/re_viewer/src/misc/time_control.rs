@@ -297,7 +297,7 @@ impl TimeControl {
             //
             // If you are watching a file: if the file has finished loading, then
             // it can still make sense to go to the end of it.
-            // But if you're already at the end, then going to "follow" makes little sense,
+            // But if you're already at the end, then staying at "follow" makes little sense,
             // as repeated toggling will just go between paused and follow at the latest data.
             // This is made worse by Follow being our default mode (even for files).
             //
