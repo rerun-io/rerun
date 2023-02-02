@@ -530,7 +530,7 @@ impl Viewport {
                 continue;
             }
 
-            if space_view_candidate.category == ViewCategory::Spatial {
+            if space_view_candidate.category.is_spatial() {
                 // Skip if connection to parent is via rigid (too trivial for a new space view!)
                 if let Some(parent_transform) = space_info.parent_transform() {
                     match parent_transform {
@@ -804,7 +804,9 @@ fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
     let help_text = match space_view.category {
         ViewCategory::TimeSeries => Some(crate::ui::view_time_series::HELP_TEXT),
         ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
-        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
+        ViewCategory::Spatial2D | ViewCategory::Spatial3D => {
+            Some(space_view.view_state.state_spatial.help_text())
+        }
         ViewCategory::Text | ViewCategory::Tensor => None,
     };
 

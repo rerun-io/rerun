@@ -10,9 +10,7 @@ use re_log_types::{
 };
 use re_query::query_entity_with_primary;
 
-#[derive(
-    Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
-)]
+#[derive(Debug, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize)]
 pub enum ViewCategory {
     // Ordered by dimensionality
     //
@@ -25,21 +23,28 @@ pub enum ViewCategory {
     /// Bar-chart plots made from 1D tensor data
     BarChart,
 
-    /// 2D or 3D view
-    #[default]
-    Spatial,
+    /// 2D view
+    Spatial2D,
+
+    /// RD view
+    Spatial3D,
 
     /// High-dimensional tensor view
     Tensor,
 }
 
 impl ViewCategory {
+    pub fn is_spatial(&self) -> bool {
+        matches!(self, Self::Spatial2D | Self::Spatial3D)
+    }
+
     pub fn icon(&self) -> &'static str {
         match self {
             ViewCategory::Text => "📃",
             ViewCategory::TimeSeries => "📈",
             ViewCategory::BarChart => "📊",
-            ViewCategory::Spatial => "🖼",
+            ViewCategory::Spatial2D => "🖼",
+            ViewCategory::Spatial3D => "🔭",
             ViewCategory::Tensor => "🇹",
         }
     }
@@ -68,7 +73,7 @@ pub fn categorize_entity_path(
     )
     .is_some()
     {
-        set.insert(ViewCategory::Spatial);
+        set.insert(ViewCategory::Spatial3D); // all transforms are 3D transforms at the moment (2023-02)
     }
 
     set
@@ -93,16 +98,19 @@ pub fn categorize_arrow_entity_path(
             } else if component == Scalar::name() {
                 set.insert(ViewCategory::TimeSeries);
             } else if component == Point2D::name()
-                || component == Point3D::name()
                 || component == Rect2D::name()
-                || component == Box3D::name()
                 || component == LineStrip2D::name()
+            {
+                set.insert(ViewCategory::Spatial2D);
+            } else if component == Point3D::name()
+                || component == Box3D::name()
                 || component == LineStrip3D::name()
                 || component == Mesh3D::name()
                 || component == Arrow3D::name()
+                // all transforms are 3D transforms at the moment (2023-02)
                 || component == Transform::name()
             {
-                set.insert(ViewCategory::Spatial);
+                set.insert(ViewCategory::Spatial3D);
             } else if component == Tensor::name() {
                 let timeline_query = LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
 
@@ -117,7 +125,7 @@ pub fn categorize_arrow_entity_path(
                             if tensor.is_vector() {
                                 set.insert(ViewCategory::BarChart);
                             } else if tensor.is_shaped_like_an_image() {
-                                set.insert(ViewCategory::Spatial);
+                                set.insert(ViewCategory::Spatial2D);
                             } else {
                                 set.insert(ViewCategory::Tensor);
                             }

@@ -190,7 +190,7 @@ impl SpaceView {
             }
             ViewCategory::TimeSeries => {}
             ViewCategory::BarChart => {}
-            ViewCategory::Spatial => {
+            ViewCategory::Spatial2D | ViewCategory::Spatial3D => {
                 self.view_state.state_spatial.selection_ui(
                     ctx,
                     ui,
@@ -247,7 +247,7 @@ impl SpaceView {
                 self.view_state.ui_bar_chart(ctx, ui, &scene);
             }
 
-            ViewCategory::Spatial => {
+            ViewCategory::Spatial2D | ViewCategory::Spatial3D => {
                 let transforms = TransformCache::determine_transforms(
                     &ctx.log_db.entity_db,
                     &ctx.rec_cfg.time_ctrl,
