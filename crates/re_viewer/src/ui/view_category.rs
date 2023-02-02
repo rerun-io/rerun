@@ -57,7 +57,7 @@ pub fn categorize_entity_path(
 ) -> ViewCategorySet {
     crate::profile_function!();
 
-    let mut set = categorize_arrow_entity_path(&timeline, log_db, entity_path);
+    let mut set = ViewCategorySet::default();
 
     // If it has a transform we might want to visualize it in space
     // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
@@ -71,60 +71,50 @@ pub fn categorize_entity_path(
         set.insert(ViewCategory::Spatial);
     }
 
-    set
-}
-
-pub fn categorize_arrow_entity_path(
-    timeline: &Timeline,
-    log_db: &LogDb,
-    entity_path: &EntityPath,
-) -> ViewCategorySet {
-    crate::profile_function!();
-
-    log_db
+    for component in log_db
         .entity_db
         .arrow_store
-        .all_components(timeline, entity_path)
+        .all_components(&timeline, entity_path)
         .unwrap_or_default()
-        .into_iter()
-        .fold(ViewCategorySet::default(), |mut set, component| {
-            if component == TextEntry::name() {
-                set.insert(ViewCategory::Text);
-            } else if component == Scalar::name() {
-                set.insert(ViewCategory::TimeSeries);
-            } else if component == Point2D::name()
-                || component == Point3D::name()
-                || component == Rect2D::name()
-                || component == Box3D::name()
-                || component == LineStrip2D::name()
-                || component == LineStrip3D::name()
-                || component == Mesh3D::name()
-                || component == Arrow3D::name()
-                || component == Transform::name()
-            {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Tensor::name() {
-                let timeline_query = LatestAtQuery::new(*timeline, TimeInt::MAX);
+    {
+        if component == TextEntry::name() {
+            set.insert(ViewCategory::Text);
+        } else if component == Scalar::name() {
+            set.insert(ViewCategory::TimeSeries);
+        } else if component == Point2D::name()
+            || component == Point3D::name()
+            || component == Rect2D::name()
+            || component == Box3D::name()
+            || component == LineStrip2D::name()
+            || component == LineStrip3D::name()
+            || component == Mesh3D::name()
+            || component == Arrow3D::name()
+            || component == Transform::name()
+        {
+            set.insert(ViewCategory::Spatial);
+        } else if component == Tensor::name() {
+            let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
-                if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
-                    &log_db.entity_db.arrow_store,
-                    &timeline_query,
-                    entity_path,
-                    &[],
-                ) {
-                    if let Ok(iter) = entity_view.iter_primary() {
-                        for tensor in iter.flatten() {
-                            if tensor.is_vector() {
-                                set.insert(ViewCategory::BarChart);
-                            } else if tensor.is_shaped_like_an_image() {
-                                set.insert(ViewCategory::Spatial);
-                            } else {
-                                set.insert(ViewCategory::Tensor);
-                            }
+            if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
+                &log_db.entity_db.arrow_store,
+                &timeline_query,
+                entity_path,
+                &[],
+            ) {
+                if let Ok(iter) = entity_view.iter_primary() {
+                    for tensor in iter.flatten() {
+                        if tensor.is_vector() {
+                            set.insert(ViewCategory::BarChart);
+                        } else if tensor.is_shaped_like_an_image() {
+                            set.insert(ViewCategory::Spatial);
+                        } else {
+                            set.insert(ViewCategory::Tensor);
                         }
                     }
                 }
             }
-            set
-        })
+        }
+    }
+
+    set
 }
