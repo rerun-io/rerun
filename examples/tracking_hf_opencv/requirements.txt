@@ -4,7 +4,7 @@ opencv-contrib-python<4.6
 opencv-python<4.6
 pillow
 requests==2.28.1
-rerun
+rerun-sdk
 timm==0.6.11
 torch>=1.13.0
 transformers
