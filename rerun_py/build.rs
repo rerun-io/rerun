@@ -3,6 +3,8 @@ use std::path::Path;
 fn main() {
     // Required for `cargo build` to work on mac: https://pyo3.rs/v0.14.2/building_and_distribution.html#macos
     pyo3_build_config::add_extension_module_link_args();
+    println!("cargo:rerun-if-env-changed=GITHUB_REF_TYPE");
+    println!("cargo:rerun-if-env-changed=CARGO_PKG_VERSION");
 
     if let Ok(ref ref_type) = std::env::var("GITHUB_REF_TYPE") {
         // We're in CI
@@ -10,7 +12,7 @@ fn main() {
             // A branch build, so we're building a development version.
             let new_version = {
                 let pkg_version = std::env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| {
-                    eprintln!("cargo:warning=Version not set!");
+                    println!("cargo:warning=CARGO_PKG_VERSION not set!");
                     "0.0.0".to_owned()
                 });
                 let git_sha = std::process::Command::new("git")
@@ -22,9 +24,13 @@ fn main() {
                 toml::Value::String(format!("{pkg_version}+{}", git_sha.trim()))
             };
 
-            eprintln!("cargo:warning=Overriding packaged wheel version to a development version: {new_version}.");
+            println!("cargo:warning=Overriding packaged wheel version to a development version: {new_version}.");
             generate_dev_version("pyproject.toml", new_version);
+        } else {
+            println!("cargo:warning=Not a branch build, so not overriding packaged wheel version!");
         }
+    } else {
+        println!("cargo:warning=Not in CI, so not overriding packaged wheel version!");
     }
 }
 

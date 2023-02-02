@@ -257,7 +257,6 @@ jobs:
           title: "Development Build"
           files: |
             dist/*
-            CHANGELOG.md
 
   # ---------------------------------------------------------------------------
 
@@ -284,7 +283,6 @@ jobs:
           prerelease: false
           files: |
             dist/*
-            CHANGELOG.md
 
       - name: Publish to PyPI
         env:
