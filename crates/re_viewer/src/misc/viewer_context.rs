@@ -121,15 +121,6 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Show a component path and make it selectable.
-    pub fn component_path_button(
-        &mut self,
-        ui: &mut egui::Ui,
-        component_path: &ComponentPath,
-    ) -> egui::Response {
-        self.component_path_button_to(ui, component_path.to_string(), component_path)
-    }
-
-    /// Show a component path and make it selectable.
     pub fn component_path_button_to(
         &mut self,
         ui: &mut egui::Ui,

@@ -6,7 +6,7 @@ use crate::{
     Selection, UiVerbosity, ViewerContext,
 };
 
-use super::{data_ui::DataUi, space_view::ViewState};
+use super::{data_ui::DataUi, format_component_name, space_view::ViewState};
 
 // ---
 
@@ -103,11 +103,22 @@ pub fn what_is_selected_ui(
                 ctx.msg_id_button(ui, *msg_id);
             });
         }
-        Selection::ComponentPath(component_path) => {
-            ui.horizontal(|ui| {
-                ui.label("Entity component:");
-                ctx.component_path_button(ui, component_path);
-            });
+        Selection::ComponentPath(re_log_types::ComponentPath {
+            entity_path,
+            component_name,
+        }) => {
+            egui::Grid::new("component_path")
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("Entity:");
+                    ctx.entity_path_button(ui, None, entity_path);
+                    ui.end_row();
+
+                    ui.label("Component:");
+                    ui.label(format_component_name(component_name))
+                        .on_hover_text(component_name.to_string());
+                    ui.end_row();
+                });
         }
         Selection::SpaceView(space_view_id) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
