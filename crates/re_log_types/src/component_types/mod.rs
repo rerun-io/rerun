@@ -177,6 +177,7 @@ where
     T: arrow2::types::NativeType,
 {
     offset: usize,
+    end: usize,
     array: &'a FixedSizeListArray,
     values: &'a PrimitiveArray<T>,
 }
@@ -188,7 +189,7 @@ where
     type Item = Option<[T; SIZE]>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.offset < self.array.len() {
+        if self.offset < self.end {
             if let Some(validity) = self.array.validity() {
                 if !validity.get_bit(self.offset) {
                     self.offset += 1;
@@ -236,6 +237,7 @@ where
             .unwrap();
         FastFixedSizeArrayIter::<T, SIZE> {
             offset: 0,
+            end: array.len(),
             array,
             values,
         }
