@@ -139,7 +139,7 @@ impl ViewSpatialState {
         heuristic0.min(heuristic1)
     }
 
-    pub fn settings_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn selection_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         egui::Grid::new("spatial_settings_ui").show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
