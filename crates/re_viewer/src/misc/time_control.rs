@@ -217,7 +217,7 @@ impl TimeControl {
                 // Start from beginning if we are at the end:
                 if let Some(time_points) = times_per_timeline.get(&self.timeline) {
                     if let Some(state) = self.states.get_mut(&self.timeline) {
-                        if state.time >= max(time_points) {
+                        if max(time_points) <= state.time {
                             state.time = min(time_points).into();
                         }
                     } else {
@@ -286,6 +286,40 @@ impl TimeControl {
         if self.playing {
             self.pause();
         } else {
+            // If we are in follow-mode (but paused), what should toggling play/pause do?
+            //
+            // There are two cases to consider:
+            // * We are looking at a file
+            // * We are following a stream
+            //
+            // If we are watching a stream, it makes sense to keep following:
+            // you paused to look at something, now you're done, so keep following.
+            //
+            // If you are watching a file: if the file has finished loading, then
+            // it can still make sense to go to the end of it.
+            // But if you're already at the end, then going to "follow" makes little sense,
+            // as repeated toggling will just go between paused and follow at the latest data.
+            // This is made worse by Follow being our default mode (even for files).
+            //
+            // As of writing (2023-02) we don't know if we are watching a file or a stream
+            // (after all, files are also streamed).
+            //
+            // So we use a heuristic:
+            // If we are at the end of the file and unpause, we always start from
+            // the beginning in play mode.
+
+            // Start from beginning if we are at the end:
+            if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+                if let Some(state) = self.states.get_mut(&self.timeline) {
+                    if max(time_points) <= state.time {
+                        state.time = min(time_points).into();
+                        self.playing = true;
+                        self.following = false;
+                        return;
+                    }
+                }
+            }
+
             if self.following {
                 self.set_play_state(times_per_timeline, PlayState::Following);
             } else {
