@@ -4,6 +4,7 @@ use crate::App;
 pub struct RemoteViewerApp {
     startup_options: crate::StartupOptions,
     re_ui: re_ui::ReUi,
+    /// The url of the remote server.
     url: String,
     app: Option<(re_ws_comms::Connection, App)>,
 }
@@ -27,7 +28,9 @@ impl RemoteViewerApp {
     }
 
     fn connect(&mut self, storage: Option<&dyn eframe::Storage>) {
-        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
+        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::WsClient {
+            ws_server_url: self.url.clone(),
+        });
 
         let egui_ctx = self.re_ui.egui_ctx.clone();
 

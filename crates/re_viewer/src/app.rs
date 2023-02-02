@@ -472,6 +472,14 @@ impl eframe::App for App {
                         let text = match rx.source() {
                             re_smart_channel::Source::File => "Loading file…".to_owned(),
                             re_smart_channel::Source::Network => "Waiting for data…".to_owned(),
+                            re_smart_channel::Source::WsClient { ws_server_url } => {
+                                // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
+                                format!(
+                                    "Ready!\n\
+                                     \n\
+                                     Waiting for data from {ws_server_url}"
+                                )
+                            }
                             re_smart_channel::Source::TcpServer { port } => format!(
                                 "Ready!\n\
                                  \n\
@@ -1082,10 +1090,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     if let Some(rx) = &app.rx {
-        let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network | re_smart_channel::Source::TcpServer { .. } => true, // presumable live
-            re_smart_channel::Source::File => false, // pre-recorded. latency doesn't matter
-        };
+        // TODO(emilk): it would be nice to know if the network stream is still open
+        let is_latency_interesting = rx.source().is_network();
 
         let queue_len = rx.len();
 
