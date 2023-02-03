@@ -258,6 +258,7 @@ impl TimePanel {
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
+            ctx.re_ui,
             ui,
             &time_bg_area_painter,
             full_y_range.clone(),
@@ -900,6 +901,7 @@ fn paint_time_ranges_and_ticks(
 /// Visually separate the different time segments
 fn paint_time_ranges_gaps(
     time_ranges_ui: &TimeRangesUi,
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     painter: &egui::Painter,
     y_range: RangeInclusive<f32>,
@@ -927,7 +929,7 @@ fn paint_time_ranges_gaps(
     //    <--------->
     //     gap width
     //
-    // Filled with a dark color, plus a stroke.
+    // Filled with a dark color, plus a stroke and a small drop shadow to the left.
 
     use itertools::Itertools as _;
 
@@ -941,11 +943,13 @@ fn paint_time_ranges_gaps(
         let gap_width = gap_right - gap_left;
         let zig_width = 4.0_f32.at_most(gap_width / 3.0).at_least(1.0);
         let zig_height = zig_width;
+        let shadow_width = 12.0;
 
         let mut y = top;
         let mut row = 0; // 0 = start wide, 1 = start narrow
 
         let mut mesh = egui::Mesh::default();
+        let mut shadow_mesh = egui::Mesh::default();
         let mut left_line_strip = vec![];
         let mut right_line_strip = vec![];
 
@@ -974,6 +978,12 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(left_pos, fill_color);
             mesh.colored_vertex(right_pos, fill_color);
 
+            shadow_mesh.colored_vertex(
+                pos2(right - shadow_width, y),
+                re_ui.design_tokens.shadow_gradient_bright_end,
+            );
+            shadow_mesh.colored_vertex(right_pos, re_ui.design_tokens.shadow_gradient_dark_start);
+
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);
 
@@ -981,7 +991,11 @@ fn paint_time_ranges_gaps(
             row += 1;
         }
 
+        // Regular & shadow mesh have the same topology!
+        shadow_mesh.indices = mesh.indices.clone();
+
         painter.add(Shape::Mesh(mesh));
+        painter.add(Shape::Mesh(shadow_mesh));
         painter.add(Shape::line(left_line_strip, stroke));
         painter.add(Shape::line(right_line_strip, stroke));
     };
