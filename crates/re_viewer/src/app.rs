@@ -1341,6 +1341,43 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
 
     ui.separator();
 
+    let mut debug = ui.style().debug;
+    let mut any_clicked = false;
+
+    any_clicked |= ui
+        .checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
+        .on_hover_text("However over widgets to see their rectangles")
+        .changed();
+    any_clicked |= ui
+        .checkbox(&mut debug.show_expand_width, "Show expand width")
+        .on_hover_text("Show which widgets make their parent wider")
+        .changed();
+    any_clicked |= ui
+        .checkbox(&mut debug.show_expand_height, "Show expand height")
+        .on_hover_text("Show which widgets make their parent higher")
+        .changed();
+    any_clicked |= ui.checkbox(&mut debug.show_resize, "Show resize").changed();
+    any_clicked |= ui
+        .checkbox(
+            &mut debug.show_interactive_widgets,
+            "Show interactive widgets",
+        )
+        .on_hover_text("Show an overlay on all interactive widgets.")
+        .changed();
+    // This option currently causes the viewer to hang.
+    // any_clicked |= ui
+    //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
+    //     .on_hover_text("Show what widget blocks the interaction of another widget.")
+    //     .changed();
+
+    if any_clicked {
+        let mut style = (*ui.ctx().style()).clone();
+        style.debug = debug;
+        ui.ctx().set_style(style);
+    }
+
+    ui.separator();
+
     #[allow(clippy::manual_assert)]
     if ui.button("panic!").clicked() {
         panic!("Intentional panic");
