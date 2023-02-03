@@ -62,6 +62,14 @@ impl TimePanel {
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
             inner_margin: egui::style::Margin::symmetric(x_margin, y_margin),
+            outer_margin: egui::style::Margin {
+                left: 0.0,
+                right: 0.0,
+                top: 1.0, // It's *very* subtle, without this margin, the stroke looks cut-off/bad.
+                bottom: 0.0,
+            },
+            stroke: ctx.re_ui.design_tokens.bottom_bar_stroke,
+            rounding: ctx.re_ui.design_tokens.bottom_bar_rounding,
             ..Default::default()
         };
 
@@ -75,10 +83,12 @@ impl TimePanel {
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
             .resizable(false)
+            .show_separator_line(false)
             .frame(panel_frame)
             .default_height(16.0);
         let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
             .resizable(true)
+            .show_separator_line(false)
             .frame(panel_frame)
             .min_height(150.0)
             .default_height(250.0);

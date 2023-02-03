@@ -8,6 +8,8 @@ use egui::Color32;
 pub struct DesignTokens {
     pub top_bar_color: egui::Color32,
     pub bottom_bar_color: egui::Color32,
+    pub bottom_bar_stroke: egui::Stroke,
+    pub bottom_bar_rounding: egui::Rounding,
 }
 
 impl DesignTokens {
@@ -149,6 +151,13 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     DesignTokens {
         top_bar_color: Color32::from_gray(20),    // copied from figma
         bottom_bar_color: Color32::from_gray(25), // copied from figma
+        bottom_bar_stroke: egui::Stroke::new(1.0, egui::Color32::from_white_alpha(25)), // copied from figma
+        bottom_bar_rounding: egui::Rounding {
+            nw: 6.0,
+            ne: 6.0,
+            sw: 0.0,
+            se: 0.0,
+        }, // copied from figma, should be top only
     }
 }
 
