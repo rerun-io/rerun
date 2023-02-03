@@ -13,10 +13,6 @@ import numpy.typing as npt
 
 import rerun as rr
 
-# Add the rerun directory to the path so we can import the examples module.
-sys.path.append(pathlib.Path(__file__).resolve().parents[2].as_posix())
-from examples import examples_add_common_arguments, examples_post_run, examples_pre_run
-
 
 def log_car_data() -> None:
     """Log a few frames of generated data to show how the Rerun SDK is used."""
@@ -286,18 +282,12 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-
-    examples_add_common_arguments(parser)
-
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("car")
-
-    examples_pre_run(args)
-
+    rr.script_setup(args, "car")
     log_car_data()
-
-    examples_post_run(args)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":
