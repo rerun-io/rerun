@@ -12,11 +12,7 @@ impl SelectionHistory {
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<MultiSelection> {
-        ui
-            // so the strip doesn't try and occupy the entire vertical space
-            .horizontal(|ui| self.control_bar_ui(ui, blueprint))
-            .inner
-            .map(|sel| sel.selection)
+        self.control_bar_ui(ui, blueprint).map(|sel| sel.selection)
     }
 
     fn control_bar_ui(
@@ -24,15 +20,12 @@ impl SelectionHistory {
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
-        ui.horizontal(|ui|{
+        ui.horizontal_centered(|ui| {
             ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
 
             // TODO(emilk): an egui helper for right-to-left
             ui.allocate_ui_with_layout(
-                egui::vec2(
-                    ui.available_size_before_wrap().x,
-                    ui.spacing().interact_size.y,
-                ),
+                ui.available_size_before_wrap(),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
                     let next = self.next_button_ui(ui, blueprint);

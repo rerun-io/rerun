@@ -54,34 +54,55 @@ impl Blueprint {
     ) {
         let panel = egui::SidePanel::left("blueprint_panel")
             .resizable(true)
-            .frame(ctx.re_ui.panel_frame())
+            .frame(egui::Frame {
+                fill: ui.visuals().panel_fill,
+                ..Default::default()
+            })
             .min_width(120.0)
             .default_width(200.0);
 
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
-            ui.horizontal(|ui| {
-                ui.strong("Blueprint")
-                    .on_hover_text("The Blueprint is where you can configure the Rerun Viewer.");
+            self.title_bar_ui(ctx, ui, spaces_info);
 
-                // TODO(emilk): an egui helper for right-to-left
-                ui.allocate_ui_with_layout(
-                    egui::vec2(
-                        ui.available_size_before_wrap().x,
-                        ui.spacing().interact_size.y,
-                    ),
-                    egui::Layout::right_to_left(egui::Align::Center),
-                    |ui| {
-                        self.viewport
-                            .add_new_spaceview_button_ui(ctx, ui, spaces_info);
-                        self.reset_button_ui(ctx, ui, spaces_info);
-                    },
-                );
+            egui::Frame {
+                inner_margin: egui::style::Margin::same(re_ui::ReUi::view_padding()),
+                ..Default::default()
+            }
+            .show(ui, |ui| {
+                self.viewport.tree_ui(ctx, ui);
             });
-
-            ui.separator();
-
-            self.viewport.tree_ui(ctx, ui);
         });
+    }
+
+    fn title_bar_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpaceInfoCollection,
+    ) {
+        egui::TopBottomPanel::top("blueprint_panel_title_bar")
+            .exact_height(re_ui::ReUi::top_bar_height())
+            .frame(egui::Frame {
+                inner_margin: egui::style::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                ..Default::default()
+            })
+            .show_inside(ui, |ui| {
+                ui.horizontal_centered(|ui| {
+                    ui.strong("Blueprint").on_hover_text(
+                        "The Blueprint is where you can configure the Rerun Viewer.",
+                    );
+
+                    ui.allocate_ui_with_layout(
+                        ui.available_size_before_wrap(),
+                        egui::Layout::right_to_left(egui::Align::Center),
+                        |ui| {
+                            self.viewport
+                                .add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                            self.reset_button_ui(ctx, ui, spaces_info);
+                        },
+                    );
+                });
+            });
     }
 
     fn reset_button_ui(
