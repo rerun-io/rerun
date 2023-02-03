@@ -65,14 +65,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-01-27 - highlight widgets
-ecolor = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
-eframe = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
-egui = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
-emath = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
-epaint = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd7be15c9f318f20886" }
+# 2023-02-03 - more visible panel resize lines
+ecolor = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+eframe = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+egui = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+emath = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+epaint = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
@@ -82,7 +82,7 @@ epaint = { git = "https://github.com/emilk/egui", rev = "f222ee044edf8beebfaf5dd
 # epaint = { path = "../../egui/crates/epaint" }
 
 # Forks of 3rd party egui crates, tracking latest egui/master:
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "bc7c2e3d3bd0261ddf3030ffbc85233a83d02e1e" }     # https://github.com/Adanos020/egui_dock/pull/93
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "40af1e9f8da9bc5b7b365eb02db424b854653453" }     # https://github.com/Adanos020/egui_dock/pull/93
 egui-notify = { git = "https://github.com/rerun-io/egui-notify", rev = "a158c2b81ca69ac78e3c61a705f478e8af76fd7d" } # https://github.com/ItsEthra/egui-notify/pull/10
 # egui_dock = { path = "../../forks/egui_dock" }
 # egui-notify = { path = "../../forks/egui-notify" }
