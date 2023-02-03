@@ -24,6 +24,7 @@ egui_extras = "0.20.0"
 egui-wgpu = "0.20.0"
 emath = "0.20.0"
 epaint = "0.20.0"
+gltf = "1.1"
 image = "0.24"
 lazy_static = "1.4"
 ndarray = "0.15"
@@ -36,9 +37,6 @@ thiserror = "1.0"
 tokio = "1.24"
 wgpu = { version = "0.15", default-features = false }
 wgpu-core = { version = "0.15", default-features = false }
-
-# Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
-gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
 
 
 [profile.dev]

@@ -321,8 +321,8 @@ impl ViewSpatialState {
 
     pub fn help_text(&self) -> &str {
         match self.nav_mode {
-            SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT,
-            SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT,
+            SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT_2D,
+            SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT_3D,
         }
     }
 }

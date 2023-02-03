@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ahash::{HashMap, HashMapExt};
-use glam::{Mat4, Vec3};
+use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
@@ -39,27 +39,35 @@ impl Points3DPart {
         query: &SceneQuery<'_>,
         entity_view: &EntityView<Point3D>,
         annotations: &Arc<Annotations>,
-        point_positions: &[Vec3],
     ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), QueryError> {
         crate::profile_function!();
 
         let mut keypoints: Keypoints = HashMap::new();
 
+        // No need to process annotations if we don't have keypoints or class-ids
+        if !entity_view.has_component::<KeypointId>() && !entity_view.has_component::<ClassId>() {
+            let resolved_annotation = annotations.class_description(None).annotation_info();
+            return Ok((
+                vec![resolved_annotation; entity_view.num_instances()],
+                keypoints,
+            ));
+        }
+
         let annotation_info = itertools::izip!(
-            point_positions.iter(),
+            entity_view.iter_primary()?,
             entity_view.iter_component::<KeypointId>()?,
             entity_view.iter_component::<ClassId>()?,
         )
         .map(|(position, keypoint_id, class_id)| {
             let class_description = annotations.class_description(class_id);
 
-            if let Some(keypoint_id) = keypoint_id {
-                if let Some(class_id) = class_id {
-                    keypoints
-                        .entry((class_id, query.latest_at.as_i64()))
-                        .or_insert_with(Default::default)
-                        .insert(keypoint_id, *position);
-                }
+            if let (Some(keypoint_id), Some(class_id), Some(position)) =
+                (keypoint_id, class_id, position)
+            {
+                keypoints
+                    .entry((class_id, query.latest_at.as_i64()))
+                    .or_insert_with(Default::default)
+                    .insert(keypoint_id, position.into());
                 class_description.annotation_info_with_keypoint(keypoint_id)
             } else {
                 class_description.annotation_info()
@@ -153,15 +161,10 @@ impl Points3DPart {
             entity_view
                 .iter_primary()?
                 .filter_map(|pt| pt.map(glam::Vec3::from))
-                .collect::<Vec<_>>()
         };
 
-        let (annotation_infos, keypoints) = Self::process_annotations(
-            query,
-            entity_view,
-            &annotations,
-            point_positions.as_slice(),
-        )?;
+        let (annotation_infos, keypoints) =
+            Self::process_annotations(query, entity_view, &annotations)?;
         let instance_path_hashes = {
             crate::profile_scope!("instance_hashes");
             entity_view
@@ -200,7 +203,7 @@ impl Points3DPart {
             .points
             .batch("3d points")
             .world_from_obj(world_from_obj)
-            .add_points(point_positions.into_iter())
+            .add_points(entity_view.num_instances(), point_positions)
             .colors(colors)
             .radii(radii)
             .user_data(instance_path_hashes.into_iter());

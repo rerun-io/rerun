@@ -153,6 +153,7 @@ impl framework::Example for Render2D {
         point_cloud_builder
             .batch("points")
             .add_points_2d(
+                4,
                 [
                     glam::vec2(500.0, 120.0),
                     glam::vec2(520.0, 120.0),
@@ -170,7 +171,7 @@ impl framework::Example for Render2D {
                 ]
                 .into_iter(),
             )
-            .color(Color32::from_rgb(55, 180, 1));
+            .colors(std::iter::repeat(Color32::from_rgb(55, 180, 1)).take(4));
 
         // Pile stuff to test for overlap handling
         {
