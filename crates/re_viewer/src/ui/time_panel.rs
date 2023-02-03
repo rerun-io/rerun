@@ -61,7 +61,7 @@ impl TimePanel {
 
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
-            inner_margin: egui::style::Margin::symmetric(x_margin, y_margin),
+            inner_margin: egui::Margin::symmetric(x_margin, y_margin),
             ..Default::default()
         };
 

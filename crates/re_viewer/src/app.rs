@@ -850,7 +850,7 @@ impl AppState {
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
-            inner_margin: egui::style::Margin::same(0.0),
+            inner_margin: egui::Margin::same(0.0),
             ..Default::default()
         };
 
@@ -885,7 +885,7 @@ fn top_panel(
 
     let panel_frame = {
         egui::Frame {
-            inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
+            inner_margin: egui::Margin::symmetric(8.0, 2.0),
             fill: app.re_ui.design_tokens.top_bar_color,
             ..Default::default()
         }

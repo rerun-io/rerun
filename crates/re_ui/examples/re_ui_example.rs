@@ -81,10 +81,7 @@ impl eframe::App for ExampleApp {
                 egui::TopBottomPanel::top("left_panel_tio_bar")
                     .exact_height(re_ui::ReUi::top_bar_height())
                     .frame(egui::Frame {
-                        inner_margin: egui::style::Margin::symmetric(
-                            re_ui::ReUi::view_padding(),
-                            0.0,
-                        ),
+                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
                         ..Default::default()
                     })
                     .show_inside(ui, |ui| {
@@ -97,7 +94,7 @@ impl eframe::App for ExampleApp {
                     .auto_shrink([false; 2])
                     .show(ui, |ui| {
                         egui::Frame {
-                            inner_margin: egui::style::Margin::same(re_ui::ReUi::view_padding()),
+                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
                             ..Default::default()
                         }
                         .show(ui, |ui| {
@@ -167,7 +164,7 @@ impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let panel_frame = {
             egui::Frame {
-                inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
+                inner_margin: egui::Margin::symmetric(8.0, 2.0),
                 fill: self.re_ui.design_tokens.top_bar_color,
                 ..Default::default()
             }
