@@ -149,7 +149,7 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-build.txt"
 
       - name: Patch Cargo.toml for Pre-Release
-        if: github.ref == 'refs/heads/main'
+        #if: github.ref == 'refs/heads/main'
         run: python scripts/patch_prerelease_version.py
 
       - name: Build wheels
