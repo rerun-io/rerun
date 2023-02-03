@@ -237,7 +237,41 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
     // (`log_segmentation_image`).
     // We're gonna need some of that.
 
-    // TODO: have to bring out the big guns for this one
+    use ndarray::prelude::*;
+    use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
+
+    // Add an image
+    let img = Array::<u8, _>::from_elem((1024, 1024, 3).f(), 128);
+    MsgSender::new("rects_demo/img")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
+        .send(session)?;
+
+    // 20 random rectangles
+    // TODO(cmc): shouldn't have to collect, need to fix the "must have a ref" thingy
+    let rects_xy = Array::random((20, 2), Uniform::new(0.0, 1.0)) * 1024.0f32;
+    let rects_wh = Array::random((20, 2), Uniform::new(0.0, 1.0)) * (1024.0 - &rects_xy + 1.0);
+    let rects = ndarray::concatenate(Axis(1), &[rects_xy.view(), rects_wh.view()])?
+        .axis_iter(Axis(0))
+        .map(|r| Rect2D::from_xywh(r[0], r[1], r[2], r[3]))
+        .collect::<Vec<_>>();
+    let colors = Array::random((20, 3), Uniform::new(0, 255))
+        .axis_iter(Axis(0))
+        .map(|c| ColorRGBA::from([c[0], c[1], c[2], 255]))
+        .collect::<Vec<_>>();
+    MsgSender::new("rects_demo/rects")
+        .with_time(timeline_sim_time, 2)
+        .with_component(&rects)?
+        .with_component(&colors)?
+        .send(session)?;
+
+    // Clear the rectangles by logging an empty set
+    // rr.set_time_seconds("sim_time", 3)
+    // rr.log_rects("rects_demo/rects", [])
+    MsgSender::new("rects_demo/rects")
+        .with_time(timeline_sim_time, 3)
+        .with_component(&Vec::<Rect2D>::new())?
+        .send(session)?;
 
     Ok(())
 }

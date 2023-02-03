@@ -132,6 +132,7 @@ dependencies = [
  "itertools",
  "mimalloc",
  "ndarray",
+ "ndarray-rand",
  "rand",
  "rerun_sdk",
 ]
