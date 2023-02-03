@@ -66,13 +66,13 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
 # 2023-02-03 - more visible panel resize lines
-ecolor = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
-eframe = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
-egui = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
-emath = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
-epaint = { git = "https://github.com/emilk/egui", rev = "250fd7e49008f7433d469c3f62438b8aeb518de4" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+eframe = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+egui = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+emath = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+epaint = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
