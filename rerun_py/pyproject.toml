@@ -46,4 +46,4 @@ target-version = ["py38"]
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
 include = ["rerun_sdk.pth"]
 locked = true
-python-packages = ["rerun_sdk/rerun"]
+python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
