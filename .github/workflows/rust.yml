@@ -152,7 +152,7 @@ jobs:
           args: --all-targets --all-features
 
       - name: Set up git author
-        #if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config --global user.name "${GITHUB_ACTOR}"
@@ -161,18 +161,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up ghp-import
-        #if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' }}
         run: pip install ghp-import
 
       - name: Patch in a redirect page
-        #if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' }}
         run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
         env:
           REDIRECT_CRATE: rerun_sdk
 
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
-        #if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' }}
         run: python3 -m ghp_import -n -p -x rust/head target/doc/ -m "Update the rust docs"
 
   # ---------------------------------------------------------------------------
