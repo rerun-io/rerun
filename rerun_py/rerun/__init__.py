@@ -54,6 +54,7 @@ __all__ = [
     "script_add_args",
     "script_setup",
     "script_teardown",
+    "LoggingHandler",
 ]
 
 

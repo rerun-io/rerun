@@ -1,4 +1,5 @@
-"""Helper functions for Rerun scripts.
+"""
+Helper functions for Rerun scripts.
 
 These helper functions can be used to wire up common Rerun features to your script CLi arguments.
 
@@ -15,7 +16,9 @@ rr.script_setup(args, "my_application")
 # ... Run your logging code here ...
 rr.script_teardown(args)
 ```
+
 """
+import contextlib
 from argparse import ArgumentParser, Namespace
 from time import sleep
 
@@ -30,6 +33,7 @@ def script_add_args(parser: ArgumentParser) -> None:
     ----------
     parser : ArgumentParser
         The parser to add arguments to.
+
     """
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     parser.add_argument(
@@ -61,6 +65,7 @@ def script_setup(
         The parsed arguments from `parser.parse_args()`.
     application_id : str
         The application ID to use for the viewer.
+
     """
     rr.init(application_id=application_id)
 
@@ -83,12 +88,11 @@ def script_teardown(args: Namespace) -> None:
     ----------
     args : Namespace
         The parsed arguments from `parser.parse_args()`.
+
     """
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        try:
+        with contextlib.suppress(Exception):
             sleep(100_000)
-        except:
-            pass
     elif args.save is not None:
         rr.save(args.save)
