@@ -89,10 +89,10 @@ def test_lint() -> None:
     ]
 
     for line in should_pass:
-        assert lint_line(line) is None, f'exepcted "{line}" to pass'
+        assert lint_line(line) is None, f'expected "{line}" to pass'
 
     for line in should_error:
-        assert lint_line(line) is not None, f'exepcted "{line}" to fail'
+        assert lint_line(line) is not None, f'expected "{line}" to fail'
 
 
 def lint_file(filepath: str) -> int:
@@ -134,6 +134,8 @@ if __name__ == "__main__":
         root_dirpath = os.path.abspath(f"{script_dirpath}/..")
         os.chdir(root_dirpath)
 
+        extensions = ["html", "js", "py", "rs", "sh", "toml", "wgsl", "yml"]
+
         exclude_dirs = {"env", "venv", "target", "target_ra", "target_wasm"}
 
         exclude_paths = {
@@ -146,7 +148,7 @@ if __name__ == "__main__":
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
             for filename in files:
                 extension = filename.split(".")[-1]
-                if extension in ["html", "js", "py", "rs", "sh", "toml", "wgsl"]:
+                if extension in extensions:
                     filepath = os.path.join(root, filename)
                     if filepath not in exclude_paths:
                         num_errors += lint_file(filepath)

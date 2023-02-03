@@ -27,19 +27,39 @@ impl SelectionPanel {
             .min_width(120.0)
             .default_width(250.0)
             .resizable(true)
-            .frame(ctx.re_ui.panel_frame());
+            .frame(egui::Frame {
+                fill: egui_ctx.style().visuals.panel_fill,
+                ..Default::default()
+            });
 
         panel.show_animated(
             egui_ctx,
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
-                if let Some(selection) = ctx.rec_cfg.selection_state.selection_ui(ui, blueprint) {
-                    ctx.set_multi_selection(selection.iter().cloned());
+                egui::TopBottomPanel::top("selection_panel_title_bar")
+                    .exact_height(re_ui::ReUi::top_bar_height())
+                    .frame(egui::Frame {
+                        inner_margin: egui::style::Margin::symmetric(
+                            re_ui::ReUi::view_padding(),
+                            0.0,
+                        ),
+                        ..Default::default()
+                    })
+                    .show_inside(ui, |ui| {
+                        if let Some(selection) =
+                            ctx.rec_cfg.selection_state.selection_ui(ui, blueprint)
+                        {
+                            ctx.set_multi_selection(selection.iter().cloned());
+                        }
+                    });
+
+                egui::Frame {
+                    inner_margin: egui::style::Margin::same(re_ui::ReUi::view_padding()),
+                    ..Default::default()
                 }
-
-                ui.separator();
-
-                self.contents(ui, ctx, blueprint);
+                .show(ui, |ui| {
+                    self.contents(ui, ctx, blueprint);
+                });
             },
         );
     }

@@ -33,7 +33,9 @@ impl Server {
             .await
             .with_context(|| format!("Can't listen on {bind_addr:?}"))?;
 
-        eprintln!("Listening for websocket traffic on: {bind_addr}");
+        re_log::info!(
+            "Listening for websocket traffic on {bind_addr}. Connect with a web Rerun Viewer."
+        );
 
         Ok(Self { listener })
     }

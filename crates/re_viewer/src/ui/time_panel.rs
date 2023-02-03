@@ -62,7 +62,7 @@ impl TimePanel {
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
             inner_margin: egui::style::Margin::symmetric(x_margin, y_margin),
-            ..ctx.re_ui.panel_frame()
+            ..Default::default()
         };
 
         if blueprint.time_panel_expanded {

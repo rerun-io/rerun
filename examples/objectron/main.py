@@ -2,6 +2,8 @@
 
 """
 Example of using the Rerun SDK to log the Objectron dataset.
+
+Example: `examples/objectron/main.py --recording chair`
 """
 
 
