@@ -212,7 +212,7 @@ impl View2DState {
     }
 }
 
-pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
+pub const HELP_TEXT_2D: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
     Drag to pan.\n\
     Double-click to reset the view.";
 

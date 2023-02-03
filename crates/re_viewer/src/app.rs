@@ -466,10 +466,29 @@ impl eframe::App for App {
                 .unwrap();
             render_ctx.frame_maintenance();
 
-            if log_db.is_empty() && self.rx.is_some() {
+            if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.strong("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+                        fn ready_and_waiting(txt: &str) -> String {
+                            format!("Ready!\n\n{txt}")
+                        }
+
+                        let text = match rx.source() {
+                            re_smart_channel::Source::File { path } => {
+                                format!("Loading {}…", path.display())
+                            }
+                            re_smart_channel::Source::Sdk => {
+                                ready_and_waiting("Waiting for logging data from SDK")
+                            }
+                            re_smart_channel::Source::WsClient { ws_server_url } => {
+                                // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
+                                ready_and_waiting(&format!("Waiting for data from {ws_server_url}"))
+                            }
+                            re_smart_channel::Source::TcpServer { port } => {
+                                ready_and_waiting(&format!("Listening on port {port}"))
+                            }
+                        };
+                        ui.strong(text);
                     });
                 });
             } else {
@@ -970,7 +989,7 @@ fn top_bar_ui(
 ) {
     rerun_menu_button_ui(ui, frame, app);
 
-    if app.state.app_options.show_dev_controls() {
+    if app.state.app_options.show_metrics {
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
@@ -1021,7 +1040,7 @@ fn top_bar_ui(
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
-            if app.state.app_options.show_dev_controls() {
+            if cfg!(debug_assertions) && app.state.app_options.show_metrics {
                 ui.vertical_centered(|ui| {
                     ui.style_mut().wrap = Some(false);
                     ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
@@ -1073,10 +1092,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     if let Some(rx) = &app.rx {
-        let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network => true, // presumable live
-            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
-        };
+        // TODO(emilk): it would be nice to know if the network stream is still open
+        let is_latency_interesting = rx.source().is_network();
 
         let queue_len = rx.len();
 
@@ -1315,8 +1332,8 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
 
     if ui
-        .checkbox(&mut options.debug.extra_clean_ui, "Extra clean UI")
-        .on_hover_text("Make the UI a bit cleaner for screen recordings etc")
+        .checkbox(&mut options.show_metrics, "Show metrics")
+        .on_hover_text("Show status bar metrics for milliseconds, ram usage, etc")
         .clicked()
     {
         ui.close_menu();

@@ -45,7 +45,11 @@ impl SpaceViewEntityPicker {
             // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken. Also, should reset every time
             .default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
-            .frame(ctx.re_ui.panel_frame())
+            .frame(egui::Frame {
+                fill: ui.visuals().panel_fill,
+                inner_margin: re_ui::ReUi::view_padding().into(),
+                ..Default::default()
+            })
             // We do a custom title bar for better adhoc styling.
             // TODO(andreas): Ideally the default title bar would already adhere to that style
             .title_bar(false)
