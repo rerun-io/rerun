@@ -184,14 +184,10 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     } else {
         #[cfg(feature = "server")]
         {
-            let bind_addr = format!("0.0.0.0:{}", args.port);
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
             };
-            let rx = re_sdk_comms::serve(&bind_addr, server_options)
-                .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
-            re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
-            rx
+            re_sdk_comms::serve(args.port, server_options)?
         }
 
         #[cfg(not(feature = "server"))]
@@ -212,7 +208,6 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             }
 
             // This is the server which the web viewer will talk to:
-            re_log::info!("Starting a Rerun WebSocket Server…");
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
             let server_handle = tokio::spawn(ws_server.listen(rx));
 
@@ -268,7 +263,9 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File {
+        path: path.to_owned(),
+    });
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())

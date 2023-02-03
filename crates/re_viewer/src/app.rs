@@ -466,10 +466,29 @@ impl eframe::App for App {
                 .unwrap();
             render_ctx.frame_maintenance();
 
-            if log_db.is_empty() && self.rx.is_some() {
+            if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.strong("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+                        fn ready_and_waiting(txt: &str) -> String {
+                            format!("Ready!\n\n{txt}")
+                        }
+
+                        let text = match rx.source() {
+                            re_smart_channel::Source::File { path } => {
+                                format!("Loading {}…", path.display())
+                            }
+                            re_smart_channel::Source::Sdk => {
+                                ready_and_waiting("Waiting for logging data from SDK")
+                            }
+                            re_smart_channel::Source::WsClient { ws_server_url } => {
+                                // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
+                                ready_and_waiting(&format!("Waiting for data from {ws_server_url}"))
+                            }
+                            re_smart_channel::Source::TcpServer { port } => {
+                                ready_and_waiting(&format!("Listening on port {port}"))
+                            }
+                        };
+                        ui.strong(text);
                     });
                 });
             } else {
@@ -1073,10 +1092,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     if let Some(rx) = &app.rx {
-        let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network => true, // presumable live
-            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
-        };
+        // TODO(emilk): it would be nice to know if the network stream is still open
+        let is_latency_interesting = rx.source().is_network();
 
         let queue_len = rx.len();
 
