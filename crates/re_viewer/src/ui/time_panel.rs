@@ -305,13 +305,25 @@ impl TimePanel {
             });
 
         {
-            // Paint a line between the stream names on the left
+            // Paint a shadow between the stream names on the left
             // and the data on the right:
-            ui.painter().vline(
-                time_x_left,
-                full_y_range,
-                ui.visuals().widgets.noninteractive.bg_stroke,
+            let shadow_width = 30.0;
+
+            // In the design the shadow starts under the time markers.
+            //let shadow_y_start =
+            //    timeline_rect.bottom() + ui.visuals().widgets.noninteractive.bg_stroke.width;
+            // This looks great but only if there are still time markes.
+            // When they move to the right (or have a cut) one expects the shadow to go all the way up.
+            // But that's quite complicated so let's have the shadow all the way
+            let shadow_y_start = *full_y_range.start();
+
+            let shadow_y_end = *full_y_range.end();
+            let rect = egui::Rect::from_x_y_ranges(
+                time_x_left..=(time_x_left + shadow_width),
+                shadow_y_start..=shadow_y_end,
             );
+            ctx.re_ui
+                .draw_shadow_line(ui, rect, egui::Direction::LeftToRight);
         }
 
         // Put time-marker on top and last, so that you can always drag it
@@ -915,14 +927,14 @@ fn paint_time_ranges_gaps(
     //    <--------->
     //     gap width
     //
-    // Filled with black, plus a stroke.
+    // Filled with a dark color, plus a stroke.
 
     use itertools::Itertools as _;
 
     let top = *y_range.start();
     let bottom = *y_range.end();
 
-    let fill_color = Color32::BLACK;
+    let fill_color = ui.visuals().widgets.noninteractive.bg_fill;
     let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
 
     let paint_time_gap = |gap_left: f32, gap_right: f32| {

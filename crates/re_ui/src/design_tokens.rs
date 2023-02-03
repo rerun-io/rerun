@@ -10,6 +10,8 @@ pub struct DesignTokens {
     pub bottom_bar_color: egui::Color32,
     pub bottom_bar_stroke: egui::Stroke,
     pub bottom_bar_rounding: egui::Rounding,
+    pub shadow_gradient_dark_start: egui::Color32,
+    pub shadow_gradient_bright_end: egui::Color32,
 }
 
 impl DesignTokens {
@@ -158,6 +160,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
             sw: 0.0,
             se: 0.0,
         }, // copied from figma, should be top only
+        shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
+        shadow_gradient_bright_end: egui::Color32::from_rgba_unmultiplied(33, 33, 33, 0),
     }
 }
 
