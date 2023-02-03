@@ -1,3 +1,21 @@
+"""Helper functions for Rerun scripts.
+
+These helper functions can be used to wire up common Rerun features to your script CLi arguments.
+
+Example
+-------
+```python
+import argparse
+import rerun as rr
+
+parser = argparse.ArgumentParser()
+rr.script_add_args(parser)
+args = parser.parse_args()
+rr.script_setup(args, "my_application")
+# ... Run your logging code here ...
+rr.script_teardown(args)
+```
+"""
 from argparse import ArgumentParser, Namespace
 from time import sleep
 
