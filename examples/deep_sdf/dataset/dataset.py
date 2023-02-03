@@ -8,7 +8,17 @@ from typing import Final, Optional
 
 import requests
 
-AVAILABLE_MESHES: Final = ["avocado", "lantern", "buddha", "bunny", "dragon", "mori_knob"]
+# TODO(cmc): re-enable obj meshes when we support those on the viewer's side
+AVAILABLE_MESHES: Final = [
+    "avocado",
+    "brain_stem",
+    # "buddha",
+    "buggy",
+    # "bunny",
+    # "dragon",
+    "lantern",
+    # "mori_knob",
+]
 DOWNLOADED_DIR: Final = Path(os.path.dirname(__file__)) / "downloaded"
 
 
@@ -20,18 +30,22 @@ def ensure_mesh_downloaded(mesh_name: str) -> Path:
 
 
 def download_mesh(name: str) -> Path:
+    if name == "avocado":
+        return download_glb_sample("avocado")
+    if name == "brain_stem":
+        return download_glb_sample("brain_stem")
     if name == "buddha":
         return download_mcguire_sample("research", "buddha")
+    if name == "buggy":
+        return download_glb_sample("buggy")
     if name == "bunny":
         return download_mcguire_sample("research", "bunny")
     if name == "dragon":
         return download_mcguire_sample("research", "dragon")
-    if name == "mori_knob":
-        return download_mcguire_sample("common", "mori_knob")
-    if name == "avocado":
-        return download_glb_sample("avocado")
     if name == "lantern":
         return download_glb_sample("lantern")
+    if name == "mori_knob":
+        return download_mcguire_sample("common", "mori_knob")
     raise RuntimeError(f"Unknown mesh named: {name}")
 
 
