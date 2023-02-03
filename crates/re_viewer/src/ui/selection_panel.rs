@@ -93,20 +93,16 @@ impl SelectionPanel {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
                         selection.data_ui(ctx, ui, UiVerbosity::All, &query);
                     });
-                    ctx.re_ui
-                        .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                            blueprint_ui(ui, ctx, blueprint, selection);
-                        });
-                } else {
-                    // If there is no data section, there's no point in showing the blueprint collapsing header either!
-                    // TODO(andreas): This separator makes it a bit inconsistent, but without it it's unclear where the `what_is_selected` part ends.
-                    //                Imminent design changes might make this unnecessary.
-                    ui.separator();
-                    blueprint_ui(ui, ctx, blueprint, selection);
                 }
 
-                if num_selections > i + 1 {
-                    ui.add(egui::Separator::default().spacing(12.0));
+                ctx.re_ui
+                    .large_collapsing_header(ui, "Blueprint", true, |ui| {
+                        blueprint_ui(ui, ctx, blueprint, selection);
+                    });
+
+                if i + 1 < num_selections {
+                    // Add space some space between selections
+                    ui.add(egui::Separator::default().spacing(24.0).grow(20.0));
                 }
             });
         }
@@ -318,8 +314,6 @@ fn blueprint_ui(
                         &mut group.properties_individual,
                         &space_view.view_state,
                     );
-
-                    ui.separator();
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }
