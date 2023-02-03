@@ -77,6 +77,10 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-build.txt"
           architecture: x64
 
+      - name: Patch Cargo.toml for Pre-Release
+        if: github.ref == 'refs/heads/main'
+        run: python scripts/patch_prerelease_version.py
+
       - name: Build wheel - x86_64
         if: matrix.target == 'x64'
         uses: PyO3/maturin-action@v1
@@ -144,6 +148,10 @@ jobs:
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
 
+      - name: Patch Cargo.toml for Pre-Release
+        if: github.ref == 'refs/heads/main'
+        run: python scripts/patch_prerelease_version.py
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -179,6 +187,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+
       - name: Cache APT Packages
         #uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         #TODO(john) merge upstream
@@ -202,6 +213,10 @@ jobs:
           architecture: x64
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
+
+      - name: Patch Cargo.toml for Pre-Release
+        if: github.ref == 'refs/heads/main'
+        run: python scripts/patch_prerelease_version.py
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -257,7 +272,6 @@ jobs:
           title: "Development Build"
           files: |
             dist/*
-            CHANGELOG.md
 
   # ---------------------------------------------------------------------------
 
@@ -284,7 +298,6 @@ jobs:
           prerelease: false
           files: |
             dist/*
-            CHANGELOG.md
 
       - name: Publish to PyPI
         env:
