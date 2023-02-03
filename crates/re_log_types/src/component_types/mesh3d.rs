@@ -117,7 +117,7 @@ pub enum RawMeshError {
 ///         Field::new("albedo_factor", DataType::FixedSizeList(
 ///             Box::new(Field::new("item", DataType::Float32, false)),
 ///             4
-///         ), false),
+///         ), true),
 ///     ]),
 /// );
 /// ```
