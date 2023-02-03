@@ -51,6 +51,16 @@ pub struct Rigid3 {
 
 #[cfg(feature = "glam")]
 impl Rigid3 {
+    pub const IDENTITY: Rigid3 = Rigid3 {
+        rotation: Quaternion {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+            w: 0.0,
+        },
+        translation: Vec3D([0.0, 0.0, 0.0]),
+    };
+
     #[inline]
     pub fn new_parent_from_child(parent_from_child: macaw::IsoTransform) -> Self {
         Self {
