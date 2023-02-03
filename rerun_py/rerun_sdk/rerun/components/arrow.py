@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
-from rerun.components.vec import Vec3DArray
+from . import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
+from .vec import Vec3DArray
 
 __all__ = [
     "Arrow3DArray",

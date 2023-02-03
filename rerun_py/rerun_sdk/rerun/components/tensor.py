@@ -6,13 +6,13 @@ from typing import Final, Iterable, Union, cast
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import (
+from . import (
     REGISTERED_COMPONENT_NAMES,
     ComponentTypeFactory,
     build_dense_union,
 )
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "TensorArray",

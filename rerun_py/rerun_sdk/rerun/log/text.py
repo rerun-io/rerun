@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, Final, Optional, Sequence
 
 # Fully qualified to avoid circular import
-import rerun.log.extension_components
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.text_entry import TextEntryArray
-from rerun.log import _normalize_colors
+import rerun_sdk.rerun.log.extension_components
+from ..components.color import ColorRGBAArray
+from ..components.instance import InstanceArray
+from ..components.text_entry import TextEntryArray
+from . import _normalize_colors
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "LogLevel",
@@ -135,7 +135,7 @@ def log_text_entry(
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if ext:
-        rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
+        rerun_sdk.rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
 
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

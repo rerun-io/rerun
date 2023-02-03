@@ -2,9 +2,9 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.color_conversion import linear_to_gamma_u8_pixel
+from ..color_conversion import linear_to_gamma_u8_pixel
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "annotation",

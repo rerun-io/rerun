@@ -5,10 +5,10 @@ import numpy.typing as npt
 import pyarrow as pa
 
 # Fully qualified to avoid circular import
-import rerun.log.error_utils
-from rerun.components.instance import InstanceArray
+import rerun_sdk.rerun.log.error_utils
+from ..components.instance import InstanceArray
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "_add_extension_components",

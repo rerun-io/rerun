@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "MeshFormat",

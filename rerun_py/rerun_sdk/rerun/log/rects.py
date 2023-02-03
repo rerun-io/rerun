@@ -2,12 +2,12 @@ from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.components.annotation import ClassIdArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
-from rerun.components.rect2d import Rect2DArray, RectFormat
-from rerun.log import (
+from ..components.annotation import ClassIdArray
+from ..components.color import ColorRGBAArray
+from ..components.instance import InstanceArray
+from ..components.label import LabelArray
+from ..components.rect2d import Rect2DArray, RectFormat
+from . import (
     Color,
     Colors,
     OptionalClassIds,
@@ -15,10 +15,10 @@ from rerun.log import (
     _normalize_ids,
     _normalize_labels,
 )
-from rerun.log.error_utils import _send_warning
-from rerun.log.extension_components import _add_extension_components
+from .error_utils import _send_warning
+from .extension_components import _add_extension_components
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "RectFormat",

@@ -6,7 +6,7 @@ from typing import Any, Final, Type, cast
 
 import pyarrow as pa
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 all = [
     "annotation",

@@ -2,12 +2,12 @@ from typing import Any, Dict, Iterable, Optional, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.components.instance import InstanceArray
-from rerun.components.tensor import TensorArray
-from rerun.log.error_utils import _send_warning
-from rerun.log.extension_components import _add_extension_components
+from ..components.instance import InstanceArray
+from ..components.tensor import TensorArray
+from .error_utils import _send_warning
+from .extension_components import _add_extension_components
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "log_tensor",

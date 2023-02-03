@@ -5,7 +5,7 @@ from typing import Any, Sequence
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
+from . import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "ScalarArray",

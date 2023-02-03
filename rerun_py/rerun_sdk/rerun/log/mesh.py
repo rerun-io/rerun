@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "log_mesh",

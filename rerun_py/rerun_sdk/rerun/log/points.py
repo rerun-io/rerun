@@ -2,13 +2,13 @@ from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.components.annotation import ClassIdArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
-from rerun.components.point import Point2DArray, Point3DArray
-from rerun.components.radius import RadiusArray
-from rerun.log import (
+from ..components.annotation import ClassIdArray
+from ..components.color import ColorRGBAArray
+from ..components.instance import InstanceArray
+from ..components.label import LabelArray
+from ..components.point import Point2DArray, Point3DArray
+from ..components.radius import RadiusArray
+from . import (
     Color,
     Colors,
     OptionalClassIds,
@@ -18,10 +18,10 @@ from rerun.log import (
     _normalize_labels,
     _normalize_radii,
 )
-from rerun.log.error_utils import _send_warning
-from rerun.log.extension_components import _add_extension_components
+from .error_utils import _send_warning
+from .extension_components import _add_extension_components
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "log_point",

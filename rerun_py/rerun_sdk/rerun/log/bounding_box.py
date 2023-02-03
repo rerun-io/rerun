@@ -2,18 +2,18 @@ from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
-from rerun.components.annotation import ClassIdArray
-from rerun.components.box import Box3DArray
-from rerun.components.color import ColorRGBAArray
-from rerun.components.instance import InstanceArray
-from rerun.components.label import LabelArray
-from rerun.components.quaternion import QuaternionArray
-from rerun.components.radius import RadiusArray
-from rerun.components.vec import Vec3DArray
-from rerun.log import _normalize_colors, _normalize_ids, _normalize_radii
-from rerun.log.extension_components import _add_extension_components
+from ..components.annotation import ClassIdArray
+from ..components.box import Box3DArray
+from ..components.color import ColorRGBAArray
+from ..components.instance import InstanceArray
+from ..components.label import LabelArray
+from ..components.quaternion import QuaternionArray
+from ..components.radius import RadiusArray
+from ..components.vec import Vec3DArray
+from . import _normalize_colors, _normalize_ids, _normalize_radii
+from .extension_components import _add_extension_components
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "log_obb",

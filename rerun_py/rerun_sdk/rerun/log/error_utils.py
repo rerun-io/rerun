@@ -1,7 +1,7 @@
 import inspect
 import logging
 
-from rerun.log.text import LogLevel, log_text_entry
+from .text import LogLevel, log_text_entry
 
 __all__ = [
     "_send_warning",

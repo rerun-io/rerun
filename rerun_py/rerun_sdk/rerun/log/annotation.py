@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Iterable, Optional, Sequence, Tuple, Union
 
-from rerun.log import Color, _normalize_colors
+from . import Color, _normalize_colors
 
-from rerun import bindings
+from rerun_sdk import bindings
 
 __all__ = [
     "AnnotationInfo",

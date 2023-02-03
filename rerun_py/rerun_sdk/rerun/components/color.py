@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.color_conversion import u8_array_to_rgba
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
+from ..color_conversion import u8_array_to_rgba
+from . import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "ColorRGBAArray",
