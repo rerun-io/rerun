@@ -23,6 +23,11 @@ DATASET_URL: Final = f"{DATASET_URL_BASE}/{DATASET_NAME}.zip"
 FILTER_MIN_VISIBLE: Final = 500
 
 
+RED: Final = (255, 105, 129)
+GREEN: Final = (0, 178, 102)
+BLUE: Final = (122, 149, 255)
+
+
 def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
     """Convert a colmap camera to a pinhole camera intrinsics matrix."""
     return np.vstack(
@@ -115,6 +120,12 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
             child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
+
+        rr.log_scalar("camera/x", image.tvec[0], label="x", color=RED)
+        rr.log_scalar("camera/y", image.tvec[1], label="y", color=GREEN)
+        rr.log_scalar("camera/z", image.tvec[2], label="z", color=BLUE)
+
+        # TODO: Hack history & detect car
 
         # Log camera intrinsics
         rr.log_pinhole(
