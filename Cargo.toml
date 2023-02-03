@@ -65,7 +65,7 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-03 - fix widnows build, and improve
+# 2023-02-03 - fix widnows build, and allow ScrollArea contents to paint outside the lines
 ecolor = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
 eframe = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
 egui = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
