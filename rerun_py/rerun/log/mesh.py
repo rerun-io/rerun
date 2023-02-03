@@ -17,10 +17,11 @@ def log_mesh(
     *,
     indices: Optional[npt.NDArray[np.uint32]] = None,
     normals: Optional[npt.NDArray[np.float32]] = None,
+    albedo_factor: Optional[npt.NDArray[np.float32]] = None,
     timeless: bool = False,
 ) -> None:
     """
-    Log a raw 3D mesh by specifying its vertex positions, and optionally indices and normals.
+    Log a raw 3D mesh by specifying its vertex positions, and optionally indices, normals and albedo factor.
 
     The data is _always_ interpreted as a triangle list:
 
@@ -30,14 +31,17 @@ def log_mesh(
     * `normals`, if specified, is a flattened array of 3D vectors that describe the normal
       for each vertex, i.e. its length must be divisible by 3 and more importantly it has to be
       equal to the length of `positions`.
+    * `albedo_factor`, if specified, is either a linear, unmultiplied, normalized RGB (vec3) or
+      RGBA (vec4) value.
 
     Example:
     -------
     ```
-    # A simple triangle:
+    # A simple ref triangle:
     positions = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
     indices = np.array([0, 1, 2])
     normals = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0])
+    albedo_factor = np.array([1.0, 0.0, 0.0])
     ```
 
     Parameters
@@ -59,9 +63,11 @@ def log_mesh(
         indices = indices.flatten().astype(np.uint32)
     if normals is not None:
         normals = normals.flatten().astype(np.float32)
+    if albedo_factor is not None:
+        albedo_factor = albedo_factor.astype(np.float32)
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], timeless)
+    bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
 
 
 def log_meshes(
@@ -70,16 +76,18 @@ def log_meshes(
     *,
     index_buffers: Sequence[Optional[npt.NDArray[np.uint32]]],
     normal_buffers: Sequence[Optional[npt.NDArray[np.float32]]],
+    albedo_factors: Sequence[Optional[npt.NDArray[np.float32]]],
     timeless: bool = False,
 ) -> None:
     """
-    Log multiple raw 3D meshes by specifying their vertex buffers, and optionally their index and normal buffers.
+    Log multiple raw 3D meshes by specifying their positions buffers, and optionally their index/normal buffers and albedo factors.
 
     To learn more about how the data within these buffers is interpreted and laid out, refer
     to `log_mesh`'s documentation.
 
     * If specified, `index_buffers` must have the same length as `position_buffers`.
-    * If specified, `normal_buffers` must have the same length as `normal_buffers`.
+    * If specified, `normal_buffers` must have the same length as `position_buffers`.
+    * If specified, `albedo_factors` must have the same length as `position_buffers`.
 
     Parameters
     ----------
@@ -91,6 +99,8 @@ def log_meshes(
         An optional sequence of index buffers, one for each mesh.
     normal_buffers:
         An optional sequence of normal buffers, one for each mesh.
+    albedo_factors:
+        An optional sequence of albedo factors, one for each mesh.
     timeless:
         If true, the mesh will be timeless (default: False)
 
@@ -100,6 +110,8 @@ def log_meshes(
         index_buffers = [i.flatten().astype(np.uint32) if i else None for i in index_buffers]
     if normal_buffers is not None:
         normal_buffers = [n.flatten().astype(np.float32) if n else None for n in normal_buffers]
+    if albedo_factors is not None:
+        albedo_factors = [af.flatten().astype(np.float32) if af else None for af in albedo_factors]
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(entity_path, position_buffers, index_buffers, normal_buffers, timeless)
+    bindings.log_meshes(entity_path, position_buffers, index_buffers, normal_buffers, albedo_factors, timeless)
