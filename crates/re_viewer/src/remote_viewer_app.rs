@@ -77,21 +77,25 @@ impl eframe::App for RemoteViewerApp {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("server").show(egui_ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("URL:");
-                if ui.text_edit_singleline(&mut self.url).lost_focus()
-                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
-                {
-                    if let Some(storage) = frame.storage_mut() {
-                        if let Some((_, mut app)) = self.app.take() {
-                            app.save(storage);
+        if false {
+            // TODO(emilk): move this url selection into the main app.
+            // but for now, just remove it, because it is ugly (see https://github.com/rerun-io/rerun/issues/1079).
+            egui::TopBottomPanel::top("server").show(egui_ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("URL:");
+                    if ui.text_edit_singleline(&mut self.url).lost_focus()
+                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                    {
+                        if let Some(storage) = frame.storage_mut() {
+                            if let Some((_, mut app)) = self.app.take() {
+                                app.save(storage);
+                            }
                         }
+                        self.connect(frame.storage());
                     }
-                    self.connect(frame.storage());
-                }
+                });
             });
-        });
+        }
 
         if let Some((_, app)) = &mut self.app {
             app.update(egui_ctx, frame);
