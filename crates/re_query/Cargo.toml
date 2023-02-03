@@ -15,14 +15,14 @@ polars = ["dep:polars-core", "re_arrow_store/polars"]
 
 
 [dependencies]
-# Rerun
+# Rerun dependencies:
 re_arrow_store = { path = "../re_arrow_store" }
 re_data_store = { path = "../re_data_store" }
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
-# External
+# External dependencies:
 anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
@@ -33,12 +33,14 @@ document-features = "0.2"
 indent = "0.1"
 itertools = "0.10"
 nohash-hasher = "0.2"
-polars-core = { workspace = true, features = [
+thiserror.workspace = true
+
+# Optional dependencies:
+polars-core = { workspace = true, optional = true, features = [
   "dtype-date",
   "dtype-time",
   "dtype-struct",
-], optional = true }
-thiserror.workspace = true
+] }
 
 
 [dev-dependencies]

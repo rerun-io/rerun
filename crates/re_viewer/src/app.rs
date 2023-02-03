@@ -970,7 +970,7 @@ fn top_bar_ui(
 ) {
     rerun_menu_button_ui(ui, frame, app);
 
-    if app.state.app_options.show_dev_controls() {
+    if app.state.app_options.show_metrics {
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
@@ -1021,7 +1021,7 @@ fn top_bar_ui(
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
-            if app.state.app_options.show_dev_controls() {
+            if cfg!(debug_assertions) && app.state.app_options.show_metrics {
                 ui.vertical_centered(|ui| {
                     ui.style_mut().wrap = Some(false);
                     ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
@@ -1315,8 +1315,8 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
     ui.style_mut().wrap = Some(false);
 
     if ui
-        .checkbox(&mut options.debug.extra_clean_ui, "Extra clean UI")
-        .on_hover_text("Make the UI a bit cleaner for screen recordings etc")
+        .checkbox(&mut options.show_metrics, "Show metrics")
+        .on_hover_text("Show status bar metrics for milliseconds, ram usage, etc")
         .clicked()
     {
         ui.close_menu();

@@ -70,7 +70,7 @@ pub use self::file_server_impl::FileServer;
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 mod file_server_impl {
     use ahash::HashSet;
-    use anyhow::Context;
+    use anyhow::Context as _;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::RwLock;
