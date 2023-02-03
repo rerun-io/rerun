@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   misc-rerun-lints:
-    name: Rerun lints (TODOs, ...)
+    name: Rerun lints
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

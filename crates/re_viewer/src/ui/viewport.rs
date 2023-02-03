@@ -439,18 +439,20 @@ impl Viewport {
         };
 
         ui.scope(|ui| {
-            // we use a scope, because egui_dock unfortunately messes with the ui clip rect
+            // we need a scope, because egui_dock unfortunately messes with the ui clip rect
+
+            ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
+
             egui_dock::DockArea::new(tree)
                 .style(re_ui::egui_dock_style(ui.style()))
                 .show_inside(ui, &mut tab_viewer);
         });
 
-        if ctx.app_options.show_spaceview_controls() {
-            // Two passes so we avoid borrowing issues:
-            let tab_bars = tree
-                .iter()
-                .filter_map(|node| {
-                    let egui_dock::Node::Leaf {
+        // Two passes so we avoid borrowing issues:
+        let tab_bars = tree
+            .iter()
+            .filter_map(|node| {
+                let egui_dock::Node::Leaf {
                         rect,
                         viewport,
                         tabs,
@@ -459,24 +461,23 @@ impl Viewport {
                         return None;
                     };
 
-                    let space_view_id = tabs.get(active.0)?;
+                let space_view_id = tabs.get(active.0)?;
 
-                    // `rect` includes the tab area, while `viewport` is just the tab body.
-                    // so the tab bar rect is:
-                    let tab_bar_rect =
-                        egui::Rect::from_x_y_ranges(rect.x_range(), rect.top()..=viewport.top());
+                // `rect` includes the tab area, while `viewport` is just the tab body.
+                // so the tab bar rect is:
+                let tab_bar_rect =
+                    egui::Rect::from_x_y_ranges(rect.x_range(), rect.top()..=viewport.top());
 
-                    // rect/viewport can be invalid for the first frame
-                    tab_bar_rect
-                        .is_finite()
-                        .then_some((*space_view_id, tab_bar_rect))
-                })
-                .collect_vec();
-
-            for (space_view_id, tab_bar_rect) in tab_bars {
                 // rect/viewport can be invalid for the first frame
-                space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
-            }
+                tab_bar_rect
+                    .is_finite()
+                    .then_some((*space_view_id, tab_bar_rect))
+            })
+            .collect_vec();
+
+        for (space_view_id, tab_bar_rect) in tab_bars {
+            // rect/viewport can be invalid for the first frame
+            space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
         }
     }
 
@@ -515,7 +516,7 @@ impl Viewport {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
-        let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
+        let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::MAX);
 
         let mut space_views = Vec::new();
 
@@ -824,11 +825,13 @@ fn space_view_options_ui(
 ) {
     let Some(space_view) = viewport.space_views.get(&space_view_id) else { return; };
 
+    let tab_bar_rect = tab_bar_rect.shrink2(egui::vec2(4.0, 0.0)); // Add some side margin outside the frame
+
     ui.allocate_ui_at_rect(tab_bar_rect, |ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let where_to_put_background = ui.painter().add(egui::Shape::Noop);
 
-            ui.add_space(4.0);
+            ui.add_space(4.0); // margin within the frame
 
             if viewport.maximized == Some(space_view_id) {
                 // Show minimize-button:

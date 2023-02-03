@@ -7,7 +7,8 @@ pub struct AppOptions {
     pub low_latency: f32,
     pub warn_latency: f32,
 
-    pub debug: DebugOptions,
+    /// Show milliseconds, RAM usage, etc.
+    pub show_metrics: bool,
 }
 
 impl Default for AppOptions {
@@ -18,24 +19,7 @@ impl Default for AppOptions {
             low_latency: 0.100,
             warn_latency: 0.200,
 
-            debug: Default::default(),
+            show_metrics: cfg!(debug_assertions),
         }
     }
-}
-
-impl AppOptions {
-    pub fn show_dev_controls(&self) -> bool {
-        cfg!(debug_assertions) && !self.debug.extra_clean_ui
-    }
-
-    pub fn show_spaceview_controls(&self) -> bool {
-        !self.debug.extra_clean_ui
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct DebugOptions {
-    /// Clean up the UI, e.g. for screen recordings.
-    pub extra_clean_ui: bool,
 }
