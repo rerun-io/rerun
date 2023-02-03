@@ -65,14 +65,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-03 - more visible panel resize lines
-ecolor = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-eframe = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-egui = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-emath = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-epaint = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+# 2023-02-03 - fix widnows build, and allow ScrollArea contents to paint outside the lines
+ecolor = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+eframe = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+egui = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+emath = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
+epaint = { git = "https://github.com/emilk/egui", rev = "a6b60d5d58c29dff76962daa87b8b7803c5beaa2" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }

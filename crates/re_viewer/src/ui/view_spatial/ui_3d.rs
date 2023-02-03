@@ -310,7 +310,7 @@ pub fn view_3d(
             };
             response = if let Some((image, uv)) = picked_image_with_uv {
                 response
-                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_cursor(egui::CursorIcon::Crosshair)
                     .on_hover_ui_at_pointer(|ui| {
                         ui.set_max_width(320.0);
 

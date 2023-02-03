@@ -63,13 +63,18 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
     let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
 
+    // Used as the background of text edits, scroll bars and others things
+    // that needs to look different from other interactive stuff.
+    // We need this very dark, since the theme overall is very, very dark.
+    egui_style.visuals.extreme_bg_color = egui::Color32::BLACK;
+
     egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
     egui_style.visuals.button_frame = true;
     egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-    egui_style.visuals.widgets.inactive.bg_fill =
-        get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
+    egui_style.visuals.widgets.inactive.bg_fill = Color32::from_gray(40);
+    // get_aliased_color(&json, "{Alias.Color.Action.Default.value}"); // too dark to see, especially for scroll bars
 
     {
         // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
@@ -134,6 +139,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
 
     egui_style.spacing.combo_width = 8.0; // minium width of ComboBox - keep them small, with the down-arrow close.
+
+    egui_style.spacing.scroll_bar_inner_margin = 2.0;
+    egui_style.spacing.scroll_bar_width = 6.0;
+    egui_style.spacing.scroll_bar_outer_margin = 2.0;
 
     ctx.set_style(egui_style);
 

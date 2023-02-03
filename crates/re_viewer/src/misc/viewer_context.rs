@@ -248,7 +248,7 @@ impl<'a> ViewerContext<'a> {
             if response.ctx.input(|i| i.modifiers.command) {
                 self.rec_cfg
                     .selection_state
-                    .toggle_selection(hovered.into_iter());
+                    .toggle_selection(hovered.to_vec());
             } else {
                 self.set_multi_selection(hovered.into_iter());
             }

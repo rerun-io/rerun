@@ -37,7 +37,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 
-use egui::{pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
+use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -310,6 +310,83 @@ impl ReUi {
             *visible = !*visible;
         }
         response
+    }
+
+    #[allow(clippy::unused_self)]
+    pub fn large_collapsing_header<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+    ) {
+        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            ui.make_persistent_id(label),
+            default_open,
+        );
+
+        let openness = state.openness(ui.ctx());
+
+        let header_size = egui::vec2(ui.available_width(), 28.0);
+
+        // Draw custom header.
+        ui.allocate_ui_with_layout(
+            header_size,
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                let background_frame = ui.painter().add(egui::Shape::Noop);
+
+                let space_before_icon = 0.0;
+                let icon_width = ui.spacing().icon_width_inner;
+                let space_after_icon = ui.spacing().icon_spacing;
+
+                let font_id = egui::TextStyle::Button.resolve(ui.style());
+                let galley = ui.painter().layout_no_wrap(
+                    label.to_owned(),
+                    font_id,
+                    Color32::TEMPORARY_COLOR,
+                );
+
+                let desired_size = header_size.at_least(
+                    egui::vec2(space_before_icon + icon_width + space_after_icon, 0.0)
+                        + galley.size(),
+                );
+                let header_response = ui.allocate_response(desired_size, egui::Sense::click());
+                let rect = header_response.rect;
+
+                let icon_rect = egui::Rect::from_center_size(
+                    header_response.rect.left_center()
+                        + egui::vec2(space_before_icon + icon_width / 2.0, 0.0),
+                    egui::Vec2::splat(icon_width),
+                );
+                let icon_response = header_response.clone().with_new_rect(icon_rect);
+                egui::collapsing_header::paint_default_icon(ui, openness, &icon_response);
+
+                let visuals = ui.style().interact(&header_response);
+
+                let text_pos = icon_response.rect.right_center()
+                    + egui::vec2(space_after_icon, -0.5 * galley.size().y);
+                ui.painter()
+                    .galley_with_color(text_pos, galley, visuals.text_color());
+
+                // Let the rect cover the full panel width:
+                let bg_rect = rect.expand2(egui::vec2(1000.0, 0.0));
+                ui.painter().set(
+                    background_frame,
+                    Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),
+                );
+
+                if header_response.clicked() {
+                    state.toggle(ui);
+                }
+            },
+        );
+        state.show_body_unindented(ui, |ui| {
+            ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
+            add_body(ui);
+            ui.add_space(4.0); // Same here
+        });
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
