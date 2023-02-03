@@ -1,5 +1,4 @@
 use ahash::{HashMap, HashSet};
-use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, LogDb};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
@@ -241,20 +240,25 @@ impl SelectionState {
     }
 
     /// Select currently hovered objects unless already selected in which case they get unselected.
-    pub fn toggle_selection(&mut self, items: impl Iterator<Item = Selection>) {
+    pub fn toggle_selection(&mut self, toggle_items: Vec<Selection>) {
         crate::profile_function!();
 
-        let mut selected_items = HashSet::default();
-        selected_items.extend(self.selection.iter().cloned());
+        // Make sure we preserve the order - old items kept in same order, new items added to the end.
 
-        // Toggling means removing if it was there and add otherwise!
-        for item in items.unique() {
-            if !selected_items.remove(&item) {
-                selected_items.insert(item);
-            }
-        }
+        // All the items to toggle. If an was already selected, it will be removed from this.
+        let mut toggle_items_set: HashSet<Selection> = toggle_items.iter().cloned().collect();
 
-        self.set_multi_selection(selected_items.into_iter());
+        let mut new_selection = self.selection.to_vec();
+        new_selection.retain(|item| !toggle_items_set.remove(item));
+
+        // Add the new items, unless they were toggling out existing items:
+        new_selection.extend(
+            toggle_items
+                .into_iter()
+                .filter(|item| toggle_items_set.contains(item)),
+        );
+
+        self.set_multi_selection(new_selection.into_iter());
     }
 
     pub fn hovered_space(&self) -> &HoveredSpace {
