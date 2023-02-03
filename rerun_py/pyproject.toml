@@ -41,3 +41,4 @@ target-version = ["py38"]
 
 [tool.maturin]
 locked = true
+include = ["rerun-sdk.pth"]
