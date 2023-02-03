@@ -65,4 +65,4 @@ pyo3-build-config = "0.18.0"
 toml = "0.7"
 
 [package.metadata.maturin]
-name = "rerun_sdk.rerun.rerun_bindings"
+name = "rerun_sdk.rerun_bindings"

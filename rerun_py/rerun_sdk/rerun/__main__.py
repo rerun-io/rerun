@@ -2,7 +2,8 @@
 
 import sys
 
-from rerun import rerun_bindings, unregister_shutdown  # type: ignore[attr-defined]
+from rerun_sdk import rerun_bindings
+from rerun_sdk.rerun import unregister_shutdown  # type: ignore[attr-defined]
 
 
 def main() -> None:
