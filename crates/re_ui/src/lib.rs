@@ -337,7 +337,7 @@ impl ReUi {
             |ui| {
                 let background_frame = ui.painter().add(egui::Shape::Noop);
 
-                let space_before_icon = 8.0;
+                let space_before_icon = 0.0;
                 let icon_width = ui.spacing().icon_width_inner;
                 let space_after_icon = ui.spacing().icon_spacing;
 

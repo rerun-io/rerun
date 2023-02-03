@@ -53,13 +53,17 @@ impl SelectionPanel {
                         }
                     });
 
-                egui::Frame {
-                    inner_margin: egui::style::Margin::same(re_ui::ReUi::view_padding()),
-                    ..Default::default()
-                }
-                .show(ui, |ui| {
-                    self.contents(ui, ctx, blueprint);
-                });
+                egui::ScrollArea::both()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        egui::Frame {
+                            inner_margin: egui::style::Margin::same(re_ui::ReUi::view_padding()),
+                            ..Default::default()
+                        }
+                        .show(ui, |ui| {
+                            self.contents(ui, ctx, blueprint);
+                        });
+                    });
             },
         );
     }
@@ -75,41 +79,37 @@ impl SelectionPanel {
 
         let query = ctx.current_query();
 
-        egui::ScrollArea::both()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                if ctx.selection().is_empty() {
-                    return;
+        if ctx.selection().is_empty() {
+            return;
+        }
+
+        let num_selections = ctx.selection().len();
+        let selection = ctx.selection().to_vec();
+        for (i, selection) in selection.iter().enumerate() {
+            ui.push_id(i, |ui| {
+                what_is_selected_ui(ui, ctx, blueprint, selection);
+
+                if has_data_section(selection) {
+                    ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                        selection.data_ui(ctx, ui, UiVerbosity::All, &query);
+                    });
+                    ctx.re_ui
+                        .large_collapsing_header(ui, "Blueprint", true, |ui| {
+                            blueprint_ui(ui, ctx, blueprint, selection);
+                        });
+                } else {
+                    // If there is no data section, there's no point in showing the blueprint collapsing header either!
+                    // TODO(andreas): This separator makes it a bit inconsistent, but without it it's unclear where the `what_is_selected` part ends.
+                    //                Imminent design changes might make this unnecessary.
+                    ui.separator();
+                    blueprint_ui(ui, ctx, blueprint, selection);
                 }
 
-                let num_selections = ctx.selection().len();
-                let selection = ctx.selection().to_vec();
-                for (i, selection) in selection.iter().enumerate() {
-                    ui.push_id(i, |ui| {
-                        what_is_selected_ui(ui, ctx, blueprint, selection);
-
-                        if has_data_section(selection) {
-                            ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                                selection.data_ui(ctx, ui, UiVerbosity::All, &query);
-                            });
-                            ctx.re_ui
-                                .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                                    blueprint_ui(ui, ctx, blueprint, selection);
-                                });
-                        } else {
-                            // If there is no data section, there's no point in showing the blueprint collapsing header either!
-                            // TODO(andreas): This separator makes it a bit inconsistent, but without it it's unclear where the `what_is_selected` part ends.
-                            //                Imminent design changes might make this unnecessary.
-                            ui.separator();
-                            blueprint_ui(ui, ctx, blueprint, selection);
-                        }
-
-                        if num_selections > i + 1 {
-                            ui.add(egui::Separator::default().spacing(12.0));
-                        }
-                    });
+                if num_selections > i + 1 {
+                    ui.add(egui::Separator::default().spacing(12.0));
                 }
             });
+        }
     }
 }
 
