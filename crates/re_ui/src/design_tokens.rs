@@ -149,8 +149,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: Color32::from_gray(20),    // copied from figma
-        bottom_bar_color: Color32::from_gray(25), // copied from figma
+        top_bar_color: Color32::from_gray(20), // copied from figma
+        bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
         bottom_bar_stroke: egui::Stroke::new(1.0, egui::Color32::from_white_alpha(25)), // copied from figma
         bottom_bar_rounding: egui::Rounding {
             nw: 6.0,
@@ -165,6 +165,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
 fn get_aliased_color(json: &serde_json::Value, alias_path: &str) -> egui::Color32 {
     parse_color(get_alias_str(json, alias_path))
+}
+
+fn get_global_color(json: &serde_json::Value, global_path: &str) -> egui::Color32 {
+    parse_color(global_path_value(json, global_path).as_str().unwrap())
 }
 
 fn get_alias_str<'json>(json: &'json serde_json::Value, alias_path: &str) -> &'json str {
