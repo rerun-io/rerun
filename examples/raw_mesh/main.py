@@ -24,7 +24,7 @@ import rerun as rr
 
 def load_scene(path: Path) -> trimesh.Scene:
     print(f"loading scene {path}…")
-    mesh = trimesh.load(path, force='scene')
+    mesh = trimesh.load(path, force="scene")
     return cast(trimesh.Scene, mesh)
 
 
@@ -60,11 +60,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
                     albedo_factor = np.array(colors) / 255.0
             except:
                 pass
-            rr.log_mesh(path,
-                        mesh.vertices,
-                        indices=mesh.faces,
-                        normals=mesh.vertex_normals,
-                        albedo_factor=albedo_factor)
+            rr.log_mesh(
+                path, mesh.vertices, indices=mesh.faces, normals=mesh.vertex_normals, albedo_factor=albedo_factor
+            )
 
     if children:
         for child in children:

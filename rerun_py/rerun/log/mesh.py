@@ -54,6 +54,8 @@ def log_mesh(
         Optional flattened array of indices that describe the mesh's faces
     normals:
         Optional flattened array of 3D vectors that describe the normal of each vertices
+    albedo_factor:
+        Optional RGB(A) color for the albedo factor of the mesh, aka base color factor.
     timeless:
         If true, the mesh will be timeless (default: False)
 
@@ -64,7 +66,7 @@ def log_mesh(
     if normals is not None:
         normals = normals.flatten().astype(np.float32)
     if albedo_factor is not None:
-        albedo_factor = albedo_factor.astype(np.float32)
+        albedo_factor = albedo_factor.flatten().astype(np.float32)
 
     # Mesh arrow handling happens inside the python bridge
     bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
@@ -80,7 +82,7 @@ def log_meshes(
     timeless: bool = False,
 ) -> None:
     """
-    Log multiple raw 3D meshes by specifying their positions buffers, and optionally their index/normal buffers and albedo factors.
+    Log multiple raw 3D meshes by specifying their different buffers and albedo factors.
 
     To learn more about how the data within these buffers is interpreted and laid out, refer
     to `log_mesh`'s documentation.
