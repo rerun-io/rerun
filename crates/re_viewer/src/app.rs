@@ -469,26 +469,47 @@ impl eframe::App for App {
             if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.centered_and_justified(|ui| {
-                        fn ready_and_waiting(txt: &str) -> String {
-                            format!("Ready!\n\n{txt}")
+                        fn ready_and_waiting(ui: &mut egui::Ui, txt: &str) {
+                            let style = ui.style();
+                            let mut layout_job = egui::text::LayoutJob::default();
+                            layout_job.append(
+                                "Ready",
+                                0.0,
+                                egui::TextFormat::simple(
+                                    egui::TextStyle::Heading.resolve(style),
+                                    style.visuals.strong_text_color(),
+                                ),
+                            );
+                            layout_job.append(
+                                &format!("\n\n{txt}"),
+                                0.0,
+                                egui::TextFormat::simple(
+                                    egui::TextStyle::Body.resolve(style),
+                                    style.visuals.text_color(),
+                                ),
+                            );
+                            layout_job.halign = egui::Align::Center;
+                            ui.label(layout_job);
                         }
 
-                        let text = match rx.source() {
+                        match rx.source() {
                             re_smart_channel::Source::File { path } => {
-                                format!("Loading {}…", path.display())
+                                ui.strong(format!("Loading {}…", path.display()));
                             }
                             re_smart_channel::Source::Sdk => {
-                                ready_and_waiting("Waiting for logging data from SDK")
+                                ready_and_waiting(ui, "Waiting for logging data from SDK");
                             }
                             re_smart_channel::Source::WsClient { ws_server_url } => {
                                 // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
-                                ready_and_waiting(&format!("Waiting for data from {ws_server_url}"))
+                                ready_and_waiting(
+                                    ui,
+                                    &format!("Waiting for data from {ws_server_url}"),
+                                );
                             }
                             re_smart_channel::Source::TcpServer { port } => {
-                                ready_and_waiting(&format!("Listening on port {port}"))
+                                ready_and_waiting(ui, &format!("Listening on port {port}"));
                             }
                         };
-                        ui.strong(text);
                     });
                 });
             } else {
