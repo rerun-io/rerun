@@ -24,16 +24,15 @@ pub struct TransformCache {
     unreachable_descendants: Vec<(EntityPath, UnreachableTransform)>,
 
     /// The first parent of reference_path that is no longer reachable.
-    first_unreachable_parent: (EntityPath, UnreachableTransform),
+    first_unreachable_parent: Option<(EntityPath, UnreachableTransform)>,
 }
 
 #[derive(Clone, Copy)]
 pub enum UnreachableTransform {
-    /// Not part of the hierarchy at all.
-    /// TODO(andreas): This is only needed for the "breaking out of the root" case that we want to scrap.
-    ///                 After that it's impossible to be unreachable since there can always be an identity matrix.
-    ///                 We already allow walking over unlogged paths (because why not)
-    Unconnected,
+    /// [`super::space_info::SpaceInfoCollection`] is outdated and can't find a corresponding space info for the given path.
+    ///
+    /// If at all, this should only happen for a single frame until space infos are rebuilt.
+    UnknownSpaceInfo,
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,
     /// Exiting out of a space with a pinhole camera that doesn't have a resolution is not supported.
@@ -45,8 +44,8 @@ pub enum UnreachableTransform {
 impl std::fmt::Display for UnreachableTransform {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Self::Unconnected =>
-                "No entity path connection from this space view.",
+            Self::UnknownSpaceInfo =>
+                "Can't determine transform because internal data structures are not in a valid state. Please file an issue on https://github.com/rerun-io/rerun/",
             Self::NestedPinholeCameras =>
                 "Can't display entities under nested pinhole cameras.",
             Self::UnknownTransform =>
@@ -75,7 +74,7 @@ impl TransformCache {
             reference_path: root_path.clone(),
             reference_from_entity_per_entity: Default::default(),
             unreachable_descendants: Default::default(),
-            first_unreachable_parent: (EntityPath::root(), UnreachableTransform::Unconnected),
+            first_unreachable_parent: None,
         };
 
         // Find the entity path tree for the root.
@@ -113,13 +112,6 @@ impl TransformCache {
         let mut encountered_pinhole = false;
         let mut reference_from_ancestor = glam::Mat4::IDENTITY;
         while let Some(parent_tree) = parent_tree_stack.pop() {
-            // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
-            if parent_tree.path.is_root() {
-                transforms.first_unreachable_parent =
-                    (parent_tree.path.clone(), UnreachableTransform::Unconnected);
-                break;
-            }
-
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match inverse_transform_at(
@@ -130,7 +122,7 @@ impl TransformCache {
             ) {
                 Err(unreachable_reason) => {
                     transforms.first_unreachable_parent =
-                        (parent_tree.path.clone(), unreachable_reason);
+                        Some((parent_tree.path.clone(), unreachable_reason));
                     break;
                 }
                 Ok(None) => {}

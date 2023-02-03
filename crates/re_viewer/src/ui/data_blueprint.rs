@@ -221,7 +221,7 @@ impl DataBlueprintTree {
             } else {
                 // Otherwise, create a new group which only contains this entity and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
-                    display_name: path_to_group_name(path, base_path),
+                    display_name: path_to_group_name(path),
                     ..Default::default()
                 });
                 self.add_group_to_hierarchy_recursively(new_group, path, base_path);
@@ -271,8 +271,7 @@ impl DataBlueprintTree {
 
         // Short circuit to the root group at base_path.
         // If the entity is outside of the base path we would walk up all the way to the root
-        // That's ok but we want to stop one element short (since a space view can only show elements under a shared path)
-        if &parent_path == base_path || parent_path.iter().count() == 1 {
+        if &parent_path == base_path {
             parent_path = EntityPath::root();
         }
 
@@ -289,7 +288,7 @@ impl DataBlueprintTree {
 
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
-                    display_name: path_to_group_name(&parent_path, base_path),
+                    display_name: path_to_group_name(&parent_path),
                     children: smallvec![new_group],
                     ..Default::default()
                 });
@@ -398,18 +397,6 @@ impl DataBlueprintTree {
     }
 }
 
-fn path_to_group_name(path: &EntityPath, base_path: &EntityPath) -> String {
-    // Root should never be pasesd in here, but handle it gracefully regardless.
-    let name = path.iter().last().map_or("/".to_owned(), |c| c.to_string());
-
-    // How many steps until a common ancestor?
-    let mut num_steps_until_common_ancestor = 0;
-    let mut common_ancestor = base_path.clone();
-    while !path.is_descendant_of(&common_ancestor) {
-        // Can never go beyond root because everything is a descendent of root, therefore this is safe.
-        common_ancestor = common_ancestor.parent().unwrap();
-        num_steps_until_common_ancestor += 1;
-    }
-
-    format!("{}{}", "../".repeat(num_steps_until_common_ancestor), name)
+fn path_to_group_name(path: &EntityPath) -> String {
+    path.iter().last().map_or("/".to_owned(), |c| c.to_string())
 }

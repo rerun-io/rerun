@@ -41,11 +41,6 @@ pub struct SpaceView {
     pub id: SpaceViewId,
     pub name: String,
 
-    /// Everything under this root *can* be shown in the space view.
-    ///
-    /// TODO(andreas): We decided to remove this concept.
-    pub root_path: EntityPath,
-
     /// The "anchor point" of this space view.
     /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
@@ -71,11 +66,6 @@ impl SpaceView {
         space_info: &SpaceInfo,
         queries_entities: &[EntityPath],
     ) -> Self {
-        let root_path = space_info.path.iter().next().map_or_else(
-            || space_info.path.clone(),
-            |c| EntityPath::from(vec![c.clone()]),
-        );
-
         let name = if queries_entities.len() == 1 {
             // a single entity in this space-view - name the space after it
             queries_entities[0].to_string()
@@ -90,7 +80,6 @@ impl SpaceView {
         Self {
             name,
             id: SpaceViewId::random(),
-            root_path,
             space_path: space_info.path.clone(),
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
