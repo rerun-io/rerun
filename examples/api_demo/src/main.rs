@@ -1,3 +1,5 @@
+// TODO: doc
+
 use std::f32::consts::{PI, TAU};
 
 use anyhow::{bail, Context};
@@ -12,10 +14,10 @@ use rerun::{
         re_memory::AccountingAllocator,
         re_sdk_comms,
     },
-    log_time, Box3D, ColorRGBA, Component, ComponentName, EntityPath, Label, LineStrip3D, Mesh3D,
-    MeshId, MsgSender, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session,
-    SignedAxis3, Tensor, TextEntry, Time, TimeInt, TimeType, Timeline, Transform, Vec3D,
-    ViewCoordinates,
+    log_time, AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA,
+    Component, ComponentName, EntityPath, Label, LineStrip3D, Mesh3D, MeshId, MsgSender, Point2D,
+    Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, SignedAxis3, Tensor,
+    TextEntry, Time, TimeInt, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -284,7 +286,147 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
     // (`log_segmentation_image`).
     // We're gonna need some of that.
 
-    // TODO: have to bring out the big guns for this one
+    // Log an image before we have set up our labels
+    use ndarray::prelude::*;
+    let mut segmentation_img = Array::<u8, _>::zeros((128, 128).f());
+    segmentation_img.slice_mut(s![10..20, 30..50]).fill(13);
+    segmentation_img.slice_mut(s![80..100, 60..80]).fill(42);
+    segmentation_img.slice_mut(s![20..50, 90..110]).fill(99);
+    MsgSender::new("seg_demo/img")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Tensor::try_from(
+            segmentation_img.as_standard_layout().view(),
+        )?])?
+        .send(session)?;
+
+    // Log a bunch of classified 2D points
+    MsgSender::new("seg_demo/single_point")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Point2D::new(64.0, 64.0)])?
+        .with_component(&[ClassId(13)])?
+        .send(session)?;
+    MsgSender::new("seg_demo/single_point_labeled")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[Point2D::new(90.0, 50.0)])?
+        .with_component(&[ClassId(13)])?
+        .with_component(&[Label("labeled point".into())])?
+        .send(session)?;
+    MsgSender::new("seg_demo/several_points0")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[
+            Point2D::new(20.0, 50.0),
+            Point2D::new(100.0, 70.0),
+            Point2D::new(60.0, 30.0),
+        ])?
+        .with_splat(ClassId(42))?
+        .send(session)?;
+    MsgSender::new("seg_demo/several_points1")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[
+            Point2D::new(40.0, 50.0),
+            Point2D::new(120.0, 70.0),
+            Point2D::new(80.0, 30.0),
+        ])?
+        .with_component(&[ClassId(13), ClassId(42), ClassId(99)])?
+        .send(session)?;
+    MsgSender::new("seg_demo/many points")
+        .with_time(timeline_sim_time, 1)
+        .with_component(
+            &(0..25)
+                .map(|i| Point2D::new(100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0))
+                .collect::<Vec<_>>(),
+        )?
+        .with_splat(ClassId(42))?
+        .send(session)?;
+    MsgSender::new("seg_demo_log")
+        .with_time(timeline_sim_time, 1)
+        .with_component(&[TextEntry::new(
+            "no rects, default colored points, a single point has a label",
+            None,
+        )])?
+        .send(session)?;
+
+    // Log an initial segmentation map with arbitrary colors
+    // TODO(cmc): now that's just painful
+    fn create_class(
+        id: u16,
+        label: Option<&str>,
+        color: Option<[u8; 3]>,
+    ) -> (ClassId, ClassDescription) {
+        (
+            ClassId(id),
+            ClassDescription {
+                info: AnnotationInfo {
+                    id,
+                    label: label.map(|label| Label(label.into())),
+                    color: color.map(|c| ColorRGBA::from([c[0], c[1], c[2], 255])),
+                },
+                ..Default::default()
+            },
+        )
+    }
+    MsgSender::new("seg_demo")
+        .with_time(timeline_sim_time, 2)
+        .with_component(&[AnnotationContext {
+            class_map: [
+                create_class(13, "label1".into(), None),
+                create_class(42, "label2".into(), None),
+                create_class(99, "label3".into(), None),
+            ]
+            .into_iter()
+            .collect(),
+        }])?
+        .send(session)?;
+    MsgSender::new("seg_demo_log")
+        .with_time(timeline_sim_time, 2)
+        .with_component(&[TextEntry::new(
+            "default colored rects, default colored points, all points except the \
+                bottom right clusters have labels",
+            None,
+        )])?
+        .send(session)?;
+
+    // Log an updated segmentation map with specific colors
+    MsgSender::new("seg_demo")
+        .with_time(timeline_sim_time, 3)
+        .with_component(&[AnnotationContext {
+            class_map: [
+                create_class(13, "label1".into(), [255, 0, 0].into()),
+                create_class(42, "label2".into(), [0, 255, 0].into()),
+                create_class(99, "label3".into(), [0, 0, 255].into()),
+            ]
+            .into_iter()
+            .collect(),
+        }])?
+        .send(session)?;
+    MsgSender::new("seg_demo_log")
+        .with_time(timeline_sim_time, 3)
+        .with_component(&[TextEntry::new(
+            "points/rects with user specified colors",
+            None,
+        )])?
+        .send(session)?;
+
+    // Log with a mixture of set and unset colors / labels
+    MsgSender::new("seg_demo")
+        .with_time(timeline_sim_time, 4)
+        .with_component(&[AnnotationContext {
+            class_map: [
+                create_class(13, None, [255, 0, 0].into()),
+                create_class(42, "label2".into(), [0, 255, 0].into()),
+                create_class(99, "label3".into(), None),
+            ]
+            .into_iter()
+            .collect(),
+        }])?
+        .send(session)?;
+    MsgSender::new("seg_demo_log")
+        .with_time(timeline_sim_time, 4)
+        .with_component(&[TextEntry::new(
+            "label1 disappears and everything with label3 is now default colored again",
+            None,
+        )])?
+        .send(session)?;
 
     Ok(())
 }

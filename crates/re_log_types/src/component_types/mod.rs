@@ -44,7 +44,7 @@ pub use arrow::Arrow3D;
 pub use bbox::Box3D;
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
-pub use context::AnnotationContext;
+pub use context::{AnnotationContext, AnnotationInfo, ClassDescription};
 pub use coordinates::ViewCoordinates;
 pub use instance_key::InstanceKey;
 pub use keypoint_id::KeypointId;
