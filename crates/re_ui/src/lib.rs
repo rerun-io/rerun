@@ -73,7 +73,7 @@ impl ReUi {
         }
     }
 
-    /// Margin on the side of views
+    /// Margin on all sides of views.
     pub fn view_padding() -> f32 {
         12.0
     }
@@ -98,6 +98,12 @@ impl ReUi {
         20.0
     }
 
+    /// Height of the title row in the blueprint view and selection view,
+    /// as well as the tab bar height in the viewport view.
+    pub fn top_bar_height() -> f32 {
+        28.0 // from figma 2022-02-03
+    }
+
     pub fn small_icon_size() -> egui::Vec2 {
         egui::Vec2::splat(12.0)
     }
@@ -107,16 +113,6 @@ impl ReUi {
     pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
         // Make sure buttons don't visually overflow:
         body.ui_mut().spacing_mut().interact_size.y = Self::table_line_height();
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn panel_frame(&self) -> egui::Frame {
-        let style = self.egui_ctx.style();
-        egui::Frame {
-            fill: style.visuals.panel_fill,
-            inner_margin: Self::view_padding().into(),
-            ..Default::default()
-        }
     }
 
     #[must_use]
@@ -414,6 +410,7 @@ impl ReUi {
 pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
     let mut dock_style = egui_dock::Style::from_egui(style);
     dock_style.separator_width = 2.0;
+    dock_style.tab_bar_height = ReUi::top_bar_height();
     dock_style.default_inner_margin = 0.0.into();
     dock_style.show_close_buttons = false;
     dock_style.tab_include_scrollarea = false;

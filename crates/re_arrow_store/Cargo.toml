@@ -9,19 +9,21 @@ publish = false
 
 [features]
 default = []
+
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
+
 ## Integration with `polars`, to efficiently use the datastore with dataframes.
 polars = ["dep:polars-core", "dep:polars-ops"]
 
 
 [dependencies]
-# Rerun
+# Rerun dependencies:
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
-# External
+# External dependencies:
 ahash = "0.8"
 anyhow.workspace = true
 arrow2 = { workspace = true, features = [
@@ -41,7 +43,7 @@ thiserror.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true
 
-# Optional
+# Optional dependencies:
 polars-core = { workspace = true, optional = true, features = [
   "diagonal_concat",
   "dtype-date",

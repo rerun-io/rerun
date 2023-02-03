@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::Context as _;
 use smallvec::SmallVec;
 
 use crate::debug_label::DebugLabel;

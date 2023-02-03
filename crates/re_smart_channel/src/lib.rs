@@ -9,10 +9,33 @@ use crossbeam::channel::{RecvError, SendError, TryRecvError};
 use instant::Instant;
 
 /// Where is the messages coming from?
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
-    Network,
-    File,
+    /// The source if a file on disk
+    File { path: std::path::PathBuf },
+
+    /// The source is the logging sdk directly, same process.
+    Sdk,
+
+    /// We are a WebSocket client connected to a rerun server.
+    ///
+    /// We are likely running in a web browser.
+    WsClient {
+        /// The server we are connected to (or are trying to connect to)
+        ws_server_url: String,
+    },
+
+    /// We are a TCP server listening on this port
+    TcpServer { port: u16 },
+}
+
+impl Source {
+    pub fn is_network(&self) -> bool {
+        match self {
+            Self::File { .. } | Self::Sdk => false,
+            Self::WsClient { .. } | Self::TcpServer { .. } => true,
+        }
+    }
 }
 
 pub fn smart_channel<T: Send>(source: Source) -> (Sender<T>, Receiver<T>) {
@@ -116,8 +139,8 @@ impl<T: Send> Receiver<T> {
 
     /// Where is the data coming from?
     #[inline]
-    pub fn source(&self) -> Source {
-        self.source
+    pub fn source(&self) -> &Source {
+        &self.source
     }
 
     /// Is the channel currently empty of messages?
@@ -150,13 +173,13 @@ impl<T: Send> Receiver<T> {
     /// Care must be taken to use [`Self::recv_with_send_time`] and [`Sender::send_at`].
     /// This is a very leaky abstraction, and it would be nice with a refactor.
     pub fn chained_channel(&self) -> (Sender<T>, Receiver<T>) {
-        smart_channel_with_stats(self.source, self.stats.clone())
+        smart_channel_with_stats(self.source.clone(), self.stats.clone())
     }
 }
 
 #[test]
 fn test_smart_channel() {
-    let (tx, rx) = smart_channel(Source::Network);
+    let (tx, rx) = smart_channel(Source::Sdk); // whatever source
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
