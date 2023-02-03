@@ -167,10 +167,10 @@ impl SpaceInfoCollection {
         // To make our heuristics work we pretend direct child of the root has a transform,
         // breaking the pattern applied for everything else where we create a SpaceInfo once we hit a transform.
         //
-        // TODO(andreas): Our dependency on SpaceInfo in this way is quite telling - we should be able to create SpaceVies without having a corresponding space view.
+        // TODO(andreas): Our dependency on SpaceInfo in this way is quite telling - we should be able to create a SpaceView without having a corresponding SpaceInfo
         //                Currently too many things depend on every SpaceView being backed up by a concrete SpaceInfo on its space path.
         if query_transform(entity_db, &EntityPath::root(), &query).is_some() {
-            re_log::warn_once!("The root entity has a _transform! This will have no effect. Did you mean to apply the transform elsewhere?");
+            re_log::warn_once!("The root entity has a 'transform' component! This will have no effect. Did you mean to apply the transform elsewhere?");
         }
         let mut root_space_info = SpaceInfo::new(EntityPath::root());
         root_space_info
@@ -190,7 +190,6 @@ impl SpaceInfoCollection {
                 .child_spaces
                 .insert(tree.path.clone(), transform);
 
-            // From there on, every time there is a transform we create a space info.
             add_children(entity_db, &mut spaces_info, &mut space_info, tree, &query);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
