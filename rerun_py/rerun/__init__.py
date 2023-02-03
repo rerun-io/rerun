@@ -1,5 +1,5 @@
 """
-This is a shim necessary to make maturin dev builds work properly.
+A shim necessary to make maturin dev builds work properly.
 
 Our maturin builds stick our package inside of a "rerun_sdk" folder
 to avoid conflicting with the non-rerun "rerun" package. In released
@@ -11,8 +11,8 @@ When we encounter this file on import, we instead redirect to the
 real rerun module by adding it to the path and then, and then
 replacing our own module content with it.
 """
-import sys
 import pathlib
+import sys
 
 real_path = pathlib.Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 
