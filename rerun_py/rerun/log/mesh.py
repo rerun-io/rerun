@@ -37,7 +37,7 @@ def log_mesh(
     Example:
     -------
     ```
-    # A simple ref triangle:
+    # A simple red triangle:
     positions = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
     indices = np.array([0, 1, 2])
     normals = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0])
