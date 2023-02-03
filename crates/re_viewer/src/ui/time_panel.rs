@@ -55,7 +55,7 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        let x_margin = 16.0;
+        let x_margin = 8.0;
         let y_margin = 8.0;
         let top_bar_height = 28.0;
 
@@ -132,7 +132,13 @@ impl TimePanel {
                         );
 
                         ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
-                        self.expanded_ui(ctx, blueprint, ui);
+
+                        // Add extra margin on the left which was intentionally missing on the controls.
+                        let mut top_rop_frame = egui::Frame::default();
+                        top_rop_frame.inner_margin.left = 8.0;
+                        top_rop_frame.show(ui, |ui| {
+                            self.expanded_ui(ctx, blueprint, ui);
+                        });
                     });
                 }
             },
