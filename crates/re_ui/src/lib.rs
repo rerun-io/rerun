@@ -370,9 +370,11 @@ impl ReUi {
                 ui.painter()
                     .galley_with_color(text_pos, galley, visuals.text_color());
 
+                // Let the rect cover the full panel width:
+                let bg_rect = rect.expand2(egui::vec2(1000.0, 0.0));
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_filled(rect, visuals.rounding, visuals.bg_fill),
+                    Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),
                 );
 
                 if header_response.clicked() {
