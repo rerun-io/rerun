@@ -81,7 +81,7 @@ impl Blueprint {
         spaces_info: &SpaceInfoCollection,
     ) {
         egui::TopBottomPanel::top("blueprint_panel_title_bar")
-            .exact_height(re_ui::ReUi::top_bar_height())
+            .exact_height(re_ui::ReUi::title_bar_height())
             .frame(egui::Frame {
                 inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
                 ..Default::default()

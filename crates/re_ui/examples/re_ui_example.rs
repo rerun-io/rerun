@@ -79,7 +79,7 @@ impl eframe::App for ExampleApp {
             })
             .show_animated(egui_ctx, self.left_panel, |ui| {
                 egui::TopBottomPanel::top("left_panel_tio_bar")
-                    .exact_height(re_ui::ReUi::top_bar_height())
+                    .exact_height(re_ui::ReUi::title_bar_height())
                     .frame(egui::Frame {
                         inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
                         ..Default::default()
