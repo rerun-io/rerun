@@ -38,7 +38,7 @@ impl LoadedMesh {
         crate::profile_function!();
 
         let mesh_instances = match format {
-            MeshFormat::Glb | MeshFormat::Gltf | MeshFormat::Obj => {
+            MeshFormat::Glb | MeshFormat::Gltf => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(
                     &name,
                     bytes,
@@ -46,6 +46,8 @@ impl LoadedMesh {
                     render_ctx,
                 )
             }
+            // TODO(cmc): support obj
+            MeshFormat::Obj => anyhow::bail!(".obj files are not supported yet"),
         }?;
         let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
