@@ -18,7 +18,7 @@ from rerun.log.points import log_point, log_points
 from rerun.log.rects import log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
-from rerun.log.text import log_text_entry, LoggingHandler
+from rerun.log.text import LoggingHandler, log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
