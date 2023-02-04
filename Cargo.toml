@@ -69,13 +69,13 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
 # 2023-02-04 - winit 0.28
-ecolor = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
-eframe = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
-egui = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
-emath = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
-epaint = { git = "https://github.com/emilk/egui", rev = "430cbe541ce3966129878e513cec7f64ef764249" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+eframe = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+egui = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+emath = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+epaint = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

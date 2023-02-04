@@ -919,13 +919,13 @@ fn top_panel(
 
     let native_pixels_per_point = frame.info().native_pixels_per_point;
     let fullscreen = {
-        #[cfg(target_os = "macos")]
-        {
-            frame.info().window_info.fullscreen
-        }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_arch = "wasm32")]
         {
             false
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            frame.info().window_info.fullscreen
         }
     };
     let top_bar_style = app.re_ui.top_bar_style(native_pixels_per_point, fullscreen);
@@ -934,12 +934,19 @@ fn top_panel(
         .frame(panel_frame)
         .exact_height(top_bar_style.height)
         .show(egui_ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            let _response = egui::menu::bar(ui, |ui| {
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
                 top_bar_ui(ui, frame, app, gpu_resource_stats);
-            });
+            })
+            .response;
+
+            #[cfg(not(target_arch = "wasm32"))]
+            if re_ui::FULLSIZE_CONTENT && _response.interact(egui::Sense::click()).double_clicked()
+            {
+                frame.set_maximized(!frame.info().window_info.maximized);
+            }
         });
 }
 
