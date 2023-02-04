@@ -59,14 +59,22 @@ impl TimePanel {
         let y_margin = 8.0;
         let top_bar_height = 28.0;
 
+        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
+        // (on the inner margin we counteract this again)
+        let margin_offset = ctx.re_ui.design_tokens.bottom_bar_stroke.width * 0.5;
+
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
-            inner_margin: egui::style::Margin::symmetric(x_margin, y_margin),
+            inner_margin: egui::style::Margin::symmetric(
+                x_margin + margin_offset,
+                y_margin + margin_offset,
+            ),
             outer_margin: egui::style::Margin {
-                left: 0.0,
-                right: 0.0,
-                top: 1.0, // It's *very* subtle, without this margin, the stroke looks cut-off/bad.
-                bottom: 0.0,
+                left: -margin_offset,
+                right: -margin_offset,
+                // Add a proper stoke width thick margin on the top.
+                top: ctx.re_ui.design_tokens.bottom_bar_stroke.width,
+                bottom: -margin_offset,
             },
             stroke: ctx.re_ui.design_tokens.bottom_bar_stroke,
             rounding: ctx.re_ui.design_tokens.bottom_bar_rounding,
