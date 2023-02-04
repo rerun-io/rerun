@@ -696,7 +696,7 @@ fn image_ui(
 
     let font_id = egui::TextStyle::Body.resolve(ui.style());
 
-    let margin = egui::vec2(0.0, 12.0); // Add some margin for the arrow overlay.
+    let margin = egui::vec2(0.0, 0.0); // Add some margin for the arrow overlay.
 
     let (response, painter, image_rect) =
         view_state.texture_settings.paint_image(ui, margin, image);
@@ -704,14 +704,14 @@ fn image_ui(
     let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
 
     if response.hovered() && !is_anything_being_dragged {
-        paint_axis_names(ui, painter, image_rect, font_id, dimension_labels);
+        paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
     }
 }
 
 fn paint_axis_names(
     ui: &mut egui::Ui,
-    mut painter: egui::Painter,
-    image_rect: egui::Rect,
+    painter: &egui::Painter,
+    rect: egui::Rect,
     font_id: egui::FontId,
     dimension_labels: [(String, bool); 2],
 ) {
@@ -719,8 +719,7 @@ fn paint_axis_names(
     let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
     let text_color = ui.visuals().text_color();
 
-    painter.set_clip_rect(egui::Rect::EVERYTHING);
-    // Allow painting axis names outside of our bounds!
+    let rect = rect.shrink(8.0); // Add some margin
 
     // We make sure that the label for the X axis is always at Y=0,
     // and that the label for the Y axis is always at X=0, no matter what inversions.
@@ -744,9 +743,9 @@ fn paint_axis_names(
         let text_rect = if invert_width {
             // On left, pointing left:
             let (pos, align) = if invert_height {
-                (image_rect.left_bottom(), Align2::LEFT_TOP)
+                (rect.left_bottom(), Align2::LEFT_BOTTOM)
             } else {
-                (image_rect.left_top(), Align2::LEFT_BOTTOM)
+                (rect.left_top(), Align2::LEFT_TOP)
             };
             painter.text(
                 pos,
@@ -758,9 +757,9 @@ fn paint_axis_names(
         } else {
             // On right, pointing right:
             let (pos, align) = if invert_height {
-                (image_rect.right_bottom(), Align2::RIGHT_TOP)
+                (rect.right_bottom(), Align2::RIGHT_BOTTOM)
             } else {
-                (image_rect.right_top(), Align2::RIGHT_BOTTOM)
+                (rect.right_top(), Align2::RIGHT_TOP)
             };
             painter.text(
                 pos,
@@ -784,9 +783,9 @@ fn paint_axis_names(
             let galley = painter.layout_no_wrap(format!("➡ {height_name}"), font_id, text_color);
             let galley_size = galley.size();
             let pos = if invert_width {
-                image_rect.right_top() - egui::vec2(0.0, -galley_size.x)
+                rect.right_top() + egui::vec2(-galley_size.y, galley_size.x)
             } else {
-                image_rect.left_top() - egui::vec2(galley_size.y, -galley_size.x)
+                rect.left_top() + egui::vec2(0.0, galley_size.x)
             };
             painter.add(TextShape {
                 pos,
@@ -804,9 +803,9 @@ fn paint_axis_names(
             let galley = painter.layout_no_wrap(format!("{height_name} ⬅"), font_id, text_color);
             let galley_size = galley.size();
             let pos = if invert_width {
-                image_rect.right_bottom()
+                rect.right_bottom() - egui::vec2(galley_size.y, 0.0)
             } else {
-                image_rect.left_bottom() - egui::vec2(galley_size.y, 0.0)
+                rect.left_bottom()
             };
             painter.add(TextShape {
                 pos,
