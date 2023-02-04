@@ -734,7 +734,11 @@ fn paint_axis_names(
     let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
     let text_color = ui.visuals().text_color();
 
-    let rect = rect.shrink(14.0); // Add some margin
+    let rounding = re_ui::ReUi::normal_rounding();
+    let inner_margin = rounding;
+    let outer_margin = 8.0;
+
+    let rect = rect.shrink(outer_margin + inner_margin);
 
     // We make sure that the label for the X axis is always at Y=0,
     // and that the label for the Y axis is always at X=0, no matter what inversions.
@@ -755,7 +759,11 @@ fn paint_axis_names(
     let paint_text_bg = |text_background, text_rect: egui::Rect| {
         painter.set(
             text_background,
-            egui::Shape::rect_filled(text_rect.expand(6.0), 6.0, ui.visuals().panel_fill),
+            egui::Shape::rect_filled(
+                text_rect.expand(inner_margin),
+                rounding,
+                ui.visuals().panel_fill,
+            ),
         );
     };
 
