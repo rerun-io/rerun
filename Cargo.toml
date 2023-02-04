@@ -65,14 +65,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-03 - fix clear color color space
-ecolor = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
-eframe = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
-egui = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
-emath = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
-epaint = { git = "https://github.com/emilk/egui", rev = "ecd0f43c1f1dd45b5f6147cf823d82900353897c" }
+# 2023-02-04 - fix clear color color space
+ecolor = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
+eframe = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
+egui = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
+emath = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
+epaint = { git = "https://github.com/emilk/egui", rev = "e4eaf99072db45c6ce6f6d86f09d5b4de237df1e" }
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
