@@ -1,6 +1,7 @@
 use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
+use egui::NumExt as _;
 use egui_notify::Toasts;
 use instant::Instant;
 use itertools::Itertools as _;
@@ -871,7 +872,7 @@ impl AppState {
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
-            inner_margin: egui::style::Margin::same(0.0),
+            inner_margin: egui::Margin::same(0.0),
             ..Default::default()
         };
 
@@ -904,12 +905,10 @@ fn top_panel(
 ) {
     crate::profile_function!();
 
-    let panel_frame = {
-        egui::Frame {
-            inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
-            fill: app.re_ui.design_tokens.top_bar_color,
-            ..Default::default()
-        }
+    let panel_frame = egui::Frame {
+        inner_margin: re_ui::ReUi::top_bar_margin(),
+        fill: app.re_ui.design_tokens.top_bar_color,
+        ..Default::default()
     };
 
     let native_pixels_per_point = frame.info().native_pixels_per_point;
@@ -941,6 +940,7 @@ fn top_panel(
 fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
+    let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
 
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
     let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
@@ -1017,8 +1017,13 @@ fn top_bar_ui(
         input_latency_label_ui(ui, app);
     }
 
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
+    if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // Make the first button the same distance form the side as from the top,
+            // no matter how high the top bar is.
+            let extra_margin = (ui.available_height() - 24.0) / 2.0;
+            ui.add_space(extra_margin);
+
             let selected_app_id = log_db
                 .recording_info()
                 .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1068,8 +1073,8 @@ fn top_bar_ui(
                     egui::warn_if_debug_build(ui);
                 });
             }
-        }
-    });
+        });
+    }
 }
 
 fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
