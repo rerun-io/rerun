@@ -384,6 +384,12 @@ impl App {
 }
 
 impl eframe::App for App {
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        // It's rare and subtle, but this color can get through at panel roundings.
+        // (duplicated for `RemoteViewerApp`)
+        visuals.panel_fill.to_normalized_gamma_f32()
+    }
+
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
     }

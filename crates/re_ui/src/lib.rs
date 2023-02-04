@@ -416,6 +416,49 @@ impl ReUi {
         // Spread rows a bit to make it easier to see the groupings
         egui::Grid::new(id).spacing(ui.style().spacing.item_spacing + egui::vec2(0.0, 8.0))
     }
+
+    /// Draws a shadow into the given rect with the shadow direction given from dark to light
+    #[allow(clippy::unused_self)]
+    pub fn draw_shadow_line(&self, ui: &mut egui::Ui, rect: Rect, direction: egui::Direction) {
+        let color_dark = self.design_tokens.shadow_gradient_dark_start;
+        let color_bright = Color32::TRANSPARENT;
+
+        let (left_top, right_top, left_bottom, right_bottom) = match direction {
+            egui::Direction::RightToLeft => (color_bright, color_dark, color_bright, color_dark),
+            egui::Direction::LeftToRight => (color_dark, color_bright, color_dark, color_bright),
+            egui::Direction::BottomUp => (color_bright, color_bright, color_dark, color_dark),
+            egui::Direction::TopDown => (color_dark, color_dark, color_bright, color_bright),
+        };
+
+        use egui::epaint::Vertex;
+        let shadow = egui::Mesh {
+            indices: vec![0, 1, 2, 2, 1, 3],
+            vertices: vec![
+                Vertex {
+                    pos: rect.left_top(),
+                    uv: egui::epaint::WHITE_UV,
+                    color: left_top,
+                },
+                Vertex {
+                    pos: rect.right_top(),
+                    uv: egui::epaint::WHITE_UV,
+                    color: right_top,
+                },
+                Vertex {
+                    pos: rect.left_bottom(),
+                    uv: egui::epaint::WHITE_UV,
+                    color: left_bottom,
+                },
+                Vertex {
+                    pos: rect.right_bottom(),
+                    uv: egui::epaint::WHITE_UV,
+                    color: right_bottom,
+                },
+            ],
+            texture_id: Default::default(),
+        };
+        ui.painter().add(shadow);
+    }
 }
 
 // ----------------------------------------------------------------------------
