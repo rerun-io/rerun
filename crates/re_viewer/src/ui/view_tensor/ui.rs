@@ -719,7 +719,7 @@ fn paint_axis_names(
     let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
     let text_color = ui.visuals().text_color();
 
-    let rect = rect.shrink(8.0); // Add some margin
+    let rect = rect.shrink(14.0); // Add some margin
 
     // We make sure that the label for the X axis is always at Y=0,
     // and that the label for the Y axis is always at X=0, no matter what inversions.
@@ -736,6 +736,13 @@ fn paint_axis_names(
     // .......... r
 
     // TODO(emilk): draw actual arrows behind the text instead of the ugly emoji arrows
+
+    let paint_text_bg = |text_background, text_rect: egui::Rect| {
+        painter.set(
+            text_background,
+            egui::Shape::rect_filled(text_rect.expand(6.0), 6.0, ui.visuals().panel_fill),
+        );
+    };
 
     // Label for X axis:
     {
@@ -769,10 +776,7 @@ fn paint_axis_names(
                 text_color,
             )
         };
-        painter.set(
-            text_background,
-            egui::Shape::rect_filled(text_rect, 2.0, ui.visuals().panel_fill),
-        );
+        paint_text_bg(text_background, text_rect);
     }
 
     // Label for Y axis:
@@ -819,10 +823,7 @@ fn paint_axis_names(
                 egui::vec2(galley_size.y, galley_size.x),
             )
         };
-        painter.set(
-            text_background,
-            egui::Shape::rect_filled(text_rect, 2.0, ui.visuals().panel_fill),
-        );
+        paint_text_bg(text_background, text_rect);
     }
 }
 
