@@ -37,12 +37,9 @@ impl SelectionPanel {
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
                 egui::TopBottomPanel::top("selection_panel_title_bar")
-                    .exact_height(re_ui::ReUi::top_bar_height())
+                    .exact_height(re_ui::ReUi::title_bar_height())
                     .frame(egui::Frame {
-                        inner_margin: egui::style::Margin::symmetric(
-                            re_ui::ReUi::view_padding(),
-                            0.0,
-                        ),
+                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
                         ..Default::default()
                     })
                     .show_inside(ui, |ui| {
@@ -57,7 +54,7 @@ impl SelectionPanel {
                     .auto_shrink([false; 2])
                     .show(ui, |ui| {
                         egui::Frame {
-                            inner_margin: egui::style::Margin::same(re_ui::ReUi::view_padding()),
+                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
                             ..Default::default()
                         }
                         .show(ui, |ui| {

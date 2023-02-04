@@ -98,7 +98,7 @@ impl SpaceInfo {
 /// Information about all spaces.
 ///
 /// This is gathered by analyzing the transform hierarchy of the entities:
-/// For every child of the root there is a space info.
+/// For every child of the root there is a space info, as well as the root itself.
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
 ///
 /// Expected to be recreated every frame (or whenever new data is available).
@@ -163,20 +163,39 @@ impl SpaceInfoCollection {
 
         let mut spaces_info = Self::default();
 
+        // The root itself.
+        // To make our heuristics work we pretend direct child of the root has a transform,
+        // breaking the pattern applied for everything else where we create a SpaceInfo once we hit a transform.
+        //
+        // TODO(andreas): Our dependency on SpaceInfo in this way is quite telling - we should be able to create a SpaceView without having a corresponding SpaceInfo
+        //                Currently too many things depend on every SpaceView being backed up by a concrete SpaceInfo on its space path.
+        if query_transform(entity_db, &EntityPath::root(), &query).is_some() {
+            re_log::warn_once!("The root entity has a 'transform' component! This will have no effect. Did you mean to apply the transform elsewhere?");
+        }
+        let mut root_space_info = SpaceInfo::new(EntityPath::root());
+        root_space_info
+            .descendants_without_transform
+            .insert(EntityPath::root());
+
         for tree in entity_db.tree.children.values() {
-            // Each root entity is its own space (or should be)
-
-            if query_transform(entity_db, &tree.path, &query).is_some() {
-                re_log::warn_once!(
-                    "Root entity '{}' has a _transform - this is not allowed!",
-                    tree.path
-                );
-            }
-
             let mut space_info = SpaceInfo::new(tree.path.clone());
+            let transform = query_transform(entity_db, &EntityPath::root(), &query)
+                .unwrap_or(Transform::Rigid3(re_log_types::Rigid3::IDENTITY));
+            space_info.parent = Some((EntityPath::root(), transform.clone()));
+            space_info
+                .descendants_without_transform
+                .insert(tree.path.clone());
+
+            root_space_info
+                .child_spaces
+                .insert(tree.path.clone(), transform);
+
             add_children(entity_db, &mut spaces_info, &mut space_info, tree, &query);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
+        spaces_info
+            .spaces
+            .insert(EntityPath::root(), root_space_info);
 
         for (entity_path, space_info) in &mut spaces_info.spaces {
             space_info.coordinates = query_view_coordinates(entity_db, entity_path, &query);
@@ -209,8 +228,6 @@ impl SpaceInfoCollection {
     ///
     /// For how, you need to check [`crate::misc::TransformCache`]!
     /// Note that in any individual frame, entities may or may not be reachable.
-    ///
-    /// If `from` and `to_reference` are not under the same root branch, they are regarded as [`UnreachableTransform::Unconnected`]
     pub fn is_reachable_by_transform(
         &self,
         from: &EntityPath,
@@ -218,31 +235,29 @@ impl SpaceInfoCollection {
     ) -> Result<(), UnreachableTransform> {
         crate::profile_function!();
 
-        // By convention we regard the global hierarchy as a forest - don't allow breaking out of the current tree.
-        if from.iter().next() != to_reference.iter().next() {
-            return Err(UnreachableTransform::Unconnected);
-        }
-
         // Get closest space infos for the given entity paths.
         let Some(mut from_space) = self.get_first_parent_with_info(from) else {
             re_log::warn_once!("{} not part of space infos", from);
-            return Err(UnreachableTransform::Unconnected);
+            return Err(UnreachableTransform::UnknownSpaceInfo);
         };
         let Some(mut to_reference_space) = self.get_first_parent_with_info(to_reference) else {
             re_log::warn_once!("{} not part of space infos", to_reference);
-            return Err(UnreachableTransform::Unconnected);
+            return Err(UnreachableTransform::UnknownSpaceInfo);
         };
 
-        // If this is not true, the path we're querying, `from`, is outside of the tree the reference node.
-        // Note that this means that all transforms on the way are inversed!
-        let from_is_child_of_reference = from.is_descendant_of(to_reference);
-
         // Reachability is (mostly) commutative!
-        // This means we can simply walk from the lower node to the parent until we're on the same node
+        // This means we can simply walk from both nodes up until we find a common ancestor!
         // If we haven't encountered any obstacles, we're fine!
         let mut encountered_pinhole = false;
         while from_space.path != to_reference_space.path {
-            let parent = if from_is_child_of_reference {
+            // Decide if we should walk up "from" or "to_reference"
+            // If "from" is a descendant of "to_reference", we walk up "from"
+            // Otherwise we walk up on "to_reference".
+            //
+            // If neither is a descendant of the other it doesn't matter which one we walk up, since we eventually going to hit common ancestor!
+            let walk_up_from = from_space.path.is_descendant_of(&to_reference_space.path);
+
+            let parent = if walk_up_from {
                 &from_space.parent
             } else {
                 &to_reference_space.parent
@@ -258,7 +273,7 @@ impl SpaceInfoCollection {
                             Err(UnreachableTransform::NestedPinholeCameras)
                         } else {
                             encountered_pinhole = true;
-                            if pinhole.resolution.is_none() && !from_is_child_of_reference {
+                            if pinhole.resolution.is_none() && !walk_up_from {
                                 Err(UnreachableTransform::InversePinholeCameraWithoutResolution)
                             } else {
                                 Ok(())
@@ -269,10 +284,10 @@ impl SpaceInfoCollection {
 
                 let Some(parent_space) = self.get(parent_path) else {
                     re_log::warn_once!("{} not part of space infos", parent_path);
-                    return Err(UnreachableTransform::Unconnected);
+                    return Err(UnreachableTransform::UnknownSpaceInfo);
                 };
 
-                if from_is_child_of_reference {
+                if walk_up_from {
                     from_space = parent_space;
                 } else {
                     to_reference_space = parent_space;
@@ -283,7 +298,7 @@ impl SpaceInfoCollection {
                     from,
                     to_reference
                 );
-                return Err(UnreachableTransform::Unconnected);
+                return Err(UnreachableTransform::UnknownSpaceInfo);
             }
         }
 

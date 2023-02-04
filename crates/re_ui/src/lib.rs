@@ -98,9 +98,18 @@ impl ReUi {
         20.0
     }
 
+    pub fn top_bar_margin() -> egui::Margin {
+        egui::Margin::symmetric(8.0, 2.0)
+    }
+
+    /// Height of the top-most bar.
+    pub fn top_bar_height() -> f32 {
+        44.0 // from figma 2022-02-03
+    }
+
     /// Height of the title row in the blueprint view and selection view,
     /// as well as the tab bar height in the viewport view.
-    pub fn top_bar_height() -> f32 {
+    pub fn title_bar_height() -> f32 {
         28.0 // from figma 2022-02-03
     }
 
@@ -179,13 +188,16 @@ impl ReUi {
         let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
         let height = if make_room_for_window_buttons {
+            // On mac we want to match the height of the native red/yellow/green close/minimize/maximize buttons.
+            // TODO(emilk): move the native window buttons to match our Self::title_bar_height
+
             // Use more vertical space when zoomed in…
             let height = native_buttons_size_in_native_scale.y;
 
             // …but never shrink below the native button height when zoomed out.
             height.max(gui_zoom * native_buttons_size_in_native_scale.y)
         } else {
-            self.egui_ctx.style().spacing.interact_size.y
+            Self::top_bar_height() - Self::top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {
@@ -455,7 +467,7 @@ impl ReUi {
 pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
     let mut dock_style = egui_dock::Style::from_egui(style);
     dock_style.separator_width = 2.0;
-    dock_style.tab_bar_height = ReUi::top_bar_height();
+    dock_style.tab_bar_height = ReUi::title_bar_height();
     dock_style.default_inner_margin = 0.0.into();
     dock_style.show_close_buttons = false;
     dock_style.tab_include_scrollarea = false;

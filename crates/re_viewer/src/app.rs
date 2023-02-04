@@ -1,6 +1,7 @@
 use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
+use egui::NumExt as _;
 use egui_notify::Toasts;
 use instant::Instant;
 use itertools::Itertools as _;
@@ -475,26 +476,47 @@ impl eframe::App for App {
             if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.centered_and_justified(|ui| {
-                        fn ready_and_waiting(txt: &str) -> String {
-                            format!("Ready!\n\n{txt}")
+                        fn ready_and_waiting(ui: &mut egui::Ui, txt: &str) {
+                            let style = ui.style();
+                            let mut layout_job = egui::text::LayoutJob::default();
+                            layout_job.append(
+                                "Ready",
+                                0.0,
+                                egui::TextFormat::simple(
+                                    egui::TextStyle::Heading.resolve(style),
+                                    style.visuals.strong_text_color(),
+                                ),
+                            );
+                            layout_job.append(
+                                &format!("\n\n{txt}"),
+                                0.0,
+                                egui::TextFormat::simple(
+                                    egui::TextStyle::Body.resolve(style),
+                                    style.visuals.text_color(),
+                                ),
+                            );
+                            layout_job.halign = egui::Align::Center;
+                            ui.label(layout_job);
                         }
 
-                        let text = match rx.source() {
+                        match rx.source() {
                             re_smart_channel::Source::File { path } => {
-                                format!("Loading {}…", path.display())
+                                ui.strong(format!("Loading {}…", path.display()));
                             }
                             re_smart_channel::Source::Sdk => {
-                                ready_and_waiting("Waiting for logging data from SDK")
+                                ready_and_waiting(ui, "Waiting for logging data from SDK");
                             }
                             re_smart_channel::Source::WsClient { ws_server_url } => {
                                 // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
-                                ready_and_waiting(&format!("Waiting for data from {ws_server_url}"))
+                                ready_and_waiting(
+                                    ui,
+                                    &format!("Waiting for data from {ws_server_url}"),
+                                );
                             }
                             re_smart_channel::Source::TcpServer { port } => {
-                                ready_and_waiting(&format!("Listening on port {port}"))
+                                ready_and_waiting(ui, &format!("Listening on port {port}"));
                             }
                         };
-                        ui.strong(text);
                     });
                 });
             } else {
@@ -856,7 +878,7 @@ impl AppState {
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
-            inner_margin: egui::style::Margin::same(0.0),
+            inner_margin: egui::Margin::same(0.0),
             ..Default::default()
         };
 
@@ -889,12 +911,10 @@ fn top_panel(
 ) {
     crate::profile_function!();
 
-    let panel_frame = {
-        egui::Frame {
-            inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
-            fill: app.re_ui.design_tokens.top_bar_color,
-            ..Default::default()
-        }
+    let panel_frame = egui::Frame {
+        inner_margin: re_ui::ReUi::top_bar_margin(),
+        fill: app.re_ui.design_tokens.top_bar_color,
+        ..Default::default()
     };
 
     let native_pixels_per_point = frame.info().native_pixels_per_point;
@@ -926,6 +946,7 @@ fn top_panel(
 fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
+    let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
 
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
     let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
@@ -1002,8 +1023,13 @@ fn top_bar_ui(
         input_latency_label_ui(ui, app);
     }
 
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
+    if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // Make the first button the same distance form the side as from the top,
+            // no matter how high the top bar is.
+            let extra_margin = (ui.available_height() - 24.0) / 2.0;
+            ui.add_space(extra_margin);
+
             let selected_app_id = log_db
                 .recording_info()
                 .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1053,8 +1079,8 @@ fn top_bar_ui(
                     egui::warn_if_debug_build(ui);
                 });
             }
-        }
-    });
+        });
+    }
 }
 
 fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
@@ -1343,6 +1369,43 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
         .clicked()
     {
         ui.close_menu();
+    }
+
+    ui.separator();
+
+    let mut debug = ui.style().debug;
+    let mut any_clicked = false;
+
+    any_clicked |= ui
+        .checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
+        .on_hover_text("However over widgets to see their rectangles")
+        .changed();
+    any_clicked |= ui
+        .checkbox(&mut debug.show_expand_width, "Show expand width")
+        .on_hover_text("Show which widgets make their parent wider")
+        .changed();
+    any_clicked |= ui
+        .checkbox(&mut debug.show_expand_height, "Show expand height")
+        .on_hover_text("Show which widgets make their parent higher")
+        .changed();
+    any_clicked |= ui.checkbox(&mut debug.show_resize, "Show resize").changed();
+    any_clicked |= ui
+        .checkbox(
+            &mut debug.show_interactive_widgets,
+            "Show interactive widgets",
+        )
+        .on_hover_text("Show an overlay on all interactive widgets.")
+        .changed();
+    // This option currently causes the viewer to hang.
+    // any_clicked |= ui
+    //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
+    //     .on_hover_text("Show what widget blocks the interaction of another widget.")
+    //     .changed();
+
+    if any_clicked {
+        let mut style = (*ui.ctx().style()).clone();
+        style.debug = debug;
+        ui.ctx().set_style(style);
     }
 
     ui.separator();

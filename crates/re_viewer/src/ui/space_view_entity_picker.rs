@@ -75,20 +75,18 @@ impl SpaceViewEntityPicker {
 
 fn add_entities_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
     let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
-    // TODO(andreas): remove use space_view.root_path, just show everything
-    if let Some(tree) = ctx.log_db.entity_db.tree.subtree(&space_view.root_path) {
-        let entities_add_info = create_entity_add_info(ctx, tree, space_view, &spaces_info);
+    let tree = &ctx.log_db.entity_db.tree;
+    let entities_add_info = create_entity_add_info(ctx, tree, space_view, &spaces_info);
 
-        add_entities_tree_ui(
-            ctx,
-            ui,
-            &spaces_info,
-            &tree.path.to_string(),
-            tree,
-            space_view,
-            &entities_add_info,
-        );
-    }
+    add_entities_tree_ui(
+        ctx,
+        ui,
+        &spaces_info,
+        &tree.path.to_string(),
+        tree,
+        space_view,
+        &entities_add_info,
+    );
 }
 
 fn add_entities_tree_ui(

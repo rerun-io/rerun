@@ -65,11 +65,11 @@ impl TimePanel {
 
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
-            inner_margin: egui::style::Margin::symmetric(
+            inner_margin: egui::Margin::symmetric(
                 x_margin + margin_offset,
                 y_margin + margin_offset,
             ),
-            outer_margin: egui::style::Margin {
+            outer_margin: egui::Margin {
                 left: -margin_offset,
                 right: -margin_offset,
                 // Add a proper stoke width thick margin on the top.
