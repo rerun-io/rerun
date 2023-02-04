@@ -65,10 +65,10 @@ egui_extras = { workspace = true, features = ["tracing"] }
 egui-notify = "0.5"
 egui-wgpu.workspace = true
 enumset = "1.0.12"
-glam = { version = "0.20", features = [
+glam = { workspace = true, features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
-half = "1.8"
+half.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
   "png",
@@ -76,14 +76,14 @@ image = { workspace = true, default-features = false, features = [
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 lazy_static.workspace = true
-macaw = { version = "0.17", features = ["with_serde"] }
+macaw = { workspace = true, features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
 ordered-float = { version = "3.2", features = ["serde"] }
-poll-promise = "0.1"
+poll-promise = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
-rfd = "0.10"
+rfd = "0.11"
 serde = { version = "1", features = ["derive"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.10", features = ["serde"] }

@@ -60,7 +60,7 @@ chrono = { version = "0.4", features = [
 derive_more.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
-half = { version = "1.8", features = ["bytemuck"] }
+half = { workspace = true, features = ["bytemuck"] }
 lazy_static.workspace = true
 ndarray.workspace = true
 nohash-hasher = "0.2"
@@ -74,9 +74,9 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 # Optional dependencies:
 anyhow = { workspace = true, optional = true }
 ecolor = { workspace = true, optional = true }
-glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released
+glam = { workspace = true, optional = true }                            # can't update glam until a new version of `macaw` is released
 image = { workspace = true, default-features = false, optional = true }
-macaw = { version = "0.17", optional = true }
+macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
 rmp-serde = { version = "1", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
