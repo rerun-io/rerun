@@ -33,7 +33,7 @@ glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools = "0.10"
 macaw.workspace = true
-memoffset = "0.7"
+memoffset = "0.8"
 ordered-float = "3.2"
 parking_lot = "0.12"
 slotmap = "1.0.6"

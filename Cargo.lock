@@ -4008,7 +4008,7 @@ dependencies = [
  "itertools",
  "log",
  "macaw",
- "memoffset 0.7.1",
+ "memoffset 0.8.0",
  "notify",
  "ordered-float",
  "parking_lot",
