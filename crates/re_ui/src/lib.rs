@@ -409,7 +409,7 @@ impl ReUi {
     #[allow(clippy::unused_self)]
     pub fn draw_shadow_line(&self, ui: &mut egui::Ui, rect: Rect, direction: egui::Direction) {
         let color_dark = self.design_tokens.shadow_gradient_dark_start;
-        let color_bright = self.design_tokens.shadow_gradient_bright_end;
+        let color_bright = Color32::TRANSPARENT;
 
         let (left_top, right_top, left_bottom, right_bottom) = match direction {
             egui::Direction::RightToLeft => (color_bright, color_dark, color_bright, color_dark),
