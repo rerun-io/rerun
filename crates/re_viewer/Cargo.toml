@@ -81,7 +81,7 @@ mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
 ordered-float = { version = "3.2", features = ["serde"] }
-poll-promise = "0.1"
+poll-promise = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.11"
 serde = { version = "1", features = ["derive"] }
