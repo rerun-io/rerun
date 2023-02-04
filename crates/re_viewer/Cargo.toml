@@ -65,7 +65,7 @@ egui_extras = { workspace = true, features = ["tracing"] }
 egui-notify = "0.5"
 egui-wgpu.workspace = true
 enumset = "1.0.12"
-glam = { version = "0.20", features = [
+glam = { workspace = true, features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
 half = "1.8"
@@ -76,7 +76,7 @@ image = { workspace = true, default-features = false, features = [
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
 lazy_static.workspace = true
-macaw = { version = "0.17", features = ["with_serde"] }
+macaw = { workspace = true, features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"

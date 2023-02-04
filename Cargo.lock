@@ -1940,9 +1940,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.20.5"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
+checksum = "12f597d56c1bd55a811a1be189459e8fad2bbc272616375602443bdfb37fa774"
 dependencies = [
  "bytemuck",
  "mint",
@@ -2700,9 +2700,9 @@ dependencies = [
 
 [[package]]
 name = "macaw"
-version = "0.17.2"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef7e08781990d20e6b33eb49a24f42ae7949dc934dd1bcd08fdcb886074dc623"
+checksum = "8f5e66b08df1bc3a0249cadf7f2802ea7c09dc906af44c62b2889d721df1e252"
 dependencies = [
  "glam",
  "num-traits",
