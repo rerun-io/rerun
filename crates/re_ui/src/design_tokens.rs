@@ -103,6 +103,11 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         egui_style.visuals.widgets.open.expansion = 2.0;
     }
 
+    {
+        egui_style.visuals.selection.bg_fill =
+            get_aliased_color(&json, "{Alias.Color.Highlight.Default.value}");
+    }
+
     let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
