@@ -46,7 +46,7 @@ bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"
 glam.workspace = true
-half = "1.8"
+half.workspace = true
 image = { version = "0.24", default-features = false, features = [
   "jpeg",
   "jpeg_rayon",

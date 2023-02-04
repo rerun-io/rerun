@@ -60,7 +60,7 @@ chrono = { version = "0.4", features = [
 derive_more.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
-half = { version = "1.8", features = ["bytemuck"] }
+half = { workspace = true, features = ["bytemuck"] }
 lazy_static.workspace = true
 ndarray.workspace = true
 nohash-hasher = "0.2"

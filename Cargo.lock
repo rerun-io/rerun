@@ -1569,7 +1569,7 @@ checksum = "8eb5f255b5980bb0c8cf676b675d1a99be40f316881444f44e0462eaf5df5ded"
 dependencies = [
  "bit_field",
  "flume",
- "half 2.1.0",
+ "half 2.2.1",
  "lebe",
  "miniz_oxide 0.6.2",
  "smallvec",
@@ -1605,7 +1605,7 @@ checksum = "418922d2c280b8c68f82699494cc8c48f392233233a9a8b9a48a57a36c0ad0ef"
 dependencies = [
  "az",
  "bytemuck",
- "half 2.1.0",
+ "half 2.2.1",
  "serde",
  "typenum",
 ]
@@ -2132,19 +2132,16 @@ name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
-dependencies = [
- "bytemuck",
- "serde",
-]
 
 [[package]]
 name = "half"
-version = "2.1.0"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
+checksum = "02b4af3693f1b705df946e9fe5631932443781d0aabb423b62fcd4d73f6d2fd0"
 dependencies = [
  "bytemuck",
  "crunchy",
+ "serde",
 ]
 
 [[package]]
@@ -3193,7 +3190,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96b0fee4571867d318651c24f4a570c3f18408cf95f16ccb576b3ce85496a46e"
 dependencies = [
- "half 2.1.0",
+ "half 2.2.1",
  "libc",
  "ndarray",
  "num-complex",
@@ -3921,7 +3918,7 @@ dependencies = [
  "ecolor",
  "fixed",
  "glam",
- "half 1.8.2",
+ "half 2.2.1",
  "image",
  "lazy_static",
  "macaw",
@@ -4005,7 +4002,7 @@ dependencies = [
  "glam",
  "glob",
  "gltf",
- "half 2.1.0",
+ "half 2.2.1",
  "image",
  "instant",
  "itertools",
@@ -4134,7 +4131,7 @@ dependencies = [
  "egui_extras",
  "enumset",
  "glam",
- "half 1.8.2",
+ "half 2.2.1",
  "image",
  "instant",
  "itertools",
@@ -4344,7 +4341,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "glam",
- "half 1.8.2",
+ "half 2.2.1",
  "image",
  "itertools",
  "macaw",
