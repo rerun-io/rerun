@@ -718,9 +718,7 @@ fn image_ui(
     let (response, painter, image_rect) =
         view_state.texture_settings.paint_image(ui, margin, image);
 
-    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-
-    if response.hovered() && !is_anything_being_dragged {
+    if !response.hovered() {
         paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
     }
 }
