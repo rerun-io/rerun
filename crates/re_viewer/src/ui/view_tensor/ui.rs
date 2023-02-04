@@ -93,7 +93,24 @@ pub(crate) fn view_tensor(
         state.dimension_mapping = DimensionMapping::create(tensor.shape());
     }
 
-    selectors_ui(ui, state, tensor);
+    let default_item_spacing = ui.spacing_mut().item_spacing;
+    ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
+
+    if state
+        .dimension_mapping
+        .selectors
+        .iter()
+        .any(|selector| selector.visible)
+    {
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(16.0, 8.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
+            selectors_ui(ui, state, tensor);
+        });
+    }
 
     tensor_ui(ctx, ui, state, tensor);
 }
