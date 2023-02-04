@@ -164,7 +164,7 @@ impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let panel_frame = {
             egui::Frame {
-                inner_margin: egui::Margin::symmetric(8.0, 2.0),
+                inner_margin: re_ui::ReUi::top_bar_margin(),
                 fill: self.re_ui.design_tokens.top_bar_color,
                 ..Default::default()
             }
