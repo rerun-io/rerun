@@ -713,7 +713,7 @@ fn image_ui(
 
     let font_id = egui::TextStyle::Body.resolve(ui.style());
 
-    let margin = egui::vec2(0.0, 0.0); // Add some margin for the arrow overlay.
+    let margin = egui::vec2(0.0, 0.0);
 
     let (response, painter, image_rect) =
         view_state.texture_settings.paint_image(ui, margin, image);
