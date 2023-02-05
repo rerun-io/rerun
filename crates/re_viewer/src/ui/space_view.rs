@@ -88,11 +88,6 @@ impl SpaceView {
         }
     }
 
-    /// How to show the name in the ui
-    pub fn display_text(&self) -> egui::WidgetText {
-        format!("{} {}", self.category.icon(), &self.name).into()
-    }
-
     /// List of entities a space view queries by default for a given category.
     ///
     /// These are all entities in the given space which have the requested category and are reachable by a transform.

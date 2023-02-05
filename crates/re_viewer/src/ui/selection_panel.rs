@@ -166,7 +166,7 @@ pub fn what_is_selected_ui(
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
-                        ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                        ctx.space_view_button(ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -182,11 +182,21 @@ pub fn what_is_selected_ui(
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Data Group:");
-                            ui.text_edit_singleline(&mut group.display_name);
+                            ctx.data_blueprint_group_button_to(
+                                ui,
+                                group.display_name.clone(),
+                                space_view.id,
+                                *data_blueprint_group_handle,
+                            );
                             ui.end_row();
 
                             ui.label("in Space View:");
-                            ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                            ctx.space_view_button_to(
+                                ui,
+                                space_view.name.clone(),
+                                space_view.id,
+                                space_view.category,
+                            );
                             ui.end_row();
                         });
                 }
