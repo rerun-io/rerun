@@ -170,8 +170,14 @@ impl<'a> ViewerContext<'a> {
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
         let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
-        let response = ui
-            .selectable_label(self.selection().contains(&selection), text)
+        let response = self
+            .re_ui
+            .selectable_label_with_icon(
+                ui,
+                &re_ui::icons::CONTAINER,
+                text,
+                self.selection().contains(&selection),
+            )
             .on_hover_text("Group");
         self.cursor_interact_with_selectable(response, selection)
     }

@@ -182,7 +182,12 @@ pub fn what_is_selected_ui(
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Data Group:");
-                            ui.text_edit_singleline(&mut group.display_name);
+                            ctx.data_blueprint_group_button_to(
+                                ui,
+                                group.display_name.clone(),
+                                space_view.id,
+                                *data_blueprint_group_handle,
+                            );
                             ui.end_row();
 
                             ui.label("in Space View:");

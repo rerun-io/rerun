@@ -278,10 +278,9 @@ impl Viewport {
                     group_is_visible,
                     child_group.properties_individual.visible,
                     |ui| {
-                        let label = format!("📁 {}", child_group.display_name);
                         ctx.data_blueprint_group_button_to(
                             ui,
-                            label,
+                            child_group.display_name.clone(),
                             space_view.id,
                             *child_group_handle,
                         )

@@ -80,3 +80,5 @@ pub const SPACE_VIEW_HISTOGRAM: Icon = Icon::new(
     "spaceview_histogram",
     include_bytes!("../data/icons/spaceview_histogram.png"),
 );
+
+pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons/container.png"));
