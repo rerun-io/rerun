@@ -147,7 +147,7 @@ impl View3DState {
 
     fn interpolate_to_eye(&mut self, target: Eye) {
         if let Some(start) = self.orbit_eye {
-            let target_time = EyeInterpolation::target_time(&start.to_eye(), &target);
+            let target_time = EyeInterpolation::target_time(&start.to_eye(), &target) * 2.0;
             self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
@@ -409,7 +409,7 @@ pub fn view_3d(
     }
 
     // Allow to restore the camera state with escape if a camera was tracked before.
-    if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
         if let Some(camera_before_changing_tracked_state) =
             state.state_3d.camera_before_tracked_camera
         {
