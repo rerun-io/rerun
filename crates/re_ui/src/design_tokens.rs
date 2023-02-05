@@ -106,8 +106,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         egui_style.visuals.widgets.open.expansion = 2.0;
     }
 
-    egui_style.visuals.selection.bg_fill =
-        get_aliased_color(&json, "{Alias.Color.Highlight.Default.value}");
+    egui_style.visuals.selection.bg_fill = get_aliased_color(&json, "{Alias.Color.Highlight.Default.value}");
             
     egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
 
