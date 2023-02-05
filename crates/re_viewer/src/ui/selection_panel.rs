@@ -275,6 +275,8 @@ fn blueprint_ui(
                 }
             });
 
+            ui.add_space(ui.spacing().item_spacing.y);
+
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 space_view.selection_ui(ctx, ui);
             }
