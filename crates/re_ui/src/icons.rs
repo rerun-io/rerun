@@ -51,3 +51,34 @@ pub const REMOVE: Icon = Icon::new("remove", include_bytes!("../data/icons/remov
 pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.png"));
 
 pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.png"));
+
+pub const SPACE_VIEW_TEXT: Icon = Icon::new(
+    "spaceview_text",
+    include_bytes!("../data/icons/spaceview_text.png"),
+);
+pub const SPACE_VIEW_3D: Icon = Icon::new(
+    "spaceview_3d",
+    include_bytes!("../data/icons/spaceview_3d.png"),
+);
+pub const SPACE_VIEW_CHART: Icon = Icon::new(
+    "spaceview_chart",
+    include_bytes!("../data/icons/spaceview_chart.png"),
+);
+pub const SPACE_VIEW_SCATTERPLOT: Icon = Icon::new(
+    "spaceview_scatterplot",
+    include_bytes!("../data/icons/spaceview_scatterplot.png"),
+);
+pub const SPACE_VIEW_RAW: Icon = Icon::new(
+    "spaceview_raw",
+    include_bytes!("../data/icons/spaceview_raw.png"),
+);
+pub const SPACE_VIEW_TENSOR: Icon = Icon::new(
+    "spaceview_tensor",
+    include_bytes!("../data/icons/spaceview_tensor.png"),
+);
+pub const SPACE_VIEW_HISTOGRAM: Icon = Icon::new(
+    "spaceview_histogram",
+    include_bytes!("../data/icons/spaceview_histogram.png"),
+);
+
+pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons/container.png"));

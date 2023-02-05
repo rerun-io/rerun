@@ -132,16 +132,32 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
+    pub fn space_view_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        space_view: &crate::ui::SpaceView,
+    ) -> egui::Response {
+        self.space_view_button_to(
+            ui,
+            space_view.name.clone(),
+            space_view.id,
+            space_view.category,
+        )
+    }
+
     pub fn space_view_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
+        space_view_category: crate::ui::ViewCategory,
     ) -> egui::Response {
         let selection = Selection::SpaceView(space_view_id);
         let is_selected = self.selection().contains(&selection);
-        let response = ui
-            .selectable_label(is_selected, text)
+
+        let response = self
+            .re_ui
+            .selectable_label_with_icon(ui, space_view_category.icon(), text, is_selected)
             .on_hover_text("Space View");
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -154,8 +170,14 @@ impl<'a> ViewerContext<'a> {
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
         let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
-        let response = ui
-            .selectable_label(self.selection().contains(&selection), text)
+        let response = self
+            .re_ui
+            .selectable_label_with_icon(
+                ui,
+                &re_ui::icons::CONTAINER,
+                text,
+                self.selection().contains(&selection),
+            )
             .on_hover_text("Group");
         self.cursor_interact_with_selectable(response, selection)
     }

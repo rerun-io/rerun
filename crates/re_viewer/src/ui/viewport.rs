@@ -154,8 +154,7 @@ impl Viewport {
                 true,
                 is_space_view_visible,
                 |ui| {
-                    let label = space_view.display_text();
-                    let response = ctx.space_view_button_to(ui, label, *space_view_id);
+                    let response = ctx.space_view_button(ui, space_view);
                     if response.clicked() {
                         if let Some(tree) = self.trees.get_mut(&self.visible) {
                             focus_tab(tree, space_view_id);
@@ -279,10 +278,9 @@ impl Viewport {
                     group_is_visible,
                     child_group.properties_individual.visible,
                     |ui| {
-                        let label = format!("📁 {}", child_group.display_name);
                         ctx.data_blueprint_group_button_to(
                             ui,
-                            label,
+                            child_group.display_name.clone(),
                             space_view.id,
                             *child_group_handle,
                         )
@@ -623,12 +621,14 @@ impl Viewport {
             ui.style_mut().wrap = Some(false);
 
             for space_view in Self::all_possible_space_views(ctx, spaces_info) {
-                if ui
-                    .button(format!(
-                        "{} {}",
+                if ctx
+                    .re_ui
+                    .selectable_label_with_icon(
+                        ui,
                         space_view.category.icon(),
-                        space_view.name
-                    ))
+                        space_view.name.clone(),
+                        false,
+                    )
                     .clicked()
                 {
                     ui.close_menu();
@@ -785,7 +785,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
 
-        let mut text = space_view.display_text();
+        let mut text = egui::WidgetText::RichText(egui::RichText::new(space_view.name.clone()));
 
         if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
             // Show that it is selected:
