@@ -509,9 +509,10 @@ impl ReUi {
             // TODO(emilk/andreas): change color and size on hover
             let tint = ui.visuals().widgets.inactive.fg_stroke.color;
             let image_rect = egui::Rect::from_min_size(
+                // Round position up to full pixels, otherwise things look bad often bad especially on non-high-dpi screens.
                 egui::pos2(
-                    rect.min.x,
-                    (rect.min.y + rect.max.y - Self::small_icon_size().y) * 0.5,
+                    rect.min.x.ceil(),
+                    ((rect.min.y + rect.max.y - Self::small_icon_size().y) * 0.5).ceil(),
                 ),
                 Self::small_icon_size(),
             );
