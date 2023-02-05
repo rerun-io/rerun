@@ -123,7 +123,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
         point_colors = [point.rgb for point in visible_xyzs]
 
-        rr.log_points("points", seen_points, colors=seen_colors, ext={"comment": "Rerun is so flexible!"})
+        rr.log_points("world/points", seen_points, colors=seen_colors, ext={"comment": "Rerun is so flexible!"})
 
         rr.log_rigid3(
             "world/cam",
@@ -137,7 +137,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
         # Log camera intrinsics
         rr.log_pinhole(
-            "world/cam/img",
+            "world/cam/im",
             child_from_parent=intrinsics,
             width=camera.width,
             height=camera.height,
@@ -155,10 +155,10 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
             bbox = np.array([box["xmin"], box["ymin"], box["xmax"], box["ymax"]])
 
             rr.log_rects(
-                "world/cam/img/detection", bbox, rect_format=rr.log.rects.RectFormat.XYXY, colors=(255, 255, 255)
+                "world/cam/im/detected", bbox, rect_format=rr.log.rects.RectFormat.XYXY, colors=(255, 255, 255)
             )
 
-        rr.log_points("world/cam/img/keypoints", visible_xys, colors=point_colors)
+        rr.log_points("world/cam/im/keypoints", visible_xys, colors=point_colors)
 
 
 def main() -> None:
