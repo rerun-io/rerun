@@ -46,9 +46,12 @@ def track_pose(video_path: str, segment: bool) -> None:
     with closing(VideoSource(video_path)) as video_source:
         with mp_pose.Pose(enable_segmentation=segment) as pose:
             for bgr_frame in video_source.stream_bgr():
+                if bgr_frame.idx < 20:
+                    continue
+
                 rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
                 rr.set_time_seconds("time", bgr_frame.time)
-                rr.set_time_sequence("frame_idx", bgr_frame.idx)
+                rr.set_time_sequence("frame_idx", bgr_frame.idx - 20)
                 rr.log_image("video/rgb", rgb)
 
                 results = pose.process(rgb)
