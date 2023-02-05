@@ -209,12 +209,15 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         pos = center_position + (active_radius * top_bottom) * dir_up;
     }
 
+    pos -= camera_ray.direction * active_radius;
+    center_position -= camera_ray.direction * active_radius;
+
     // Output, transform to projection space and done.
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(pos, 1.0);
     out.position_world = pos;
     out.center_position = center_position;
-    out.closest_strip_position = pos_data_current.pos;
+    out.closest_strip_position = pos_data_current.pos - camera_ray.direction * active_radius;
     out.color = strip_data.color;
     out.active_radius = active_radius;
     out.currently_active_flags = currently_active_flags;
