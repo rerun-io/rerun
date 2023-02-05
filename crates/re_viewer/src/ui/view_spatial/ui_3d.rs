@@ -37,6 +37,8 @@ pub struct View3DState {
 
     /// Currently tracked camera.
     tracked_camera: Option<InstancePath>,
+    /// Camera pose just before we took over another camera via [Self::tracked_camera].
+    camera_before_tracked_camera: Option<Eye>,
 
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
@@ -64,6 +66,7 @@ impl Default for View3DState {
         Self {
             orbit_eye: Default::default(),
             tracked_camera: None,
+            camera_before_tracked_camera: None,
             eye_interpolation: Default::default(),
             hovered_point: Default::default(),
             spin: false,
@@ -79,6 +82,7 @@ impl View3DState {
     pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
         self.interpolate_to_eye(default_eye(scene_bbox_accum, &self.space_specs).to_eye());
         self.tracked_camera = None;
+        self.camera_before_tracked_camera = None;
     }
 
     fn update_eye(
@@ -381,6 +385,8 @@ pub fn view_3d(
         // While hovering an entity, focuses the camera on it.
         if let Some(Selection::InstancePath(_, instance_path)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
+                state.state_3d.camera_before_tracked_camera =
+                    state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.clone());
             } else if let Some(clicked_point) = state.state_3d.hovered_point {
@@ -397,6 +403,19 @@ pub fn view_3d(
         // Without hovering, resets the camera.
         else {
             state.state_3d.reset_camera(&state.scene_bbox_accum);
+        }
+    }
+
+    // Allow to restore the camera state with escape if a camera was tracked before.
+    if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        if let Some(camera_before_changing_tracked_state) =
+            state.state_3d.camera_before_tracked_camera
+        {
+            state
+                .state_3d
+                .interpolate_to_eye(camera_before_changing_tracked_state);
+            state.state_3d.camera_before_tracked_camera = None;
+            state.state_3d.tracked_camera = None;
         }
     }
 
