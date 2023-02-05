@@ -29,13 +29,11 @@ bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
 document-features = "0.2"
 ecolor = { workspace = true, features = ["bytemuck"] }
-glam = { version = "0.20", features = [
-  "bytemuck",
-] } # can't upgrade glam until macaw gets a new version using glam 0.21
-half = { version = "2.1", features = ["bytemuck"] }
+glam = { workspace = true, features = ["bytemuck"] }
+half = { workspace = true, features = ["bytemuck"] }
 itertools = "0.10"
-macaw = "0.17.2"
-memoffset = "0.7"
+macaw.workspace = true
+memoffset = "0.8"
 ordered-float = "3.2"
 parking_lot = "0.12"
 slotmap = "1.0.6"
@@ -74,7 +72,7 @@ log = "0.4"
 pollster = "0.2"
 rand = "0.8"
 tracing = "0.1"
-winit = "0.27"
+winit = "0.28.1"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # native

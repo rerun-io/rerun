@@ -9,7 +9,7 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 
 use crate::msg_bundle::Component;
 
-use super::FieldError;
+use super::{FieldError, Vec4D};
 
 // ----------------------------------------------------------------------------
 
@@ -114,6 +114,10 @@ pub enum RawMeshError {
 ///         Field::new("normals", DataType::List(Box::new(
 ///             Field::new("item", DataType::Float32, false)),
 ///         ), true),
+///         Field::new("albedo_factor", DataType::FixedSizeList(
+///             Box::new(Field::new("item", DataType::Float32, false)),
+///             4
+///         ), true),
 ///     ]),
 /// );
 /// ```
@@ -121,6 +125,7 @@ pub enum RawMeshError {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
     pub mesh_id: MeshId,
+
     /// The flattened positions array of this mesh.
     ///
     /// Meshes are always triangle lists, i.e. the length of this vector should always be
@@ -135,6 +140,12 @@ pub struct RawMesh3D {
     ///
     /// If specified, this must match the length of `Self::positions`.
     pub normals: Option<Vec<f32>>,
+
+    /// Albedo factor applied to the final color of the mesh.
+    ///
+    /// `[1.0, 1.0, 1.0, 1.0]` if unspecified.
+    pub albedo_factor: Option<Vec4D>,
+    //
     // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
     // hard to see anything with complex enough meshes (and hovering doesn't really help
     // when everything's white).
@@ -385,6 +396,7 @@ fn test_mesh_roundtrip() {
             positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
             indices: vec![1, 2, 3].into(),
             normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
+            albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),
         })];
         let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
         let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
