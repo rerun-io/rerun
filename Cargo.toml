@@ -24,9 +24,12 @@ egui_extras = "0.20.0"
 egui-wgpu = "0.20.0"
 emath = "0.20.0"
 epaint = "0.20.0"
+glam = "0.22"
 gltf = "1.1"
+half = "2.0"
 image = "0.24"
 lazy_static = "1.4"
+macaw = "0.18"
 ndarray = "0.15"
 polars-core = "0.26"
 polars-lazy = "0.26"
@@ -65,14 +68,15 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-03 - more visible panel resize lines
-ecolor = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-eframe = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-egui = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-emath = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
-epaint = { git = "https://github.com/emilk/egui", rev = "8c3d8b3ba5d7cf120390d251e1d3503501e9693c" }
+# 2023-02-04 - winit 0.28
+ecolor = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+eframe = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+egui = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+emath = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+epaint = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }

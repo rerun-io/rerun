@@ -190,7 +190,7 @@ pub fn dimension_mapping_ui(
 
     ui.vertical(|ui| {
         ui.vertical(|ui| {
-            ui.strong("Image:");
+            ui.strong("Image");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 tensor_dimension_ui(
                     ui,
@@ -229,7 +229,7 @@ pub fn dimension_mapping_ui(
         ui.add_space(4.0);
 
         ui.vertical(|ui| {
-            ui.strong("Selectors:");
+            ui.strong("Selectors");
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
                 .num_columns(2)

@@ -6,11 +6,16 @@ use re_log_types::{
     ClassicTensor,
 };
 
-use crate::misc::{caches::TensorImageView, ViewerContext};
+use crate::misc::{
+    caches::{TensorImageView, TensorStats},
+    ViewerContext,
+};
 
 use super::{DataUi, UiVerbosity};
 
-pub fn format_tensor_shape(shape: &[re_log_types::component_types::TensorDimension]) -> String {
+pub fn format_tensor_shape_single_line(
+    shape: &[re_log_types::component_types::TensorDimension],
+) -> String {
     format!("[{}]", shape.iter().join(", "))
 }
 
@@ -35,6 +40,7 @@ impl DataUi for ClassicTensor {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
+        let tensor_stats = ctx.cache.tensor_stats.get(&self.id());
 
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
@@ -55,16 +61,16 @@ impl DataUi for ClassicTensor {
                     ui.label(format!(
                         "{} x {}",
                         self.dtype(),
-                        format_tensor_shape(self.shape())
+                        format_tensor_shape_single_line(self.shape())
                     ))
-                    .on_hover_ui(|ui| tensor_dtype_and_shape_ui(ui, self));
+                    .on_hover_ui(|ui| tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats));
                 });
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
-                    tensor_dtype_and_shape_ui(ui, self);
+                    tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats);
 
                     if let Some(retained_img) = tensor_view.retained_img {
                         let max_size = ui
@@ -105,17 +111,60 @@ impl DataUi for ClassicTensor {
     }
 }
 
-pub fn tensor_dtype_and_shape_ui(ui: &mut egui::Ui, tensor: &ClassicTensor) {
+pub fn tensor_dtype_and_shape_ui_grid_contents(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    tensor: &ClassicTensor,
+    tensor_stats: Option<&TensorStats>,
+) {
+    re_ui
+        .grid_left_hand_label(ui, "Data type")
+        .on_hover_text("Data type used for all individual elements within the tensor.");
+    ui.label(tensor.dtype().to_string());
+    ui.end_row();
+
+    re_ui
+        .grid_left_hand_label(ui, "Shape")
+        .on_hover_text("Extent of every dimension.");
+    ui.vertical(|ui| {
+        // For unnamed tensor dimension more than a single line usually doesn't make sense!
+        // But what if some are named and some are not?
+        // -> If more than 1 is named, make it a column!
+        if tensor.shape().iter().filter(|d| d.name.is_some()).count() > 1 {
+            for dim in tensor.shape() {
+                ui.label(dim.to_string());
+            }
+        } else {
+            ui.label(format_tensor_shape_single_line(tensor.shape()));
+        }
+    });
+    ui.end_row();
+
+    if let Some(TensorStats {
+        range: Some((min, max)),
+    }) = tensor_stats
+    {
+        ui.label("Data range")
+            .on_hover_text("All values of the tensor range within these bounds.");
+        ui.monospace(format!(
+            "[{} - {}]",
+            re_format::format_f64(*min),
+            re_format::format_f64(*max)
+        ));
+        ui.end_row();
+    }
+}
+
+pub fn tensor_dtype_and_shape_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    tensor: &ClassicTensor,
+    tensor_stats: Option<&TensorStats>,
+) {
     egui::Grid::new("tensor_dtype_and_shape_ui")
         .num_columns(2)
         .show(ui, |ui| {
-            ui.label("Data type:");
-            ui.label(tensor.dtype().to_string());
-            ui.end_row();
-
-            ui.label("Shape:");
-            ui.label(format_tensor_shape(tensor.shape()));
-            ui.end_row();
+            tensor_dtype_and_shape_ui_grid_contents(re_ui, ui, tensor, tensor_stats);
         });
 }
 
@@ -128,7 +177,7 @@ fn show_zoomed_image_region_tooltip(
     meter: Option<f32>,
 ) -> egui::Response {
     response
-        .on_hover_cursor(egui::CursorIcon::ZoomIn)
+        .on_hover_cursor(egui::CursorIcon::Crosshair)
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {

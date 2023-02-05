@@ -35,7 +35,7 @@ from pathlib import Path
 
 import mkdocs_gen_files
 
-root = Path(__file__).parent.parent.resolve()
+root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 package_dir = Path("package")
 
 nav = mkdocs_gen_files.Nav()

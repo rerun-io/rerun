@@ -65,32 +65,78 @@ impl eframe::App for ExampleApp {
 
         self.top_bar(egui_ctx, frame);
 
-        egui::SidePanel::left("left_panel").show_animated(egui_ctx, self.left_panel, |ui| {
-            ui.strong("Left panel");
-            ui.horizontal(|ui| {
-                ui.label("Toggle switch:");
-                ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
-            });
-            ui.label(format!("Latest command: {}", self.latest_cmd));
-        });
-        egui::SidePanel::right("right_panel").show_animated(egui_ctx, self.right_panel, |ui| {
-            ui.strong("Right panel");
-            selection_buttons(ui);
-        });
-        egui::TopBottomPanel::bottom("bottom_panel").show_animated(
-            egui_ctx,
-            self.bottom_panel,
-            |ui| {
-                ui.strong("Bottom panel");
-            },
-        );
-
-        let central_panel_frame = egui::Frame {
+        let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
+            inner_margin: re_ui::ReUi::view_padding().into(),
             ..Default::default()
         };
+
+        egui::SidePanel::left("left_panel")
+            .default_width(500.0)
+            .frame(egui::Frame {
+                fill: egui_ctx.style().visuals.panel_fill,
+                ..Default::default()
+            })
+            .show_animated(egui_ctx, self.left_panel, |ui| {
+                egui::TopBottomPanel::top("left_panel_tio_bar")
+                    .exact_height(re_ui::ReUi::title_bar_height())
+                    .frame(egui::Frame {
+                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                        ..Default::default()
+                    })
+                    .show_inside(ui, |ui| {
+                        ui.horizontal_centered(|ui| {
+                            ui.strong("Left bar");
+                        });
+                    });
+
+                egui::ScrollArea::both()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        egui::Frame {
+                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                            ..Default::default()
+                        }
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Toggle switch:");
+                                ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
+                            });
+                            ui.label(format!("Latest command: {}", self.latest_cmd));
+
+                            self.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                                ui.label("Some data here");
+                            });
+                            self.re_ui
+                                .large_collapsing_header(ui, "Blueprint", true, |ui| {
+                                    ui.style_mut().wrap = Some(false);
+                                    ui.label("Some blueprint stuff here, that might be wide.");
+                                });
+                        });
+                    });
+            });
+
+        egui::SidePanel::right("right_panel")
+            .frame(panel_frame)
+            .show_animated(egui_ctx, self.right_panel, |ui| {
+                ui.strong("Right panel");
+                selection_buttons(ui);
+            });
+
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .frame(egui::Frame {
+                inner_margin: re_ui::ReUi::view_padding().into(),
+                ..Default::default()
+            })
+            .show_animated(egui_ctx, self.bottom_panel, |ui| {
+                ui.strong("Bottom panel");
+            });
+
         egui::CentralPanel::default()
-            .frame(central_panel_frame)
+            .frame(egui::Frame {
+                fill: egui_ctx.style().visuals.panel_fill,
+                ..Default::default()
+            })
             .show(egui_ctx, |ui| {
                 tabs_ui(ui, &mut self.tree);
             });
@@ -118,7 +164,7 @@ impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let panel_frame = {
             egui::Frame {
-                inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
+                inner_margin: re_ui::ReUi::top_bar_margin(),
                 fill: self.re_ui.design_tokens.top_bar_color,
                 ..Default::default()
             }

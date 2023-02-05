@@ -13,7 +13,7 @@ use bytes::Bytes;
 use rerun::{
     reexports::{re_log, re_memory::AccountingAllocator},
     EntityPath, LogMsg, Mesh3D, MeshId, MsgBundle, MsgId, RawMesh3D, Session, Time, TimePoint,
-    TimeType, Timeline, Transform, ViewCoordinates,
+    TimeType, Timeline, Transform, Vec4D, ViewCoordinates,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -26,11 +26,13 @@ impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
+            albedo_factor: primitive.albedo_factor.map(Vec4D),
             indices: primitive.indices,
             positions: primitive.positions.into_iter().flatten().collect(),
             normals: primitive
                 .normals
                 .map(|normals| normals.into_iter().flatten().collect()),
+            //
             // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
             // hard to see anything with complex enough meshes (and hovering doesn't really help
             // when everything's white).
@@ -192,6 +194,7 @@ struct GltfNode {
 }
 
 struct GltfPrimitive {
+    albedo_factor: Option<[f32; 4]>,
     positions: Vec<[f32; 3]>,
     indices: Option<Vec<u32>>,
     normals: Option<Vec<[f32; 3]>>,
@@ -245,6 +248,12 @@ fn node_primitives<'data>(
         mesh.primitives().map(|primitive| {
             assert!(primitive.mode() == gltf::mesh::Mode::Triangles);
 
+            let albedo_factor = primitive
+                .material()
+                .pbr_metallic_roughness()
+                .base_color_factor()
+                .into();
+
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
             let positions = reader.read_positions().unwrap();
@@ -263,6 +272,7 @@ fn node_primitives<'data>(
             let texcoords = texcoords.map(|texcoords| texcoords.into_f32().collect());
 
             GltfPrimitive {
+                albedo_factor,
                 positions,
                 indices,
                 normals,

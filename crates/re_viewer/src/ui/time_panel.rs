@@ -55,13 +55,29 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        let x_margin = 16.0;
+        let x_margin = 8.0;
         let y_margin = 8.0;
         let top_bar_height = 28.0;
 
+        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
+        // (on the inner margin we counteract this again)
+        let margin_offset = ctx.re_ui.design_tokens.bottom_bar_stroke.width * 0.5;
+
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
-            inner_margin: egui::style::Margin::symmetric(x_margin, y_margin),
+            inner_margin: egui::Margin::symmetric(
+                x_margin + margin_offset,
+                y_margin + margin_offset,
+            ),
+            outer_margin: egui::Margin {
+                left: -margin_offset,
+                right: -margin_offset,
+                // Add a proper stoke width thick margin on the top.
+                top: ctx.re_ui.design_tokens.bottom_bar_stroke.width,
+                bottom: -margin_offset,
+            },
+            stroke: ctx.re_ui.design_tokens.bottom_bar_stroke,
+            rounding: ctx.re_ui.design_tokens.bottom_bar_rounding,
             ..Default::default()
         };
 
@@ -75,10 +91,12 @@ impl TimePanel {
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
             .resizable(false)
+            .show_separator_line(false)
             .frame(panel_frame)
             .default_height(16.0);
         let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
             .resizable(true)
+            .show_separator_line(false)
             .frame(panel_frame)
             .min_height(150.0)
             .default_height(250.0);
@@ -122,7 +140,13 @@ impl TimePanel {
                         );
 
                         ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
-                        self.expanded_ui(ctx, blueprint, ui);
+
+                        // Add extra margin on the left which was intentionally missing on the controls.
+                        let mut top_rop_frame = egui::Frame::default();
+                        top_rop_frame.inner_margin.left = 8.0;
+                        top_rop_frame.show(ui, |ui| {
+                            self.expanded_ui(ctx, blueprint, ui);
+                        });
                     });
                 }
             },
@@ -248,6 +272,7 @@ impl TimePanel {
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
+            ctx.re_ui,
             ui,
             &time_bg_area_painter,
             full_y_range.clone(),
@@ -295,13 +320,25 @@ impl TimePanel {
             });
 
         {
-            // Paint a line between the stream names on the left
+            // Paint a shadow between the stream names on the left
             // and the data on the right:
-            ui.painter().vline(
-                time_x_left,
-                full_y_range,
-                ui.visuals().widgets.noninteractive.bg_stroke,
+            let shadow_width = 30.0;
+
+            // In the design the shadow starts under the time markers.
+            //let shadow_y_start =
+            //    timeline_rect.bottom() + ui.visuals().widgets.noninteractive.bg_stroke.width;
+            // This looks great but only if there are still time markes.
+            // When they move to the right (or have a cut) one expects the shadow to go all the way up.
+            // But that's quite complicated so let's have the shadow all the way
+            let shadow_y_start = *full_y_range.start();
+
+            let shadow_y_end = *full_y_range.end();
+            let rect = egui::Rect::from_x_y_ranges(
+                time_x_left..=(time_x_left + shadow_width),
+                shadow_y_start..=shadow_y_end,
             );
+            ctx.re_ui
+                .draw_shadow_line(ui, rect, egui::Direction::LeftToRight);
         }
 
         // Put time-marker on top and last, so that you can always drag it
@@ -878,6 +915,7 @@ fn paint_time_ranges_and_ticks(
 /// Visually separate the different time segments
 fn paint_time_ranges_gaps(
     time_ranges_ui: &TimeRangesUi,
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     painter: &egui::Painter,
     y_range: RangeInclusive<f32>,
@@ -905,25 +943,27 @@ fn paint_time_ranges_gaps(
     //    <--------->
     //     gap width
     //
-    // Filled with black, plus a stroke.
+    // Filled with a dark color, plus a stroke and a small drop shadow to the left.
 
     use itertools::Itertools as _;
 
     let top = *y_range.start();
     let bottom = *y_range.end();
 
-    let fill_color = Color32::BLACK;
+    let fill_color = ui.visuals().widgets.noninteractive.bg_fill;
     let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
 
     let paint_time_gap = |gap_left: f32, gap_right: f32| {
         let gap_width = gap_right - gap_left;
         let zig_width = 4.0_f32.at_most(gap_width / 3.0).at_least(1.0);
         let zig_height = zig_width;
+        let shadow_width = 12.0;
 
         let mut y = top;
         let mut row = 0; // 0 = start wide, 1 = start narrow
 
         let mut mesh = egui::Mesh::default();
+        let mut shadow_mesh = egui::Mesh::default();
         let mut left_line_strip = vec![];
         let mut right_line_strip = vec![];
 
@@ -952,6 +992,9 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(left_pos, fill_color);
             mesh.colored_vertex(right_pos, fill_color);
 
+            shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
+            shadow_mesh.colored_vertex(right_pos, re_ui.design_tokens.shadow_gradient_dark_start);
+
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);
 
@@ -959,7 +1002,11 @@ fn paint_time_ranges_gaps(
             row += 1;
         }
 
+        // Regular & shadow mesh have the same topology!
+        shadow_mesh.indices = mesh.indices.clone();
+
         painter.add(Shape::Mesh(mesh));
+        painter.add(Shape::Mesh(shadow_mesh));
         painter.add(Shape::line(left_line_strip, stroke));
         painter.add(Shape::line(right_line_strip, stroke));
     };

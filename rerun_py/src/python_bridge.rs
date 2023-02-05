@@ -19,7 +19,7 @@ use re_log_types::{
     ViewCoordinates,
 };
 
-use rerun_sdk::global_session;
+use rerun_sdk::{global_session, Vec4D};
 
 use crate::arrow::get_registered_component_names;
 
@@ -568,6 +568,7 @@ fn log_meshes(
     position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
     index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
     normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
+    albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     timeless: bool,
 ) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path_str)?;
@@ -575,13 +576,15 @@ fn log_meshes(
     // Make sure we have as many position buffers as index buffers, etc.
     if position_buffers.len() != index_buffers.len()
         || position_buffers.len() != normal_buffers.len()
+        || position_buffers.len() != albedo_factors.len()
     {
         return Err(PyTypeError::new_err(format!(
-            "Top-level position/index/normal buffer arrays must be same the length, \
-                got positions={}, indices={} & normals={} instead",
+            "Top-level position/index/normal/albedo buffer arrays must be same the length, \
+                got positions={}, indices={}, normals={}, albedo={} instead",
             position_buffers.len(),
             index_buffers.len(),
             normal_buffers.len(),
+            albedo_factors.len(),
         )));
     }
 
@@ -591,6 +594,24 @@ fn log_meshes(
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
     for (i, positions) in position_buffers.into_iter().enumerate() {
+        let albedo_factor = if let Some(v) = albedo_factors[i]
+            .as_ref()
+            .map(|albedo_factor| albedo_factor.as_array().to_vec())
+        {
+            match v.len() {
+                3 => Vec4D([v[0], v[1], v[2], 1.0]),
+                4 => Vec4D([v[0], v[1], v[2], v[3]]),
+                _ => {
+                    return Err(PyTypeError::new_err(format!(
+                        "Albedo factor must be vec3 or vec4, got {v:?} instead",
+                    )));
+                }
+            }
+            .into()
+        } else {
+            None
+        };
+
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             positions: positions.as_array().to_vec(),
@@ -600,9 +621,11 @@ fn log_meshes(
             normals: normal_buffers[i]
                 .as_ref()
                 .map(|normals| normals.as_array().to_vec()),
+            albedo_factor,
         };
         raw.sanity_check()
             .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+
         meshes.push(Mesh3D::Raw(raw));
     }
 
