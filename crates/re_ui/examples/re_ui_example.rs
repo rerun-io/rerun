@@ -62,6 +62,16 @@ pub struct ExampleApp {
 }
 
 impl eframe::App for ExampleApp {
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            [0.0; 4] // transparent so we can get rounded corners
+        } else {
+            // It's rare and subtle, but this color can get through at panel roundings.
+            // (duplicated for `RemoteViewerApp`)
+            visuals.panel_fill.to_normalized_gamma_f32()
+        }
+    }
+
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::gui_zoom::zoom_with_keyboard_shortcuts(
             egui_ctx,
@@ -70,11 +80,11 @@ impl eframe::App for ExampleApp {
 
         self.top_bar(egui_ctx, frame);
 
-        let panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.panel_fill,
-            inner_margin: re_ui::ReUi::view_padding().into(),
-            ..Default::default()
-        };
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .frame(self.re_ui.bottom_panel_frame())
+            .show_animated(egui_ctx, self.bottom_panel, |ui| {
+                ui.strong("Bottom panel");
+            });
 
         egui::SidePanel::left("left_panel")
             .default_width(500.0)
@@ -121,20 +131,17 @@ impl eframe::App for ExampleApp {
                     });
             });
 
+        let panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.panel_fill,
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..Default::default()
+        };
+
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.right_panel, |ui| {
                 ui.strong("Right panel");
                 selection_buttons(ui);
-            });
-
-        egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(egui::Frame {
-                inner_margin: re_ui::ReUi::view_padding().into(),
-                ..Default::default()
-            })
-            .show_animated(egui_ctx, self.bottom_panel, |ui| {
-                ui.strong("Bottom panel");
             });
 
         egui::CentralPanel::default()
@@ -167,14 +174,6 @@ impl eframe::App for ExampleApp {
 
 impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let panel_frame = {
-            egui::Frame {
-                inner_margin: re_ui::ReUi::top_bar_margin(),
-                fill: self.re_ui.design_tokens.top_bar_color,
-                ..Default::default()
-            }
-        };
-
         let native_pixels_per_point = frame.info().native_pixels_per_point;
         let fullscreen = {
             #[cfg(target_arch = "wasm32")]
@@ -191,7 +190,7 @@ impl ExampleApp {
             .top_bar_style(native_pixels_per_point, fullscreen);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(panel_frame)
+            .frame(self.re_ui.top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 let _response = egui::menu::bar(ui, |ui| {
@@ -217,16 +216,14 @@ impl ExampleApp {
     }
 
     fn top_bar_ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        ui.centered_and_justified(|ui| {
-            ui.strong("re_ui example app");
-        });
-
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // From right-to-left:
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 ui.add_space(8.0);
                 re_ui::native_window_buttons_ui(frame, ui);
+                ui.separator();
+            } else {
                 ui.add_space(16.0);
             }
 

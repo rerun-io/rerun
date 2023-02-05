@@ -122,6 +122,38 @@ impl ReUi {
         28.0 // from figma 2022-02-03
     }
 
+    pub fn native_window_rounding() -> f32 {
+        10.0
+    }
+
+    pub fn top_panel_frame(&self) -> egui::Frame {
+        let mut frame = egui::Frame {
+            inner_margin: Self::top_bar_margin(),
+            fill: self.design_tokens.top_bar_color,
+            ..Default::default()
+        };
+        if CUSTOM_WINDOW_DECORATIONS {
+            frame.rounding.nw = Self::native_window_rounding();
+            frame.rounding.ne = Self::native_window_rounding();
+        }
+        frame
+    }
+
+    pub fn bottom_panel_frame(&self) -> egui::Frame {
+        let mut frame = egui::Frame {
+            inner_margin: Self::view_padding().into(),
+            fill: self.design_tokens.bottom_bar_color,
+            rounding: self.design_tokens.bottom_bar_rounding,
+            stroke: self.design_tokens.bottom_bar_stroke,
+            ..Default::default()
+        };
+        if CUSTOM_WINDOW_DECORATIONS {
+            frame.rounding.sw = Self::native_window_rounding();
+            frame.rounding.se = Self::native_window_rounding();
+        }
+        frame
+    }
+
     pub fn small_icon_size() -> egui::Vec2 {
         egui::Vec2::splat(12.0)
     }

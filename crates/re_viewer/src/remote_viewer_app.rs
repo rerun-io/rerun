@@ -71,9 +71,13 @@ impl RemoteViewerApp {
 
 impl eframe::App for RemoteViewerApp {
     fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
-        // It's rare and subtle, but this color can get through at panel roundings.
-        // (duplicated for `App`)
-        visuals.panel_fill.to_normalized_gamma_f32()
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            [0.0; 4] // transparent so we can get rounded corners
+        } else {
+            // It's rare and subtle, but this color can get through at panel roundings.
+            // (duplicated for `RemoteViewerApp`)
+            visuals.panel_fill.to_normalized_gamma_f32()
+        }
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

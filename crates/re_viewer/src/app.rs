@@ -385,9 +385,13 @@ impl App {
 
 impl eframe::App for App {
     fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
-        // It's rare and subtle, but this color can get through at panel roundings.
-        // (duplicated for `RemoteViewerApp`)
-        visuals.panel_fill.to_normalized_gamma_f32()
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            [0.0; 4] // transparent so we can get rounded corners
+        } else {
+            // It's rare and subtle, but this color can get through at panel roundings.
+            // (duplicated for `RemoteViewerApp`)
+            visuals.panel_fill.to_normalized_gamma_f32()
+        }
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
@@ -911,12 +915,6 @@ fn top_panel(
 ) {
     crate::profile_function!();
 
-    let panel_frame = egui::Frame {
-        inner_margin: re_ui::ReUi::top_bar_margin(),
-        fill: app.re_ui.design_tokens.top_bar_color,
-        ..Default::default()
-    };
-
     let native_pixels_per_point = frame.info().native_pixels_per_point;
     let fullscreen = {
         #[cfg(target_arch = "wasm32")]
@@ -931,7 +929,7 @@ fn top_panel(
     let top_bar_style = app.re_ui.top_bar_style(native_pixels_per_point, fullscreen);
 
     egui::TopBottomPanel::top("top_bar")
-        .frame(panel_frame)
+        .frame(app.re_ui.top_panel_frame())
         .exact_height(top_bar_style.height)
         .show(egui_ctx, |ui| {
             let _response = egui::menu::bar(ui, |ui| {
@@ -1049,7 +1047,7 @@ fn top_bar_ui(
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 ui.add_space(8.0);
                 re_ui::native_window_buttons_ui(frame, ui);
-                ui.add_space(16.0);
+                ui.separator();
             } else {
                 // Make the first button the same distance form the side as from the top,
                 // no matter how high the top bar is.
