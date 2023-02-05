@@ -22,7 +22,7 @@ plugins:
       custom_templates: rerun_py/docs/templates # Override the function template. NOTE: relative to working directory. (https://github.com/mkdocstrings/mkdocstrings/issues/477)
       handlers:
         python:
-          paths: ["."] # Lookup python modules relative to this path
+          paths: ["rerun_sdk"] # Lookup python modules relative to this path
           import: # Cross-references for python and numpy
             - https://docs.python.org/3/objects.inv
             - https://numpy.org/doc/stable/objects.inv
