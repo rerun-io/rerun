@@ -166,7 +166,8 @@ def connect(addr: Optional[str] = None) -> None:
     """
     bindings.connect(addr)
 
-_connect = connect # we need this because Python scoping is horrible
+
+_connect = connect  # we need this because Python scoping is horrible
 
 
 def spawn(port: int = 9876, connect: bool = True) -> None:
