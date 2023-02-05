@@ -7,11 +7,14 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Final
 
+from PIL import Image
 import numpy as np
 import numpy.typing as npt
 import requests
 from read_write_model import Camera, read_model
 from tqdm import tqdm
+from transformers import pipeline
+
 
 import rerun as rr
 
@@ -91,6 +94,8 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
     rr.log_view_coordinates("world", up="-Y", timeless=True)
 
+    obj_detector = pipeline("object-detection")
+
     # Iterate through images (video frames) logging data related to each frame.
     seen_ids = np.ndarray((0,), dtype="int64")
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -118,31 +123,46 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
         point_colors = [point.rgb for point in visible_xyzs]
 
-        rr.log_points("world/points", seen_points, colors=seen_colors)
+        rr.log_points("points", seen_points, colors=seen_colors)
 
         rr.log_rigid3(
-            "world/camera",
+            "world/cam",
             child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
-        rr.log_scalar("camera/x", image.tvec[0], label="x", color=RED)
-        rr.log_scalar("camera/y", image.tvec[1], label="y", color=GREEN)
-        rr.log_scalar("camera/z", image.tvec[2], label="z", color=BLUE)
-
-        # TODO: detect car
+        rr.log_scalar("cam/x", image.tvec[0], label="x", color=RED)
+        rr.log_scalar("cam/y", image.tvec[1], label="y", color=GREEN)
+        rr.log_scalar("cam/z", image.tvec[2], label="z", color=BLUE)
 
         # Log camera intrinsics
         rr.log_pinhole(
-            "world/camera/image",
+            "world/cam/img",
             child_from_parent=intrinsics,
             width=camera.width,
             height=camera.height,
         )
 
-        rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
+        image_path = dataset_path / "images" / image.name
+        image = Image.open(image_path)
 
-        rr.log_points(f"world/camera/image/keypoints", visible_xys, colors=point_colors)
+        rr.log_image("world/cam/img/rgb", image)
+
+        detections = obj_detector(image)
+
+        if len(detections) > 0:
+            box = detections[0]["box"]
+            bbox = np.array([box["xmin"], box["ymin"], box["xmax"], box["ymax"]])
+
+            rr.log_rects(
+                "world/cam/img/detection",
+                bbox,
+                labels=["car"],
+                rect_format=rr.log.rects.RectFormat.XYXY,
+                colors=(255, 255, 255),
+            )
+
+        rr.log_points("world/cam/img/keypoints", visible_xys, colors=point_colors)
 
 
 def main() -> None:
