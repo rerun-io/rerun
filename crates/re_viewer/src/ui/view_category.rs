@@ -45,6 +45,18 @@ impl ViewCategory {
     }
 }
 
+impl std::fmt::Display for ViewCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ViewCategory::Text => "Text",
+            ViewCategory::TimeSeries => "Time Series",
+            ViewCategory::BarChart => "Bar Chart",
+            ViewCategory::Spatial => "Spatial",
+            ViewCategory::Tensor => "Tensor",
+        })
+    }
+}
+
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
 // TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered

@@ -312,7 +312,10 @@ fn create_entity_add_info(
             }
         } else {
             CanAddToSpaceView::No {
-                reason: "Entity can't be displayed by this type of Space View".to_owned(), // TODO(andreas): Describe the type with an icon?
+                reason: format!(
+                    "Entity can't be displayed by this type of Space View ({})",
+                    space_view.category
+                ),
             }
         };
 
