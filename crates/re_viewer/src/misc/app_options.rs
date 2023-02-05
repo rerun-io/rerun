@@ -8,6 +8,7 @@ pub struct AppOptions {
     pub warn_latency: f32,
 
     /// Show milliseconds, RAM usage, etc.
+    #[serde(skip)] // restore to the default for the current mode (dev vs debug)
     pub show_metrics: bool,
 }
 

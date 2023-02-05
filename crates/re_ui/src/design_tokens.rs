@@ -8,6 +8,9 @@ use egui::Color32;
 pub struct DesignTokens {
     pub top_bar_color: egui::Color32,
     pub bottom_bar_color: egui::Color32,
+    pub bottom_bar_stroke: egui::Stroke,
+    pub bottom_bar_rounding: egui::Rounding,
+    pub shadow_gradient_dark_start: egui::Color32,
 }
 
 impl DesignTokens {
@@ -103,10 +106,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         egui_style.visuals.widgets.open.expansion = 2.0;
     }
 
-    {
-        egui_style.visuals.selection.bg_fill =
-            get_aliased_color(&json, "{Alias.Color.Highlight.Default.value}");
-    }
+    egui_style.visuals.selection.bg_fill =
+        get_aliased_color(&json, "{Alias.Color.Highlight.Default.value}");
+            
+    egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
 
     let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
@@ -152,8 +155,16 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: Color32::from_gray(20),    // copied from figma
-        bottom_bar_color: Color32::from_gray(25), // copied from figma
+        top_bar_color: Color32::from_gray(20), // copied from figma
+        bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
+        bottom_bar_stroke: egui::Stroke::new(1.0, egui::Color32::from_gray(47)), // copied from figma
+        bottom_bar_rounding: egui::Rounding {
+            nw: 6.0,
+            ne: 6.0,
+            sw: 0.0,
+            se: 0.0,
+        }, // copied from figma, should be top only
+        shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
     }
 }
 
@@ -161,6 +172,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
 fn get_aliased_color(json: &serde_json::Value, alias_path: &str) -> egui::Color32 {
     parse_color(get_alias_str(json, alias_path))
+}
+
+fn get_global_color(json: &serde_json::Value, global_path: &str) -> egui::Color32 {
+    parse_color(global_path_value(json, global_path).as_str().unwrap())
 }
 
 fn get_alias_str<'json>(json: &'json serde_json::Value, alias_path: &str) -> &'json str {

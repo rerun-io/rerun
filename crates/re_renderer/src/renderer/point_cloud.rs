@@ -133,7 +133,8 @@ pub enum PointCloudDrawDataError {
 
 /// Textures are 2D since 1D textures are very limited in size (8k typically).
 /// Need to keep this value in sync with `point_cloud.wgsl`!
-const DATA_TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20 MiB, ~1M points
+/// We store `vec4<f32> + [u8;4]` = 20 bytes per texel.
+const DATA_TEXTURE_SIZE: u32 = 2048; // 2ki x 2ki = 4 Mi = 80 MiB
 
 impl PointCloudDrawData {
     /// Maximum number of vertices per [`PointCloudDrawData`].

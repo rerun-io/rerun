@@ -40,4 +40,10 @@ line-length = 120
 target-version = ["py38"]
 
 [tool.maturin]
+# We use a python package from inside the rerun_sdk folder to avoid conflicting
+# with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
+# which then allows `import rerun` to work as expected.
+# See https://github.com/rerun-io/rerun/pull/1085 for more details
+include = ["rerun_sdk.pth"]
 locked = true
+python-packages = ["rerun_sdk/rerun"]
