@@ -139,12 +139,33 @@ impl ReUi {
         frame
     }
 
+    pub fn bottom_panel_margin(&self) -> egui::Vec2 {
+        egui::Vec2::splat(8.0)
+    }
+
+    /// For the streams view (time panel)
     pub fn bottom_panel_frame(&self) -> egui::Frame {
+        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
+        // (on the inner margin we counteract this again)
+        let margin_offset = self.design_tokens.bottom_bar_stroke.width * 0.5;
+
+        let margin = self.bottom_panel_margin();
+
         let mut frame = egui::Frame {
-            inner_margin: Self::view_padding().into(),
             fill: self.design_tokens.bottom_bar_color,
-            rounding: self.design_tokens.bottom_bar_rounding,
+            inner_margin: egui::Margin::symmetric(
+                margin.x + margin_offset,
+                margin.y + margin_offset,
+            ),
+            outer_margin: egui::Margin {
+                left: -margin_offset,
+                right: -margin_offset,
+                // Add a proper stoke width thick margin on the top.
+                top: self.design_tokens.bottom_bar_stroke.width,
+                bottom: -margin_offset,
+            },
             stroke: self.design_tokens.bottom_bar_stroke,
+            rounding: self.design_tokens.bottom_bar_rounding,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {

@@ -55,31 +55,9 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        let x_margin = 8.0;
-        let y_margin = 8.0;
         let top_bar_height = 28.0;
-
-        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
-        // (on the inner margin we counteract this again)
-        let margin_offset = ctx.re_ui.design_tokens.bottom_bar_stroke.width * 0.5;
-
-        let mut panel_frame = egui::Frame {
-            fill: ctx.re_ui.design_tokens.bottom_bar_color,
-            inner_margin: egui::Margin::symmetric(
-                x_margin + margin_offset,
-                y_margin + margin_offset,
-            ),
-            outer_margin: egui::Margin {
-                left: -margin_offset,
-                right: -margin_offset,
-                // Add a proper stoke width thick margin on the top.
-                top: ctx.re_ui.design_tokens.bottom_bar_stroke.width,
-                bottom: -margin_offset,
-            },
-            stroke: ctx.re_ui.design_tokens.bottom_bar_stroke,
-            rounding: ctx.re_ui.design_tokens.bottom_bar_rounding,
-            ..Default::default()
-        };
+        let margin = ctx.re_ui.bottom_panel_margin();
+        let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
         if blueprint.time_panel_expanded {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
@@ -119,8 +97,8 @@ impl TimePanel {
                     ui.vertical(|ui| {
                         // Add back the margin we removed from the panel:
                         let mut top_rop_frame = egui::Frame::default();
-                        top_rop_frame.inner_margin.right = x_margin;
-                        top_rop_frame.inner_margin.bottom = y_margin;
+                        top_rop_frame.inner_margin.right = margin.x;
+                        top_rop_frame.inner_margin.bottom = margin.y;
                         let rop_row_rect = top_rop_frame
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
