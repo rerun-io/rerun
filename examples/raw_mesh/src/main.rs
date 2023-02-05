@@ -172,16 +172,16 @@ fn main() -> anyhow::Result<()> {
 
     // Log raw glTF nodes and their transforms with Rerun
     let mut session = Session::new();
+    session.connect("127.0.0.1:9876".parse().unwrap());
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
         log_axis(&mut session, &root.name.as_str().into());
         log_node(&mut session, root);
     }
 
-    // TODO(cmc): provide high-level tools to pick and handle the different modes.
-    // TODO(cmc): connect, spawn_and_connect; show() probably doesn't make sense with pure rust
-    let log_messages = session.drain_log_messages_buffer();
-    rerun::viewer::show(log_messages).context("failed to start viewer")
+    session.flush();
+
+    Ok(())
 }
 
 // --- glTF parsing ---
