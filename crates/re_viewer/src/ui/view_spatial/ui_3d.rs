@@ -278,6 +278,7 @@ pub fn view_3d(
         state.state_3d.last_eye_interact_time = ui.input(|i| i.time);
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
+        state.state_3d.camera_before_tracked_camera = None;
     }
 
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
@@ -381,6 +382,7 @@ pub fn view_3d(
     // Double click changes camera
     if response.double_clicked() {
         state.state_3d.tracked_camera = None;
+        state.state_3d.camera_before_tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
         if let Some(Selection::InstancePath(_, instance_path)) = ctx.hovered().first() {
