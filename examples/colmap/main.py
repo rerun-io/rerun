@@ -146,7 +146,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         image_path = dataset_path / "images" / image.name
         image = Image.open(image_path)
 
-        rr.log_image("world/cam/img/rgb", image)
+        rr.log_image("world/cam/im/rgb", image)
 
         detections = obj_detector(image)
 
