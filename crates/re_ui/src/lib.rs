@@ -488,6 +488,8 @@ pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
     dock_style.tab_bar_background_color = style.visuals.panel_fill;
     dock_style.tab_background_color = style.visuals.panel_fill;
 
+    dock_style.hline_color = style.visuals.widgets.noninteractive.bg_stroke.color;
+
     // The active tab has no special outline:
     dock_style.tab_outline_color = Color32::TRANSPARENT;
 
