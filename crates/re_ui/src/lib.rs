@@ -459,6 +459,81 @@ impl ReUi {
         };
         ui.painter().add(shadow);
     }
+
+    pub fn selectable_label_with_icon(
+        &self,
+        ui: &mut egui::Ui,
+        icon: &Icon,
+        text: impl Into<egui::WidgetText>,
+        selected: bool,
+    ) -> egui::Response {
+        let button_padding = ui.spacing().button_padding;
+        let total_extra = button_padding + button_padding;
+
+        let wrap_width = ui.available_width() - total_extra.x;
+        let text = text
+            .into()
+            .into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+
+        let text_to_icon_padding = 4.0;
+        let icon_width_plus_padding = Self::small_icon_size().x + text_to_icon_padding;
+
+        let mut desired_size = total_extra + text.size() + egui::vec2(icon_width_plus_padding, 0.0);
+        desired_size.y = desired_size
+            .y
+            .at_least(ui.spacing().interact_size.y)
+            .at_least(Self::small_icon_size().y);
+        let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+        response.widget_info(|| {
+            egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, selected, text.text())
+        });
+
+        if ui.is_rect_visible(rect) {
+            let visuals = ui.style().interact_selectable(&response, selected);
+
+            // Draw background on interaction.
+            if selected || response.hovered() || response.highlighted() || response.has_focus() {
+                let rect = rect.expand(visuals.expansion);
+
+                ui.painter().rect(
+                    rect,
+                    visuals.rounding,
+                    visuals.weak_bg_fill,
+                    visuals.bg_stroke,
+                );
+            }
+
+            // Draw icon
+            let image = self.icon_image(icon);
+            let texture_id = image.texture_id(ui.ctx());
+            // TODO(emilk/andreas): change color and size on hover
+            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
+            let image_rect = egui::Rect::from_min_size(
+                ui.painter().round_pos_to_pixels(egui::pos2(
+                    rect.min.x.ceil(),
+                    ((rect.min.y + rect.max.y - Self::small_icon_size().y) * 0.5).ceil(),
+                )),
+                Self::small_icon_size(),
+            );
+            ui.painter().image(
+                texture_id,
+                image_rect,
+                egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                tint,
+            );
+
+            // Draw text next to the icon.
+            let mut text_rect = rect;
+            text_rect.min.x = image_rect.max.x + text_to_icon_padding;
+            let text_pos = ui
+                .layout()
+                .align_size_within_rect(text.size(), text_rect)
+                .min;
+            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
+        }
+
+        response
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -487,6 +562,8 @@ pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
     // Don't show tabs
     dock_style.tab_bar_background_color = style.visuals.panel_fill;
     dock_style.tab_background_color = style.visuals.panel_fill;
+
+    dock_style.hline_color = style.visuals.widgets.noninteractive.bg_stroke.color;
 
     // The active tab has no special outline:
     dock_style.tab_outline_color = Color32::TRANSPARENT;
