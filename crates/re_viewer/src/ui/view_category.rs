@@ -34,13 +34,13 @@ pub enum ViewCategory {
 }
 
 impl ViewCategory {
-    pub fn icon(&self) -> &'static str {
+    pub fn icon(self) -> &'static re_ui::Icon {
         match self {
-            ViewCategory::Text => "📃",
-            ViewCategory::TimeSeries => "📈",
-            ViewCategory::BarChart => "📊",
-            ViewCategory::Spatial => "🖼",
-            ViewCategory::Tensor => "🇹",
+            ViewCategory::Text => &re_ui::icons::SPACE_VIEW_TEXT,
+            ViewCategory::TimeSeries => &re_ui::icons::SPACE_VIEW_SCATTERPLOT,
+            ViewCategory::BarChart => &re_ui::icons::SPACE_VIEW_HISTOGRAM,
+            ViewCategory::Spatial => &re_ui::icons::SPACE_VIEW_3D,
+            ViewCategory::Tensor => &re_ui::icons::SPACE_VIEW_TENSOR,
         }
     }
 }

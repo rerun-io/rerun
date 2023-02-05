@@ -32,6 +32,7 @@ pub(crate) use self::space_view::{SpaceView, SpaceViewId};
 pub use self::annotations::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 pub use self::data_blueprint::DataBlueprintGroupHandle;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
+pub use self::view_category::ViewCategory;
 pub use self::viewport::Viewport;
 
 pub(crate) use data_ui::UiVerbosity;

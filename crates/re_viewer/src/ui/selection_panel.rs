@@ -166,7 +166,7 @@ pub fn what_is_selected_ui(
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
-                        ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                        ctx.space_view_button(ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -186,7 +186,12 @@ pub fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("in Space View:");
-                            ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                            ctx.space_view_button_to(
+                                ui,
+                                space_view.name.clone(),
+                                space_view.id,
+                                space_view.category,
+                            );
                             ui.end_row();
                         });
                 }
