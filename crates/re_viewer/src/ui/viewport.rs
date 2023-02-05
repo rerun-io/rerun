@@ -785,7 +785,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
 
-        let mut text = space_view.display_text();
+        let mut text = egui::WidgetText::from(space_view.name.clone()); // ignore category icon
 
         if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
             // Show that it is selected:
