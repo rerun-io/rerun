@@ -38,7 +38,7 @@ impl LoadedMesh {
         crate::profile_function!();
 
         let mesh_instances = match format {
-            MeshFormat::Glb | MeshFormat::Gltf | MeshFormat::Obj => {
+            MeshFormat::Glb | MeshFormat::Gltf => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(
                     &name,
                     bytes,
@@ -46,6 +46,8 @@ impl LoadedMesh {
                     render_ctx,
                 )
             }
+            // TODO(cmc): support obj
+            MeshFormat::Obj => anyhow::bail!(".obj files are not supported yet"),
         }?;
         let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
@@ -100,6 +102,7 @@ impl LoadedMesh {
             positions,
             indices,
             normals,
+            albedo_factor,
         } = raw_mesh;
 
         let positions: Vec<glam::Vec3> =
@@ -148,7 +151,9 @@ impl LoadedMesh {
                         label: name.clone().into(),
                         index_range: 0..nb_indices as _,
                         albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
-                        albedo_multiplier: re_renderer::Rgba::WHITE,
+                        albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
+                            re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
+                        }),
                     }],
                 },
                 ResourceLifeTime::LongLived,

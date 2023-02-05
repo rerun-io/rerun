@@ -521,24 +521,27 @@ impl Viewport {
         let mut space_views = Vec::new();
 
         for space_view_candidate in Self::all_possible_space_views(ctx, spaces_info) {
+            // Skip root space for now, messes things up.
+            if space_view_candidate.space_path.is_root() {
+                continue;
+            }
+
             let Some(space_info) = spaces_info.get(&space_view_candidate.space_path) else {
                 // Should never happen.
                 continue;
             };
 
-            // If it doesn't contain anything but the transform itself, skip,
-            if space_info.descendants_without_transform.is_empty() {
-                continue;
-            }
-
             if space_view_candidate.category == ViewCategory::Spatial {
-                // Skip if connection to parent is via rigid (too trivial for a new space view!)
-                if let Some(parent_transform) = space_info.parent_transform() {
-                    match parent_transform {
-                        re_log_types::Transform::Rigid3(_) => {
-                            continue;
+                // For every item that isn't a direct descendant of the root, skip if connection to parent is via rigid (too trivial for a new space view!)
+                if space_info.path.parent() != Some(EntityPath::root()) {
+                    if let Some(parent_transform) = space_info.parent_transform() {
+                        match parent_transform {
+                            re_log_types::Transform::Rigid3(_) => {
+                                continue;
+                            }
+                            re_log_types::Transform::Pinhole(_)
+                            | re_log_types::Transform::Unknown => {}
                         }
-                        re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
                     }
                 }
 

@@ -198,15 +198,34 @@ impl std::fmt::Display for Vec3D {
 #[arrow_field(transparent)]
 pub struct Vec4D(#[arrow_field(type = "FixedSizeArrayField<f32,4>")] pub [f32; 4]);
 
+impl Vec4D {
+    #[inline]
+    pub fn x(&self) -> f32 {
+        self.0[0]
+    }
+    #[inline]
+    pub fn y(&self) -> f32 {
+        self.0[1]
+    }
+    #[inline]
+    pub fn z(&self) -> f32 {
+        self.0[2]
+    }
+    #[inline]
+    pub fn w(&self) -> f32 {
+        self.0[3]
+    }
+}
+
 impl std::fmt::Display for Vec4D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "[{:.prec$}, {:.prec$}, {:.prec$}, {:.prec$}]",
-            self.0[0],
-            self.0[1],
-            self.0[2],
-            self.0[3],
+            self.x(),
+            self.y(),
+            self.z(),
+            self.w(),
             prec = DISPLAY_PRECISION
         )
     }

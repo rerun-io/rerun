@@ -68,7 +68,7 @@ SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
 ]
 
 # Virual folder where we will generate the md files
-root = Path(__file__).parent.parent.resolve()
+root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
 
 # We use griffe to access docstrings
