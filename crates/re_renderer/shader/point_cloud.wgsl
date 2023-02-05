@@ -22,7 +22,7 @@ const ENABLE_SHADING: u32 = 1u;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
-var<private> TEXTURE_SIZE: i32 = 1024;
+var<private> TEXTURE_SIZE: i32 = 2048;
 
 struct VertexOut {
     @builtin(position) position: Vec4,
