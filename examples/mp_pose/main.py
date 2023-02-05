@@ -7,6 +7,7 @@ from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Iterator, List, Optional, Tuple
+import logging
 
 import cv2 as cv
 import mediapipe as mp
@@ -20,6 +21,12 @@ import rerun as rr
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
+
+logger = logging.getLogger()
+rerun_handler = rr.log.text.LoggingHandler("logs")
+rerun_handler.setLevel(-1)
+logger.addHandler(rerun_handler)
+logger.setLevel(-1)
 
 
 def track_pose(video_path: str, segment: bool) -> None:
@@ -45,26 +52,37 @@ def track_pose(video_path: str, segment: bool) -> None:
 
     with closing(VideoSource(video_path)) as video_source:
         with mp_pose.Pose(enable_segmentation=segment) as pose:
+            logging.info("Tracker initialized")
             for bgr_frame in video_source.stream_bgr():
                 if bgr_frame.idx < 20:
                     continue
+                frame_idx = bgr_frame.idx - 20
 
                 rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
                 rr.set_time_seconds("time", bgr_frame.time)
-                rr.set_time_sequence("frame_idx", bgr_frame.idx - 20)
+                rr.set_time_sequence("frame_idx", frame_idx)
                 rr.log_image("video/rgb", rgb)
+
+                logging.info("Processing frame %s", frame_idx)
 
                 results = pose.process(rgb)
                 h, w, _ = rgb.shape
                 landmark_positions_2d = read_landmark_positions_2d(results, w, h)
+
+                if landmark_positions_2d is not None:
+                    logging.debug("Detected 'Person' with %s keypoints", landmark_positions_2d.shape[0])
+
                 rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
 
                 landmark_positions_3d = read_landmark_positions_3d(results)
                 rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
 
+                logging.debug("Segmentation mask for 'Person' extracted")
                 segmentation_mask = results.segmentation_mask
                 if segmentation_mask is not None:
                     rr.log_segmentation_image("video/mask", segmentation_mask)
+
+    logging.info("Finished tracking")
 
 
 def read_landmark_positions_2d(
@@ -105,10 +123,13 @@ class VideoSource:
         if not self.capture.isOpened():
             logging.error("Couldn't open video at %s", path)
 
+        logging.info("Opening video source")
+
     def close(self) -> None:
         self.capture.release()
 
     def stream_bgr(self) -> Iterator[VideoFrame]:
+        logging.info("Begin streaming video frames")
         while self.capture.isOpened():
             idx = int(self.capture.get(cv.CAP_PROP_POS_FRAMES))
             is_open, bgr = self.capture.read()
@@ -118,6 +139,8 @@ class VideoSource:
                 break
 
             yield VideoFrame(data=bgr, time=time_ms * 1e-3, idx=idx)
+
+        logging.info("Finished streaming video frames")
 
 
 def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
