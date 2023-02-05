@@ -97,7 +97,7 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
     elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
+        rr.spawn()
 
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)

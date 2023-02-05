@@ -53,7 +53,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
     elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
+        rr.spawn()
 
     for i in range(10):
         t = threading.Thread(

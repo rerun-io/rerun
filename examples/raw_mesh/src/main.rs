@@ -179,7 +179,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // TODO(cmc): provide high-level tools to pick and handle the different modes.
-    // TODO(cmc): connect, spawn_and_connect; show() probably doesn't make sense with pure rust
+    // TODO(cmc): connect, spawn; show() probably doesn't make sense with pure rust
     let log_messages = session.drain_log_messages_buffer();
     rerun::viewer::show(log_messages).context("failed to start viewer")
 }

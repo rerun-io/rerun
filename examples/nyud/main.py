@@ -199,7 +199,7 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
     elif args.save is None:
-        rr.spawn_and_connect()
+        rr.spawn()
 
     recording_path = ensure_recording_downloaded(args.recording)
 

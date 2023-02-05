@@ -305,7 +305,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
     elif args.save is None:
-        rr.spawn_and_connect()
+        rr.spawn()
 
     if args.demo == "all":
         print("Running all demos…")
