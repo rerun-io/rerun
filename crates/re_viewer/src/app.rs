@@ -943,9 +943,13 @@ fn top_panel(
             .response;
 
             #[cfg(not(target_arch = "wasm32"))]
-            if re_ui::FULLSIZE_CONTENT && _response.interact(egui::Sense::click()).double_clicked()
-            {
-                frame.set_maximized(!frame.info().window_info.maximized);
+            if !re_ui::NATIVE_WINDOW_BAR {
+                let title_bar_response = _response.interact(egui::Sense::click());
+                if title_bar_response.double_clicked() {
+                    frame.set_maximized(!frame.info().window_info.maximized);
+                } else if title_bar_response.is_pointer_button_down_on() {
+                    frame.drag_window();
+                }
             }
         });
 }
@@ -1032,11 +1036,6 @@ fn top_bar_ui(
 
     if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Make the first button the same distance form the side as from the top,
-            // no matter how high the top bar is.
-            let extra_margin = (ui.available_height() - 24.0) / 2.0;
-            ui.add_space(extra_margin);
-
             let selected_app_id = log_db
                 .recording_info()
                 .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1046,6 +1045,18 @@ fn top_bar_ui(
             let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
 
             // From right-to-left:
+
+            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+                ui.add_space(8.0);
+                re_ui::native_window_buttons_ui(frame, ui);
+                ui.add_space(16.0);
+            } else {
+                // Make the first button the same distance form the side as from the top,
+                // no matter how high the top bar is.
+                let extra_margin = (ui.available_height() - 24.0) / 2.0;
+                ui.add_space(extra_margin);
+            }
+
             app.re_ui
                 .medium_icon_toggle_button(
                     ui,

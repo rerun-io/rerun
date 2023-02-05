@@ -20,6 +20,15 @@ pub use toggle_switch::toggle_switch;
 /// See <https://github.com/emilk/egui/pull/2049>
 pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
 
+/// If true, we hide the native window decoration
+/// (the top bar with app title, close button etc),
+/// and instead paint our own close/maximize/minimize buttons.
+pub const CUSTOM_WINDOW_DECORATIONS: bool = !FULLSIZE_CONTENT;
+
+/// If true, we show the native window decorations/chrome with the
+/// close/maximize/minimize buttons and app title.
+pub const NATIVE_WINDOW_BAR: bool = !FULLSIZE_CONTENT && !CUSTOM_WINDOW_DECORATIONS;
+
 // ----------------------------------------------------------------------------
 
 pub struct TopBarStyle {
@@ -569,4 +578,48 @@ pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
     dock_style.tab_outline_color = Color32::TRANSPARENT;
 
     dock_style
+}
+
+// ----------------------------------------------------------------------------
+
+/// Show some close/maximize/minimize buttons for the native window.
+///
+/// Assumes it is in a right-to-left layout.
+///
+/// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
+#[cfg(feature = "eframe")]
+pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
+    use egui::{Button, RichText};
+
+    let button_height = 12.0;
+
+    let close_response = ui
+        .add(Button::new(RichText::new("❌").size(button_height)))
+        .on_hover_text("Close the window");
+    if close_response.clicked() {
+        frame.close();
+    }
+
+    if frame.info().window_info.maximized {
+        let maximized_response = ui
+            .add(Button::new(RichText::new("🗗").size(button_height)))
+            .on_hover_text("Restore window");
+        if maximized_response.clicked() {
+            frame.set_maximized(false);
+        }
+    } else {
+        let maximized_response = ui
+            .add(Button::new(RichText::new("🗗").size(button_height)))
+            .on_hover_text("Maximize window");
+        if maximized_response.clicked() {
+            frame.set_maximized(true);
+        }
+    }
+
+    let minimized_response = ui
+        .add(Button::new(RichText::new("🗕").size(button_height)))
+        .on_hover_text("Minimize the window");
+    if minimized_response.clicked() {
+        frame.set_minimized(true);
+    }
 }
