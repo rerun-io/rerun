@@ -35,14 +35,17 @@ def track_pose(video_path: str, segment: bool) -> None:
     )
     # Use a separate annotation context for the segmentation mask.
     rr.log_annotation_context(
-        "video/mask", [AnnotationInfo(id=0, label="Background"), AnnotationInfo(id=1, label="Person", color=(0, 0, 0))]
+        "video/mask",
+        [
+            AnnotationInfo(id=0, label="Background", color=(0, 0, 0)),
+            AnnotationInfo(id=1, label="Person", color=(167, 80, 76)),
+        ],
     )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 
     with closing(VideoSource(video_path)) as video_source:
         with mp_pose.Pose(enable_segmentation=segment) as pose:
             for bgr_frame in video_source.stream_bgr():
-
                 rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
                 rr.set_time_seconds("time", bgr_frame.time)
                 rr.set_time_sequence("frame_idx", bgr_frame.idx)
