@@ -92,6 +92,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
     rr.log_view_coordinates("world", up="-Y", timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.
+    seen_ids = np.ndarray((0,), dtype="int64")
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
         frame_idx = int(image.name[0:4])  # COLMAP sets image ids that don't match the original video frame
         quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
@@ -101,19 +102,23 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
         visible = [id != -1 and points3D.get(id) is not None for id in image.point3D_ids]
         visible_ids = image.point3D_ids[visible]
+        seen_ids = np.unique(np.hstack([visible_ids, seen_ids]))
 
         if filter_output and len(visible_ids) < FILTER_MIN_VISIBLE:
             continue
 
+        seen_xyzs = [points3D[id] for id in seen_ids]
         visible_xyzs = [points3D[id] for id in visible_ids]
         visible_xys = image.xys[visible]
 
         rr.set_time_sequence("frame", frame_idx)
 
-        points = [point.xyz for point in visible_xyzs]
+        seen_points = [point.xyz for point in seen_xyzs]
+        seen_colors = [point.rgb for point in seen_xyzs]
+
         point_colors = [point.rgb for point in visible_xyzs]
 
-        rr.log_points("world/points", points, colors=point_colors)
+        rr.log_points("world/points", seen_points, colors=seen_colors)
 
         rr.log_rigid3(
             "world/camera",
@@ -125,7 +130,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         rr.log_scalar("camera/y", image.tvec[1], label="y", color=GREEN)
         rr.log_scalar("camera/z", image.tvec[2], label="z", color=BLUE)
 
-        # TODO: Hack history & detect car
+        # TODO: detect car
 
         # Log camera intrinsics
         rr.log_pinhole(
