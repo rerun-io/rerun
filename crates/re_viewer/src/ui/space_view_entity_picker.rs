@@ -313,8 +313,8 @@ fn create_entity_add_info(
         } else {
             CanAddToSpaceView::No {
                 reason: format!(
-                    "Entity can't be displayed by this type of Space View {}",
-                    space_view.category.icon()
+                    "Entity can't be displayed by this type of Space View ({})",
+                    space_view.category
                 ),
             }
         };
