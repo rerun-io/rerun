@@ -145,8 +145,12 @@ def main() -> None:
     parser.add_argument(
         "--video",
         type=str,
-        default="backflip",
-        choices=["backflip", "soccer"],
+        default="bike",
+        choices=[
+            "bike",
+            "backflip",
+            "soccer",
+        ],
         help="The example video to run on.",
     )
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
