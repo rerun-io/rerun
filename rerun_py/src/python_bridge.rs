@@ -516,7 +516,7 @@ fn log_view_coordinates_up_handedness(
 }
 
 fn log_view_coordinates(
-    entity_path: &str,
+    entity_path_str: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
@@ -524,8 +524,14 @@ fn log_view_coordinates(
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
 
+    // We normally disallow logging to root, but we make an exception for view_coordinates
+    let entity_path = if entity_path_str == "/" {
+        EntityPath::root()
+    } else {
+        parse_entity_path(entity_path_str)?
+    };
+
     let mut session = global_session();
-    let entity_path = parse_entity_path(entity_path)?;
     let time_point = time(timeless);
 
     // We currently log view coordinates from inside the bridge because the code
