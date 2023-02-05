@@ -98,8 +98,12 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
     # Iterate through images (video frames) logging data related to each frame.
     seen_ids = np.ndarray((0,), dtype="int64")
-    for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
-        frame_idx = int(image.name[0:4])  # COLMAP sets image ids that don't match the original video frame
+    for image in sorted(images.values(), key=lambda im: im.name[3:7]):  # type: ignore[no-any-return]
+        frame_idx = int(image.name[3:7])  # COLMAP sets image ids that don't match the original video frame
+
+        if frame_idx < 34:
+            continue
+
         quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
         camera_from_world = (image.tvec, quat_xyzw)  # COLMAP's camera transform is "camera from world"
         camera = cameras[image.camera_id]
@@ -116,7 +120,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         visible_xyzs = [points3D[id] for id in visible_ids]
         visible_xys = image.xys[visible]
 
-        rr.set_time_sequence("frame", frame_idx)
+        rr.set_time_sequence("frame", frame_idx - 34)
 
         seen_points = [point.xyz for point in seen_xyzs]
         seen_colors = [point.rgb for point in seen_xyzs]
@@ -144,9 +148,10 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         )
 
         image_path = dataset_path / "images" / image.name
+        image_name = image.name
         image = Image.open(image_path)
 
-        rr.log_image("world/cam/im/rgb", image)
+        rr.log_image("world/cam/im/rgb", image, ext={"name": image_name})
 
         detections = obj_detector(image)
 
