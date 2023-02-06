@@ -17,15 +17,19 @@ pub enum MsgSenderError {
         "All component collections must have exactly one row (i.e. no batching), got {0:?} instead"
     )]
     MoreThanOneRow(Vec<(ComponentName, usize)>),
+
     #[error(
         "All component collections must share the same number of instances (i.e. row length) \
             for a given row, got {0:?} instead"
     )]
     MismatchedRowLengths(Vec<(ComponentName, usize)>),
+
     #[error("Instance keys cannot be splatted")]
     SplattedInstanceKeys,
+
     #[error("InstanceKey(u64::MAX) is reserved for Rerun internals")]
     IllegalInstanceKey,
+
     #[error(transparent)]
     PackingError(#[from] MsgBundleError),
 }
@@ -111,7 +115,7 @@ impl MsgSender {
     /// This can be called any number of times. In case of collisions, last write wins.
     /// I.e. if `timepoint` contains a timestamp `ts1` for a timeline `my_time` and the current
     /// message already has a timestamp `ts0` for that same timeline, then the new value (`ts1`)
-    /// overwrite the existing value (`ts0`).
+    /// will overwrite the existing value (`ts0`).
     ///
     /// `MsgSender` automatically keeps track of the logging time, which is recorded when
     /// [`Self::new`] is first called.
@@ -259,6 +263,10 @@ impl MsgSender {
             instanced,
             mut splatted,
         } = self;
+
+        if timeless && timepoint.times().len() > 1 {
+            re_log::warn_once!("Recorded timepoints in a timeless message, they will be dropped!");
+        }
 
         // clear current timepoint if marked as timeless
         let timepoint = if timeless { [].into() } else { timepoint };

@@ -185,6 +185,22 @@ impl<C: SerializableComponent> TryFrom<&Vec<C>> for ComponentBundle {
     }
 }
 
+// TODO(cmc): We'd like this, but orphan rules prevent us from having it:
+//
+// ```
+// = note: conflicting implementation in crate `core`:
+//         - impl<T, U> std::convert::TryFrom<U> for T
+//           where U: std::convert::Into<T>;
+// ```
+//
+// impl<'a, C: SerializableComponent, I: IntoIterator<Item = &'a C>> TryFrom<I> for ComponentBundle {
+//     type Error = MsgBundleError;
+
+//     fn try_from(c: I) -> Result<Self> {
+//         c.as_slice().try_into()
+//     }
+// }
+
 /// A `MsgBundle` holds data necessary for composing a single log message.
 ///
 /// # Example

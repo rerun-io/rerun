@@ -15,8 +15,8 @@ use bytes::Bytes;
 use clap::Parser;
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    ApplicationId, EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, Session, TimeType, Timeline,
-    Transform, Vec4D, ViewCoordinates,
+    ApplicationId, EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, RecordingId, Session,
+    TimeType, Timeline, Transform, Vec4D, ViewCoordinates,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -124,9 +124,11 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 #[clap(author, version, about)]
 struct Args {
     /// If specified, connects and sends the logged data to a remote Rerun viewer.
+    ///
+    /// Optionally takes an ip:port, otherwise uses Rerun's defaults.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    addr: Option<Option<String>>,
+    connect: Option<Option<String>>,
 
     /// Specifies the path of the glTF scene to load.
     #[clap(long)]
@@ -137,7 +139,7 @@ fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
     let args = Args::parse();
-    let addr = match args.addr {
+    let addr = match args.connect.as_ref() {
         Some(Some(addr)) => Some(addr.parse()?),
         Some(None) => Some(rerun::default_server_addr()),
         None => None,
@@ -149,6 +151,10 @@ fn main() -> anyhow::Result<()> {
     // This needs to take care of the whole `official_example` thing, and also keeps track of
     // whether we're using the rust or python sdk.
     session.set_application_id(ApplicationId("objectron-rs".into()), true);
+    session.set_recording_id(RecordingId::random());
+    if let Some(addr) = addr {
+        session.connect(addr);
+    }
 
     // Read glTF scene
     let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path)?))?;
@@ -164,9 +170,7 @@ fn main() -> anyhow::Result<()> {
     // TODO(cmc): arg parsing and arg interpretation helpers
     // TODO(cmc): missing flags: save, serve
     // TODO(cmc): expose an easy to use async local mode.
-    if let Some(addr) = addr {
-        session.connect(addr);
-    } else {
+    if args.connect.is_none() {
         let log_messages = session.drain_log_messages_buffer();
         rerun::viewer::show(log_messages)?;
     }

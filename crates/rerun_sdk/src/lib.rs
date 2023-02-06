@@ -24,7 +24,7 @@ pub mod viewer;
 // ---
 
 // init
-pub use re_log_types::ApplicationId;
+pub use re_log_types::{ApplicationId, RecordingId};
 pub use re_sdk_comms::default_server_addr;
 
 // messages
