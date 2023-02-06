@@ -470,6 +470,8 @@ impl eframe::App for App {
         egui::CentralPanel::default()
             .frame(main_panel_frame)
             .show(egui_ctx, |ui| {
+                paint_background_fill(ui);
+
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_stats);
@@ -534,6 +536,19 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
     }
+}
+
+fn paint_background_fill(ui: &mut egui::Ui) {
+    // This is required because the streams view (time panel)
+    // has rounded top corners, which leaves a gap.
+    // So we fill in that gap (and other) here.
+    // Of course this does some over-draw, but we have to live with that.
+
+    ui.painter().rect_filled(
+        ui.ctx().screen_rect().shrink(0.5),
+        re_ui::ReUi::native_window_rounding(),
+        ui.visuals().panel_fill,
+    );
 }
 
 fn paint_native_window_frame(egui_ctx: &egui::Context) {
