@@ -641,6 +641,7 @@ pub fn egui_dock_style(style: &egui::Style) -> egui_dock::Style {
 ///
 /// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
 #[cfg(feature = "eframe")]
+#[cfg(not(target_arch = "wasm32"))]
 pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
     use egui::{Button, RichText};
 

@@ -1104,8 +1104,9 @@ fn top_bar_ui(
 
             // From right-to-left:
 
-            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
                 ui.add_space(8.0);
+                #[cfg(not(target_arch = "wasm32"))]
                 re_ui::native_window_buttons_ui(frame, ui);
                 ui.separator();
             } else {
