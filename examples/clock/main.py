@@ -68,24 +68,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="An example visualizing an analog clock is built with Rerun Arrow3D primitives."
     )
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("clock")
-
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
-
+    rr.script_setup(args, "clock")
     log_clock(args.steps)
-
-    if args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
