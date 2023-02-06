@@ -190,7 +190,15 @@ impl SpaceInfoCollection {
                 .child_spaces
                 .insert(tree.path.clone(), transform);
 
-            add_children(entity_db, &mut spaces_info, &mut space_info, tree, &query);
+            for child_tree in tree.children.values() {
+                add_children(
+                    entity_db,
+                    &mut spaces_info,
+                    &mut space_info,
+                    child_tree,
+                    &query,
+                );
+            }
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
         spaces_info
