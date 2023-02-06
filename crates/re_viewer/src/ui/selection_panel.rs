@@ -149,7 +149,7 @@ pub fn what_is_selected_ui(
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 ui.horizontal(|ui| {
                     ui.label("Space view:");
-                    ui.text_edit_singleline(&mut space_view.name);
+                    ui.text_edit_singleline(&mut space_view.display_name);
                 });
             }
         }
@@ -193,7 +193,7 @@ pub fn what_is_selected_ui(
                             ui.label("in Space View:");
                             ctx.space_view_button_to(
                                 ui,
-                                space_view.name.clone(),
+                                space_view.display_name.clone(),
                                 space_view.id,
                                 space_view.category,
                             );
@@ -352,7 +352,7 @@ fn list_existing_data_blueprints(
                         ui,
                         Some(*space_view_id),
                         entity_path,
-                        &space_view.name,
+                        &space_view.display_name,
                     );
                 }
             }
