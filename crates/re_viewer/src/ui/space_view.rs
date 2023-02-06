@@ -66,11 +66,14 @@ impl SpaceView {
         space_info: &SpaceInfo,
         queries_entities: &[EntityPath],
     ) -> Self {
-        // Include category name in the display for root paths because they look a tad bit short otherwise.
-        let display_name = if space_info.path.is_root() {
-            format!("/ ({category})")
+        let display_name = if queries_entities.len() == 1 {
+            // A single entity in this space-view - name the space after it.
+            queries_entities[0].to_string()
+        } else if let Some(name) = space_info.path.iter().last() {
+            name.to_string()
         } else {
-            space_info.path.iter().last().unwrap().to_string()
+            // Include category name in the display for root paths because they look a tad bit too short otherwise.
+            format!("/ ({category})")
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();

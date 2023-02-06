@@ -626,7 +626,6 @@ impl Viewport {
                     .selectable_label_with_icon(
                         ui,
                         space_view.category.icon(),
-                        // Unless this is the root, don't use the display name.
                         if space_view.space_path.is_root() {
                             space_view.display_name.clone()
                         } else {
