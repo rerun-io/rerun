@@ -35,6 +35,7 @@ document-features = "0.2"
 lazy_static.workspace = true
 nohash-hasher = "0.2"
 once_cell = "1.12"
+thiserror.workspace = true
 
 # Optional dependencies:
 re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
