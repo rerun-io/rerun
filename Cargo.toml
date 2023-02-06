@@ -68,14 +68,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-06 - Add Order::TOP
-ecolor = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
-eframe = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
-egui = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
-emath = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
-epaint = { git = "https://github.com/emilk/egui", rev = "b1e214bbdf7c957cf60cd366403254cf66e2eab0" }
+# 2023-02-06 - Fix wgpu transparency
+ecolor = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+eframe = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+egui = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+emath = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+epaint = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
