@@ -20,8 +20,8 @@ use rerun::{
     log_time, AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA,
     Component, ComponentName, EntityPath, Label, LineStrip3D, Mesh3D, MeshId, MsgSender, Point2D,
     Point3D, Quaternion, Radius, RawMesh3D, RecordingId, Rect2D, Rigid3, Session, SignedAxis3,
-    Tensor, TextEntry, Time, TimeInt, TimePoint, TimeType, Timeline, Transform, Vec3D,
-    ViewCoordinates,
+    Tensor, TensorDataMeaning, TextEntry, Time, TimeInt, TimePoint, TimeType, Timeline, Transform,
+    Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -273,10 +273,18 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
-    // TODO(cmc): the python SDK has some higher-level logic to make life simpler (and safer) when
-    // logging images of all kind: standard (`log_image`), depth (see `log_depth_image`),
-    // (`log_segmentation_image`).
-    // We're gonna need some of that.
+    // TODO(cmc): All of these text logs should really be going through `re_log` and automagically
+    // fed back into rerun via a `tracing` backend. At the _very_ least we should have a helper
+    // available for this.
+    // In either case, this raises the question of tracking time at the SDK level, akin to what the
+    // python SDK does.
+    fn log_info(session: &mut Session, timepoint: TimePoint, text: &str) -> anyhow::Result<()> {
+        MsgSender::new("seg_demo_log")
+            .with_timepoint(timepoint)
+            .with_component(&[TextEntry::new(text, Some("INFO".into()))])?
+            .send(session)
+            .map_err(Into::into)
+    }
 
     // Log an image before we have set up our labels
     use ndarray::prelude::*;
@@ -284,11 +292,12 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
     segmentation_img.slice_mut(s![10..20, 30..50]).fill(13);
     segmentation_img.slice_mut(s![80..100, 60..80]).fill(42);
     segmentation_img.slice_mut(s![20..50, 90..110]).fill(99);
+
+    let mut tensor = Tensor::try_from(segmentation_img.as_standard_layout().view())?;
+    tensor.meaning = TensorDataMeaning::ClassId;
     MsgSender::new("seg_demo/img")
         .with_timepoint(sim_time(1 as _))
-        .with_component(&[Tensor::try_from(
-            segmentation_img.as_standard_layout().view(),
-        )?])?
+        .with_component(&[tensor])?
         .send(session)?;
 
     // Log a bunch of classified 2D points
@@ -330,16 +339,15 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         )?
         .with_splat(ClassId(42))?
         .send(session)?;
-    MsgSender::new("seg_demo_log")
-        .with_timepoint(sim_time(1 as _))
-        .with_component(&[TextEntry::new(
-            "no rects, default colored points, a single point has a label",
-            None,
-        )])?
-        .send(session)?;
+    log_info(
+        session,
+        sim_time(1 as _),
+        "no rects, default colored points, a single point has a label",
+    )?;
 
     // Log an initial segmentation map with arbitrary colors
-    // TODO(cmc): now that's just painful
+    // TODO(cmc): Gotta provide _MUCH_ better helpers for building out annotations, this is just
+    // unapologetically painful
     fn create_class(
         id: u16,
         label: Option<&str>,
@@ -369,14 +377,12 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
             .collect(),
         }])?
         .send(session)?;
-    MsgSender::new("seg_demo_log")
-        .with_timepoint(sim_time(2 as _))
-        .with_component(&[TextEntry::new(
-            "default colored rects, default colored points, all points except the \
-                bottom right clusters have labels",
-            None,
-        )])?
-        .send(session)?;
+    log_info(
+        session,
+        sim_time(2 as _),
+        "default colored rects, default colored points, all points except the \
+            bottom right clusters have labels",
+    )?;
 
     // Log an updated segmentation map with specific colors
     MsgSender::new("seg_demo")
@@ -391,13 +397,11 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
             .collect(),
         }])?
         .send(session)?;
-    MsgSender::new("seg_demo_log")
-        .with_timepoint(sim_time(3 as _))
-        .with_component(&[TextEntry::new(
-            "points/rects with user specified colors",
-            None,
-        )])?
-        .send(session)?;
+    log_info(
+        session,
+        sim_time(3 as _),
+        "points/rects with user specified colors",
+    )?;
 
     // Log with a mixture of set and unset colors / labels
     MsgSender::new("seg_demo")
@@ -412,13 +416,11 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
             .collect(),
         }])?
         .send(session)?;
-    MsgSender::new("seg_demo_log")
-        .with_timepoint(sim_time(4 as _))
-        .with_component(&[TextEntry::new(
-            "label1 disappears and everything with label3 is now default colored again",
-            None,
-        )])?
-        .send(session)?;
+    log_info(
+        session,
+        sim_time(4 as _),
+        "label1 disappears and everything with label3 is now default colored again",
+    )?;
 
     Ok(())
 }
