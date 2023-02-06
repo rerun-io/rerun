@@ -235,11 +235,6 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
-    // TODO(cmc): the python SDK has some higher-level logic to make life simpler (and safer) when
-    // logging images of all kind: standard (`log_image`), depth (see `log_depth_image`),
-    // (`log_segmentation_image`).
-    // We're gonna need some of that.
-
     use ndarray::prelude::*;
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
