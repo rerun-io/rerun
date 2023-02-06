@@ -1,6 +1,9 @@
 // TODO: doc
 
-use std::f32::consts::{PI, TAU};
+use std::{
+    collections::HashSet,
+    f32::consts::{PI, TAU},
+};
 
 use anyhow::{bail, Context};
 use clap::Parser;
@@ -16,36 +19,41 @@ use rerun::{
     },
     log_time, AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA,
     Component, ComponentName, EntityPath, Label, LineStrip3D, Mesh3D, MeshId, MsgSender, Point2D,
-    Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3, Session, SignedAxis3, Tensor,
-    TextEntry, Time, TimeInt, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
+    Point3D, Quaternion, Radius, RawMesh3D, RecordingId, Rect2D, Rigid3, Session, SignedAxis3,
+    Tensor, TextEntry, Time, TimeInt, TimePoint, TimeType, Timeline, Transform, Vec3D,
+    ViewCoordinates,
 };
 
 // --- Rerun logging ---
 
-fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
+fn sim_time(at: f64) -> TimePoint {
     let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
+    let time = Time::from_seconds_since_epoch(at);
+    [(timeline_sim_time, time.into())].into()
+}
 
+fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
-        .with_time(timeline_sim_time, 0)
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform::Rigid3(Rigid3 {
             rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
             translation: Vec3D::default(),
         })])?
         .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
-        .with_component(&[Radius(0.01)])?
+        .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".to_owned())])?
         .send(session)?;
 
     MsgSender::new("bbox_demo/bbox")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform::Rigid3(Rigid3 {
             rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
             translation: Vec3D::new(1.0, 0.0, 0.0),
         })])?
         .with_component(&[ColorRGBA::from([255, 255, 0, 255])])?
-        .with_component(&[Radius(0.02)])?
+        .with_component(&[Radius(0.01)])?
         .with_component(&[Label("box/t1".to_owned())])?
         .send(session)?;
 
@@ -53,11 +61,9 @@ fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-
     // Hack to establish 2d view bounds
     MsgSender::new("extension_components")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(0.0, 0.0, 128.0, 128.0)])?
         .send(session)?;
 
@@ -76,7 +82,7 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
 
     // Single point with our custom component!
     MsgSender::new("extension_components/point")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point2D::new(64.0, 64.0)])?
         .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
         .with_component(&[Confidence(0.9)])?
@@ -103,7 +109,7 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
     }
 
     MsgSender::new("extension_components/points")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[
             Point2D::new(32.0, 32.0),
             Point2D::new(32.0, 96.0),
@@ -124,52 +130,51 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-
     // TODO(cmc): need abstractions for this
     fn log_cleared(
         session: &mut Session,
-        time: (Timeline, impl Into<TimeInt>),
+        timepoint: TimePoint,
         ent_path: impl Into<EntityPath>,
         recursive: bool,
     ) {
         use rerun::external::re_log_types::PathOp;
+        let tp = timepoint.iter().collect::<Vec<_>>();
         let timepoint = [
             (Timeline::log_time(), Time::now().into()),
-            (time.0, time.1.into()),
+            (tp[0].0.clone(), *tp[0].1),
         ];
         session.send_path_op(&timepoint.into(), PathOp::clear(recursive, ent_path.into()));
     }
 
     // sim_time = 1
     MsgSender::new("null_demo/rect/0")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(5.0, 4.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
         .with_component(&[Label("Rect1".to_owned())])?
         .send(session)?;
     MsgSender::new("null_demo/rect/1")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
         .with_component(&[Label("Rect2".to_owned())])?
         .send(session)?;
 
     // sim_time = 2
-    log_cleared(session, (timeline_sim_time, 2), "null_demo/rect/0", false);
+    log_cleared(session, sim_time(2 as _), "null_demo/rect/0", false);
 
     // sim_time = 3
-    log_cleared(session, (timeline_sim_time, 3), "null_demo/rect", true);
+    log_cleared(session, sim_time(3 as _), "null_demo/rect", true);
 
     // sim_time = 4
     MsgSender::new("null_demo/rect/0")
-        .with_time(timeline_sim_time, 4)
+        .with_timepoint(sim_time(4 as _))
         .with_component(&[Rect2D::from_xywh(5.0, 4.0, 4.0, 4.0)])?
         .send(session)?;
 
     // sim_time = 5
     MsgSender::new("null_demo/rect/1")
-        .with_time(timeline_sim_time, 5)
+        .with_timepoint(sim_time(5 as _))
         .with_component(&[Rect2D::from_xywh(10.0, 4.0, 4.0, 4.0)])?
         .send(session)?;
 
@@ -177,15 +182,13 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-
-    MsgSender::new("3d_points/single_point_unlabeled")
-        .with_time(timeline_sim_time, 1)
+    MsgSender::new("4d_points/single_point_unlabeled")
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
         .send(session)?;
 
     MsgSender::new("3d_points/single_point_labeled")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point3D::new(0.0, 0.0, 0.0)])?
         .with_component(&[Label("labeled point".to_owned())])?
         .send(session)?;
@@ -213,7 +216,7 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
     let (labels, points, radii, _) =
         create_points(9, |x| x * 5.0, |y| y * 5.0 + 10.0, |z| z * 4.0 - 5.0);
     MsgSender::new("3d_points/spiral_small")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&points)?
         .with_component(&labels)?
         .with_component(&radii)?
@@ -222,7 +225,7 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
     let (labels, points, _, colors) =
         create_points(100, |x| x * 5.0, |y| y * 5.0 - 10.0, |z| z * 0.4 - 5.0);
     MsgSender::new("3d_points/spiral_big")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&points)?
         .with_component(&labels)?
         .with_component(&colors)?
@@ -232,8 +235,6 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-
     // TODO(cmc): the python SDK has some higher-level logic to make life simpler (and safer) when
     // logging images of all kind: standard (`log_image`), depth (see `log_depth_image`),
     // (`log_segmentation_image`).
@@ -245,7 +246,7 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
     // Add an image
     let img = Array::<u8, _>::from_elem((1024, 1024, 3).f(), 128);
     MsgSender::new("rects_demo/img")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .send(session)?;
 
@@ -262,16 +263,14 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
         .map(|c| ColorRGBA::from([c[0], c[1], c[2], 255]))
         .collect::<Vec<_>>();
     MsgSender::new("rects_demo/rects")
-        .with_time(timeline_sim_time, 2)
+        .with_timepoint(sim_time(2 as _))
         .with_component(&rects)?
         .with_component(&colors)?
         .send(session)?;
 
     // Clear the rectangles by logging an empty set
-    // rr.set_time_seconds("sim_time", 3)
-    // rr.log_rects("rects_demo/rects", [])
     MsgSender::new("rects_demo/rects")
-        .with_time(timeline_sim_time, 3)
+        .with_timepoint(sim_time(3 as _))
         .with_component(&Vec::<Rect2D>::new())?
         .send(session)?;
 
@@ -279,8 +278,6 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-
     // TODO(cmc): the python SDK has some higher-level logic to make life simpler (and safer) when
     // logging images of all kind: standard (`log_image`), depth (see `log_depth_image`),
     // (`log_segmentation_image`).
@@ -293,7 +290,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
     segmentation_img.slice_mut(s![80..100, 60..80]).fill(42);
     segmentation_img.slice_mut(s![20..50, 90..110]).fill(99);
     MsgSender::new("seg_demo/img")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Tensor::try_from(
             segmentation_img.as_standard_layout().view(),
         )?])?
@@ -301,18 +298,18 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
 
     // Log a bunch of classified 2D points
     MsgSender::new("seg_demo/single_point")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point2D::new(64.0, 64.0)])?
         .with_component(&[ClassId(13)])?
         .send(session)?;
     MsgSender::new("seg_demo/single_point_labeled")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point2D::new(90.0, 50.0)])?
         .with_component(&[ClassId(13)])?
         .with_component(&[Label("labeled point".into())])?
         .send(session)?;
     MsgSender::new("seg_demo/several_points0")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[
             Point2D::new(20.0, 50.0),
             Point2D::new(100.0, 70.0),
@@ -321,7 +318,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         .with_splat(ClassId(42))?
         .send(session)?;
     MsgSender::new("seg_demo/several_points1")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[
             Point2D::new(40.0, 50.0),
             Point2D::new(120.0, 70.0),
@@ -330,7 +327,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         .with_component(&[ClassId(13), ClassId(42), ClassId(99)])?
         .send(session)?;
     MsgSender::new("seg_demo/many points")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(
             &(0..25)
                 .map(|i| Point2D::new(100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0))
@@ -339,7 +336,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         .with_splat(ClassId(42))?
         .send(session)?;
     MsgSender::new("seg_demo_log")
-        .with_time(timeline_sim_time, 1)
+        .with_timepoint(sim_time(1 as _))
         .with_component(&[TextEntry::new(
             "no rects, default colored points, a single point has a label",
             None,
@@ -366,7 +363,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         )
     }
     MsgSender::new("seg_demo")
-        .with_time(timeline_sim_time, 2)
+        .with_timepoint(sim_time(2 as _))
         .with_component(&[AnnotationContext {
             class_map: [
                 create_class(13, "label1".into(), None),
@@ -378,7 +375,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         }])?
         .send(session)?;
     MsgSender::new("seg_demo_log")
-        .with_time(timeline_sim_time, 2)
+        .with_timepoint(sim_time(2 as _))
         .with_component(&[TextEntry::new(
             "default colored rects, default colored points, all points except the \
                 bottom right clusters have labels",
@@ -388,7 +385,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
 
     // Log an updated segmentation map with specific colors
     MsgSender::new("seg_demo")
-        .with_time(timeline_sim_time, 3)
+        .with_timepoint(sim_time(3 as _))
         .with_component(&[AnnotationContext {
             class_map: [
                 create_class(13, "label1".into(), [255, 0, 0].into()),
@@ -400,7 +397,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         }])?
         .send(session)?;
     MsgSender::new("seg_demo_log")
-        .with_time(timeline_sim_time, 3)
+        .with_timepoint(sim_time(3 as _))
         .with_component(&[TextEntry::new(
             "points/rects with user specified colors",
             None,
@@ -409,7 +406,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
 
     // Log with a mixture of set and unset colors / labels
     MsgSender::new("seg_demo")
-        .with_time(timeline_sim_time, 4)
+        .with_timepoint(sim_time(4 as _))
         .with_component(&[AnnotationContext {
             class_map: [
                 create_class(13, None, [255, 0, 0].into()),
@@ -421,7 +418,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
         }])?
         .send(session)?;
     MsgSender::new("seg_demo_log")
-        .with_time(timeline_sim_time, 4)
+        .with_timepoint(sim_time(4 as _))
         .with_component(&[TextEntry::new(
             "label1 disappears and everything with label3 is now default colored again",
             None,
@@ -452,8 +449,6 @@ fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-
     let sun_to_planet_distance = 6.0;
     let planet_to_moon_distance = 3.0;
     let rotation_speed_planet = 2.0;
@@ -486,9 +481,8 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
         radius: f32,
         color: [u8; 3],
     ) -> anyhow::Result<()> {
-        let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
         MsgSender::new(ent_path.into())
-            .with_time(timeline_sim_time, 0)
+            .with_timepoint(sim_time(0 as _))
             .with_component(&[Point3D::ZERO])?
             .with_component(&[Radius(radius)])?
             .with_component(&[ColorRGBA::from([color[0], color[1], color[2], 255])])?
@@ -522,7 +516,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
     .take(200)
     .collect::<Vec<_>>();
     MsgSender::new("transforms3d/sun/planet/dust")
-        .with_time(timeline_sim_time, 0)
+        .with_timepoint(sim_time(0 as _))
         .with_component(&points)?
         .with_splat(Radius(0.025))?
         .with_splat(ColorRGBA::from([80, 80, 80, 255]))?
@@ -539,11 +533,11 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
         )
     };
     MsgSender::new("transforms3d/sun/planet_path")
-        .with_time(timeline_sim_time, 0)
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[create_path(sun_to_planet_distance)])?
         .send(session)?;
     MsgSender::new("transforms3d/sun/planet/moon_path")
-        .with_time(timeline_sim_time, 0)
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[create_path(planet_to_moon_distance)])?
         .send(session)?;
 
@@ -551,7 +545,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
         let time = i as f32 / 120.0;
 
         MsgSender::new("transforms3d/sun/planet")
-            .with_time(timeline_sim_time, (time * 1e9) as i64) // TODO
+            .with_timepoint(sim_time(time as _))
             .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
             .with_component(&[Transform::Rigid3(Rigid3 {
                 rotation: Quaternion::new(0.0, 0.0, 0.0, 1.0), // TODO
@@ -565,7 +559,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
 
         // TODO: inverse
         MsgSender::new("transforms3d/sun/planet/moon")
-            .with_time(timeline_sim_time, (time * 1e9) as i64) // TODO
+            .with_timepoint(sim_time(time as _))
             .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
             .with_component(&[Transform::Rigid3(Rigid3 {
                 rotation: Quaternion::new(0.0, 0.0, 0.0, 1.0), // TODO
@@ -583,7 +577,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
 
 // --- Init ---
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
 enum Demo {
     #[value(name("bbox"))]
     BoundingBox,
@@ -606,13 +600,10 @@ enum Demo {
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// Connect to an external viewer
+    /// If specified, connects and sends the logged data to a remote Rerun viewer.
     #[clap(long)]
-    connect: bool,
-
-    /// External Address
-    #[clap(long)]
-    addr: Option<String>,
+    #[allow(clippy::option_option)]
+    addr: Option<Option<String>>,
 
     #[clap(long, value_enum)]
     demo: Option<Vec<Demo>>,
@@ -627,52 +618,49 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
-    // Arg-parsing boiler-plate
     let args = Args::parse();
-    dbg!(&args);
+    let addr = match args.addr.as_ref() {
+        Some(Some(addr)) => Some(addr.parse()?),
+        Some(None) => Some(rerun::default_server_addr()),
+        None => None,
+    };
+
+    // TODO: application id should take selected demos into account?
+    // let demo_str = args.demo.map_or_else(String::new, |demos| demos.join("+"));
 
     let mut session = rerun::Session::new();
-    // TODO: not that friendly for such a simple thing
+    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // does... which they can probably share.
+    // This needs to take care of the whole `official_example` thing, and also keeps track of
+    // whether we're using the rust or python sdk.
     session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
+    session.set_recording_id(RecordingId::random());
+    if let Some(addr) = addr {
+        session.connect(addr);
+    }
 
-    // Connect if requested
-    if args.connect {
-        let addr = if let Some(addr) = &args.addr {
-            addr.parse()
-        } else {
-            Ok(re_sdk_comms::default_server_addr())
-        };
-
-        match addr {
-            Ok(addr) => {
-                session.connect(addr);
-            }
-            Err(err) => {
-                bail!("Bad address: {:?}. {err}", args.addr)
-            }
+    let demos = args
+        .demo
+        .map_or_else(HashSet::new, |demos| demos.into_iter().collect());
+    for demo in demos {
+        match demo {
+            Demo::BoundingBox => demo_bbox(&mut session)?,
+            Demo::ExtensionComponents => demo_extension_components(&mut session)?,
+            Demo::LogCleared => demo_log_cleared(&mut session)?,
+            Demo::Points3D => demo_3d_points(&mut session)?,
+            Demo::Rects => demo_rects(&mut session)?,
+            Demo::Segmentation => demo_segmentation(&mut session)?,
+            Demo::TextLogs => demo_text_logs(&mut session)?,
+            Demo::Transforms3D => demo_transforms_3d(&mut session)?,
         }
     }
 
-    // TODO: handle demo arg
-
-    demo_bbox(&mut session)?;
-    demo_extension_components(&mut session)?;
-    demo_log_cleared(&mut session)?;
-    demo_3d_points(&mut session)?;
-    demo_rects(&mut session)?;
-    demo_segmentation(&mut session)?;
-    demo_text_logs(&mut session)?;
-    demo_transforms_3d(&mut session)?;
-
-    // TODO: spawn_and_connect
-    // If not connected, show the GUI inline
-    if args.connect {
-        session.flush();
-    } else {
+    // TODO(cmc): arg parsing and arg interpretation helpers
+    // TODO(cmc): missing flags: save, serve
+    // TODO(cmc): expose an easy to use async local mode.
+    if args.addr.is_none() {
         let log_messages = session.drain_log_messages_buffer();
-        if let Err(err) = rerun::viewer::show(log_messages) {
-            bail!("Failed to start viewer: {err}");
-        }
+        rerun::viewer::show(log_messages)?;
     }
 
     Ok(())
