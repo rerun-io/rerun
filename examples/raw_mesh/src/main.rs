@@ -8,12 +8,15 @@
 
 #![allow(clippy::doc_markdown)]
 
-use anyhow::{anyhow, bail, Context};
+use std::path::PathBuf;
+
+use anyhow::anyhow;
 use bytes::Bytes;
+use clap::Parser;
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, Session, TimeType, Timeline, Transform,
-    Vec4D, ViewCoordinates,
+    ApplicationId, EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, Session, TimeType, Timeline,
+    Transform, Vec4D, ViewCoordinates,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -117,37 +120,56 @@ fn log_coordinate_space(
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    /// If specified, connects and sends the logged data to a remote Rerun viewer.
+    #[clap(long)]
+    #[allow(clippy::option_option)]
+    addr: Option<Option<String>>,
+
+    /// Specifies the path of the glTF scene to load.
+    #[clap(long)]
+    scene_path: PathBuf,
+}
+
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
-    // TODO(cmc): Here we shall pass argv to the SDK which will strip it out of all SDK flags, and
-    // give us back our actual CLI flags.
-    // The name of the gltf sample to load should then come from there.
-
-    // Read glTF asset
-    let args = std::env::args().collect::<Vec<_>>();
-    let bytes = if let Some(path) = args.get(1) {
-        Bytes::from(std::fs::read(path)?)
-    } else {
-        bail!("Usage: {} <path_to_gltf_scene>", args[0]);
+    let args = Args::parse();
+    let addr = match args.addr {
+        Some(Some(addr)) => Some(addr.parse()?),
+        Some(None) => Some(rerun::default_server_addr()),
+        None => None,
     };
 
-    // Parse glTF asset
-    let (doc, buffers, _) = gltf::import_slice(bytes).unwrap();
+    let mut session = Session::new();
+    // TODO: The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // does... which they can probably share.
+    // This needs to take care of the whole `official_example` thing, and also keeps track of
+    // whether we're using the rust or python sdk.
+    session.set_application_id(ApplicationId("objectron-rs".into()), true);
+
+    // Read glTF scene
+    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path)?))?;
     let nodes = load_gltf(&doc, &buffers);
 
     // Log raw glTF nodes and their transforms with Rerun
-    let mut session = Session::new();
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
         log_coordinate_space(&mut session, root.name.as_str(), "RUB")?;
-        log_node(&mut session, root).unwrap();
+        log_node(&mut session, root)?;
     }
 
-    // TODO(cmc): provide high-level tools to pick and handle the different modes.
-    // TODO(cmc): connect, spawn_and_connect; show() probably doesn't make sense with pure rust
-    let log_messages = session.drain_log_messages_buffer();
-    rerun::viewer::show(log_messages).context("failed to start viewer")
+    if let Some(addr) = addr {
+        session.connect(addr);
+    } else {
+        // TODO: expose an easy to use async local mode.
+        let log_messages = session.drain_log_messages_buffer();
+        rerun::viewer::show(log_messages)?;
+    }
+
+    Ok(())
 }
 
 // --- glTF parsing ---

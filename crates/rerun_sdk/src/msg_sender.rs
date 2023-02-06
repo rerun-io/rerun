@@ -243,8 +243,9 @@ impl MsgSender {
             mut splatted,
         } = self;
 
-        // TODO: sanity checks we do in here can (and probably should) be done in MsgBundle so that
-        // the python SDK benefits from them too.
+        // TODO(cmc): The sanity checks we do in here can (and probably should) be done in
+        // `MsgBundle` instead so that the python SDK benefits from them too... but one step at a
+        // time.
 
         // TODO: at this point, should have the same number of rows all over the place.
         // TODO: at this point, transform should be neither splat nor length >1

@@ -25,8 +25,11 @@ pub mod viewer;
 
 // TODO(cmc): clean all that up?
 
-pub use re_log_types::msg_bundle::{Component, ComponentBundle, MsgBundle, SerializableComponent};
-pub use re_log_types::ComponentName;
+pub use re_log_types::ApplicationId;
+pub use re_log_types::{
+    msg_bundle::{Component, ComponentBundle, MsgBundle, SerializableComponent},
+    ComponentName,
+};
 pub use re_log_types::{EntityPath, LogMsg, MsgId};
 pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 
@@ -58,8 +61,11 @@ pub use re_log_types::component_types::{
 };
 pub use re_log_types::component_types::{Vec2D, Vec3D, Vec4D};
 
+pub use re_sdk_comms::default_server_addr;
+
 pub mod external {
     pub use re_log;
     pub use re_log_types;
     pub use re_memory;
+    pub use re_sdk_comms;
 }
