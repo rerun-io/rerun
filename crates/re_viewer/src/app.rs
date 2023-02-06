@@ -381,6 +381,31 @@ impl App {
         let selected_app_id = self.selected_app_id();
         self.state.blueprints.entry(selected_app_id).or_default()
     }
+
+    fn memory_panel_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_stats: &DataStoreStats,
+    ) {
+        let frame = egui::Frame {
+            fill: ui.visuals().panel_fill,
+            ..self.re_ui.bottom_panel_frame()
+        };
+
+        egui::TopBottomPanel::bottom("memory_panel")
+            .default_height(300.0)
+            .resizable(true)
+            .frame(frame)
+            .show_animated_inside(ui, self.memory_panel_open, |ui| {
+                self.memory_panel.ui(
+                    ui,
+                    &self.startup_options.memory_limit,
+                    gpu_resource_stats,
+                    store_stats,
+                );
+            });
+    }
 }
 
 impl eframe::App for App {
@@ -447,17 +472,7 @@ impl eframe::App for App {
             .show(egui_ctx, |ui| {
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
-                egui::TopBottomPanel::bottom("memory_panel")
-                    .default_height(300.0)
-                    .resizable(true)
-                    .show_animated_inside(ui, self.memory_panel_open, |ui| {
-                        self.memory_panel.ui(
-                            ui,
-                            &self.startup_options.memory_limit,
-                            &gpu_resource_stats,
-                            &store_stats,
-                        );
-                    });
+                self.memory_panel_ui(ui, &gpu_resource_stats, &store_stats);
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
                 let selected_app_id = log_db
