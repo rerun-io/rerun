@@ -14,7 +14,7 @@ use crate::{
 
 use super::{
     data_blueprint::DataBlueprintGroupHandle, space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
+    space_view_heuristics::all_space_view_candidates, view_category::ViewCategory, SpaceView,
     SpaceViewId,
 };
 
@@ -487,7 +487,9 @@ impl Viewport {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            for space_view in all_possible_space_views(ctx, spaces_info) {
+            let mut space_view_candidates = all_space_view_candidates(ctx, spaces_info);
+            space_view_candidates.sort_by_key(|space_view| space_view.space_path.to_string());
+            for space_view in space_view_candidates {
                 if ctx
                     .re_ui
                     .selectable_label_with_icon(

@@ -15,7 +15,7 @@ use crate::{
 
 use super::SpaceView;
 
-pub fn all_possible_space_views(
+pub fn all_space_view_candidates(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceView> {
@@ -67,7 +67,7 @@ pub fn default_created_space_views(
 ) -> Vec<SpaceView> {
     crate::profile_function!();
 
-    let all_possible_space_views = all_possible_space_views(ctx, spaces_info);
+    let all_possible_space_views = all_space_view_candidates(ctx, spaces_info);
     let is_spatial_view_at_root = all_possible_space_views.iter().any(|view| {
         view.space_path.is_root()
             && view.category == ViewCategory::Spatial
