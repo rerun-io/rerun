@@ -144,7 +144,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let mut session = Session::new();
-    // TODO: The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.
     // This needs to take care of the whole `official_example` thing, and also keeps track of
     // whether we're using the rust or python sdk.
@@ -162,11 +162,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     // TODO(cmc): arg parsing and arg interpretation helpers
-    // TODO: missing the save flag
+    // TODO(cmc): missing flags: save, serve
+    // TODO(cmc): expose an easy to use async local mode.
     if let Some(addr) = addr {
         session.connect(addr);
     } else {
-        // TODO: expose an easy to use async local mode.
         let log_messages = session.drain_log_messages_buffer();
         rerun::viewer::show(log_messages)?;
     }
