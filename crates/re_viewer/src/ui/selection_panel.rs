@@ -376,7 +376,7 @@ fn entity_props_ui(
     egui::Grid::new("entity_properties")
         .num_columns(2)
         .show(ui, |ui| {
-            ui.label("Visible history:");
+            ui.label("Visible history");
             let visible_history = &mut entity_props.visible_history;
             match ctx.rec_cfg.time_ctrl.timeline().typ() {
                 TimeType::Time => {
