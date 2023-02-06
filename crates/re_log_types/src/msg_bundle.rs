@@ -85,6 +85,18 @@ pub trait Component: ArrowField {
     }
 }
 
+/// A trait to identify any `Component` that is ready to be collected and subsequently serialized
+/// into an Arrow payload.
+pub trait SerializableComponent
+where
+    Self: Component + ArrowSerialize + ArrowField<Type = Self> + 'static,
+{
+}
+impl<C> SerializableComponent for C where
+    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static
+{
+}
+
 /// A `ComponentBundle` holds an Arrow component column, and its field name.
 ///
 /// A `ComponentBundle` can be created from a collection of any element that implements the
@@ -114,31 +126,50 @@ impl ComponentBundle {
         }
     }
 
+    pub fn new(name: ComponentName, value: Box<dyn Array>) -> Self {
+        Self { name, value }
+    }
+
+    /// Returns the datatype of the bundled component, discarding the list array that wraps it (!).
     pub fn data_type(&self) -> &DataType {
         ListArray::<i32>::get_child_type(self.value.data_type())
     }
+
+    pub fn value(&self) -> &dyn Array {
+        &*self.value
+    }
+
+    /// Returns the number of _rows_ in this bundle, i.e. the length of the bundle.
+    ///
+    /// Currently always 1 as we don't yet support batch insertions.
+    pub fn nb_rows(&self) -> usize {
+        self.value.len()
+    }
+
+    /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
+    /// specific row within the bundle.
+    pub fn nb_instances(&self, row: usize) -> Option<usize> {
+        self.value
+            .as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .unwrap()
+            .offsets()
+            .lengths()
+            .nth(row)
+    }
 }
 
-impl<C> TryFrom<&[C]> for ComponentBundle
-where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
-{
+impl<C: SerializableComponent> TryFrom<&[C]> for ComponentBundle {
     type Error = MsgBundleError;
 
     fn try_from(c: &[C]) -> Result<Self> {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
         let wrapped = wrap_in_listarray(array).boxed();
-        Ok(ComponentBundle {
-            name: C::name(),
-            value: wrapped,
-        })
+        Ok(ComponentBundle::new(C::name(), wrapped))
     }
 }
 
-impl<C> TryFrom<Vec<C>> for ComponentBundle
-where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
-{
+impl<C: SerializableComponent> TryFrom<Vec<C>> for ComponentBundle {
     type Error = MsgBundleError;
 
     fn try_from(c: Vec<C>) -> Result<Self> {
@@ -146,16 +177,29 @@ where
     }
 }
 
-impl<C> TryFrom<&Vec<C>> for ComponentBundle
-where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
-{
+impl<C: SerializableComponent> TryFrom<&Vec<C>> for ComponentBundle {
     type Error = MsgBundleError;
 
     fn try_from(c: &Vec<C>) -> Result<Self> {
         c.as_slice().try_into()
     }
 }
+
+// TODO(cmc): We'd like this, but orphan rules prevent us from having it:
+//
+// ```
+// = note: conflicting implementation in crate `core`:
+//         - impl<T, U> std::convert::TryFrom<U> for T
+//           where U: std::convert::Into<T>;
+// ```
+//
+// impl<'a, C: SerializableComponent, I: IntoIterator<Item = &'a C>> TryFrom<I> for ComponentBundle {
+//     type Error = MsgBundleError;
+
+//     fn try_from(c: I) -> Result<Self> {
+//         c.as_slice().try_into()
+//     }
+// }
 
 /// A `MsgBundle` holds data necessary for composing a single log message.
 ///
@@ -230,12 +274,12 @@ impl MsgBundle {
             components,
         };
 
-        // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
-        // the length of the other components.
-        //
-        // TODO(#440): support splats & remove this hack.
-        this.components
-            .push(vec![msg_id; this.row_len(0)].try_into().unwrap());
+        // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
+        // we need to craft an array of `MsgId`s that matches the length of the other components.
+        if let Some(nb_instances) = this.nb_instances(0) {
+            this.try_append_component(&vec![msg_id; nb_instances])
+                .unwrap();
+        }
 
         this
     }
@@ -243,60 +287,49 @@ impl MsgBundle {
     /// Try to append a collection of `Component` onto the `MessageBundle`.
     ///
     /// This first converts the component collection into an Arrow array, and then wraps it in a [`ListArray`].
-    pub fn try_append_component<'a, Element, Collection>(
+    pub fn try_append_component<'a, Component, Collection>(
         &mut self,
         component: Collection,
     ) -> Result<()>
     where
-        Element: Component + ArrowSerialize + ArrowField<Type = Element> + 'static,
-        Collection: IntoIterator<Item = &'a Element>,
+        Component: SerializableComponent,
+        Collection: IntoIterator<Item = &'a Component>,
     {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(component)?;
         let wrapped = wrap_in_listarray(array).boxed();
 
-        let bundle = ComponentBundle {
-            name: Element::name(),
-            value: wrapped,
-        };
+        let bundle = ComponentBundle::new(Component::name(), wrapped);
 
         self.components.push(bundle);
         Ok(())
     }
 
-    /// Returns the length of a specific row within the bundle, i.e. the row's _number of
-    /// instances_.
+    /// Returns the number of component collections in this bundle, i.e. the length of the bundle
+    /// itself.
+    pub fn nb_components(&self) -> usize {
+        self.components.len()
+    }
+
+    /// Returns the number of _rows_ for each component collections in this bundle, i.e. the
+    /// length of each component collections.
     ///
-    /// Panics if `row_nr` is out of bounds.
-    pub fn row_len(&self, row_nr: usize) -> usize {
-        // TODO(#440): won't be able to pick any component randomly once we support splats!
-        self.components.first().map_or(0, |bundle| {
-            bundle
-                .value
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .offsets()
-                .lengths()
-                .nth(row_nr)
-                .unwrap()
-        })
+    /// All component collections within a `MsgBundle` must share the same number of rows!
+    ///
+    /// Currently always 1 as we don't yet support batch insertions.
+    pub fn nb_rows(&self) -> usize {
+        self.components.first().map_or(0, |bundle| bundle.nb_rows())
     }
 
-    /// Returns the length of the bundle, i.e. its _number of rows_.
-    pub fn len(&self) -> usize {
-        // TODO(#440): won't be able to pick any component randomly once we support splats!
-        self.components.first().map_or(0, |bundle| {
-            bundle
-                .value
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .len()
-        })
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+    /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
+    /// specific row within the bundle.
+    ///
+    /// Since we don't yet support batch insertions and all components within a single row must
+    /// have the same number of instances, we simply pick the value for the first component
+    /// collection.
+    pub fn nb_instances(&self, row: usize) -> Option<usize> {
+        self.components
+            .first()
+            .map_or(Some(0), |bundle| bundle.nb_instances(row))
     }
 
     /// Returns the index of `component` in the bundle, if it exists.
@@ -469,9 +502,8 @@ fn extract_components(
         .fields()
         .iter()
         .zip(components.values())
-        .map(|(field, component)| ComponentBundle {
-            name: ComponentName::from(field.name.as_str()),
-            value: component.clone(),
+        .map(|(field, component)| {
+            ComponentBundle::new(ComponentName::from(field.name.as_str()), component.clone())
         })
         .collect())
 }
