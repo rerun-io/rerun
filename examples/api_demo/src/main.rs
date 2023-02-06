@@ -182,7 +182,7 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
 }
 
 fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
-    MsgSender::new("4d_points/single_point_unlabeled")
+    MsgSender::new("3d_points/single_point_unlabeled")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
         .send(session)?;
@@ -203,7 +203,7 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
         let mut rng = rand::thread_rng();
         itertools::multiunzip((0..n).map(|i| {
             let i = i as f32;
-            let t = i / (n - 1) as f32;
+            let t = 1.0 - i / (n - 1) as f32;
             (
                 Label(i.to_string()),
                 Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
