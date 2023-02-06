@@ -155,7 +155,7 @@ pub fn default_created_space_views(
                     // Only interested in direct children of the space path.
                     if entity_path.is_child_of(&space_view_candidate.space_path) {
                         if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                            &ctx.log_db.entity_db.arrow_store,
+                            &ctx.log_db.entity_db.data_store,
                             &timeline_query,
                             entity_path,
                             &[],

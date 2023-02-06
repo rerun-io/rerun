@@ -179,9 +179,6 @@ if __name__ == "__main__":
         default=AVAILABLE_RECORDINGS[0],
         help="Name of the NYU Depth Dataset V2 recording",
     )
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
     parser.add_argument(
         "--depth-image-interval",
@@ -189,18 +186,10 @@ if __name__ == "__main__":
         default=8,
         help="The number of rgb images logged for each depth image. (min value 1)",
     )
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("nyud")
-
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None:
-        rr.spawn_and_connect()
-
+    rr.script_setup(args, "nyud")
     recording_path = ensure_recording_downloaded(args.recording)
 
     depth_image_interval = max(args.depth_image_interval, 1)
@@ -210,5 +199,4 @@ if __name__ == "__main__":
         depth_image_interval=depth_image_interval,
     )
 
-    if args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)

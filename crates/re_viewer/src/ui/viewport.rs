@@ -8,7 +8,7 @@ use itertools::Itertools as _;
 use re_data_store::EntityPath;
 
 use crate::{
-    misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext},
+    misc::{space_info::SpaceInfoCollection, Item, SpaceViewHighlights, ViewerContext},
     ui::space_view_heuristics::default_created_space_views,
 };
 
@@ -110,7 +110,7 @@ impl Viewport {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].name)
+                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].space_path)
                     .copied()
                     .collect_vec();
 
@@ -493,14 +493,18 @@ impl Viewport {
                     .selectable_label_with_icon(
                         ui,
                         space_view.category.icon(),
-                        space_view.name.clone(),
+                        if space_view.space_path.is_root() {
+                            space_view.display_name.clone()
+                        } else {
+                            space_view.space_path.to_string()
+                        },
                         false,
                     )
                     .clicked()
                 {
                     ui.close_menu();
                     let new_space_view_id = self.add_space_view(space_view);
-                    ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
+                    ctx.set_single_selection(Item::SpaceView(new_space_view_id));
                 }
             }
         })
@@ -651,9 +655,10 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
 
-        let mut text = egui::WidgetText::RichText(egui::RichText::new(space_view.name.clone()));
+        let mut text =
+            egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()));
 
-        if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
+        if self.ctx.selection().contains(&Item::SpaceView(*tab)) {
             // Show that it is selected:
             let egui_ctx = &self.ctx.re_ui.egui_ctx;
             let selection_bg_color = egui_ctx.style().visuals.selection.bg_fill;
@@ -665,7 +670,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
 
     fn on_tab_button(&mut self, tab: &mut Self::Tab, response: &egui::Response) {
         if response.clicked() {
-            self.ctx.set_single_selection(Selection::SpaceView(*tab));
+            self.ctx.set_single_selection(Item::SpaceView(*tab));
         }
     }
 }
@@ -721,7 +726,7 @@ fn space_view_options_ui(
                     .clicked()
                 {
                     viewport.maximized = Some(space_view_id);
-                    ctx.set_single_selection(Selection::SpaceView(space_view_id));
+                    ctx.set_single_selection(Item::SpaceView(space_view_id));
                 }
             }
 

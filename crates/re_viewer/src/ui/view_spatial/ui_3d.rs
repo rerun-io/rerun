@@ -10,7 +10,7 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{HoveredSpace, Selection},
+    misc::{HoveredSpace, Item},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -37,6 +37,8 @@ pub struct View3DState {
 
     /// Currently tracked camera.
     tracked_camera: Option<InstancePath>,
+    /// Camera pose just before we took over another camera via [Self::tracked_camera].
+    camera_before_tracked_camera: Option<Eye>,
 
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
@@ -64,6 +66,7 @@ impl Default for View3DState {
         Self {
             orbit_eye: Default::default(),
             tracked_camera: None,
+            camera_before_tracked_camera: None,
             eye_interpolation: Default::default(),
             hovered_point: Default::default(),
             spin: false,
@@ -79,6 +82,7 @@ impl View3DState {
     pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
         self.interpolate_to_eye(default_eye(scene_bbox_accum, &self.space_specs).to_eye());
         self.tracked_camera = None;
+        self.camera_before_tracked_camera = None;
     }
 
     fn update_eye(
@@ -235,6 +239,7 @@ pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     CTRL slows down, SHIFT speeds up.\n\
     \n\
     Double-click an object to focus the view on it.\n\
+    For cameras, you can restore the view again with Escape.\n\
     \n\
     Double-click on empty space to reset the view.";
 
@@ -274,6 +279,7 @@ pub fn view_3d(
         state.state_3d.last_eye_interact_time = ui.input(|i| i.time);
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
+        state.state_3d.camera_before_tracked_camera = None;
     }
 
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
@@ -361,7 +367,7 @@ pub fn view_3d(
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
             pick.instance_path_hash
                 .resolve(&ctx.log_db.entity_db)
-                .map(|instance_path| Selection::InstancePath(Some(space_view_id), instance_path))
+                .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
         }));
         state.state_3d.hovered_point = picking_result
             .opaque_hit
@@ -377,10 +383,13 @@ pub fn view_3d(
     // Double click changes camera
     if response.double_clicked() {
         state.state_3d.tracked_camera = None;
+        state.state_3d.camera_before_tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Selection::InstancePath(_, instance_path)) = ctx.hovered().first() {
+        if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
+                state.state_3d.camera_before_tracked_camera =
+                    state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.clone());
             } else if let Some(clicked_point) = state.state_3d.hovered_point {
@@ -397,6 +406,19 @@ pub fn view_3d(
         // Without hovering, resets the camera.
         else {
             state.state_3d.reset_camera(&state.scene_bbox_accum);
+        }
+    }
+
+    // Allow to restore the camera state with escape if a camera was tracked before.
+    if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        if let Some(camera_before_changing_tracked_state) =
+            state.state_3d.camera_before_tracked_camera
+        {
+            state
+                .state_3d
+                .interpolate_to_eye(camera_before_changing_tracked_state);
+            state.state_3d.camera_before_tracked_camera = None;
+            state.state_3d.tracked_camera = None;
         }
     }
 

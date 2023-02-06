@@ -281,10 +281,10 @@ pub fn query_view_coordinates(
     ent_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
-    let arrow_store = &entity_db.arrow_store;
+    let data_store = &entity_db.data_store;
 
     let entity_view =
-        query_entity_with_primary::<ViewCoordinates>(arrow_store, query, ent_path, &[]).ok()?;
+        query_entity_with_primary::<ViewCoordinates>(data_store, query, ent_path, &[]).ok()?;
 
     let mut iter = entity_view.iter_primary().ok()?;
 

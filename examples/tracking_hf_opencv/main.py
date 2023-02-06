@@ -374,10 +374,6 @@ def setup_looging() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--video",
         type=str,
@@ -387,10 +383,10 @@ def main() -> None:
     )
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
-
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("tracking_hf_opencv")
+    rr.script_setup(args, "tracking_hf_opencv")
 
     setup_looging()
 
@@ -398,18 +394,9 @@ def main() -> None:
     if not video_path:
         video_path = get_downloaded_path(args.dataset_dir, args.video)
 
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
-
     track_objects(video_path)
 
-    if args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":
