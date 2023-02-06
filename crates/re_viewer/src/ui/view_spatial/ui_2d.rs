@@ -10,7 +10,7 @@ use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
-    misc::{HoveredSpace, Selection, SelectionHighlight, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -442,9 +442,7 @@ fn view_2d_scrollable(
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
                 pick.instance_path_hash
                     .resolve(&ctx.log_db.entity_db)
-                    .map(|instance_path| {
-                        Selection::InstancePath(Some(space_view_id), instance_path)
-                    })
+                    .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
             }));
         }
     }
