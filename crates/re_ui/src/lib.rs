@@ -23,7 +23,7 @@ pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
 /// If true, we hide the native window decoration
 /// (the top bar with app title, close button etc),
 /// and instead paint our own close/maximize/minimize buttons.
-pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO(emilk): https://github.com/rerun-io/rerun/issues/1063
+pub const CUSTOM_WINDOW_DECORATIONS: bool = !FULLSIZE_CONTENT;
 
 /// If true, we show the native window decorations/chrome with the
 /// close/maximize/minimize buttons and app title.
