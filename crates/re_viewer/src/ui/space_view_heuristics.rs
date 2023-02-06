@@ -1,15 +1,15 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
+use ahash::HashMap;
+use enumset::EnumSet;
 use itertools::Itertools;
+use nohash_hasher::IntSet;
 use re_arrow_store::Timeline;
 use re_data_store::{query_transform, EntityPath};
 use re_log_types::component_types::{Tensor, TensorTrait};
 
 use crate::{
-    misc::{
-        space_info::{query_view_coordinates, SpaceInfoCollection},
-        ViewerContext,
-    },
+    misc::{space_info::SpaceInfoCollection, ViewerContext},
     ui::{view_category::categorize_entity_path, ViewCategory},
 };
 
@@ -53,161 +53,144 @@ pub fn all_space_view_candidates(
     space_views
 }
 
-fn has_direct_children(space_view: &SpaceView) -> bool {
-    space_view
-        .data_blueprint
-        .entity_paths()
-        .iter()
-        .any(|path| path.is_child_of(&space_view.space_path))
-}
-
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
-    spaces_info: &SpaceInfoCollection,
+    candidates: Vec<SpaceView>,
 ) -> Vec<SpaceView> {
     crate::profile_function!();
 
-    let all_possible_space_views = all_space_view_candidates(ctx, spaces_info);
-    let is_spatial_view_at_root = all_possible_space_views.iter().any(|view| {
-        view.space_path.is_root()
-            && view.category == ViewCategory::Spatial
-            && has_direct_children(view)
-    });
+    // First pass to look for interesting roots.
+    // Roots are considered interesting, if they have direct children in the data blueprint.
+    let categories_with_interesting_roots = candidates
+        .iter()
+        .filter_map(|space_view_candidate| {
+            (space_view_candidate.space_path.is_root()
+                && !space_view_candidate
+                    .data_blueprint
+                    .root_group()
+                    .entities
+                    .is_empty())
+            .then_some(space_view_candidate.category)
+        })
+        .collect::<EnumSet<_>>();
 
-    fn is_interesting(
+    // Filter function non-roots.
+    fn is_interesting_non_root(
         ctx: &ViewerContext<'_>,
-        space_view_candidate: &SpaceView,
-        is_spatial_view_at_root: bool,
+        candidate: &SpaceView,
+        categories_with_interesting_roots: &EnumSet<ViewCategory>,
     ) -> bool {
-        let entity_path = &space_view_candidate.space_path;
-
-        // // Disqualify any spaceview that doesn't have direct children to its space_path.
-        // if !space_view_candidate
-        //     .data_blueprint
-        //     .entity_paths()
-        //     .iter()
-        //     .any(|path| path.is_child_of(entity_path))
-        // {
-        //     return false;
-        // }
-
-        // After that, anything that isn't a spatial view is considered interesting.
-        if space_view_candidate.category != ViewCategory::Spatial {
-            return true;
-        }
-
-        let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-        let timeline_query =
-            re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
-
-        // Spatial views that came this far, are considered only interesting if they EITHER...
-        if entity_path.is_root() {
-            return true;
-        }
-        if entity_path.len() == 1 && !is_spatial_view_at_root {
-            return true;
-        }
-        if let Some(transform) =
-            query_transform(&ctx.log_db.entity_db, entity_path, &timeline_query)
+        // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
+        if candidate.space_path.len() == 1
+            && !categories_with_interesting_roots.contains(candidate.category)
         {
-            // An "interesting transform"?
-            match transform {
-                re_log_types::Transform::Rigid3(_) => {}
-                re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
-                    return true;
+            return true;
+        }
+
+        // .. otherwise, spatial views are considered only interesting if they have in interesting transform.
+        if candidate.category == ViewCategory::Spatial {
+            let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+            let timeline_query =
+                re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
+            if let Some(transform) = query_transform(
+                &ctx.log_db.entity_db,
+                &candidate.space_path,
+                &timeline_query,
+            ) {
+                match transform {
+                    re_log_types::Transform::Rigid3(_) => {}
+                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
+                        return true;
+                    }
                 }
             }
-        }
-        if query_view_coordinates(&ctx.log_db.entity_db, entity_path, &timeline_query).is_some() {
-            return true;
         }
 
         // Not interesting!
         false
     }
 
-    let mut space_views = Vec::new();
     let timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let timeline_query = re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
 
-    for space_view_candidate in all_possible_space_views {
-        if !is_interesting(ctx, &space_view_candidate, is_spatial_view_at_root) {
+    let mut space_views = Vec::new();
+
+    for candidate in candidates {
+        if candidate.space_path.is_root() {
+            if !categories_with_interesting_roots.contains(candidate.category) {
+                continue;
+            }
+        } else if !is_interesting_non_root(ctx, &candidate, &categories_with_interesting_roots) {
             continue;
         }
 
-        // In some cases we want to do some extra modifications.
+        // Now that we know this space view is "interesting", we need to consider doing some
+        // changes to the selected objects and maybe create variants of it!
 
-        // For tensors create one space view for each tensor.
-        if space_view_candidate.category == ViewCategory::Tensor {
-            for entity_path in space_view_candidate.data_blueprint.entity_paths() {
+        if candidate.category == ViewCategory::Tensor {
+            // For tensors create one space view for each tensor (even though we're able to stack them in one view)
+            for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view =
                     SpaceView::new(ViewCategory::Tensor, entity_path, &[entity_path.clone()]);
                 space_view.entities_determined_by_user = true;
                 space_views.push(space_view);
             }
             continue;
-        } else if space_view_candidate.category == ViewCategory::Spatial {
-            let images = space_view_candidate
-                .data_blueprint
-                .entity_paths()
-                .iter()
-                .filter_map(|entity_path| {
-                    // Only interested in direct children of the space path.
-                    if entity_path.is_child_of(&space_view_candidate.space_path) {
-                        if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                            &ctx.log_db.entity_db.data_store,
-                            &timeline_query,
-                            entity_path,
-                            &[],
-                        ) {
-                            if let Ok(iter) = entity_view.iter_primary() {
-                                for tensor in iter.flatten() {
-                                    if tensor.is_shaped_like_an_image() {
-                                        return Some((entity_path.clone(), tensor.shape));
-                                    }
-                                }
+        } else if candidate.category == ViewCategory::Spatial {
+            // Spatial views with images get extra treatment as well.
+            // For this we're only interested in the direct children.
+            let mut images: HashMap<(u64, u64), Vec<EntityPath>> = HashMap::default();
+
+            for entity_path in &candidate.data_blueprint.root_group().entities {
+                if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
+                    &ctx.log_db.entity_db.data_store,
+                    &timeline_query,
+                    entity_path,
+                    &[],
+                ) {
+                    if let Ok(iter) = entity_view.iter_primary() {
+                        for tensor in iter.flatten() {
+                            if tensor.is_shaped_like_an_image() {
+                                debug_assert!(matches!(tensor.shape.len(), 2 | 3));
+                                let dim = (tensor.shape[0].size, tensor.shape[1].size);
+                                images.entry(dim).or_default().push(entity_path.clone());
                             }
                         }
                     }
-                    None
-                })
-                .collect::<Vec<_>>();
+                }
+            }
 
             if images.len() > 1 {
-                // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
-                // Stacking them on top of each other works, but is often confusing.
-                // Let's create one space view for each image, where the other images are disabled:
+                // Stack images of the same size, but no others.
+                // TODO(andreas): A possible refinement here would be to stack only with `TensorDataMeaning::ClassId`
+                //                But that's not entirely straight forward to implement.
+                for dim in images.keys() {
+                    // New spaces views that do not contain any image but this one plus all fitting class id images.
+                    let ignore_list = images
+                        .iter()
+                        .filter_map(|(other_dim, images)| (dim != other_dim).then_some(images))
+                        .flatten()
+                        .cloned()
+                        .collect::<IntSet<_>>();
+                    let entities = candidate
+                        .data_blueprint
+                        .entity_paths()
+                        .iter()
+                        .filter(|path| !ignore_list.contains(path))
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-                let mut image_sizes = BTreeSet::default();
-                for (entity_path, shape) in &images {
-                    debug_assert!(matches!(shape.len(), 2 | 3));
-                    let image_size = (shape[0].size, shape[1].size);
-                    image_sizes.insert(image_size);
-
-                    // Space view with everything but the other images.
-                    // (note that other entities stay!)
-                    let mut single_image_space_view = space_view_candidate.clone();
-                    for (other_entity_path, _) in &images {
-                        if other_entity_path != entity_path {
-                            single_image_space_view
-                                .data_blueprint
-                                .remove_entity(other_entity_path);
-                        }
-                    }
-
-                    single_image_space_view.entities_determined_by_user = true;
+                    let mut space_view =
+                        SpaceView::new(candidate.category, &candidate.space_path, &entities);
+                    space_view.entities_determined_by_user = true;
+                    space_views.push(space_view);
                 }
-
-                // Only if all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
-                // TODO(andreas): What if there's also other entities that we want to show?
-                if image_sizes.len() > 1 {
-                    continue;
-                }
+                continue;
             }
         }
 
         // Take the candidate as is.
-        space_views.push(space_view_candidate);
+        space_views.push(candidate);
     }
 
     space_views

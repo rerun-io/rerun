@@ -58,7 +58,8 @@ impl Viewport {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
-        for space_view in default_created_space_views(ctx, spaces_info) {
+        let candidates = all_space_view_candidates(ctx, spaces_info);
+        for space_view in default_created_space_views(ctx, candidates) {
             blueprint.add_space_view(space_view);
         }
         blueprint
@@ -347,7 +348,8 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
+            let candidates = all_space_view_candidates(ctx, spaces_info);
+            for space_view_candidate in default_created_space_views(ctx, candidates) {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);
                 }

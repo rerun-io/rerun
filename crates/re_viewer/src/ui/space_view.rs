@@ -64,7 +64,7 @@ impl SpaceView {
     ) -> Self {
         let display_name = if queries_entities.len() == 1 {
             // A single entity in this space-view - name the space after it.
-            queries_entities[0].to_string()
+            queries_entities[0].iter().last().unwrap().to_string()
         } else if let Some(name) = space_path.iter().last() {
             name.to_string()
         } else {
