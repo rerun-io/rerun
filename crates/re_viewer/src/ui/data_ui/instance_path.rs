@@ -17,7 +17,7 @@ impl DataUi for InstancePath {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let store = &ctx.log_db.entity_db.arrow_store;
+        let store = &ctx.log_db.entity_db.data_store;
 
         let Some(mut components) = store.all_components(&query.timeline, &self.entity_path) else {
             ui.label(format!("No components in entity {}", self.entity_path));

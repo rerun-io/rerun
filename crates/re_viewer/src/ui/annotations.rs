@@ -117,7 +117,7 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let arrow_store = &ctx.log_db.entity_db.arrow_store;
+        let data_store = &ctx.log_db.entity_db.data_store;
         let arrow_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
@@ -143,7 +143,7 @@ impl AnnotationMap {
                     // If we find one, insert it and then we can break.
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         if query_entity_with_primary::<AnnotationContext>(
-                            arrow_store,
+                            data_store,
                             &arrow_query,
                             &parent,
                             &[MsgId::name()],
