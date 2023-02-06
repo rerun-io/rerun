@@ -2,16 +2,13 @@ use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 
 use crate::{
-    misc::{
-        space_info::{SpaceInfo, SpaceInfoCollection},
-        SpaceViewHighlights, TransformCache, ViewerContext,
-    },
+    misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::view_category::categorize_entity_path,
 };
 
 use super::{
     data_blueprint::DataBlueprintTree,
-    space_view_heuristics::default_queries_entities,
+    space_view_heuristics::default_queried_entities,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self},
@@ -41,7 +38,7 @@ pub struct SpaceView {
     pub name: String,
 
     /// The "anchor point" of this space view.
-    /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
+    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_path: EntityPath,
@@ -62,24 +59,24 @@ pub struct SpaceView {
 impl SpaceView {
     pub fn new(
         category: ViewCategory,
-        space_info: &SpaceInfo,
+        space_path: &EntityPath,
         queries_entities: &[EntityPath],
     ) -> Self {
         let name = if queries_entities.len() == 1 {
             // a single entity in this space-view - name the space after it
             queries_entities[0].to_string()
         } else {
-            space_info.path.to_string()
+            space_path.to_string()
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_entities_according_to_hierarchy(queries_entities.iter(), &space_info.path);
+            .insert_entities_according_to_hierarchy(queries_entities.iter(), space_path);
 
         Self {
             name,
             id: SpaceViewId::random(),
-            space_path: space_info.path.clone(),
+            space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
             category,
@@ -94,14 +91,10 @@ impl SpaceView {
     ) {
         self.data_blueprint.on_frame_start();
 
-        let Some(space_info) = spaces_info.get(&self.space_path) else {
-            return;
-        };
-
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
-                default_queries_entities(ctx, spaces_info, space_info, self.category);
+                default_queried_entities(ctx, &self.space_path, spaces_info, self.category);
             self.data_blueprint
                 .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
         }
@@ -140,7 +133,6 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
     ) {
@@ -181,15 +173,8 @@ impl SpaceView {
                 );
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load(ctx, &query, &transforms, highlights);
-                self.view_state.ui_spatial(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    reference_space_info,
-                    scene,
-                    self.id,
-                    highlights,
-                );
+                self.view_state
+                    .ui_spatial(ctx, ui, &self.space_path, scene, self.id, highlights);
             }
 
             ViewCategory::Tensor => {
@@ -269,21 +254,13 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &EntityPath,
-        space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
     ) {
         ui.vertical(|ui| {
-            self.state_spatial.view_spatial(
-                ctx,
-                ui,
-                space,
-                scene,
-                space_info,
-                space_view_id,
-                highlights,
-            );
+            self.state_spatial
+                .view_spatial(ctx, ui, space, scene, space_view_id, highlights);
         });
     }
 

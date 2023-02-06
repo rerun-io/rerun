@@ -378,12 +378,7 @@ impl Viewport {
         true
     }
 
-    pub fn viewport_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) {
+    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
         if let Some(window) = &mut self.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
                 if !window.ui(ctx, ui, space_view) {
@@ -433,7 +428,6 @@ impl Viewport {
 
         let mut tab_viewer = TabViewer {
             ctx,
-            spaces_info,
             space_views: &mut self.space_views,
         };
 
@@ -630,7 +624,6 @@ fn visibility_button_ui(
 
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
-    spaces_info: &'a SpaceInfoCollection,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
 }
 
@@ -649,7 +642,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
-        space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights);
+        space_view_ui(self.ctx, ui, space_view, &highlights);
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
@@ -752,17 +745,9 @@ fn space_view_options_ui(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpaceInfoCollection,
     space_view: &mut SpaceView,
     space_view_highlights: &SpaceViewHighlights,
 ) {
-    let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
-        ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text(format!("Unknown space {}", space_view.space_path)));
-        });
-        return;
-    };
-
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text("No time selected"));
@@ -770,13 +755,7 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(
-        ctx,
-        ui,
-        reference_space_info,
-        latest_at,
-        space_view_highlights,
-    );
+    space_view.scene_ui(ctx, ui, latest_at, space_view_highlights);
 }
 
 // ----------------------------------------------------------------------------

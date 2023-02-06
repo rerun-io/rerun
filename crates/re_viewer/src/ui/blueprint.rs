@@ -42,7 +42,7 @@ impl Blueprint {
         egui::CentralPanel::default()
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(ui, ctx, &spaces_info);
+                self.viewport.viewport_ui(ui, ctx);
             });
     }
 

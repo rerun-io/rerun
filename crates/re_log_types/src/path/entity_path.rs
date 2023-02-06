@@ -97,10 +97,16 @@ impl EntityPath {
         self.path.is_root()
     }
 
-    // Is this a strict descendant of the given path.
+    /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &EntityPath) -> bool {
         other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+
+    /// Is this a direct child of the other path.
+    #[inline]
+    pub fn is_child_of(&self, other: &EntityPath) -> bool {
+        other.len() + 1 == self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
     /// Number of parts
