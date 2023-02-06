@@ -112,20 +112,20 @@ impl AnnotationMap {
     /// For each `EntityPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
-    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub fn load(&mut self, ctx: &mut ViewerContext<'_>, scene_query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let arrow_store = &ctx.log_db.entity_db.arrow_store;
-        let arrow_query = LatestAtQuery::new(query.timeline, query.latest_at);
+        let data_store = &ctx.log_db.entity_db.data_store;
+        let latest_at_query = LatestAtQuery::new(scene_query.timeline, scene_query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
-        for entity_path in query
+        for entity_path in scene_query
             .entity_paths
             .iter()
-            .filter(|entity_path| query.entity_props_map.get(entity_path).visible)
+            .filter(|entity_path| scene_query.entity_props_map.get(entity_path).visible)
         {
             let mut next_parent = Some(entity_path.clone());
             while let Some(parent) = next_parent {
@@ -143,8 +143,8 @@ impl AnnotationMap {
                     // If we find one, insert it and then we can break.
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         if query_entity_with_primary::<AnnotationContext>(
-                            arrow_store,
-                            &arrow_query,
+                            data_store,
+                            &latest_at_query,
                             &parent,
                             &[MsgId::name()],
                         )

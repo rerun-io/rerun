@@ -85,7 +85,7 @@ pub fn categorize_entity_path(
 
     for component in log_db
         .entity_db
-        .arrow_store
+        .data_store
         .all_components(&timeline, entity_path)
         .unwrap_or_default()
     {
@@ -108,7 +108,7 @@ pub fn categorize_entity_path(
             let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
             if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
-                &log_db.entity_db.arrow_store,
+                &log_db.entity_db.data_store,
                 &timeline_query,
                 entity_path,
                 &[],
