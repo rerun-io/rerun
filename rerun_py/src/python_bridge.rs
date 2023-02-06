@@ -443,9 +443,8 @@ fn log_transform(
     timeless: bool,
 ) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
-    if entity_path.len() == 1 {
-        // Stop people from logging a transform to a root-entity, such as "world" (which doesn't have a parent).
-        return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so root entities cannot have transforms"));
+    if entity_path.is_root() {
+        return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
     }
     let mut session = global_session();
     let time_point = time(timeless);
@@ -517,7 +516,7 @@ fn log_view_coordinates_up_handedness(
 }
 
 fn log_view_coordinates(
-    entity_path: &str,
+    entity_path_str: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
@@ -525,8 +524,14 @@ fn log_view_coordinates(
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
 
+    // We normally disallow logging to root, but we make an exception for view_coordinates
+    let entity_path = if entity_path_str == "/" {
+        EntityPath::root()
+    } else {
+        parse_entity_path(entity_path_str)?
+    };
+
     let mut session = global_session();
-    let entity_path = parse_entity_path(entity_path)?;
     let time_point = time(timeless);
 
     // We currently log view coordinates from inside the bridge because the code

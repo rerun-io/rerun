@@ -76,7 +76,7 @@ impl SceneTimeSeries {
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let store = &ctx.log_db.entity_db.arrow_store;
+        let store = &ctx.log_db.entity_db.data_store;
 
         for entity_path in query.entity_paths {
             let ent_path = entity_path;
