@@ -85,6 +85,18 @@ pub trait Component: ArrowField {
     }
 }
 
+/// A trait to identify any `Component` that is ready to be collected and subsequently serialized
+/// into an Arrow payload.
+pub trait SerializableComponent
+where
+    Self: Component + ArrowSerialize + ArrowField<Type = Self> + 'static,
+{
+}
+impl<C> SerializableComponent for C where
+    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static
+{
+}
+
 /// A `ComponentBundle` holds an Arrow component column, and its field name.
 ///
 /// A `ComponentBundle` can be created from a collection of any element that implements the
@@ -146,26 +158,17 @@ impl ComponentBundle {
     }
 }
 
-impl<C> TryFrom<&[C]> for ComponentBundle
-where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
-{
+impl<C: SerializableComponent> TryFrom<&[C]> for ComponentBundle {
     type Error = MsgBundleError;
 
     fn try_from(c: &[C]) -> Result<Self> {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
         let wrapped = wrap_in_listarray(array).boxed();
-        Ok(ComponentBundle {
-            name: C::name(),
-            value: wrapped,
-        })
+        Ok(ComponentBundle::new(C::name(), wrapped))
     }
 }
 
-impl<C> TryFrom<Vec<C>> for ComponentBundle
-where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
-{
+impl<C: SerializableComponent> TryFrom<Vec<C>> for ComponentBundle {
     type Error = MsgBundleError;
 
     fn try_from(c: Vec<C>) -> Result<Self> {
@@ -173,10 +176,7 @@ where
     }
 }
 
-impl<C> TryFrom<&Vec<C>> for ComponentBundle
-where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
-{
+impl<C: SerializableComponent> TryFrom<&Vec<C>> for ComponentBundle {
     type Error = MsgBundleError;
 
     fn try_from(c: &Vec<C>) -> Result<Self> {
@@ -270,21 +270,18 @@ impl MsgBundle {
     /// Try to append a collection of `Component` onto the `MessageBundle`.
     ///
     /// This first converts the component collection into an Arrow array, and then wraps it in a [`ListArray`].
-    pub fn try_append_component<'a, Element, Collection>(
+    pub fn try_append_component<'a, Component, Collection>(
         &mut self,
         component: Collection,
     ) -> Result<()>
     where
-        Element: Component + ArrowSerialize + ArrowField<Type = Element> + 'static,
-        Collection: IntoIterator<Item = &'a Element>,
+        Component: SerializableComponent,
+        Collection: IntoIterator<Item = &'a Component>,
     {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(component)?;
         let wrapped = wrap_in_listarray(array).boxed();
 
-        let bundle = ComponentBundle {
-            name: Element::name(),
-            value: wrapped,
-        };
+        let bundle = ComponentBundle::new(Component::name(), wrapped);
 
         self.components.push(bundle);
         Ok(())
@@ -488,9 +485,8 @@ fn extract_components(
         .fields()
         .iter()
         .zip(components.values())
-        .map(|(field, component)| ComponentBundle {
-            name: ComponentName::from(field.name.as_str()),
-            value: component.clone(),
+        .map(|(field, component)| {
+            ComponentBundle::new(ComponentName::from(field.name.as_str()), component.clone())
         })
         .collect())
 }
