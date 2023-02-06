@@ -130,6 +130,7 @@ impl ComponentBundle {
         Self { name, value }
     }
 
+    /// Returns the datatype of the bundled component, discarding the list array that wraps it (!).
     pub fn data_type(&self) -> &DataType {
         ListArray::<i32>::get_child_type(self.value.data_type())
     }

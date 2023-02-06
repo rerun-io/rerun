@@ -282,7 +282,7 @@ fn test_clean_for_polars_modify() {
 
     let bundle: ComponentBundle = transforms.try_into().unwrap();
     assert_eq!(
-        *bundle.data_type(),
+        *bundle.value().data_type(),
         DataType::List(Box::new(Field::new(
             "item",
             DataType::Union(
