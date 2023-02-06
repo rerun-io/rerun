@@ -436,59 +436,66 @@ impl eframe::App for App {
         self.cleanup();
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
-        top_panel(egui_ctx, frame, self, &gpu_resource_stats);
 
-        egui::TopBottomPanel::bottom("memory_panel")
-            .default_height(300.0)
-            .resizable(true)
-            .show_animated(egui_ctx, self.memory_panel_open, |ui| {
-                self.memory_panel.ui(
-                    ui,
-                    &self.startup_options.memory_limit,
-                    &gpu_resource_stats,
-                    &store_stats,
-                );
+        // We put all other panels within one master `CentralPanel`
+        // to allow us to add margins around it for when we do `re_ui::CUSTOM_WINDOW_DECORATIONS`.
+        egui::CentralPanel::default()
+            .frame(egui::Frame::default())
+            .show(egui_ctx, |ui| {
+                top_panel(ui, frame, self, &gpu_resource_stats);
+
+                egui::TopBottomPanel::bottom("memory_panel")
+                    .default_height(300.0)
+                    .resizable(true)
+                    .show_animated_inside(ui, self.memory_panel_open, |ui| {
+                        self.memory_panel.ui(
+                            ui,
+                            &self.startup_options.memory_limit,
+                            &gpu_resource_stats,
+                            &store_stats,
+                        );
+                    });
+
+                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+                let selected_app_id = log_db
+                    .recording_info()
+                    .map_or_else(ApplicationId::unknown, |rec_info| {
+                        rec_info.application_id.clone()
+                    });
+                let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
+
+                self.state
+                    .recording_configs
+                    .entry(self.state.selected_rec_id)
+                    .or_default()
+                    .selection_state
+                    .on_frame_start(log_db, blueprint);
+
+                {
+                    // TODO(andreas): store the re_renderer somewhere else.
+                    let egui_renderer = {
+                        let render_state = frame.wgpu_render_state().unwrap();
+                        &mut render_state.renderer.write()
+                    };
+                    let render_ctx = egui_renderer
+                        .paint_callback_resources
+                        .get_mut::<re_renderer::RenderContext>()
+                        .unwrap();
+                    render_ctx.frame_maintenance();
+
+                    if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
+                        wait_screen_ui(ui, rx);
+                    } else {
+                        self.state.show(
+                            ui,
+                            render_ctx,
+                            log_db,
+                            &self.re_ui,
+                            &self.component_ui_registry,
+                        );
+                    }
+                }
             });
-
-        let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-        let selected_app_id = log_db
-            .recording_info()
-            .map_or_else(ApplicationId::unknown, |rec_info| {
-                rec_info.application_id.clone()
-            });
-        let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
-
-        self.state
-            .recording_configs
-            .entry(self.state.selected_rec_id)
-            .or_default()
-            .selection_state
-            .on_frame_start(log_db, blueprint);
-
-        {
-            // TODO(andreas): store the re_renderer somewhere else.
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.write()
-            };
-            let render_ctx = egui_renderer
-                .paint_callback_resources
-                .get_mut::<re_renderer::RenderContext>()
-                .unwrap();
-            render_ctx.frame_maintenance();
-
-            if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
-                wait_screen_ui(egui_ctx, rx);
-            } else {
-                self.state.show(
-                    egui_ctx,
-                    render_ctx,
-                    log_db,
-                    &self.re_ui,
-                    &self.component_ui_registry,
-                );
-            }
-        }
 
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
@@ -506,48 +513,46 @@ impl eframe::App for App {
     }
 }
 
-fn wait_screen_ui(egui_ctx: &egui::Context, rx: &Receiver<LogMsg>) {
-    egui::CentralPanel::default().show(egui_ctx, |ui| {
-        ui.centered_and_justified(|ui| {
-            fn ready_and_waiting(ui: &mut egui::Ui, txt: &str) {
-                let style = ui.style();
-                let mut layout_job = egui::text::LayoutJob::default();
-                layout_job.append(
-                    "Ready",
-                    0.0,
-                    egui::TextFormat::simple(
-                        egui::TextStyle::Heading.resolve(style),
-                        style.visuals.strong_text_color(),
-                    ),
-                );
-                layout_job.append(
-                    &format!("\n\n{txt}"),
-                    0.0,
-                    egui::TextFormat::simple(
-                        egui::TextStyle::Body.resolve(style),
-                        style.visuals.text_color(),
-                    ),
-                );
-                layout_job.halign = egui::Align::Center;
-                ui.label(layout_job);
-            }
+fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
+    ui.centered_and_justified(|ui| {
+        fn ready_and_waiting(ui: &mut egui::Ui, txt: &str) {
+            let style = ui.style();
+            let mut layout_job = egui::text::LayoutJob::default();
+            layout_job.append(
+                "Ready",
+                0.0,
+                egui::TextFormat::simple(
+                    egui::TextStyle::Heading.resolve(style),
+                    style.visuals.strong_text_color(),
+                ),
+            );
+            layout_job.append(
+                &format!("\n\n{txt}"),
+                0.0,
+                egui::TextFormat::simple(
+                    egui::TextStyle::Body.resolve(style),
+                    style.visuals.text_color(),
+                ),
+            );
+            layout_job.halign = egui::Align::Center;
+            ui.label(layout_job);
+        }
 
-            match rx.source() {
-                re_smart_channel::Source::File { path } => {
-                    ui.strong(format!("Loading {}…", path.display()));
-                }
-                re_smart_channel::Source::Sdk => {
-                    ready_and_waiting(ui, "Waiting for logging data from SDK");
-                }
-                re_smart_channel::Source::WsClient { ws_server_url } => {
-                    // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
-                    ready_and_waiting(ui, &format!("Waiting for data from {ws_server_url}"));
-                }
-                re_smart_channel::Source::TcpServer { port } => {
-                    ready_and_waiting(ui, &format!("Listening on port {port}"));
-                }
-            };
-        });
+        match rx.source() {
+            re_smart_channel::Source::File { path } => {
+                ui.strong(format!("Loading {}…", path.display()));
+            }
+            re_smart_channel::Source::Sdk => {
+                ready_and_waiting(ui, "Waiting for logging data from SDK");
+            }
+            re_smart_channel::Source::WsClient { ws_server_url } => {
+                // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
+                ready_and_waiting(ui, &format!("Waiting for data from {ws_server_url}"));
+            }
+            re_smart_channel::Source::TcpServer { port } => {
+                ready_and_waiting(ui, &format!("Listening on port {port}"));
+            }
+        };
     });
 }
 
@@ -838,7 +843,7 @@ struct AppState {
 impl AppState {
     fn show(
         &mut self,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
@@ -878,18 +883,18 @@ impl AppState {
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
-        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
+        time_panel.show_panel(&mut ctx, blueprint, ui);
+        selection_panel.show_panel(&mut ctx, ui, blueprint);
 
         let central_panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.panel_fill,
+            fill: ui.style().visuals.panel_fill,
             inner_margin: egui::Margin::same(0.0),
             ..Default::default()
         };
 
         egui::CentralPanel::default()
             .frame(central_panel_frame)
-            .show(egui_ctx, |ui| match *panel_selection {
+            .show_inside(ui, |ui| match *panel_selection {
                 PanelSelection::Viewport => blueprints
                     .entry(selected_app_id)
                     .or_default()
@@ -900,7 +905,7 @@ impl AppState {
         // move time last, so we get to see the first data first!
         ctx.rec_cfg
             .time_ctrl
-            .move_time(egui_ctx, log_db.times_per_timeline());
+            .move_time(ui.ctx(), log_db.times_per_timeline());
 
         if WATERMARK {
             re_ui.paint_watermark();
@@ -909,7 +914,7 @@ impl AppState {
 }
 
 fn top_panel(
-    egui_ctx: &egui::Context,
+    ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
@@ -932,7 +937,7 @@ fn top_panel(
     egui::TopBottomPanel::top("top_bar")
         .frame(app.re_ui.top_panel_frame())
         .exact_height(top_bar_style.height)
-        .show(egui_ctx, |ui| {
+        .show_inside(ui, |ui| {
             let _response = egui::menu::bar(ui, |ui| {
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);

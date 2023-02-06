@@ -53,7 +53,7 @@ impl TimePanel {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
     ) {
         let top_bar_height = 28.0;
         let margin = ctx.re_ui.bottom_panel_margin();
@@ -79,8 +79,8 @@ impl TimePanel {
             .min_height(150.0)
             .default_height(250.0);
 
-        egui::TopBottomPanel::show_animated_between(
-            egui_ctx,
+        egui::TopBottomPanel::show_animated_between_inside(
+            ui,
             blueprint.time_panel_expanded,
             collapsed,
             expanded,

@@ -20,7 +20,7 @@ impl SelectionPanel {
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) {
         let panel = egui::SidePanel::right("selection_view")
@@ -28,12 +28,12 @@ impl SelectionPanel {
             .default_width(250.0)
             .resizable(true)
             .frame(egui::Frame {
-                fill: egui_ctx.style().visuals.panel_fill,
+                fill: ui.style().visuals.panel_fill,
                 ..Default::default()
             });
 
-        panel.show_animated(
-            egui_ctx,
+        panel.show_animated_inside(
+            ui,
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
                 egui::TopBottomPanel::top("selection_panel_title_bar")
