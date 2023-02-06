@@ -254,10 +254,6 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
     )
@@ -281,17 +277,10 @@ def main() -> None:
         "--dataset_dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
     )
 
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("objectron")
-
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
+    rr.script_setup(args, "objectron")
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
@@ -299,10 +288,7 @@ def main() -> None:
     seq = read_annotations(dir)
     log_ar_frames(samples, seq)
 
-    if args.save is not None:
-        rr.save(args.save)
-    elif args.headless:
-        pass
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":
