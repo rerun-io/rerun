@@ -4,6 +4,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO: remove all this
 // Work with timestamps
 pub mod time;
 pub use time::log_time;
@@ -12,18 +13,23 @@ pub use time::log_time;
 mod session;
 pub use self::session::Session;
 
+mod msg_sender;
+pub use self::msg_sender::{MsgSender, MsgSenderError};
+
 mod global;
 pub use self::global::global_session;
 
 pub mod viewer;
 
+// ---
+
 // TODO(cmc): clean all that up?
 
-pub use re_log_types::msg_bundle::MsgBundle;
+pub use re_log_types::msg_bundle::{Component, ComponentBundle, MsgBundle, SerializableComponent};
+pub use re_log_types::ComponentName;
 pub use re_log_types::{EntityPath, LogMsg, MsgId};
-pub use re_log_types::{Time, TimePoint, TimeType, Timeline};
+pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 
-// TODO(cmc): separate datatypes (e.g. Vec3D) from components (e.g. Size3D).
 pub use re_log_types::component_types::AnnotationContext;
 pub use re_log_types::component_types::Arrow3D;
 pub use re_log_types::component_types::Box3D;
@@ -52,7 +58,7 @@ pub use re_log_types::component_types::{
 };
 pub use re_log_types::component_types::{Vec2D, Vec3D, Vec4D};
 
-pub mod reexports {
+pub mod external {
     pub use re_log;
     pub use re_log_types;
     pub use re_memory;

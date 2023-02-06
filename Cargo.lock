@@ -4260,6 +4260,7 @@ dependencies = [
  "re_viewer",
  "re_web_server",
  "re_ws_comms",
+ "thiserror",
  "tokio",
  "webbrowser",
 ]
