@@ -91,7 +91,10 @@ impl DataStore {
         // - A) `MsgBundle` should already guarantee this
         // - B) this limitation should be gone soon enough
         debug_assert!(
-            msg.components.iter().map(|bundle| bundle.name).all_unique(),
+            msg.components
+                .iter()
+                .map(|bundle| bundle.name())
+                .all_unique(),
             "cannot insert same component multiple times, this is equivalent to multiple rows",
         );
         // Batches cannot contain more than 1 row at the moment.
@@ -103,7 +106,7 @@ impl DataStore {
             return Err(WriteError::MismatchedRows(
                 bundles
                     .iter()
-                    .map(|bundle| (bundle.name, bundle.nb_rows()))
+                    .map(|bundle| (bundle.name(), bundle.nb_rows()))
                     .collect(),
             ));
         }
@@ -116,14 +119,14 @@ impl DataStore {
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
-            components = ?bundles.iter().map(|bundle| &bundle.name).collect::<Vec<_>>(),
+            components = ?bundles.iter().map(|bundle| bundle.name()).collect::<Vec<_>>(),
             nb_rows,
             "insertion started..."
         );
 
         let cluster_comp_pos = bundles
             .iter()
-            .find_position(|bundle| bundle.name == self.cluster_key)
+            .find_position(|bundle| bundle.name() == self.cluster_key)
             .map(|(pos, _)| pos);
 
         if time_point.is_timeless() {
@@ -203,9 +206,9 @@ impl DataStore {
 
         for bundle in components
             .iter()
-            .filter(|bundle| bundle.name != self.cluster_key)
+            .filter(|bundle| bundle.name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name, bundle.value());
+            let (name, rows) = (bundle.name(), bundle.value());
 
             // Unwrapping a ListArray is somewhat costly, especially considering we're just
             // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
@@ -229,7 +232,7 @@ impl DataStore {
 
             let table = self
                 .timeless_components
-                .entry(bundle.name)
+                .entry(bundle.name())
                 .or_insert_with(|| {
                     PersistentComponentTable::new(
                         name,
@@ -275,9 +278,9 @@ impl DataStore {
 
         for bundle in components
             .iter()
-            .filter(|bundle| bundle.name != self.cluster_key)
+            .filter(|bundle| bundle.name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name, bundle.value());
+            let (name, rows) = (bundle.name(), bundle.value());
 
             // Unwrapping a ListArray is somewhat costly, especially considering we're just
             // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
@@ -300,7 +303,7 @@ impl DataStore {
                 });
             }
 
-            let table = self.components.entry(bundle.name).or_insert_with(|| {
+            let table = self.components.entry(bundle.name()).or_insert_with(|| {
                 ComponentTable::new(
                     name,
                     ListArray::<i32>::get_child_type(rows_single.data_type()),
@@ -340,12 +343,7 @@ impl DataStore {
             // valid (dense, sorted, no duplicates) and use that if so.
 
             let cluster_comp = &components[cluster_comp_pos];
-            let data = cluster_comp
-                .value()
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .values(); // abusing the fact that nb_rows==1
+            let data = cluster_comp.value_list().values(); // abusing the fact that nb_rows==1
             let len = data.len();
 
             // Clustering component must be dense.

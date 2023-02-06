@@ -112,22 +112,33 @@ impl<C> SerializableComponent for C where
 #[derive(Debug, Clone)]
 pub struct ComponentBundle {
     /// The name of the Component, used as column name in the table `Field`.
-    pub name: ComponentName,
+    name: ComponentName,
     /// The Component payload `Array`.
-    pub value: Box<dyn Array>,
+    value: ListArray<i32>,
 }
 
 impl ComponentBundle {
     pub fn new_empty(name: ComponentName, data_type: DataType) -> Self {
-        let empty_array = wrap_in_listarray(new_empty_array(data_type)).boxed();
         Self {
             name,
-            value: empty_array,
+            value: wrap_in_listarray(new_empty_array(data_type)),
         }
     }
 
-    pub fn new(name: ComponentName, value: Box<dyn Array>) -> Self {
+    pub fn new(name: ComponentName, value: ListArray<i32>) -> Self {
         Self { name, value }
+    }
+
+    /// Create a new `ComponentBundle` from a boxed `Array`. The `Array` must be a `ListArray<i32>`.
+    pub fn new_from_boxed(name: ComponentName, value: &dyn Array) -> Self {
+        Self {
+            name,
+            value: value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .clone(),
+        }
     }
 
     /// Returns the datatype of the bundled component, discarding the list array that wraps it (!).
@@ -135,8 +146,18 @@ impl ComponentBundle {
         ListArray::<i32>::get_child_type(self.value.data_type())
     }
 
-    pub fn value(&self) -> &dyn Array {
-        &*self.value
+    pub fn name(&self) -> ComponentName {
+        self.name
+    }
+
+    /// Get the `ComponentBundle` value, cast to a boxed `Array`.
+    pub fn value(&self) -> Box<dyn Array> {
+        self.value.to_boxed()
+    }
+
+    /// Get the `ComponentBundle` value
+    pub fn value_list(&self) -> &ListArray<i32> {
+        &self.value
     }
 
     /// Returns the number of _rows_ in this bundle, i.e. the length of the bundle.
@@ -149,13 +170,7 @@ impl ComponentBundle {
     /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
     /// specific row within the bundle.
     pub fn nb_instances(&self, row: usize) -> Option<usize> {
-        self.value
-            .as_any()
-            .downcast_ref::<ListArray<i32>>()
-            .unwrap()
-            .offsets()
-            .lengths()
-            .nth(row)
+        self.value.offsets().lengths().nth(row)
     }
 }
 
@@ -164,7 +179,7 @@ impl<C: SerializableComponent> TryFrom<&[C]> for ComponentBundle {
 
     fn try_from(c: &[C]) -> Result<Self> {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
-        let wrapped = wrap_in_listarray(array).boxed();
+        let wrapped = wrap_in_listarray(array);
         Ok(ComponentBundle::new(C::name(), wrapped))
     }
 }
@@ -296,7 +311,7 @@ impl MsgBundle {
         Collection: IntoIterator<Item = &'a Component>,
     {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(component)?;
-        let wrapped = wrap_in_listarray(array).boxed();
+        let wrapped = wrap_in_listarray(array);
 
         let bundle = ComponentBundle::new(Component::name(), wrapped);
 
@@ -345,7 +360,7 @@ impl MsgBundle {
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let values = self.components.iter().map(|bundle| &bundle.value);
+        let values = self.components.iter().map(|bundle| bundle.value());
         let names = self.components.iter().map(|bundle| bundle.name.as_str());
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
@@ -503,7 +518,10 @@ fn extract_components(
         .iter()
         .zip(components.values())
         .map(|(field, component)| {
-            ComponentBundle::new(ComponentName::from(field.name.as_str()), component.clone())
+            ComponentBundle::new_from_boxed(
+                ComponentName::from(field.name.as_str()),
+                component.as_ref(),
+            )
         })
         .collect())
 }
