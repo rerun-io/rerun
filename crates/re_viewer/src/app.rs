@@ -437,10 +437,13 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
 
-        // We put all other panels within one master `CentralPanel`
-        // to allow us to add margins around it for when we do `re_ui::CUSTOM_WINDOW_DECORATIONS`.
+        let mut main_panel_frame = egui::Frame::default();
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            // Add some margin so that we can later paint an outline around it all.
+            main_panel_frame.inner_margin = 1.0.into();
+        }
         egui::CentralPanel::default()
-            .frame(egui::Frame::default())
+            .frame(main_panel_frame)
             .show(egui_ctx, |ui| {
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
@@ -497,6 +500,11 @@ impl eframe::App for App {
                 }
             });
 
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            // Paint the main window frame on top of everything else
+            paint_native_window_frame(egui_ctx);
+        }
+
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
 
@@ -511,6 +519,22 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
     }
+}
+
+fn paint_native_window_frame(egui_ctx: &egui::Context) {
+    let painter = egui::Painter::new(
+        egui_ctx.clone(),
+        egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
+        egui::Rect::EVERYTHING,
+    );
+
+    let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(42)); // from figma 2022-02-06
+
+    painter.rect_stroke(
+        egui_ctx.screen_rect().shrink(0.5),
+        re_ui::ReUi::native_window_rounding(),
+        stroke,
+    );
 }
 
 fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
