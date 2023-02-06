@@ -1,4 +1,5 @@
 use arrow2::array::Array;
+use nohash_hasher::IntMap;
 use re_log_types::external::arrow2_convert::serialize::TryIntoArrow;
 use re_log_types::msg_bundle::MsgBundleError;
 use re_log_types::{component_types::InstanceKey, msg_bundle::wrap_in_listarray};
@@ -13,21 +14,21 @@ use crate::{
 #[derive(thiserror::Error, Debug)]
 pub enum MsgSenderError {
     #[error(
-        "All component collections must share the same row-length (i.e. number of instances),\
-            got {0:?} instead"
+        "All component collections must have exactly one row (i.e. no batching), got {0:?} instead"
+    )]
+    MoreThanOneRow(Vec<(ComponentName, usize)>),
+    #[error(
+        "All component collections must share the same number of instances (i.e. row length) \
+            for a given row, got {0:?} instead"
     )]
     MismatchedRowLengths(Vec<(ComponentName, usize)>),
     #[error("Instance keys cannot be splatted")]
     SplattedInstanceKeys,
+    #[error("InstanceKey(u64::MAX) is reserved for Rerun internals")]
+    IllegalInstanceKey,
     #[error(transparent)]
     PackingError(#[from] MsgBundleError),
 }
-
-// TODO: tests:
-// - instanced
-// - splat
-// - timeless
-// - error paths
 
 /// Facilitates building and sending component payloads with the Rerun SDK.
 ///
@@ -104,8 +105,6 @@ impl MsgSender {
     }
 
     // --- Time ---
-
-    // TODO: test last write wins
 
     /// Appends a given `timepoint` to the current message.
     ///
@@ -187,6 +186,8 @@ impl MsgSender {
             return Err(MsgSenderError::MismatchedRowLengths(collections));
         }
 
+        // TODO(cmc): if this is an InstanceKey and it contains u64::MAX, fire IllegalInstanceKey.
+
         self.instanced.push(bundle);
 
         Ok(self)
@@ -234,6 +235,22 @@ impl MsgSender {
     /// Consumes, packs, sanity checkes and finally sends the message to the currently configured
     /// target of the SDK.
     pub fn send(self, session: &mut Session) -> Result<(), MsgSenderError> {
+        let [msg_standard, msg_transforms, msg_splats] = self.into_messages()?;
+
+        if let Some(msg_standard) = msg_standard {
+            session.send(LogMsg::ArrowMsg(msg_standard.try_into()?));
+        }
+        if let Some(msg_transforms) = msg_transforms {
+            session.send(LogMsg::ArrowMsg(msg_transforms.try_into()?));
+        }
+        if let Some(msg_splats) = msg_splats {
+            session.send(LogMsg::ArrowMsg(msg_splats.try_into()?));
+        }
+
+        Ok(())
+    }
+
+    fn into_messages(self) -> Result<[Option<MsgBundle>; 3], MsgSenderError> {
         let Self {
             entity_path,
             timepoint,
@@ -243,15 +260,10 @@ impl MsgSender {
             mut splatted,
         } = self;
 
-        // TODO(cmc): The sanity checks we do in here can (and probably should) be done in
-        // `MsgBundle` instead so that the python SDK benefits from them too... but one step at a
-        // time.
-
-        // TODO: at this point, should have the same number of rows all over the place.
-        // TODO: at this point, transform should be neither splat nor length >1
-
+        // clear current timepoint if marked as timeless
         let timepoint = if timeless { [].into() } else { timepoint };
 
+        // separate transforms from the rest
         // TODO(cmc): just use `Vec::drain_filter` once it goes stable...
         let mut all_bundles: Vec<_> = instanced.into_iter().map(Some).collect();
         let standard_bundles: Vec<_> = all_bundles
@@ -270,26 +282,63 @@ impl MsgSender {
             .collect();
         debug_assert!(all_bundles.into_iter().all(|bundle| bundle.is_none()));
 
-        // Standard & transforms
-        for bundles in [standard_bundles, transform_bundles] {
-            let msg = MsgBundle::new(
+        // TODO(cmc): The sanity checks we do in here can (and probably should) be done in
+        // `MsgBundle` instead so that the python SDK benefits from them too... but one step at a
+        // time.
+
+        // sanity check: no row-level batching
+        let mut rows_per_comptype: IntMap<ComponentName, usize> = IntMap::default();
+        for bundle in standard_bundles
+            .iter()
+            .chain(&transform_bundles)
+            .chain(&splatted)
+        {
+            *rows_per_comptype.entry(bundle.name).or_default() += bundle.nb_rows();
+        }
+        if rows_per_comptype.values().any(|nb_rows| *nb_rows > 1) {
+            return Err(MsgSenderError::MoreThanOneRow(
+                rows_per_comptype.into_iter().collect(),
+            ));
+        }
+
+        // sanity check: transforms can't handle multiple instances
+        let nb_transform_instances = transform_bundles
+            .get(0)
+            .and_then(|bundle| bundle.nb_instances(0))
+            .unwrap_or(0);
+        if nb_transform_instances > 1 {
+            re_log::warn!("detected Transform component with multiple instances");
+        }
+
+        let mut msgs = [(); 3].map(|_| None);
+
+        // Standard
+        msgs[0] = (!standard_bundles.is_empty()).then(|| {
+            MsgBundle::new(
                 MsgId::random(),
                 entity_path.clone(),
                 timepoint.clone(),
-                bundles,
-            );
-            session.send(LogMsg::ArrowMsg(msg.try_into()?));
-        }
+                standard_bundles,
+            )
+        });
+
+        // Transforms
+        msgs[1] = (!transform_bundles.is_empty()).then(|| {
+            MsgBundle::new(
+                MsgId::random(),
+                entity_path.clone(),
+                timepoint.clone(),
+                transform_bundles,
+            )
+        });
 
         // Splats
-        {
-            splatted.push(bundle_from_iter(&[InstanceKey::SPLAT])?);
+        msgs[2] = (!splatted.is_empty()).then(|| {
+            splatted.push(bundle_from_iter(&[InstanceKey::SPLAT]).unwrap());
+            MsgBundle::new(MsgId::random(), entity_path, timepoint, splatted)
+        });
 
-            let msg = MsgBundle::new(MsgId::random(), entity_path, timepoint, splatted);
-            session.send(LogMsg::ArrowMsg(msg.try_into()?));
-        }
-
-        Ok(())
+        Ok(msgs)
     }
 }
 
@@ -303,4 +352,124 @@ fn bundle_from_iter<'a, C: SerializableComponent>(
     let wrapped = wrap_in_listarray(array).boxed();
 
     Ok(ComponentBundle::new(C::name(), wrapped))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let [standard, transforms, splats] = MsgSender::new("some/path").into_messages().unwrap();
+        assert!(standard.is_none());
+        assert!(transforms.is_none());
+        assert!(splats.is_none());
+    }
+
+    #[test]
+    fn full() -> Result<(), MsgSenderError> {
+        let labels = vec![crate::Label("label1".into()), crate::Label("label2".into())];
+        let transform = vec![crate::Transform::Rigid3(crate::Rigid3::default())];
+        let color = crate::ColorRGBA::from([255, 0, 255, 255]);
+
+        let [standard, transforms, splats] = MsgSender::new("some/path")
+            .with_component(&labels)?
+            .with_component(&transform)?
+            .with_splat(color)?
+            .into_messages()
+            .unwrap();
+
+        {
+            let standard = standard.unwrap();
+            let idx = standard.find_component(&crate::Label::name()).unwrap();
+            let bundle = &standard.components[idx];
+            assert!(bundle.nb_rows() == 1);
+            assert!(bundle.nb_instances(0).unwrap() == 2);
+        }
+
+        {
+            let transforms = transforms.unwrap();
+            let idx = transforms
+                .find_component(&crate::Transform::name())
+                .unwrap();
+            let bundle = &transforms.components[idx];
+            assert!(bundle.nb_rows() == 1);
+            assert!(bundle.nb_instances(0).unwrap() == 1);
+        }
+
+        {
+            let splats = splats.unwrap();
+            let idx = splats.find_component(&crate::ColorRGBA::name()).unwrap();
+            let bundle = &splats.components[idx];
+            assert!(bundle.nb_rows() == 1);
+            assert!(bundle.nb_instances(0).unwrap() == 1);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn timepoint_last_write_wins() {
+        let my_timeline = Timeline::new("my_timeline", crate::TimeType::Sequence);
+        let sender = MsgSender::new("some/path")
+            .with_time(my_timeline, 0)
+            .with_time(my_timeline, 1)
+            .with_time(my_timeline, 2);
+        assert_eq!(
+            TimeInt::from(2),
+            *sender.timepoint.get(&my_timeline).unwrap()
+        );
+    }
+
+    #[test]
+    fn timepoint_timeless() -> Result<(), MsgSenderError> {
+        let my_timeline = Timeline::new("my_timeline", crate::TimeType::Sequence);
+
+        let sender = MsgSender::new("some/path")
+            .with_timeless(true)
+            .with_component(&vec![crate::Label("label1".into())])?
+            .with_time(my_timeline, 2);
+        assert!(!sender.timepoint.is_empty()); // not yet
+
+        let [standard, _, _] = sender.into_messages().unwrap();
+        assert!(standard.unwrap().time_point.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn attempted_batch() -> Result<(), MsgSenderError> {
+        let res = MsgSender::new("some/path")
+            .with_component(&vec![crate::Label("label1".into())])?
+            .with_component(&vec![crate::Label("label2".into())])?
+            .into_messages();
+
+        let Err(MsgSenderError::MoreThanOneRow(err)) = res else { panic!() };
+        assert_eq!([(crate::Label::name(), 2)].to_vec(), err);
+
+        Ok(())
+    }
+
+    #[test]
+    fn illegal_instance_key() -> Result<(), MsgSenderError> {
+        let _ = MsgSender::new("some/path")
+            .with_component(&vec![crate::Label("label1".into())])?
+            .with_component(&vec![crate::InstanceKey(u64::MAX)])?
+            .into_messages()?;
+
+        // TODO(cmc): This is not detected as of today, but it probably should.
+
+        Ok(())
+    }
+
+    #[test]
+    fn splatted_instance_key() -> Result<(), MsgSenderError> {
+        let res = MsgSender::new("some/path")
+            .with_component(&vec![crate::Label("label1".into())])?
+            .with_splat(crate::InstanceKey(42));
+
+        assert!(matches!(res, Err(MsgSenderError::SplattedInstanceKeys)));
+
+        Ok(())
+    }
 }

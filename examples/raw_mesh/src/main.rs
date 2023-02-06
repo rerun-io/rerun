@@ -161,6 +161,8 @@ fn main() -> anyhow::Result<()> {
         log_node(&mut session, root)?;
     }
 
+    // TODO(cmc): arg parsing and arg interpretation helpers
+    // TODO: missing the save flag
     if let Some(addr) = addr {
         session.connect(addr);
     } else {
