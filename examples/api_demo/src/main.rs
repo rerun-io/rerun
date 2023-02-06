@@ -15,7 +15,7 @@ use std::{
     f32::consts::{PI, TAU},
 };
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use rerun::{
     external::{
         re_log,
@@ -642,9 +642,10 @@ fn main() -> anyhow::Result<()> {
         session.connect(addr);
     }
 
-    let demos = args
-        .demo
-        .map_or_else(HashSet::new, |demos| demos.into_iter().collect());
+    let demos: HashSet<Demo> = args.demo.map_or_else(
+        || Demo::value_variants().iter().copied().collect(),
+        |demos| demos.into_iter().collect(),
+    );
     for demo in demos {
         match demo {
             Demo::BoundingBox => demo_bbox(&mut session)?,
