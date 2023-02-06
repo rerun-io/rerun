@@ -239,6 +239,7 @@ pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     CTRL slows down, SHIFT speeds up.\n\
     \n\
     Double-click an object to focus the view on it.\n\
+    For cameras, you can restore the view again with Escape.\n\
     \n\
     Double-click on empty space to reset the view.";
 
