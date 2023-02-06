@@ -438,7 +438,7 @@ fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
     MsgSender::new("logs")
         .with_component(&[TextEntry::new(
             "this entry has loglevel TRACE",
-            "TRACE".to_owned().into(),
+            Some("TRACE".into()),
         )])?
         .send(session)?;
 
