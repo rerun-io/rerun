@@ -2,7 +2,7 @@ use egui::RichText;
 use re_ui::Command;
 
 use super::{HistoricalSelection, SelectionHistory};
-use crate::{misc::MultiSelection, ui::Blueprint, Selection};
+use crate::{misc::ItemCollection, ui::Blueprint, Item};
 
 // ---
 
@@ -11,7 +11,7 @@ impl SelectionHistory {
         &mut self,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<MultiSelection> {
+    ) -> Option<ItemCollection> {
         self.control_bar_ui(ui, blueprint).map(|sel| sel.selection)
     }
 
@@ -75,7 +75,7 @@ impl SelectionHistory {
                 \n\
                 Right-click for more.",
                 Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
-                multi_selection_to_string(blueprint, &previous.selection),
+                item_collection_to_string(blueprint, &previous.selection),
             ));
 
             let response = response.context_menu(|ui| {
@@ -113,7 +113,7 @@ impl SelectionHistory {
                 \n\
                 Right-click for more.",
                 Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
-                multi_selection_to_string(blueprint, &next.selection),
+                item_collection_to_string(blueprint, &next.selection),
             ));
 
             let response = response.context_menu(|ui| {
@@ -142,13 +142,13 @@ impl SelectionHistory {
             ui.horizontal(|ui| {
                 {
                     // borrow checker workaround
-                    let sel = multi_selection_to_string(blueprint, sel);
+                    let sel = item_collection_to_string(blueprint, sel);
                     if ui.selectable_value(&mut self.current, index, sel).clicked() {
                         ui.close_menu();
                     }
                 }
                 if sel.len() == 1 {
-                    selection_kind_ui(ui, sel.iter().next().unwrap());
+                    item_kind_ui(ui, sel.iter().next().unwrap());
                 }
             });
         }
@@ -157,32 +157,32 @@ impl SelectionHistory {
 
 // Different kinds of selections can share the same path in practice! We need to
 // differentiate those in the UI to avoid confusion.
-fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
+fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn multi_selection_to_string(blueprint: &Blueprint, sel: &MultiSelection) -> String {
-    assert!(!sel.is_empty()); // history never contains empty selections.
-    if sel.len() == 1 {
-        single_selection_to_string(blueprint, sel.iter().next().unwrap())
-    } else if let Some(kind) = sel.are_all_same_kind() {
-        format!("{}x {}s", sel.len(), kind)
+fn item_collection_to_string(blueprint: &Blueprint, items: &ItemCollection) -> String {
+    assert!(!items.is_empty()); // history never contains empty selections.
+    if items.len() == 1 {
+        item_to_string(blueprint, items.iter().next().unwrap())
+    } else if let Some(kind) = items.are_all_same_kind() {
+        format!("{}x {}s", items.len(), kind)
     } else {
         "<multiple selections>".to_owned()
     }
 }
 
-fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
-    match sel {
-        Selection::SpaceView(sid) => {
+fn item_to_string(blueprint: &Blueprint, item: &Item) -> String {
+    match item {
+        Item::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 space_view.name.clone()
             } else {
                 "<removed space view>".to_owned()
             }
         }
-        Selection::InstancePath(_, entity_path) => entity_path.to_string(),
-        Selection::DataBlueprintGroup(sid, handle) => {
+        Item::InstancePath(_, entity_path) => entity_path.to_string(),
+        Item::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
@@ -193,8 +193,8 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
                 "<group in removed space view>".to_owned()
             }
         }
-        Selection::MsgId(msg_id) => msg_id.short_string(),
-        Selection::ComponentPath(path) => {
+        Item::MsgId(msg_id) => msg_id.short_string(),
+        Item::ComponentPath(path) => {
             format!("{} {}", path.entity_path, path.component_name.short_name(),)
         }
     }

@@ -3,7 +3,7 @@ use re_log_types::TimeType;
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Selection, UiVerbosity, ViewerContext,
+    Item, UiVerbosity, ViewerContext,
 };
 
 use super::{data_ui::DataUi, space_view::ViewState};
@@ -106,11 +106,11 @@ impl SelectionPanel {
     }
 }
 
-fn has_data_section(selection: &Selection) -> bool {
-    match selection {
-        Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::InstancePath(_, _) => true,
+fn has_data_section(item: &Item) -> bool {
+    match item {
+        Item::MsgId(_) | Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
-        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
     }
 }
 
@@ -119,16 +119,16 @@ pub fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
-    selection: &Selection,
+    item: &Item,
 ) {
-    match selection {
-        Selection::MsgId(msg_id) => {
+    match item {
+        Item::MsgId(msg_id) => {
             ui.horizontal(|ui| {
                 ui.label("Message ID:");
                 ctx.msg_id_button(ui, *msg_id);
             });
         }
-        Selection::ComponentPath(re_log_types::ComponentPath {
+        Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
         }) => {
@@ -145,7 +145,7 @@ pub fn what_is_selected_ui(
                     ui.end_row();
                 });
         }
-        Selection::SpaceView(space_view_id) => {
+        Item::SpaceView(space_view_id) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 ui.horizontal(|ui| {
                     ui.label("Space view:");
@@ -153,7 +153,7 @@ pub fn what_is_selected_ui(
                 });
             }
         }
-        Selection::InstancePath(space_view_id, instance_path) => {
+        Item::InstancePath(space_view_id, instance_path) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_path.instance_key.is_splat() {
                     ui.label("Entity:");
@@ -172,7 +172,7 @@ pub fn what_is_selected_ui(
                 }
             });
         }
-        Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
@@ -205,7 +205,7 @@ pub fn what_is_selected_ui(
     }
 }
 
-impl DataUi for Selection {
+impl DataUi for Item {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -214,42 +214,42 @@ impl DataUi for Selection {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
                 // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
                 debug_assert!(!has_data_section(self));
             }
-            Selection::MsgId(msg_id) => {
+            Item::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::ComponentPath(component_path) => {
+            Item::ComponentPath(component_path) => {
                 component_path.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::InstancePath(_, instance_path) => {
+            Item::InstancePath(_, instance_path) => {
                 instance_path.data_ui(ctx, ui, verbosity, query);
             }
         }
     }
 }
 
-/// What is the blueprint stuff for this selection?
+/// What is the blueprint stuff for this item?
 fn blueprint_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
-    selection: &Selection,
+    item: &Item,
 ) {
-    match selection {
-        Selection::MsgId(_) => {
+    match item {
+        Item::MsgId(_) => {
             // TODO(andreas): Show space views that contains entities that's part of this message.
             ui.weak("(nothing)");
         }
 
-        Selection::ComponentPath(component_path) => {
+        Item::ComponentPath(component_path) => {
             list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
         }
 
-        Selection::SpaceView(space_view_id) => {
+        Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
                 if ui
                     .button("Add/remove entities")
@@ -280,7 +280,7 @@ fn blueprint_ui(
             }
         }
 
-        Selection::InstancePath(space_view_id, instance_path) => {
+        Item::InstancePath(space_view_id, instance_path) => {
             if let Some(space_view) = space_view_id
                 .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
             {
@@ -308,7 +308,7 @@ fn blueprint_ui(
             }
         }
 
-        Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
