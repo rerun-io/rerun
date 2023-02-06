@@ -409,7 +409,7 @@ fn entity_props_ui(
                     if let Some(re_log_types::Transform::Pinhole(pinhole)) =
                         query_transform(&ctx.log_db.entity_db, entity_path, &query)
                     {
-                        ui.label("Image plane distance:");
+                        ui.label("Image plane distance");
                         let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
                         let speed = (distance * 0.05).at_least(0.01);
                         if ui
