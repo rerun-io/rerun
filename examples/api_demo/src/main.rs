@@ -63,7 +63,7 @@ fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
 fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
     // Hack to establish 2d view bounds
     MsgSender::new("extension_components")
-        .with_timepoint(sim_time(1 as _))
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[Rect2D::from_xywh(0.0, 0.0, 128.0, 128.0)])?
         .send(session)?;
 
@@ -82,7 +82,7 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
 
     // Single point with our custom component!
     MsgSender::new("extension_components/point")
-        .with_timepoint(sim_time(1 as _))
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[Point2D::new(64.0, 64.0)])?
         .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
         .with_component(&[Confidence(0.9)])?
