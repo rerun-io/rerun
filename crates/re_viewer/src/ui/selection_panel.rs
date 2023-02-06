@@ -369,67 +369,63 @@ fn entity_props_ui(
 ) {
     use egui::NumExt;
 
-    let EntityProperties {
-        visible,
-        visible_history,
-        interactive,
-        ..
-    } = entity_props;
-
-    ui.checkbox(visible, "Visible");
-    ui.checkbox(interactive, "Interactive")
+    ui.checkbox(&mut entity_props.visible, "Visible");
+    ui.checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    ui.horizontal(|ui| {
-        ui.label("Visible history:");
-        match ctx.rec_cfg.time_ctrl.timeline().typ() {
-            TimeType::Time => {
-                let mut time_sec = visible_history.nanos as f32 / 1e9;
-                let speed = (time_sec * 0.05).at_least(0.01);
-                ui.add(
-                    egui::DragValue::new(&mut time_sec)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .speed(speed)
-                        .suffix("s"),
-                )
-                .on_hover_text("Include this much history of the entity in the Space View");
-                visible_history.nanos = (time_sec * 1e9).round() as _;
+    egui::Grid::new("entity_properties")
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Visible history:");
+            let visible_history = &mut entity_props.visible_history;
+            match ctx.rec_cfg.time_ctrl.timeline().typ() {
+                TimeType::Time => {
+                    let mut time_sec = visible_history.nanos as f32 / 1e9;
+                    let speed = (time_sec * 0.05).at_least(0.01);
+                    ui.add(
+                        egui::DragValue::new(&mut time_sec)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .speed(speed)
+                            .suffix("s"),
+                    )
+                    .on_hover_text("Include this much history of the entity in the Space View");
+                    visible_history.nanos = (time_sec * 1e9).round() as _;
+                }
+                TimeType::Sequence => {
+                    let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
+                    ui.add(
+                        egui::DragValue::new(&mut visible_history.sequences)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .speed(speed),
+                    )
+                    .on_hover_text("Include this much history of the entity in the Space View");
+                }
             }
-            TimeType::Sequence => {
-                let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
-                ui.add(
-                    egui::DragValue::new(&mut visible_history.sequences)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .speed(speed),
-                )
-                .on_hover_text("Include this much history of the entity in the Space View");
-            }
-        }
-    });
+            ui.end_row();
 
-    if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
-        if let Some(entity_path) = entity_path {
-            let query = ctx.current_query();
-            if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.entity_db, entity_path, &query)
-            {
-                ui.horizontal(|ui| {
-                    ui.label("Image plane distance:");
-                    let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
-                    let speed = (distance * 0.05).at_least(0.01);
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut distance)
-                                .clamp_range(0.0..=1.0e8)
-                                .speed(speed),
-                        )
-                        .on_hover_text("Controls how far away the image plane is.")
-                        .changed()
+            if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
+                if let Some(entity_path) = entity_path {
+                    let query = ctx.current_query();
+                    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
+                        query_transform(&ctx.log_db.entity_db, entity_path, &query)
                     {
-                        entity_props.set_pinhole_image_plane_distance(distance);
+                        ui.label("Image plane distance:");
+                        let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
+                        let speed = (distance * 0.05).at_least(0.01);
+                        if ui
+                            .add(
+                                egui::DragValue::new(&mut distance)
+                                    .clamp_range(0.0..=1.0e8)
+                                    .speed(speed),
+                            )
+                            .on_hover_text("Controls how far away the image plane is.")
+                            .changed()
+                        {
+                            entity_props.set_pinhole_image_plane_distance(distance);
+                        }
+                        ui.end_row();
                     }
-                });
+                }
             }
-        }
-    }
+        });
 }
