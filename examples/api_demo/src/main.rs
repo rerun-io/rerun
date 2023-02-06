@@ -133,7 +133,7 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
     // TODO(cmc): need abstractions for this
     fn log_cleared(
         session: &mut Session,
-        timepoint: TimePoint,
+        timepoint: &TimePoint,
         ent_path: impl Into<EntityPath>,
         recursive: bool,
     ) {
@@ -141,7 +141,7 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
         let tp = timepoint.iter().collect::<Vec<_>>();
         let timepoint = [
             (Timeline::log_time(), Time::now().into()),
-            (tp[0].0.clone(), *tp[0].1),
+            (*tp[0].0, *tp[0].1),
         ];
         session.send_path_op(&timepoint.into(), PathOp::clear(recursive, ent_path.into()));
     }
@@ -149,33 +149,33 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
     // sim_time = 1
     MsgSender::new("null_demo/rect/0")
         .with_timepoint(sim_time(1 as _))
-        .with_component(&[Rect2D::from_xywh(5.0, 4.0, 4.0, 4.0)])?
+        .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
-        .with_component(&[Label("Rect1".to_owned())])?
+        .with_component(&[Label("Rect1".into())])?
         .send(session)?;
     MsgSender::new("null_demo/rect/1")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
-        .with_component(&[Label("Rect2".to_owned())])?
+        .with_component(&[Label("Rect2".into())])?
         .send(session)?;
 
     // sim_time = 2
-    log_cleared(session, sim_time(2 as _), "null_demo/rect/0", false);
+    log_cleared(session, &sim_time(2 as _), "null_demo/rect/0", false);
 
     // sim_time = 3
-    log_cleared(session, sim_time(3 as _), "null_demo/rect", true);
+    log_cleared(session, &sim_time(3 as _), "null_demo/rect", true);
 
     // sim_time = 4
     MsgSender::new("null_demo/rect/0")
         .with_timepoint(sim_time(4 as _))
-        .with_component(&[Rect2D::from_xywh(5.0, 4.0, 4.0, 4.0)])?
+        .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
         .send(session)?;
 
     // sim_time = 5
     MsgSender::new("null_demo/rect/1")
         .with_timepoint(sim_time(5 as _))
-        .with_component(&[Rect2D::from_xywh(10.0, 4.0, 4.0, 4.0)])?
+        .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
         .send(session)?;
 
     Ok(())
