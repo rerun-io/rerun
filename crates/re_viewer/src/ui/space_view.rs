@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 
@@ -13,6 +11,7 @@ use crate::{
 
 use super::{
     data_blueprint::DataBlueprintTree,
+    space_view_heuristics::default_queries_entities,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self},
@@ -88,64 +87,6 @@ impl SpaceView {
         }
     }
 
-    /// List of entities a space view queries by default for a given category.
-    ///
-    /// These are all entities in the given space which have the requested category and are reachable by a transform.
-    pub fn default_queries_entities(
-        ctx: &ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-        space_info: &SpaceInfo,
-        category: ViewCategory,
-    ) -> Vec<EntityPath> {
-        crate::profile_function!();
-
-        let timeline = Timeline::log_time();
-        let log_db = &ctx.log_db;
-
-        let mut entities = Vec::new();
-
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            entities.extend(
-                space_info
-                    .descendants_without_transform
-                    .iter()
-                    .filter(|entity_path| {
-                        categorize_entity_path(timeline, log_db, entity_path).contains(category)
-                    })
-                    .cloned(),
-            );
-        });
-
-        entities
-    }
-
-    /// List of entities a space view queries by default for all any possible category.
-    pub fn default_queries_entities_by_category(
-        ctx: &ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-        space_info: &SpaceInfo,
-    ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
-        crate::profile_function!();
-
-        let timeline = Timeline::log_time();
-        let log_db = &ctx.log_db;
-
-        let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
-
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            for entity_path in &space_info.descendants_without_transform {
-                for category in categorize_entity_path(timeline, log_db, entity_path) {
-                    groups
-                        .entry(category)
-                        .or_default()
-                        .push(entity_path.clone());
-                }
-            }
-        });
-
-        groups
-    }
-
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -160,7 +101,7 @@ impl SpaceView {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
-                Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
+                default_queries_entities(ctx, spaces_info, space_info, self.category);
             self.data_blueprint
                 .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
         }
