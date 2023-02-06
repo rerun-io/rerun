@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "rerun_py", "run_wasm", "examples/raw_mesh"]
+members = ["crates/*", "rerun_py", "run_wasm", "examples/objectron", "examples/raw_mesh"]
 
 [workspace.package]
 version = "0.1.0"
