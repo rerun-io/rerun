@@ -17,4 +17,6 @@ ndarray-rand = "0.14"
 rand = "0.8"
 
 # TODO(cmc): is the crate actually gonna be called just 'rerun' in the end?
-rerun = { package = "rerun_sdk", features = ["glam"], path = "../../crates/rerun_sdk" }
+rerun = { package = "rerun_sdk", features = [
+  "glam",
+], path = "../../crates/rerun_sdk" }

@@ -166,7 +166,7 @@ def transforms_rigid_3d() -> None:
     # distribution is quadratically higher in the middle
     radii = np.random.rand(200) * planet_to_moon_distance * 0.5
     angles = np.random.rand(200) * math.tau
-    height = np.power(np.random.rand(200), 0.2) *0.5 - 0.5
+    height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
     rr.log_points(
         "transforms3d/sun/planet/dust",
         np.array([np.sin(angles) * radii, np.cos(angles) * radii, height]).transpose(),
