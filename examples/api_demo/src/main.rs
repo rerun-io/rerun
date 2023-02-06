@@ -1,4 +1,14 @@
-// TODO: doc
+//! Minimal examples of Rerun SDK usage.
+//!
+//! Run all demos:
+//! ```
+//! cargo run -p api_demo
+//! ```
+//!
+//! Run specific demo:
+//! ```
+//! cargo run -p api_demo -- --demo rects
+//! ```
 
 use std::{
     collections::HashSet,
@@ -620,10 +630,8 @@ fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    // TODO: application id should take selected demos into account?
-    // let demo_str = args.demo.map_or_else(String::new, |demos| demos.join("+"));
-
     let mut session = rerun::Session::new();
+    // TODO(cmc): application id should take selected demos into account
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.
     // This needs to take care of the whole `official_example` thing, and also keeps track of
