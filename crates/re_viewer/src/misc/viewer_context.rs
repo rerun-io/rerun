@@ -139,7 +139,7 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         self.space_view_button_to(
             ui,
-            space_view.name.clone(),
+            space_view.display_name.clone(),
             space_view.id,
             space_view.category,
         )

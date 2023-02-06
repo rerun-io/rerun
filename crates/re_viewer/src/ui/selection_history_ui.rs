@@ -176,7 +176,7 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
     match sel {
         Selection::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
-                space_view.name.clone()
+                space_view.display_name.clone()
             } else {
                 "<removed space view>".to_owned()
             }
@@ -187,7 +187,7 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
                 if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
                 } else {
-                    format!("<removed group in {}>", space_view.name)
+                    format!("<removed group in {}>", space_view.display_name)
                 }
             } else {
                 "<group in removed space view>".to_owned()

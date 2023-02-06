@@ -109,7 +109,7 @@ impl Viewport {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].name)
+                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].space_path)
                     .copied()
                     .collect_vec();
 
@@ -626,7 +626,12 @@ impl Viewport {
                     .selectable_label_with_icon(
                         ui,
                         space_view.category.icon(),
-                        space_view.name.clone(),
+                        // Unless this is the root, don't use the display name.
+                        if space_view.space_path.is_root() {
+                            space_view.display_name.clone()
+                        } else {
+                            space_view.space_path.to_string()
+                        },
                         false,
                     )
                     .clicked()
@@ -785,7 +790,8 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
 
-        let mut text = egui::WidgetText::RichText(egui::RichText::new(space_view.name.clone()));
+        let mut text =
+            egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()));
 
         if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
             // Show that it is selected:
