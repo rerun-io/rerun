@@ -384,7 +384,7 @@ fn view_2d_scrollable(
                 }
 
                 response
-                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_cursor(egui::CursorIcon::Crosshair)
                     .on_hover_ui_at_pointer(|ui| {
                         ui.set_max_width(320.0);
 

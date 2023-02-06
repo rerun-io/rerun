@@ -102,6 +102,8 @@ fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
     use re_arrow_store::ArrayExt as _;
     let num_instances = value.get_child_length(0);
 
+    // TODO(emilk): if there's only once instance, and the byte size is small, then deserialize and show the value.
+
     format!("{}x {}", num_instances, name.short_name())
 }
 

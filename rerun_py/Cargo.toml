@@ -45,14 +45,14 @@ arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"
-glam = "0.20"
-half = "1.8"
+glam.workspace = true
+half.workspace = true
 image = { version = "0.24", default-features = false, features = [
   "jpeg",
   "jpeg_rayon",
 ] }
 itertools = "0.10"
-macaw = "0.17"
+macaw.workspace = true
 mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
 numpy = { version = "0.18.0", features = ["half"] }
 pyo3 = { version = "0.18.0", features = ["abi3-py38"] }
@@ -65,4 +65,4 @@ pyo3-build-config = "0.18.0"
 toml = "0.7"
 
 [package.metadata.maturin]
-name = "rerun.rerun_bindings"
+name = "rerun_bindings"

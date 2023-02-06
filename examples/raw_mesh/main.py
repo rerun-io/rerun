@@ -24,7 +24,7 @@ import rerun as rr
 
 def load_scene(path: Path) -> trimesh.Scene:
     print(f"loading scene {path}…")
-    mesh = trimesh.load(path)
+    mesh = trimesh.load(path, force="scene")
     return cast(trimesh.Scene, mesh)
 
 
@@ -51,7 +51,18 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
         if mesh:
-            rr.log_mesh(path, mesh.vertices, indices=mesh.faces, normals=mesh.vertex_normals)
+            albedo_factor = None
+            # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
+            # as an albedo factor for the whole primitive.
+            try:
+                colors = mesh.visual.to_color().vertex_colors
+                if len(colors) == 4:
+                    albedo_factor = np.array(colors) / 255.0
+            except:
+                pass
+            rr.log_mesh(
+                path, mesh.vertices, indices=mesh.faces, normals=mesh.vertex_normals, albedo_factor=albedo_factor
+            )
 
     if children:
         for child in children:
