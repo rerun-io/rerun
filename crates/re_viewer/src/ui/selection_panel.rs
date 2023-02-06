@@ -398,7 +398,7 @@ fn entity_props_ui(
                             .clamp_range(0.0..=f32::INFINITY)
                             .speed(speed),
                     )
-                    .on_hover_text("Include this much history of the entity in the Space View");
+                    .on_hover_text("Include this much history of the Entity in the Space View.");
                 }
             }
             ui.end_row();
