@@ -25,7 +25,7 @@ impl SceneTensor {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             match query_entity_with_primary::<Tensor>(
-                &ctx.log_db.entity_db.arrow_store,
+                &ctx.log_db.entity_db.data_store,
                 &timeline_query,
                 ent_path,
                 &[],

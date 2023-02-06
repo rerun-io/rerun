@@ -55,7 +55,11 @@ pub(crate) fn tree_from_space_views(
         .filter(|(space_view_id, _space_view)| visible.contains(space_view_id))
         // Sort for determinism:
         .sorted_by_key(|(space_view_id, space_view)| {
-            (&space_view.space_path, &space_view.name, *space_view_id)
+            (
+                &space_view.space_path,
+                &space_view.display_name,
+                *space_view_id,
+            )
         })
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = match space_view.category {

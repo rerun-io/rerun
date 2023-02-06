@@ -190,7 +190,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
     if let Some(time_point) = ctx
         .log_db
         .entity_db
-        .arrow_store
+        .data_store
         .get_msg_metadata(&entry.msg_id)
     {
         Some(time_point.clone())

@@ -1,6 +1,6 @@
 use re_data_store::LogDb;
 
-use crate::misc::MultiSelection;
+use crate::misc::ItemCollection;
 
 use super::Blueprint;
 
@@ -8,11 +8,11 @@ use super::Blueprint;
 #[derive(Debug, Clone)]
 pub struct HistoricalSelection {
     pub index: usize,
-    pub selection: MultiSelection,
+    pub selection: ItemCollection,
 }
 
-impl From<(usize, MultiSelection)> for HistoricalSelection {
-    fn from((index, selection): (usize, MultiSelection)) -> Self {
+impl From<(usize, ItemCollection)> for HistoricalSelection {
+    fn from((index, selection): (usize, ItemCollection)) -> Self {
         Self { index, selection }
     }
 }
@@ -28,7 +28,7 @@ pub struct SelectionHistory {
     pub(crate) current: usize,
 
     /// Oldest first.
-    pub(crate) stack: Vec<MultiSelection>,
+    pub(crate) stack: Vec<ItemCollection>,
 }
 
 impl SelectionHistory {
@@ -69,15 +69,15 @@ impl SelectionHistory {
             .map(|sel| (self.current + 1, sel.clone()).into())
     }
 
-    pub fn update_selection(&mut self, selection: &MultiSelection) {
+    pub fn update_selection(&mut self, item_collection: &ItemCollection) {
         // Selecting nothing is irrelevant from a history standpoint.
-        if selection.is_empty() {
+        if item_collection.is_empty() {
             return;
         }
 
         // Do not grow the history if the thing being selected is equal to the value that the
         // current history cursor points to.
-        if self.current().as_ref().map(|c| &c.selection) == Some(selection) {
+        if self.current().as_ref().map(|c| &c.selection) == Some(item_collection) {
             return;
         }
 
@@ -85,7 +85,7 @@ impl SelectionHistory {
         // diverging timeline!
         self.stack.truncate(self.current + 1);
 
-        self.stack.push(selection.clone());
+        self.stack.push(item_collection.clone());
 
         // Keep size under a certain maximum.
         if self.stack.len() > MAX_SELECTION_HISTORY_LENGTH {

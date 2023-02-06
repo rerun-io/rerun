@@ -23,6 +23,7 @@ The Summary should look like:
 * [Extension Components](extension_components.md)
 * [Plotting](plotting.md)
 * [Transforms](transforms.md)
+* [Helpers](helpers.md)
 ```
 """
 
@@ -65,6 +66,7 @@ SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
         "Transforms",
         ["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
     ),
+    ("Helpers", ["script_add_args", "script_setup", "script_teardown"]),
 ]
 
 # Virual folder where we will generate the md files

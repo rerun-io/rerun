@@ -24,7 +24,7 @@ impl SceneBarChart {
     fn load_tensors(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let store = &ctx.log_db.entity_db.arrow_store;
+        let store = &ctx.log_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
             if !props.visible {

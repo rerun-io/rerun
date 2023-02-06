@@ -1,8 +1,8 @@
 mod app_options;
 pub mod caches;
 pub(crate) mod color_map;
+mod item;
 pub(crate) mod mesh_loader;
-mod selection;
 mod selection_state;
 pub(crate) mod space_info;
 pub(crate) mod time_axis;
@@ -28,7 +28,7 @@ pub mod clipboard;
 pub use transform_cache::{TransformCache, UnreachableTransform};
 pub use {
     app_options::*,
-    selection::{MultiSelection, Selection},
+    item::{Item, ItemCollection},
     selection_state::{
         HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewEntityHighlight,
         SelectionHighlight, SelectionState, SpaceViewHighlights,
