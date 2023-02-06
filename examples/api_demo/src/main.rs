@@ -5,7 +5,6 @@ use std::{
     f32::consts::{PI, TAU},
 };
 
-use anyhow::{bail, Context};
 use clap::Parser;
 use rerun::{
     external::{
@@ -15,13 +14,11 @@ use rerun::{
             ApplicationId,
         },
         re_memory::AccountingAllocator,
-        re_sdk_comms,
     },
-    log_time, AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA,
-    Component, ComponentName, EntityPath, Label, LineStrip3D, Mesh3D, MeshId, MsgSender, Point2D,
-    Point3D, Quaternion, Radius, RawMesh3D, RecordingId, Rect2D, Rigid3, Session, SignedAxis3,
-    Tensor, TensorDataMeaning, TextEntry, Time, TimeInt, TimePoint, TimeType, Timeline, Transform,
-    Vec3D, ViewCoordinates,
+    AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Component,
+    ComponentName, EntityPath, Label, LineStrip3D, MsgSender, Point2D, Point3D, Quaternion, Radius,
+    RecordingId, Rect2D, Rigid3, Session, SignedAxis3, Tensor, TensorDataMeaning, TextEntry, Time,
+    TimePoint, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
 };
 
 // --- Rerun logging ---
