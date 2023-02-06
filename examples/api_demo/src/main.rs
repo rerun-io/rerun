@@ -451,6 +451,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
     let rotation_speed_planet = 2.0;
     let rotation_speed_moon = 5.0;
 
+    // Planetary motion is typically in the XY plane.
     fn log_coordinate_space(
         session: &mut Session,
         ent_path: impl Into<EntityPath>,
@@ -466,12 +467,12 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
             .send(session)
             .map_err(Into::into)
     }
-    // Planetary motion is typically in the XY plane.
     log_coordinate_space(session, "transforms3d")?;
     log_coordinate_space(session, "transforms3d/sun")?;
     log_coordinate_space(session, "transforms3d/sun/planet")?;
     log_coordinate_space(session, "transforms3d/sun/planet/moon")?;
 
+    // All are in the center of their own space:
     fn log_point(
         session: &mut Session,
         ent_path: impl Into<EntityPath>,
@@ -486,7 +487,6 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
             .send(session)
             .map_err(Into::into)
     }
-    // All are in the center of their own space:
     log_point(session, "transforms3d/sun", 1.0, [255, 200, 10])?;
     log_point(session, "transforms3d/sun/planet", 0.4, [40, 80, 200])?;
     log_point(
@@ -519,6 +519,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
         .with_splat(ColorRGBA::from([80, 80, 80, 255]))?
         .send(session)?;
 
+    // paths where the planet & moon move
     let create_path = |distance: f32| {
         LineStrip3D(
             (0..=100)
@@ -543,9 +544,11 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
 
         MsgSender::new("transforms3d/sun/planet")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
             .with_component(&[Transform::Rigid3(Rigid3 {
-                rotation: Quaternion::new(0.0, 0.0, 0.0, 1.0), // TODO
+                rotation: Quaternion::from(glam::Quat::from_axis_angle(
+                    glam::Vec3::X,
+                    20.0f32.to_radians(),
+                )),
                 translation: Vec3D::new(
                     (time * rotation_speed_planet).sin() * sun_to_planet_distance,
                     (time * rotation_speed_planet).cos() * sun_to_planet_distance,
@@ -554,15 +557,13 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
             })])?
             .send(session)?;
 
-        // TODO: inverse
         MsgSender::new("transforms3d/sun/planet/moon")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
             .with_component(&[Transform::Rigid3(Rigid3 {
-                rotation: Quaternion::new(0.0, 0.0, 0.0, 1.0), // TODO
+                rotation: Quaternion::default(),
                 translation: Vec3D::new(
-                    (time * rotation_speed_moon).sin() * planet_to_moon_distance,
-                    (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                    -(time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                    -(time * rotation_speed_moon).sin() * planet_to_moon_distance,
                     0.0,
                 ),
             })])?
