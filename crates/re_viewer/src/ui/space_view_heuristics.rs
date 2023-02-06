@@ -4,7 +4,7 @@ use ahash::HashMap;
 use enumset::EnumSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
-use re_arrow_store::Timeline;
+use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::{query_transform, EntityPath};
 use re_log_types::component_types::{Tensor, TensorTrait};
 
@@ -53,62 +53,86 @@ pub fn all_space_view_candidates(
     space_views
 }
 
+fn is_interesting_root(
+    ctx: &ViewerContext<'_>,
+    candidate: &SpaceView,
+    timeline_query: &LatestAtQuery,
+) -> bool {
+    // Not interesting if it has only data blueprint groups and no direct entities.
+    if candidate.data_blueprint.root_group().entities.is_empty() {
+        return false;
+    }
+
+    // Not interesting if it has only images
+    for entity_path in &candidate.data_blueprint.root_group().entities {
+        if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
+            &ctx.log_db.entity_db.data_store,
+            timeline_query,
+            entity_path,
+            &[],
+        ) {
+            if let Ok(iter) = entity_view.iter_primary() {
+                for tensor in iter.flatten() {
+                    if tensor.is_shaped_like_an_image() {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    true
+}
+
+fn is_interesting_non_root(
+    ctx: &ViewerContext<'_>,
+    candidate: &SpaceView,
+    categories_with_interesting_roots: &EnumSet<ViewCategory>,
+    timeline_query: &LatestAtQuery,
+) -> bool {
+    // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
+    if candidate.space_path.len() == 1
+        && !categories_with_interesting_roots.contains(candidate.category)
+    {
+        return true;
+    }
+
+    // .. otherwise, spatial views are considered only interesting if they have in interesting transform.
+    if candidate.category == ViewCategory::Spatial {
+        if let Some(transform) =
+            query_transform(&ctx.log_db.entity_db, &candidate.space_path, timeline_query)
+        {
+            match transform {
+                re_log_types::Transform::Rigid3(_) => {}
+                re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // Not interesting!
+    false
+}
+
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
     candidates: Vec<SpaceView>,
 ) -> Vec<SpaceView> {
     crate::profile_function!();
 
+    let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+    let timeline_query = re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
+
     // First pass to look for interesting roots.
-    // Roots are considered interesting, if they have direct children in the data blueprint.
     let categories_with_interesting_roots = candidates
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_path.is_root()
-                && !space_view_candidate
-                    .data_blueprint
-                    .root_group()
-                    .entities
-                    .is_empty())
+                && is_interesting_root(ctx, space_view_candidate, &timeline_query))
             .then_some(space_view_candidate.category)
         })
         .collect::<EnumSet<_>>();
-
-    // Filter function non-roots.
-    fn is_interesting_non_root(
-        ctx: &ViewerContext<'_>,
-        candidate: &SpaceView,
-        categories_with_interesting_roots: &EnumSet<ViewCategory>,
-    ) -> bool {
-        // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
-        if candidate.space_path.len() == 1
-            && !categories_with_interesting_roots.contains(candidate.category)
-        {
-            return true;
-        }
-
-        // .. otherwise, spatial views are considered only interesting if they have in interesting transform.
-        if candidate.category == ViewCategory::Spatial {
-            let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-            let timeline_query =
-                re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
-            if let Some(transform) = query_transform(
-                &ctx.log_db.entity_db,
-                &candidate.space_path,
-                &timeline_query,
-            ) {
-                match transform {
-                    re_log_types::Transform::Rigid3(_) => {}
-                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        // Not interesting!
-        false
-    }
 
     let timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let timeline_query = re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
@@ -120,7 +144,12 @@ pub fn default_created_space_views(
             if !categories_with_interesting_roots.contains(candidate.category) {
                 continue;
             }
-        } else if !is_interesting_non_root(ctx, &candidate, &categories_with_interesting_roots) {
+        } else if !is_interesting_non_root(
+            ctx,
+            &candidate,
+            &categories_with_interesting_roots,
+            &timeline_query,
+        ) {
             continue;
         }
 
