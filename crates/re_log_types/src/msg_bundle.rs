@@ -238,7 +238,7 @@ impl<C: SerializableComponent> TryFrom<&Vec<C>> for ComponentBundle {
 /// ];
 /// let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
-/// println!("{:?}", &bundle.components[0].value());
+/// println!("{:?}", &bundle.components[0].value_boxed());
 /// ```
 ///
 /// The resultant Arrow [`arrow2::array::Array`] for the `Rect2D` component looks as follows:
