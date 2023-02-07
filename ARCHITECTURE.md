@@ -17,7 +17,7 @@ The logging SDK:s encodes the data using Apache Arrow (see more below).
 The logging data can be written to disk as `.rrd` files, or transmitted over TCP to either a Rerun Viewer or a Rerun Server.
 
 ### Rerun viewer
-The Rerun Viewer is where log data is visualized. It is usually run as a native app, but can also be compiled to WebAssembly (WASM) and run in a browser.
+The Rerun Viewer is where log data is visualized. It is usually run as a native app, but can also be compiled to WebAssembly (Wasm) and run in a browser.
 
 #### Web viewer
 You can try running the viewer in a browser using `rr.serve()` in python, or using `rerun --web-viewer mydata.rrd`.
@@ -44,13 +44,14 @@ We use the WebGL backend when compiling for web. Once WebGPU is available in mos
 We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/re_renderer/README.md).
 
 ### `egui`
-The GUI in the Rerun Viewer is using [`egui`](https://www.egui.rs/), a cross-platform, immediate mode GUI.
+The GUI in the Rerun Viewer is using [`egui`](https://www.egui.rs/), a cross-platform, [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode).
 
 We use [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe), the egui framework, to run `egui` on both native and web.
 
+
 ### Wasm
 Wasm (short for [WebAssembly](https://webassembly.org/)) is a binary instruction format supported by all major browser.
-The Rerun Viewer can be compiled to WASM and run in a browser.
+The Rerun Viewer can be compiled to Wasm and run in a browser.
 
 Threading support in Wasm is nascent, so care must we taken that we don't spawn any threads when compiling for `wasm32`.
 
