@@ -1,4 +1,4 @@
-<!--- TODO(emilk): move all of this to https://github.com/rerun-io/documentation -->
+<!--- TODO(emilk): move all of this to https://github.com/rerun-io/rerun-docs/  -->
 
 # Using the `rerun` Python Library
 
