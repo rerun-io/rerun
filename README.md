@@ -1,7 +1,10 @@
 # Rerun
 
+[![Build Status](https://github.com/emilk/egui/workflows/CI/badge.svg)](https://github.com/emilk/egui/actions?workflow=CI)
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT)
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE)
+[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Community%20Discord)](https://discord.gg/Gcm8BbTaAj)
+
 
 Rerun is visualization infrastructure for computer vision.
 
@@ -10,66 +13,26 @@ This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently 
 # Documentation (Coming soon!)
 
 ## WARNING: The following links don't all work yet
-TODO(jleibs): Clean up this section and remove warnign when all links are live
+<!-- TODO(jleibs): Clean up this section and remove warning when all links are live -->
 
 High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs).
 
-The documentation is built from a separate [Rerun-Docs Repository](https://github.com/rerun-io/rerun-docs)
+The documentation is built from a separate [Rerun-Docs Repository](https://github.com/rerun-io/rerun-docs).
 
 Rust and Python APIs are documented in the code via docstrings.
  - The [Rust API docs](https://docs.rs/rerun/) are built via cargo and hosted on docs.rs
  - The [Python API docs](https://rerun-io.github.io/rerun) are built via mkdocs and hosted on github:
    - For more information on the python doc-system see: [Writing Docs](https://rerun-io.github.io/rerun/latest/docs)
 
-# For our users
+# Installing the Python Rerun SDK
+1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
+  (for Mac M1/M2, grab the "universal2" `.whl`)
+2. Uninstall any previously installed Rerun SDK: `pip uninstall rerun rerun-sdk`
+3. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
+4. Test it: `rerun --version`
 
-We don't have any pre-built binaries yet, so you need to build Rerun from source. There is some setup involved, but most of it should be pretty painless.
-
-## Setup
-
-- Install the Rust toolchain: <https://rustup.rs/>
-- `git clone git@github.com:rerun-io/rerun.git && cd rerun`
-- Run `./scripts/setup.sh`.
-- Make sure `cargo --version` prints `1.67.0` once you are done
-
-### Apple-silicon Macs
-
-If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
-
-```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.67
-```
-
-## Build and install the Rerun Python SDK
-
-### Set up virtualenv
-
-Mac/Linux:
-
-```sh
-python3 -m venv venv  # Rerun supports Python version >= 3.7
-source venv/bin/activate
-python -m pip install --upgrade pip  # We need pip version >=21.3
-```
-
-Windows (powershell):
-
-```ps1
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-```
-
-From here on out, we assume you have this virtualenv activated.
-
-### Build and install
-
-```sh
-./scripts/setup.sh
-pip install ./rerun_py
-```
-
-> Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip install` command.
+# Installing the Rerun SDK
+Coming soon
 
 ## Getting started with examples
 
@@ -125,4 +88,4 @@ It is still possible to log data faster than the Rerun Viewer can process it, an
 
 # Development
 
-Take a look at [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Take a look at [`BUILD.md`](BUILD.md), [`CONTRIBUTING.md`](CONTRIBUTING.md).
