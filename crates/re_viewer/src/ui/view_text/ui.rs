@@ -227,6 +227,7 @@ fn table_ui(
         .vscroll(true)
         .auto_shrink([false; 2]) // expand to take up the whole Space View
         .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
+        .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::TOP));
 
     if let Some(scroll_to_row) = scroll_to_row {
