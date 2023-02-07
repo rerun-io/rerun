@@ -330,6 +330,7 @@ impl MsgBundle {
 
     /// Returns the number of component collections in this bundle, i.e. the length of the bundle
     /// itself.
+    #[inline]
     pub fn nb_components(&self) -> usize {
         self.components.len()
     }
@@ -340,6 +341,7 @@ impl MsgBundle {
     /// All component collections within a `MsgBundle` must share the same number of rows!
     ///
     /// Currently always 1 as we don't yet support batch insertions.
+    #[inline]
     pub fn nb_rows(&self) -> usize {
         self.components.first().map_or(0, |bundle| bundle.nb_rows())
     }
@@ -350,6 +352,7 @@ impl MsgBundle {
     /// Since we don't yet support batch insertions and all components within a single row must
     /// have the same number of instances, we simply pick the value for the first component
     /// collection.
+    #[inline]
     pub fn nb_instances(&self, row: usize) -> Option<usize> {
         self.components
             .first()
@@ -359,6 +362,7 @@ impl MsgBundle {
     /// Returns the index of `component` in the bundle, if it exists.
     ///
     /// This is `O(n)`.
+    #[inline]
     pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
         self.components
             .iter()
