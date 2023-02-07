@@ -102,10 +102,7 @@ pub fn build_chunk_from_components(
         .into_iter()
         .zip(fields.into_iter())
         .map(|(value, field)| {
-            ComponentBundle::new(
-                field.name.into(),
-                msg_bundle::wrap_in_listarray(value).boxed(),
-            )
+            ComponentBundle::new(field.name.into(), msg_bundle::wrap_in_listarray(value))
         })
         .collect();
 

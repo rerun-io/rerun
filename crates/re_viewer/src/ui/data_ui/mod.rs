@@ -78,7 +78,7 @@ impl DataUi for [ComponentBundle] {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let mut sorted = self.to_vec();
-        sorted.sort_by_key(|cb| cb.name);
+        sorted.sort_by_key(|cb| cb.name());
 
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
@@ -101,7 +101,7 @@ fn format_component_bundle(bundle: &ComponentBundle) -> String {
     format!(
         "{}x {}",
         bundle.nb_instances(0).unwrap(), // all of our bundles have exactly 1 row as of today
-        bundle.name.short_name()
+        bundle.name().short_name()
     )
 }
 

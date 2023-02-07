@@ -268,10 +268,11 @@ impl SelectionState {
 
     pub fn selection_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) -> Option<ItemCollection> {
-        self.history.selection_ui(ui, blueprint)
+        self.history.selection_ui(re_ui, ui, blueprint)
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

@@ -9,14 +9,17 @@ use crate::{misc::ItemCollection, ui::Blueprint, Item};
 impl SelectionHistory {
     pub(crate) fn selection_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<ItemCollection> {
-        self.control_bar_ui(ui, blueprint).map(|sel| sel.selection)
+        self.control_bar_ui(re_ui, ui, blueprint)
+            .map(|sel| sel.selection)
     }
 
     fn control_bar_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
@@ -28,8 +31,8 @@ impl SelectionHistory {
                 ui.available_size_before_wrap(),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    let next = self.next_button_ui(ui, blueprint);
-                    let prev = self.prev_button_ui(ui, blueprint);
+                    let next = self.next_button_ui(re_ui, ui, blueprint);
+                    let prev = self.prev_button_ui(re_ui, ui, blueprint);
                     prev.or(next)
                 }).inner
         }).inner
@@ -63,20 +66,22 @@ impl SelectionHistory {
 
     fn prev_button_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
         // undo selection
-        let button = egui::Button::new("⬅");
         if let Some(previous) = self.previous() {
-            let response = ui.add(button).on_hover_text(format!(
-                "Go to previous selection{}:\n\
+            let response = re_ui
+                .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
+                .on_hover_text(format!(
+                    "Go to previous selection{}:\n\
                 {}\n\
                 \n\
                 Right-click for more.",
-                Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
-                item_collection_to_string(blueprint, &previous.selection),
-            ));
+                    Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
+                    item_collection_to_string(blueprint, &previous.selection),
+                ));
 
             let response = response.context_menu(|ui| {
                 // undo: newest on top, oldest on bottom
@@ -92,8 +97,11 @@ impl SelectionHistory {
                 return self.select_previous();
             }
         } else {
-            ui.add_enabled(false, button)
-                .on_disabled_hover_text("No past selections found");
+            ui.add_enabled_ui(false, |ui| {
+                re_ui
+                    .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
+                    .on_disabled_hover_text("No past selections found");
+            });
         }
 
         None
@@ -101,20 +109,22 @@ impl SelectionHistory {
 
     fn next_button_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
         // redo selection
-        let button = egui::Button::new("➡");
         if let Some(next) = self.next() {
-            let response = ui.add(button).on_hover_text(format!(
-                "Go to next selection{}:\n\
+            let response = re_ui
+                .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
+                .on_hover_text(format!(
+                    "Go to next selection{}:\n\
                 {}\n\
                 \n\
                 Right-click for more.",
-                Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
-                item_collection_to_string(blueprint, &next.selection),
-            ));
+                    Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
+                    item_collection_to_string(blueprint, &next.selection),
+                ));
 
             let response = response.context_menu(|ui| {
                 // redo: oldest on top, most recent on bottom
@@ -130,8 +140,11 @@ impl SelectionHistory {
                 return self.select_next();
             }
         } else {
-            ui.add_enabled(false, button)
-                .on_disabled_hover_text("No future selections found");
+            ui.add_enabled_ui(false, |ui| {
+                re_ui
+                    .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
+                    .on_disabled_hover_text("No future selections found");
+            });
         }
 
         None

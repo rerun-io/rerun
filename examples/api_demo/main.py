@@ -282,6 +282,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.script_setup(args, "api_demo")
+
     if args.demo == "all":
         print("Running all demos…")
         for name, demo in demos.items():
