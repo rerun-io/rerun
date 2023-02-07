@@ -202,8 +202,6 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
         rr.set_time_sequence("frame", frame_idx)
         rr.set_time_seconds("time", time)
 
-        # TODO: at this point we should have everything we need in order to log all of this as an
-        # actual skeleton and let space view projections do the rest
         for obj_ann in frame_ann.annotations:
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
             keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints], dtype=np.float32)

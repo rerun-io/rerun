@@ -14,7 +14,8 @@ fn main() -> Result<(), std::io::Error> {
     let src_path = PathBuf::from(out_dir).join("objectron.proto.rs");
     let dst_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/objectron.rs");
 
-    // TODO: explain why
+    // `include!()` will break LSP & Github navigation, so create an actual source file to make the
+    // UX reasonable.
     std::fs::copy(src_path, dst_path).unwrap();
 
     Ok(())
