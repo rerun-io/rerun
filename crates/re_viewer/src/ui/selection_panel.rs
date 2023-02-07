@@ -43,8 +43,10 @@ impl SelectionPanel {
                         ..Default::default()
                     })
                     .show_inside(ui, |ui| {
-                        if let Some(selection) =
-                            ctx.rec_cfg.selection_state.selection_ui(ui, blueprint)
+                        if let Some(selection) = ctx
+                            .rec_cfg
+                            .selection_state
+                            .selection_ui(ctx.re_ui, ui, blueprint)
                         {
                             ctx.set_multi_selection(selection.iter().cloned());
                         }
