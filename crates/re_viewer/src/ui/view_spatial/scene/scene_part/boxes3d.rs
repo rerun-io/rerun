@@ -111,7 +111,7 @@ impl ScenePart for Boxes3DPart {
             let entity_highlight = highlights.entity_highlight(ent_path.hash());
 
             match query_primary_with_history::<Box3D, 8>(
-                &ctx.log_db.entity_db.arrow_store,
+                &ctx.log_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

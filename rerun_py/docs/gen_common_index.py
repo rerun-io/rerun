@@ -9,7 +9,7 @@ Function | Description
 [rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK ...
 [rerun.set_recording_id()](initialization/#rerun.set_recording_id) | Set the recording ID ...
 [rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the ...
-[rerun.spawn_and_connect()](initialization/#rerun.spawn_and_connect) | Spawn a Rerun Viewer ...
+[rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer ...
 
 ...
 
@@ -23,6 +23,7 @@ The Summary should look like:
 * [Extension Components](extension_components.md)
 * [Plotting](plotting.md)
 * [Transforms](transforms.md)
+* [Helpers](helpers.md)
 ```
 """
 
@@ -39,7 +40,7 @@ import mkdocs_gen_files
 SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
     (
         "Initialization",
-        ["init", "set_recording_id", "connect", "spawn_and_connect"],
+        ["init", "set_recording_id", "connect", "spawn"],
     ),
     (
         "Logging Primitives",
@@ -65,6 +66,7 @@ SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
         "Transforms",
         ["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
     ),
+    ("Helpers", ["script_add_args", "script_setup", "script_teardown"]),
 ]
 
 # Virual folder where we will generate the md files

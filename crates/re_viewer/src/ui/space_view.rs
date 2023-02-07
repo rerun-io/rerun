@@ -39,7 +39,7 @@ impl SpaceViewId {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct SpaceView {
     pub id: SpaceViewId,
-    pub name: String,
+    pub display_name: String,
 
     /// The "anchor point" of this space view.
     /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
@@ -66,11 +66,14 @@ impl SpaceView {
         space_info: &SpaceInfo,
         queries_entities: &[EntityPath],
     ) -> Self {
-        let name = if queries_entities.len() == 1 {
-            // a single entity in this space-view - name the space after it
+        let display_name = if queries_entities.len() == 1 {
+            // A single entity in this space-view - name the space after it.
             queries_entities[0].to_string()
+        } else if let Some(name) = space_info.path.iter().last() {
+            name.to_string()
         } else {
-            space_info.path.to_string()
+            // Include category name in the display for root paths because they look a tad bit too short otherwise.
+            format!("/ ({category})")
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
@@ -78,7 +81,7 @@ impl SpaceView {
             .insert_entities_according_to_hierarchy(queries_entities.iter(), &space_info.path);
 
         Self {
-            name,
+            display_name,
             id: SpaceViewId::random(),
             space_path: space_info.path.clone(),
             data_blueprint: data_blueprint_tree,

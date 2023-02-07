@@ -7,5 +7,6 @@
 -r mp_pose/requirements.txt
 -r nyud/requirements.txt
 -r objectron/requirements.txt
+-r raw_mesh/requirements.txt
 -r stable_diffusion/requirements.txt
 -r tracking_hf_opencv/requirements.txt

@@ -278,34 +278,10 @@ def main() -> None:
         "--demo", type=str, default="all", help="What demo to run", choices=["all"] + list(demos.keys())
     )
 
-    parser.add_argument(
-        "--connect",
-        dest="connect",
-        action="store_true",
-        help="Connect to an external viewer",
-    )
-    parser.add_argument(
-        "--serve",
-        dest="serve",
-        action="store_true",
-        help="Serve a web viewer (WARNING: experimental feature)",
-    )
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("api_demo")
-
-    if args.serve:
-        rr.serve()
-    elif args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None:
-        rr.spawn_and_connect()
+    rr.script_setup(args, "api_demo")
 
     if args.demo == "all":
         print("Running all demos…")
@@ -315,15 +291,7 @@ def main() -> None:
         demo = demos[args.demo]
         demo()
 
-    if args.serve:
-        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        try:
-            sleep(100_000)
-        except:
-            pass
-
-    elif args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

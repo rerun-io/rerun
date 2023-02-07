@@ -10,7 +10,7 @@ impl DataUi for ComponentPath {
         verbosity: crate::ui::UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let store = &ctx.log_db.entity_db.arrow_store;
+        let store = &ctx.log_db.entity_db.data_store;
 
         match re_query::get_component_with_instances(
             store,

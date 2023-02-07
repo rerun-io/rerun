@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 bytes = "1.3"
+clap = { version = "4.0", features = ["derive"] }
 gltf.workspace = true
 mimalloc = "0.1"
 reqwest = { workspace = true, features = ["blocking", "rustls-tls"] }

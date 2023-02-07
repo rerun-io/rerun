@@ -181,7 +181,7 @@ impl ScenePart for CamerasPart {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             match query_entity_with_primary::<Transform>(
-                &ctx.log_db.entity_db.arrow_store,
+                &ctx.log_db.entity_db.data_store,
                 &query,
                 ent_path,
                 &[],
