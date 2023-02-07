@@ -62,14 +62,8 @@ pub struct ExampleApp {
 }
 
 impl eframe::App for ExampleApp {
-    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
-            [0.0; 4] // transparent so we can get rounded corners
-        } else {
-            // It's rare and subtle, but this color can get through at panel roundings.
-            // (duplicated for `RemoteViewerApp`)
-            visuals.panel_fill.to_normalized_gamma_f32()
-        }
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
