@@ -8,7 +8,9 @@
 use std::{
     collections::HashMap,
     io::Read,
+    net::SocketAddr,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use anyhow::{anyhow, Context};
@@ -32,21 +34,30 @@ struct ArFrame {
     timepoint: TimePoint,
 }
 impl ArFrame {
-    fn from_raw(dir: PathBuf, index: usize, ar_frame: objectron::ArFrame) -> Self {
-        let timeline_time = Timeline::new("time", TimeType::Time);
-        let timeline_frame = Timeline::new("frame", TimeType::Sequence);
-        let time = Time::from_seconds_since_epoch(ar_frame.timestamp());
+    fn from_raw(
+        dir: PathBuf,
+        index: usize,
+        timepoint: TimePoint,
+        ar_frame: objectron::ArFrame,
+    ) -> Self {
         Self {
             dir,
             data: ar_frame,
             index,
-            timepoint: [
-                (timeline_time, time.into()),
-                (timeline_frame, (index as i64).into()),
-            ]
-            .into(),
+            timepoint,
         }
     }
+}
+
+fn timepoint(index: usize, time: f64) -> TimePoint {
+    let timeline_time = Timeline::new("time", TimeType::Time);
+    let timeline_frame = Timeline::new("frame", TimeType::Sequence);
+    let time = Time::from_seconds_since_epoch(time);
+    [
+        (timeline_time, time.into()),
+        (timeline_frame, (index as i64).into()),
+    ]
+    .into()
 }
 
 struct AnnotationsPerFrame<'a>(HashMap<usize, &'a objectron::FrameAnnotation>);
@@ -116,7 +127,7 @@ fn log_detected_objects(
                 let box3: Box3D = glam::Vec3::from_slice(&object.scale).into();
                 let transform = {
                     let translation = glam::Vec3::from_slice(&object.translation).into();
-                    // NODE: the dataset is all row-major, transpose those matrices!
+                    // NOTE: the dataset is all row-major, transpose those matrices!
                     let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
                     let rotation = glam::Quat::from_mat3(&rotation).into();
                     Transform::Rigid3(Rigid3 {
@@ -172,7 +183,7 @@ fn log_ar_camera(
     timepoint: TimePoint,
     ar_camera: &objectron::ArCamera,
 ) -> anyhow::Result<()> {
-    // NODE: the dataset is all row-major, transpose those matrices!
+    // NOTE: the dataset is all row-major, transpose those matrices!
     let world_from_cam = glam::Mat4::from_cols_slice(&ar_camera.transform).transpose();
     let (scale, rot, translation) = world_from_cam.to_scale_rotation_translation();
     assert!((scale - glam::Vec3::ONE).length() < 1e-3);
@@ -336,30 +347,48 @@ enum Recording {
     Shoe,
 }
 
-// TODO:
-// --frames FRAMES       If specified, limits the number of frames logged
-// --run-forever         Run forever, continually logging data.
-// --per-frame-sleep PER_FRAME_SLEEP
-//                       Sleep this much for each frame read, if --run-forever
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// If specified, connects and sends the logged data to a remote Rerun viewer.
+    /// Connects and sends the logged data to a remote Rerun viewer.
+    ///
+    /// Optionally takes an `ip:port`.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    connect: Option<Option<String>>,
+    connect: Option<Option<SocketAddr>>,
 
     /// Specifies the recording to replay.
     #[clap(long, value_enum, default_value = "book")]
     recording: Recording,
+
+    /// Limits the number of frames logged.
+    #[clap(long)]
+    frames: Option<usize>,
+
+    /// If set, this indefinitely log and relog the same scene in a loop.
+    ///
+    /// Useful to test the viewer with a _lot_ of data.
+    ///
+    /// Needs to be coupled with `--frames` and/or `--connect` for now.
+    #[clap(long, default_value = "false")]
+    run_forever: bool,
+
+    /// Throttle logging by sleeping between each frame (e.g. `0.25`).
+    #[clap(long, value_parser = parse_duration)]
+    per_frame_sleep: Option<Duration>,
+}
+
+fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloatError> {
+    let seconds = arg.parse()?;
+    Ok(std::time::Duration::from_secs_f64(seconds))
 }
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
     let args = Args::parse();
-    let addr = match args.connect.as_ref() {
-        Some(Some(addr)) => Some(addr.parse()?),
+    let addr = match args.connect {
+        Some(Some(addr)) => Some(addr),
         Some(None) => Some(rerun::default_server_addr()),
         None => None,
     };
@@ -379,26 +408,53 @@ fn main() -> anyhow::Result<()> {
     // Parse protobuf dataset
     let rec_info = args.recording.info()?;
     let annotations = read_annotations(&rec_info.path_annotations)?;
-    let ar_frames = read_ar_frames(&rec_info.path_ar_frames);
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
     log_coordinate_space(&mut session, "world", "RUB")?;
     log_coordinate_space(&mut session, "world/camera", "RDF")?;
 
-    // TODO: run-forever
-    // let mut time_offset = 0;
-    // let mut frame_offset = 0;
+    let mut global_frame_offset = 0;
+    let mut global_time_offset = 0.0;
 
-    // Iterate through the parsed dataset and log Rerun primitives
-    for (idx, ar_frame) in ar_frames.enumerate() {
-        let ar_frame = ArFrame::from_raw(
-            rec_info.path_ar_frames.parent().unwrap().into(),
-            idx,
-            ar_frame?,
-        );
-        let objects = &annotations.objects;
-        let annotations = annotations.frame_annotations.as_slice().into();
-        log_ar_frame(&mut session, objects, &annotations, &ar_frame)?;
+    'outer: loop {
+        let mut frame_offset = 0;
+        let mut time_offset = 0.0;
+
+        // Iterate through the parsed dataset and log Rerun primitives
+        let ar_frames = read_ar_frames(&rec_info.path_ar_frames);
+        for (idx, ar_frame) in ar_frames.enumerate() {
+            if idx + global_frame_offset >= args.frames.unwrap_or(usize::MAX) {
+                break 'outer;
+            }
+
+            let ar_frame = ar_frame?;
+            let ar_frame = ArFrame::from_raw(
+                rec_info.path_ar_frames.parent().unwrap().into(),
+                idx,
+                timepoint(
+                    idx + global_frame_offset,
+                    ar_frame.timestamp() + global_time_offset,
+                ),
+                ar_frame,
+            );
+            let objects = &annotations.objects;
+            let annotations = annotations.frame_annotations.as_slice().into();
+            log_ar_frame(&mut session, objects, &annotations, &ar_frame)?;
+
+            if let Some(d) = args.per_frame_sleep {
+                std::thread::sleep(d);
+            }
+
+            time_offset = f64::max(time_offset, ar_frame.data.timestamp());
+            frame_offset += 1;
+        }
+
+        if !args.run_forever {
+            break;
+        }
+
+        global_time_offset += time_offset;
+        global_frame_offset += frame_offset;
     }
 
     // TODO(cmc): arg parsing and arg interpretation helpers
