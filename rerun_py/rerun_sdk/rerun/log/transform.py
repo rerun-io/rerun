@@ -14,7 +14,7 @@ __all__ = [
 
 
 def log_view_coordinates(
-    entity_path: str = "/",
+    entity_path: str,
     *,
     xyz: str = "",
     up: str = "",
