@@ -4,9 +4,12 @@ use ahash::HashMap;
 use enumset::EnumSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
-use re_arrow_store::{LatestAtQuery, Timeline};
-use re_data_store::{log_db::EntityDb, query_transform, EntityPath};
-use re_log_types::component_types::{Tensor, TensorTrait};
+use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
+use re_data_store::{log_db::EntityDb, query_transform, ComponentName, EntityPath};
+use re_log_types::{
+    component_types::{Tensor, TensorTrait},
+    msg_bundle::Component,
+};
 
 use crate::{
     misc::{space_info::SpaceInfoCollection, ViewerContext},
@@ -46,7 +49,7 @@ pub fn all_possible_space_views(
 fn is_interesting_space_view_at_root(
     entity_db: &EntityDb,
     candidate: &SpaceView,
-    timeline_query: &LatestAtQuery,
+    query: &LatestAtQuery,
 ) -> bool {
     // Not interesting if it has only data blueprint groups and no direct entities.
     if candidate.data_blueprint.root_group().entities.is_empty() {
@@ -57,7 +60,7 @@ fn is_interesting_space_view_at_root(
     for entity_path in &candidate.data_blueprint.root_group().entities {
         if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
             &entity_db.data_store,
-            timeline_query,
+            query,
             entity_path,
             &[],
         ) {
@@ -78,7 +81,7 @@ fn is_interesting_space_view_not_at_root(
     entity_db: &EntityDb,
     candidate: &SpaceView,
     categories_with_interesting_roots: &EnumSet<ViewCategory>,
-    timeline_query: &LatestAtQuery,
+    query: &LatestAtQuery,
 ) -> bool {
     // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
     if candidate.space_path.len() == 1
@@ -89,7 +92,7 @@ fn is_interesting_space_view_not_at_root(
 
     // .. otherwise, spatial views are considered only interesting if they have in interesting transform.
     if candidate.category == ViewCategory::Spatial {
-        if let Some(transform) = query_transform(entity_db, &candidate.space_path, timeline_query) {
+        if let Some(transform) = query_transform(entity_db, &candidate.space_path, query) {
             match transform {
                 re_log_types::Transform::Rigid3(_) => {}
                 re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
@@ -119,18 +122,14 @@ fn default_created_space_views_from_candidates(
     crate::profile_function!();
 
     // All queries are "right most" on the log timeline.
-    let timeline_query = LatestAtQuery::new(Timeline::log_time(), re_arrow_store::TimeInt::MAX);
+    let query = LatestAtQuery::new(Timeline::log_time(), re_arrow_store::TimeInt::MAX);
 
     // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
     let categories_with_interesting_roots = candidates
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_path.is_root()
-                && is_interesting_space_view_at_root(
-                    entity_db,
-                    space_view_candidate,
-                    &timeline_query,
-                ))
+                && is_interesting_space_view_at_root(entity_db, space_view_candidate, &query))
             .then_some(space_view_candidate.category)
         })
         .collect::<EnumSet<_>>();
@@ -148,7 +147,7 @@ fn default_created_space_views_from_candidates(
             entity_db,
             &candidate,
             &categories_with_interesting_roots,
-            &timeline_query,
+            &query,
         ) {
             continue;
         }
@@ -172,7 +171,7 @@ fn default_created_space_views_from_candidates(
             for entity_path in &candidate.data_blueprint.root_group().entities {
                 if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
                     &entity_db.data_store,
-                    &timeline_query,
+                    &query,
                     entity_path,
                     &[],
                 ) {
@@ -222,6 +221,42 @@ fn default_created_space_views_from_candidates(
     space_views
 }
 
+fn has_any_component_except(
+    entity_path: &EntityPath,
+    data_store: &DataStore,
+    timeline: Timeline,
+    excluded_components: &[ComponentName],
+) -> bool {
+    data_store
+        .all_components(&timeline, entity_path)
+        .map_or(false, |all_components| {
+            all_components
+                .iter()
+                .any(|comp| !excluded_components.contains(comp))
+        })
+}
+
+/// Whether an entity should be added to a space view at a given path (independent of its category!)
+fn is_default_added_to_space_view(
+    entity_path: &EntityPath,
+    space_path: &EntityPath,
+    data_store: &DataStore,
+    timeline: Timeline,
+) -> bool {
+    let ignored_components = [
+        re_log_types::Transform::name(),
+        re_log_types::ViewCoordinates::name(),
+        re_log_types::MsgId::name(),
+        re_log_types::component_types::InstanceKey::name(),
+        re_log_types::component_types::KeypointId::name(),
+        DataStore::insert_id_key(),
+    ];
+
+    entity_path.is_descendant_of(space_path)
+        || (entity_path == space_path
+            && has_any_component_except(entity_path, data_store, timeline, &ignored_components))
+}
+
 /// List of entities a space view queries by default for a given category.
 ///
 /// These are all entities in the given space which have the requested category and are reachable by a transform.
@@ -235,6 +270,7 @@ pub fn default_queried_entities(
 
     let timeline = Timeline::log_time();
     let log_db = &ctx.log_db;
+    let data_store = &log_db.entity_db.data_store;
 
     let mut entities = Vec::new();
     let space_info = spaces_info.get_first_parent_with_info(space_path);
@@ -245,7 +281,7 @@ pub fn default_queried_entities(
                 .descendants_without_transform
                 .iter()
                 .filter(|entity_path| {
-                    (entity_path == &space_path || entity_path.is_descendant_of(space_path))
+                    is_default_added_to_space_view(entity_path, space_path, data_store, timeline)
                         && categorize_entity_path(timeline, log_db, entity_path).contains(category)
                 })
                 .cloned(),
@@ -265,13 +301,14 @@ fn default_queried_entities_by_category(
 
     let timeline = Timeline::log_time();
     let log_db = &ctx.log_db;
+    let data_store = &log_db.entity_db.data_store;
 
     let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
     let space_info = spaces_info.get_first_parent_with_info(space_path);
 
     space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
         for entity_path in &space_info.descendants_without_transform {
-            if entity_path == space_path || entity_path.is_descendant_of(space_path) {
+            if is_default_added_to_space_view(entity_path, space_path, data_store, timeline) {
                 for category in categorize_entity_path(timeline, log_db, entity_path) {
                     groups
                         .entry(category)
