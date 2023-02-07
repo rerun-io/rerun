@@ -1,7 +1,11 @@
-//! Example of using the Rerun SDK to log the Objectron dataset.
+//! Example of using the Rerun SDK to log [the Objectron dataset](https://github.com/google-research-datasets/Objectron).
 //!
 //! Usage:
+//! ```sh
+//! cargo run -p objectron
 //! ```
+//! or:
+//! ```sh
 //! cargo run -p objectron -- --recording chair
 //! ```
 
@@ -13,17 +17,11 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Context};
-use clap::Parser;
-use glam::Vec3Swizzles;
-use image::ImageDecoder;
-use prost::Message;
-use rerun::{
-    external::{re_log, re_log_types::ApplicationId, re_memory::AccountingAllocator},
-    Box3D, ColorRGBA, EntityPath, InstanceKey, Label, LineStrip2D, MsgSender, Point2D, Point3D,
-    RecordingId, Rigid3, Session, Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId,
-    Time, TimePoint, TimeType, Timeline, Transform, ViewCoordinates,
-};
+use anyhow::{anyhow, Context as _};
+
+use rerun::external::{re_log, re_memory};
+use rerun::{ApplicationId, MsgSender, RecordingId, Session};
+use rerun::{Time, TimePoint, TimeType, Timeline};
 
 // --- Rerun logging ---
 
@@ -61,6 +59,7 @@ fn timepoint(index: usize, time: f64) -> TimePoint {
 }
 
 struct AnnotationsPerFrame<'a>(HashMap<usize, &'a objectron::FrameAnnotation>);
+
 impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
     fn from(anns: &'a [objectron::FrameAnnotation]) -> Self {
         Self(
@@ -73,10 +72,10 @@ impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
 
 fn log_coordinate_space(
     session: &mut Session,
-    ent_path: impl Into<EntityPath>,
+    ent_path: impl Into<rerun::EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
-    let view_coords: ViewCoordinates = axes
+    let view_coords: rerun::ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
     MsgSender::new(ent_path)
@@ -92,7 +91,7 @@ fn log_ar_frame(
     annotations: &AnnotationsPerFrame<'_>,
     ar_frame: &ArFrame,
 ) -> anyhow::Result<()> {
-    log_detected_objects(session, objects)?;
+    log_baseline_objects(session, objects)?;
 
     log_video_frame(session, ar_frame)?;
 
@@ -105,60 +104,62 @@ fn log_ar_frame(
     }
 
     if let Some(&annotations) = annotations.0.get(&ar_frame.index) {
-        log_annotations(session, &ar_frame.timepoint, annotations)?;
+        log_frame_annotations(session, &ar_frame.timepoint, annotations)?;
     }
 
     Ok(())
 }
 
-// TODO(cmc): This whole thing with static objects should probably just be dropped?
-fn log_detected_objects(
+fn log_baseline_objects(
     session: &mut Session,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    let (boxes, transforms, labels): (Vec<_>, Vec<_>, Vec<_>) =
-        itertools::multiunzip(objects.iter().filter_map(|object| {
-            Some({
-                if object.r#type != objectron::object::Type::BoundingBox as i32 {
-                    re_log::warn!(object.r#type, "unsupported type");
-                    return None;
-                }
+    let boxes = objects.iter().filter_map(|object| {
+        Some({
+            if object.r#type != objectron::object::Type::BoundingBox as i32 {
+                re_log::warn!(object.r#type, "unsupported type");
+                return None;
+            }
 
-                let box3: Box3D = glam::Vec3::from_slice(&object.scale).into();
-                let transform = {
-                    let translation = glam::Vec3::from_slice(&object.translation).into();
-                    // NOTE: the dataset is all row-major, transpose those matrices!
-                    let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                    let rotation = glam::Quat::from_mat3(&rotation).into();
-                    Transform::Rigid3(Rigid3 {
-                        rotation,
-                        translation,
-                    })
-                };
-                let label = Label(object.category.clone());
+            let box3: rerun::Box3D = glam::Vec3::from_slice(&object.scale).into();
+            let transform = {
+                let translation = glam::Vec3::from_slice(&object.translation).into();
+                // NOTE: the dataset is all row-major, transpose those matrices!
+                let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
+                let rotation = glam::Quat::from_mat3(&rotation).into();
+                rerun::Transform::Rigid3(rerun::Rigid3 {
+                    rotation,
+                    translation,
+                })
+            };
+            let label = rerun::Label(object.category.clone());
 
-                (box3, transform, label)
-            })
-        }));
+            (object.id, box3, transform, label)
+        })
+    });
 
-    MsgSender::new("world/objects/boxes")
-        .with_timeless(true)
-        .with_component(&boxes)?
-        .with_component(&transforms)?
-        .with_component(&labels)?
-        .with_splat(ColorRGBA::from([130, 160, 250, 255]))?
-        .send(session)?;
+    for (id, bbox, transform, label) in boxes {
+        MsgSender::new(format!("world/objects/baseline/box-{id}"))
+            .with_timeless(true)
+            .with_component(&[bbox])?
+            .with_component(&[transform])?
+            .with_component(&[label])?
+            .with_splat(rerun::ColorRGBA::from([160, 230, 130, 255]))?
+            .send(session)?;
+    }
 
     Ok(())
 }
 
 fn log_video_frame(session: &mut Session, ar_frame: &ArFrame) -> anyhow::Result<()> {
+    use image::ImageDecoder as _;
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
     let jpeg_bytes = std::fs::read(image_path)?;
     let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
     assert_eq!(jpeg.color_type(), image::ColorType::Rgb8); // TODO(emilk): support gray-scale jpeg aswell
     let (w, h) = jpeg.dimensions();
 
+    use rerun::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId};
     MsgSender::new("world/camera/video")
         .with_timepoint(ar_frame.timepoint.clone())
         // TODO(cmc): `Tensor` should have an `image` integration really
@@ -197,6 +198,7 @@ fn log_ar_camera(
     // - https://github.com/google-research-datasets/Objectron/issues/39
     // - https://github.com/google-research-datasets/Objectron/blob/master/notebooks/objectron-3dprojection-hub-tutorial.ipynb
     // swap px/py
+    use glam::Vec3Swizzles as _;
     intrinsics.z_axis = intrinsics.z_axis.yxz();
     // swap w/h
     let resolution = glam::Vec2::new(h, w);
@@ -207,7 +209,7 @@ fn log_ar_camera(
 
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[Transform::Rigid3(Rigid3 {
+        .with_component(&[rerun::Transform::Rigid3(rerun::Rigid3 {
             rotation: rot.into(),
             translation: translation.into(),
         })])?
@@ -215,7 +217,7 @@ fn log_ar_camera(
 
     MsgSender::new("world/camera/video")
         .with_timepoint(timepoint)
-        .with_component(&[Transform::Pinhole(rerun::Pinhole {
+        .with_component(&[rerun::Transform::Pinhole(rerun::Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
         })])?
@@ -235,8 +237,8 @@ fn log_feature_points(
         .zip(points)
         .map(|(id, p)| {
             (
-                InstanceKey(*id as _),
-                Point3D::new(
+                rerun::InstanceKey(*id as _),
+                rerun::Point3D::new(
                     p.x.unwrap_or_default(),
                     p.y.unwrap_or_default(),
                     p.z.unwrap_or_default(),
@@ -249,13 +251,13 @@ fn log_feature_points(
         .with_timepoint(timepoint)
         .with_component(&points)?
         .with_component(&ids)?
-        .with_splat(ColorRGBA::from([255, 255, 255, 255]))?
+        .with_splat(rerun::ColorRGBA::from([255, 255, 255, 255]))?
         .send(session)?;
 
     Ok(())
 }
 
-fn log_annotations(
+fn log_frame_annotations(
     session: &mut Session,
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
@@ -269,53 +271,53 @@ fn log_annotations(
             .filter_map(|kp| {
                 kp.point_2d
                     .as_ref()
-                    .map(|p| (InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
+                    .map(|p| (rerun::InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
             })
             .unzip();
 
-        let mut msg = MsgSender::new(format!(
-            "world/camera/video/obj-annotations/annotation-{}",
-            ann.object_id
-        ))
-        .with_timepoint(timepoint.clone())
-        .with_splat(ColorRGBA::from([130, 160, 250, 255]))?;
+        let mut msg = MsgSender::new(format!("world/camera/video/objects/box-{}", ann.object_id))
+            .with_timepoint(timepoint.clone())
+            .with_splat(rerun::ColorRGBA::from([130, 160, 250, 255]))?;
 
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.
             #[rustfmt::skip]
-            fn linestrips(points: &[[f32; 2]]) -> Vec<LineStrip2D> {
+            fn linestrips(points: &[[f32; 2]]) -> Vec<rerun::LineStrip2D> {
                 vec![
-                    LineStrip2D::from(vec![
+                    vec![
                          points[2], points[1],
                          points[3], points[4],
                          points[4], points[2],
                          points[4], points[3],
-                    ]),
-                    LineStrip2D::from(vec![
+                    ].into(),
+                    vec![
                          points[5], points[6],
                          points[5], points[7],
                          points[8], points[6],
                          points[8], points[7],
-                    ]),
-                    LineStrip2D::from(vec![
+                    ].into(),
+                    vec![
                          points[1], points[5],
                          points[1], points[3],
                          points[3], points[7],
                          points[5], points[7],
-                    ]),
-                    LineStrip2D::from(vec![
+                    ].into(),
+                    vec![
                          points[2], points[6],
                          points[2], points[4],
                          points[4], points[8],
                          points[6], points[8],
-                    ]),
+                    ].into(),
                 ]
             }
             msg = msg.with_component(&linestrips(&points))?;
         } else {
-            msg = msg
-                .with_component(&ids)?
-                .with_component(&points.into_iter().map(Point2D::from).collect::<Vec<_>>())?;
+            msg = msg.with_component(&ids)?.with_component(
+                &points
+                    .into_iter()
+                    .map(rerun::Point2D::from)
+                    .collect::<Vec<_>>(),
+            )?;
         }
 
         msg.send(session)?;
@@ -328,9 +330,10 @@ fn log_annotations(
 
 // Use MiMalloc as global allocator (because it is fast), wrapped in Rerun's allocation tracker
 // so that the rerun viewer can show how much memory it is using when calling `show`.
+// This is optional - you don't need to do this if you don't want to!
 #[global_allocator]
-static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
-    AccountingAllocator::new(mimalloc::MiMalloc);
+static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
+    re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
 // TODO: propose to run the python version first if not found
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -386,6 +389,7 @@ fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloat
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
+    use clap::Parser as _;
     let args = Args::parse();
     let addr = match args.connect {
         Some(Some(addr)) => Some(addr),
@@ -393,7 +397,7 @@ fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    let mut session = rerun::Session::new();
+    let mut session = Session::new();
     // TODO(cmc): application id should take selected recording into account
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.
@@ -406,7 +410,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Parse protobuf dataset
-    let rec_info = args.recording.info()?;
+    let Ok(rec_info) = args.recording.info() else {
+        anyhow::bail!(
+            "Could not read the recording, have you downloaded the dataset? \
+            Try running the python version first to download it automatically.",
+        );
+    };
     let annotations = read_annotations(&rec_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
@@ -506,6 +515,8 @@ impl Recording {
 }
 
 fn read_ar_frames(path: &Path) -> impl Iterator<Item = anyhow::Result<objectron::ArFrame>> + '_ {
+    use prost::Message as _;
+
     re_log::info!(?path, "reading AR frame data");
 
     let file = std::fs::File::open(path).unwrap();
@@ -525,6 +536,7 @@ fn read_ar_frames(path: &Path) -> impl Iterator<Item = anyhow::Result<objectron:
 }
 
 fn read_annotations(path: &Path) -> anyhow::Result<objectron::Sequence> {
+    use prost::Message as _;
     re_log::info!(?path, "reading annotation data");
     let annotations = objectron::Sequence::decode(std::fs::read(path)?.as_slice())?;
     Ok(annotations)
