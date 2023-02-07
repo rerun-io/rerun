@@ -18,9 +18,6 @@ use super::UnreachableTransform;
 pub struct SpaceInfo {
     pub path: EntityPath,
 
-    /// The latest known coordinate system for this space.
-    pub coordinates: Option<ViewCoordinates>,
-
     /// All paths in this space (including self and children connected by the identity transform).
     pub descendants_without_transform: IntSet<EntityPath>,
 
@@ -36,7 +33,6 @@ impl SpaceInfo {
     pub fn new(path: EntityPath) -> Self {
         Self {
             path,
-            coordinates: Default::default(),
             descendants_without_transform: Default::default(),
             parent: Default::default(),
             child_spaces: Default::default(),
@@ -174,10 +170,6 @@ impl SpaceInfoCollection {
         spaces_info
             .spaces
             .insert(EntityPath::root(), root_space_info);
-
-        for (entity_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinates = query_view_coordinates(entity_db, entity_path, &query);
-        }
 
         spaces_info
     }
