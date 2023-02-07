@@ -432,17 +432,21 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-// TODO(cmc): not working as expected afaict
 fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
     MsgSender::new("logs")
+        // TODO(cmc): The original api_demo has a sim_time associated with its logs because of the
+        // stateful nature of time in the python SDK... This tends to show that we really need the
+        // same system for the Rust SDK?
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
         .with_component(&[ColorRGBA::from([255, 215, 0, 255])])?
         .send(session)?;
 
     MsgSender::new("logs")
+        .with_timepoint(sim_time(0 as _))
         .with_component(&[TextEntry::new(
             "this entry has loglevel TRACE",
             Some("TRACE".into()),
