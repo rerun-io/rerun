@@ -5,7 +5,7 @@ use enumset::EnumSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_data_store::{query_transform, EntityPath};
+use re_data_store::{log_db::EntityDb, query_transform, EntityPath};
 use re_log_types::component_types::{Tensor, TensorTrait};
 
 use crate::{
@@ -22,40 +22,29 @@ pub fn all_possible_space_views(
 ) -> Vec<SpaceView> {
     crate::profile_function!();
 
-    let mut space_views = Vec::new();
-
     // Everything is a candidate for which we have a space info (i.e. a transform!) plus direct descendants of the root.
+    let root_children = &ctx.log_db.entity_db.tree.children;
     let candidate_space_paths = spaces_info
         .iter()
         .map(|info| &info.path)
-        .chain(
-            ctx.log_db
-                .entity_db
-                .tree
-                .children
-                .values()
-                .map(|sub_tree| &sub_tree.path),
-        )
+        .chain(root_children.values().map(|sub_tree| &sub_tree.path))
         .unique();
 
     // For each candidate, create space views for all possible categories.
-    for candidate_space_path in candidate_space_paths {
-        for (category, entity_paths) in
+    candidate_space_paths
+        .flat_map(|candidate_space_path| {
             default_queried_entities_by_category(ctx, candidate_space_path, spaces_info)
-        {
-            space_views.push(SpaceView::new(
-                category,
-                candidate_space_path,
-                &entity_paths,
-            ));
-        }
-    }
-
-    space_views
+                .iter()
+                .map(|(category, entity_paths)| {
+                    SpaceView::new(*category, candidate_space_path, entity_paths)
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
 
 fn is_interesting_space_view_at_root(
-    ctx: &ViewerContext<'_>,
+    entity_db: &EntityDb,
     candidate: &SpaceView,
     timeline_query: &LatestAtQuery,
 ) -> bool {
@@ -67,7 +56,7 @@ fn is_interesting_space_view_at_root(
     // Not interesting if it has only images
     for entity_path in &candidate.data_blueprint.root_group().entities {
         if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-            &ctx.log_db.entity_db.data_store,
+            &entity_db.data_store,
             timeline_query,
             entity_path,
             &[],
@@ -86,7 +75,7 @@ fn is_interesting_space_view_at_root(
 }
 
 fn is_interesting_space_view_not_at_root(
-    ctx: &ViewerContext<'_>,
+    entity_db: &EntityDb,
     candidate: &SpaceView,
     categories_with_interesting_roots: &EnumSet<ViewCategory>,
     timeline_query: &LatestAtQuery,
@@ -100,9 +89,7 @@ fn is_interesting_space_view_not_at_root(
 
     // .. otherwise, spatial views are considered only interesting if they have in interesting transform.
     if candidate.category == ViewCategory::Spatial {
-        if let Some(transform) =
-            query_transform(&ctx.log_db.entity_db, &candidate.space_path, timeline_query)
-        {
+        if let Some(transform) = query_transform(entity_db, &candidate.space_path, timeline_query) {
             match transform {
                 re_log_types::Transform::Rigid3(_) => {}
                 re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
@@ -122,24 +109,28 @@ pub fn default_created_space_views(
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceView> {
     let candidates = all_possible_space_views(ctx, spaces_info);
-    default_created_space_views_from_candidates(ctx, candidates)
+    default_created_space_views_from_candidates(&ctx.log_db.entity_db, candidates)
 }
 
 fn default_created_space_views_from_candidates(
-    ctx: &ViewerContext<'_>,
+    entity_db: &EntityDb,
     candidates: Vec<SpaceView>,
 ) -> Vec<SpaceView> {
     crate::profile_function!();
 
-    let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
+    // All queries are "right most" on the log timeline.
+    let timeline_query = LatestAtQuery::new(Timeline::log_time(), re_arrow_store::TimeInt::MAX);
 
     // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
     let categories_with_interesting_roots = candidates
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_path.is_root()
-                && is_interesting_space_view_at_root(ctx, space_view_candidate, &timeline_query))
+                && is_interesting_space_view_at_root(
+                    entity_db,
+                    space_view_candidate,
+                    &timeline_query,
+                ))
             .then_some(space_view_candidate.category)
         })
         .collect::<EnumSet<_>>();
@@ -154,7 +145,7 @@ fn default_created_space_views_from_candidates(
                 continue;
             }
         } else if !is_interesting_space_view_not_at_root(
-            ctx,
+            entity_db,
             &candidate,
             &categories_with_interesting_roots,
             &timeline_query,
@@ -180,7 +171,7 @@ fn default_created_space_views_from_candidates(
             // For this we're only interested in the direct children.
             for entity_path in &candidate.data_blueprint.root_group().entities {
                 if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                    &ctx.log_db.entity_db.data_store,
+                    &entity_db.data_store,
                     &timeline_query,
                     entity_path,
                     &[],
