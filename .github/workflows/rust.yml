@@ -168,7 +168,7 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
         env:
-          REDIRECT_CRATE: rerun_sdk
+          REDIRECT_CRATE: rerun
 
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
