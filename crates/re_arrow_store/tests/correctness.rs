@@ -45,9 +45,14 @@ fn write_errors() {
         ]);
 
         // make instances 2 rows long
-        bundle.components[0] = ComponentBundle::new(
-            bundle.components[0].name,
-            concatenate(&[bundle.components[0].value(), bundle.components[0].value()]).unwrap(),
+        bundle.components[0] = ComponentBundle::new_from_boxed(
+            bundle.components[0].name(),
+            concatenate(&[
+                bundle.components[0].value().as_ref(),
+                bundle.components[0].value().as_ref(),
+            ])
+            .unwrap()
+            .as_ref(),
         );
 
         // The first component of the bundle determines the number of rows for all other
@@ -69,9 +74,14 @@ fn write_errors() {
         ]);
 
         // make component 2 rows long
-        bundle.components[1] = ComponentBundle::new(
-            bundle.components[1].name,
-            concatenate(&[bundle.components[1].value(), bundle.components[1].value()]).unwrap(),
+        bundle.components[1] = ComponentBundle::new_from_boxed(
+            bundle.components[1].name(),
+            concatenate(&[
+                bundle.components[1].value().as_ref(),
+                bundle.components[1].value().as_ref(),
+            ])
+            .unwrap()
+            .as_ref(),
         );
 
         // The first component of the bundle determines the number of rows for all other
@@ -86,7 +96,7 @@ fn write_errors() {
     {
         pub fn build_sparse_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from(vec![Some(1), None, Some(3)]).boxed());
-            ComponentBundle::new(InstanceKey::name(), ids.boxed())
+            ComponentBundle::new(InstanceKey::name(), ids)
         }
 
         let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -103,11 +113,11 @@ fn write_errors() {
     {
         pub fn build_unsorted_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 3, 2]).boxed());
-            ComponentBundle::new(InstanceKey::name(), ids.boxed())
+            ComponentBundle::new(InstanceKey::name(), ids)
         }
         pub fn build_duped_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 2, 2]).boxed());
-            ComponentBundle::new(InstanceKey::name(), ids.boxed())
+            ComponentBundle::new(InstanceKey::name(), ids)
         }
 
         let mut store = DataStore::new(InstanceKey::name(), Default::default());
