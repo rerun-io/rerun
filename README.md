@@ -10,19 +10,10 @@ Rerun is visualization infrastructure for computer vision.
 
 This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently Python only) to log rich data that is streamed to the viewer, where it is visualized live or after the fact.
 
-# Documentation (Coming soon!)
-
-## WARNING: The following links don't all work yet
-<!-- TODO(jleibs): Clean up this section and remove warning when all links are live -->
-
-High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs).
-
-The documentation is built from a separate [Rerun-Docs Repository](https://github.com/rerun-io/rerun-docs).
-
-Rust and Python APIs are documented in the code via docstrings.
- - The [Rust API docs](https://docs.rs/rerun/) are built via cargo and hosted on docs.rs
- - The [Python API docs](https://rerun-io.github.io/rerun) are built via mkdocs and hosted on github:
-   - For more information on the python doc-system see: [Writing Docs](https://rerun-io.github.io/rerun/latest/docs)
+# Documentation
+- [High-level documentation](http://rerun.io/docs) (coming soon)
+- [Python API docs](https://rerun-io.github.io/rerun)
+- [Rust API docs](https://docs.rs/rerun/) (coming soon)
 
 # Installing the Python Rerun SDK
 1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)

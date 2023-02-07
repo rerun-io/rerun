@@ -17,6 +17,14 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.67
 ```
 
+## Building the docs
+
+High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
+
+Python API docs can be found at <https://rerun-io.github.io/rerun> and are built via `mkdocs` and hosted on GitHub. For details on how more information on the python doc-system see [Writing Docs](https://rerun-io.github.io/rerun/latest/docs).
+
+Rust documentation is hosted on <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`
+
 ## Build and install the Rerun Python SDK
 
 ### Set up virtualenv
