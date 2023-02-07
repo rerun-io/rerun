@@ -36,6 +36,8 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 ### Apache Arrow
 [Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_arrow_store`](crates/re_arrow_store/README.md).
 
+In rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
+
 ### `wgpu`
 The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API. It provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web.
 
@@ -61,3 +63,16 @@ Wasm has no access to the host system, except via JS calls (something that may c
 * Get the current time (use [`instant`](https://crates.io/crates/instant) instead)
 * Use networking (use [`ehttp`](https://github.com/emilk/ehttp), [`reqwest`](https://github.com/seanmonstar/reqwest), or [`ewebsock`](https://github.com/rerun-io/ewebsock) instead)
 * etc
+
+
+## Immediate mode
+The Rerun Viewer uses an [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode), [`egui`](https://www.egui.rs/). This means that each frame the entire GUI is being laid out from scratch.
+
+In fact, the whole of the Rerun Viewer is written in an immediate mode style. Each rendered frame it will query the in-RAM data store, massage the results, and feed it to the renderer.
+
+The advantage of immediate mode is that is removes all state management. There is no callbacks that are called when some state has already changed, and the state of the blueprint is always in sync with what you see on screen.
+
+Immediate mode is also a forcing function, forcing us to relentlessly optimize our code.
+This leads to a very responsive GUI, where there is no "hickups" when switching data source or doing time scrubbing.
+
+Of course, this will only take us so far. In the future we plan on caching queries and work submitted to the renderer so that we don't perform unnecessary work each frame. We also plan on doing larger operation in background threads. This will be necessary in order to support viewing large datasets, e.g. several million points. The plan is still to do so within an immediate mode framework, retaining most of the advantages of stateless code.
