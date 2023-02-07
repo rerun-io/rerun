@@ -287,7 +287,7 @@ impl DataStore {
             // one instead.
             //
             // let rows_single = rows.slice(row_nr, 1);
-            ///
+            //
             // Except it turns out that slicing is _extremely_ costly!
             // So use the fact that `rows` is always of unit-length for now.
             let rows_single = rows;
