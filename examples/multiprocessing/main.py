@@ -30,7 +30,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.init("multiprocessing")
-    rr.spawn_viewer()  # this is the viewer that each process will connect to
+    rr.spawn(connect=False)  # this is the viewer that each process will connect to
 
     task("main_task")
 
