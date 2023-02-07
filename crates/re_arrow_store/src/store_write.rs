@@ -280,7 +280,7 @@ impl DataStore {
             .iter()
             .filter(|bundle| bundle.name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name(), bundle.value());
+            let (name, rows) = (bundle.name(), bundle.value_list());
 
             // Unwrapping a ListArray is somewhat costly, especially considering we're just
             // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
@@ -293,7 +293,7 @@ impl DataStore {
             let rows_single = rows;
 
             // TODO(#440): support for splats
-            let nb_instances = rows_single.get_child_length(0);
+            let nb_instances = rows_single.offsets().lengths().next().unwrap();
             if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     cluster_comp: self.cluster_key,
@@ -310,7 +310,7 @@ impl DataStore {
                 )
             });
 
-            let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
+            let row_idx = table.push(&self.config, time_point, rows_single);
             row_indices.insert(name, row_idx);
         }
 
