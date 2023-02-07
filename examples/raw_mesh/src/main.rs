@@ -174,7 +174,7 @@ fn main() -> anyhow::Result<()> {
         let log_messages = session.drain_log_messages_buffer();
         rerun::viewer::show(log_messages)?;
     }
-    
+
     Ok(())
 }
 
