@@ -4,11 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-// Work with timestamps
-// TODO(cmc): remove traces of previous APIs & examples
-pub mod time;
-pub use time::log_time;
-
 // Send data to a rerun session
 mod session;
 pub use self::session::Session;
