@@ -99,6 +99,10 @@ impl DataBlueprintTree {
         self.root_group_handle
     }
 
+    /// Returns the root data blueprint.
+    ///
+    /// Even if there are no other groups, we always have a root group at the top.
+    /// Typically, we don't show the root group in the ui.
     pub fn root_group(&self) -> &DataBlueprintGroup {
         self.groups.get(self.root_group_handle).unwrap()
     }

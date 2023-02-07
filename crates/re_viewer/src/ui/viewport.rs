@@ -14,7 +14,7 @@ use crate::{
 
 use super::{
     data_blueprint::DataBlueprintGroupHandle, space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_space_view_candidates, view_category::ViewCategory, SpaceView,
+    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
     SpaceViewId,
 };
 
@@ -58,8 +58,7 @@ impl Viewport {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
-        let candidates = all_space_view_candidates(ctx, spaces_info);
-        for space_view in default_created_space_views(ctx, candidates) {
+        for space_view in default_created_space_views(ctx, spaces_info) {
             blueprint.add_space_view(space_view);
         }
         blueprint
@@ -348,8 +347,7 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            let candidates = all_space_view_candidates(ctx, spaces_info);
-            for space_view_candidate in default_created_space_views(ctx, candidates) {
+            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);
                 }
@@ -489,7 +487,7 @@ impl Viewport {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            let mut space_view_candidates = all_space_view_candidates(ctx, spaces_info);
+            let mut space_view_candidates = all_possible_space_views(ctx, spaces_info);
             space_view_candidates.sort_by_key(|space_view| space_view.space_path.to_string());
             for space_view in space_view_candidates {
                 if ctx

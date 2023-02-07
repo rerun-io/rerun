@@ -15,7 +15,8 @@ use crate::{
 
 use super::SpaceView;
 
-pub fn all_space_view_candidates(
+/// List out all space views we allow the user to create.
+pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceView> {
@@ -53,7 +54,7 @@ pub fn all_space_view_candidates(
     space_views
 }
 
-fn is_interesting_root(
+fn is_interesting_space_view_at_root(
     ctx: &ViewerContext<'_>,
     candidate: &SpaceView,
     timeline_query: &LatestAtQuery,
@@ -84,7 +85,7 @@ fn is_interesting_root(
     true
 }
 
-fn is_interesting_non_root(
+fn is_interesting_space_view_not_at_root(
     ctx: &ViewerContext<'_>,
     candidate: &SpaceView,
     categories_with_interesting_roots: &EnumSet<ViewCategory>,
@@ -115,7 +116,16 @@ fn is_interesting_non_root(
     false
 }
 
+/// List out all space views we generate by default for the available data.
 pub fn default_created_space_views(
+    ctx: &ViewerContext<'_>,
+    spaces_info: &SpaceInfoCollection,
+) -> Vec<SpaceView> {
+    let candidates = all_possible_space_views(ctx, spaces_info);
+    default_created_space_views_from_candidates(ctx, candidates)
+}
+
+fn default_created_space_views_from_candidates(
     ctx: &ViewerContext<'_>,
     candidates: Vec<SpaceView>,
 ) -> Vec<SpaceView> {
@@ -124,27 +134,26 @@ pub fn default_created_space_views(
     let timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let timeline_query = re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
 
-    // First pass to look for interesting roots.
+    // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
     let categories_with_interesting_roots = candidates
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_path.is_root()
-                && is_interesting_root(ctx, space_view_candidate, &timeline_query))
+                && is_interesting_space_view_at_root(ctx, space_view_candidate, &timeline_query))
             .then_some(space_view_candidate.category)
         })
         .collect::<EnumSet<_>>();
 
-    let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timeline, re_arrow_store::TimeInt::MAX);
-
     let mut space_views = Vec::new();
 
+    // Main pass through all candidates.
+    // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for candidate in candidates {
         if candidate.space_path.is_root() {
             if !categories_with_interesting_roots.contains(candidate.category) {
                 continue;
             }
-        } else if !is_interesting_non_root(
+        } else if !is_interesting_space_view_not_at_root(
             ctx,
             &candidate,
             &categories_with_interesting_roots,
@@ -153,23 +162,22 @@ pub fn default_created_space_views(
             continue;
         }
 
-        // Now that we know this space view is "interesting", we need to consider doing some
-        // changes to the selected objects and maybe create variants of it!
-
+        // For tensors create one space view for each tensor (even though we're able to stack them in one view)
         if candidate.category == ViewCategory::Tensor {
-            // For tensors create one space view for each tensor (even though we're able to stack them in one view)
             for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view =
                     SpaceView::new(ViewCategory::Tensor, entity_path, &[entity_path.clone()]);
-                space_view.entities_determined_by_user = true;
+                space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
                 space_views.push(space_view);
             }
             continue;
-        } else if candidate.category == ViewCategory::Spatial {
-            // Spatial views with images get extra treatment as well.
-            // For this we're only interested in the direct children.
+        }
+
+        // Spatial views with images get extra treatment as well.
+        if candidate.category == ViewCategory::Spatial {
             let mut images: HashMap<(u64, u64), Vec<EntityPath>> = HashMap::default();
 
+            // For this we're only interested in the direct children.
             for entity_path in &candidate.data_blueprint.root_group().entities {
                 if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
                     &ctx.log_db.entity_db.data_store,
@@ -191,8 +199,6 @@ pub fn default_created_space_views(
 
             if images.len() > 1 {
                 // Stack images of the same size, but no others.
-                // TODO(andreas): A possible refinement here would be to stack only with `TensorDataMeaning::ClassId`
-                //                But that's not entirely straight forward to implement.
                 for dim in images.keys() {
                     // New spaces views that do not contain any image but this one plus all fitting class id images.
                     let ignore_list = images
@@ -211,7 +217,7 @@ pub fn default_created_space_views(
 
                     let mut space_view =
                         SpaceView::new(candidate.category, &candidate.space_path, &entities);
-                    space_view.entities_determined_by_user = true;
+                    space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
                     space_views.push(space_view);
                 }
                 continue;
