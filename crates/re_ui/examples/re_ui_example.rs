@@ -9,6 +9,11 @@ fn main() -> eframe::Result<()> {
         #[cfg(target_os = "macos")]
         fullsize_content: re_ui::FULLSIZE_CONTENT,
 
+        // Maybe hide the OS-specific "chrome" around the window:
+        decorated: !re_ui::CUSTOM_WINDOW_DECORATIONS,
+        // To have rounded corners we need transparency:
+        transparent: re_ui::CUSTOM_WINDOW_DECORATIONS,
+
         ..Default::default()
     };
 
@@ -57,6 +62,10 @@ pub struct ExampleApp {
 }
 
 impl eframe::App for ExampleApp {
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
+    }
+
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::gui_zoom::zoom_with_keyboard_shortcuts(
             egui_ctx,
@@ -65,11 +74,11 @@ impl eframe::App for ExampleApp {
 
         self.top_bar(egui_ctx, frame);
 
-        let panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.panel_fill,
-            inner_margin: re_ui::ReUi::view_padding().into(),
-            ..Default::default()
-        };
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .frame(self.re_ui.bottom_panel_frame())
+            .show_animated(egui_ctx, self.bottom_panel, |ui| {
+                ui.strong("Bottom panel");
+            });
 
         egui::SidePanel::left("left_panel")
             .default_width(500.0)
@@ -116,20 +125,17 @@ impl eframe::App for ExampleApp {
                     });
             });
 
+        let panel_frame = egui::Frame {
+            fill: egui_ctx.style().visuals.panel_fill,
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..Default::default()
+        };
+
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.right_panel, |ui| {
                 ui.strong("Right panel");
                 selection_buttons(ui);
-            });
-
-        egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(egui::Frame {
-                inner_margin: re_ui::ReUi::view_padding().into(),
-                ..Default::default()
-            })
-            .show_animated(egui_ctx, self.bottom_panel, |ui| {
-                ui.strong("Bottom panel");
             });
 
         egui::CentralPanel::default()
@@ -162,23 +168,15 @@ impl eframe::App for ExampleApp {
 
 impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let panel_frame = {
-            egui::Frame {
-                inner_margin: re_ui::ReUi::top_bar_margin(),
-                fill: self.re_ui.design_tokens.top_bar_color,
-                ..Default::default()
-            }
-        };
-
         let native_pixels_per_point = frame.info().native_pixels_per_point;
         let fullscreen = {
-            #[cfg(target_os = "macos")]
-            {
-                frame.info().window_info.fullscreen
-            }
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(target_arch = "wasm32")]
             {
                 false
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                frame.info().window_info.fullscreen
             }
         };
         let top_bar_style = self
@@ -186,36 +184,59 @@ impl ExampleApp {
             .top_bar_style(native_pixels_per_point, fullscreen);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(panel_frame)
+            .frame(self.re_ui.top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
+                let _response = egui::menu::bar(ui, |ui| {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 
                     ui.menu_button("File", |ui| file_menu(ui, &mut self.pending_commands));
 
-                    self.re_ui.medium_icon_toggle_button(
-                        ui,
-                        &re_ui::icons::LEFT_PANEL_TOGGLE,
-                        &mut self.left_panel,
-                    );
-                    self.re_ui.medium_icon_toggle_button(
-                        ui,
-                        &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                        &mut self.bottom_panel,
-                    );
-                    self.re_ui.medium_icon_toggle_button(
-                        ui,
-                        &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                        &mut self.right_panel,
-                    );
+                    self.top_bar_ui(ui, frame);
+                })
+                .response;
 
-                    ui.centered_and_justified(|ui| {
-                        ui.strong("re_ui example app");
-                    })
-                });
+                #[cfg(not(target_arch = "wasm32"))]
+                if !re_ui::NATIVE_WINDOW_BAR {
+                    let title_bar_response = _response.interact(egui::Sense::click());
+                    if title_bar_response.double_clicked() {
+                        frame.set_maximized(!frame.info().window_info.maximized);
+                    } else if title_bar_response.is_pointer_button_down_on() {
+                        frame.drag_window();
+                    }
+                }
             });
+    }
+
+    fn top_bar_ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // From right-to-left:
+
+            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+                ui.add_space(8.0);
+                re_ui::native_window_buttons_ui(frame, ui);
+                ui.separator();
+            } else {
+                ui.add_space(16.0);
+            }
+
+            self.re_ui.medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                &mut self.right_panel,
+            );
+            self.re_ui.medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                &mut self.bottom_panel,
+            );
+            self.re_ui.medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::LEFT_PANEL_TOGGLE,
+                &mut self.left_panel,
+            );
+        });
     }
 }
 
