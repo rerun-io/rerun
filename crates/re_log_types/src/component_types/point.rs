@@ -31,12 +31,14 @@ impl Point2D {
 }
 
 impl Component for Point2D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.point2d".into()
     }
 }
 
 impl From<[f32; 2]> for Point2D {
+    #[inline]
     fn from(p: [f32; 2]) -> Self {
         Self { x: p[0], y: p[1] }
     }
@@ -44,6 +46,7 @@ impl From<[f32; 2]> for Point2D {
 
 #[cfg(feature = "glam")]
 impl From<Point2D> for glam::Vec2 {
+    #[inline]
     fn from(pt: Point2D) -> Self {
         Self::new(pt.x, pt.y)
     }
@@ -80,12 +83,14 @@ impl Point3D {
 }
 
 impl Component for Point3D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.point3d".into()
     }
 }
 
 impl From<[f32; 3]> for Point3D {
+    #[inline]
     fn from(p: [f32; 3]) -> Self {
         Self {
             x: p[0],
@@ -97,6 +102,7 @@ impl From<[f32; 3]> for Point3D {
 
 #[cfg(feature = "glam")]
 impl From<Point3D> for glam::Vec3 {
+    #[inline]
     fn from(pt: Point3D) -> Self {
         Self::new(pt.x, pt.y, pt.z)
     }
