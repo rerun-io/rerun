@@ -54,6 +54,13 @@ cargo install --path ./crates/rerun/
 You should now be able to run `rerun --help` in any terminal.
 
 
+## Shortcomings
+* Big points clouds (1M+) are slow ([#1136](https://github.com/rerun-io/rerun/issues/1136))
+* The data you want to visualize must fit in RAM.
+  - See [`rerun_py/USAGE.md`](rerun_py/USAGE.md) for how to bound memory use
+  - We plan on having a disk-based data store some time in the future
+
+
 ## Business model
 Rerun uses an open core model. Everything in this repository will stay open source and free (as in beer), forever. We plan on adding paid add-ons later for enterprise customers.
 
