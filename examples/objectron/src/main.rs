@@ -19,8 +19,8 @@ use image::ImageDecoder;
 use prost::Message;
 use rerun::{
     external::{re_log, re_log_types::ApplicationId, re_memory::AccountingAllocator, re_sdk_comms},
-    log_time, Box3D, ColorRGBA, EntityPath, InstanceKey, Label, LineStrip2D, LineStrip3D, Mesh3D,
-    MeshId, MsgSender, Point2D, Point3D, Quaternion, RawMesh3D, Rigid3, Session, Tensor,
+    Box3D, ColorRGBA, EntityPath, InstanceKey, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshId,
+    MsgSender, Point2D, Point3D, Quaternion, RawMesh3D, RecordingId, Rigid3, Session, Tensor,
     TensorData, TensorDataMeaning, TensorDimension, TensorId, Time, TimePoint, TimeType, Timeline,
     Transform, Vec3D, Vec4D, ViewCoordinates,
 };
@@ -102,6 +102,7 @@ fn log_ar_frame(
     Ok(())
 }
 
+// TODO(cmc): This whole thing with static objects should probably just be dropped?
 fn log_detected_objects(
     session: &mut Session,
     objects: &[objectron::Object],
@@ -151,7 +152,7 @@ fn log_video_frame(session: &mut Session, ar_frame: &ArFrame) -> anyhow::Result<
 
     MsgSender::new("world/camera/video")
         .with_timepoint(ar_frame.timepoint.clone())
-        // TODO: `Tensor` should have an `image` integration really
+        // TODO(cmc): `Tensor` should have an `image` integration really
         .with_component(&[Tensor {
             tensor_id: TensorId::random(),
             shape: vec![
@@ -181,17 +182,6 @@ fn log_ar_camera(
     let w = ar_camera.image_resolution_width.unwrap() as f32;
     let h = ar_camera.image_resolution_height.unwrap() as f32;
 
-    // eprintln!("-----");
-
-    // dbg!(world_from_cam.x_axis);
-    // dbg!(world_from_cam.y_axis);
-    // dbg!(world_from_cam.z_axis);
-
-    // dbg!(intrinsics.x_axis);
-    // dbg!(intrinsics.y_axis);
-    // dbg!(intrinsics.z_axis);
-    // dbg!((w, h));
-
     // The actual data is in portait (1440x1920), but the transforms assume landscape
     // input (1920x1440); we need to convert between the two.
     // See:
@@ -203,17 +193,11 @@ fn log_ar_camera(
     let resolution = glam::Vec2::new(h, w);
     // rotate 90 degrees CCW around 2D plane normal (landscape -> portait)
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::Z, std::f32::consts::TAU / 4.0);
-    // TODO: I can't figure out why I need to do this
+    // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
-
-    // dbg!(intrinsics.x_axis);
-    // dbg!(intrinsics.y_axis);
-    // dbg!(intrinsics.z_axis);
-    // dbg!((w, h));
 
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        // TODO: Mat should just be built from glam::Mat
         .with_component(&[Transform::Rigid3(Rigid3 {
             rotation: rot.into(),
             translation: translation.into(),
@@ -267,31 +251,65 @@ fn log_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    // TODO: so much to clean up here
-    // TODO: either we bring back the projected bbox hack, or we go straight to an actual skeleton
     for ann in &annotations.annotations {
+        // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
+        // capable of projecting the actual 3D points in real time now.
         let (ids, points): (Vec<_>, Vec<_>) = ann
             .keypoints
             .iter()
             .filter_map(|kp| {
-                kp.point_2d.as_ref().map(|p| {
-                    (
-                        InstanceKey(kp.id as _),
-                        Point2D::new(p.x * 1440.0, p.y * 1920.0), // TODO
-                    )
-                })
+                kp.point_2d
+                    .as_ref()
+                    .map(|p| (InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
             })
             .unzip();
 
-        MsgSender::new(format!(
+        let mut msg = MsgSender::new(format!(
             "world/camera/video/obj-annotations/annotation-{}",
             ann.object_id
         ))
         .with_timepoint(timepoint.clone())
-        .with_component(&ids)?
-        .with_component(&points)?
-        .with_splat(ColorRGBA::from([130, 160, 250, 255]))?
-        .send(session)?;
+        .with_splat(ColorRGBA::from([130, 160, 250, 255]))?;
+
+        if points.len() == 9 {
+            // Build the preprojected bounding box out of 2D line segments.
+            #[rustfmt::skip]
+            fn linestrips(points: &[[f32; 2]]) -> Vec<LineStrip2D> {
+                vec![
+                    LineStrip2D::from(vec![
+                         points[2], points[1],
+                         points[3], points[4],
+                         points[4], points[2],
+                         points[4], points[3],
+                    ]),
+                    LineStrip2D::from(vec![
+                         points[5], points[6],
+                         points[5], points[7],
+                         points[8], points[6],
+                         points[8], points[7],
+                    ]),
+                    LineStrip2D::from(vec![
+                         points[1], points[5],
+                         points[1], points[3],
+                         points[3], points[7],
+                         points[5], points[7],
+                    ]),
+                    LineStrip2D::from(vec![
+                         points[2], points[6],
+                         points[2], points[4],
+                         points[4], points[8],
+                         points[6], points[8],
+                    ]),
+                ]
+            }
+            msg = msg.with_component(&linestrips(&points))?;
+        } else {
+            msg = msg
+                .with_component(&ids)?
+                .with_component(&points.into_iter().map(Point2D::from).collect::<Vec<_>>())?;
+        }
+
+        msg.send(session)?;
     }
 
     Ok(())
@@ -320,14 +338,18 @@ enum Recording {
     Shoe,
 }
 
-// TODO: run-forever
+// TODO:
+// --frames FRAMES       If specified, limits the number of frames logged
+// --run-forever         Run forever, continually logging data.
+// --per-frame-sleep PER_FRAME_SLEEP
+//                       Sleep this much for each frame read, if --run-forever
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
     /// If specified, connects and sends the logged data to a remote Rerun viewer.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    addr: Option<Option<String>>,
+    connect: Option<Option<String>>,
 
     /// Specifies the recording to replay.
     #[clap(long, value_enum, default_value = "book")]
@@ -338,17 +360,23 @@ fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
     let args = Args::parse();
-    let addr = match args.addr {
+    let addr = match args.connect.as_ref() {
         Some(Some(addr)) => Some(addr.parse()?),
-        Some(None) => Some(re_sdk_comms::default_server_addr()),
+        Some(None) => Some(rerun::default_server_addr()),
         None => None,
     };
 
     let mut session = rerun::Session::new();
-
-    // TODO: clean that up (maybe it belongs to `Session::new`??)
-    // TODO: also we need analytics to properly identify this as coming from the rust sdk
-    session.set_application_id(ApplicationId("objectron".into()), true);
+    // TODO(cmc): application id should take selected recording into account
+    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // does... which they can probably share.
+    // This needs to take care of the whole `official_example` thing, and also keeps track of
+    // whether we're using the rust or python sdk.
+    session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
+    session.set_recording_id(RecordingId::random());
+    if let Some(addr) = addr {
+        session.connect(addr);
+    }
 
     // Parse protobuf dataset
     let rec_info = args.recording.info()?;
@@ -375,10 +403,10 @@ fn main() -> anyhow::Result<()> {
         log_ar_frame(&mut session, objects, &annotations, &ar_frame)?;
     }
 
-    // TODO(cmc): async local mode
-    if let Some(addr) = addr {
-        session.connect(addr);
-    } else {
+    // TODO(cmc): arg parsing and arg interpretation helpers
+    // TODO(cmc): missing flags: save, serve
+    // TODO(cmc): expose an easy to use async local mode.
+    if args.connect.is_none() {
         let log_messages = session.drain_log_messages_buffer();
         rerun::viewer::show(log_messages)?;
     }

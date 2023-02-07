@@ -36,6 +36,12 @@ impl Component for Point2D {
     }
 }
 
+impl From<[f32; 2]> for Point2D {
+    fn from(p: [f32; 2]) -> Self {
+        Self { x: p[0], y: p[1] }
+    }
+}
+
 #[cfg(feature = "glam")]
 impl From<Point2D> for glam::Vec2 {
     fn from(pt: Point2D) -> Self {
@@ -76,6 +82,16 @@ impl Point3D {
 impl Component for Point3D {
     fn name() -> crate::ComponentName {
         "rerun.point3d".into()
+    }
+}
+
+impl From<[f32; 3]> for Point3D {
+    fn from(p: [f32; 3]) -> Self {
+        Self {
+            x: p[0],
+            y: p[1],
+            z: p[2],
+        }
     }
 }
 
