@@ -355,10 +355,7 @@ impl DataStore {
                 return Err(WriteError::InvalidClusteringComponent(data.clone()));
             }
 
-            (
-                len,
-                ClusterData::UserData(cluster_comp.value_list() /* shallow */),
-            )
+            (len, ClusterData::UserData(cluster_comp.value_list()))
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
             // one... unless we've already generated one of this exact length in the past,
@@ -366,9 +363,9 @@ impl DataStore {
 
             // Use the length of any other component in the batch, they are guaranteed to all
             // share the same length at this point anyway.
-            let len = components
-                .first()
-                .map_or(0, |comp| comp.value_boxed().get_child_length(0));
+            let len = components.first().map_or(0, |comp| {
+                comp.value_list().offsets().lengths().next().unwrap()
+            });
 
             if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
                 // Cache hit! Re-use that row index.
