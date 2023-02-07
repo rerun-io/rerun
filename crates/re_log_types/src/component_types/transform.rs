@@ -35,7 +35,7 @@ use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 ///     ]),
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Default, Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Rigid3 {
     /// How is the child rotated?
