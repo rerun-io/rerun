@@ -118,6 +118,7 @@ pub struct ComponentBundle {
 }
 
 impl ComponentBundle {
+    #[inline]
     pub fn new_empty(name: ComponentName, data_type: DataType) -> Self {
         Self {
             name,
@@ -125,11 +126,13 @@ impl ComponentBundle {
         }
     }
 
+    #[inline]
     pub fn new(name: ComponentName, value: ListArray<i32>) -> Self {
         Self { name, value }
     }
 
     /// Create a new `ComponentBundle` from a boxed `Array`. The `Array` must be a `ListArray<i32>`.
+    #[inline]
     pub fn new_from_boxed(name: ComponentName, value: &dyn Array) -> Self {
         Self {
             name,
@@ -142,20 +145,24 @@ impl ComponentBundle {
     }
 
     /// Returns the datatype of the bundled component, discarding the list array that wraps it (!).
+    #[inline]
     pub fn data_type(&self) -> &DataType {
         ListArray::<i32>::get_child_type(self.value.data_type())
     }
 
+    #[inline]
     pub fn name(&self) -> ComponentName {
         self.name
     }
 
     /// Get the `ComponentBundle` value, cast to a boxed `Array`.
+    #[inline]
     pub fn value(&self) -> Box<dyn Array> {
         self.value.to_boxed()
     }
 
     /// Get the `ComponentBundle` value
+    #[inline]
     pub fn value_list(&self) -> &ListArray<i32> {
         &self.value
     }
@@ -163,12 +170,14 @@ impl ComponentBundle {
     /// Returns the number of _rows_ in this bundle, i.e. the length of the bundle.
     ///
     /// Currently always 1 as we don't yet support batch insertions.
+    #[inline]
     pub fn nb_rows(&self) -> usize {
         self.value.len()
     }
 
     /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
     /// specific row within the bundle.
+    #[inline]
     pub fn nb_instances(&self, row: usize) -> Option<usize> {
         self.value.offsets().lengths().nth(row)
     }
