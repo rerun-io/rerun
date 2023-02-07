@@ -1,6 +1,12 @@
 use std::path::PathBuf;
 
 fn main() -> Result<(), std::io::Error> {
+    // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
+    // anyway.
+    if std::env::var("CI").is_ok() {
+        return Ok(());
+    }
+
     prost_build::compile_protos(
         &[
             "dataset/proto/a_r_capture_metadata.proto",
