@@ -22,3 +22,4 @@ rerun = { package = "rerun_sdk", features = ["glam"], path = "../../crates/rerun
 
 [build-dependencies]
 prost-build = "0.11"
+

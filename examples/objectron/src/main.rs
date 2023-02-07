@@ -7,22 +7,20 @@
 
 use std::{
     collections::HashMap,
-    fmt::format,
     io::Read,
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, Context};
 use clap::Parser;
 use glam::Vec3Swizzles;
 use image::ImageDecoder;
 use prost::Message;
 use rerun::{
-    external::{re_log, re_log_types::ApplicationId, re_memory::AccountingAllocator, re_sdk_comms},
-    Box3D, ColorRGBA, EntityPath, InstanceKey, Label, LineStrip2D, LineStrip3D, Mesh3D, MeshId,
-    MsgSender, Point2D, Point3D, Quaternion, RawMesh3D, RecordingId, Rigid3, Session, Tensor,
-    TensorData, TensorDataMeaning, TensorDimension, TensorId, Time, TimePoint, TimeType, Timeline,
-    Transform, Vec3D, Vec4D, ViewCoordinates,
+    external::{re_log, re_log_types::ApplicationId, re_memory::AccountingAllocator},
+    Box3D, ColorRGBA, EntityPath, InstanceKey, Label, LineStrip2D, MsgSender, Point2D, Point3D,
+    RecordingId, Rigid3, Session, Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId,
+    Time, TimePoint, TimeType, Timeline, Transform, ViewCoordinates,
 };
 
 // --- Rerun logging ---
@@ -476,4 +474,5 @@ fn read_annotations(path: &Path) -> anyhow::Result<objectron::Sequence> {
     Ok(annotations)
 }
 
+#[allow(clippy::all, clippy::doc_markdown)]
 mod objectron;
