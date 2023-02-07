@@ -155,9 +155,9 @@ impl ComponentBundle {
         self.name
     }
 
-    /// Get the `ComponentBundle` value, cast to a boxed `Array`.
+    /// Get the `ComponentBundle` value as a boxed `Array`.
     #[inline]
-    pub fn value(&self) -> Box<dyn Array> {
+    pub fn value_boxed(&self) -> Box<dyn Array> {
         self.value.to_boxed()
     }
 
@@ -373,7 +373,7 @@ impl MsgBundle {
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let values = self.components.iter().map(|bundle| bundle.value());
+        let values = self.components.iter().map(|bundle| bundle.value_boxed());
         let names = self.components.iter().map(|bundle| bundle.name.as_str());
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
