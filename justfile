@@ -1,3 +1,7 @@
+# Install just: https://github.com/casey/just
+#
+# Then run `just --list` to see the available commands
+
 default:
   @just --list
 
