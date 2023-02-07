@@ -267,7 +267,7 @@ fn test_clean_for_polars_nomodify() {
     // Colors don't need polars cleaning
     let bundle: ComponentBundle = build_some_colors(5).try_into().unwrap();
     let cleaned = bundle.value().clean_for_polars();
-    assert_eq!(bundle.value(), &*cleaned);
+    assert_eq!(bundle.value(), cleaned);
 }
 
 #[test]

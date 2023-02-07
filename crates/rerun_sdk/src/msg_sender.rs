@@ -185,7 +185,7 @@ impl MsgSender {
             let collections = self
                 .instanced
                 .into_iter()
-                .map(|bundle| (bundle.name, bundle.nb_instances(0).unwrap_or(0)))
+                .map(|bundle| (bundle.name(), bundle.nb_instances(0).unwrap_or(0)))
                 .collect();
             return Err(MsgSenderError::MismatchedRowLengths(collections));
         }
@@ -276,7 +276,7 @@ impl MsgSender {
         let mut all_bundles: Vec<_> = instanced.into_iter().map(Some).collect();
         let standard_bundles: Vec<_> = all_bundles
             .iter_mut()
-            .filter(|bundle| bundle.as_ref().unwrap().name != Transform::name())
+            .filter(|bundle| bundle.as_ref().unwrap().name() != Transform::name())
             .map(|bundle| bundle.take().unwrap())
             .collect();
         let transform_bundles: Vec<_> = all_bundles
@@ -284,7 +284,7 @@ impl MsgSender {
             .filter(|bundle| {
                 bundle
                     .as_ref()
-                    .map_or(false, |bundle| bundle.name == Transform::name())
+                    .map_or(false, |bundle| bundle.name() == Transform::name())
             })
             .map(|bundle| bundle.take().unwrap())
             .collect();
@@ -301,7 +301,7 @@ impl MsgSender {
             .chain(&transform_bundles)
             .chain(&splatted)
         {
-            *rows_per_comptype.entry(bundle.name).or_default() += bundle.nb_rows();
+            *rows_per_comptype.entry(bundle.name()).or_default() += bundle.nb_rows();
         }
         if rows_per_comptype.values().any(|nb_rows| *nb_rows > 1) {
             return Err(MsgSenderError::MoreThanOneRow(
@@ -357,7 +357,7 @@ fn bundle_from_iter<'a, C: SerializableComponent>(
     // kinda force us to :/
 
     let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(data)?;
-    let wrapped = wrap_in_listarray(array).boxed();
+    let wrapped = wrap_in_listarray(array);
 
     Ok(ComponentBundle::new(C::name(), wrapped))
 }
