@@ -15,7 +15,8 @@ This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently 
 - [Python API docs](https://rerun-io.github.io/rerun)
 - [Rust API docs](https://docs.rs/rerun/) (coming soon)
 
-# Installing the Python Rerun SDK
+# Installing the pre-release Python Rerun SDK
+<!-- TODO(emilk): replace with `pip install rerun-sdk` -->
 1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
   (for Mac M1/M2, grab the "universal2" `.whl`)
 2. Uninstall any previously installed Rerun SDK: `pip uninstall rerun rerun-sdk`
@@ -24,28 +25,11 @@ This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently 
 
 # Installing the Rerun SDK
 Coming soon
+<!-- TODO(emilk): `cargo add rerun` -->
 
 ## Getting started with examples
 
 The easiest way to get started is to run and look at [`examples`](examples).
-
-### Buffered or live visualization
-
-By default, the examples run in buffered mode. This means they run through the whole example, and then show the viewer (UI) at the end in the same process by calling blocking function `rerun.show()`.
-
-If you'd rather see the visualizations live, as data is being logged. Run the examples with the `--connect` flag. The Rerun SDK will then try to connect to a Rerun Viewer running in another process and send the data as it is produced.
-
-To visualize an example live, first in one terminal (with the activated virtualenv) run:
-
-```sh
-python -m rerun  # Opens a Rerun Viewer that will wait for data from the Rerun SDK
-```
-
-Then run the example in a second terminal like:
-
-```sh
-python examples/car/main.py --connect  # The Rerun SDK will connect and send data to the separate viewer.
-```
 
 ## Using the Rerun Python SDK
 
