@@ -2,6 +2,13 @@
 This is a guide to how to build Rerun.
 
 
+## See also
+* [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`CODE_STYLE.md`](CODE_STYLE.md)
+* [`CONTRIBUTING.md`](CONTRIBUTING.md)
+* [`RELEASES.md`](RELEASES.md)
+
+
 ## Getting started with the repository.
 * Install the Rust toolchain: <https://rustup.rs/>
 * `git clone git@github.com:rerun-io/rerun.git && cd rerun`

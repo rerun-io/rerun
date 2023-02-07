@@ -1,3 +1,11 @@
+# Rerun code style
+
+## See also
+* [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`BUILD.md`](BUILD.md)
+* [`CONTRIBUTING.md`](CONTRIBUTING.md)
+* [`RELEASES.md`](RELEASES.md)
+
 ## Rust code
 
 ### Error handling and logging

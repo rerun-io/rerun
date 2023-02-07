@@ -1,8 +1,12 @@
 # Contributing to Rerun
 This is written for anyone who wants to contribute to the Rerun repository.
 
+
 ## See also
+* [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`BUILD.md`](BUILD.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
+* [`RELEASES.md`](RELEASES.md)
 
 ## What to contribute
 * **Examples**: We welcome any examples you would like to add. Follow the pattern of the existing examples in the [`examples/`](examples) folder.
