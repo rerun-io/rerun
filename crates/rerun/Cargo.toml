@@ -24,7 +24,12 @@ server = ["re_sdk_comms/server"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
-web = ["re_ws_comms/server", "re_sdk?/web", "dep:re_web_server", "dep:webbrowser"]
+web = [
+  "re_ws_comms/server",
+  "re_sdk?/web",
+  "dep:re_web_server",
+  "dep:webbrowser",
+]
 
 [dependencies]
 re_error = { path = "../re_error" }

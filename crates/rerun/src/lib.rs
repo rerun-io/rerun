@@ -21,7 +21,6 @@ use clap::Subcommand;
 use re_format::parse_duration;
 use re_smart_channel::Receiver;
 
-
 /// The Rerun Viewer and Server
 ///
 /// Features:
