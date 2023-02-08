@@ -48,6 +48,7 @@ plugins:
 markdown_extensions:
   - admonition # https://squidfunk.github.io/mkdocs-material/reference/admonitions/
   - pymdownx.highlight # https://mkdocstrings.github.io/theming/#syntax-highlighting
+  - pymdownx.superfences
   - toc:
       toc_depth: 4
 
