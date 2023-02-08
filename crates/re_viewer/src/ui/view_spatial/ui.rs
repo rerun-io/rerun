@@ -5,7 +5,7 @@ use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use crate::{
-    misc::{space_info::SpaceInfo, SpaceViewHighlights, ViewerContext},
+    misc::{space_info::query_view_coordinates, SpaceViewHighlights, ViewerContext},
     ui::{data_blueprint::DataBlueprintTree, SpaceViewId},
 };
 
@@ -272,14 +272,12 @@ impl ViewSpatialState {
     }
 
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
     pub fn view_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &EntityPath,
         scene: SceneSpatial,
-        space_info: &SpaceInfo,
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
     ) {
@@ -296,7 +294,8 @@ impl ViewSpatialState {
 
         match self.nav_mode {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = space_info.coordinates;
+                let coordinates =
+                    query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
                 super::view_3d(ctx, ui, self, space, space_view_id, scene);
             }

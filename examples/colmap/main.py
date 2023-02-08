@@ -84,7 +84,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log_view_coordinates("/", up="-Y", timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -108,25 +108,25 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         points = [point.xyz for point in visible_xyzs]
         point_colors = [point.rgb for point in visible_xyzs]
 
-        rr.log_points("world/points", points, colors=point_colors)
+        rr.log_points("points", points, colors=point_colors)
 
         rr.log_rigid3(
-            "world/camera",
+            "camera",
             child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log camera intrinsics
         rr.log_pinhole(
-            "world/camera/image",
+            "camera/image",
             child_from_parent=intrinsics,
             width=camera.width,
             height=camera.height,
         )
 
-        rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
+        rr.log_image_file(f"camera/image/rgb", dataset_path / "images" / image.name)
 
-        rr.log_points(f"world/camera/image/keypoints", visible_xys, colors=point_colors)
+        rr.log_points(f"camera/image/keypoints", visible_xys, colors=point_colors)
 
 
 def main() -> None:
