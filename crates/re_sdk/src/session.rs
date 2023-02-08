@@ -188,7 +188,6 @@ impl Session {
     }
 }
 
-
 #[cfg(feature = "re_viewer")]
 impl Session {
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
