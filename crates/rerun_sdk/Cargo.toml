@@ -13,6 +13,7 @@ default = ["re_viewer"]
 glam = ["re_log_types/glam"]
 
 ## Support for the viewer
+# TODO: we should not depend on eframe.
 re_viewer = ["dep:re_viewer", "dep:eframe"]
 
 ## Support serving a web viewer over HTTP.

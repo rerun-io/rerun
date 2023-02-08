@@ -134,7 +134,7 @@ dependencies = [
  "ndarray",
  "ndarray-rand",
  "rand",
- "rerun_sdk",
+ "rerun",
 ]
 
 [[package]]
@@ -4356,6 +4356,7 @@ dependencies = [
  "re_viewer",
  "re_web_server",
  "re_ws_comms",
+ "rerun_sdk",
  "tokio",
  "webbrowser",
 ]
@@ -4386,7 +4387,6 @@ dependencies = [
  "re_sdk_comms",
  "re_tensor_ops",
  "rerun",
- "rerun_sdk",
  "tokio",
  "toml 0.7.1",
  "uuid",

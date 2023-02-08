@@ -14,6 +14,9 @@ default = ["analytics", "server"]
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics", "re_viewer/analytics"]
 
+## Embed the Rerun SDK and re-export all of its public symbols.
+sdk = ["dep:rerun_sdk"]
+
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
 
@@ -21,6 +24,7 @@ server = ["re_sdk_comms/server"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
+# web = ["re_ws_comms/server", "rerun_sdk/web", "dep:re_web_server", "dep:webbrowser"]
 web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 
 [dependencies]
@@ -43,6 +47,7 @@ puffin.workspace = true
 re_analytics = { path = "../re_analytics", optional = true }
 re_sdk_comms = { path = "../re_sdk_comms", optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
+rerun_sdk = { path = "../rerun_sdk", optional = true }
 
 webbrowser = { version = "0.8", optional = true }
 
