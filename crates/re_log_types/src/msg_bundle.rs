@@ -155,9 +155,9 @@ impl ComponentBundle {
         self.name
     }
 
-    /// Get the `ComponentBundle` value, cast to a boxed `Array`.
+    /// Get the `ComponentBundle` value as a boxed `Array`.
     #[inline]
-    pub fn value(&self) -> Box<dyn Array> {
+    pub fn value_boxed(&self) -> Box<dyn Array> {
         self.value.to_boxed()
     }
 
@@ -238,7 +238,7 @@ impl<C: SerializableComponent> TryFrom<&Vec<C>> for ComponentBundle {
 /// ];
 /// let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
-/// println!("{:?}", &bundle.components[0].value());
+/// println!("{:?}", &bundle.components[0].value_boxed());
 /// ```
 ///
 /// The resultant Arrow [`arrow2::array::Array`] for the `Rect2D` component looks as follows:
@@ -373,7 +373,7 @@ impl MsgBundle {
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let values = self.components.iter().map(|bundle| bundle.value());
+        let values = self.components.iter().map(|bundle| bundle.value_boxed());
         let names = self.components.iter().map(|bundle| bundle.name.as_str());
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
