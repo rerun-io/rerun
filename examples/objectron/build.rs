@@ -32,9 +32,11 @@ fn main() -> Result<(), std::io::Error> {
     .flatten()
     .collect::<Vec<_>>();
 
-    // `prost-build` will try and rebuild even if nothing has changed in the .proto definitions,
-    // which will lead to infinite build loops with tools like `bacon` that watch the filesystem
-    // for any changes to the project's files.
+    // `cargo` has an implicit `rerun-if-changed=src/**` clause, which will act against us in this
+    // instance.
+    // Make sure to _not_ rewrite identical data, so as to avoid being stuck in an infinite build
+    // loop when using tools like e.g. `bacon` that watch the filesystem for any changes to the
+    // project's files.
     if let Ok(cur_bytes) = std::fs::read(&dst_path) {
         if bytes == cur_bytes {
             return Ok(());
