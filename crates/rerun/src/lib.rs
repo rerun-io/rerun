@@ -10,7 +10,6 @@
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
 
-
 #[cfg(not(feature = "sdk"))]
 use re_log_types::LogMsg;
 
