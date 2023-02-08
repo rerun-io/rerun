@@ -274,7 +274,7 @@ fn send_until_success(
     quit_rx: &Receiver<InterruptMsg>,
 ) -> Option<InterruptMsg> {
     // Early exit if tcp_client is disconnected
-    if drop_if_disconnected && !tcp_client.is_connected() {
+    if drop_if_disconnected && tcp_client.is_disconnected() {
         re_log::debug_once!("Dropping messages because we're disconnected.");
         return None;
     }
