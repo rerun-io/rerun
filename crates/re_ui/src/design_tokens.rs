@@ -52,7 +52,6 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     if apply_font_size {
         let font_size = parse_px(&typography_default.fontSize);
-        egui_style.spacing.interact_size.y = font_size;
 
         for text_style in [
             egui::TextStyle::Body,
@@ -61,6 +60,14 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         ] {
             egui_style.text_styles.get_mut(&text_style).unwrap().size = font_size;
         }
+
+        // We want labels and buttons to have the same height.
+        // Intuitively, we would just assign font_size to
+        // the interact_size, but in practice text height does not match
+        // font size (for unknown reason), so we fudge it for now:
+
+        egui_style.spacing.interact_size.y = 15.0;
+        // egui_style.spacing.interact_size.y = font_size;
     }
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
