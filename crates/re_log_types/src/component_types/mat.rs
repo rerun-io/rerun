@@ -51,6 +51,13 @@ impl From<Mat3x3> for glam::Mat3 {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<glam::Mat3> for Mat3x3 {
+    fn from(v: glam::Mat3) -> Self {
+        Self::from(v.to_cols_array_2d())
+    }
+}
+
 arrow_enable_vec_for_type!(Mat3x3);
 
 impl ArrowField for Mat3x3 {

@@ -12,6 +12,9 @@ default = ["re_viewer"]
 ## Support for the viewer
 re_viewer = ["dep:re_viewer", "dep:eframe"]
 
+## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
+glam = ["re_log_types/glam"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
