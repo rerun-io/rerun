@@ -4401,7 +4401,6 @@ dependencies = [
  "clap 4.1.4",
  "crossbeam",
  "document-features",
- "eframe",
  "lazy_static",
  "mimalloc",
  "ndarray",
