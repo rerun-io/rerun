@@ -125,9 +125,9 @@ hide:
         with mkdocs_gen_files.open(write_path, "w") as fd:
             if module is not None:
                 fd.write(f"::: rerun.{module}\n")
-                fd.write(f"    options:\n")
-                fd.write(f"      show_root_heading: False\n")
-                fd.write(f"      members: []\n")
+                fd.write("    options:\n")
+                fd.write("      show_root_heading: False\n")
+                fd.write("      members: []\n")
                 fd.write("----\n")
             for func_name in func_list:
                 fd.write(f"::: rerun.{func_name}\n")
