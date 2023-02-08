@@ -8,7 +8,6 @@
 mod global;
 mod msg_sender;
 mod session;
-pub mod viewer;
 
 pub use self::global::global_session;
 pub use self::msg_sender::{MsgSender, MsgSenderError};
