@@ -20,6 +20,7 @@ from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
+from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
     "bindings",
@@ -50,6 +51,10 @@ __all__ = [
     "log_unknown_transform",
     "log_extension_components",
     "log_view_coordinates",
+    "script_add_args",
+    "script_setup",
+    "script_teardown",
+    "LoggingHandler",
 ]
 
 
@@ -111,7 +116,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn_and_connect: bool = False) -> None:
+def init(application_id: str, spawn: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -124,9 +129,9 @@ def init(application_id: str, spawn_and_connect: bool = False) -> None:
         For instance, if you have one application doing object detection
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-    spawn_and_connect : bool
+    spawn : bool
         Spawn a Rerun Viewer and stream logging data to it.
-        Short for calling `spawn_and_connect` separately.
+        Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
 
@@ -148,32 +153,8 @@ def init(application_id: str, spawn_and_connect: bool = False) -> None:
 
     bindings.init(application_id, app_path)
 
-    if spawn_and_connect:
-        _spawn_and_connect()
-
-
-def spawn_and_connect(port: int = 9876) -> None:
-    """
-    Spawn a Rerun Viewer and stream logging data to it.
-
-    This is often the easiest and best way to use Rerun.
-    Just call this once at the start of your program.
-
-    Parameters
-    ----------
-    port : int
-        The port to connect to
-
-    See Also
-    --------
-     * [rerun.connect][]
-
-    """
-    spawn_viewer(port)
-    connect(f"127.0.0.1:{port}")
-
-
-_spawn_and_connect = spawn_and_connect  # we need this because Python scoping is horrible
+    if spawn:
+        _spawn()
 
 
 def connect(addr: Optional[str] = None) -> None:
@@ -191,14 +172,24 @@ def connect(addr: Optional[str] = None) -> None:
     bindings.connect(addr)
 
 
-def spawn_viewer(port: int = 9876) -> None:
+_connect = connect  # we need this because Python scoping is horrible
+
+
+def spawn(port: int = 9876, connect: bool = True) -> None:
     """
     Spawn a Rerun Viewer, listening on the given port.
+
+    This is often the easiest and best way to use Rerun.
+    Just call this once at the start of your program.
+
+    You can also call [rerun.init][] with a `spawn=True` argument.
 
     Parameters
     ----------
     port : int
         The port to listen on.
+    connect
+        also connect to the viewer and stream logging data to it.
 
     """
     import subprocess
@@ -218,6 +209,12 @@ def spawn_viewer(port: int = 9876) -> None:
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
     # For instance, wait until it prints "Hosting a SDK server over TCP at …"
     sleep(0.2)  # almost as good as waiting the correct amount of time
+
+    if connect:
+        _connect(f"127.0.0.1:{port}")
+
+
+_spawn = spawn  # we need this because Python scoping is horrible
 
 
 def serve() -> None:

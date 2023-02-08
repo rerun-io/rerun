@@ -4,56 +4,44 @@
 #![doc = document_features::document_features!()]
 //!
 
-// Work with timestamps
-pub mod time;
-pub use time::log_time;
-
 // Send data to a rerun session
 mod session;
 pub use self::session::Session;
+
+mod msg_sender;
+pub use self::msg_sender::{MsgSender, MsgSenderError};
 
 mod global;
 pub use self::global::global_session;
 
 pub mod viewer;
 
-// TODO(cmc): clean all that up?
+// ---
 
-pub use re_log_types::msg_bundle::MsgBundle;
-pub use re_log_types::{EntityPath, LogMsg, MsgId};
-pub use re_log_types::{Time, TimePoint, TimeType, Timeline};
+// init
+pub use re_log_types::{ApplicationId, RecordingId};
+pub use re_sdk_comms::default_server_addr;
 
-// TODO(cmc): separate datatypes (e.g. Vec3D) from components (e.g. Size3D).
-pub use re_log_types::component_types::AnnotationContext;
-pub use re_log_types::component_types::Arrow3D;
-pub use re_log_types::component_types::Box3D;
-pub use re_log_types::component_types::ClassId;
-pub use re_log_types::component_types::ColorRGBA;
-pub use re_log_types::component_types::InstanceKey;
-pub use re_log_types::component_types::KeypointId;
-pub use re_log_types::component_types::Label;
-pub use re_log_types::component_types::Mat3x3;
-pub use re_log_types::component_types::Quaternion;
-pub use re_log_types::component_types::Radius;
-pub use re_log_types::component_types::Rect2D;
-pub use re_log_types::component_types::Size3D;
-pub use re_log_types::component_types::TextEntry;
+// messages
+pub use re_log_types::{
+    msg_bundle::{Component, ComponentBundle, MsgBundle, SerializableComponent},
+    ComponentName, EntityPath, LogMsg, MsgId, Time, TimeInt, TimePoint, TimeType, Timeline,
+};
+
+// components
 pub use re_log_types::component_types::{
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
-    ViewCoordinates,
+    AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+    EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
+    MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3,
+    Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDataMeaning, TensorDimension,
+    TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
 };
-pub use re_log_types::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
-pub use re_log_types::component_types::{LineStrip2D, LineStrip3D};
-pub use re_log_types::component_types::{Pinhole, Rigid3, Transform};
-pub use re_log_types::component_types::{Point2D, Point3D};
-pub use re_log_types::component_types::{Scalar, ScalarPlotProps};
-pub use re_log_types::component_types::{
-    Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
-};
-pub use re_log_types::component_types::{Vec2D, Vec3D, Vec4D};
 
-pub mod reexports {
+// re-exports
+pub mod external {
     pub use re_log;
     pub use re_log_types;
     pub use re_memory;
+    pub use re_sdk_comms;
 }

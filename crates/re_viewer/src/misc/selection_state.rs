@@ -5,7 +5,7 @@ use re_log_types::{component_types::InstanceKey, EntityPathHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
-use super::{MultiSelection, Selection};
+use super::{Item, ItemCollection};
 
 #[derive(Clone, Default, Debug, PartialEq)]
 pub enum HoveredSpace {
@@ -155,7 +155,7 @@ pub struct SelectionState {
     ///
     /// Do not access this field directly! Use the helper methods instead, which will make sure
     /// to properly maintain the undo/redo history.
-    selection: MultiSelection,
+    selection: ItemCollection,
 
     /// History of selections (what was selected previously).
     #[serde(skip)]
@@ -163,11 +163,11 @@ pub struct SelectionState {
 
     /// What objects are hovered? Read from this.
     #[serde(skip)]
-    hovered_previous_frame: MultiSelection,
+    hovered_previous_frame: ItemCollection,
 
     /// What objects are hovered? Write to this.
     #[serde(skip)]
-    hovered_this_frame: MultiSelection,
+    hovered_this_frame: ItemCollection,
 
     /// What space is the pointer hovering over? Read from this.
     #[serde(skip)]
@@ -202,51 +202,48 @@ impl SelectionState {
 
     /// Clears the current selection out.
     pub fn clear_current(&mut self) {
-        self.selection = MultiSelection::default();
+        self.selection = ItemCollection::default();
     }
 
     /// Sets a single selection, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_single_selection(&mut self, item: Selection) -> MultiSelection {
+    pub fn set_single_selection(&mut self, item: Item) -> ItemCollection {
         self.set_multi_selection(std::iter::once(item))
     }
 
     /// Sets several objects to be selected, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_multi_selection(
-        &mut self,
-        items: impl Iterator<Item = Selection>,
-    ) -> MultiSelection {
-        let new_selection = MultiSelection::new(items);
+    pub fn set_multi_selection(&mut self, items: impl Iterator<Item = Item>) -> ItemCollection {
+        let new_selection = ItemCollection::new(items);
         self.history.update_selection(&new_selection);
         std::mem::replace(&mut self.selection, new_selection)
     }
 
     /// Returns the current selection.
-    pub fn current(&self) -> &MultiSelection {
+    pub fn current(&self) -> &ItemCollection {
         &self.selection
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &MultiSelection {
+    pub fn hovered(&self) -> &ItemCollection {
         &self.hovered_previous_frame
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&mut self, items: impl Iterator<Item = Selection>) {
-        self.hovered_this_frame = MultiSelection::new(items);
+    pub fn set_hovered(&mut self, items: impl Iterator<Item = Item>) {
+        self.hovered_this_frame = ItemCollection::new(items);
     }
 
     /// Select currently hovered objects unless already selected in which case they get unselected.
-    pub fn toggle_selection(&mut self, toggle_items: Vec<Selection>) {
+    pub fn toggle_selection(&mut self, toggle_items: Vec<Item>) {
         crate::profile_function!();
 
         // Make sure we preserve the order - old items kept in same order, new items added to the end.
 
         // All the items to toggle. If an was already selected, it will be removed from this.
-        let mut toggle_items_set: HashSet<Selection> = toggle_items.iter().cloned().collect();
+        let mut toggle_items_set: HashSet<Item> = toggle_items.iter().cloned().collect();
 
         let mut new_selection = self.selection.to_vec();
         new_selection.retain(|item| !toggle_items_set.remove(item));
@@ -271,24 +268,25 @@ impl SelectionState {
 
     pub fn selection_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
-    ) -> Option<MultiSelection> {
-        self.history.selection_ui(ui, blueprint)
+    ) -> Option<ItemCollection> {
+        self.history.selection_ui(re_ui, ui, blueprint)
     }
 
-    pub fn highlight_for_ui_element(&self, test: &Selection) -> HoverHighlight {
+    pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {
         let hovered = self
             .hovered_previous_frame
             .iter()
             .any(|current| match current {
-                Selection::MsgId(_)
-                | Selection::ComponentPath(_)
-                | Selection::SpaceView(_)
-                | Selection::DataBlueprintGroup(_, _) => current == test,
+                Item::MsgId(_)
+                | Item::ComponentPath(_)
+                | Item::SpaceView(_)
+                | Item::DataBlueprintGroup(_, _) => current == test,
 
-                Selection::InstancePath(current_space_view_id, current_instance_path) => {
-                    if let Selection::InstancePath(test_space_view_id, test_instance_path) = test {
+                Item::InstancePath(current_space_view_id, current_instance_path) => {
+                    if let Item::InstancePath(test_space_view_id, test_instance_path) = test {
                         // For both space view id and instance index we want to be inclusive,
                         // but if both are set to Some, and set to different, then we count that
                         // as a miss.
@@ -326,9 +324,9 @@ impl SelectionState {
 
         for current_selection in self.selection.iter() {
             match current_selection {
-                Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::SpaceView(_) => {}
+                Item::MsgId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
-                Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
+                Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             space_view.data_blueprint.visit_group_entities_recursively(
@@ -345,7 +343,7 @@ impl SelectionState {
                     }
                 }
 
-                Selection::InstancePath(selected_space_view_context, selected_instance) => {
+                Item::InstancePath(selected_space_view_context, selected_instance) => {
                     let highlight = if *selected_space_view_context == Some(space_view_id) {
                         SelectionHighlight::Selection
                     } else {
@@ -375,9 +373,9 @@ impl SelectionState {
 
         for current_hover in self.hovered_previous_frame.iter() {
             match current_hover {
-                Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::SpaceView(_) => {}
+                Item::MsgId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
-                Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
+                Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
                     // since they are truly local to a space view.
                     if *group_space_view_id == space_view_id {
@@ -396,7 +394,7 @@ impl SelectionState {
                     }
                 }
 
-                Selection::InstancePath(_, selected_instance) => {
+                Item::InstancePath(_, selected_instance) => {
                     let highlighted_entity = highlighted_entity_paths
                         .entry(selected_instance.entity_path.hash())
                         .or_default();

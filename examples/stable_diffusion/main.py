@@ -81,10 +81,6 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--image",
         type=str,
@@ -141,21 +137,14 @@ expense of slower inference. This parameter will be modulated by `strength`.
 """,
     )
 
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("Depth Guided Stable Diffusion")
+    rr.script_setup(args, "Depth Guided Stable Diffusion")
 
     image_path = args.image_path  # type: str
     if not image_path:
         image_path = get_downloaded_path(args.dataset_dir, args.image)
-
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
 
     run_stable_diffusion(
         image_path=image_path,
@@ -166,8 +155,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
         num_inference_steps=args.num_inference_steps,
     )
 
-    if args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

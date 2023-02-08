@@ -312,6 +312,16 @@ where
         self.primary.iter_values()
     }
 
+    /// Iterate over the flattened list of primary component values if any.
+    pub fn iter_primary_flattened(&self) -> impl Iterator<Item = Primary> + '_ {
+        self.primary
+            .iter_values()
+            .ok()
+            .into_iter()
+            .flatten()
+            .flatten()
+    }
+
     /// Check if the entity has a component and its not empty
     pub fn has_component<C: Component>(&self) -> bool {
         self.components

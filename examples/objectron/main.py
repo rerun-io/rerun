@@ -116,6 +116,8 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
 
     rr.log_view_coordinates("world", up="+Y", timeless=True)
 
+    log_annotated_bboxes(seq.objects)
+
     frame_times = []
     for sample in samples:
         rr.set_time_sequence("frame", sample.index)
@@ -126,7 +128,6 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
-    log_annotated_bboxes(seq.objects)
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
@@ -179,11 +180,11 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rr.log_obb(
-            f"world/objects/box-{bbox.id}",
+            f"world/annotations/box-{bbox.id}",
             bbox.scale,
             bbox.translation,
             rot.as_quat(),
-            color=[130, 160, 250, 255],
+            color=[160, 230, 130, 255],
             label=bbox.category,
             timeless=True,
         )
@@ -208,11 +209,11 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"world/camera/video/obj-annotations/annotation-{obj_ann.object_id}", keypoint_pos2s)
+                log_projected_bbox(f"world/camera/video/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
                     rr.log_point(
-                        f"world/camera/video/obj-annotations/annotation-{obj_ann.object_id}/{id}",
+                        f"world/camera/video/estimates/box-{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
                     )
@@ -254,10 +255,6 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
     )
@@ -281,17 +278,10 @@ def main() -> None:
         "--dataset_dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
     )
 
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("objectron")
-
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
+    rr.script_setup(args, "objectron")
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
@@ -299,10 +289,7 @@ def main() -> None:
     seq = read_annotations(dir)
     log_ar_frames(samples, seq)
 
-    if args.save is not None:
-        rr.save(args.save)
-    elif args.headless:
-        pass
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

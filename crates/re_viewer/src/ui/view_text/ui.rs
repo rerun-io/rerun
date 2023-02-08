@@ -190,7 +190,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
     if let Some(time_point) = ctx
         .log_db
         .entity_db
-        .arrow_store
+        .data_store
         .get_msg_metadata(&entry.msg_id)
     {
         Some(time_point.clone())
@@ -227,6 +227,7 @@ fn table_ui(
         .vscroll(true)
         .auto_shrink([false; 2]) // expand to take up the whole Space View
         .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
+        .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::TOP));
 
     if let Some(scroll_to_row) = scroll_to_row {

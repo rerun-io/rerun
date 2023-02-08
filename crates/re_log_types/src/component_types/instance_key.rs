@@ -53,12 +53,14 @@ impl InstanceKey {
     }
 
     /// Returns `None` if splat, otherwise the index.
+    #[inline]
     pub fn specific_index(self) -> Option<InstanceKey> {
         self.is_specific().then_some(self)
     }
 }
 
 impl std::fmt::Display for InstanceKey {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_splat() {
             "splat".fmt(f)
@@ -69,6 +71,7 @@ impl std::fmt::Display for InstanceKey {
 }
 
 impl Component for InstanceKey {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.instance_key".into()
     }

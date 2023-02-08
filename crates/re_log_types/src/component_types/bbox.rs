@@ -27,12 +27,20 @@ use crate::msg_bundle::Component;
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Box3D {
-    x: f32,
-    y: f32,
-    z: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+impl Box3D {
+    #[inline]
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
+    }
 }
 
 impl Component for Box3D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.box3d".into()
     }
@@ -40,6 +48,7 @@ impl Component for Box3D {
 
 #[cfg(feature = "glam")]
 impl From<Box3D> for glam::Vec3 {
+    #[inline]
     fn from(b: Box3D) -> Self {
         Self::new(b.x, b.y, b.z)
     }
@@ -47,6 +56,7 @@ impl From<Box3D> for glam::Vec3 {
 
 #[cfg(feature = "glam")]
 impl From<glam::Vec3> for Box3D {
+    #[inline]
     fn from(v: glam::Vec3) -> Self {
         let (x, y, z) = v.into();
         Self { x, y, z }
@@ -57,6 +67,8 @@ arrow_enable_vec_for_type!(Box3D);
 
 impl ArrowField for Box3D {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <FixedSizeVec<f32, 3> as ArrowField>::data_type()
     }

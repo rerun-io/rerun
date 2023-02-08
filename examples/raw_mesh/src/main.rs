@@ -8,11 +8,14 @@
 
 #![allow(clippy::doc_markdown)]
 
-use anyhow::{bail, Context};
+use std::path::PathBuf;
+
+use anyhow::anyhow;
 use bytes::Bytes;
+use clap::Parser;
 use rerun::{
-    reexports::{re_log, re_memory::AccountingAllocator},
-    EntityPath, LogMsg, Mesh3D, MeshId, MsgBundle, MsgId, RawMesh3D, Session, Time, TimePoint,
+    external::{re_log, re_memory::AccountingAllocator},
+    ApplicationId, EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, RecordingId, Session,
     TimeType, Timeline, Transform, Vec4D, ViewCoordinates,
 };
 
@@ -66,17 +69,8 @@ impl From<GltfTransform> for Transform {
 }
 
 /// Log a glTF node with Rerun.
-fn log_node(session: &mut Session, node: GltfNode) {
+fn log_node(session: &mut Session, node: GltfNode) -> anyhow::Result<()> {
     let ent_path = EntityPath::from(node.name.as_str());
-
-    // What time is it?
-    let timeline_keyframe = Timeline::new("keyframe", TimeType::Sequence);
-    let time_point = TimePoint::from([
-        // TODO(cmc): this _has_ to be inserted by the SDK
-        (Timeline::log_time(), Time::now().into()),
-        // TODO(cmc): animations!
-        (timeline_keyframe, 0.into()),
-    ]);
 
     // Convert glTF objects into Rerun components.
     let transform = node.transform.map(Transform::from);
@@ -86,61 +80,36 @@ fn log_node(session: &mut Session, node: GltfNode) {
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
 
-    // TODO(cmc): Transforms have to be logged separately because they are neither batches nor
-    // splats... the user shouldn't have to know that though!
-    // The SDK needs to split things up as needed when it sees a Transform component.
-    //
-    // We're going to have the same issue with splats: the SDK needs to automagically detect the
-    // user intention to use splats and do the necessary (like the python SDK does iirc).
-    if let Some(transform) = transform {
-        let bundle = MsgBundle::new(
-            MsgId::random(),
-            ent_path.clone(),
-            time_point.clone(),
-            // TODO(cmc): need to reproduce the viewer crash I had earlier and fix/log-an-issue for
-            // it.
-            vec![vec![transform].try_into().unwrap()],
-        );
-        // TODO(cmc): These last conversion details need to be hidden in the SDK.
-        let msg = bundle.try_into().unwrap();
-        session.send(LogMsg::ArrowMsg(msg));
-    }
-
-    // TODO(cmc): Working at the `ComponentBundle`/`TryIntoArrow` layer feels too low-level,
-    // something like a MsgBuilder kinda thing would probably be quite nice.
-    let bundle = MsgBundle::new(
-        MsgId::random(),
-        ent_path,
-        time_point,
-        vec![primitives.try_into().unwrap()],
-    );
-
-    // Create and send one message to the sdk
-    // TODO(cmc): These last conversion details need to be hidden in the SDK.
-    let msg = bundle.try_into().unwrap();
-    session.send(LogMsg::ArrowMsg(msg));
+    let timeline_keyframe = Timeline::new("keyframe", TimeType::Sequence);
+    MsgSender::new(ent_path)
+        .with_time(timeline_keyframe, 0)
+        .with_component(&primitives)?
+        .with_component(transform.as_ref())?
+        .send(session)?;
 
     // Recurse through all of the node's children!
     for mut child in node.children {
         child.name = [node.name.as_str(), child.name.as_str()].join("/");
-        log_node(session, child);
+        log_node(session, child)?;
     }
+
+    Ok(())
 }
 
-// TODO(cmc): The SDK should make this call so trivial that it doesn't require this helper at all.
-fn log_axis(session: &mut Session, ent_path: &EntityPath) {
-    // glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    let view_coords: ViewCoordinates = "RUB".parse().unwrap();
+fn log_coordinate_space(
+    session: &mut Session,
+    ent_path: impl Into<EntityPath>,
+    axes: &str,
+) -> anyhow::Result<()> {
+    let view_coords: ViewCoordinates = axes
+        .parse()
+        .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
 
-    let bundle = MsgBundle::new(
-        MsgId::random(),
-        ent_path.clone(),
-        [].into(), // TODO(cmc): doing timeless stuff shouldn't be so weird
-        vec![vec![view_coords].try_into().unwrap()],
-    );
-
-    let msg = bundle.try_into().unwrap();
-    session.send(LogMsg::ArrowMsg(msg));
+    MsgSender::new(ent_path)
+        .with_timeless(true)
+        .with_component(&[view_coords])?
+        .send(session)
+        .map_err(Into::into)
 }
 
 // --- Init ---
@@ -151,35 +120,60 @@ fn log_axis(session: &mut Session, ent_path: &EntityPath) {
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    /// If specified, connects and sends the logged data to a remote Rerun viewer.
+    ///
+    /// Optionally takes an ip:port, otherwise uses Rerun's defaults.
+    #[clap(long)]
+    #[allow(clippy::option_option)]
+    connect: Option<Option<String>>,
+
+    /// Specifies the path of the glTF scene to load.
+    #[clap(long)]
+    scene_path: PathBuf,
+}
+
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
-    // TODO(cmc): Here we shall pass argv to the SDK which will strip it out of all SDK flags, and
-    // give us back our actual CLI flags.
-    // The name of the gltf sample to load should then come from there.
-
-    // Read glTF asset
-    let args = std::env::args().collect::<Vec<_>>();
-    let bytes = if let Some(path) = args.get(1) {
-        Bytes::from(std::fs::read(path)?)
-    } else {
-        bail!("Usage: {} <path_to_gltf_scene>", args[0]);
+    let args = Args::parse();
+    let addr = match args.connect.as_ref() {
+        Some(Some(addr)) => Some(addr.parse()?),
+        Some(None) => Some(rerun::default_server_addr()),
+        None => None,
     };
 
-    // Parse glTF asset
-    let (doc, buffers, _) = gltf::import_slice(bytes).unwrap();
+    let mut session = Session::new();
+    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // does... which they can probably share.
+    // This needs to take care of the whole `official_example` thing, and also keeps track of
+    // whether we're using the rust or python sdk.
+    session.set_application_id(ApplicationId("objectron-rs".into()), true);
+    session.set_recording_id(RecordingId::random());
+    if let Some(addr) = addr {
+        session.connect(addr);
+    }
+
+    // Read glTF scene
+    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path)?))?;
     let nodes = load_gltf(&doc, &buffers);
 
     // Log raw glTF nodes and their transforms with Rerun
-    let mut session = Session::new();
-    session.connect("127.0.0.1:9876".parse().unwrap());
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        log_axis(&mut session, &root.name.as_str().into());
-        log_node(&mut session, root);
+        log_coordinate_space(&mut session, root.name.as_str(), "RUB")?;
+        log_node(&mut session, root)?;
     }
 
-    session.flush();
+    // TODO(cmc): arg parsing and arg interpretation helpers
+    // TODO(cmc): missing flags: save, serve
+    // TODO(cmc): expose an easy to use async local mode.
+    if args.connect.is_none() {
+        let log_messages = session.drain_log_messages_buffer();
+        rerun::viewer::show(log_messages)?;
+    }
 
     Ok(())
 }

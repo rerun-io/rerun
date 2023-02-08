@@ -33,12 +33,14 @@ where
 {
     type Output = Idx::Output;
 
+    #[inline]
     fn index(&self, index: Idx) -> &Self::Output {
         &self.0[index]
     }
 }
 
 impl From<[[f32; 3]; 3]> for Mat3x3 {
+    #[inline]
     fn from(v: [[f32; 3]; 3]) -> Self {
         Self([Vec3D(v[0]), Vec3D(v[1]), Vec3D(v[2])])
     }
@@ -46,8 +48,17 @@ impl From<[[f32; 3]; 3]> for Mat3x3 {
 
 #[cfg(feature = "glam")]
 impl From<Mat3x3> for glam::Mat3 {
+    #[inline]
     fn from(v: Mat3x3) -> Self {
         Self::from_cols(v[0].into(), v[1].into(), v[2].into())
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::Mat3> for Mat3x3 {
+    #[inline]
+    fn from(v: glam::Mat3) -> Self {
+        Self::from(v.to_cols_array_2d())
     }
 }
 
@@ -55,6 +66,8 @@ arrow_enable_vec_for_type!(Mat3x3);
 
 impl ArrowField for Mat3x3 {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <FixedSizeVec<f32, 9> as ArrowField>::data_type()
     }

@@ -73,10 +73,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Logs raw 3D meshes and their transform hierarchy using the Rerun SDK."
     )
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "--scene",
         type=str,
@@ -89,25 +85,10 @@ def main() -> None:
         type=Path,
         help="Path to a scene to analyze. If set, overrides the `--scene` argument.",
     )
-    parser.add_argument(
-        "--serve",
-        dest="serve",
-        action="store_true",
-        help="Serve a web viewer (WARNING: experimental feature)",
-    )
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("raw_mesh")
-
-    if args.serve:
-        rr.serve()
-    elif args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can omit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
+    rr.script_setup(args, "raw_mesh")
 
     scene_path = args.scene_path
     if scene_path is None:
@@ -120,16 +101,7 @@ def main() -> None:
     rr.log_view_coordinates(root, xyz="RUB", timeless=True)
     log_scene(scene, root)
 
-    if args.serve:
-        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        try:
-            from time import sleep
-
-            sleep(100_000)
-        except:
-            pass
-    elif args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

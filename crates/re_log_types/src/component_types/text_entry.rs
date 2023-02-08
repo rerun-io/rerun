@@ -25,10 +25,10 @@ pub struct TextEntry {
 
 impl TextEntry {
     #[inline]
-    pub fn new(body: impl Into<String>, level: Option<impl Into<String>>) -> Self {
+    pub fn new(body: impl Into<String>, level: Option<String>) -> Self {
         Self {
             body: body.into(),
-            level: level.map(Into::into),
+            level,
         }
     }
 
@@ -42,6 +42,7 @@ impl TextEntry {
 }
 
 impl Component for TextEntry {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.text_entry".into()
     }

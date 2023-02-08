@@ -10,7 +10,7 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{HoveredSpace, Selection},
+    misc::{HoveredSpace, Item},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -239,6 +239,7 @@ pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     CTRL slows down, SHIFT speeds up.\n\
     \n\
     Double-click an object to focus the view on it.\n\
+    For cameras, you can restore the view again with Escape.\n\
     \n\
     Double-click on empty space to reset the view.";
 
@@ -366,7 +367,7 @@ pub fn view_3d(
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
             pick.instance_path_hash
                 .resolve(&ctx.log_db.entity_db)
-                .map(|instance_path| Selection::InstancePath(Some(space_view_id), instance_path))
+                .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
         }));
         state.state_3d.hovered_point = picking_result
             .opaque_hit
@@ -385,7 +386,7 @@ pub fn view_3d(
         state.state_3d.camera_before_tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Selection::InstancePath(_, instance_path)) = ctx.hovered().first() {
+        if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());

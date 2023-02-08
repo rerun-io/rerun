@@ -49,6 +49,7 @@ impl TensorId {
 impl ArrowField for TensorId {
     type Type = Self;
 
+    #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::FixedSizeBinary(16)
     }
@@ -58,10 +59,12 @@ impl ArrowField for TensorId {
 impl ArrowSerialize for TensorId {
     type MutableArrayType = MutableFixedSizeBinaryArray;
 
+    #[inline]
     fn new_array() -> Self::MutableArrayType {
         MutableFixedSizeBinaryArray::new(16)
     }
 
+    #[inline]
     fn arrow_serialize(
         v: &<Self as arrow2_convert::field::ArrowField>::Type,
         array: &mut Self::MutableArrayType,
@@ -73,6 +76,7 @@ impl ArrowSerialize for TensorId {
 impl ArrowDeserialize for TensorId {
     type ArrayType = FixedSizeBinaryArray;
 
+    #[inline]
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
@@ -200,24 +204,29 @@ impl TensorDimension {
     const DEFAULT_NAME_HEIGHT: &'static str = "height";
     const DEFAULT_NAME_DEPTH: &'static str = "depth";
 
+    #[inline]
     pub fn height(size: u64) -> Self {
         Self::named(size, String::from(Self::DEFAULT_NAME_HEIGHT))
     }
 
+    #[inline]
     pub fn width(size: u64) -> Self {
         Self::named(size, String::from(Self::DEFAULT_NAME_WIDTH))
     }
 
+    #[inline]
     pub fn depth(size: u64) -> Self {
         Self::named(size, String::from(Self::DEFAULT_NAME_DEPTH))
     }
 
+    #[inline]
     pub fn named(size: u64, name: String) -> Self {
         Self {
             size,
             name: Some(name),
         }
     }
+    #[inline]
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }
     }
@@ -312,14 +321,17 @@ pub struct Tensor {
 }
 
 impl TensorTrait for Tensor {
+    #[inline]
     fn id(&self) -> TensorId {
         self.tensor_id
     }
 
+    #[inline]
     fn shape(&self) -> &[TensorDimension] {
         self.shape.as_slice()
     }
 
+    #[inline]
     fn num_dim(&self) -> usize {
         self.shape.len()
     }
@@ -335,11 +347,13 @@ impl TensorTrait for Tensor {
             }
     }
 
+    #[inline]
     fn is_vector(&self) -> bool {
         let shape = &self.shape;
         shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
     }
 
+    #[inline]
     fn meaning(&self) -> TensorDataMeaning {
         self.meaning
     }
@@ -372,6 +386,7 @@ impl TensorTrait for Tensor {
 }
 
 impl Component for Tensor {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.tensor".into()
     }
@@ -468,10 +483,10 @@ macro_rules! tensor_type {
             }
         }
 
-        impl<'a> TryFrom<::ndarray::ArrayViewD<'a, $type>> for Tensor {
+        impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, $type, D>> for Tensor {
             type Error = TensorCastError;
 
-            fn try_from(view: ::ndarray::ArrayViewD<'a, $type>) -> Result<Self, Self::Error> {
+            fn try_from(view: ::ndarray::ArrayView<'a, $type, D>) -> Result<Self, Self::Error> {
                 let shape = view
                     .shape()
                     .iter()

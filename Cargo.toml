@@ -1,6 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "rerun_py", "run_wasm", "examples/raw_mesh"]
+members = [
+  "crates/*",
+  "rerun_py",
+  "run_wasm",
+  "examples/api_demo",
+  "examples/objectron",
+  "examples/raw_mesh",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -68,14 +75,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-04 - winit 0.28
-ecolor = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
-eframe = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
-egui = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
-emath = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
-epaint = { git = "https://github.com/emilk/egui", rev = "660566c4996535308bb09330caf346c0be10be33" }
+# 2023-02-06 - Fix wgpu transparency
+ecolor = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+eframe = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+egui = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+emath = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+epaint = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

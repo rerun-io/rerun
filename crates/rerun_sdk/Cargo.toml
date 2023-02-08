@@ -9,6 +9,9 @@ publish = false
 [features]
 default = ["re_viewer"]
 
+## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
+glam = ["re_log_types/glam"]
+
 ## Support for the viewer
 re_viewer = ["dep:re_viewer", "dep:eframe"]
 
@@ -35,6 +38,7 @@ document-features = "0.2"
 lazy_static.workspace = true
 nohash-hasher = "0.2"
 once_cell = "1.12"
+thiserror.workspace = true
 
 # Optional dependencies:
 re_ws_comms = { path = "../re_ws_comms", optional = true, features = [

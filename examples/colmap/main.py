@@ -92,7 +92,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log_view_coordinates("/", up="-Y", timeless=True)
 
     obj_detector = pipeline("object-detection")
 
@@ -168,45 +168,14 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
 
 def main() -> None:
     parser = ArgumentParser(description="Visualize the output of COLMAP's sparse reconstruction on a video.")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
-    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-    parser.add_argument(
-        "--serve",
-        dest="serve",
-        action="store_true",
-        help="Serve a web viewer (WARNING: experimental feature)",
-    )
     parser.add_argument("--unfiltered", action="store_true", help="If set, we don't filter away any noisy data.")
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("colmap")
-
-    if args.serve:
-        rr.serve()
-    elif args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can omit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
-
+    rr.script_setup(args, "colmap")
     dataset_path = get_downloaded_dataset_path()
-
     read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered)
-
-    if args.serve:
-        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        try:
-            from time import sleep
-
-            sleep(100_000)
-        except:
-            pass
-    elif args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

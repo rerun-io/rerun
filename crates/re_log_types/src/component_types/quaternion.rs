@@ -32,7 +32,29 @@ pub struct Quaternion {
     pub w: f32,
 }
 
+impl Default for Quaternion {
+    #[inline]
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
+impl Quaternion {
+    pub const IDENTITY: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 1.0,
+    };
+
+    #[inline]
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+}
+
 impl Component for Quaternion {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.quaternion".into()
     }
@@ -40,6 +62,7 @@ impl Component for Quaternion {
 
 #[cfg(feature = "glam")]
 impl From<Quaternion> for glam::Quat {
+    #[inline]
     fn from(q: Quaternion) -> Self {
         Self::from_xyzw(q.x, q.y, q.z, q.w)
     }
@@ -47,6 +70,7 @@ impl From<Quaternion> for glam::Quat {
 
 #[cfg(feature = "glam")]
 impl From<glam::Quat> for Quaternion {
+    #[inline]
     fn from(q: glam::Quat) -> Self {
         let (x, y, z, w) = q.into();
         Self { x, y, z, w }
@@ -57,6 +81,8 @@ arrow_enable_vec_for_type!(Quaternion);
 
 impl ArrowField for Quaternion {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <FixedSizeVec<f32, 4> as ArrowField>::data_type()
     }

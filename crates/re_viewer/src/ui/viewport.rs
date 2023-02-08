@@ -2,19 +2,20 @@
 //!
 //! Contains all space views.
 
-use std::collections::BTreeSet;
-
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{EntityPath, TimeInt};
-use re_log_types::component_types::{Tensor, TensorTrait};
+use re_data_store::EntityPath;
 
-use crate::misc::{space_info::SpaceInfoCollection, Selection, SpaceViewHighlights, ViewerContext};
+use crate::{
+    misc::{space_info::SpaceInfoCollection, Item, SpaceViewHighlights, ViewerContext},
+    ui::space_view_heuristics::default_created_space_views,
+};
 
 use super::{
     data_blueprint::DataBlueprintGroupHandle, space_view_entity_picker::SpaceViewEntityPicker,
-    view_category::ViewCategory, SpaceView, SpaceViewId,
+    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
+    SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -57,7 +58,7 @@ impl Viewport {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
-        for space_view in Self::default_created_space_views(ctx, spaces_info) {
+        for space_view in default_created_space_views(ctx, spaces_info) {
             blueprint.add_space_view(space_view);
         }
         blueprint
@@ -109,7 +110,7 @@ impl Viewport {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].name)
+                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].space_path)
                     .copied()
                     .collect_vec();
 
@@ -346,7 +347,7 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            for space_view_candidate in Self::default_created_space_views(ctx, spaces_info) {
+            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);
                 }
@@ -377,12 +378,7 @@ impl Viewport {
         true
     }
 
-    pub fn viewport_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) {
+    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
         if let Some(window) = &mut self.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
                 if !window.ui(ctx, ui, space_view) {
@@ -432,7 +428,6 @@ impl Viewport {
 
         let mut tab_viewer = TabViewer {
             ctx,
-            spaces_info,
             space_views: &mut self.space_views,
         };
 
@@ -479,134 +474,6 @@ impl Viewport {
         }
     }
 
-    fn all_possible_space_views(
-        ctx: &ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) -> Vec<SpaceView> {
-        crate::profile_function!();
-
-        let mut space_views = Vec::new();
-
-        for space_info in spaces_info.iter() {
-            for (category, entity_paths) in
-                SpaceView::default_queries_entities_by_category(ctx, spaces_info, space_info)
-            {
-                // For tensors create one space view for each tensor.
-                if category == ViewCategory::Tensor {
-                    for entity_path in entity_paths {
-                        let mut space_view = SpaceView::new(category, space_info, &[entity_path]);
-                        space_view.entities_determined_by_user = true;
-                        space_views.push(space_view);
-                    }
-                } else {
-                    space_views.push(SpaceView::new(category, space_info, &entity_paths));
-                }
-            }
-        }
-
-        space_views
-    }
-
-    fn default_created_space_views(
-        ctx: &ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) -> Vec<SpaceView> {
-        crate::profile_function!();
-
-        let timeline = ctx.rec_cfg.time_ctrl.timeline();
-        let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::MAX);
-
-        let mut space_views = Vec::new();
-
-        for space_view_candidate in Self::all_possible_space_views(ctx, spaces_info) {
-            // Skip root space for now, messes things up.
-            if space_view_candidate.space_path.is_root() {
-                continue;
-            }
-
-            let Some(space_info) = spaces_info.get(&space_view_candidate.space_path) else {
-                // Should never happen.
-                continue;
-            };
-
-            if space_view_candidate.category == ViewCategory::Spatial {
-                // For every item that isn't a direct descendant of the root, skip if connection to parent is via rigid (too trivial for a new space view!)
-                if space_info.path.parent() != Some(EntityPath::root()) {
-                    if let Some(parent_transform) = space_info.parent_transform() {
-                        match parent_transform {
-                            re_log_types::Transform::Rigid3(_) => {
-                                continue;
-                            }
-                            re_log_types::Transform::Pinhole(_)
-                            | re_log_types::Transform::Unknown => {}
-                        }
-                    }
-                }
-
-                // Gather all images that are untransformed children of the space view candidate's root.
-                let images = space_info
-                    .descendants_without_transform
-                    .iter()
-                    .filter_map(|entity_path| {
-                        if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                            &ctx.log_db.entity_db.arrow_store,
-                            &timeline_query,
-                            entity_path,
-                            &[],
-                        ) {
-                            if let Ok(iter) = entity_view.iter_primary() {
-                                for tensor in iter.flatten() {
-                                    if tensor.is_shaped_like_an_image() {
-                                        return Some((entity_path.clone(), tensor.shape));
-                                    }
-                                }
-                            }
-                        }
-                        None
-                    })
-                    .collect::<Vec<_>>();
-
-                if images.len() > 1 {
-                    // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
-                    // Stacking them on top of each other works, but is often confusing.
-                    // Let's create one space view for each image, where the other images are disabled:
-
-                    let mut image_sizes = BTreeSet::default();
-                    for (entity_path, shape) in &images {
-                        debug_assert!(matches!(shape.len(), 2 | 3));
-                        let image_size = (shape[0].size, shape[1].size);
-                        image_sizes.insert(image_size);
-
-                        // Space view with everything but the other images.
-                        // (note that other entities stay!)
-                        let mut single_image_space_view = space_view_candidate.clone();
-                        for (other_entity_path, _) in &images {
-                            if other_entity_path != entity_path {
-                                single_image_space_view
-                                    .data_blueprint
-                                    .remove_entity(other_entity_path);
-                            }
-                        }
-
-                        single_image_space_view.entities_determined_by_user = true;
-
-                        space_views.push(single_image_space_view);
-                    }
-
-                    // Only if all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
-                    // TODO(andreas): What if there's also other entities that we want to show?
-                    if image_sizes.len() > 1 {
-                        continue;
-                    }
-                }
-            }
-
-            space_views.push(space_view_candidate);
-        }
-
-        space_views
-    }
-
     pub fn add_new_spaceview_button_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -620,20 +487,27 @@ impl Viewport {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            for space_view in Self::all_possible_space_views(ctx, spaces_info) {
+            for space_view in all_possible_space_views(ctx, spaces_info)
+                .into_iter()
+                .sorted_by_key(|space_view| space_view.space_path.to_string())
+            {
                 if ctx
                     .re_ui
                     .selectable_label_with_icon(
                         ui,
                         space_view.category.icon(),
-                        space_view.name.clone(),
+                        if space_view.space_path.is_root() {
+                            space_view.display_name.clone()
+                        } else {
+                            space_view.space_path.to_string()
+                        },
                         false,
                     )
                     .clicked()
                 {
                     ui.close_menu();
                     let new_space_view_id = self.add_space_view(space_view);
-                    ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
+                    ctx.set_single_selection(Item::SpaceView(new_space_view_id));
                 }
             }
         })
@@ -757,7 +631,6 @@ fn visibility_button_ui(
 
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
-    spaces_info: &'a SpaceInfoCollection,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
 }
 
@@ -776,7 +649,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
-        space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights);
+        space_view_ui(self.ctx, ui, space_view, &highlights);
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
@@ -785,9 +658,10 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
 
-        let mut text = egui::WidgetText::RichText(egui::RichText::new(space_view.name.clone()));
+        let mut text =
+            egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()));
 
-        if self.ctx.selection().contains(&Selection::SpaceView(*tab)) {
+        if self.ctx.selection().contains(&Item::SpaceView(*tab)) {
             // Show that it is selected:
             let egui_ctx = &self.ctx.re_ui.egui_ctx;
             let selection_bg_color = egui_ctx.style().visuals.selection.bg_fill;
@@ -799,7 +673,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
 
     fn on_tab_button(&mut self, tab: &mut Self::Tab, response: &egui::Response) {
         if response.clicked() {
-            self.ctx.set_single_selection(Selection::SpaceView(*tab));
+            self.ctx.set_single_selection(Item::SpaceView(*tab));
         }
     }
 }
@@ -855,7 +729,7 @@ fn space_view_options_ui(
                     .clicked()
                 {
                     viewport.maximized = Some(space_view_id);
-                    ctx.set_single_selection(Selection::SpaceView(space_view_id));
+                    ctx.set_single_selection(Item::SpaceView(space_view_id));
                 }
             }
 
@@ -879,17 +753,9 @@ fn space_view_options_ui(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpaceInfoCollection,
     space_view: &mut SpaceView,
     space_view_highlights: &SpaceViewHighlights,
 ) {
-    let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
-        ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text(format!("Unknown space {}", space_view.space_path)));
-        });
-        return;
-    };
-
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text("No time selected"));
@@ -897,13 +763,7 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(
-        ctx,
-        ui,
-        reference_space_info,
-        latest_at,
-        space_view_highlights,
-    );
+    space_view.scene_ui(ctx, ui, latest_at, space_view_highlights);
 }
 
 // ----------------------------------------------------------------------------

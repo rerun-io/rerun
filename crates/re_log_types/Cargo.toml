@@ -74,7 +74,7 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 # Optional dependencies:
 anyhow = { workspace = true, optional = true }
 ecolor = { workspace = true, optional = true }
-glam = { workspace = true, optional = true }                            # can't update glam until a new version of `macaw` is released
+glam = { workspace = true, optional = true }
 image = { workspace = true, default-features = false, optional = true }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }

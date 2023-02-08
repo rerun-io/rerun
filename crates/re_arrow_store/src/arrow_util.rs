@@ -266,8 +266,8 @@ fn test_clean_for_polars_nomodify() {
 
     // Colors don't need polars cleaning
     let bundle: ComponentBundle = build_some_colors(5).try_into().unwrap();
-    let cleaned = bundle.value.clean_for_polars();
-    assert_eq!(bundle.value, cleaned);
+    let cleaned = bundle.value_boxed().clean_for_polars();
+    assert_eq!(bundle.value_boxed(), cleaned);
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn test_clean_for_polars_modify() {
 
     let bundle: ComponentBundle = transforms.try_into().unwrap();
     assert_eq!(
-        *bundle.value.data_type(),
+        *bundle.value_boxed().data_type(),
         DataType::List(Box::new(Field::new(
             "item",
             DataType::Union(
@@ -340,7 +340,7 @@ fn test_clean_for_polars_modify() {
         )))
     );
 
-    let cleaned = bundle.value.clean_for_polars();
+    let cleaned = bundle.value_boxed().clean_for_polars();
 
     assert_eq!(
         *cleaned.data_type(),

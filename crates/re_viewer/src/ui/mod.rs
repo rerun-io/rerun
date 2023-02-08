@@ -7,6 +7,7 @@ mod selection_history;
 mod selection_history_ui;
 mod space_view;
 mod space_view_entity_picker;
+mod space_view_heuristics;
 mod view_bar_chart;
 mod view_category;
 mod view_tensor;

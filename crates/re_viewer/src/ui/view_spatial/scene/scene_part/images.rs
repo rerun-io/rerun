@@ -223,7 +223,7 @@ impl ScenePart for ImagesPart {
             };
 
             match query_primary_with_history::<Tensor, 3>(
-                &ctx.log_db.entity_db.arrow_store,
+                &ctx.log_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

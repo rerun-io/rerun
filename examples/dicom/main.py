@@ -78,29 +78,9 @@ def ensure_dataset_downloaded() -> Iterable[Path]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-    parser.add_argument(
-        "--connect",
-        dest="connect",
-        action="store_true",
-        help="Connect to an external viewer",
-    )
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    rr.script_add_args(parser)
     args = parser.parse_args()
-
-    rr.init("dicom")
-
-    if args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None and not args.headless:
-        rr.spawn_and_connect()
-
+    rr.script_setup(args, "dicom")
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
-
-    if args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)

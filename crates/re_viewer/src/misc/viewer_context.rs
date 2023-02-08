@@ -7,7 +7,7 @@ use crate::ui::{
 };
 
 use super::{
-    selection::{MultiSelection, Selection},
+    item::{Item, ItemCollection},
     HoverHighlight,
 };
 
@@ -37,7 +37,7 @@ pub struct ViewerContext<'a> {
 impl<'a> ViewerContext<'a> {
     /// Show an [`MsgId`] and make it selectable
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
-        let selection = Selection::MsgId(msg_id);
+        let selection = Item::MsgId(msg_id);
         let response = ui
             .selectable_label(self.selection().contains(&selection), msg_id.short_string())
             .on_hover_ui(|ui| {
@@ -97,7 +97,7 @@ impl<'a> ViewerContext<'a> {
         instance_path: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Selection::InstancePath(space_view_id, instance_path.clone());
+        let selection = Item::InstancePath(space_view_id, instance_path.clone());
         let subtype_string = if instance_path.instance_key.is_splat() {
             "Entity"
         } else {
@@ -127,7 +127,7 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         component_path: &ComponentPath,
     ) -> egui::Response {
-        let selection = Selection::ComponentPath(component_path.clone());
+        let selection = Item::ComponentPath(component_path.clone());
         let response = ui.selectable_label(self.selection().contains(&selection), text);
         self.cursor_interact_with_selectable(response, selection)
     }
@@ -139,7 +139,7 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         self.space_view_button_to(
             ui,
-            space_view.name.clone(),
+            space_view.display_name.clone(),
             space_view.id,
             space_view.category,
         )
@@ -152,7 +152,7 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         space_view_category: crate::ui::ViewCategory,
     ) -> egui::Response {
-        let selection = Selection::SpaceView(space_view_id);
+        let selection = Item::SpaceView(space_view_id);
         let is_selected = self.selection().contains(&selection);
 
         let response = self
@@ -169,7 +169,7 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
-        let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
+        let selection = Item::DataBlueprintGroup(space_view_id, group_handle);
         let response = self
             .re_ui
             .selectable_label_with_icon(
@@ -189,7 +189,7 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         entity_path: &EntityPath,
     ) -> egui::Response {
-        let selection = Selection::InstancePath(
+        let selection = Item::InstancePath(
             Some(space_view_id),
             InstancePath::entity_splat(entity_path.clone()),
         );
@@ -249,17 +249,14 @@ impl<'a> ViewerContext<'a> {
     /// Sets a single selection, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_single_selection(&mut self, item: Selection) -> MultiSelection {
+    pub fn set_single_selection(&mut self, item: Item) -> ItemCollection {
         self.rec_cfg.selection_state.set_single_selection(item)
     }
 
     /// Sets several objects to be selected, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_multi_selection(
-        &mut self,
-        items: impl Iterator<Item = Selection>,
-    ) -> MultiSelection {
+    pub fn set_multi_selection(&mut self, items: impl Iterator<Item = Item>) -> ItemCollection {
         self.rec_cfg.selection_state.set_multi_selection(items)
     }
 
@@ -280,7 +277,7 @@ impl<'a> ViewerContext<'a> {
     pub fn cursor_interact_with_selectable(
         &mut self,
         response: egui::Response,
-        selectable: Selection,
+        selectable: Item,
     ) -> egui::Response {
         let is_item_hovered =
             self.selection_state().highlight_for_ui_element(&selectable) == HoverHighlight::Hovered;
@@ -301,17 +298,17 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Returns the current selection.
-    pub fn selection(&self) -> &MultiSelection {
+    pub fn selection(&self) -> &ItemCollection {
         self.rec_cfg.selection_state.current()
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &MultiSelection {
+    pub fn hovered(&self) -> &ItemCollection {
         self.rec_cfg.selection_state.hovered()
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&mut self, hovered: impl Iterator<Item = Selection>) {
+    pub fn set_hovered(&mut self, hovered: impl Iterator<Item = Item>) {
         self.rec_cfg.selection_state.set_hovered(hovered);
     }
 

@@ -50,7 +50,7 @@ def log_view_coordinates(
     rerun.log_view_coordinates("world/camera", xyz="RUB")
     ```
 
-    For world-coordinates it's often conventient to just specify an up-axis.
+    For world-coordinates it's often convenient to just specify an up-axis.
     You can do so by using the `up`-parameter (where `up` is one of "+X", "-X", "+Y", "-Y", "+Z", "-Z"):
 
     ```

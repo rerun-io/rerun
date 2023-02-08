@@ -1,18 +1,14 @@
-use std::collections::BTreeMap;
-
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 
 use crate::{
-    misc::{
-        space_info::{SpaceInfo, SpaceInfoCollection},
-        SpaceViewHighlights, TransformCache, ViewerContext,
-    },
+    misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::view_category::categorize_entity_path,
 };
 
 use super::{
     data_blueprint::DataBlueprintTree,
+    space_view_heuristics::default_queried_entities,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self},
@@ -39,10 +35,10 @@ impl SpaceViewId {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct SpaceView {
     pub id: SpaceViewId,
-    pub name: String,
+    pub display_name: String,
 
     /// The "anchor point" of this space view.
-    /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
+    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_path: EntityPath,
@@ -63,87 +59,34 @@ pub struct SpaceView {
 impl SpaceView {
     pub fn new(
         category: ViewCategory,
-        space_info: &SpaceInfo,
+        space_path: &EntityPath,
         queries_entities: &[EntityPath],
     ) -> Self {
-        let name = if queries_entities.len() == 1 {
-            // a single entity in this space-view - name the space after it
-            queries_entities[0].to_string()
+        let display_name = if queries_entities.len() == 1 {
+            // A single entity in this space-view - name the space after it.
+            queries_entities[0]
+                .last()
+                .map_or_else(|| "/".to_owned(), |part| part.to_string())
+        } else if let Some(name) = space_path.iter().last() {
+            name.to_string()
         } else {
-            space_info.path.to_string()
+            // Include category name in the display for root paths because they look a tad bit too short otherwise.
+            format!("/ ({category})")
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_entities_according_to_hierarchy(queries_entities.iter(), &space_info.path);
+            .insert_entities_according_to_hierarchy(queries_entities.iter(), space_path);
 
         Self {
-            name,
+            display_name,
             id: SpaceViewId::random(),
-            space_path: space_info.path.clone(),
+            space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,
             view_state: ViewState::default(),
             category,
             entities_determined_by_user: false,
         }
-    }
-
-    /// List of entities a space view queries by default for a given category.
-    ///
-    /// These are all entities in the given space which have the requested category and are reachable by a transform.
-    pub fn default_queries_entities(
-        ctx: &ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-        space_info: &SpaceInfo,
-        category: ViewCategory,
-    ) -> Vec<EntityPath> {
-        crate::profile_function!();
-
-        let timeline = Timeline::log_time();
-        let log_db = &ctx.log_db;
-
-        let mut entities = Vec::new();
-
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            entities.extend(
-                space_info
-                    .descendants_without_transform
-                    .iter()
-                    .filter(|entity_path| {
-                        categorize_entity_path(timeline, log_db, entity_path).contains(category)
-                    })
-                    .cloned(),
-            );
-        });
-
-        entities
-    }
-
-    /// List of entities a space view queries by default for all any possible category.
-    pub fn default_queries_entities_by_category(
-        ctx: &ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-        space_info: &SpaceInfo,
-    ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
-        crate::profile_function!();
-
-        let timeline = Timeline::log_time();
-        let log_db = &ctx.log_db;
-
-        let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
-
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            for entity_path in &space_info.descendants_without_transform {
-                for category in categorize_entity_path(timeline, log_db, entity_path) {
-                    groups
-                        .entry(category)
-                        .or_default()
-                        .push(entity_path.clone());
-                }
-            }
-        });
-
-        groups
     }
 
     pub fn on_frame_start(
@@ -153,14 +96,10 @@ impl SpaceView {
     ) {
         self.data_blueprint.on_frame_start();
 
-        let Some(space_info) = spaces_info.get(&self.space_path) else {
-            return;
-        };
-
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
-                Self::default_queries_entities(ctx, spaces_info, space_info, self.category);
+                default_queried_entities(ctx, &self.space_path, spaces_info, self.category);
             self.data_blueprint
                 .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
         }
@@ -199,7 +138,6 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
     ) {
@@ -240,15 +178,8 @@ impl SpaceView {
                 );
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load(ctx, &query, &transforms, highlights);
-                self.view_state.ui_spatial(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    reference_space_info,
-                    scene,
-                    self.id,
-                    highlights,
-                );
+                self.view_state
+                    .ui_spatial(ctx, ui, &self.space_path, scene, self.id, highlights);
             }
 
             ViewCategory::Tensor => {
@@ -328,21 +259,13 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &EntityPath,
-        space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
     ) {
         ui.vertical(|ui| {
-            self.state_spatial.view_spatial(
-                ctx,
-                ui,
-                space,
-                scene,
-                space_info,
-                space_view_id,
-                highlights,
-            );
+            self.state_spatial
+                .view_spatial(ctx, ui, space, scene, space_view_id, highlights);
         });
     }
 

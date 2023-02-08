@@ -91,7 +91,9 @@ jobs:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
@@ -148,6 +150,30 @@ jobs:
         with:
           command: test
           args: --all-targets --all-features
+
+      - name: Set up git author
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up ghp-import
+        if: ${{ github.event_name == 'push' }}
+        run: pip install ghp-import
+
+      - name: Patch in a redirect page
+        if: ${{ github.event_name == 'push' }}
+        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
+        env:
+          REDIRECT_CRATE: rerun
+
+      # See: https://github.com/c-w/ghp-import
+      - name: Deploy the docs
+        if: ${{ github.event_name == 'push' }}
+        run: python3 -m ghp_import -n -p -x rust/head target/doc/ -m "Update the rust docs"
 
   # ---------------------------------------------------------------------------
 

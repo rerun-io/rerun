@@ -24,6 +24,7 @@ use crate::msg_bundle::Component;
 pub struct ClassId(pub u16);
 
 impl Component for ClassId {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.class_id".into()
     }

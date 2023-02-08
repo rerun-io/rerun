@@ -18,9 +18,6 @@ use super::UnreachableTransform;
 pub struct SpaceInfo {
     pub path: EntityPath,
 
-    /// The latest known coordinate system for this space.
-    pub coordinates: Option<ViewCoordinates>,
-
     /// All paths in this space (including self and children connected by the identity transform).
     pub descendants_without_transform: IntSet<EntityPath>,
 
@@ -36,7 +33,6 @@ impl SpaceInfo {
     pub fn new(path: EntityPath) -> Self {
         Self {
             path,
-            coordinates: Default::default(),
             descendants_without_transform: Default::default(),
             parent: Default::default(),
             child_spaces: Default::default(),
@@ -60,7 +56,7 @@ impl SpaceInfo {
             visitor(space_info);
 
             for (child_path, transform) in &space_info.child_spaces {
-                let Some(child_space) = space_info_collection.get(child_path) else {
+                let Some(child_space) = space_info_collection.spaces.get(child_path) else {
                     re_log::warn_once!("Child space info {} not part of space info collection", child_path);
                     continue;
                 };
@@ -88,10 +84,6 @@ impl SpaceInfo {
         }
 
         visit_descendants_with_reachable_transform_recursively(self, spaces_info, false, visitor);
-    }
-
-    pub fn parent_transform(&self) -> Option<&Transform> {
-        self.parent.as_ref().map(|(_, transform)| transform)
     }
 }
 
@@ -163,61 +155,34 @@ impl SpaceInfoCollection {
 
         let mut spaces_info = Self::default();
 
-        // The root itself.
-        // To make our heuristics work we pretend direct child of the root has a transform,
-        // breaking the pattern applied for everything else where we create a SpaceInfo once we hit a transform.
-        //
-        // TODO(andreas): Our dependency on SpaceInfo in this way is quite telling - we should be able to create a SpaceView without having a corresponding SpaceInfo
-        //                Currently too many things depend on every SpaceView being backed up by a concrete SpaceInfo on its space path.
+        // Start at the root. The root is always part of the collection!
         if query_transform(entity_db, &EntityPath::root(), &query).is_some() {
             re_log::warn_once!("The root entity has a 'transform' component! This will have no effect. Did you mean to apply the transform elsewhere?");
         }
         let mut root_space_info = SpaceInfo::new(EntityPath::root());
-        root_space_info
-            .descendants_without_transform
-            .insert(EntityPath::root());
-
-        for tree in entity_db.tree.children.values() {
-            let mut space_info = SpaceInfo::new(tree.path.clone());
-            let transform = query_transform(entity_db, &EntityPath::root(), &query)
-                .unwrap_or(Transform::Rigid3(re_log_types::Rigid3::IDENTITY));
-            space_info.parent = Some((EntityPath::root(), transform.clone()));
-            space_info
-                .descendants_without_transform
-                .insert(tree.path.clone());
-
-            root_space_info
-                .child_spaces
-                .insert(tree.path.clone(), transform);
-
-            add_children(entity_db, &mut spaces_info, &mut space_info, tree, &query);
-            spaces_info.spaces.insert(tree.path.clone(), space_info);
-        }
+        add_children(
+            entity_db,
+            &mut spaces_info,
+            &mut root_space_info,
+            &entity_db.tree,
+            &query,
+        );
         spaces_info
             .spaces
             .insert(EntityPath::root(), root_space_info);
 
-        for (entity_path, space_info) in &mut spaces_info.spaces {
-            space_info.coordinates = query_view_coordinates(entity_db, entity_path, &query);
-        }
-
         spaces_info
     }
 
-    pub fn get(&self, path: &EntityPath) -> Option<&SpaceInfo> {
-        self.spaces.get(path)
-    }
-
-    pub fn get_first_parent_with_info(&self, path: &EntityPath) -> Option<&SpaceInfo> {
+    pub fn get_first_parent_with_info(&self, path: &EntityPath) -> &SpaceInfo {
         let mut path = path.clone();
-        while let Some(parent) = path.parent() {
-            let space_info = self.get(&path);
-            if space_info.is_some() {
+        loop {
+            if let Some(space_info) = self.spaces.get(&path) {
                 return space_info;
             }
-            path = parent;
+            path = path.parent().expect(
+                "The root path is part of SpaceInfoCollection, as such it's impossible to not have a space info parent!");
         }
-        None
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &SpaceInfo> {
@@ -236,14 +201,8 @@ impl SpaceInfoCollection {
         crate::profile_function!();
 
         // Get closest space infos for the given entity paths.
-        let Some(mut from_space) = self.get_first_parent_with_info(from) else {
-            re_log::warn_once!("{} not part of space infos", from);
-            return Err(UnreachableTransform::UnknownSpaceInfo);
-        };
-        let Some(mut to_reference_space) = self.get_first_parent_with_info(to_reference) else {
-            re_log::warn_once!("{} not part of space infos", to_reference);
-            return Err(UnreachableTransform::UnknownSpaceInfo);
-        };
+        let mut from_space = self.get_first_parent_with_info(from);
+        let mut to_reference_space = self.get_first_parent_with_info(to_reference);
 
         // Reachability is (mostly) commutative!
         // This means we can simply walk from both nodes up until we find a common ancestor!
@@ -282,7 +241,8 @@ impl SpaceInfoCollection {
                     }
                 }?;
 
-                let Some(parent_space) = self.get(parent_path) else {
+                let Some(parent_space) = self.spaces.get(parent_path)
+                else {
                     re_log::warn_once!("{} not part of space infos", parent_path);
                     return Err(UnreachableTransform::UnknownSpaceInfo);
                 };
@@ -313,10 +273,10 @@ pub fn query_view_coordinates(
     ent_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
-    let arrow_store = &entity_db.arrow_store;
+    let data_store = &entity_db.data_store;
 
     let entity_view =
-        query_entity_with_primary::<ViewCoordinates>(arrow_store, query, ent_path, &[]).ok()?;
+        query_entity_with_primary::<ViewCoordinates>(data_store, query, ent_path, &[]).ok()?;
 
     let mut iter = entity_view.iter_primary().ok()?;
 

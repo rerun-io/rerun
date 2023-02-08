@@ -40,6 +40,7 @@ impl Vec2D {
 }
 
 impl From<[f32; 2]> for Vec2D {
+    #[inline]
     fn from(v: [f32; 2]) -> Self {
         Self(v)
     }
@@ -51,6 +52,7 @@ where
 {
     type Output = Idx::Output;
 
+    #[inline]
     fn index(&self, index: Idx) -> &Self::Output {
         &self.0[index]
     }
@@ -112,6 +114,11 @@ pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3
 
 impl Vec3D {
     #[inline]
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self::from([x, y, z])
+    }
+
+    #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
     }
@@ -128,6 +135,7 @@ impl Vec3D {
 }
 
 impl From<[f32; 3]> for Vec3D {
+    #[inline]
     fn from(v: [f32; 3]) -> Self {
         Self(v)
     }
@@ -139,6 +147,7 @@ where
 {
     type Output = Idx::Output;
 
+    #[inline]
     fn index(&self, index: Idx) -> &Self::Output {
         &self.0[index]
     }
@@ -152,6 +161,7 @@ impl Component for Vec3D {
 
 #[cfg(feature = "glam")]
 impl From<Vec3D> for glam::Vec3 {
+    #[inline]
     fn from(v: Vec3D) -> Self {
         Self::from_slice(&v.0)
     }
@@ -159,6 +169,7 @@ impl From<Vec3D> for glam::Vec3 {
 
 #[cfg(feature = "glam")]
 impl From<glam::Vec3> for Vec3D {
+    #[inline]
     fn from(v: glam::Vec3) -> Self {
         Self(v.to_array())
     }
@@ -203,14 +214,17 @@ impl Vec4D {
     pub fn x(&self) -> f32 {
         self.0[0]
     }
+
     #[inline]
     pub fn y(&self) -> f32 {
         self.0[1]
     }
+
     #[inline]
     pub fn z(&self) -> f32 {
         self.0[2]
     }
+
     #[inline]
     pub fn w(&self) -> f32 {
         self.0[3]

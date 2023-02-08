@@ -20,12 +20,11 @@ checksum = "330223a1aecc308757b9926e9391c9b47f8ef2dbd8aea9df88312aea18c5e8d6"
 
 [[package]]
 name = "accesskit"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3083ac5a97521e35388ca80cf365b6be5210962cc59f11ee238cd92ac2fa9524"
+checksum = "4803cf8c252f374ae6bfbb341e49e5a37f7601f2ce74a105927a663eba952c67"
 dependencies = [
- "enumset",
- "kurbo",
+ "enumn",
  "serde",
 ]
 
@@ -122,6 +121,21 @@ name = "anyhow"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
+
+[[package]]
+name = "api_demo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.1.4",
+ "glam",
+ "itertools",
+ "mimalloc",
+ "ndarray",
+ "ndarray-rand",
+ "rand",
+ "rerun_sdk",
+]
 
 [[package]]
 name = "arboard"
@@ -308,7 +322,7 @@ version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
 dependencies = [
- "hermit-abi",
+ "hermit-abi 0.1.19",
  "libc",
  "winapi",
 ]
@@ -634,14 +648,14 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.0.26"
+version = "4.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2148adefda54e14492fb9bddcc600b4344c5d1a3123bd666dcb939c6f0e0e57e"
+checksum = "f13b9c79b5d1dd500d20ef541215a6423c75829ef43117e1b4d17fd8af0b5d76"
 dependencies = [
- "atty",
  "bitflags",
  "clap_derive",
  "clap_lex 0.3.0",
+ "is-terminal",
  "once_cell",
  "strsim",
  "termcolor",
@@ -649,9 +663,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.0.21"
+version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0177313f9f02afc995627906bbd8967e2be069f5261954222dac78290c2b9014"
+checksum = "684a277d672e91966334af371f1a7b5833f9aa00b07c84e92fbce95e00208ce8"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error",
@@ -1227,7 +1241,7 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 [[package]]
 name = "ecolor"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1236,7 +1250,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1263,7 +1277,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1285,7 +1299,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1299,7 +1313,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "android-activity",
  "arboard",
@@ -1325,7 +1339,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "egui",
  "serde",
@@ -1335,7 +1349,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1357,7 +1371,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1379,13 +1393,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "enumn"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e88bcb3a067a6555d577aba299e75eff9942da276e6506fc6274327daa026132"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "enumset"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19be8061a06ab6f3a6cf21106c873578bf01bd42ad15e0311a9c76161cb1c753"
 dependencies = [
  "enumset_derive",
- "serde",
 ]
 
 [[package]]
@@ -1403,7 +1427,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=660566c4996535308bb09330caf346c0be10be33#660566c4996535308bb09330caf346c0be10be33"
+source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
@@ -1428,6 +1452,27 @@ dependencies = [
  "rustversion",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "errno"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f639046355ee4f37944e44f60642c6f3a7efa3cf6b78c78a0d989a8ce6c396a1"
+dependencies = [
+ "errno-dragonfly",
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "errno-dragonfly"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]
@@ -2070,6 +2115,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hermit-abi"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "hexf-parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2285,10 +2339,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "io-lifetimes"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7d6c6f8c91b4b9ed43484ad1a938e393caf35960fce7f82a040497207bd8e9e"
+dependencies = [
+ "libc",
+ "windows-sys 0.42.0",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30e22bd8629359895450b59ea7a776c850561b96a3b1d31321c1949d9e6c9146"
+
+[[package]]
+name = "is-terminal"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28dfb6c8100ccc63462345b67d1bbc3679177c75ee4bf59bf29c8b1d110b8189"
+dependencies = [
+ "hermit-abi 0.2.6",
+ "io-lifetimes",
+ "rustix",
+ "windows-sys 0.42.0",
+]
 
 [[package]]
 name = "itertools"
@@ -2381,16 +2457,6 @@ checksum = "8367585489f01bc55dd27404dcf56b95e6da061a256a666ab23be9ba96a2e587"
 dependencies = [
  "bitflags",
  "libc",
-]
-
-[[package]]
-name = "kurbo"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a53776d271cfb873b17c618af0298445c88afc52837f3e948fa3fafd131f449"
-dependencies = [
- "arrayvec",
- "serde",
 ]
 
 [[package]]
@@ -2521,6 +2587,12 @@ name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f051f77a7c8e6957c0696eac88f26b0117e54f52d3fc682ab19397a8812846a4"
 
 [[package]]
 name = "litrs"
@@ -2716,6 +2788,12 @@ dependencies = [
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.42.0",
 ]
+
+[[package]]
+name = "multimap"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
 name = "multiversion"
@@ -2991,7 +3069,7 @@ version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6058e64324c71e02bc2b150e4f3bc8286db6c83092132ffa3f6b1eab0f9def5"
 dependencies = [
- "hermit-abi",
+ "hermit-abi 0.1.19",
  "libc",
 ]
 
@@ -3104,6 +3182,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "objectron"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.1.4",
+ "glam",
+ "image",
+ "itertools",
+ "mimalloc",
+ "prost",
+ "prost-build",
+ "rerun_sdk",
 ]
 
 [[package]]
@@ -3406,6 +3499,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 
 [[package]]
+name = "prettyplease"
+version = "0.1.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e97e3215779627f01ee256d2fad52f3d95e8e1c11e9fc6fd08f7cd455d5d5c78"
+dependencies = [
+ "proc-macro2",
+ "syn",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3460,6 +3563,61 @@ name = "profiling"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
+
+[[package]]
+name = "prost"
+version = "0.11.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21dc42e00223fc37204bd4aa177e69420c604ca4a183209a8f9de30c6d934698"
+dependencies = [
+ "bytes",
+ "prost-derive",
+]
+
+[[package]]
+name = "prost-build"
+version = "0.11.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3f8ad728fb08fe212df3c05169e940fbb6d9d16a877ddde14644a983ba2012e"
+dependencies = [
+ "bytes",
+ "heck 0.4.0",
+ "itertools",
+ "lazy_static",
+ "log",
+ "multimap",
+ "petgraph",
+ "prettyplease",
+ "prost",
+ "prost-types",
+ "regex",
+ "syn",
+ "tempfile",
+ "which",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.11.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bda8c0881ea9f722eb9629376db3d0b903b462477c1aafcb0566610ac28ac5d"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.11.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5e0526209433e96d83d750dd81a99118edbc55739e7e61a46764fd2ad537788"
+dependencies = [
+ "bytes",
+ "prost",
+]
 
 [[package]]
 name = "puffin"
@@ -3619,6 +3777,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "clap 4.1.4",
  "gltf",
  "mimalloc",
  "reqwest",
@@ -4179,7 +4338,7 @@ name = "rerun"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 4.0.26",
+ "clap 4.1.4",
  "crossbeam",
  "document-features",
  "egui",
@@ -4239,7 +4398,7 @@ version = "0.1.0"
 dependencies = [
  "arrow2",
  "arrow2_convert",
- "clap 4.0.26",
+ "clap 4.1.4",
  "crossbeam",
  "document-features",
  "eframe",
@@ -4260,6 +4419,7 @@ dependencies = [
  "re_viewer",
  "re_web_server",
  "re_ws_comms",
+ "thiserror",
  "tokio",
  "webbrowser",
 ]
@@ -4363,6 +4523,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
  "semver",
+]
+
+[[package]]
+name = "rustix"
+version = "0.36.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4fdebc4b395b7fbb9ab11e462e20ed9051e7b16e42d24042c776eca0ac81b03"
+dependencies = [
+ "bitflags",
+ "errno",
+ "io-lifetimes",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.42.0",
 ]
 
 [[package]]
@@ -5883,6 +6057,17 @@ dependencies = [
  "bitflags",
  "js-sys",
  "web-sys",
+]
+
+[[package]]
+name = "which"
+version = "4.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2441c784c52b289a054b7201fc93253e288f094e2f4be9058343127c4226a269"
+dependencies = [
+ "either",
+ "libc",
+ "once_cell",
 ]
 
 [[package]]

@@ -48,13 +48,13 @@ def run_segmentation() -> None:
         class_ids=np.array([42], dtype=np.uint8),
     )
 
-    rr.log_text_entry("seg_demo_log", "no rects, default colored points, a single point has a label")
+    rr.log_text_entry("logs/seg_demo_log", "no rects, default colored points, a single point has a label")
 
     # Log an initial segmentation map with arbitrary colors
     rr.set_time_seconds("sim_time", 2)
     rr.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
     rr.log_text_entry(
-        "seg_demo_log",
+        "logs/seg_demo_log",
         "default colored rects, default colored points, " "all points except the bottom right clusters have labels",
     )
 
@@ -65,7 +65,7 @@ def run_segmentation() -> None:
         [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
         timeless=False,
     )
-    rr.log_text_entry("seg_demo_log", "points/rects with user specified colors")
+    rr.log_text_entry("logs/seg_demo_log", "points/rects with user specified colors")
 
     # Log with a mixture of set and unset colors / labels
     rr.set_time_seconds("sim_time", 4)
@@ -74,7 +74,7 @@ def run_segmentation() -> None:
         [AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), AnnotationInfo(99, label="label3")],
         timeless=False,
     )
-    rr.log_text_entry("seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
+    rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
 def run_points_3d() -> None:
@@ -278,34 +278,10 @@ def main() -> None:
         "--demo", type=str, default="all", help="What demo to run", choices=["all"] + list(demos.keys())
     )
 
-    parser.add_argument(
-        "--connect",
-        dest="connect",
-        action="store_true",
-        help="Connect to an external viewer",
-    )
-    parser.add_argument(
-        "--serve",
-        dest="serve",
-        action="store_true",
-        help="Serve a web viewer (WARNING: experimental feature)",
-    )
-    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
-    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-
+    rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.init("api_demo")
-
-    if args.serve:
-        rr.serve()
-    elif args.connect:
-        # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
-        # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
-    elif args.save is None:
-        rr.spawn_and_connect()
+    rr.script_setup(args, "api_demo")
 
     if args.demo == "all":
         print("Running all demos…")
@@ -315,15 +291,7 @@ def main() -> None:
         demo = demos[args.demo]
         demo()
 
-    if args.serve:
-        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        try:
-            sleep(100_000)
-        except:
-            pass
-
-    elif args.save is not None:
-        rr.save(args.save)
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":
