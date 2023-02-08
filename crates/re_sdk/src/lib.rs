@@ -45,4 +45,7 @@ pub mod external {
     pub use re_log_types;
     pub use re_memory;
     pub use re_sdk_comms;
+
+    #[cfg(feature = "glam")]
+    pub use re_log_types::external::glam;
 }
