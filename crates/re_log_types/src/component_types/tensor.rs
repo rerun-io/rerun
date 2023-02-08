@@ -468,10 +468,10 @@ macro_rules! tensor_type {
             }
         }
 
-        impl<'a> TryFrom<::ndarray::ArrayViewD<'a, $type>> for Tensor {
+        impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, $type, D>> for Tensor {
             type Error = TensorCastError;
 
-            fn try_from(view: ::ndarray::ArrayViewD<'a, $type>) -> Result<Self, Self::Error> {
+            fn try_from(view: ::ndarray::ArrayView<'a, $type, D>) -> Result<Self, Self::Error> {
                 let shape = view
                     .shape()
                     .iter()

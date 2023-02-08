@@ -112,6 +112,11 @@ pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3
 
 impl Vec3D {
     #[inline]
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self::from([x, y, z])
+    }
+
+    #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
     }
