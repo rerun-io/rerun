@@ -7,7 +7,7 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 #[tokio::main]
 async fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_native_logging();
-    rerun::run(std::env::args())
+    rerun::run(rerun::CallSource::Cli, std::env::args())
         .await
         .map(std::process::ExitCode::from)
 }
