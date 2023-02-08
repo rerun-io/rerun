@@ -1,7 +1,7 @@
 # https://github.com/EmbarkStudios/cargo-deny
 #
 # cargo-deny checks our dependency tree for copy-left licenses,
-# duplicate dependencies, and [rustsec advisories](https://rustsec.org/advisories).
+# duplicate dependencies, and rustsec advisories (https://rustsec.org/advisories).
 #
 # Install: `cargo install cargo-deny`
 # Check: `cargo deny check`.
