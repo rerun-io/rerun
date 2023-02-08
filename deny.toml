@@ -1,3 +1,11 @@
+# https://github.com/EmbarkStudios/cargo-deny
+#
+# cargo-deny checks our dependency tree for copy-left licenses,
+# duplicate dependencies, and [rustsec advisories](https://rustsec.org/advisories).
+#
+# Install: `cargo install cargo-deny`
+# Check: `cargo deny check`.
+
 targets = [
   { triple = "aarch64-apple-darwin" },
   { triple = "aarch64-linux-android" },
