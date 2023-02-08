@@ -42,6 +42,7 @@ impl TextEntry {
 }
 
 impl Component for TextEntry {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.text_entry".into()
     }

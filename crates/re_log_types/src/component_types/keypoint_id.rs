@@ -26,6 +26,7 @@ use crate::msg_bundle::Component;
 pub struct KeypointId(pub u16);
 
 impl Component for KeypointId {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.keypoint_id".into()
     }

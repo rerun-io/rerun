@@ -86,6 +86,7 @@ impl Rect2D {
 }
 
 impl Component for Rect2D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.rect2d".into()
     }

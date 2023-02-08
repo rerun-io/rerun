@@ -28,6 +28,7 @@ use crate::msg_bundle::Component;
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {
+    #[inline]
     pub fn to_array(&self) -> [u8; 4] {
         [
             (self.0 >> 24) as u8,
@@ -39,6 +40,7 @@ impl ColorRGBA {
 }
 
 impl From<[u8; 4]> for ColorRGBA {
+    #[inline]
     fn from(bytes: [u8; 4]) -> Self {
         Self(
             (bytes[0] as u32) << 24
@@ -50,6 +52,7 @@ impl From<[u8; 4]> for ColorRGBA {
 }
 
 impl Component for ColorRGBA {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.colorrgba".into()
     }
