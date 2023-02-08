@@ -13,23 +13,20 @@
 use std::{
     collections::HashSet,
     f32::consts::{PI, TAU},
+    net::SocketAddr,
 };
 
-use clap::{Parser, ValueEnum};
-use rerun::{
-    external::{
-        re_log,
-        re_log_types::{
-            external::{arrow2, arrow2_convert},
-            ApplicationId,
-        },
-        re_memory::AccountingAllocator,
-    },
-    AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Component,
-    ComponentName, EntityPath, Label, LineStrip3D, MsgSender, Point2D, Point3D, Quaternion, Radius,
-    RecordingId, Rect2D, Rigid3, Session, SignedAxis3, Tensor, TensorDataMeaning, TextEntry, Time,
-    TimePoint, TimeType, Timeline, Transform, Vec3D, ViewCoordinates,
+use rerun::external::{
+    re_log,
+    re_log_types::external::{arrow2, arrow2_convert},
 };
+use rerun::{
+    AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Component,
+    ComponentName, EntityPath, Label, LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D,
+    Rigid3, SignedAxis3, Tensor, TensorDataMeaning, TextEntry, Transform, Vec3D, ViewCoordinates,
+};
+use rerun::{ApplicationId, MsgSender, RecordingId, Session};
+use rerun::{Time, TimePoint, TimeType, Timeline};
 
 // --- Rerun logging ---
 
@@ -286,7 +283,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
     // In either case, this raises the question of tracking time at the SDK level, akin to what the
     // python SDK does.
     fn log_info(session: &mut Session, timepoint: TimePoint, text: &str) -> anyhow::Result<()> {
-        MsgSender::new("seg_demo_log")
+        MsgSender::new("logs/seg_demo_log")
             .with_timepoint(timepoint)
             .with_component(&[TextEntry::new(text, Some("INFO".into()))])?
             .send(session)
@@ -612,24 +609,19 @@ struct Args {
     /// If specified, connects and sends the logged data to a remote Rerun viewer.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    addr: Option<Option<String>>,
+    connect: Option<Option<SocketAddr>>,
 
     #[clap(long, value_enum)]
     demo: Option<Vec<Demo>>,
 }
 
-// Use MiMalloc as global allocator (because it is fast), wrapped in Rerun's allocation tracker
-// so that the rerun viewer can show how much memory it is using when calling `show`.
-#[global_allocator]
-static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
-    AccountingAllocator::new(mimalloc::MiMalloc);
-
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
+    use clap::{Parser as _, ValueEnum as _};
     let args = Args::parse();
-    let addr = match args.addr.as_ref() {
-        Some(Some(addr)) => Some(addr.parse()?),
+    let addr = match args.connect {
+        Some(Some(addr)) => Some(addr),
         Some(None) => Some(rerun::default_server_addr()),
         None => None,
     };
@@ -666,7 +658,7 @@ fn main() -> anyhow::Result<()> {
     // TODO(cmc): arg parsing and arg interpretation helpers
     // TODO(cmc): missing flags: save, serve
     // TODO(cmc): expose an easy to use async local mode.
-    if args.addr.is_none() {
+    if args.connect.is_none() {
         let log_messages = session.drain_log_messages_buffer();
         rerun::viewer::show(log_messages)?;
     }
