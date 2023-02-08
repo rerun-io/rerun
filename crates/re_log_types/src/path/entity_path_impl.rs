@@ -43,6 +43,11 @@ impl EntityPathImpl {
     }
 
     #[inline]
+    pub fn last(&self) -> Option<&EntityPathPart> {
+        self.parts.last()
+    }
+
+    #[inline]
     pub fn push(&mut self, comp: EntityPathPart) {
         self.parts.push(comp);
     }

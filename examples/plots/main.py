@@ -46,7 +46,7 @@ def log_parabola() -> None:
         elif f_of_t > 10.0:
             color = [0, 255, 0]
 
-        rr.log_scalar("parabola", f_of_t, label="f(t) = (0.01t - 3)³ + 1", radius=radius, color=color)
+        rr.log_scalar("curves/parabola", f_of_t, label="f(t) = (0.01t - 3)³ + 1", radius=radius, color=color)
 
 
 def log_trig() -> None:
