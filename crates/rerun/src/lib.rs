@@ -6,9 +6,9 @@
 #![doc = document_features::document_features!()]
 //!
 
-// NOTE: Have a look at `rerun_sdk/src/lib.rs` for an accurate listing of all these symbols.
+// NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
-pub use rerun_sdk::*;
+pub use re_sdk::*;
 
 
 #[cfg(not(feature = "sdk"))]

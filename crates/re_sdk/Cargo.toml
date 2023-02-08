@@ -1,5 +1,5 @@
 [package]
-name = "rerun_sdk"
+name = "re_sdk"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

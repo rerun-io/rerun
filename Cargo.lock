@@ -3196,7 +3196,7 @@ dependencies = [
  "mimalloc",
  "prost",
  "prost-build",
- "rerun_sdk",
+ "rerun",
 ]
 
 [[package]]
@@ -3781,7 +3781,7 @@ dependencies = [
  "gltf",
  "mimalloc",
  "reqwest",
- "rerun_sdk",
+ "rerun",
 ]
 
 [[package]]
@@ -4054,6 +4054,37 @@ dependencies = [
  "wgpu-core",
  "winit",
  "zip",
+]
+
+[[package]]
+name = "re_sdk"
+version = "0.1.0"
+dependencies = [
+ "arrow2",
+ "arrow2_convert",
+ "clap 4.1.4",
+ "crossbeam",
+ "document-features",
+ "lazy_static",
+ "mimalloc",
+ "ndarray",
+ "ndarray-rand",
+ "nohash-hasher",
+ "once_cell",
+ "rand",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_memory",
+ "re_sdk_comms",
+ "re_smart_channel",
+ "re_string_interner",
+ "re_viewer",
+ "re_web_server",
+ "re_ws_comms",
+ "thiserror",
+ "tokio",
+ "webbrowser",
 ]
 
 [[package]]
@@ -4351,12 +4382,12 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_memory",
+ "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
  "re_viewer",
  "re_web_server",
  "re_ws_comms",
- "rerun_sdk",
  "tokio",
  "webbrowser",
 ]
@@ -4390,37 +4421,6 @@ dependencies = [
  "tokio",
  "toml 0.7.1",
  "uuid",
-]
-
-[[package]]
-name = "rerun_sdk"
-version = "0.1.0"
-dependencies = [
- "arrow2",
- "arrow2_convert",
- "clap 4.1.4",
- "crossbeam",
- "document-features",
- "lazy_static",
- "mimalloc",
- "ndarray",
- "ndarray-rand",
- "nohash-hasher",
- "once_cell",
- "rand",
- "re_error",
- "re_log",
- "re_log_types",
- "re_memory",
- "re_sdk_comms",
- "re_smart_channel",
- "re_string_interner",
- "re_viewer",
- "re_web_server",
- "re_ws_comms",
- "thiserror",
- "tokio",
- "webbrowser",
 ]
 
 [[package]]
