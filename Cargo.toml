@@ -25,7 +25,7 @@ arrow2_convert = "0.3"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
 ecolor = "0.20.0"
-eframe = { version = "0.20.0", default-features = false }
+eframe = { version = "0.20.1", default-features = false }
 egui = "0.20.1"
 egui_extras = "0.20.0"
 egui-wgpu = "0.20.0"
