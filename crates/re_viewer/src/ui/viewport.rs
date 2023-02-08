@@ -487,9 +487,10 @@ impl Viewport {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            let mut space_view_candidates = all_possible_space_views(ctx, spaces_info);
-            space_view_candidates.sort_by_key(|space_view| space_view.space_path.to_string());
-            for space_view in space_view_candidates {
+            for space_view in all_possible_space_views(ctx, spaces_info)
+                .into_iter()
+                .sorted_by_key(|space_view| space_view.space_path.to_string())
+            {
                 if ctx
                     .re_ui
                     .selectable_label_with_icon(

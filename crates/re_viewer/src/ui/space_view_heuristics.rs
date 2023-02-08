@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use enumset::EnumSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
@@ -16,7 +15,7 @@ use crate::{
     ui::{view_category::categorize_entity_path, ViewCategory},
 };
 
-use super::SpaceView;
+use super::{view_category::ViewCategorySet, SpaceView};
 
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
@@ -25,7 +24,8 @@ pub fn all_possible_space_views(
 ) -> Vec<SpaceView> {
     crate::profile_function!();
 
-    // Everything is a candidate for which we have a space info (i.e. a transform!) plus direct descendants of the root.
+    // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
+    // as well as all direct descendants of the root.
     let root_children = &ctx.log_db.entity_db.tree.children;
     let candidate_space_paths = spaces_info
         .iter()
@@ -46,31 +46,35 @@ pub fn all_possible_space_views(
         .collect()
 }
 
+fn contains_any_image(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> bool {
+    re_query::query_entity_with_primary::<Tensor>(&entity_db.data_store, query, entity_path, &[])
+        .map_or(false, |entity_view| {
+            entity_view
+                .iter_primary_flattened()
+                .any(|tensor| tensor.is_shaped_like_an_image())
+        })
+}
+
 fn is_interesting_space_view_at_root(
     entity_db: &EntityDb,
     candidate: &SpaceView,
     query: &LatestAtQuery,
 ) -> bool {
     // Not interesting if it has only data blueprint groups and no direct entities.
+    // -> If there In that case we want spaceviews at those groups.
     if candidate.data_blueprint.root_group().entities.is_empty() {
         return false;
     }
 
-    // Not interesting if it has only images
+    // If there are any images directly under the root, don't create root space either.
+    // -> For images we want more fine grained control and resort to child-of-root spaces only.
     for entity_path in &candidate.data_blueprint.root_group().entities {
-        if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-            &entity_db.data_store,
-            query,
-            entity_path,
-            &[],
-        ) {
-            if let Ok(iter) = entity_view.iter_primary() {
-                for tensor in iter.flatten() {
-                    if tensor.is_shaped_like_an_image() {
-                        return false;
-                    }
-                }
-            }
+        if contains_any_image(entity_path, entity_db, query) {
+            return false;
         }
     }
 
@@ -80,7 +84,7 @@ fn is_interesting_space_view_at_root(
 fn is_interesting_space_view_not_at_root(
     entity_db: &EntityDb,
     candidate: &SpaceView,
-    categories_with_interesting_roots: &EnumSet<ViewCategory>,
+    categories_with_interesting_roots: &ViewCategorySet,
     query: &LatestAtQuery,
 ) -> bool {
     // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
@@ -90,7 +94,11 @@ fn is_interesting_space_view_not_at_root(
         return true;
     }
 
-    // .. otherwise, spatial views are considered only interesting if they have in interesting transform.
+    // .. otherwise, spatial views are considered only interesting if they have an interesting transform.
+    // -> If there is no transform or just a rigid transform, it is trivial to display in a root/child-of-root space view.
+    //    If however there is ..
+    //       .. an unknown transform, the children can't be shown otherwise
+    //       .. an pinhole transform, we'd like to see the world from this camera's pov as well!
     if candidate.category == ViewCategory::Spatial {
         if let Some(transform) = query_transform(entity_db, &candidate.space_path, query) {
             match transform {
@@ -132,7 +140,7 @@ fn default_created_space_views_from_candidates(
                 && is_interesting_space_view_at_root(entity_db, space_view_candidate, &query))
             .then_some(space_view_candidate.category)
         })
-        .collect::<EnumSet<_>>();
+        .collect::<ViewCategorySet>();
 
     let mut space_views = Vec::new();
 
@@ -165,7 +173,7 @@ fn default_created_space_views_from_candidates(
 
         // Spatial views with images get extra treatment as well.
         if candidate.category == ViewCategory::Spatial {
-            let mut images: HashMap<(u64, u64), Vec<EntityPath>> = HashMap::default();
+            let mut images_by_size: HashMap<(u64, u64), Vec<EntityPath>> = HashMap::default();
 
             // For this we're only interested in the direct children.
             for entity_path in &candidate.data_blueprint.root_group().entities {
@@ -175,23 +183,25 @@ fn default_created_space_views_from_candidates(
                     entity_path,
                     &[],
                 ) {
-                    if let Ok(iter) = entity_view.iter_primary() {
-                        for tensor in iter.flatten() {
-                            if tensor.is_shaped_like_an_image() {
-                                debug_assert!(matches!(tensor.shape.len(), 2 | 3));
-                                let dim = (tensor.shape[0].size, tensor.shape[1].size);
-                                images.entry(dim).or_default().push(entity_path.clone());
-                            }
+                    for tensor in entity_view.iter_primary_flattened() {
+                        if tensor.is_shaped_like_an_image() {
+                            debug_assert!(matches!(tensor.shape.len(), 2 | 3));
+                            let dim = (tensor.shape[0].size, tensor.shape[1].size);
+                            images_by_size
+                                .entry(dim)
+                                .or_default()
+                                .push(entity_path.clone());
                         }
                     }
                 }
             }
 
-            if images.len() > 1 {
-                // Stack images of the same size, but no others.
-                for dim in images.keys() {
-                    // New spaces views that do not contain any image but this one plus all fitting class id images.
-                    let ignore_list = images
+            // If all images are the same size, proceed with the candidate as is. Otherwise...
+            if images_by_size.len() > 1 {
+                // ...stack images of the same size, but no others.
+                for dim in images_by_size.keys() {
+                    // Ignore every image that has a different size.
+                    let images_of_different_size = images_by_size
                         .iter()
                         .filter_map(|(other_dim, images)| (dim != other_dim).then_some(images))
                         .flatten()
@@ -201,9 +211,9 @@ fn default_created_space_views_from_candidates(
                         .data_blueprint
                         .entity_paths()
                         .iter()
-                        .filter(|path| !ignore_list.contains(path))
+                        .filter(|path| !images_of_different_size.contains(path))
                         .cloned()
-                        .collect::<Vec<_>>();
+                        .collect_vec();
 
                     let mut space_view =
                         SpaceView::new(candidate.category, &candidate.space_path, &entities);
@@ -291,11 +301,11 @@ pub fn default_queried_entities(
     entities
 }
 
-/// List of entities a space view queries by default for all any possible category.
+/// List of entities a space view queries by default for all possible category.
 fn default_queried_entities_by_category(
     ctx: &ViewerContext<'_>,
     space_path: &EntityPath,
-    spaces_info: &SpaceInfoCollection,
+    space_info_collection: &SpaceInfoCollection,
 ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
     crate::profile_function!();
 
@@ -304,20 +314,23 @@ fn default_queried_entities_by_category(
     let data_store = &log_db.entity_db.data_store;
 
     let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
-    let space_info = spaces_info.get_first_parent_with_info(space_path);
+    let space_info = space_info_collection.get_first_parent_with_info(space_path);
 
-    space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-        for entity_path in &space_info.descendants_without_transform {
-            if is_default_added_to_space_view(entity_path, space_path, data_store, timeline) {
-                for category in categorize_entity_path(timeline, log_db, entity_path) {
-                    groups
-                        .entry(category)
-                        .or_default()
-                        .push(entity_path.clone());
+    space_info.visit_descendants_with_reachable_transform(
+        space_info_collection,
+        &mut |space_info| {
+            for entity_path in &space_info.descendants_without_transform {
+                if is_default_added_to_space_view(entity_path, space_path, data_store, timeline) {
+                    for category in categorize_entity_path(timeline, log_db, entity_path) {
+                        groups
+                            .entry(category)
+                            .or_default()
+                            .push(entity_path.clone());
+                    }
                 }
             }
-        }
-    });
+        },
+    );
 
     groups
 }

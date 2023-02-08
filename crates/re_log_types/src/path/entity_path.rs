@@ -89,6 +89,10 @@ impl EntityPath {
         self.path.iter()
     }
 
+    pub fn last(&self) -> Option<&EntityPathPart> {
+        self.path.last()
+    }
+
     #[inline]
     pub fn as_slice(&self) -> &[EntityPathPart] {
         self.path.as_slice()
