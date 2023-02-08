@@ -82,26 +82,38 @@ enum Commands {
 pub enum AnalyticsCommands {
     /// Prints extra information about analytics.
     Details,
+
     /// Deletes everything related to analytics.
     ///
     /// This will remove all pending data that hasn't yet been sent to our servers, as well as
     /// reset your analytics ID.
     Clear,
+
     /// Associate an email address with the current user.
     Email { email: String },
+
     /// Enable analytics.
     Enable,
+
     /// Disable analytics.
     Disable,
+
     /// Prints the current configuration.
     Config,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CallSource {
+    Cli,
+
+    Python,
 }
 
 // Run the rerun application and return an exit code
 // If we be nice to use `std::process::ExitCode` here but
 // then there's no good way to get back at the exit code from
 // python
-pub async fn run<I, T>(args: I) -> anyhow::Result<u8>
+pub async fn run<I, T>(call_source: CallSource, args: I) -> anyhow::Result<u8>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
@@ -121,7 +133,7 @@ where
             _ => Ok(()),
         }
     } else {
-        run_impl(args).await
+        run_impl(call_source, args).await
     };
 
     match res {
@@ -158,7 +170,7 @@ fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliEr
     }
 }
 
-async fn run_impl(args: Args) -> anyhow::Result<()> {
+async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
     let mut profiler = re_viewer::Profiler::default();
     if args.profile {
         profiler.start();
@@ -186,6 +198,9 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         {
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+
+                // `rerun.spawn()` doesn't ned to log that a connection has been made
+                quiet: call_source == CallSource::Python,
             };
             re_sdk_comms::serve(args.port, server_options)?
         }

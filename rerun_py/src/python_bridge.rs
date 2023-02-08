@@ -193,7 +193,7 @@ fn main(argv: Vec<String>) -> PyResult<u8> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(argv))
+        .block_on(rerun::run(rerun::CallSource::Python, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
