@@ -5,6 +5,7 @@ members = [
   "rerun_py",
   "run_wasm",
   "examples/api_demo",
+  "examples/objectron",
   "examples/raw_mesh",
 ]
 

@@ -116,6 +116,8 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
 
     rr.log_view_coordinates("world", up="+Y", timeless=True)
 
+    log_annotated_bboxes(seq.objects)
+
     frame_times = []
     for sample in samples:
         rr.set_time_sequence("frame", sample.index)
@@ -126,7 +128,6 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
-    log_annotated_bboxes(seq.objects)
     log_frame_annotations(frame_times, seq.frame_annotations)
 
 
@@ -179,11 +180,11 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rr.log_obb(
-            f"world/objects/box-{bbox.id}",
+            f"world/annotations/box-{bbox.id}",
             bbox.scale,
             bbox.translation,
             rot.as_quat(),
-            color=[130, 160, 250, 255],
+            color=[160, 230, 130, 255],
             label=bbox.category,
             timeless=True,
         )
@@ -208,11 +209,11 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"world/camera/video/obj-annotations/annotation-{obj_ann.object_id}", keypoint_pos2s)
+                log_projected_bbox(f"world/camera/video/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
                     rr.log_point(
-                        f"world/camera/video/obj-annotations/annotation-{obj_ann.object_id}/{id}",
+                        f"world/camera/video/estimates/box-{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
                     )
