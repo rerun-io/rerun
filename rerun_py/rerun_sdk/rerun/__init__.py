@@ -147,7 +147,11 @@ def init(application_id: str, spawn: bool = False) -> None:
         import inspect
         import pathlib
 
-        app_path = pathlib.Path(inspect.stack()[1][1]).resolve()
+        stack = inspect.stack()
+        for frame in stack[:4]:
+            path = pathlib.Path(frame[1]).resolve()
+            if "rerun/examples" in str(path):
+                app_path = path
     except Exception:
         pass
 
