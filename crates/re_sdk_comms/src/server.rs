@@ -14,7 +14,7 @@ pub struct ServerOptions {
     /// then start dropping messages in order to keep up.
     pub max_latency_sec: f32,
 
-    /// Turns `info`-level logs into `debug`-level logs. 
+    /// Turns `info`-level logs into `debug`-level logs.
     pub quiet: bool,
 }
 
