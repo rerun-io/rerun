@@ -540,5 +540,5 @@ fn read_annotations(path: &Path) -> anyhow::Result<objectron::Sequence> {
     Ok(annotations)
 }
 
-#[allow(clippy::all, clippy::doc_markdown)]
+#[rustfmt::skip]
 mod objectron;
