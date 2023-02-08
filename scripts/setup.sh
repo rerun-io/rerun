@@ -14,7 +14,6 @@ if [ -x "$(command -v apt-get)" ]; then
         libfreetype6-dev \
         libglib2.0-dev \
         libgtk-3-dev \
-        libspeechd-dev \
         libssl-dev \
         libxcb-render0-dev \
         libxcb-shape0-dev \
@@ -29,8 +28,7 @@ elif [ -x "$(command -v dnf)" ];   then
         libxcb-devel \
         libxkbcommon-devel \
         openssl-devel \
-        pkg-config \
-        speech-dispatcher-devel
+        pkg-config
 fi
 
 # Needed to compile and check the code:

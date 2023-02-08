@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfreetype6-dev \
     libglib2.0-dev \
     libgtk-3-dev \
-    libspeechd-dev \
     libssl-dev \
     libxcb-render0-dev \
     libxcb-shape0-dev \
