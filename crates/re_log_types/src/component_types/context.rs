@@ -173,6 +173,7 @@ pub struct AnnotationContext {
 }
 
 impl Component for AnnotationContext {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.annotation_context".into()
     }
@@ -188,6 +189,7 @@ pub struct ClassMapElemArrow {
 type AnnotationContextArrow = Vec<ClassMapElemArrow>;
 
 impl From<&AnnotationContext> for AnnotationContextArrow {
+    #[inline]
     fn from(v: &AnnotationContext) -> Self {
         v.class_map
             .iter()
@@ -200,6 +202,7 @@ impl From<&AnnotationContext> for AnnotationContextArrow {
 }
 
 impl From<Vec<ClassMapElemArrow>> for AnnotationContext {
+    #[inline]
     fn from(v: AnnotationContextArrow) -> Self {
         AnnotationContext {
             class_map: v
@@ -212,6 +215,8 @@ impl From<Vec<ClassMapElemArrow>> for AnnotationContext {
 
 impl ArrowField for AnnotationContext {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <AnnotationContextArrow as ArrowField>::data_type()
     }

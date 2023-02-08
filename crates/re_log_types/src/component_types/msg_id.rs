@@ -60,6 +60,7 @@ impl MsgId {
     }
 
     /// A shortened string representation of the message id.
+    #[inline]
     pub fn short_string(&self) -> String {
         // We still want this to look like a part of the full message id (i.e. what is printed on std::fmt::Display).
         // Per Thread randomness plus increment is in the last part, so show only that.
@@ -70,6 +71,7 @@ impl MsgId {
 }
 
 impl Component for MsgId {
+    #[inline]
     fn name() -> ComponentName {
         "rerun.msg_id".into()
     }

@@ -27,6 +27,7 @@ use crate::msg_bundle::Component;
 pub struct Label(pub String);
 
 impl Component for Label {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.label".into()
     }

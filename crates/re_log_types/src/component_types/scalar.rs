@@ -28,6 +28,7 @@ use crate::msg_bundle::Component;
 pub struct Scalar(pub f64);
 
 impl Component for Scalar {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.scalar".into()
     }
@@ -56,6 +57,7 @@ pub struct ScalarPlotProps {
 }
 
 impl Component for ScalarPlotProps {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.scalar_plot_props".into()
     }

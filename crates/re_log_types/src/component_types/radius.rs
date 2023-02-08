@@ -26,6 +26,7 @@ use crate::msg_bundle::Component;
 pub struct Radius(pub f32);
 
 impl Component for Radius {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.radius".into()
     }
