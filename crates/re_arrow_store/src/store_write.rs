@@ -208,7 +208,7 @@ impl DataStore {
             .iter()
             .filter(|bundle| bundle.name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name(), bundle.value());
+            let (name, rows) = (bundle.name(), bundle.value_list());
 
             // Unwrapping a ListArray is somewhat costly, especially considering we're just
             // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
@@ -220,7 +220,7 @@ impl DataStore {
             // So use the fact that `rows` is always of unit-length for now.
             let rows_single = rows;
 
-            let nb_instances = rows_single.get_child_length(0);
+            let nb_instances = rows_single.offsets().lengths().next().unwrap();
             if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     cluster_comp: self.cluster_key,
@@ -240,7 +240,7 @@ impl DataStore {
                     )
                 });
 
-            let row_idx = table.push(rows_single.as_ref());
+            let row_idx = table.push(rows_single);
             row_indices.insert(name, row_idx);
         }
 
@@ -280,7 +280,7 @@ impl DataStore {
             .iter()
             .filter(|bundle| bundle.name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name(), bundle.value());
+            let (name, rows) = (bundle.name(), bundle.value_list());
 
             // Unwrapping a ListArray is somewhat costly, especially considering we're just
             // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
@@ -293,7 +293,7 @@ impl DataStore {
             let rows_single = rows;
 
             // TODO(#440): support for splats
-            let nb_instances = rows_single.get_child_length(0);
+            let nb_instances = rows_single.offsets().lengths().next().unwrap();
             if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     cluster_comp: self.cluster_key,
@@ -310,7 +310,7 @@ impl DataStore {
                 )
             });
 
-            let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
+            let row_idx = table.push(&self.config, time_point, rows_single);
             row_indices.insert(name, row_idx);
         }
 
@@ -332,10 +332,10 @@ impl DataStore {
     ) -> WriteResult<(RowIndex, usize)> {
         crate::profile_function!();
 
-        enum ClusterData {
+        enum ClusterData<'a> {
             Cached(RowIndex),
             GenData(Box<dyn Array>),
-            UserData(Box<dyn Array>),
+            UserData(&'a ListArray<i32>),
         }
 
         let (cluster_len, cluster_data) = if let Some(cluster_comp_pos) = cluster_comp_pos {
@@ -355,10 +355,7 @@ impl DataStore {
                 return Err(WriteError::InvalidClusteringComponent(data.clone()));
             }
 
-            (
-                len,
-                ClusterData::UserData(cluster_comp.value().to_boxed() /* shallow */),
-            )
+            (len, ClusterData::UserData(cluster_comp.value_list()))
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
             // one... unless we've already generated one of this exact length in the past,
@@ -366,9 +363,9 @@ impl DataStore {
 
             // Use the length of any other component in the batch, they are guaranteed to all
             // share the same length at this point anyway.
-            let len = components
-                .first()
-                .map_or(0, |comp| comp.value().get_child_length(0));
+            let len = components.first().map_or(0, |comp| {
+                comp.value_list().offsets().lengths().next().unwrap()
+            });
 
             if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
                 // Cache hit! Re-use that row index.
@@ -416,7 +413,7 @@ impl DataStore {
                                 ListArray::<i32>::get_child_type(data.data_type()),
                             )
                         });
-                    table.push(&*data)
+                    table.push(data)
                 } else {
                     let table = self.components.entry(self.cluster_key).or_insert_with(|| {
                         ComponentTable::new(
@@ -424,7 +421,7 @@ impl DataStore {
                             ListArray::<i32>::get_child_type(data.data_type()),
                         )
                     });
-                    table.push(&self.config, time_point, &*data)
+                    table.push(&self.config, time_point, data)
                 };
 
                 Ok((row_idx, cluster_len))

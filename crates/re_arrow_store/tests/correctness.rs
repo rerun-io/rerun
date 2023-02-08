@@ -48,8 +48,8 @@ fn write_errors() {
         bundle.components[0] = ComponentBundle::new_from_boxed(
             bundle.components[0].name(),
             concatenate(&[
-                bundle.components[0].value().as_ref(),
-                bundle.components[0].value().as_ref(),
+                bundle.components[0].value_list(),
+                bundle.components[0].value_list(),
             ])
             .unwrap()
             .as_ref(),
@@ -77,8 +77,8 @@ fn write_errors() {
         bundle.components[1] = ComponentBundle::new_from_boxed(
             bundle.components[1].name(),
             concatenate(&[
-                bundle.components[1].value().as_ref(),
-                bundle.components[1].value().as_ref(),
+                bundle.components[1].value_list(),
+                bundle.components[1].value_list(),
             ])
             .unwrap()
             .as_ref(),

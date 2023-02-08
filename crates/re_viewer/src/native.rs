@@ -11,6 +11,11 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
         #[cfg(target_os = "macos")]
         fullsize_content: re_ui::FULLSIZE_CONTENT,
 
+        // Maybe hide the OS-specific "chrome" around the window:
+        decorated: !re_ui::CUSTOM_WINDOW_DECORATIONS,
+        // To have rounded corners we need transparency:
+        transparent: re_ui::CUSTOM_WINDOW_DECORATIONS,
+
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
 
