@@ -15,8 +15,9 @@ include = [
 
 
 [features]
-default = ["egui_dock"]
+default = ["eframe", "egui_dock"]
 
+eframe = ["dep:eframe"]
 egui_dock = ["dep:egui_dock"]
 
 
@@ -32,6 +33,7 @@ strum_macros = "0.24"
 sublime_fuzzy = "0.7"
 
 ## Optional dependencies:
+eframe = { version = "0.20", optional = true, default-features = false }
 egui_dock = { version = "0.3", optional = true, features = ["serde"] }
 
 [dev-dependencies]
