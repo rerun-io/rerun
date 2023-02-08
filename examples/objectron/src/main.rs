@@ -19,7 +19,7 @@ use std::{
 
 use anyhow::{anyhow, Context as _};
 
-use rerun::external::{re_log, re_memory};
+use rerun::external::re_log;
 use rerun::{ApplicationId, MsgSender, RecordingId, Session};
 use rerun::{Time, TimePoint, TimeType, Timeline};
 
@@ -139,7 +139,7 @@ fn log_baseline_objects(
     });
 
     for (id, bbox, transform, label) in boxes {
-        MsgSender::new(format!("world/objects/baseline/box-{id}"))
+        MsgSender::new(format!("world/annotations/box-{id}"))
             .with_timeless(true)
             .with_component(&[bbox])?
             .with_component(&[transform])?
@@ -275,9 +275,12 @@ fn log_frame_annotations(
             })
             .unzip();
 
-        let mut msg = MsgSender::new(format!("world/camera/video/objects/box-{}", ann.object_id))
-            .with_timepoint(timepoint.clone())
-            .with_splat(rerun::ColorRGBA::from([130, 160, 250, 255]))?;
+        let mut msg = MsgSender::new(format!(
+            "world/camera/video/estimates/box-{}",
+            ann.object_id
+        ))
+        .with_timepoint(timepoint.clone())
+        .with_splat(rerun::ColorRGBA::from([130, 160, 250, 255]))?;
 
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.
@@ -328,14 +331,6 @@ fn log_frame_annotations(
 
 // --- Init ---
 
-// Use MiMalloc as global allocator (because it is fast), wrapped in Rerun's allocation tracker
-// so that the rerun viewer can show how much memory it is using when calling `show`.
-// This is optional - you don't need to do this if you don't want to!
-#[global_allocator]
-static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
-    re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
-
-// TODO: propose to run the python version first if not found
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum Recording {
     Bike,
@@ -411,9 +406,12 @@ fn main() -> anyhow::Result<()> {
 
     // Parse protobuf dataset
     let Ok(rec_info) = args.recording.info() else {
+        use clap::ValueEnum as _;
         anyhow::bail!(
             "Could not read the recording, have you downloaded the dataset? \
-            Try running the python version first to download it automatically.",
+            Try running the python version first to download it automatically \
+            (`examples/objectron/main.py --recording {}`).",
+            args.recording.to_possible_value().unwrap().get_name(),
         );
     };
     let annotations = read_annotations(&rec_info.path_annotations)?;
