@@ -203,7 +203,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 
     # start_new_session=True ensures the spawned process does NOT die when
     # we hit ctrl-c in the terminal running the parent Python process.
-    rerun_process = subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
+    subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
 
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
     # For instance, wait until it prints "Hosting a SDK server over TCP at …"
