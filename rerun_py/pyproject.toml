@@ -44,6 +44,6 @@ target-version = ["py38"]
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
-include = ["rerun_sdk.pth"]
+include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/demo.rrd"]
 locked = true
-python-packages = ["rerun_sdk/rerun"]
+python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]

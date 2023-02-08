@@ -866,16 +866,14 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
         .iter()
         .map(|(component, bundle)| {
             let cluster_comp = if let Some(idx) = bundle.find_component(&cluster_key) {
-                Series::try_from((
-                    cluster_key.as_str(),
-                    bundle.components[idx].value.to_boxed(),
-                ))
-                .unwrap()
+                Series::try_from((cluster_key.as_str(), bundle.components[idx].value_boxed()))
+                    .unwrap()
             } else {
+                let nb_instances = bundle.nb_instances(0).unwrap_or(0);
                 Series::try_from((
                     cluster_key.as_str(),
                     wrap_in_listarray(
-                        UInt64Array::from_vec((0..bundle.row_len(0) as u64).collect()).to_boxed(),
+                        UInt64Array::from_vec((0..nb_instances as u64).collect()).to_boxed(),
                     )
                     .to_boxed(),
                 ))
@@ -887,7 +885,7 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
                 cluster_comp,
                 Series::try_from((
                     component.as_str(),
-                    bundle.components[comp_idx].value.to_boxed(),
+                    bundle.components[comp_idx].value_boxed(),
                 ))
                 .unwrap(),
             ])

@@ -16,7 +16,7 @@ import sys
 
 real_path = pathlib.Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 
-print("DEV ENVIRONMENT DETECTED! Re-importing rerun from: {}".format(real_path), file=sys.stderr)
+print(f"DEV ENVIRONMENT DETECTED! Re-importing rerun from: {real_path}", file=sys.stderr)
 
 sys.path.insert(0, str(real_path))
 

@@ -32,6 +32,17 @@ pub struct Quaternion {
     pub w: f32,
 }
 
+impl Default for Quaternion {
+    fn default() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            w: 1.0,
+        }
+    }
+}
+
 impl Component for Quaternion {
     fn name() -> crate::ComponentName {
         "rerun.quaternion".into()

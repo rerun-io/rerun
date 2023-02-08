@@ -2,21 +2,24 @@ use egui::RichText;
 use re_ui::Command;
 
 use super::{HistoricalSelection, SelectionHistory};
-use crate::{misc::MultiSelection, ui::Blueprint, Selection};
+use crate::{misc::ItemCollection, ui::Blueprint, Item};
 
 // ---
 
 impl SelectionHistory {
     pub(crate) fn selection_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<MultiSelection> {
-        self.control_bar_ui(ui, blueprint).map(|sel| sel.selection)
+    ) -> Option<ItemCollection> {
+        self.control_bar_ui(re_ui, ui, blueprint)
+            .map(|sel| sel.selection)
     }
 
     fn control_bar_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
@@ -28,8 +31,8 @@ impl SelectionHistory {
                 ui.available_size_before_wrap(),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    let next = self.next_button_ui(ui, blueprint);
-                    let prev = self.prev_button_ui(ui, blueprint);
+                    let next = self.next_button_ui(re_ui, ui, blueprint);
+                    let prev = self.prev_button_ui(re_ui, ui, blueprint);
                     prev.or(next)
                 }).inner
         }).inner
@@ -63,20 +66,22 @@ impl SelectionHistory {
 
     fn prev_button_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
         // undo selection
-        let button = egui::Button::new("⬅");
         if let Some(previous) = self.previous() {
-            let response = ui.add(button).on_hover_text(format!(
-                "Go to previous selection{}:\n\
+            let response = re_ui
+                .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
+                .on_hover_text(format!(
+                    "Go to previous selection{}:\n\
                 {}\n\
                 \n\
                 Right-click for more.",
-                Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
-                multi_selection_to_string(blueprint, &previous.selection),
-            ));
+                    Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
+                    item_collection_to_string(blueprint, &previous.selection),
+                ));
 
             let response = response.context_menu(|ui| {
                 // undo: newest on top, oldest on bottom
@@ -92,8 +97,11 @@ impl SelectionHistory {
                 return self.select_previous();
             }
         } else {
-            ui.add_enabled(false, button)
-                .on_disabled_hover_text("No past selections found");
+            ui.add_enabled_ui(false, |ui| {
+                re_ui
+                    .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
+                    .on_disabled_hover_text("No past selections found");
+            });
         }
 
         None
@@ -101,20 +109,22 @@ impl SelectionHistory {
 
     fn next_button_ui(
         &mut self,
+        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
         // redo selection
-        let button = egui::Button::new("➡");
         if let Some(next) = self.next() {
-            let response = ui.add(button).on_hover_text(format!(
-                "Go to next selection{}:\n\
+            let response = re_ui
+                .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
+                .on_hover_text(format!(
+                    "Go to next selection{}:\n\
                 {}\n\
                 \n\
                 Right-click for more.",
-                Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
-                multi_selection_to_string(blueprint, &next.selection),
-            ));
+                    Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
+                    item_collection_to_string(blueprint, &next.selection),
+                ));
 
             let response = response.context_menu(|ui| {
                 // redo: oldest on top, most recent on bottom
@@ -130,8 +140,11 @@ impl SelectionHistory {
                 return self.select_next();
             }
         } else {
-            ui.add_enabled(false, button)
-                .on_disabled_hover_text("No future selections found");
+            ui.add_enabled_ui(false, |ui| {
+                re_ui
+                    .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
+                    .on_disabled_hover_text("No future selections found");
+            });
         }
 
         None
@@ -142,13 +155,13 @@ impl SelectionHistory {
             ui.horizontal(|ui| {
                 {
                     // borrow checker workaround
-                    let sel = multi_selection_to_string(blueprint, sel);
+                    let sel = item_collection_to_string(blueprint, sel);
                     if ui.selectable_value(&mut self.current, index, sel).clicked() {
                         ui.close_menu();
                     }
                 }
                 if sel.len() == 1 {
-                    selection_kind_ui(ui, sel.iter().next().unwrap());
+                    item_kind_ui(ui, sel.iter().next().unwrap());
                 }
             });
         }
@@ -157,44 +170,44 @@ impl SelectionHistory {
 
 // Different kinds of selections can share the same path in practice! We need to
 // differentiate those in the UI to avoid confusion.
-fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
+fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn multi_selection_to_string(blueprint: &Blueprint, sel: &MultiSelection) -> String {
-    assert!(!sel.is_empty()); // history never contains empty selections.
-    if sel.len() == 1 {
-        single_selection_to_string(blueprint, sel.iter().next().unwrap())
-    } else if let Some(kind) = sel.are_all_same_kind() {
-        format!("{}x {}s", sel.len(), kind)
+fn item_collection_to_string(blueprint: &Blueprint, items: &ItemCollection) -> String {
+    assert!(!items.is_empty()); // history never contains empty selections.
+    if items.len() == 1 {
+        item_to_string(blueprint, items.iter().next().unwrap())
+    } else if let Some(kind) = items.are_all_same_kind() {
+        format!("{}x {}s", items.len(), kind)
     } else {
         "<multiple selections>".to_owned()
     }
 }
 
-fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
-    match sel {
-        Selection::SpaceView(sid) => {
+fn item_to_string(blueprint: &Blueprint, item: &Item) -> String {
+    match item {
+        Item::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
-                space_view.name.clone()
+                space_view.display_name.clone()
             } else {
                 "<removed space view>".to_owned()
             }
         }
-        Selection::InstancePath(_, entity_path) => entity_path.to_string(),
-        Selection::DataBlueprintGroup(sid, handle) => {
+        Item::InstancePath(_, entity_path) => entity_path.to_string(),
+        Item::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
                 } else {
-                    format!("<removed group in {}>", space_view.name)
+                    format!("<removed group in {}>", space_view.display_name)
                 }
             } else {
                 "<group in removed space view>".to_owned()
             }
         }
-        Selection::MsgId(msg_id) => msg_id.short_string(),
-        Selection::ComponentPath(path) => {
+        Item::MsgId(msg_id) => msg_id.short_string(),
+        Item::ComponentPath(path) => {
             format!("{} {}", path.entity_path, path.component_name.short_name(),)
         }
     }

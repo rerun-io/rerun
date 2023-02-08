@@ -129,13 +129,13 @@ pub fn query_transform(
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
     // transforms this is easy enough.
-    let arrow_store = &entity_db.arrow_store;
+    let data_store = &entity_db.data_store;
 
     let components = [Transform::name()];
 
-    let row_indices = arrow_store.latest_at(query, entity_path, Transform::name(), &components)?;
+    let row_indices = data_store.latest_at(query, entity_path, Transform::name(), &components)?;
 
-    let results = arrow_store.get(&components, &row_indices);
+    let results = data_store.get(&components, &row_indices);
     let arr = results.get(0)?.as_ref()?.as_ref();
 
     let mut iter = arrow_array_deserialize_iterator::<Transform>(arr).ok()?;

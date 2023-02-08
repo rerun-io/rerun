@@ -3,7 +3,7 @@ use re_log_types::TimeType;
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Selection, UiVerbosity, ViewerContext,
+    Item, UiVerbosity, ViewerContext,
 };
 
 use super::{data_ui::DataUi, space_view::ViewState};
@@ -20,7 +20,7 @@ impl SelectionPanel {
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) {
         let panel = egui::SidePanel::right("selection_view")
@@ -28,12 +28,12 @@ impl SelectionPanel {
             .default_width(250.0)
             .resizable(true)
             .frame(egui::Frame {
-                fill: egui_ctx.style().visuals.panel_fill,
+                fill: ui.style().visuals.panel_fill,
                 ..Default::default()
             });
 
-        panel.show_animated(
-            egui_ctx,
+        panel.show_animated_inside(
+            ui,
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
                 egui::TopBottomPanel::top("selection_panel_title_bar")
@@ -43,8 +43,10 @@ impl SelectionPanel {
                         ..Default::default()
                     })
                     .show_inside(ui, |ui| {
-                        if let Some(selection) =
-                            ctx.rec_cfg.selection_state.selection_ui(ui, blueprint)
+                        if let Some(selection) = ctx
+                            .rec_cfg
+                            .selection_state
+                            .selection_ui(ctx.re_ui, ui, blueprint)
                         {
                             ctx.set_multi_selection(selection.iter().cloned());
                         }
@@ -106,11 +108,11 @@ impl SelectionPanel {
     }
 }
 
-fn has_data_section(selection: &Selection) -> bool {
-    match selection {
-        Selection::MsgId(_) | Selection::ComponentPath(_) | Selection::InstancePath(_, _) => true,
+fn has_data_section(item: &Item) -> bool {
+    match item {
+        Item::MsgId(_) | Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
-        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
     }
 }
 
@@ -119,16 +121,16 @@ pub fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
-    selection: &Selection,
+    item: &Item,
 ) {
-    match selection {
-        Selection::MsgId(msg_id) => {
+    match item {
+        Item::MsgId(msg_id) => {
             ui.horizontal(|ui| {
                 ui.label("Message ID:");
                 ctx.msg_id_button(ui, *msg_id);
             });
         }
-        Selection::ComponentPath(re_log_types::ComponentPath {
+        Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
         }) => {
@@ -145,15 +147,15 @@ pub fn what_is_selected_ui(
                     ui.end_row();
                 });
         }
-        Selection::SpaceView(space_view_id) => {
+        Item::SpaceView(space_view_id) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 ui.horizontal(|ui| {
                     ui.label("Space view:");
-                    ui.text_edit_singleline(&mut space_view.name);
+                    ui.text_edit_singleline(&mut space_view.display_name);
                 });
             }
         }
-        Selection::InstancePath(space_view_id, instance_path) => {
+        Item::InstancePath(space_view_id, instance_path) => {
             egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
                 if instance_path.instance_key.is_splat() {
                     ui.label("Entity:");
@@ -172,7 +174,7 @@ pub fn what_is_selected_ui(
                 }
             });
         }
-        Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
@@ -193,7 +195,7 @@ pub fn what_is_selected_ui(
                             ui.label("in Space View:");
                             ctx.space_view_button_to(
                                 ui,
-                                space_view.name.clone(),
+                                space_view.display_name.clone(),
                                 space_view.id,
                                 space_view.category,
                             );
@@ -205,7 +207,7 @@ pub fn what_is_selected_ui(
     }
 }
 
-impl DataUi for Selection {
+impl DataUi for Item {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -214,42 +216,42 @@ impl DataUi for Selection {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
                 // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
                 debug_assert!(!has_data_section(self));
             }
-            Selection::MsgId(msg_id) => {
+            Item::MsgId(msg_id) => {
                 msg_id.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::ComponentPath(component_path) => {
+            Item::ComponentPath(component_path) => {
                 component_path.data_ui(ctx, ui, verbosity, query);
             }
-            Selection::InstancePath(_, instance_path) => {
+            Item::InstancePath(_, instance_path) => {
                 instance_path.data_ui(ctx, ui, verbosity, query);
             }
         }
     }
 }
 
-/// What is the blueprint stuff for this selection?
+/// What is the blueprint stuff for this item?
 fn blueprint_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
-    selection: &Selection,
+    item: &Item,
 ) {
-    match selection {
-        Selection::MsgId(_) => {
+    match item {
+        Item::MsgId(_) => {
             // TODO(andreas): Show space views that contains entities that's part of this message.
             ui.weak("(nothing)");
         }
 
-        Selection::ComponentPath(component_path) => {
+        Item::ComponentPath(component_path) => {
             list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
         }
 
-        Selection::SpaceView(space_view_id) => {
+        Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
                 if ui
                     .button("Add/remove entities")
@@ -282,7 +284,7 @@ fn blueprint_ui(
             }
         }
 
-        Selection::InstancePath(space_view_id, instance_path) => {
+        Item::InstancePath(space_view_id, instance_path) => {
             if let Some(space_view) = space_view_id
                 .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
             {
@@ -310,7 +312,7 @@ fn blueprint_ui(
             }
         }
 
-        Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
@@ -354,7 +356,7 @@ fn list_existing_data_blueprints(
                         ui,
                         Some(*space_view_id),
                         entity_path,
-                        &space_view.name,
+                        &space_view.display_name,
                     );
                 }
             }
@@ -371,67 +373,63 @@ fn entity_props_ui(
 ) {
     use egui::NumExt;
 
-    let EntityProperties {
-        visible,
-        visible_history,
-        interactive,
-        ..
-    } = entity_props;
-
-    ui.checkbox(visible, "Visible");
-    ui.checkbox(interactive, "Interactive")
+    ui.checkbox(&mut entity_props.visible, "Visible");
+    ui.checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    ui.horizontal(|ui| {
-        ui.label("Visible history:");
-        match ctx.rec_cfg.time_ctrl.timeline().typ() {
-            TimeType::Time => {
-                let mut time_sec = visible_history.nanos as f32 / 1e9;
-                let speed = (time_sec * 0.05).at_least(0.01);
-                ui.add(
-                    egui::DragValue::new(&mut time_sec)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .speed(speed)
-                        .suffix("s"),
-                )
-                .on_hover_text("Include this much history of the entity in the Space View");
-                visible_history.nanos = (time_sec * 1e9).round() as _;
+    egui::Grid::new("entity_properties")
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Visible history");
+            let visible_history = &mut entity_props.visible_history;
+            match ctx.rec_cfg.time_ctrl.timeline().typ() {
+                TimeType::Time => {
+                    let mut time_sec = visible_history.nanos as f32 / 1e9;
+                    let speed = (time_sec * 0.05).at_least(0.01);
+                    ui.add(
+                        egui::DragValue::new(&mut time_sec)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .speed(speed)
+                            .suffix("s"),
+                    )
+                    .on_hover_text("Include this much history of the Entity in the Space View.");
+                    visible_history.nanos = (time_sec * 1e9).round() as _;
+                }
+                TimeType::Sequence => {
+                    let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
+                    ui.add(
+                        egui::DragValue::new(&mut visible_history.sequences)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .speed(speed),
+                    )
+                    .on_hover_text("Include this much history of the Entity in the Space View.");
+                }
             }
-            TimeType::Sequence => {
-                let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
-                ui.add(
-                    egui::DragValue::new(&mut visible_history.sequences)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .speed(speed),
-                )
-                .on_hover_text("Include this much history of the entity in the Space View");
-            }
-        }
-    });
+            ui.end_row();
 
-    if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
-        if let Some(entity_path) = entity_path {
-            let query = ctx.current_query();
-            if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.entity_db, entity_path, &query)
-            {
-                ui.horizontal(|ui| {
-                    ui.label("Image plane distance:");
-                    let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
-                    let speed = (distance * 0.05).at_least(0.01);
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut distance)
-                                .clamp_range(0.0..=1.0e8)
-                                .speed(speed),
-                        )
-                        .on_hover_text("Controls how far away the image plane is.")
-                        .changed()
+            if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
+                if let Some(entity_path) = entity_path {
+                    let query = ctx.current_query();
+                    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
+                        query_transform(&ctx.log_db.entity_db, entity_path, &query)
                     {
-                        entity_props.set_pinhole_image_plane_distance(distance);
+                        ui.label("Image plane distance");
+                        let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
+                        let speed = (distance * 0.05).at_least(0.01);
+                        if ui
+                            .add(
+                                egui::DragValue::new(&mut distance)
+                                    .clamp_range(0.0..=1.0e8)
+                                    .speed(speed),
+                            )
+                            .on_hover_text("Controls how far away the image plane is.")
+                            .changed()
+                        {
+                            entity_props.set_pinhole_image_plane_distance(distance);
+                        }
+                        ui.end_row();
                     }
-                });
+                }
             }
-        }
-    }
+        });
 }

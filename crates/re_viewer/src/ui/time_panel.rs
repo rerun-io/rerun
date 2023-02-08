@@ -15,7 +15,7 @@ use re_log_types::{
 use crate::{
     misc::time_control::{Looping, PlayState},
     time_axis::TimelineAxis,
-    Selection, TimeControl, TimeView, ViewerContext,
+    Item, TimeControl, TimeView, ViewerContext,
 };
 
 use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
@@ -53,33 +53,11 @@ impl TimePanel {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
-        egui_ctx: &egui::Context,
+        ui: &mut egui::Ui,
     ) {
-        let x_margin = 8.0;
-        let y_margin = 8.0;
         let top_bar_height = 28.0;
-
-        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
-        // (on the inner margin we counteract this again)
-        let margin_offset = ctx.re_ui.design_tokens.bottom_bar_stroke.width * 0.5;
-
-        let mut panel_frame = egui::Frame {
-            fill: ctx.re_ui.design_tokens.bottom_bar_color,
-            inner_margin: egui::Margin::symmetric(
-                x_margin + margin_offset,
-                y_margin + margin_offset,
-            ),
-            outer_margin: egui::Margin {
-                left: -margin_offset,
-                right: -margin_offset,
-                // Add a proper stoke width thick margin on the top.
-                top: ctx.re_ui.design_tokens.bottom_bar_stroke.width,
-                bottom: -margin_offset,
-            },
-            stroke: ctx.re_ui.design_tokens.bottom_bar_stroke,
-            rounding: ctx.re_ui.design_tokens.bottom_bar_rounding,
-            ..Default::default()
-        };
+        let margin = ctx.re_ui.bottom_panel_margin();
+        let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
         if blueprint.time_panel_expanded {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
@@ -101,8 +79,8 @@ impl TimePanel {
             .min_height(150.0)
             .default_height(250.0);
 
-        egui::TopBottomPanel::show_animated_between(
-            egui_ctx,
+        egui::TopBottomPanel::show_animated_between_inside(
+            ui,
             blueprint.time_panel_expanded,
             collapsed,
             expanded,
@@ -119,8 +97,8 @@ impl TimePanel {
                     ui.vertical(|ui| {
                         // Add back the margin we removed from the panel:
                         let mut top_rop_frame = egui::Frame::default();
-                        top_rop_frame.inner_margin.right = x_margin;
-                        top_rop_frame.inner_margin.bottom = y_margin;
+                        top_rop_frame.inner_margin.right = margin.x;
+                        top_rop_frame.inner_margin.bottom = margin.y;
                         let rop_row_rect = top_rop_frame
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -464,7 +442,7 @@ impl TimePanel {
                 num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Selection::InstancePath(None, InstancePath::entity_splat(tree.path.clone())),
+                Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone())),
             );
         }
     }
@@ -541,7 +519,7 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        let selection = Selection::ComponentPath(component_path.clone());
+                        let selection = Item::ComponentPath(component_path.clone());
                         what_is_selected_ui(ui, ctx, blueprint, &selection);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
@@ -567,7 +545,7 @@ impl TimePanel {
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Selection::ComponentPath(component_path),
+                        Item::ComponentPath(component_path),
                     );
                 }
             }
@@ -620,7 +598,7 @@ fn show_data_over_time(
     num_messages_at_time: &BTreeMap<TimeInt, usize>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
-    select_on_click: Selection,
+    select_on_click: Item,
 ) {
     crate::profile_function!();
 
@@ -802,7 +780,7 @@ fn show_msg_ids_tooltip(
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
     egui_ctx: &egui::Context,
-    selection: &Selection,
+    item: &Item,
     time_points: &[(TimeInt, usize)],
 ) {
     show_tooltip_at_pointer(egui_ctx, Id::new("data_tooltip"), |ui| {
@@ -816,13 +794,13 @@ fn show_msg_ids_tooltip(
                 // Could be an entity made up of many components logged at the same time.
                 // Still show a preview!
             }
-            super::selection_panel::what_is_selected_ui(ui, ctx, blueprint, selection);
+            super::selection_panel::what_is_selected_ui(ui, ctx, blueprint, item);
             ui.add_space(8.0);
 
             let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-            let time_int = time_points[0].0; // We want to show the selection at the time of whatever point we are hovering
+            let time_int = time_points[0].0; // We want to show the item at the time of whatever point we are hovering
             let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
-            selection.data_ui(ctx, ui, super::UiVerbosity::Reduced, &query);
+            item.data_ui(ctx, ui, super::UiVerbosity::Reduced, &query);
         } else {
             ui.label(format!(
                 "{num_messages} messages at {num_times} points in time"

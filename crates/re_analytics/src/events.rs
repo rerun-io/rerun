@@ -33,7 +33,7 @@ impl Event {
     // - Standalone boot, waiting for network data
     // - Standalone boot, feeding from another server (??)
     // - SDK boot, show()
-    // - SDK book, spawn_and_connect()
+    // - SDK book, spawn()
     pub fn viewer_started() -> Self {
         Self::append("viewer_started".into())
     }

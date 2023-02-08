@@ -101,9 +101,8 @@ pub fn build_chunk_from_components(
     let cmp_bundles = arrays
         .into_iter()
         .zip(fields.into_iter())
-        .map(|(value, field)| ComponentBundle {
-            name: field.name.into(),
-            value: msg_bundle::wrap_in_listarray(value).boxed(),
+        .map(|(value, field)| {
+            ComponentBundle::new(field.name.into(), msg_bundle::wrap_in_listarray(value))
         })
         .collect();
 

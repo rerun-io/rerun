@@ -78,7 +78,7 @@ impl DataUi for [ComponentBundle] {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let mut sorted = self.to_vec();
-        sorted.sort_by_key(|cb| cb.name);
+        sorted.sort_by_key(|cb| cb.name());
 
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
@@ -96,15 +96,13 @@ impl DataUi for [ComponentBundle] {
     }
 }
 
-fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
-    let ComponentBundle { name, value } = component_bundle;
-
-    use re_arrow_store::ArrayExt as _;
-    let num_instances = value.get_child_length(0);
-
+fn format_component_bundle(bundle: &ComponentBundle) -> String {
     // TODO(emilk): if there's only once instance, and the byte size is small, then deserialize and show the value.
-
-    format!("{}x {}", num_instances, name.short_name())
+    format!(
+        "{}x {}",
+        bundle.nb_instances(0).unwrap(), // all of our bundles have exactly 1 row as of today
+        bundle.name().short_name()
+    )
 }
 
 impl DataUi for PathOp {

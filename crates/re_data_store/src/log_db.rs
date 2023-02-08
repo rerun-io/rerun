@@ -24,8 +24,8 @@ pub struct EntityDb {
     /// A tree-view (split on path components) of the entities.
     pub tree: crate::EntityTree,
 
-    /// The arrow store of data.
-    pub arrow_store: re_arrow_store::DataStore,
+    /// Stores all components for all entities for all timelines.
+    pub data_store: re_arrow_store::DataStore,
 }
 
 impl Default for EntityDb {
@@ -34,7 +34,7 @@ impl Default for EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
-            arrow_store: re_arrow_store::DataStore::new(
+            data_store: re_arrow_store::DataStore::new(
                 InstanceKey::name(),
                 DataStoreConfig {
                     component_bucket_size_bytes: 1024 * 1024, // 1 MiB
@@ -68,8 +68,9 @@ impl EntityDb {
         self.register_entity_path(&msg_bundle.entity_path);
 
         for component in &msg_bundle.components {
-            let component_path = ComponentPath::new(msg_bundle.entity_path.clone(), component.name);
-            if component.name == MsgId::name() {
+            let component_path =
+                ComponentPath::new(msg_bundle.entity_path.clone(), component.name());
+            if component.name() == MsgId::name() {
                 continue;
             }
             let pending_clears = self
@@ -80,21 +81,21 @@ impl EntityDb {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let bundle =
-                    ComponentBundle::new_empty(component.name, component.data_type().clone());
+                    ComponentBundle::new_empty(component.name(), component.data_type().clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
                     msg_bundle.entity_path.clone(),
                     time_point.clone(),
                     vec![bundle],
                 );
-                self.arrow_store.insert(&msg_bundle).ok();
+                self.data_store.insert(&msg_bundle).ok();
 
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(&time_point, &component_path);
             }
         }
 
-        self.arrow_store.insert(&msg_bundle).map_err(Into::into)
+        self.data_store.insert(&msg_bundle).map_err(Into::into)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
@@ -102,7 +103,7 @@ impl EntityDb {
 
         for component_path in cleared_paths {
             if let Some(data_type) = self
-                .arrow_store
+                .data_store
                 .lookup_data_type(&component_path.component_name)
             {
                 // Create and insert an empty component into the arrow store
@@ -115,7 +116,7 @@ impl EntityDb {
                     time_point.clone(),
                     vec![bundle],
                 );
-                self.arrow_store.insert(&msg_bundle).ok();
+                self.data_store.insert(&msg_bundle).ok();
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(time_point, &component_path);
             }
@@ -133,7 +134,7 @@ impl EntityDb {
             entity_path_from_hash: _,
             times_per_timeline,
             tree,
-            arrow_store: _, // purged before this function is called
+            data_store: _, // purged before this function is called
         } = self;
 
         {
@@ -244,7 +245,7 @@ impl LogDb {
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let drop_msg_ids = {
-            let msg_id_chunks = self.entity_db.arrow_store.gc(
+            let msg_id_chunks = self.entity_db.data_store.gc(
                 GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
                 Timeline::log_time(),
                 MsgId::name(),
@@ -259,7 +260,7 @@ impl LogDb {
                 .collect::<ahash::HashSet<_>>()
         };
 
-        let cutoff_times = self.entity_db.arrow_store.oldest_time_per_timeline();
+        let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
             chronological_message_ids,
