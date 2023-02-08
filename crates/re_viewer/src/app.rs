@@ -612,7 +612,7 @@ impl App {
 
             while let Ok(msg) = rx.try_recv() {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::info!("Beginning a new recording: {:?}", msg.info);
+                    re_log::debug!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
 
                     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]

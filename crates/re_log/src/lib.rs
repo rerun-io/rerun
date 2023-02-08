@@ -6,14 +6,14 @@
 //! * `warn`: problems that we can recover from
 //! * `error`: problems that lead to loss of functionality or data
 //!
-//! The `warn_once` etc macros are for when you want to surpress repeated
+//! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
 
 pub use tracing::{debug, error, info, trace, warn};
 
 // The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
 // In the future we should implement our own `tracing` layer and de-duplicate based on the callsite,
-// similar to how the log console in a browser will automatically supress duplicates.
+// similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 
 /// Set `RUST_LOG` environment variable to `info`, unless set,
@@ -22,8 +22,19 @@ pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 fn set_default_rust_log_env() {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
 
-    // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
-    for loud_crate in ["naga", "wgpu_core", "wgpu_hal"] {
+    const LOUD_CRATES: [&str; 7] = [
+        // wgpu crates spam a lot on info level, which is really annoying
+        // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
+        "naga",
+        "wgpu_core",
+        "wgpu_hal",
+        // These are quite spammy on debug, drowning out what we care about:
+        "h2",
+        "hyper",
+        "reqwest",
+        "rustls",
+    ];
+    for loud_crate in LOUD_CRATES {
         if !rust_log.contains(&format!("{loud_crate}=")) {
             rust_log += &format!(",{loud_crate}=warn");
         }
