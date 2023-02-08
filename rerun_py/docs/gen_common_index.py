@@ -40,33 +40,40 @@ import mkdocs_gen_files
 SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
     (
         "Initialization",
+        None,
         ["init", "set_recording_id", "connect", "spawn"],
     ),
     (
         "Logging Primitives",
+        None,
         ["log_point", "log_points", "log_rect", "log_rects", "log_obb", "log_path", "log_line_segments", "log_arrow"],
     ),
     (
         "Logging Images",
+        None,
         ["log_image", "log_image_file", "log_depth_image", "log_segmentation_image"],
     ),
     (
         "Annotations",
+        None,
         ["log_annotation_context"],
     ),
     (
         "Extension Components",
+        None,
         ["log_extension_components"],
     ),
     (
         "Plotting",
+        None,
         ["log_scalar"],
     ),
     (
         "Transforms",
+        None,
         ["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
     ),
-    ("Helpers", ["script_add_args", "script_setup", "script_teardown"]),
+    ("Helpers", "script_helpers", ["script_add_args", "script_setup", "script_teardown"]),
 ]
 
 # Virual folder where we will generate the md files
@@ -106,7 +113,7 @@ hide:
 """
     )
 
-    for (heading, func_list) in SECTION_TABLE:
+    for (heading, module, func_list) in SECTION_TABLE:
 
         # Turn the heading into a slug and add it to the nav
         md_name = make_slug(heading)
@@ -116,6 +123,12 @@ hide:
         # Write out the contents of this section
         write_path = common_dir.joinpath(md_file)
         with mkdocs_gen_files.open(write_path, "w") as fd:
+            if module is not None:
+                fd.write(f"::: rerun.{module}\n")
+                fd.write(f"    options:\n")
+                fd.write(f"      show_root_heading: False\n")
+                fd.write(f"      members: []\n")
+                fd.write("----\n")
             for func_name in func_list:
                 fd.write(f"::: rerun.{func_name}\n")
 
