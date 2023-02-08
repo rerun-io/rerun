@@ -34,7 +34,7 @@ re_log_types = { path = "../crates/re_log_types" }
 re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
-rerun = { path = "../crates/rerun", features = ["sdk"] }
+rerun = { path = "../crates/rerun" }
 
 ahash = "0.8"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
