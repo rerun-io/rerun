@@ -437,4 +437,4 @@ jobs:
       - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --deploy-prefix docs/python HEAD
+          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python HEAD
