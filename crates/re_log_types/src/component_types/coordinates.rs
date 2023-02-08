@@ -61,6 +61,7 @@ impl ViewDir {
 impl TryFrom<u8> for ViewDir {
     type Error = super::FieldError;
 
+    #[inline]
     fn try_from(i: u8) -> super::Result<Self> {
         match i {
             1 => Ok(Self::Up),
@@ -97,6 +98,7 @@ impl TryFrom<u8> for ViewDir {
 pub struct ViewCoordinates(pub [ViewDir; 3]);
 
 impl Component for ViewCoordinates {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.view_coordinates".into()
     }
@@ -205,6 +207,7 @@ impl ViewCoordinates {
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
+    #[inline]
     pub fn from_rub(&self) -> glam::Mat3 {
         self.to_rub().transpose()
     }
@@ -213,6 +216,7 @@ impl ViewCoordinates {
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
+    #[inline]
     pub fn to_rub(&self) -> glam::Mat3 {
         fn rub(dir: ViewDir) -> [f32; 3] {
             match dir {
@@ -229,6 +233,7 @@ impl ViewCoordinates {
     }
 
     #[cfg(feature = "glam")]
+    #[inline]
     pub fn handedness(&self) -> Option<Handedness> {
         let to_rub = self.to_rub();
         let det = to_rub.determinant();
@@ -245,6 +250,7 @@ impl ViewCoordinates {
 impl std::str::FromStr for ViewCoordinates {
     type Err = String;
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.as_bytes() {
             [x, y, z] => {
@@ -263,6 +269,8 @@ impl std::str::FromStr for ViewCoordinates {
 
 impl ArrowField for ViewCoordinates {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <FixedSizeBinary<3> as ArrowField>::data_type()
     }

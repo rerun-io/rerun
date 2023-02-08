@@ -40,6 +40,7 @@ impl From<Vec<[f32; 2]>> for LineStrip2D {
 }
 
 impl Component for LineStrip2D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.linestrip2d".into()
     }
@@ -49,6 +50,8 @@ arrow_enable_vec_for_type!(LineStrip2D);
 
 impl ArrowField for LineStrip2D {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <Vec<Vec2D> as ArrowField>::data_type()
     }
@@ -123,6 +126,7 @@ impl From<Vec<[f32; 3]>> for LineStrip3D {
 }
 
 impl Component for LineStrip3D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.linestrip3d".into()
     }
@@ -132,6 +136,8 @@ arrow_enable_vec_for_type!(LineStrip3D);
 
 impl ArrowField for LineStrip3D {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <Vec<Vec3D> as ArrowField>::data_type()
     }

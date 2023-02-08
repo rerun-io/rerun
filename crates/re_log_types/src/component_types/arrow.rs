@@ -38,6 +38,7 @@ pub struct Arrow3D {
 }
 
 impl Component for Arrow3D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.arrow3d".into()
     }

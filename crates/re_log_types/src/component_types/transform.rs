@@ -172,7 +172,6 @@ impl Pinhole {
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[cfg(feature = "glam")]
     #[inline]
-    #[cfg(feature = "glam")]
     pub fn principal_point(&self) -> glam::Vec2 {
         glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
     }
@@ -235,6 +234,7 @@ pub enum Transform {
 }
 
 impl Component for Transform {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.transform".into()
     }

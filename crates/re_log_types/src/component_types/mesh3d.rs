@@ -41,6 +41,7 @@ impl MeshId {
 impl ArrowField for MeshId {
     type Type = Self;
 
+    #[inline]
     fn data_type() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::FixedSizeBinary(16)
     }
@@ -49,10 +50,12 @@ impl ArrowField for MeshId {
 impl ArrowSerialize for MeshId {
     type MutableArrayType = MutableFixedSizeBinaryArray;
 
+    #[inline]
     fn new_array() -> Self::MutableArrayType {
         MutableFixedSizeBinaryArray::new(16)
     }
 
+    #[inline]
     fn arrow_serialize(
         v: &<Self as arrow2_convert::field::ArrowField>::Type,
         array: &mut Self::MutableArrayType,
@@ -64,6 +67,7 @@ impl ArrowSerialize for MeshId {
 impl ArrowDeserialize for MeshId {
     type ArrayType = FixedSizeBinaryArray;
 
+    #[inline]
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
@@ -177,6 +181,7 @@ impl RawMesh3D {
         Ok(())
     }
 
+    #[inline]
     pub fn num_triangles(&self) -> usize {
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
@@ -275,6 +280,8 @@ arrow_enable_vec_for_type!(EncodedMesh3D);
 
 impl ArrowField for EncodedMesh3D {
     type Type = Self;
+
+    #[inline]
     fn data_type() -> DataType {
         <EncodedMesh3DArrow as ArrowField>::data_type()
     }
@@ -352,12 +359,14 @@ pub enum Mesh3D {
 }
 
 impl Component for Mesh3D {
+    #[inline]
     fn name() -> crate::ComponentName {
         "rerun.mesh3d".into()
     }
 }
 
 impl Mesh3D {
+    #[inline]
     pub fn mesh_id(&self) -> MeshId {
         match self {
             Mesh3D::Encoded(mesh) => mesh.mesh_id,
