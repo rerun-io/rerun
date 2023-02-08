@@ -36,7 +36,7 @@ re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 anyhow.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
-egui = { version = "0.20.1", default-features = false }
+egui = { workspace = true, default-features = false }
 puffin.workspace = true
 
 # Optional dependencies:
