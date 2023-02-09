@@ -152,13 +152,13 @@ def init(application_id: str, spawn: bool = False) -> None:
         # original caller, so we have to walk the stack and look for anything that might look like
         # an official Rerun example.
 
-        MAX_FRAMES=10 # try the first 10 frames, should be more than enough
-        FRAME_FILENAME_INDEX=1 # `FrameInfo` tuple has `filename` at index 1
+        MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
+        FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
 
         stack = inspect.stack()
         for frame in stack[:MAX_FRAMES]:
-            filename=frame[FRAME_FILENAME_INDEX]
-            path = pathlib.Path(filename).resolve() # normalize before comparison!
+            filename = frame[FRAME_FILENAME_INDEX]
+            path = pathlib.Path(filename).resolve()  # normalize before comparison!
             if "rerun/examples" in str(path):
                 app_path = path
     except Exception:
