@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """Example using a dicom MRI scan.
 
-Setup:
-``` sh
-python3 examples/dicom/download_dataset.py
-```
-
 Run:
 ``` sh
 python3 examples/dicom/main.py
