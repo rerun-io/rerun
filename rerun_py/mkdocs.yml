@@ -9,7 +9,6 @@ repo_url: https://github.com/rerun-io/rerun/
 theme:
   name: "material"
   features:
-    - navigation.expand
     - navigation.indexes
     - navigation.instant
     - navigation.tabs
