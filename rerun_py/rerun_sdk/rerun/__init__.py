@@ -158,7 +158,7 @@ def init(application_id: str, spawn: bool = False) -> None:
         stack = inspect.stack()
         for frame in stack[:MAX_FRAMES]:
             filename = frame[FRAME_FILENAME_INDEX]
-            path = pathlib.Path(filename).resolve()  # normalize before comparison!
+            path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
             if "rerun/examples" in str(path):
                 app_path = path
     except Exception:
