@@ -30,6 +30,7 @@ def build_color_grid(x_count=6, y_count=6, z_count=6):
 
 
 color_grid = build_color_grid()
+"""Default color grid"""
 
 
 RectPyramid = namedtuple("RectPyramid", ["rects", "format", "colors"])
@@ -60,3 +61,4 @@ def build_rect_pyramid(count=20, width=100, height=100):
 
 
 rect_pyramid = build_rect_pyramid()
+"""Default rect pyramid data"""
