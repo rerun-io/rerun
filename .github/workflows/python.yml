@@ -136,7 +136,7 @@ jobs:
         with:
           maturin-version: "0.14.10"
           manylinux: auto
-          contaienr: off
+          container: off
           command: build
           args: |
             --manifest-path rerun_py/Cargo.toml
