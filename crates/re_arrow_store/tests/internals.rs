@@ -49,7 +49,7 @@ fn pathological_bucket_topology() {
         store_backward: &mut DataStore,
     ) {
         let ent_path = EntityPath::from("this/that");
-        let nb_instances = 1;
+        let num_instances = 1;
 
         let time_point = TimePoint::from([build_frame_nr(frame_nr.into())]);
         for _ in 0..num {
@@ -57,7 +57,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_some_instances(nb_instances).try_into().unwrap()],
+                vec![build_some_instances(num_instances).try_into().unwrap()],
             );
             store_forward.insert(&msg).unwrap();
 
@@ -65,7 +65,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_some_instances(nb_instances).try_into().unwrap()],
+                vec![build_some_instances(num_instances).try_into().unwrap()],
             );
             store_backward.insert(&msg).unwrap();
         }
@@ -77,7 +77,7 @@ fn pathological_bucket_topology() {
         store_backward: &mut DataStore,
     ) {
         let ent_path = EntityPath::from("this/that");
-        let nb_instances = 1;
+        let num_instances = 1;
 
         let msgs = range
             .map(|frame_nr| {
@@ -86,7 +86,7 @@ fn pathological_bucket_topology() {
                     MsgId::ZERO,
                     ent_path.clone(),
                     time_point,
-                    vec![build_some_instances(nb_instances).try_into().unwrap()],
+                    vec![build_some_instances(num_instances).try_into().unwrap()],
                 )
             })
             .collect::<Vec<_>>();
@@ -108,23 +108,28 @@ fn pathological_bucket_topology() {
     store_repeated_frame(975, 10, &mut store_forward, &mut store_backward);
 
     {
-        let nb_buckets = store_forward
+        let num_buckets = store_forward
             .iter_indices()
             .flat_map(|(_, table)| table.iter_buckets())
             .count();
-        assert_eq!(7usize, nb_buckets, "pathological topology (forward): {}", {
-            store_forward.sort_indices_if_needed();
-            store_forward
-        });
+        assert_eq!(
+            7usize,
+            num_buckets,
+            "pathological topology (forward): {}",
+            {
+                store_forward.sort_indices_if_needed();
+                store_forward
+            }
+        );
     }
     {
-        let nb_buckets = store_backward
+        let num_buckets = store_backward
             .iter_indices()
             .flat_map(|(_, table)| table.iter_buckets())
             .count();
         assert_eq!(
             8usize,
-            nb_buckets,
+            num_buckets,
             "pathological topology (backward): {}",
             {
                 store_backward.sort_indices_if_needed();

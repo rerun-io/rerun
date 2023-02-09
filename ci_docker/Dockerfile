@@ -17,7 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfreetype6-dev \
     libglib2.0-dev \
     libgtk-3-dev \
-    libspeechd-dev \
     libssl-dev \
     libxcb-render0-dev \
     libxcb-shape0-dev \
@@ -32,7 +31,7 @@ ADD rerun_py/requirements-build.txt requirements-build.txt
 RUN pip install -r requirements-build.txt
 
 # Install some additional versioned cargo tools
-RUN cargo install wasm-bindgen-cli@0.2.83
+RUN cargo install wasm-bindgen-cli@0.2.84
 
 # Increment this to invalidate cache
 ENV CACHE_KEY=rerun_docker_v0.1

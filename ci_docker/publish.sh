@@ -1,4 +1,4 @@
-VERSION=0.3 # Bump on each new version. Maybe it should also match the version in ci_docker/Dockerfile ?
+VERSION=0.4 # Bump on each new version. Maybe it should also match the version in ci_docker/Dockerfile ?
 
 # The build needs to run from top of repo to access the requirments.txt
 cd `git rev-parse --show-toplevel`
