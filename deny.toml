@@ -1,3 +1,11 @@
+# https://github.com/EmbarkStudios/cargo-deny
+#
+# cargo-deny checks our dependency tree for copy-left licenses,
+# duplicate dependencies, and rustsec advisories (https://rustsec.org/advisories).
+#
+# Install: `cargo install cargo-deny`
+# Check: `cargo deny check`.
+
 targets = [
   { triple = "aarch64-apple-darwin" },
   { triple = "aarch64-linux-android" },
@@ -22,6 +30,7 @@ multiple-versions = "deny"
 wildcards = "allow" # at least until https://github.com/EmbarkStudios/cargo-deny/issues/241 is fixed
 deny = [
   { name = "cgmath" },      # We use glam
+  { name = "cmake" },       # Never again
   { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
   { name = "openssl" },     # We prefer rustls

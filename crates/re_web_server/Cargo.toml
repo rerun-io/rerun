@@ -10,7 +10,7 @@ publish = false
 [features]
 ## ONLY FOR CI!
 ##
-## When set: will skip building the Web Viewer WASM.
+## When set: will skip building the Web Viewer Wasm.
 ## This makes the CI much faster, but the resulting web server
 ## will crash if you rey to run it!
 __ci = []

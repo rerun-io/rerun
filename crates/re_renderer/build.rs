@@ -76,7 +76,7 @@ impl std::str::FromStr for ImportClause {
                 .map(|path| Self { path });
         }
 
-        bail!("misformatted import clause: {clause_str:?}")
+        bail!("malformed import clause: {clause_str:?}")
     }
 }
 
@@ -97,7 +97,7 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
             ensure!(
                 clause_path.starts_with(&root_path),
                 "trying to import {:?} which lives outside of the workspace, \
-                    this is illegal in release and/or WASM builds!",
+                    this is illegal in release and/or Wasm builds!",
                 clause_path
             );
 

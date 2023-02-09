@@ -85,7 +85,7 @@ impl Session {
                 .unwrap();
             let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx));
 
-            // This is the server that serves the WASM+HTML:
+            // This is the server that serves the Wasm+HTML:
             let web_port = 9090;
             let web_server = re_web_server::WebServer::new(web_port);
             let web_server_handle = tokio::spawn(async move {

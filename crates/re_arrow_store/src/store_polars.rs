@@ -29,12 +29,12 @@ impl DataStore {
             let ent_path = index.ent_path.clone();
 
             let mut df = index.to_dataframe(self, &self.config);
-            let nb_rows = df.get_columns()[0].len();
+            let num_rows = df.get_columns()[0].len();
 
             // Add a column where every row is a boolean true (timeless)
             let timeless = {
-                let timeless = BooleanArray::from(vec![Some(true); nb_rows]).boxed();
-                new_infallible_series(IS_TIMELESS_COL, timeless.as_ref(), nb_rows)
+                let timeless = BooleanArray::from(vec![Some(true); num_rows]).boxed();
+                new_infallible_series(IS_TIMELESS_COL, timeless.as_ref(), num_rows)
             };
             let df = df.with_column(timeless).unwrap(); // cannot fail
 
@@ -48,14 +48,14 @@ impl DataStore {
                 .map(|bucket| (index.ent_path.clone(), bucket))
                 .map(|(ent_path, bucket)| {
                     let mut df = bucket.to_dataframe(self, &self.config);
-                    let nb_rows = df.get_columns()[0].len();
+                    let num_rows = df.get_columns()[0].len();
 
                     // Add a column where every row is the entity path.
                     let entities = {
                         let ent_path = ent_path.to_string();
                         let ent_path = Some(ent_path.as_str());
-                        let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
-                        new_infallible_series("entity", entities.as_ref(), nb_rows)
+                        let entities = Utf8Array::<i32>::from(vec![ent_path; num_rows]).boxed();
+                        new_infallible_series("entity", entities.as_ref(), num_rows)
                     };
                     let df = df.with_column(entities).unwrap(); // cannot fail
 
@@ -77,13 +77,13 @@ impl DataStore {
         let dfs: Vec<_> = timeless_dfs
             .chain(temporal_dfs)
             .map(|(ent_path, mut df)| {
-                let nb_rows = df.get_columns()[0].len();
+                let num_rows = df.get_columns()[0].len();
                 // Add a column where every row is the entity path.
                 let entities = {
                     let ent_path = ent_path.to_string();
                     let ent_path = Some(ent_path.as_str());
-                    let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
-                    new_infallible_series("entity", entities.as_ref(), nb_rows)
+                    let entities = Utf8Array::<i32>::from(vec![ent_path; num_rows]).boxed();
+                    new_infallible_series("entity", entities.as_ref(), num_rows)
                 };
                 df.with_column(entities).unwrap().clone() // cannot fail
             })
@@ -135,14 +135,14 @@ impl PersistentIndexTable {
         let Self {
             ent_path: _,
             cluster_key: _,
-            nb_rows,
+            num_rows,
             indices,
             all_components: _,
         } = self;
 
         let insert_ids = config
             .store_insert_ids
-            .then(|| insert_ids_as_series(*nb_rows as usize, indices))
+            .then(|| insert_ids_as_series(*num_rows as usize, indices))
             .flatten();
 
         let comp_series =
@@ -152,7 +152,7 @@ impl PersistentIndexTable {
             // One column for each component index.
             .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
             let datatype = find_component_datatype(store, component)?;
-                component_as_series(store, *nb_rows as usize, datatype, *component, comp_row_nrs).into()
+                component_as_series(store, *num_rows as usize, datatype, *component, comp_row_nrs).into()
             }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -171,7 +171,7 @@ impl IndexBucket {
         crate::profile_function!();
 
         let (_, times) = self.times();
-        let nb_rows = times.len();
+        let num_rows = times.len();
 
         let IndexBucketIndices {
             is_sorted: _,
@@ -182,7 +182,7 @@ impl IndexBucket {
 
         let insert_ids = config
             .store_insert_ids
-            .then(|| insert_ids_as_series(nb_rows, indices))
+            .then(|| insert_ids_as_series(num_rows, indices))
             .flatten();
 
         // Need to create one `Series` for the time index and one for each component index.
@@ -193,7 +193,7 @@ impl IndexBucket {
             Some(new_infallible_series(
                 self.timeline.name().as_str(),
                 &times,
-                nb_rows,
+                num_rows,
             )),
         ]
         .into_iter()
@@ -201,7 +201,7 @@ impl IndexBucket {
         // One column for each component index.
         .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
             let datatype = find_component_datatype(store, component)?;
-            component_as_series(store, nb_rows, datatype, *component, comp_row_nrs).into()
+            component_as_series(store, num_rows, datatype, *component, comp_row_nrs).into()
         }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -214,7 +214,7 @@ impl IndexBucket {
 // ---
 
 fn insert_ids_as_series(
-    nb_rows: usize,
+    num_rows: usize,
     indices: &IntMap<ComponentName, SecondaryIndex>,
 ) -> Option<Series> {
     crate::profile_function!();
@@ -225,7 +225,7 @@ fn insert_ids_as_series(
             .map(|id| id.map(|id| id.0.get()))
             .collect::<Vec<_>>();
         let insert_ids = UInt64Array::from(insert_ids);
-        new_infallible_series(DataStore::insert_id_key().as_str(), &insert_ids, nb_rows)
+        new_infallible_series(DataStore::insert_id_key().as_str(), &insert_ids, num_rows)
     })
 }
 
@@ -248,7 +248,7 @@ fn find_component_datatype(
 
 fn component_as_series(
     store: &DataStore,
-    nb_rows: usize,
+    num_rows: usize,
     datatype: arrow2::datatypes::DataType,
     component: ComponentName,
     comp_row_nrs: &[Option<RowIndex>],
@@ -290,7 +290,7 @@ fn component_as_series(
         Some(Bitmap::from(comp_validity)),
     );
 
-    new_infallible_series(component.as_str(), &comp_values, nb_rows)
+    new_infallible_series(component.as_str(), &comp_values, num_rows)
 }
 
 // ---

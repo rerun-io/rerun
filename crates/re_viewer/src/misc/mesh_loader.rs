@@ -107,14 +107,14 @@ impl LoadedMesh {
 
         let positions: Vec<glam::Vec3> =
             bytemuck::try_cast_vec(positions.clone()).map_err(|(err, _)| anyhow!(err))?;
-        let nb_positions = positions.len();
+        let num_positions = positions.len();
 
         let indices = if let Some(indices) = indices {
             indices.clone()
         } else {
             (0..positions.len() as u32).collect()
         };
-        let nb_indices = indices.len();
+        let num_indices = indices.len();
 
         let normals = if let Some(normals) = normals {
             normals
@@ -132,7 +132,7 @@ impl LoadedMesh {
                 normal: glam::Vec3::ZERO,
                 texcoord: glam::Vec2::ZERO,
             })
-            .take(nb_positions)
+            .take(num_positions)
             .collect()
         };
 
@@ -149,7 +149,7 @@ impl LoadedMesh {
                     vertex_data: normals,
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
-                        index_range: 0..nb_indices as _,
+                        index_range: 0..num_indices as _,
                         albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
                         albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
                             re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())

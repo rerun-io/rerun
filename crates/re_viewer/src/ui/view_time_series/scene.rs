@@ -162,7 +162,7 @@ impl SceneTimeSeries {
     fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
         crate::profile_function!();
 
-        let nb_points = points.len();
+        let num_points = points.len();
         let mut attrs = points[0].attrs.clone();
         let mut line: PlotSeries = PlotSeries {
             label: line_label.to_owned(),
@@ -173,7 +173,7 @@ impl SceneTimeSeries {
             } else {
                 PlotSeriesKind::Continuous
             },
-            points: Vec::with_capacity(nb_points),
+            points: Vec::with_capacity(num_points),
         };
 
         for (i, p) in points.into_iter().enumerate() {
@@ -199,7 +199,7 @@ impl SceneTimeSeries {
                         color: attrs.color,
                         width: attrs.radius,
                         kind,
-                        points: Vec::with_capacity(nb_points - i),
+                        points: Vec::with_capacity(num_points - i),
                     },
                 );
                 let prev_point = *prev_line.points.last().unwrap();

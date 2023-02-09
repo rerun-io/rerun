@@ -57,7 +57,7 @@ impl std::fmt::Display for UnreachableTransform {
 }
 
 impl TransformCache {
-    /// Determines transforms for all entities relative to a root path which serves as the "reference".
+    /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///
     /// This means that the entities in `reference_space` get the identity transform and all other
@@ -65,36 +65,25 @@ impl TransformCache {
     pub fn determine_transforms(
         entity_db: &EntityDb,
         time_ctrl: &TimeControl,
-        root_path: &EntityPath,
+        space_path: &EntityPath,
         entity_prop_map: &EntityPropertyMap,
     ) -> Self {
         crate::profile_function!();
 
         let mut transforms = TransformCache {
-            reference_path: root_path.clone(),
+            reference_path: space_path.clone(),
             reference_from_entity_per_entity: Default::default(),
             unreachable_descendants: Default::default(),
             first_unreachable_parent: None,
         };
 
         // Find the entity path tree for the root.
-        let mut parent_tree_stack = Vec::new();
-        let mut current_tree = &entity_db.tree;
-        'outer: while &current_tree.path != root_path {
-            for child_tree in current_tree.children.values() {
-                if root_path == &child_tree.path || root_path.is_descendant_of(&child_tree.path) {
-                    parent_tree_stack.push(current_tree);
-                    current_tree = child_tree;
-                    continue 'outer;
-                }
-            }
-            // Should never reach this
-            re_log::warn_once!(
-                "Path {} doesn't seem to be part of the global entity tree",
-                root_path
-            );
+        let Some(mut current_tree) = &entity_db.tree.subtree(space_path) else {
+            // It seems the space path is not part of the object tree!
+            // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
+            // Naturally, in this case we don't have any transforms yet.
             return transforms;
-        }
+        };
 
         let query = time_ctrl.current_query();
 
@@ -111,7 +100,16 @@ impl TransformCache {
         // Walk up from the reference to the highest reachable parent.
         let mut encountered_pinhole = false;
         let mut reference_from_ancestor = glam::Mat4::IDENTITY;
-        while let Some(parent_tree) = parent_tree_stack.pop() {
+        while let Some(parent_path) = current_tree.path.parent() {
+            let Some(parent_tree) = &entity_db.tree.subtree(&parent_path) else {
+                // Unlike not having the space path in the hierarchy, this should be impossible.
+                re_log::error_once!(
+                    "Path {} is not part of the global Entity tree whereas its child {} is",
+                    parent_path, space_path
+                );
+                return transforms;
+            };
+
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match inverse_transform_at(
