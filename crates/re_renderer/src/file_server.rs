@@ -1,6 +1,6 @@
 /// A macro to read the contents of a file on disk, and resolve #import clauses as required.
 ///
-/// - On WASM and/or release builds, this will behave like the standard [`include_str`]
+/// - On Wasm and/or release builds, this will behave like the standard [`include_str`]
 ///   macro.
 /// - On native debug builds, this will actually load the specified path through
 ///   our [`FileServer`], and keep watching for changes in the background (both the root file

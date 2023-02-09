@@ -210,7 +210,7 @@ fn build_web() {
 // ---
 
 fn main() {
-    // Rebuild the web-viewer WASM,
+    // Rebuild the web-viewer Wasm,
     // because the web_server library bundles it with `include_bytes!`
 
     let metadata = MetadataCommand::new()

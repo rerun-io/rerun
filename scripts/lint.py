@@ -12,10 +12,9 @@ import sys
 from typing import Optional
 
 todo_pattern = re.compile(r"TODO([^(]|$)")
-
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
-
 error_match_name = re.compile(r"Err\((\w+)\)")
+wasm_caps = re.compile(r"\bWASM\b")
 
 def lint_line(line: str) -> Optional[str]:
     if "NOLINT" in line:
@@ -54,6 +53,9 @@ def lint_line(line: str) -> Optional[str]:
         if name in ("e", "error"):
             return "Errors should be called 'err', '_err' or '_'"
 
+    if wasm_caps.search(line):
+        return "WASM should be written 'Wasm'"
+
     return None
 
 
@@ -72,6 +74,8 @@ def test_lint() -> None:
         'if let Err(err) = foo',
         'if let Err(_err) = foo',
         'if let Err(_) = foo',
+        'WASM_FOO env var',
+        'Wasm',
     ]
 
     should_error = [
@@ -86,6 +90,7 @@ def test_lint() -> None:
         'eprintln!("{:?}", err)',
         'eprintln!("{:#?}", err)',
         'if let Err(error) = foo',
+        'We use WASM in Rerun',
     ]
 
     for line in should_pass:

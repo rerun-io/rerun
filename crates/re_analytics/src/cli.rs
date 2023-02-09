@@ -78,7 +78,7 @@ const DETAILS: &str = "
     * Anonymous Usage Data Collection in Rerun *
 
     Opting out:
-    - Run `rerun analytics disable` or `python -m rerun analytics disable` to opt out of all usage data collection.
+    - Run `rerun analytics disable` to opt out of all usage data collection.
 
     What data is collected?
     - The exact set of analytics events and parameters can be found here:

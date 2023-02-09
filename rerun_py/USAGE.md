@@ -1,3 +1,5 @@
+<!--- TODO(emilk): move all of this to https://github.com/rerun-io/rerun-docs/  -->
+
 # Using the `rerun` Python Library
 
 Install instructions can be found at <https://github.com/rerun-io/rerun#readme>.
@@ -11,7 +13,7 @@ Rerun assumes you are using `numpy` for any large chunks of data.
 ```python
 import rerun as rr
 
-rr.init("my_app", spawn_and_connect = True) # Spawn a Rerun Viewer and stream log events to it
+rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
 
 rr.log_image("rgb_image", image)
 ```
@@ -116,3 +118,17 @@ To do so, don't call `rr.connect()`. Instead, call `rr.show()` at the end of you
 
 ## Troubleshooting
 You can set `RUST_LOG=debug` before running your Python script and/or `rerun` process to get some verbose logging output.
+
+# Help
+Most documentation is found in the docstrings of the functions in the Rerun. Either check out the docstrings directly in code or use the built in `help()` function. For example, to see the docstring of the `log_image` function, open a python terminal and run:
+
+```python
+import rerun as rr
+help(rr.log_image)
+```
+
+## Bounded memory use
+
+You can set `--memory-limit=16GB` to tell the Rerun Viewer to purge older log data when memory use goes above that limit. This is useful for using Rerun in _continuous_ mode, i.e. where you keep logging new data to Rerun forever.
+
+It is still possible to log data faster than the Rerun Viewer can process it, and in those cases you may still run out of memory unless you also set `--drop-at-latency=200ms` or similar.
