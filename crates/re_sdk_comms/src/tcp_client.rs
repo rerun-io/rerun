@@ -5,9 +5,9 @@ use std::{
 
 /// State of the [`TcpStream`]
 ///
-/// Because rhe [`TcpClient`] lazily connects on [`TcpClient::send`], it needs a
+/// Because the [`TcpClient`] lazily connects on [`TcpClient::send`], it needs a
 /// very simple state machine to track the state of the connection. A trinary
-/// state is used to specifically enable differentiation between
+/// state is used to specifically differentiate between
 /// [`TcpStreamState::Pending`] which is still a nominal state for any new tcp
 /// connection, and [`TcpStreamState::Disconnected`] which implies either a
 /// failure to connect, or an error on an already established stream.
