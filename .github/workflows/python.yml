@@ -126,9 +126,10 @@ jobs:
         run: pip install rerun_py/
 
       - name: Generate Embedded RRD file
+        shell: bash
         run: |
           pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless --save car.rrd
+          python examples/car/main.py --headless --save car.rrd
           cp car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
 
       - name: Build Wheel
