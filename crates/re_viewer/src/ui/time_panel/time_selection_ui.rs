@@ -4,15 +4,17 @@ use re_log_types::{Duration, TimeInt, TimeRangeF, TimeReal, TimeType};
 
 use crate::{misc::time_control::Looping, TimeControl};
 
-use super::time_ranges_ui::TimeRangesUi;
+use super::{is_time_safe_to_show, time_ranges_ui::TimeRangesUi};
 
 pub fn loop_selection_ui(
+    ctx: &mut crate::misc::ViewerContext<'_>,
     time_ranges_ui: &TimeRangesUi,
-    time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
+    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+
     if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
@@ -70,8 +72,18 @@ pub fn loop_selection_ui(
                 time_area_painter.rect_filled(rect, rounding, selection_color);
             }
 
-            if is_active && !selected_range.is_empty() {
-                paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
+            if is_active
+                && !selected_range.is_empty()
+                && is_time_safe_to_show(ctx, selected_range.min)
+                && is_time_safe_to_show(ctx, selected_range.max)
+            {
+                paint_range_text(
+                    &mut ctx.rec_cfg.time_ctrl,
+                    selected_range,
+                    ui,
+                    time_area_painter,
+                    rect,
+                );
             }
 
             // Check for interaction:
@@ -129,10 +141,10 @@ pub fn loop_selection_ui(
         if selected_range.is_empty() && !ui.memory(|mem| mem.is_anything_being_dragged()) {
             // A zero-sized loop selection is confusing (and invisible), so remove it
             // (unless we are in the process of dragging right now):
-            time_ctrl.remove_loop_selection();
+            ctx.rec_cfg.time_ctrl.remove_loop_selection();
         } else {
             // Update it in case it was modified:
-            time_ctrl.set_loop_selection(selected_range);
+            ctx.rec_cfg.time_ctrl.set_loop_selection(selected_range);
         }
     }
 
@@ -144,6 +156,7 @@ pub fn loop_selection_ui(
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+                let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
                 time_ctrl.set_looping(Looping::Selection);
                 ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
