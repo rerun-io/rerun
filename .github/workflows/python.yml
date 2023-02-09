@@ -21,7 +21,7 @@ env:
     3. Test it: `rerun --version`
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }} # Cancel previous CI jobs only on pull-requests
   cancel-in-progress: true
 
 jobs:
@@ -223,7 +223,7 @@ jobs:
           MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         with:
           command: upload
-          args: --skip-existing *
+          args: --skip-existing dist/*
 
   # ---------------------------------------------------------------------------
 
