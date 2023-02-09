@@ -258,7 +258,8 @@ impl TimePanel {
             full_y_range.clone(),
         );
         time_selection_ui::loop_selection_ui(
-            ctx,
+            ctx.log_db,
+            &mut ctx.rec_cfg.time_ctrl,
             &self.time_ranges_ui,
             ui,
             &time_bg_area_painter,
@@ -589,18 +590,16 @@ fn help_button(ui: &mut egui::Ui) {
 /// So we do not want to display these times to the user.
 ///
 /// This functions returns `true` iff the given time is safe to show.
-fn is_time_safe_to_show(ctx: &ViewerContext<'_>, time: TimeReal) -> bool {
-    if ctx.log_db.num_timeless_messages() == 0 {
+fn is_time_safe_to_show(
+    log_db: &re_data_store::LogDb,
+    timeline: &re_arrow_store::Timeline,
+    time: TimeReal,
+) -> bool {
+    if log_db.num_timeless_messages() == 0 {
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = ctx
-        .log_db
-        .entity_db
-        .tree
-        .prefix_times
-        .get(ctx.rec_cfg.time_ctrl.timeline())
-    {
+    if let Some(times) = log_db.entity_db.tree.prefix_times.get(timeline) {
         if let Some(first_time) = times.keys().next() {
             return *first_time <= time;
         }
@@ -611,7 +610,8 @@ fn is_time_safe_to_show(ctx: &ViewerContext<'_>, time: TimeReal) -> bool {
 
 fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     if let Some(time_int) = ctx.rec_cfg.time_ctrl.time_int() {
-        if is_time_safe_to_show(ctx, time_int.into()) {
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        if is_time_safe_to_show(ctx.log_db, timeline, time_int.into()) {
             let time_type = ctx.rec_cfg.time_ctrl.time_type();
             ui.monospace(time_type.format(time_int));
         }
