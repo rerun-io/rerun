@@ -3,13 +3,40 @@ use std::{
     net::{SocketAddr, TcpStream},
 };
 
-/// State of the `TcpStream`
-/// 
-/// The `TcpStream` always starts in the Init state so that we can disambiguate
-/// not having tried to connect from having failed to connect.
+/// State of the [`TcpStream`]
+///
+/// Because rhe [`TcpClient`] lazily connects on [`TcpClient::send`], it needs a
+/// very simple state machine to track the state of the connection. A trinary
+/// state is used to specifically enable differentiation between
+/// [`TcpStreamState::Pending`] which is still a nominal state for any new tcp
+/// connection, and [`TcpStreamState::Disconnected`] which implies either a
+/// failure to connect, or an error on an already established stream.
 enum TcpStreamState {
-    Init,
+    /// The [`TcpStream`] is yet to be connected.
+    ///
+    /// Behavior: Try to connect on next [`TcpClient::send()`]
+    ///
+    /// Transitions:
+    ///  - Pending -> Connected on successful connection.
+    ///  - Pending -> Disconnected on failed connection.
+    Pending,
+
+    /// A healthy [`TcpStream`] ready to send packets
+    ///
+    /// Behavior: Send packets on [`TcpClient::send()`]
+    ///
+    /// Transitions:
+    ///  - Connected -> Disconnected on send error
+    ///  - Connected -> Pending on [`TcpClient::set_addr`]
     Connected(TcpStream),
+
+    /// A broken [`TcpStream`] which experienced a failure to connect or send
+    ///
+    /// Behavior: Try to re-connect on next [`TcpClient::send()`]
+    ///
+    /// Transitions:
+    ///  - Disconnected -> Connected on successful connection.
+    ///  - Disconnected -> Pending on [`TcpClient::set_addr`]
     Disconnected,
 }
 
@@ -29,7 +56,7 @@ impl TcpClient {
     pub fn new(addr: SocketAddr) -> Self {
         Self {
             addrs: vec![addr],
-            stream_state: TcpStreamState::Init,
+            stream_state: TcpStreamState::Pending,
         }
     }
 
@@ -37,7 +64,7 @@ impl TcpClient {
         let addrs = vec![addr];
         if addrs != self.addrs {
             self.addrs = addrs;
-            self.stream_state = TcpStreamState::Init;
+            self.stream_state = TcpStreamState::Pending;
         }
     }
 
@@ -103,9 +130,12 @@ impl TcpClient {
         re_log::trace!("TCP stream flushed.");
     }
 
-    pub fn is_disconnected(&self) -> bool {
+    /// Check if the underlying [`TcpStream`] has entered the [`TcpStreamState::Disconnected`] state
+    ///
+    /// Note that this only occurs after a failure to connect or a failure to send.
+    pub fn has_disconnected(&self) -> bool {
         match self.stream_state {
-            TcpStreamState::Init | TcpStreamState::Connected(_) => false,
+            TcpStreamState::Pending | TcpStreamState::Connected(_) => false,
             TcpStreamState::Disconnected => true,
         }
     }
