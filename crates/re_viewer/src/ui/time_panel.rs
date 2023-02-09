@@ -1231,7 +1231,6 @@ fn loop_selection_ui(
                         time_ranges_ui,
                         &mut selected_range,
                         right_edge_id,
-                        time_ctrl,
                     );
                 }
 
@@ -1241,18 +1240,26 @@ fn loop_selection_ui(
                         time_ranges_ui,
                         &mut selected_range,
                         left_edge_id,
-                        time_ctrl,
                     );
                 }
 
                 if middle_response.dragged() {
-                    on_drag_loop_selection(ui, time_ranges_ui, selected_range, time_ctrl);
+                    on_drag_loop_selection(ui, time_ranges_ui, &mut selected_range);
                 }
             } else {
                 // inactive - show a tooltip at least:
                 ui.interact(rect, middle_id, egui::Sense::hover())
                         .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection.");
             }
+        }
+
+        if selected_range.is_empty() && !ui.memory(|mem| mem.is_anything_being_dragged()) {
+            // A zero-sized loop selection is confusing (and invisible), so remove it
+            // (unless we are in the process of dragging right now):
+            time_ctrl.remove_loop_selection();
+        } else {
+            // Update it in case it was modified:
+            time_ctrl.set_loop_selection(selected_range);
         }
     }
 
@@ -1277,7 +1284,6 @@ fn drag_right_loop_selection_edge(
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut TimeRangeF,
     right_edge_id: Id,
-    time_ctrl: &mut TimeControl,
 ) -> Option<()> {
     use egui::emath::smart_aim::best_in_range_f64;
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
@@ -1298,9 +1304,6 @@ fn drag_right_loop_selection_edge(
         ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
     }
 
-    time_ctrl.set_loop_selection(*selected_range);
-    time_ctrl.set_looping(Looping::Selection);
-
     Some(())
 }
 
@@ -1309,7 +1312,6 @@ fn drag_left_loop_selection_edge(
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut TimeRangeF,
     left_edge_id: Id,
-    time_ctrl: &mut TimeControl,
 ) -> Option<()> {
     use egui::emath::smart_aim::best_in_range_f64;
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
@@ -1330,17 +1332,13 @@ fn drag_left_loop_selection_edge(
         ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
     }
 
-    time_ctrl.set_loop_selection(*selected_range);
-    time_ctrl.set_looping(Looping::Selection);
-
     Some(())
 }
 
 fn on_drag_loop_selection(
     ui: &mut egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: TimeRangeF,
-    time_ctrl: &mut TimeControl,
+    selected_range: &mut TimeRangeF,
 ) -> Option<()> {
     let pointer_delta = ui.input(|i| i.pointer.delta());
 
@@ -1361,10 +1359,7 @@ fn on_drag_loop_selection(
         new_range.max = new_range.min + selected_range.length();
     }
 
-    time_ctrl.set_loop_selection(new_range);
-    if ui.input(|i| i.pointer.is_moving()) {
-        time_ctrl.set_looping(Looping::Selection);
-    }
+    *selected_range = new_range;
 
     Some(())
 }

@@ -430,6 +430,16 @@ impl TimeControl {
             .loop_selection = Some(selection);
     }
 
+    /// Remove the current loop selection.
+    pub fn remove_loop_selection(&mut self) {
+        if let Some(state) = self.states.get_mut(&self.timeline) {
+            state.loop_selection = None;
+        }
+        if self.looping() == Looping::Selection {
+            self.set_looping(Looping::Off);
+        }
+    }
+
     /// Is the current time in the selection range (if any), or at the current time mark?
     pub fn is_time_selected(&self, timeline: &Timeline, needle: TimeInt) -> bool {
         if timeline != &self.timeline {
