@@ -1151,9 +1151,13 @@ fn loop_selection_ui(
         time_ctrl.set_looping(Looping::Off);
     }
 
-    let selection_color = re_ui::ReUi::loop_selection_color();
-
     let is_active = time_ctrl.looping() == Looping::Selection;
+
+    let selection_color = if is_active {
+        re_ui::ReUi::loop_selection_color().gamma_multiply(0.7)
+    } else {
+        re_ui::ReUi::loop_selection_color().gamma_multiply(0.5)
+    };
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_pointer_in_timeline =
@@ -1165,14 +1169,13 @@ fn loop_selection_ui(
 
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
-    let transparent = if ui.visuals().dark_mode { 0.06 } else { 0.3 };
-
     // Paint existing selection and detect drag starting and hovering:
     if let Some(mut selected_range) = time_ctrl.loop_selection() {
         let min_x = time_ranges_ui.x_from_time(selected_range.min);
         let max_x = time_ranges_ui.x_from_time(selected_range.max);
 
         if let (Some(min_x), Some(max_x)) = (min_x, max_x) {
+            // The top part only
             let mut rect = Rect::from_x_y_ranges(min_x..=max_x, timeline_rect.y_range());
 
             // Make sure it is visible:
@@ -1186,20 +1189,13 @@ fn loop_selection_ui(
             let full_y_range = rect.top()..=time_area_painter.clip_rect().bottom();
 
             if is_active {
-                let bg_color = selection_color.linear_multiply(transparent);
-                time_area_painter.rect_filled(
-                    Rect::from_x_y_ranges(rect.x_range(), full_y_range),
-                    1.0,
-                    bg_color,
-                );
-            }
-
-            let main_color = if is_active {
-                selection_color
+                let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
+                let rounding = re_ui::ReUi::normal_rounding();
+                time_area_painter.rect_filled(full_rect, rounding, selection_color);
             } else {
-                selection_color.linear_multiply(transparent)
-            };
-            time_area_painter.rect_filled(rect, 1.0, main_color);
+                let rounding = re_ui::ReUi::normal_rounding();
+                time_area_painter.rect_filled(rect, rounding, selection_color);
+            }
 
             if is_active && !selected_range.is_empty() {
                 paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
