@@ -1,5 +1,6 @@
 mod ball_scatterer;
 mod paint_ticks;
+mod time_axis;
 mod time_ranges_ui;
 mod time_selection_ui;
 
@@ -16,10 +17,11 @@ use re_log_types::{
     ComponentPath, Duration, EntityPathPart, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
 };
 
-use crate::{time_axis::TimelineAxis, Item, TimeControl, TimeView, ViewerContext};
+use crate::{Item, TimeControl, TimeView, ViewerContext};
 
 use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
 
+use time_axis::TimelineAxis;
 use time_ranges_ui::TimeRangesUi;
 
 /// A panel that shows entity names to the left, time on the top.
