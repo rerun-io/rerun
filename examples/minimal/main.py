@@ -3,9 +3,10 @@
 """Demonstrates the most barebone usage of the Rerun SDK."""
 
 import numpy as np
+
 import rerun as rr
 
-SIZE=10
+SIZE = 10
 
 rr.spawn()
 
