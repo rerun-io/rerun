@@ -1206,101 +1206,65 @@ fn loop_selection_ui(
             }
 
             // Check for interaction:
-            if let Some(pointer_pos) = pointer_pos {
-                // To not annoy the user, we only allow interaction when it is active.
-                if is_active {
-                    let left_edge_rect =
-                        Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
-                            .expand(interact_radius);
+            // To not annoy the user, we only allow interaction when it is active.
+            if is_active {
+                let left_edge_rect =
+                    Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
+                        .expand(interact_radius);
 
-                    let right_edge_rect =
-                        Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
-                            .expand(interact_radius);
+                let right_edge_rect =
+                    Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
+                        .expand(interact_radius);
 
-                    // Check middle first, so that the edges "wins" (are on top)
-                    let middle_response = ui
-                        .interact(rect, middle_id, egui::Sense::click_and_drag())
-                        .on_hover_and_drag_cursor(CursorIcon::Move);
+                // Check middle first, so that the edges "wins" (are on top)
+                let middle_response = ui
+                    .interact(rect, middle_id, egui::Sense::click_and_drag())
+                    .on_hover_and_drag_cursor(CursorIcon::Move);
 
-                    let left_response = ui
-                        .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
-                        .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
+                let left_response = ui
+                    .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
 
-                    let right_response = ui
-                        .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
-                        .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
+                let right_response = ui
+                    .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
 
-                    // Use "smart_aim" to find a natural length of the time interval
-                    let aim_radius = ui.input(|i| i.aim_radius());
-                    use egui::emath::smart_aim::best_in_range_f64;
-
-                    if left_response.dragged() {
-                        if let (Some(time_low), Some(time_high)) = (
-                            time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
-                            time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
-                        ) {
-                            // TODO(emilk): snap to absolute time too
-                            let low_length = selected_range.max - time_low;
-                            let high_length = selected_range.max - time_high;
-                            let best_length = TimeReal::from(best_in_range_f64(
-                                low_length.as_f64(),
-                                high_length.as_f64(),
-                            ));
-
-                            selected_range.min = selected_range.max - best_length;
-
-                            if selected_range.min > selected_range.max {
-                                std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                                ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
-                            }
-
-                            time_ctrl.set_loop_selection(selected_range);
-                            time_ctrl.set_looping(Looping::Selection);
-                        }
-                    }
-
-                    if right_response.dragged() {
-                        if let (Some(time_low), Some(time_high)) = (
-                            time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
-                            time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
-                        ) {
-                            // TODO(emilk): snap to absolute time too
-                            let low_length = time_low - selected_range.min;
-                            let high_length = time_high - selected_range.min;
-                            let best_length = TimeReal::from(best_in_range_f64(
-                                low_length.as_f64(),
-                                high_length.as_f64(),
-                            ));
-
-                            selected_range.max = selected_range.min + best_length;
-
-                            if selected_range.min > selected_range.max {
-                                std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                                ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
-                            }
-
-                            time_ctrl.set_loop_selection(selected_range);
-                            time_ctrl.set_looping(Looping::Selection);
-                        }
-                    }
-
-                    if middle_response.clicked() {
-                        // Click to toggle looping
-                        if time_ctrl.looping() == Looping::Selection {
-                            time_ctrl.set_looping(Looping::Off);
-                        } else {
-                            time_ctrl.set_looping(Looping::Selection);
-                        }
-                    }
-
-                    if middle_response.dragged() {
-                        on_drag_loop_selection(ui, time_ranges_ui, selected_range, time_ctrl);
-                    }
-                } else {
-                    // inactive - show a tooltip at least:
-                    ui.interact(rect, middle_id, egui::Sense::hover())
-                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection.");
+                if left_response.dragged() {
+                    drag_right_loop_selection_edge(
+                        ui,
+                        time_ranges_ui,
+                        &mut selected_range,
+                        right_edge_id,
+                        time_ctrl,
+                    );
                 }
+
+                if right_response.dragged() {
+                    drag_left_loop_selection_edge(
+                        ui,
+                        time_ranges_ui,
+                        &mut selected_range,
+                        left_edge_id,
+                        time_ctrl,
+                    );
+                }
+
+                if middle_response.clicked() {
+                    // Click to toggle looping
+                    if time_ctrl.looping() == Looping::Selection {
+                        time_ctrl.set_looping(Looping::Off);
+                    } else {
+                        time_ctrl.set_looping(Looping::Selection);
+                    }
+                }
+
+                if middle_response.dragged() {
+                    on_drag_loop_selection(ui, time_ranges_ui, selected_range, time_ctrl);
+                }
+            } else {
+                // inactive - show a tooltip at least:
+                ui.interact(rect, middle_id, egui::Sense::hover())
+                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection.");
             }
         }
     }
@@ -1319,6 +1283,70 @@ fn loop_selection_ui(
             }
         }
     }
+}
+
+fn drag_right_loop_selection_edge(
+    ui: &mut egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    selected_range: &mut TimeRangeF,
+    right_edge_id: Id,
+    time_ctrl: &mut TimeControl,
+) -> Option<()> {
+    use egui::emath::smart_aim::best_in_range_f64;
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
+    let aim_radius = ui.input(|i| i.aim_radius());
+
+    let time_low = time_ranges_ui.time_from_x(pointer_pos.x - aim_radius)?;
+    let time_high = time_ranges_ui.time_from_x(pointer_pos.x + aim_radius)?;
+
+    // TODO(emilk): snap to absolute time too
+    let low_length = selected_range.max - time_low;
+    let high_length = selected_range.max - time_high;
+    let best_length = TimeReal::from(best_in_range_f64(low_length.as_f64(), high_length.as_f64()));
+
+    selected_range.min = selected_range.max - best_length;
+
+    if selected_range.min > selected_range.max {
+        std::mem::swap(&mut selected_range.min, &mut selected_range.max);
+        ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
+    }
+
+    time_ctrl.set_loop_selection(*selected_range);
+    time_ctrl.set_looping(Looping::Selection);
+
+    Some(())
+}
+
+fn drag_left_loop_selection_edge(
+    ui: &mut egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    selected_range: &mut TimeRangeF,
+    left_edge_id: Id,
+    time_ctrl: &mut TimeControl,
+) -> Option<()> {
+    use egui::emath::smart_aim::best_in_range_f64;
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
+    let aim_radius = ui.input(|i| i.aim_radius());
+
+    let time_low = time_ranges_ui.time_from_x(pointer_pos.x - aim_radius)?;
+    let time_high = time_ranges_ui.time_from_x(pointer_pos.x + aim_radius)?;
+
+    // TODO(emilk): snap to absolute time too
+    let low_length = time_low - selected_range.min;
+    let high_length = time_high - selected_range.min;
+    let best_length = TimeReal::from(best_in_range_f64(low_length.as_f64(), high_length.as_f64()));
+
+    selected_range.max = selected_range.min + best_length;
+
+    if selected_range.min > selected_range.max {
+        std::mem::swap(&mut selected_range.min, &mut selected_range.max);
+        ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
+    }
+
+    time_ctrl.set_loop_selection(*selected_range);
+    time_ctrl.set_looping(Looping::Selection);
+
+    Some(())
 }
 
 fn on_drag_loop_selection(
