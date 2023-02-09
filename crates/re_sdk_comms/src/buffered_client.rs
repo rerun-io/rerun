@@ -274,7 +274,7 @@ fn send_until_success(
     quit_rx: &Receiver<InterruptMsg>,
 ) -> Option<InterruptMsg> {
     // Early exit if tcp_client is disconnected
-    if drop_if_disconnected && !tcp_client.is_connected() {
+    if drop_if_disconnected && tcp_client.has_disconnected() {
         re_log::debug_once!("Dropping messages because we're disconnected.");
         return None;
     }
@@ -303,7 +303,7 @@ fn send_until_success(
 
                         // Only produce subsequent warnings once we've saturated the back-off
                         if sleep_ms == MAX_SLEEP_MS && new_err.to_string() != err.to_string() {
-                                re_log::warn!("Still failing to send message: {err}");
+                            re_log::warn!("Still failing to send message: {err}");
                         }
                     } else {
                         return None;

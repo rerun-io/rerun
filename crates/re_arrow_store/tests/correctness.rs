@@ -174,12 +174,12 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch().into();
     let frame39 = 39.into();
     let frame40 = 40.into();
-    let nb_instances = 3;
+    let num_instances = 3;
 
     store
         .insert(
             &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
-                build_some_instances(nb_instances),
+                build_some_instances(num_instances),
             ]),
         )
         .unwrap();
@@ -360,15 +360,15 @@ fn gc_correct() {
 
     let mut rng = rand::thread_rng();
 
-    let nb_frames = rng.gen_range(0..=100);
-    let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+    let num_frames = rng.gen_range(0..=100);
+    let frames = (0..num_frames).filter(|_| rand::thread_rng().gen());
     for frame_nr in frames {
-        let nb_ents = 10;
-        for i in 0..nb_ents {
+        let num_ents = 10;
+        for i in 0..num_ents {
             let ent_path = EntityPath::from(format!("this/that/{i}"));
-            let nb_instances = rng.gen_range(0..=1_000);
+            let num_instances = rng.gen_range(0..=1_000);
             let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
-                build_some_colors(nb_instances),
+                build_some_colors(num_instances),
             ]);
             store.insert(&bundle).unwrap();
         }

@@ -1,6 +1,11 @@
-//! The Rerun Arrow-based datastore.
+//! The Rerun datastore, implemented on top of [Apache Arrow](https://arrow.apache.org/)
+//! using the [`arrow2`] crate.
 //!
-//! * See [`DataStore`] for an overview of the core datastructures.
+//! This crate is an in-memory time series database for Rerun log data.
+//! It is indexed by Entity path, component, timeline, and time.
+//! It supports out-of-order insertions, and fast `O(log(N))` queries.
+//!
+//! * See [`DataStore`] for an overview of the core data structures.
 //! * See [`DataStore::latest_at`] and [`DataStore::range`] for the documentation of the public
 //!   read APIs.
 //! * See [`DataStore::insert`] for the documentation of the public write APIs.

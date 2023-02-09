@@ -5,16 +5,13 @@
 //!
 
 // Send data to a rerun session
-mod session;
-pub use self::session::Session;
-
-mod msg_sender;
-pub use self::msg_sender::{MsgSender, MsgSenderError};
-
 mod global;
-pub use self::global::global_session;
+mod msg_sender;
+mod session;
 
-pub mod viewer;
+pub use self::global::global_session;
+pub use self::msg_sender::{MsgSender, MsgSenderError};
+pub use self::session::Session;
 
 // ---
 
@@ -25,8 +22,11 @@ pub use re_sdk_comms::default_server_addr;
 // messages
 pub use re_log_types::{
     msg_bundle::{Component, ComponentBundle, MsgBundle, SerializableComponent},
-    ComponentName, EntityPath, LogMsg, MsgId, Time, TimeInt, TimePoint, TimeType, Timeline,
+    ComponentName, EntityPath, LogMsg, MsgId, PathOp,
 };
+
+// time
+pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 
 // components
 pub use re_log_types::component_types::{
@@ -44,4 +44,7 @@ pub mod external {
     pub use re_log_types;
     pub use re_memory;
     pub use re_sdk_comms;
+
+    #[cfg(feature = "glam")]
+    pub use re_log_types::external::glam;
 }

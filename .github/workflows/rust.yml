@@ -34,7 +34,7 @@ jobs:
 
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.3
+      image: rerunio/ci_docker:0.4
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -86,7 +86,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.3
+      image: rerunio/ci_docker:0.4
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -173,7 +173,9 @@ jobs:
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
         if: ${{ github.event_name == 'push' }}
-        run: python3 -m ghp_import -n -p -x rust/head target/doc/ -m "Update the rust docs"
+        run: |
+          git fetch
+          python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
 
   # ---------------------------------------------------------------------------
 
@@ -181,7 +183,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.3
+      image: rerunio/ci_docker:0.4
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -222,7 +224,7 @@ jobs:
     name: Check Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.3
+      image: rerunio/ci_docker:0.4
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}

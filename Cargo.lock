@@ -130,11 +130,10 @@ dependencies = [
  "clap 4.1.4",
  "glam",
  "itertools",
- "mimalloc",
  "ndarray",
  "ndarray-rand",
  "rand",
- "rerun_sdk",
+ "rerun",
 ]
 
 [[package]]
@@ -375,6 +374,15 @@ name = "base64"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
+
+[[package]]
+name = "basic-toml"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e819b667739967cd44d308b8c7b71305d8bb0729ac44a248aa08f33d01950b4"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bincode"
@@ -1241,7 +1249,7 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 [[package]]
 name = "ecolor"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1250,7 +1258,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1277,7 +1285,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1299,7 +1307,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1313,7 +1321,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "android-activity",
  "arboard",
@@ -1339,7 +1347,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "egui",
  "serde",
@@ -1349,12 +1357,12 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "bytemuck",
  "egui",
  "egui-winit",
- "glow 0.11.2",
+ "glow",
  "memoffset 0.6.5",
  "puffin",
  "tracing",
@@ -1371,7 +1379,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1427,7 +1435,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=b52cd2052f722bb09147204574504aa558b89ec0#b52cd2052f722bb09147204574504aa558b89ec0"
+source = "git+https://github.com/emilk/egui?rev=ebeb788b1fbda1a7910147545168db9d06dbcc14#ebeb788b1fbda1a7910147545168db9d06dbcc14"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
@@ -1870,18 +1878,6 @@ name = "glob"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
-
-[[package]]
-name = "glow"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8bd5877156a19b8ac83a29b2306fe20537429d318f3ff0a1a2119f8d9c61919"
-dependencies = [
- "js-sys",
- "slotmap",
- "wasm-bindgen",
- "web-sys",
-]
 
 [[package]]
 name = "glow"
@@ -2748,6 +2744,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a60c7ce501c71e03a9c9c0d35b861413ae925bd979cc7a4e30d060069aaac8d"
 
 [[package]]
+name = "minimal"
+version = "0.1.0"
+dependencies = [
+ "rerun",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2936,15 +2939,6 @@ checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
 dependencies = [
  "memchr",
  "minimal-lexical",
-]
-
-[[package]]
-name = "nom8"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae01545c9c7fc4486ab7debaf2aad7003ac19431791868fb2e8066df97fad2f8"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -3193,10 +3187,9 @@ dependencies = [
  "glam",
  "image",
  "itertools",
- "mimalloc",
  "prost",
  "prost-build",
- "rerun_sdk",
+ "rerun",
 ]
 
 [[package]]
@@ -3488,9 +3481,9 @@ dependencies = [
 
 [[package]]
 name = "pollster"
-version = "0.2.5"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
+checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
 
 [[package]]
 name = "ppv-lite86"
@@ -3516,7 +3509,7 @@ checksum = "eda0fc3b0fb7c975631757e14d9049da17374063edb6ebbcbc54d880d4fe94e9"
 dependencies = [
  "once_cell",
  "thiserror",
- "toml 0.5.9",
+ "toml",
 ]
 
 [[package]]
@@ -3781,7 +3774,7 @@ dependencies = [
  "gltf",
  "mimalloc",
  "reqwest",
- "rerun_sdk",
+ "rerun",
 ]
 
 [[package]]
@@ -3950,7 +3943,6 @@ dependencies = [
  "puffin",
  "rand",
  "re_format",
- "re_log",
  "re_string_interner",
  "re_tuid",
  "rmp-serde",
@@ -4057,6 +4049,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_sdk"
+version = "0.1.0"
+dependencies = [
+ "arrow2",
+ "arrow2_convert",
+ "clap 4.1.4",
+ "crossbeam",
+ "document-features",
+ "lazy_static",
+ "mimalloc",
+ "ndarray",
+ "ndarray-rand",
+ "nohash-hasher",
+ "once_cell",
+ "rand",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_memory",
+ "re_sdk_comms",
+ "re_smart_channel",
+ "re_string_interner",
+ "re_viewer",
+ "re_web_server",
+ "re_ws_comms",
+ "thiserror",
+ "tokio",
+ "webbrowser",
+]
+
+[[package]]
 name = "re_sdk_comms"
 version = "0.1.0"
 dependencies = [
@@ -4065,7 +4088,6 @@ dependencies = [
  "bincode",
  "crossbeam",
  "document-features",
- "emath",
  "rand",
  "re_log",
  "re_log_types",
@@ -4351,6 +4373,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_memory",
+ "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
  "re_viewer",
@@ -4386,42 +4409,8 @@ dependencies = [
  "re_sdk_comms",
  "re_tensor_ops",
  "rerun",
- "rerun_sdk",
  "tokio",
- "toml 0.7.1",
  "uuid",
-]
-
-[[package]]
-name = "rerun_sdk"
-version = "0.1.0"
-dependencies = [
- "arrow2",
- "arrow2_convert",
- "clap 4.1.4",
- "crossbeam",
- "document-features",
- "eframe",
- "lazy_static",
- "mimalloc",
- "ndarray",
- "ndarray-rand",
- "nohash-hasher",
- "once_cell",
- "rand",
- "re_error",
- "re_log",
- "re_log_types",
- "re_memory",
- "re_sdk_comms",
- "re_smart_channel",
- "re_string_interner",
- "re_viewer",
- "re_web_server",
- "re_ws_comms",
- "thiserror",
- "tokio",
- "webbrowser",
 ]
 
 [[package]]
@@ -4691,15 +4680,6 @@ checksum = "020ff22c755c2ed3f8cf162dbb41a7268d934702f3ed3631656ea597e08fc3db"
 dependencies = [
  "itoa",
  "ryu",
- "serde",
-]
-
-[[package]]
-name = "serde_spanned"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0efd8caf556a6cebd3b285caf480045fcc1ac04f6bd786b09a6f11af30c4fcf4"
-dependencies = [
  "serde",
 ]
 
@@ -5009,7 +4989,7 @@ dependencies = [
  "cfg-expr",
  "heck 0.4.0",
  "pkg-config",
- "toml 0.5.9",
+ "toml",
  "version-compare",
 ]
 
@@ -5304,40 +5284,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "772c1426ab886e7362aedf4abc9c0d1348a979517efedfc25862944d10137af0"
-dependencies = [
- "serde",
- "serde_spanned",
- "toml_datetime",
- "toml_edit",
-]
-
-[[package]]
-name = "toml_datetime"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.19.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90a238ee2e6ede22fb95350acc78e21dc40da00bb66c0334bde83de4ed89424e"
-dependencies = [
- "indexmap",
- "nom8",
- "serde",
- "serde_spanned",
- "toml_datetime",
-]
-
-[[package]]
 name = "tower-service"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5424,17 +5370,17 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "trybuild"
-version = "1.0.72"
+version = "1.0.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db29f438342820400f2d9acfec0d363e987a38b2950bdb50a7069ed17b2148ee"
+checksum = "a44da5a6f2164c8e14d3bbc0657d69c5966af9f5f6930d4f600b1f5c4a673413"
 dependencies = [
+ "basic-toml",
  "glob",
  "once_cell",
  "serde",
  "serde_derive",
  "serde_json",
  "termcolor",
- "toml 0.5.9",
 ]
 
 [[package]]
@@ -5672,9 +5618,9 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaf9f5aceeec8be17c128b2e93e031fb8a4d469bb9c4ae2d7dc1888b26887268"
+checksum = "31f8dcbc21f30d9b8f2ea926ecb58f6b91192c17e9d33594b3df58b2007ca53b"
 dependencies = [
  "cfg-if",
  "wasm-bindgen-macro",
@@ -5682,9 +5628,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-backend"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c8ffb332579b0557b52d268b91feab8df3615f265d5270fec2a8c95b17c1142"
+checksum = "95ce90fd5bcc06af55a641a86428ee4229e44e07033963a2290a8e241607ccb9"
 dependencies = [
  "bumpalo",
  "log",
@@ -5697,9 +5643,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-cli-support"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03f35e0387a2c787ca5ee299bfb4259352b2a2184b406f8ee9f978c3c4671645"
+checksum = "9d4780c659b883a19ddb7ced365db19f7f45cd182d832ee14de2b7ef52e88a9f"
 dependencies = [
  "anyhow",
  "base64 0.9.3",
@@ -5707,6 +5653,7 @@ dependencies = [
  "rustc-demangle",
  "serde_json",
  "tempfile",
+ "unicode-ident",
  "walrus",
  "wasm-bindgen-externref-xform",
  "wasm-bindgen-multi-value-xform",
@@ -5721,9 +5668,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-externref-xform"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d010a32a516a793adbea5835eab6f736d11c0cdd10ebe0c762c420f67510244"
+checksum = "1d154c3843bf3b635b602ad41b56f505f8f1a25f8a0133fca4bbd0918d74efdc"
 dependencies = [
  "anyhow",
  "walrus",
@@ -5743,9 +5690,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "052be0f94026e6cbc75cdefc9bae13fd6052cdcaf532fa6c45e7ae33a1e6c810"
+checksum = "4c21f77c0bedc37fd5dc21f897894a5ca01e7bb159884559461862ae90c0b4c5"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -5753,9 +5700,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07bc0c051dc5f23e307b13285f9d75df86bfdf816c5721e573dec1f9b8aa193c"
+checksum = "2aff81306fcac3c7515ad4e177f521b5c9a15f2b08f4e32d823066102f35a5f6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5766,9 +5713,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-multi-value-xform"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78b8c8d5dcc451b7e6a9c98d8fd966ff768a1e8f8afb270a829780086f2885ac"
+checksum = "c00a577fbd4be358ef8095432189b5c2e6b6e71f5081797c2032572f77d65d26"
 dependencies = [
  "anyhow",
  "walrus",
@@ -5776,15 +5723,15 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c38c045535d93ec4f0b4defec448e4291638ee608530863b1e2ba115d4fff7f"
+checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
 
 [[package]]
 name = "wasm-bindgen-threads-xform"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d10f9246c4daa911283a7096fc3be9f1fab9e3e36400478a4ab8d7056701420"
+checksum = "0aa93941bae037b7b4fac4ecfc132294b828036c5990a806d0e6fd9284297d94"
 dependencies = [
  "anyhow",
  "walrus",
@@ -5793,9 +5740,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-wasm-conventions"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4a5ab217f12f73b7c3ff23cbbbb5d36f7ee97dd65bb0be44beebda887df9002"
+checksum = "d8f5de325048d945c90600fdf66b13521f3340d85971287775c36aa99c04466b"
 dependencies = [
  "anyhow",
  "walrus",
@@ -5803,9 +5750,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-wasm-interpreter"
-version = "0.2.83"
+version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fbb6c773b486889b7c1211d27a7a08eebaf54ec4269380266cadf69e269cd91"
+checksum = "f695df44962e3a107436282232a2daa185b8453c16be8ddfb637cd2601f31128"
 dependencies = [
  "anyhow",
  "log",
@@ -6022,7 +5969,7 @@ dependencies = [
  "d3d12",
  "foreign-types",
  "fxhash",
- "glow 0.12.0",
+ "glow",
  "gpu-alloc",
  "gpu-allocator",
  "gpu-descriptor",

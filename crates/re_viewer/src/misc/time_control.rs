@@ -7,7 +7,7 @@ use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub(crate) struct TimeView {
+pub struct TimeView {
     /// Where start of the the range.
     pub min: TimeReal,
 
@@ -428,6 +428,16 @@ impl TimeControl {
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(selection.min))
             .loop_selection = Some(selection);
+    }
+
+    /// Remove the current loop selection.
+    pub fn remove_loop_selection(&mut self) {
+        if let Some(state) = self.states.get_mut(&self.timeline) {
+            state.loop_selection = None;
+        }
+        if self.looping() == Looping::Selection {
+            self.set_looping(Looping::Off);
+        }
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?

@@ -512,7 +512,7 @@ impl PersistentIndexTable {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
-        if self.nb_rows == 0 {
+        if self.num_rows == 0 {
             return None;
         }
 
@@ -530,7 +530,7 @@ impl PersistentIndexTable {
         );
 
         // find the primary index's row.
-        let primary_idx = self.nb_rows - 1;
+        let primary_idx = self.num_rows - 1;
 
         trace!(
             kind = "latest_at",
@@ -611,7 +611,7 @@ impl PersistentIndexTable {
         // configuration there are only 1024 of them (times the number of components).
         let comp_indices = self.indices.clone();
 
-        let row_indices = (0..self.nb_rows).filter_map(move |comp_idx_row_nr| {
+        let row_indices = (0..self.num_rows).filter_map(move |comp_idx_row_nr| {
             let comp_idx_row_nr = IndexRowNr(comp_idx_row_nr);
 
             let mut row_indices = [None; N];

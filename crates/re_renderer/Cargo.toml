@@ -41,7 +41,6 @@ smallvec = "1.10"
 static_assertions = "1.1"
 thiserror.workspace = true
 type-map = "0.5"
-unindent = "0.1"
 
 # optional
 gltf = { workspace = true, optional = true }
@@ -69,11 +68,14 @@ wgpu = { workspace = true, default-features = false, features = [
 image = { version = "0.24", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
-pollster = "0.2"
+pollster = "0.3"
 rand = "0.8"
 tracing = "0.1"
 winit = "0.28.1"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
+
+# For tests:
+unindent = "0.1"
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

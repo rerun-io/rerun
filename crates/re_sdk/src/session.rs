@@ -85,7 +85,7 @@ impl Session {
                 .unwrap();
             let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx));
 
-            // This is the server that serves the WASM+HTML:
+            // This is the server that serves the Wasm+HTML:
             let web_port = 9090;
             let web_server = re_web_server::WebServer::new(web_port);
             let web_server_handle = tokio::spawn(async move {
@@ -185,6 +185,17 @@ impl Session {
             time_point: time_point.clone(),
             path_op,
         }));
+    }
+}
+
+#[cfg(feature = "re_viewer")]
+impl Session {
+    /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
+    /// been logged so far.
+    pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
+        let log_messages = self.drain_log_messages_buffer();
+        let startup_options = re_viewer::StartupOptions::default();
+        re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
     }
 }
 

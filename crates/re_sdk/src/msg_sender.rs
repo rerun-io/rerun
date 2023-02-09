@@ -77,11 +77,11 @@ pub struct MsgSender {
     /// collection will always be 1.
     /// The number of instances per row, on the other hand, will be decided based upon the first
     /// component collection that's appended.
-    nb_instances: Option<usize>,
+    num_instances: Option<usize>,
     /// All the instanced component collections that have been appended to this message.
     ///
     /// As of today, they must have exactly 1 row of data (no batching), which itself must have
-    /// `Self::nb_instances` instance keys.
+    /// `Self::num_instances` instance keys.
     instanced: Vec<ComponentBundle>,
 
     /// All the splatted components that have been appended to this message.
@@ -102,7 +102,7 @@ impl MsgSender {
             timepoint: [(Timeline::log_time(), Time::now().into())].into(),
             timeless: false,
 
-            nb_instances: None,
+            num_instances: None,
             instanced: Vec::new(),
             splatted: Vec::new(),
         }
@@ -174,21 +174,21 @@ impl MsgSender {
     ) -> Result<Self, MsgSenderError> {
         let bundle = bundle_from_iter(data)?;
 
-        let nb_instances = bundle.nb_instances(0).unwrap(); // must have exactly 1 row atm
+        let num_instances = bundle.num_instances(0).unwrap(); // must have exactly 1 row atm
 
         // If this is the first appended collection, it gets to decide the row-length (i.e. number
         // of instances) of all future collections.
-        if self.nb_instances.is_none() {
-            self.nb_instances = Some(nb_instances);
+        if self.num_instances.is_none() {
+            self.num_instances = Some(num_instances);
         }
 
         // Detect mismatched row-lengths early on... unless it's a Transform bundle: transforms
         // behave differently and will be sent in their own message!
-        if C::name() != Transform::name() && self.nb_instances.unwrap() != nb_instances {
+        if C::name() != Transform::name() && self.num_instances.unwrap() != num_instances {
             let collections = self
                 .instanced
                 .into_iter()
-                .map(|bundle| (bundle.name(), bundle.nb_instances(0).unwrap_or(0)))
+                .map(|bundle| (bundle.name(), bundle.num_instances(0).unwrap_or(0)))
                 .collect();
             return Err(MsgSenderError::MismatchedRowLengths(collections));
         }
@@ -262,7 +262,7 @@ impl MsgSender {
             entity_path,
             timepoint,
             timeless,
-            nb_instances: _,
+            num_instances: _,
             instanced,
             mut splatted,
         } = self;
@@ -304,20 +304,20 @@ impl MsgSender {
             .chain(&transform_bundles)
             .chain(&splatted)
         {
-            *rows_per_comptype.entry(bundle.name()).or_default() += bundle.nb_rows();
+            *rows_per_comptype.entry(bundle.name()).or_default() += bundle.num_rows();
         }
-        if rows_per_comptype.values().any(|nb_rows| *nb_rows > 1) {
+        if rows_per_comptype.values().any(|num_rows| *num_rows > 1) {
             return Err(MsgSenderError::MoreThanOneRow(
                 rows_per_comptype.into_iter().collect(),
             ));
         }
 
         // sanity check: transforms can't handle multiple instances
-        let nb_transform_instances = transform_bundles
+        let num_transform_instances = transform_bundles
             .get(0)
-            .and_then(|bundle| bundle.nb_instances(0))
+            .and_then(|bundle| bundle.num_instances(0))
             .unwrap_or(0);
-        if nb_transform_instances > 1 {
+        if num_transform_instances > 1 {
             re_log::warn!("detected Transform component with multiple instances");
         }
 
@@ -381,7 +381,7 @@ mod tests {
     fn full() -> Result<(), MsgSenderError> {
         let labels = vec![crate::Label("label1".into()), crate::Label("label2".into())];
         let transform = vec![crate::Transform::Rigid3(crate::Rigid3::default())];
-        let color = crate::ColorRGBA::from([255, 0, 255, 255]);
+        let color = crate::ColorRGBA::from_rgb(255, 0, 255);
 
         let [standard, transforms, splats] = MsgSender::new("some/path")
             .with_component(&labels)?
@@ -394,8 +394,8 @@ mod tests {
             let standard = standard.unwrap();
             let idx = standard.find_component(&crate::Label::name()).unwrap();
             let bundle = &standard.components[idx];
-            assert!(bundle.nb_rows() == 1);
-            assert!(bundle.nb_instances(0).unwrap() == 2);
+            assert!(bundle.num_rows() == 1);
+            assert!(bundle.num_instances(0).unwrap() == 2);
         }
 
         {
@@ -404,16 +404,16 @@ mod tests {
                 .find_component(&crate::Transform::name())
                 .unwrap();
             let bundle = &transforms.components[idx];
-            assert!(bundle.nb_rows() == 1);
-            assert!(bundle.nb_instances(0).unwrap() == 1);
+            assert!(bundle.num_rows() == 1);
+            assert!(bundle.num_instances(0).unwrap() == 1);
         }
 
         {
             let splats = splats.unwrap();
             let idx = splats.find_component(&crate::ColorRGBA::name()).unwrap();
             let bundle = &splats.components[idx];
-            assert!(bundle.nb_rows() == 1);
-            assert!(bundle.nb_instances(0).unwrap() == 1);
+            assert!(bundle.num_rows() == 1);
+            assert!(bundle.num_instances(0).unwrap() == 1);
         }
 
         Ok(())

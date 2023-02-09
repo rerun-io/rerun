@@ -8,18 +8,14 @@ publish = false
 
 
 [dependencies]
+rerun = { path = "../../crates/rerun" }
+
 anyhow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
 glam.workspace = true
 image = { version = "0.24", default-features = false, features = ["jpeg"] }
 itertools = "0.10"
-mimalloc = "0.1"
 prost = "0.11"
-
-# TODO(cmc): is the crate actually gonna be called just 'rerun' in the end?
-rerun = { package = "rerun_sdk", features = [
-  "glam",
-], path = "../../crates/rerun_sdk" }
 
 
 [build-dependencies]

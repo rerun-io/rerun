@@ -29,44 +29,73 @@ The Summary should look like:
 
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Tuple
+from typing import Final, List, Optional
 
 import griffe
 import mkdocs_gen_files
 
+
+@dataclass
+class Section:
+    title: str
+    module_summary: Optional[str]
+    func_list: List[str]
+
+
 # This is the list of sections and functions that will be included in the index
 # for each of them.
-SECTION_TABLE: Final[List[Tuple[str, List[str]]]] = [
-    (
-        "Initialization",
-        ["init", "set_recording_id", "connect", "spawn"],
+SECTION_TABLE: Final[List[Section]] = [
+    Section(
+        title="Initialization",
+        module_summary=None,
+        func_list=["init", "set_recording_id", "connect", "spawn"],
     ),
-    (
-        "Logging Primitives",
-        ["log_point", "log_points", "log_rect", "log_rects", "log_obb", "log_path", "log_line_segments", "log_arrow"],
+    Section(
+        title="Logging Primitives",
+        module_summary=None,
+        func_list=[
+            "log_point",
+            "log_points",
+            "log_rect",
+            "log_rects",
+            "log_obb",
+            "log_path",
+            "log_line_segments",
+            "log_arrow",
+        ],
     ),
-    (
-        "Logging Images",
-        ["log_image", "log_image_file", "log_depth_image", "log_segmentation_image"],
+    Section(
+        title="Logging Images",
+        module_summary=None,
+        func_list=["log_image", "log_image_file", "log_depth_image", "log_segmentation_image"],
     ),
-    (
-        "Annotations",
-        ["log_annotation_context"],
+    Section(
+        title="Annotations",
+        module_summary=None,
+        func_list=["log_annotation_context"],
     ),
-    (
-        "Extension Components",
-        ["log_extension_components"],
+    Section(
+        title="Extension Components",
+        module_summary=None,
+        func_list=["log_extension_components"],
     ),
-    (
-        "Plotting",
-        ["log_scalar"],
+    Section(
+        title="Plotting",
+        module_summary=None,
+        func_list=["log_scalar"],
     ),
-    (
-        "Transforms",
-        ["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
+    Section(
+        title="Transforms",
+        module_summary=None,
+        func_list=["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
     ),
-    ("Helpers", ["script_add_args", "script_setup", "script_teardown"]),
+    Section(
+        title="Helpers",
+        module_summary="script_helpers",
+        func_list=["script_add_args", "script_setup", "script_teardown"],
+    ),
 ]
 
 # Virual folder where we will generate the md files
@@ -106,24 +135,30 @@ hide:
 """
     )
 
-    for (heading, func_list) in SECTION_TABLE:
+    for section in SECTION_TABLE:
 
         # Turn the heading into a slug and add it to the nav
-        md_name = make_slug(heading)
+        md_name = make_slug(section.title)
         md_file = md_name + ".md"
-        nav[heading] = md_file
+        nav[section.title] = md_file
 
         # Write out the contents of this section
         write_path = common_dir.joinpath(md_file)
         with mkdocs_gen_files.open(write_path, "w") as fd:
-            for func_name in func_list:
+            if section.module_summary is not None:
+                fd.write(f"::: rerun.{section.module_summary}\n")
+                fd.write("    options:\n")
+                fd.write("      show_root_heading: False\n")
+                fd.write("      members: []\n")
+                fd.write("----\n")
+            for func_name in section.func_list:
                 fd.write(f"::: rerun.{func_name}\n")
 
         # Write out a table for the section in the index_file
-        index_file.write(f"## {heading}\n")
+        index_file.write(f"## {section.title}\n")
         index_file.write("Function | Description\n")
         index_file.write("-------- | -----------\n")
-        for func_name in func_list:
+        for func_name in section.func_list:
             func = rerun_pkg[func_name]
             index_file.write(f"[`rerun.{func_name}()`]({md_name}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
         index_file.write("\n")

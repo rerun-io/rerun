@@ -7,12 +7,11 @@ license.workspace = true
 publish = false
 
 [dependencies]
+rerun = { path = "../../crates/rerun" }
+
 anyhow.workspace = true
 bytes = "1.3"
 clap = { version = "4.0", features = ["derive"] }
 gltf.workspace = true
 mimalloc = "0.1"
 reqwest = { workspace = true, features = ["blocking", "rustls-tls"] }
-
-# TODO(cmc): is the crate actually gonna be called just 'rerun' in the end?
-rerun = { package = "rerun_sdk", path = "../../crates/rerun_sdk" }

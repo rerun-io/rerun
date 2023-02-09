@@ -1,4 +1,4 @@
-"""The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
+"""The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 
 import atexit
 from typing import Optional
@@ -147,7 +147,20 @@ def init(application_id: str, spawn: bool = False) -> None:
         import inspect
         import pathlib
 
-        app_path = pathlib.Path(inspect.stack()[1][1]).resolve()
+        # We're trying to grab the filesystem path of the example script that called `init()`.
+        # The tricky part is that we don't know how many layers are between this script and the
+        # original caller, so we have to walk the stack and look for anything that might look like
+        # an official Rerun example.
+
+        MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
+        FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
+
+        stack = inspect.stack()
+        for frame in stack[:MAX_FRAMES]:
+            filename = frame[FRAME_FILENAME_INDEX]
+            path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
+            if "rerun/examples" in str(path):
+                app_path = path
     except Exception:
         pass
 
@@ -203,8 +216,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 
     # start_new_session=True ensures the spawned process does NOT die when
     # we hit ctrl-c in the terminal running the parent Python process.
-    rerun_process = subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
-    print(f"Spawned Rerun Viewer with pid {rerun_process.pid}")
+    subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
 
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
     # For instance, wait until it prints "Hosting a SDK server over TCP at …"

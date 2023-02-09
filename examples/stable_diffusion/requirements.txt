@@ -1,8 +1,11 @@
 accelerate
+diffusers>=0.12.1
 ftfy
+numpy
+packaging
 pillow
 requests==2.28.1
+rerun-sdk
 scipy
 torch>=1.13.0
-diffusers>=0.12.1
 transformers>=4.26.0

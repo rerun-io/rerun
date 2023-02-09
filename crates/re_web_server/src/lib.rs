@@ -73,7 +73,7 @@ impl<T> Service<T> for MakeSvc {
 
 // ----------------------------------------------------------------------------
 
-/// Hosts the Web Viewer WASM+HTML
+/// Hosts the Web Viewer Wasm+HTML
 pub struct WebServer {
     server: hyper::Server<AddrIncoming, MakeSvc>,
 }

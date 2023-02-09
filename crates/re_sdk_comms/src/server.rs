@@ -13,12 +13,16 @@ pub struct ServerOptions {
     /// If the latency in the [`LogMsg`] channel is greater than this,
     /// then start dropping messages in order to keep up.
     pub max_latency_sec: f32,
+
+    /// Turns `info`-level logs into `debug`-level logs.
+    pub quiet: bool,
 }
 
 impl Default for ServerOptions {
     fn default() -> Self {
         Self {
             max_latency_sec: f32::INFINITY,
+            quiet: false,
         }
     }
 }
@@ -55,9 +59,15 @@ pub fn serve(port: u16, options: ServerOptions) -> anyhow::Result<Receiver<LogMs
         })
         .expect("Failed to spawn thread");
 
-    re_log::info!(
-        "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
-    );
+    if options.quiet {
+        re_log::debug!(
+            "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
+        );
+    } else {
+        re_log::info!(
+            "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
+        );
+    }
 
     Ok(rx)
 }
@@ -69,7 +79,11 @@ fn spawn_client(stream: std::net::TcpStream, tx: Sender<LogMsg>, options: Server
             stream.peer_addr()
         ))
         .spawn(move || {
-            re_log::info!("New SDK client connected: {:?}", stream.peer_addr());
+            if options.quiet {
+                re_log::debug!("New SDK client connected: {:?}", stream.peer_addr());
+            } else {
+                re_log::info!("New SDK client connected: {:?}", stream.peer_addr());
+            }
 
             if let Err(err) = run_client(stream, &tx, options) {
                 re_log::warn!("Closing connection to client: {err}");

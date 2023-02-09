@@ -5,6 +5,7 @@ members = [
   "rerun_py",
   "run_wasm",
   "examples/api_demo",
+  "examples/minimal",
   "examples/objectron",
   "examples/raw_mesh",
 ]
@@ -25,7 +26,7 @@ arrow2_convert = "0.3"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
 ecolor = "0.20.0"
-eframe = { version = "0.20.0", default-features = false }
+eframe = { version = "0.20.1", default-features = false }
 egui = "0.20.1"
 egui_extras = "0.20.0"
 egui-wgpu = "0.20.0"
@@ -75,14 +76,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2023-02-06 - Fix wgpu transparency
-ecolor = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
-eframe = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
-egui = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
-emath = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
-epaint = { git = "https://github.com/emilk/egui", rev = "b52cd2052f722bb09147204574504aa558b89ec0" }
+# 2023-02-08 - pre-release testing
+ecolor = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
+eframe = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
+egui = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
+emath = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
+epaint = { git = "https://github.com/emilk/egui", rev = "ebeb788b1fbda1a7910147545168db9d06dbcc14" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

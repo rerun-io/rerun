@@ -522,13 +522,13 @@ pub struct PersistentIndexTable {
     pub(crate) cluster_key: ComponentName,
 
     /// The number of rows in the table: all indices should always be exactly of that length.
-    pub(crate) nb_rows: u64,
+    pub(crate) num_rows: u64,
 
     /// All component indices for this bucket.
     ///
     /// One index per component: new components (and as such, new indices) can be added at any
     /// time!
-    /// When that happens, they will be retro-filled with nulls until they are [`Self::nb_rows`]
+    /// When that happens, they will be retro-filled with nulls until they are [`Self::num_rows`]
     /// long.
     pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
 
@@ -542,7 +542,7 @@ impl std::fmt::Display for PersistentIndexTable {
         let Self {
             ent_path,
             cluster_key: _,
-            nb_rows: _,
+            num_rows: _,
             indices: _,
             all_components: _,
         } = self;
@@ -577,19 +577,19 @@ impl PersistentIndexTable {
         let Self {
             ent_path: _,
             cluster_key,
-            nb_rows,
+            num_rows,
             indices,
             all_components: _,
         } = self;
 
-        // All indices should be `Self::nb_rows` long.
+        // All indices should be `Self::num_rows` long.
         {
             for (comp, index) in indices {
                 let secondary_len = index.len() as u64;
                 ensure!(
-                    *nb_rows == secondary_len,
+                    *num_rows == secondary_len,
                     "found rogue secondary index for {comp:?}: \
-                        expected {nb_rows} rows, got {secondary_len} instead",
+                        expected {num_rows} rows, got {secondary_len} instead",
                 );
             }
         }

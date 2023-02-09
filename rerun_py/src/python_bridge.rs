@@ -10,16 +10,24 @@ use pyo3::{
     types::PyDict,
 };
 
-use re_log_types::{
-    component_types::{ClassId, KeypointId, Label, TensorDimension, TensorId},
-    context, coordinates,
-    msg_bundle::MsgBundle,
-    AnnotationContext, ApplicationId, EncodedMesh3D, EntityPath, LogMsg, Mesh3D, MeshFormat,
-    MeshId, MsgId, PathOp, RawMesh3D, RecordingId, Time, TimeInt, TimePoint, TimeType, Timeline,
+// init
+pub use rerun::{global_session, ApplicationId, RecordingId};
+
+// time
+use rerun::{Time, TimeInt, TimePoint, TimeType, Timeline};
+
+// messages
+use rerun::{EntityPath, LogMsg, MsgBundle, MsgId, PathOp};
+
+// components
+pub use rerun::{
+    AnnotationContext, AnnotationInfo, Arrow3D, Axis3, Box3D, ClassDescription, ClassId, ColorRGBA,
+    EncodedMesh3D, Handedness, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
+    Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
+    Rigid3, Scalar, ScalarPlotProps, Sign, SignedAxis3, Size3D, Tensor, TensorData,
+    TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
     ViewCoordinates,
 };
-
-use rerun_sdk::{global_session, Vec4D};
 
 use crate::arrow::get_registered_component_names;
 
@@ -75,8 +83,13 @@ impl ThreadInfo {
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    // NOTE: We do this here because some the inner init methods don't respond too kindly to being
+    // called more than once.
     re_log::setup_native_logging();
 
+    // NOTE: We do this here because we want child processes to share the same recording-id,
+    // whether the user has called `init` or not.
+    // See `default_recording_id` for extra information.
     global_session().set_recording_id(default_recording_id(py));
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
@@ -193,7 +206,7 @@ fn main(argv: Vec<String>) -> PyResult<u8> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(argv))
+        .block_on(rerun::run(rerun::CallSource::Python, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
@@ -231,6 +244,7 @@ fn init(application_id: String, application_path: Option<PathBuf>) {
         }
         false
     });
+
     global_session().set_application_id(ApplicationId(application_id), is_official_example);
 }
 
@@ -479,8 +493,6 @@ fn log_view_coordinates_xyz(
     right_handed: Option<bool>,
     timeless: bool,
 ) -> PyResult<()> {
-    use re_log_types::coordinates::{Handedness, ViewCoordinates};
-
     let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
 
     if let Some(right_handed) = right_handed {
@@ -506,8 +518,6 @@ fn log_view_coordinates_up_handedness(
     right_handed: bool,
     timeless: bool,
 ) -> PyResult<()> {
-    use re_log_types::coordinates::{Handedness, SignedAxis3, ViewCoordinates};
-
     let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
     let handedness = Handedness::from_right_handed(right_handed);
     let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
@@ -520,7 +530,7 @@ fn log_view_coordinates(
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
-    if coordinates.handedness() == Some(coordinates::Handedness::Left) {
+    if coordinates.handedness() == Some(Handedness::Left) {
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
 
@@ -814,7 +824,7 @@ fn log_image_file(
 #[derive(FromPyObject)]
 struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
 
-impl From<AnnotationInfoTuple> for context::AnnotationInfo {
+impl From<AnnotationInfoTuple> for AnnotationInfo {
     fn from(tuple: AnnotationInfoTuple) -> Self {
         let AnnotationInfoTuple(id, label, color) = tuple;
         Self {
@@ -851,7 +861,7 @@ fn log_annotation_context(
         annotation_context
             .class_map
             .entry(ClassId(info.0))
-            .or_insert_with(|| context::ClassDescription {
+            .or_insert_with(|| ClassDescription {
                 info: info.into(),
                 keypoint_map: keypoint_annotations
                     .into_iter()

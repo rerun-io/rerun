@@ -12,10 +12,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module", "re_viewer"]
-
-## Enable embedding the Rerun Viewer in the Python SDK.
-re_viewer = ["rerun_sdk/re_viewer"]
+default = ["extension-module"]
 
 # We need to enable the `pyo3/extension-module` when building the SDK,
 # but we cannot enable it when building tests and benchmarks, so we
@@ -28,7 +25,7 @@ extension-module = ["pyo3/extension-module"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
-web = ["rerun/web", "rerun_sdk/web"]
+web = ["rerun/web"]
 
 [dependencies]
 re_error = { path = "../crates/re_error" }
@@ -38,7 +35,6 @@ re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
 rerun = { path = "../crates/rerun" }
-rerun_sdk = { path = "../crates/rerun_sdk" }
 
 ahash = "0.8"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
@@ -62,7 +58,6 @@ uuid = "1.1"
 
 [build-dependencies]
 pyo3-build-config = "0.18.0"
-toml = "0.7"
 
 [package.metadata.maturin]
 name = "rerun_bindings"

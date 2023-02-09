@@ -53,7 +53,7 @@ jobs:
   create_rrd:
     name: Create example RRD files
     runs-on: ubuntu-latest-16-cores
-    needs: [ lint ]
+    needs: [lint]
     steps:
       - uses: actions/checkout@v3
 
@@ -62,7 +62,7 @@ jobs:
         #TODO(john) merge upstream
         uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
         with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
+          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
           version: 1.0
           execute_install_scripts: true
 
@@ -102,7 +102,7 @@ jobs:
     runs-on: macos-latest
     # This build is really slow (>30 mins); uses up a lot of CI minutes
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
-    needs: [ lint, create_rrd ]
+    needs: [lint, create_rrd]
     strategy:
       matrix:
         target: [x64, universal2]
@@ -183,7 +183,7 @@ jobs:
   windows:
     name: Build Python Wheels for Windows
     runs-on: windows-latest-8-cores
-    needs: [ lint, create_rrd ]
+    needs: [lint, create_rrd]
     strategy:
       matrix:
         target: [x64]
@@ -248,7 +248,7 @@ jobs:
   linux:
     name: Build Python Wheels for Linux
     runs-on: ubuntu-latest-16-cores
-    needs: [ lint, create_rrd ]
+    needs: [lint, create_rrd]
     steps:
       - uses: actions/checkout@v3
 
@@ -260,7 +260,7 @@ jobs:
         #TODO(john) merge upstream
         uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
         with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
+          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
           version: 1.0
           execute_install_scripts: true
 
@@ -327,7 +327,7 @@ jobs:
   # See https://github.com/marvinpinto/action-automatic-releases#automatically-generate-a-pre-release-when-changes-land-on-master for details
   pre-release:
     name: Pre Release
-    needs: [ macos, windows, linux ]
+    needs: [macos, windows, linux]
     if: github.ref == 'refs/heads/main'
     runs-on: "ubuntu-latest"
     steps:
@@ -354,7 +354,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ macos, windows, linux ]
+    needs: [macos, windows, linux]
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v3
@@ -436,4 +436,5 @@ jobs:
 
       - name: Deploy via mike # https://github.com/jimporter/mike
         run: |
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages HEAD
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python HEAD

@@ -7,16 +7,12 @@ license.workspace = true
 publish = false
 
 [dependencies]
+rerun = { path = "../../crates/rerun" }
+
 anyhow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
 glam.workspace = true
 itertools = "0.10"
-mimalloc = "0.1"
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
-
-# TODO(cmc): is the crate actually gonna be called just 'rerun' in the end?
-rerun = { package = "rerun_sdk", features = [
-  "glam",
-], path = "../../crates/rerun_sdk" }

@@ -171,14 +171,14 @@ impl ComponentBundle {
     ///
     /// Currently always 1 as we don't yet support batch insertions.
     #[inline]
-    pub fn nb_rows(&self) -> usize {
+    pub fn num_rows(&self) -> usize {
         self.value.len()
     }
 
     /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
     /// specific row within the bundle.
     #[inline]
-    pub fn nb_instances(&self, row: usize) -> Option<usize> {
+    pub fn num_instances(&self, row: usize) -> Option<usize> {
         self.value.offsets().lengths().nth(row)
     }
 }
@@ -300,8 +300,8 @@ impl MsgBundle {
 
         // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
         // we need to craft an array of `MsgId`s that matches the length of the other components.
-        if let Some(nb_instances) = this.nb_instances(0) {
-            this.try_append_component(&vec![msg_id; nb_instances])
+        if let Some(num_instances) = this.num_instances(0) {
+            this.try_append_component(&vec![msg_id; num_instances])
                 .unwrap();
         }
 
@@ -331,7 +331,7 @@ impl MsgBundle {
     /// Returns the number of component collections in this bundle, i.e. the length of the bundle
     /// itself.
     #[inline]
-    pub fn nb_components(&self) -> usize {
+    pub fn num_components(&self) -> usize {
         self.components.len()
     }
 
@@ -342,8 +342,10 @@ impl MsgBundle {
     ///
     /// Currently always 1 as we don't yet support batch insertions.
     #[inline]
-    pub fn nb_rows(&self) -> usize {
-        self.components.first().map_or(0, |bundle| bundle.nb_rows())
+    pub fn num_rows(&self) -> usize {
+        self.components
+            .first()
+            .map_or(0, |bundle| bundle.num_rows())
     }
 
     /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
@@ -353,10 +355,10 @@ impl MsgBundle {
     /// have the same number of instances, we simply pick the value for the first component
     /// collection.
     #[inline]
-    pub fn nb_instances(&self, row: usize) -> Option<usize> {
+    pub fn num_instances(&self, row: usize) -> Option<usize> {
         self.components
             .first()
-            .map_or(Some(0), |bundle| bundle.nb_instances(row))
+            .map_or(Some(0), |bundle| bundle.num_instances(row))
     }
 
     /// Returns the index of `component` in the bundle, if it exists.

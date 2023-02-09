@@ -9,10 +9,17 @@ default-run = "rerun"
 
 
 [features]
-default = ["analytics", "server"]
+default = ["analytics", "server", "sdk"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics", "re_viewer/analytics"]
+
+## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
+## Only relevant if feature `sdk` is enabled.
+glam = ["re_sdk?/glam"]
+
+## Embed the Rerun SDK and re-export all of its public symbols.
+sdk = ["dep:re_sdk", "re_sdk?/re_viewer"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
@@ -21,7 +28,12 @@ server = ["re_sdk_comms/server"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
-web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
+web = [
+  "re_ws_comms/server",
+  "re_sdk?/web",
+  "dep:re_web_server",
+  "dep:webbrowser",
+]
 
 [dependencies]
 re_error = { path = "../re_error" }
@@ -36,11 +48,12 @@ re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 anyhow.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
-egui = { version = "0.20.1", default-features = false }
+egui = { workspace = true, default-features = false }
 puffin.workspace = true
 
 # Optional dependencies:
 re_analytics = { path = "../re_analytics", optional = true }
+re_sdk = { path = "../re_sdk", optional = true }
 re_sdk_comms = { path = "../re_sdk_comms", optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
