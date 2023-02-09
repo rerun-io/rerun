@@ -367,6 +367,7 @@ jobs:
           prerelease: true
           files: dist/*
           name: "latest-test"
+          tag_name: "latest"
           token: ${{ secrets.GITHUB_TOKEN }}
           generate_release_notes: true
           append_body: true
