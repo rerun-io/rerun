@@ -15,6 +15,7 @@ todo_pattern = re.compile(r"TODO([^(]|$)")
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 wasm_caps = re.compile(r"\bWASM\b")
+nb_prefix = re.compile(r"\bnb_")
 
 def lint_line(line: str) -> Optional[str]:
     if "NOLINT" in line:
@@ -56,6 +57,9 @@ def lint_line(line: str) -> Optional[str]:
     if wasm_caps.search(line):
         return "WASM should be written 'Wasm'"
 
+    if nb_prefix.search(line):
+        return "Don't use nb_things - use num_things or thing_count instead"
+
     return None
 
 
@@ -76,6 +80,8 @@ def test_lint() -> None:
         'if let Err(_) = foo',
         'WASM_FOO env var',
         'Wasm',
+        'num_instances',
+        'instances_count',
     ]
 
     should_error = [
@@ -91,6 +97,7 @@ def test_lint() -> None:
         'eprintln!("{:#?}", err)',
         'if let Err(error) = foo',
         'We use WASM in Rerun',
+        'nb_instances',
     ]
 
     for line in should_pass:

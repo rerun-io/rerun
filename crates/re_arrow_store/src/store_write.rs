@@ -41,13 +41,13 @@ pub enum WriteError {
     #[error(
         "All components within a row must have the same number of instances as the \
             cluster component, got {cluster_comp}={cluster_comp_nb_instances} vs. \
-                {key}={nb_instances}"
+                {key}={num_instances}"
     )]
     MismatchedInstances {
         cluster_comp: ComponentName,
         cluster_comp_nb_instances: usize,
         key: ComponentName,
-        nb_instances: usize,
+        num_instances: usize,
     },
 
     // Misc
@@ -84,7 +84,7 @@ impl DataStore {
         crate::profile_function!();
 
         let ent_path_hash = ent_path.hash();
-        let nb_rows = bundles[0].nb_rows();
+        let num_rows = bundles[0].num_rows();
 
         // Effectively the same thing as having a non-unit length batch, except it's really not
         // worth more than an assertion since:
@@ -98,15 +98,15 @@ impl DataStore {
             "cannot insert same component multiple times, this is equivalent to multiple rows",
         );
         // Batches cannot contain more than 1 row at the moment.
-        if nb_rows != 1 {
-            return Err(WriteError::MoreThanOneRow(nb_rows));
+        if num_rows != 1 {
+            return Err(WriteError::MoreThanOneRow(num_rows));
         }
         // Components must share the same number of rows.
-        if !bundles.iter().all(|bundle| bundle.nb_rows() == nb_rows) {
+        if !bundles.iter().all(|bundle| bundle.num_rows() == num_rows) {
             return Err(WriteError::MismatchedRows(
                 bundles
                     .iter()
-                    .map(|bundle| (bundle.name(), bundle.nb_rows()))
+                    .map(|bundle| (bundle.name(), bundle.num_rows()))
                     .collect(),
             ));
         }
@@ -120,7 +120,7 @@ impl DataStore {
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?bundles.iter().map(|bundle| bundle.name()).collect::<Vec<_>>(),
-            nb_rows,
+            num_rows,
             "insertion started..."
         );
 
@@ -133,7 +133,7 @@ impl DataStore {
             let mut row_indices = IntMap::default();
 
             // TODO(#589): support for batched row component insertions
-            for row_nr in 0..nb_rows {
+            for row_nr in 0..num_rows {
                 self.insert_timeless_row(row_nr, cluster_comp_pos, bundles, &mut row_indices)?;
             }
 
@@ -146,7 +146,7 @@ impl DataStore {
             let mut row_indices = IntMap::default();
 
             // TODO(#589): support for batched row component insertions
-            for row_nr in 0..nb_rows {
+            for row_nr in 0..num_rows {
                 self.insert_row(
                     time_point,
                     row_nr,
@@ -220,13 +220,13 @@ impl DataStore {
             // So use the fact that `rows` is always of unit-length for now.
             let rows_single = rows;
 
-            let nb_instances = rows_single.offsets().lengths().next().unwrap();
-            if nb_instances != cluster_len {
+            let num_instances = rows_single.offsets().lengths().next().unwrap();
+            if num_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     cluster_comp: self.cluster_key,
                     cluster_comp_nb_instances: cluster_len,
                     key: name,
-                    nb_instances,
+                    num_instances,
                 });
             }
 
@@ -293,13 +293,13 @@ impl DataStore {
             let rows_single = rows;
 
             // TODO(#440): support for splats
-            let nb_instances = rows_single.offsets().lengths().next().unwrap();
-            if nb_instances != cluster_len {
+            let num_instances = rows_single.offsets().lengths().next().unwrap();
+            if num_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     cluster_comp: self.cluster_key,
                     cluster_comp_nb_instances: cluster_len,
                     key: name,
-                    nb_instances,
+                    num_instances,
                 });
             }
 
@@ -343,7 +343,7 @@ impl DataStore {
             // valid (dense, sorted, no duplicates) and use that if so.
 
             let cluster_comp = &components[cluster_comp_pos];
-            let data = cluster_comp.value_list().values(); // abusing the fact that nb_rows==1
+            let data = cluster_comp.value_list().values(); // abusing the fact that num_rows==1
             let len = data.len();
 
             // Clustering component must be dense.
@@ -445,7 +445,7 @@ impl PersistentIndexTable {
             cluster_key,
             ent_path,
             indices: Default::default(),
-            nb_rows: 0,
+            num_rows: 0,
             all_components: Default::default(),
         }
     }
@@ -461,7 +461,7 @@ impl PersistentIndexTable {
             let index = self
                 .indices
                 .entry(*name)
-                .or_insert_with(|| vec![None; self.nb_rows as usize]);
+                .or_insert_with(|| vec![None; self.num_rows as usize]);
             index.push(Some(*row_idx));
         }
 
@@ -474,7 +474,7 @@ impl PersistentIndexTable {
             }
         }
 
-        self.nb_rows += 1;
+        self.num_rows += 1;
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();

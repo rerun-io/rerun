@@ -323,7 +323,7 @@ fn flush_events(
     trace!(
         %analytics_id,
         %session_id,
-        nb_events = events.len(),
+        num_events = events.len(),
         "events successfully flushed"
     );
 
