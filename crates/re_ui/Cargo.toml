@@ -22,7 +22,7 @@ egui_dock = ["dep:egui_dock"]
 
 
 [dependencies]
-egui = { version = "0.20.1", features = ["extra_debug_asserts", "tracing"] }
+egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { workspace = true, features = ["tracing"] }
 image = { version = "0.24", default-features = false, features = ["png"] }
 parking_lot = "0.12"
@@ -33,7 +33,7 @@ strum_macros = "0.24"
 sublime_fuzzy = "0.7"
 
 ## Optional dependencies:
-eframe = { version = "0.20", optional = true, default-features = false }
+eframe = { workspace = true, optional = true, default-features = false }
 egui_dock = { version = "0.3", optional = true, features = ["serde"] }
 
 [dev-dependencies]

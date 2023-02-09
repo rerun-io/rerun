@@ -102,7 +102,7 @@ const DISCLAIMER: &str = "
     - We don't log your user name, file paths, or any personal identifiable data.
     - Usage data we do collect will be sent to and stored on servers within the EU.
     - For more details and instructions on how to opt out,
-      run: `rerun analytics details` or `python -m rerun analytics details`.
+      run: `rerun analytics details`
 
     As this is this your first session, _no_ usage data has been sent yet,
     giving you an opportunity to opt-out first if you wish.

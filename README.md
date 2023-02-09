@@ -1,111 +1,51 @@
 # Rerun
 
+[![Build Status](https://github.com/emilk/egui/workflows/CI/badge.svg)](https://github.com/emilk/egui/actions?workflow=CI)
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT)
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE)
+[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Community%20Discord)](https://discord.gg/Gcm8BbTaAj)
+
 
 Rerun is visualization infrastructure for computer vision.
 
-This repository contains the Rerun SDK and Rerun Viewer. Use the SDK (currently Python only) to log rich data that is streamed to the viewer, where it is visualized live or after the fact.
+You use one of our logging APIs (Python or Rust atm) to log rich data, such as images and point clouds, to the Rerun Viewer, where it is visualized live or after the fact.
 
-# Documentation (Coming soon!)
-
-## WARNING: The following links don't all work yet
-TODO(jleibs): Clean up this section and remove warnign when all links are live
-
-High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs).
-
-The documentation is built from a separate [Rerun-Docs Repository](https://github.com/rerun-io/rerun-docs)
-
-Rust and Python APIs are documented in the code via docstrings.
- - The [Rust API docs](https://docs.rs/rerun/) are built via cargo and hosted on docs.rs
- - The [Python API docs](https://rerun-io.github.io/rerun) are built via mkdocs and hosted on github:
-   - For more information on the python doc-system see: [Writing Docs](https://rerun-io.github.io/rerun/latest/docs)
-
-# For our users
-
-We don't have any pre-built binaries yet, so you need to build Rerun from source. There is some setup involved, but most of it should be pretty painless.
-
-## Setup
-
-- Install the Rust toolchain: <https://rustup.rs/>
-- `git clone git@github.com:rerun-io/rerun.git && cd rerun`
-- Run `./scripts/setup.sh`.
-- Make sure `cargo --version` prints `1.67.0` once you are done
-
-### Apple-silicon Macs
-
-If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
-
-```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.67
-```
-
-## Build and install the Rerun Python SDK
-
-### Set up virtualenv
-
-Mac/Linux:
-
-```sh
-python3 -m venv venv  # Rerun supports Python version >= 3.7
-source venv/bin/activate
-python -m pip install --upgrade pip  # We need pip version >=21.3
-```
-
-Windows (powershell):
-
-```ps1
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-```
-
-From here on out, we assume you have this virtualenv activated.
-
-### Build and install
-
-```sh
-./scripts/setup.sh
-pip install ./rerun_py
-```
-
-> Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip install` command.
-
-## Getting started with examples
-
-The easiest way to get started is to run and look at [`examples`](examples).
-
-### Buffered or live visualization
-
-By default, the examples run in buffered mode. This means they run through the whole example, and then show the viewer (UI) at the end in the same process by calling blocking function `rerun.show()`.
-
-If you'd rather see the visualizations live, as data is being logged. Run the examples with the `--connect` flag. The Rerun SDK will then try to connect to a Rerun Viewer running in another process and send the data as it is produced.
-
-To visualize an example live, first in one terminal (with the activated virtualenv) run:
-
-```sh
-python -m rerun  # Opens a Rerun Viewer that will wait for data from the Rerun SDK
-```
-
-Then run the example in a second terminal like:
-
-```sh
-python examples/car/main.py --connect  # The Rerun SDK will connect and send data to the separate viewer.
-```
-
-## Using the Rerun Python SDK
-
-Most documentation is found in the docstrings of the functions in the Rerun. Either check out the docstrings directly in code or use the built in `help()` function. For example, to see the docstring of the `log_image` function, open a python terminal and run:
-
-```python
+```py
 import rerun as rr
-help(rr.log_image)
+
+rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
+
+rr.log_image("rgb_image", image)
+rr.log_points("points", positions)
 ```
 
-For a description of how to use the SDK, including some of the key concepts, see [`rerun_py/USAGE.md`](rerun_py/USAGE.md).
+<!--- TODO(emilk): insert an image or gif here, preferably hosted elsewhere -->
+
+
+## Documentation
+- [Examples](examples)
+- [Python API docs](https://rerun-io.github.io/rerun)
+- [Rust getting-started guide](rerun_py/USAGE.md)
+<!--- TODO(#1161): update doclinks
+- [High-level documentation](http://rerun.io/docs)
+- [Rust API docs](https://docs.rs/rerun/)
+-->
+
+
+## Installing the pre-release Python SDK
+<!-- TODO(#1161): replace with `pip install rerun-sdk` -->
+1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
+  (for Mac M1/M2, grab the "universal2" `.whl`)
+2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
+3. Test it: `rerun --version`
+
+
+## Installing the Rust SDK
+Coming soon
+<!-- TODO(#1161): `cargo add rerun` + `cargo install rerun` -->
+
 
 ## Rerun Viewer without Python
-
 You can also build and install the Rerun Viewer to be used from the terminal without going through Python.
 
 To build and install run:
@@ -116,13 +56,23 @@ cargo install --path ./crates/rerun/
 
 You should now be able to run `rerun --help` in any terminal.
 
-## Bounded memory use
 
-You can set `--memory-limit=16GB` to tell the Rerun Viewer to purge older log data when memory use goes above that limit. This is useful for using Rerun in _continuous_ mode, i.e. where you keep logging new data to Rerun forever.
+## Shortcomings
+* Big points clouds (1M+) are slow ([#1136](https://github.com/rerun-io/rerun/issues/1136))
+* The data you want to visualize must fit in RAM.
+  - See [`rerun_py/USAGE.md`](rerun_py/USAGE.md) for how to bound memory use
+  - We plan on having a disk-based data store some time in the future
 
-It is still possible to log data faster than the Rerun Viewer can process it, and in those cases you may still run out of memory unless you also set `--drop-at-latency=200ms` or similar.
+
+## Business model
+Rerun uses an open core model. Everything in this repository will stay open source and free (as in beer), forever. In the future, Rerun will offer a commercial product that builds on top of the core free project. 
+
+The Rerun open source project targets the needs of individual developers. The commercial product targets the needs specific to teams that build and run computer vision and robotics products. 
 
 
 # Development
-
-Take a look at [`CONTRIBUTING.md`](CONTRIBUTING.md).
+* [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`BUILD.md`](BUILD.md)
+* [`CODE_STYLE.md`](CODE_STYLE.md)
+* [`CONTRIBUTING.md`](CONTRIBUTING.md)
+* [`RELEASES.md`](RELEASES.md)
