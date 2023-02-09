@@ -154,6 +154,7 @@ impl TimeControl {
                     }
                 }
                 Looping::All => {
+                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_everything_color();
                     if re_ui
                         .large_button_selected(ui, icon, true)
                         .on_hover_text("Looping entire recording")
@@ -163,7 +164,7 @@ impl TimeControl {
                     }
                 }
                 Looping::Selection => {
-                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
+                    // ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color(); // we have one color for the button, and a slightly different shade of it for the actual selection :/
                     #[allow(clippy::collapsible_else_if)]
                     if re_ui
                         .large_button_selected(ui, icon, true)
