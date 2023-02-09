@@ -1140,9 +1140,8 @@ fn loop_selection_ui(
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
-    if time_ctrl.loop_selection().is_none() {
-        // Helpfully select a time slice so that there always is a selection.
-        // This helps new users ("what is that?").
+    if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
+        // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
             time_ctrl.set_loop_selection(selection);
         }
@@ -1208,119 +1207,126 @@ fn loop_selection_ui(
 
             // Check for interaction:
             if let Some(pointer_pos) = pointer_pos {
-                let left_edge_rect =
-                    Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
-                        .expand(interact_radius);
+                // To not annoy the user, we only allow interaction when it is active.
+                if is_active {
+                    let left_edge_rect =
+                        Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
+                            .expand(interact_radius);
 
-                let right_edge_rect =
-                    Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
-                        .expand(interact_radius);
+                    let right_edge_rect =
+                        Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
+                            .expand(interact_radius);
 
-                // Check middle first, so that the edges "wins" (are on top)
-                let middle_response = ui
-                    .interact(rect, middle_id, egui::Sense::click_and_drag())
-                    .on_hover_and_drag_cursor(CursorIcon::Move);
+                    // Check middle first, so that the edges "wins" (are on top)
+                    let middle_response = ui
+                        .interact(rect, middle_id, egui::Sense::click_and_drag())
+                        .on_hover_and_drag_cursor(CursorIcon::Move);
 
-                let left_response = ui
-                    .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
+                    let left_response = ui
+                        .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
+                        .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
 
-                let right_response = ui
-                    .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
+                    let right_response = ui
+                        .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
+                        .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
 
-                // Use "smart_aim" to find a natural length of the time interval
-                let aim_radius = ui.input(|i| i.aim_radius());
-                use egui::emath::smart_aim::best_in_range_f64;
+                    // Use "smart_aim" to find a natural length of the time interval
+                    let aim_radius = ui.input(|i| i.aim_radius());
+                    use egui::emath::smart_aim::best_in_range_f64;
 
-                if left_response.dragged() {
-                    if let (Some(time_low), Some(time_high)) = (
-                        time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
-                        time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
-                    ) {
-                        // TODO(emilk): snap to absolute time too
-                        let low_length = selected_range.max - time_low;
-                        let high_length = selected_range.max - time_high;
-                        let best_length = TimeReal::from(best_in_range_f64(
-                            low_length.as_f64(),
-                            high_length.as_f64(),
-                        ));
-
-                        selected_range.min = selected_range.max - best_length;
-
-                        if selected_range.min > selected_range.max {
-                            std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                            ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
-                        }
-
-                        time_ctrl.set_loop_selection(selected_range);
-                        time_ctrl.set_looping(Looping::Selection);
-                    }
-                }
-
-                if right_response.dragged() {
-                    if let (Some(time_low), Some(time_high)) = (
-                        time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
-                        time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
-                    ) {
-                        // TODO(emilk): snap to absolute time too
-                        let low_length = time_low - selected_range.min;
-                        let high_length = time_high - selected_range.min;
-                        let best_length = TimeReal::from(best_in_range_f64(
-                            low_length.as_f64(),
-                            high_length.as_f64(),
-                        ));
-
-                        selected_range.max = selected_range.min + best_length;
-
-                        if selected_range.min > selected_range.max {
-                            std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                            ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
-                        }
-
-                        time_ctrl.set_loop_selection(selected_range);
-                        time_ctrl.set_looping(Looping::Selection);
-                    }
-                }
-
-                if middle_response.clicked() {
-                    // Click to toggle looping
-                    if time_ctrl.looping() == Looping::Selection {
-                        time_ctrl.set_looping(Looping::Off);
-                    } else {
-                        time_ctrl.set_looping(Looping::Selection);
-                    }
-                }
-
-                if middle_response.dragged() {
-                    (|| {
-                        let pointer_delta = ui.input(|i| i.pointer.delta());
-
-                        let min_x =
-                            time_ranges_ui.x_from_time(selected_range.min)? + pointer_delta.x;
-                        let max_x =
-                            time_ranges_ui.x_from_time(selected_range.max)? + pointer_delta.x;
-
-                        let min_time = time_ranges_ui.time_from_x(min_x)?;
-                        let max_time = time_ranges_ui.time_from_x(max_x)?;
-
-                        let mut new_range = TimeRangeF::new(min_time, max_time);
-
-                        if egui::emath::almost_equal(
-                            selected_range.length().as_f32(),
-                            new_range.length().as_f32(),
-                            1e-5,
+                    if left_response.dragged() {
+                        if let (Some(time_low), Some(time_high)) = (
+                            time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
+                            time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
                         ) {
-                            // Avoid numerical inaccuracies: maintain length if very close
-                            new_range.max = new_range.min + selected_range.length();
-                        }
+                            // TODO(emilk): snap to absolute time too
+                            let low_length = selected_range.max - time_low;
+                            let high_length = selected_range.max - time_high;
+                            let best_length = TimeReal::from(best_in_range_f64(
+                                low_length.as_f64(),
+                                high_length.as_f64(),
+                            ));
 
-                        time_ctrl.set_loop_selection(new_range);
-                        if ui.input(|i| i.pointer.is_moving()) {
+                            selected_range.min = selected_range.max - best_length;
+
+                            if selected_range.min > selected_range.max {
+                                std::mem::swap(&mut selected_range.min, &mut selected_range.max);
+                                ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
+                            }
+
+                            time_ctrl.set_loop_selection(selected_range);
                             time_ctrl.set_looping(Looping::Selection);
                         }
-                        Some(())
-                    })();
+                    }
+
+                    if right_response.dragged() {
+                        if let (Some(time_low), Some(time_high)) = (
+                            time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
+                            time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
+                        ) {
+                            // TODO(emilk): snap to absolute time too
+                            let low_length = time_low - selected_range.min;
+                            let high_length = time_high - selected_range.min;
+                            let best_length = TimeReal::from(best_in_range_f64(
+                                low_length.as_f64(),
+                                high_length.as_f64(),
+                            ));
+
+                            selected_range.max = selected_range.min + best_length;
+
+                            if selected_range.min > selected_range.max {
+                                std::mem::swap(&mut selected_range.min, &mut selected_range.max);
+                                ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
+                            }
+
+                            time_ctrl.set_loop_selection(selected_range);
+                            time_ctrl.set_looping(Looping::Selection);
+                        }
+                    }
+
+                    if middle_response.clicked() {
+                        // Click to toggle looping
+                        if time_ctrl.looping() == Looping::Selection {
+                            time_ctrl.set_looping(Looping::Off);
+                        } else {
+                            time_ctrl.set_looping(Looping::Selection);
+                        }
+                    }
+
+                    if middle_response.dragged() {
+                        (|| {
+                            let pointer_delta = ui.input(|i| i.pointer.delta());
+
+                            let min_x =
+                                time_ranges_ui.x_from_time(selected_range.min)? + pointer_delta.x;
+                            let max_x =
+                                time_ranges_ui.x_from_time(selected_range.max)? + pointer_delta.x;
+
+                            let min_time = time_ranges_ui.time_from_x(min_x)?;
+                            let max_time = time_ranges_ui.time_from_x(max_x)?;
+
+                            let mut new_range = TimeRangeF::new(min_time, max_time);
+
+                            if egui::emath::almost_equal(
+                                selected_range.length().as_f32(),
+                                new_range.length().as_f32(),
+                                1e-5,
+                            ) {
+                                // Avoid numerical inaccuracies: maintain length if very close
+                                new_range.max = new_range.min + selected_range.length();
+                            }
+
+                            time_ctrl.set_loop_selection(new_range);
+                            if ui.input(|i| i.pointer.is_moving()) {
+                                time_ctrl.set_looping(Looping::Selection);
+                            }
+                            Some(())
+                        })();
+                    }
+                } else {
+                    // inactive - show a tooltip at least:
+                    ui.interact(rect, middle_id, egui::Sense::hover())
+                        .on_hover_text("Click the loop button to turn on the loop selection, or use shift-drag to select a new loop selection.");
                 }
             }
         }
