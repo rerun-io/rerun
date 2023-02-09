@@ -46,15 +46,15 @@ pub struct SplitView {
 
 pub fn split_resolution(
     resolution: [u32; 2],
-    nb_rows: usize,
-    nb_cols: usize,
+    num_rows: usize,
+    num_cols: usize,
 ) -> impl Iterator<Item = SplitView> {
     let total_width = resolution[0] as f32;
     let total_height = resolution[1] as f32;
-    let width = (total_width / nb_cols as f32).floor();
-    let height = (total_height / nb_rows as f32).floor();
-    (0..nb_rows)
-        .flat_map(move |row| (0..nb_cols).map(move |col| (row, col)))
+    let width = (total_width / num_cols as f32).floor();
+    let height = (total_height / num_rows as f32).floor();
+    (0..num_rows)
+        .flat_map(move |row| (0..num_cols).map(move |col| (row, col)))
         .map(move |(row, col)| {
             // very quick'n'dirty (uneven) borders
             let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0).floor();

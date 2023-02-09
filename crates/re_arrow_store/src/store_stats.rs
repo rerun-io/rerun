@@ -141,7 +141,7 @@ impl DataStore {
 impl PersistentIndexTable {
     /// Returns the number of rows stored across this table.
     pub fn total_rows(&self) -> u64 {
-        self.nb_rows
+        self.num_rows
     }
 
     /// Returns the size of the data stored across this table, in bytes.

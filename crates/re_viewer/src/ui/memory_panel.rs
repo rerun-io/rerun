@@ -193,8 +193,8 @@ impl MemoryPanel {
                     total_component_size_bytes,
                 } = *store_stats;
 
-                let label_rows = |ui: &mut egui::Ui, nb_rows| {
-                    ui.label(format!("rows: {}", re_format::format_number(nb_rows as _)))
+                let label_rows = |ui: &mut egui::Ui, num_rows| {
+                    ui.label(format!("rows: {}", re_format::format_number(num_rows as _)))
                 };
                 let label_size =
                     |ui: &mut egui::Ui, size| ui.label(re_format::format_bytes(size as _));

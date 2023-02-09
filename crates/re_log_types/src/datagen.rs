@@ -53,13 +53,13 @@ pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
 }
 
 /// Create `len` dummy `InstanceKey` keys. These keys will be sorted.
-pub fn build_some_instances(nb_instances: usize) -> Vec<InstanceKey> {
+pub fn build_some_instances(num_instances: usize) -> Vec<InstanceKey> {
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
 
     // Allocate pool of 10x the potential instance keys, draw a random sampling, and then sort it
-    let mut instance_pool = (0..(nb_instances * 10)).collect::<Vec<_>>();
-    let (rand_instances, _) = instance_pool.partial_shuffle(&mut rng, nb_instances);
+    let mut instance_pool = (0..(num_instances * 10)).collect::<Vec<_>>();
+    let (rand_instances, _) = instance_pool.partial_shuffle(&mut rng, num_instances);
     let mut sorted_instances = rand_instances.to_vec();
     sorted_instances.sort();
 

@@ -100,7 +100,7 @@ fn format_component_bundle(bundle: &ComponentBundle) -> String {
     // TODO(emilk): if there's only once instance, and the byte size is small, then deserialize and show the value.
     format!(
         "{}x {}",
-        bundle.nb_instances(0).unwrap(), // all of our bundles have exactly 1 row as of today
+        bundle.num_instances(0).unwrap(), // all of our bundles have exactly 1 row as of today
         bundle.name().short_name()
     )
 }

@@ -17,6 +17,8 @@ debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 
 error_match_name = re.compile(r"Err\((\w+)\)")
 
+nb_prefix = re.compile(r"\bnb_")
+
 def lint_line(line: str) -> Optional[str]:
     if "NOLINT" in line:
         return None  # NOLINT ignores the linter
@@ -53,6 +55,9 @@ def lint_line(line: str) -> Optional[str]:
         # if name not in ("err", "_err", "_"):
         if name in ("e", "error"):
             return "Errors should be called 'err', '_err' or '_'"
+
+    if nb_prefix.search(line):
+        return "Don't use nb_things - use num_things or thing_count instead"
 
     return None
 
