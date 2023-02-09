@@ -110,10 +110,22 @@ impl TimeRangesUi {
         // We expand each segment slightly, shrinking the gaps.
         // This is so that when a user drags the time to the start or end of a segment,
         // and they overshoot, they don't immediately go into the non-linear realm between segments.
-        // When we expand we must take care not to expand so much that the gaps cover _negative_ time!.
+        // When we expand we must take care not to expand so much that the gaps cover _negative_ time!
+        let shortest_time_gap =
+            time_ranges
+                .iter()
+                .tuple_windows()
+                .fold(f32::INFINITY, |shortest, (a, b)| {
+                    debug_assert!(a.max < b.min, "Overlapping time ranges: {a:?}, {b:?}");
+                    let time_gap = b.min - a.max;
+                    time_gap.as_f32().min(shortest)
+                });
 
-        let expansion_in_ui = GAP_EXPANSION_FRACTION * gap_width_in_ui;
-        let expansion_in_time = TimeReal::from(expansion_in_ui / points_per_time);
+        let expansion_in_time = TimeReal::from(
+            (GAP_EXPANSION_FRACTION * gap_width_in_ui / points_per_time)
+                .at_most(shortest_time_gap * GAP_EXPANSION_FRACTION),
+        );
+        let expansion_in_ui = points_per_time * expansion_in_time.as_f32();
 
         let mut left = 0.0; // we will translate things left/right later to align x_range with time_view
         let segments = time_ranges
@@ -159,6 +171,18 @@ impl TimeRangesUi {
             for segment in &mut slf.segments {
                 segment.x = (*segment.x.start() + x_translate)..=(*segment.x.end() + x_translate);
             }
+        }
+
+        #[cfg(debug_assertions)]
+        for (a, b) in slf.segments.iter().tuple_windows() {
+            debug_assert!(
+                a.x.end() < b.x.start(),
+                "Overlapping x in segments: {a:#?}, {b:#?}"
+            );
+            debug_assert!(
+                a.tight_time_range.max < b.tight_time_range.min,
+                "Overlapping time in segments: {a:#?}, {b:#?}"
+            );
         }
 
         slf
