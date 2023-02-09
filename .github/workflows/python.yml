@@ -55,15 +55,25 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  macos:
-    name: Build Python Wheels for MacOS
-    runs-on: macos-latest
-    # This build is really slow (>30 mins); uses up a lot of CI minutes
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+  wheels:
+    name: Build Python Wheels
     needs: [lint]
+
     strategy:
       matrix:
-        target: [x64, universal2]
+        platform: [macos, windows, linux]
+        include:
+          - runs_on: macos-latest
+            platform: macos
+          - runs_on: windows-latest-8-cores
+            platform: windows
+          - runs_on: ubuntu-latest-16-cores
+            platform: linux
+
+    # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
+    if: matrix.platform != "macos" || startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+
+    runs-on: ${{ matrix.run_on }}
 
     steps:
       - uses: actions/checkout@v3
@@ -80,48 +90,33 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
-          architecture: x64
 
       - name: Patch Cargo.toml for Pre-Release
         if: github.ref == 'refs/heads/main'
         run: python scripts/patch_prerelease_version.py
 
       - name: Build and install rerun
-        run: |
-          pip install rerun_py/
+        run: pip install rerun_py/
 
-      - name: Generate shipping RRD file
+      - name: Generate Embedded RRD file
         run: |
-          mkdir rrd
           pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless --save rrd/car.rrd
+          ./examples/car/main.py --headless --save car.rrd
+          cp car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
 
-      - name: Inject RRD file
-        run: cp rrd/car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
-
-      - name: Build wheel - x86_64
-        if: matrix.target == 'x64'
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "0.14.10"
-          command: build
-          target: x86_64
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --out dist
-
-      - name: Build wheel - universal2
+      - name: Build Wheel
         if: matrix.target == 'universal2'
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
+          manylinux: auto
+          contaienr: off
           command: build
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --out dist
             --universal2
+            --out dist
 
       - name: Install built wheel
         run: |
@@ -142,162 +137,10 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  windows:
-    name: Build Python Wheels for Windows
-    runs-on: windows-latest-8-cores
-    needs: [lint]
-    strategy:
-      matrix:
-        target: [x64]
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          architecture: ${{ matrix.target }}
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Patch Cargo.toml for Pre-Release
-        if: github.ref == 'refs/heads/main'
-        run: python scripts/patch_prerelease_version.py
-
-      - name: Build and install rerun
-        run: |
-          pip install rerun_py/
-
-      - name: Generate shipping RRD file
-        run: |
-          mkdir rrd
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless --save rrd/car.rrd
-
-      - name: Inject RRD file
-        run: cp rrd/car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --out dist
-
-      - name: Install built wheel
-        run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest
-          cd rerun_py/tests && pytest
-
-      - name: Run Car example
-        run: |
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
-
-  # ---------------------------------------------------------------------------
-
-  linux:
-    name: Build Python Wheels for Linux
-    runs-on: ubuntu-latest-16-cores
-    needs: [lint]
-    steps:
-      - uses: actions/checkout@v3
-
-      - id: commit
-        uses: pr-mpt/actions-commit-hash@v2
-
-      - name: Cache APT Packages
-        #uses: awalsh128/cache-apt-pkgs-action@v1.2.2
-        #TODO(john) merge upstream
-        uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
-        with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
-          version: 1.0
-          execute_install_scripts: true
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Patch Cargo.toml for Pre-Release
-        if: github.ref == 'refs/heads/main'
-        run: python scripts/patch_prerelease_version.py
-
-      - name: Build and install rerun
-        run: |
-          pip install rerun_py/
-
-      - name: Generate shipping RRD file
-        run: |
-          mkdir rrd
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless --save rrd/car.rrd
-
-      - name: Inject RRD file
-        run: cp rrd/car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "0.14.10"
-          target: ${{ matrix.target }}
-          manylinux: auto
-          container: off
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --sdist
-            --out dist
-
-      - name: Install built wheel
-        run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest
-          cd rerun_py/tests && pytest
-
-      - name: Run Car example
-        run: |
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
-
-  # ---------------------------------------------------------------------------
-
   # See https://github.com/marvinpinto/action-automatic-releases#automatically-generate-a-pre-release-when-changes-land-on-master for details
   pre-release:
     name: Pre Release
-    needs: [macos, windows, linux]
+    needs: [wheels]
     if: github.ref == 'refs/heads/main'
     runs-on: "ubuntu-latest"
     steps:
@@ -326,7 +169,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [macos, windows, linux]
+    needs: [wheels]
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v3
