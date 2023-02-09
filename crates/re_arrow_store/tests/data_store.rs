@@ -869,11 +869,11 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
                 Series::try_from((cluster_key.as_str(), bundle.components[idx].value_boxed()))
                     .unwrap()
             } else {
-                let nb_instances = bundle.nb_instances(0).unwrap_or(0);
+                let num_instances = bundle.num_instances(0).unwrap_or(0);
                 Series::try_from((
                     cluster_key.as_str(),
                     wrap_in_listarray(
-                        UInt64Array::from_vec((0..nb_instances as u64).collect()).to_boxed(),
+                        UInt64Array::from_vec((0..num_instances as u64).collect()).to_boxed(),
                     )
                     .to_boxed(),
                 ))
@@ -919,16 +919,16 @@ fn gc_impl(store: &mut DataStore) {
     let mut rng = rand::thread_rng();
 
     for _ in 0..2 {
-        let nb_ents = 10;
-        for i in 0..nb_ents {
+        let num_ents = 10;
+        for i in 0..num_ents {
             let ent_path = EntityPath::from(format!("this/that/{i}"));
 
-            let nb_frames = rng.gen_range(0..=100);
-            let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+            let num_frames = rng.gen_range(0..=100);
+            let frames = (0..num_frames).filter(|_| rand::thread_rng().gen());
             for frame_nr in frames {
-                let nb_instances = rng.gen_range(0..=1_000);
+                let num_instances = rng.gen_range(0..=1_000);
                 let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
-                    build_some_rects(nb_instances),
+                    build_some_rects(num_instances),
                 ]);
                 store.insert(&bundle).unwrap();
             }

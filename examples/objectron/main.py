@@ -52,9 +52,11 @@ class SampleARFrame:
     image_path: Path
 
 
-def read_ar_frames(dirpath: Path, nb_frames: int, run_forever: bool, per_frame_sleep: float) -> Iterator[SampleARFrame]:
+def read_ar_frames(
+    dirpath: Path, num_frames: int, run_forever: bool, per_frame_sleep: float
+) -> Iterator[SampleARFrame]:
     """
-    Loads up to `nb_frames` consecutive ARFrames from the given path on disk.
+    Loads up to `num_frames` consecutive ARFrames from the given path on disk.
 
     `dirpath` should be of the form `dataset/bike/batch-8/16/`.
     """
@@ -68,7 +70,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int, run_forever: bool, per_frame_s
     while True:
         frame_idx = 0
         data = Path(path).read_bytes()
-        while len(data) > 0 and frame_idx < nb_frames:
+        while len(data) > 0 and frame_idx < num_frames:
             next_len = int.from_bytes(data[:4], byteorder="little", signed=False)
             data = data[4:]
 
