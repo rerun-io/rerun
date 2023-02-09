@@ -20,8 +20,8 @@ use std::{
 use anyhow::{anyhow, Context as _};
 
 use rerun::external::re_log;
+use rerun::time::{Time, TimePoint, TimeType, Timeline};
 use rerun::{ApplicationId, MsgSender, RecordingId, Session};
-use rerun::{Time, TimePoint, TimeType, Timeline};
 
 // --- Rerun logging ---
 
@@ -75,7 +75,7 @@ fn log_coordinate_space(
     ent_path: impl Into<rerun::EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
-    let view_coords: rerun::ViewCoordinates = axes
+    let view_coords: rerun::components::ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
     MsgSender::new(ent_path)
@@ -114,6 +114,8 @@ fn log_baseline_objects(
     session: &mut Session,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
+    use rerun::components::{Box3D, ColorRGBA, Label, Rigid3, Transform};
+
     let boxes = objects.iter().filter_map(|object| {
         Some({
             if object.r#type != objectron::object::Type::BoundingBox as i32 {
@@ -121,18 +123,18 @@ fn log_baseline_objects(
                 return None;
             }
 
-            let box3: rerun::Box3D = glam::Vec3::from_slice(&object.scale).into();
+            let box3: Box3D = glam::Vec3::from_slice(&object.scale).into();
             let transform = {
                 let translation = glam::Vec3::from_slice(&object.translation).into();
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
                 let rotation = glam::Quat::from_mat3(&rotation).into();
-                rerun::Transform::Rigid3(rerun::Rigid3 {
+                Transform::Rigid3(Rigid3 {
                     rotation,
                     translation,
                 })
             };
-            let label = rerun::Label(object.category.clone());
+            let label = Label(object.category.clone());
 
             (object.id, box3, transform, label)
         })
@@ -144,7 +146,7 @@ fn log_baseline_objects(
             .with_component(&[bbox])?
             .with_component(&[transform])?
             .with_component(&[label])?
-            .with_splat(rerun::ColorRGBA::from_rgb(160, 230, 130))?
+            .with_splat(ColorRGBA::from_rgb(160, 230, 130))?
             .send(session)?;
     }
 
@@ -159,7 +161,7 @@ fn log_video_frame(session: &mut Session, ar_frame: &ArFrame) -> anyhow::Result<
     assert_eq!(jpeg.color_type(), image::ColorType::Rgb8); // TODO(emilk): support gray-scale jpeg aswell
     let (w, h) = jpeg.dimensions();
 
-    use rerun::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId};
+    use rerun::components::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId};
     MsgSender::new("world/camera/video")
         .with_timepoint(ar_frame.timepoint.clone())
         // TODO(cmc): `Tensor` should have an `image` integration really
@@ -207,17 +209,17 @@ fn log_ar_camera(
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
 
+    use rerun::components::{Pinhole, Rigid3, Transform};
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[rerun::Transform::Rigid3(rerun::Rigid3 {
+        .with_component(&[Transform::Rigid3(Rigid3 {
             rotation: rot.into(),
             translation: translation.into(),
         })])?
         .send(session)?;
-
     MsgSender::new("world/camera/video")
         .with_timepoint(timepoint)
-        .with_component(&[rerun::Transform::Pinhole(rerun::Pinhole {
+        .with_component(&[Transform::Pinhole(Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
         })])?
@@ -231,14 +233,16 @@ fn log_feature_points(
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
+    use rerun::components::{ColorRGBA, InstanceKey, Point3D};
+
     let ids = points.identifier.iter();
     let points = points.point.iter();
     let (ids, points): (Vec<_>, Vec<_>) = ids
         .zip(points)
         .map(|(id, p)| {
             (
-                rerun::InstanceKey(*id as _),
-                rerun::Point3D::new(
+                InstanceKey(*id as _),
+                Point3D::new(
                     p.x.unwrap_or_default(),
                     p.y.unwrap_or_default(),
                     p.z.unwrap_or_default(),
@@ -251,7 +255,7 @@ fn log_feature_points(
         .with_timepoint(timepoint)
         .with_component(&points)?
         .with_component(&ids)?
-        .with_splat(rerun::ColorRGBA::from_rgb(255, 255, 255))?
+        .with_splat(ColorRGBA::from_rgb(255, 255, 255))?
         .send(session)?;
 
     Ok(())
@@ -262,6 +266,8 @@ fn log_frame_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
+    use rerun::components::{ColorRGBA, InstanceKey, LineStrip2D, Point2D};
+
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
         // capable of projecting the actual 3D points in real time now.
@@ -271,7 +277,7 @@ fn log_frame_annotations(
             .filter_map(|kp| {
                 kp.point_2d
                     .as_ref()
-                    .map(|p| (rerun::InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
+                    .map(|p| (InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
             })
             .unzip();
 
@@ -280,12 +286,12 @@ fn log_frame_annotations(
             ann.object_id
         ))
         .with_timepoint(timepoint.clone())
-        .with_splat(rerun::ColorRGBA::from_rgb(130, 160, 250))?;
+        .with_splat(ColorRGBA::from_rgb(130, 160, 250))?;
 
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.
             #[rustfmt::skip]
-            fn linestrips(points: &[[f32; 2]]) -> Vec<rerun::LineStrip2D> {
+            fn linestrips(points: &[[f32; 2]]) -> Vec<LineStrip2D> {
                 vec![
                     vec![
                          points[2], points[1],
@@ -315,12 +321,9 @@ fn log_frame_annotations(
             }
             msg = msg.with_component(&linestrips(&points))?;
         } else {
-            msg = msg.with_component(&ids)?.with_component(
-                &points
-                    .into_iter()
-                    .map(rerun::Point2D::from)
-                    .collect::<Vec<_>>(),
-            )?;
+            msg = msg
+                .with_component(&ids)?
+                .with_component(&points.into_iter().map(Point2D::from).collect::<Vec<_>>())?;
         }
 
         msg.send(session)?;
@@ -388,7 +391,7 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let addr = match args.connect {
         Some(Some(addr)) => Some(addr),
-        Some(None) => Some(rerun::default_server_addr()),
+        Some(None) => Some(rerun::log::default_server_addr()),
         None => None,
     };
 

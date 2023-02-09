@@ -1,7 +1,8 @@
 //! Demonstrates the most barebone usage of the Rerun SDK.
 
+use rerun::components::{ColorRGBA, Point3D};
 use rerun::external::glam;
-use rerun::{ColorRGBA, MsgSender, Point3D, Session};
+use rerun::{MsgSender, Session};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut session = Session::new();

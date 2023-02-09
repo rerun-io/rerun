@@ -13,10 +13,11 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 use bytes::Bytes;
 use clap::Parser;
+use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
+use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    ApplicationId, EntityPath, Mesh3D, MeshId, MsgSender, RawMesh3D, RecordingId, Session,
-    TimeType, Timeline, Transform, Vec4D, ViewCoordinates,
+    ApplicationId, EntityPath, MsgSender, RecordingId, Session,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -56,14 +57,14 @@ impl From<GltfPrimitive> for Mesh3D {
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for Transform {
     fn from(transform: GltfTransform) -> Self {
-        Transform::Rigid3(rerun::Rigid3 {
-            rotation: rerun::Quaternion {
+        Transform::Rigid3(rerun::components::Rigid3 {
+            rotation: rerun::components::Quaternion {
                 x: transform.r[0],
                 y: transform.r[1],
                 z: transform.r[2],
                 w: transform.r[3],
             },
-            translation: rerun::Vec3D(transform.t),
+            translation: rerun::components::Vec3D(transform.t),
         })
     }
 }
@@ -141,7 +142,7 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let addr = match args.connect.as_ref() {
         Some(Some(addr)) => Some(addr.parse()?),
-        Some(None) => Some(rerun::default_server_addr()),
+        Some(None) => Some(rerun::log::default_server_addr()),
         None => None,
     };
 
