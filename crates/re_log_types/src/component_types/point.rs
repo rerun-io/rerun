@@ -49,6 +49,14 @@ impl From<[f32; 2]> for Point2D {
 }
 
 #[cfg(feature = "glam")]
+impl From<glam::Vec2> for Point2D {
+    #[inline]
+    fn from(pt: glam::Vec2) -> Self {
+        Self::new(pt.x, pt.y)
+    }
+}
+
+#[cfg(feature = "glam")]
 impl From<Point2D> for glam::Vec2 {
     #[inline]
     fn from(pt: Point2D) -> Self {
@@ -107,6 +115,14 @@ impl From<[f32; 3]> for Point3D {
             y: p[1],
             z: p[2],
         }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::Vec3> for Point3D {
+    #[inline]
+    fn from(pt: glam::Vec3) -> Self {
+        Self::new(pt.x, pt.y, pt.z)
     }
 }
 

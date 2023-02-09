@@ -28,6 +28,9 @@ mod time_real;
 pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
+
+    #[cfg(feature = "glam")]
+    pub use glam;
 }
 
 pub use self::component_types::context;

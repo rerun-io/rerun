@@ -16,6 +16,10 @@ pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, U
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
 
+pub mod external {
+    pub use eframe;
+}
+
 // ----------------------------------------------------------------------------
 // When compiling for native:
 

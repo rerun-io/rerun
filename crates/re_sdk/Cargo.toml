@@ -1,5 +1,5 @@
 [package]
-name = "rerun_sdk"
+name = "re_sdk"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,7 +13,7 @@ default = ["re_viewer"]
 glam = ["re_log_types/glam"]
 
 ## Support for the viewer
-re_viewer = ["dep:re_viewer", "dep:eframe"]
+re_viewer = ["dep:re_viewer"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -47,7 +47,6 @@ re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
 re_viewer = { path = "../re_viewer", default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
-eframe = { workspace = true, default-features = false, optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
