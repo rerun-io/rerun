@@ -27,7 +27,7 @@ def build_color_grid(x_count=6, y_count=6, z_count=6):
     return ColorGrid(positions, colors)
 
 
-color_grid = build_color_grid(6, 6, 6)
+color_grid = build_color_grid()
 
 
 RectPyramid = namedtuple("RectPyramid", ["rects", "format", "colors"])
@@ -55,4 +55,4 @@ def build_rect_pyramid(count=20, width=100, height=100):
     return RectPyramid(rects, RectFormat.XCYCWH, colors)
 
 
-rect_pyramid = build_rect_pyramid(20)
+rect_pyramid = build_rect_pyramid()
