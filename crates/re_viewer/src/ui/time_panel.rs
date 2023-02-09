@@ -1294,12 +1294,12 @@ fn loop_selection_ui(
 
                 if middle_response.dragged() {
                     (|| {
-                        let min_x = time_ranges_ui.x_from_time(selected_range.min)?;
-                        let max_x = time_ranges_ui.x_from_time(selected_range.max)?;
-
                         let pointer_delta = ui.input(|i| i.pointer.delta());
-                        let min_x = min_x + pointer_delta.x;
-                        let max_x = max_x + pointer_delta.x;
+
+                        let min_x =
+                            time_ranges_ui.x_from_time(selected_range.min)? + pointer_delta.x;
+                        let max_x =
+                            time_ranges_ui.x_from_time(selected_range.max)? + pointer_delta.x;
 
                         let min_time = time_ranges_ui.time_from_x(min_x)?;
                         let max_time = time_ranges_ui.time_from_x(max_x)?;
@@ -1586,6 +1586,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) 
     }
 }
 
+#[derive(Debug)]
 struct Segment {
     /// Matches [`Self::time`] (linear transform).
     x: RangeInclusive<f32>,
@@ -1601,6 +1602,7 @@ struct Segment {
 /// It does so by breaking up the timeline in linear segments.
 ///
 /// Recreated each frame.
+#[derive(Debug)]
 struct TimeRangesUi {
     /// The total x-range we are viewing
     x_range: RangeInclusive<f32>,
@@ -2174,10 +2176,10 @@ fn test_time_ranges_ui() {
         ],
     );
 
+    let pixel_precision = 0.5;
+
     // Sanity check round-tripping:
     for segment in &time_range_ui.segments {
-        let pixel_precision = 0.5;
-
         assert_eq!(
             time_range_ui.time_from_x(*segment.x.start()).unwrap(),
             segment.time.min
@@ -2198,5 +2200,44 @@ fn test_time_ranges_ui() {
             let max_x = time_range_ui.x_from_time(segment.time.max).unwrap();
             assert!((max_x - *segment.x.end()).abs() < pixel_precision);
         }
+    }
+}
+
+#[test]
+fn test_time_ranges_ui_2() {
+    let time_range_ui = TimeRangesUi::new(
+        0.0..=500.0,
+        TimeView {
+            min: TimeReal::from(0),
+            time_spanned: 50.0,
+        },
+        &[
+            TimeRange::new(TimeInt::from(10), TimeInt::from(20)),
+            TimeRange::new(TimeInt::from(30), TimeInt::from(40)),
+        ],
+    );
+
+    let pixel_precision = 0.5;
+
+    for x_in in 0..=500 {
+        let x_in = x_in as f32;
+        let time = time_range_ui.time_from_x(x_in).unwrap();
+        let x_out = time_range_ui.x_from_time(time).unwrap();
+
+        assert!(
+            (x_in - x_out).abs() < pixel_precision,
+            "x_in: {x_in}, x_out: {x_out}, time: {time:?}, time_range_ui: {time_range_ui:#?}"
+        );
+    }
+
+    for time_in in 0..=50 {
+        let time_in = TimeReal::from(time_in as f64);
+        let x = time_range_ui.x_from_time(time_in).unwrap();
+        let time_out = time_range_ui.time_from_x(x).unwrap();
+
+        assert!(
+            (time_in - time_out).abs().as_f64() < 0.1,
+            "time_in: {time_in:?}, time_out: {time_out:?}, x: {x}, time_range_ui: {time_range_ui:#?}"
+        );
     }
 }
