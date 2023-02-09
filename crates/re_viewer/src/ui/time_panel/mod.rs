@@ -7,15 +7,13 @@ mod time_selection_ui;
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use egui::{
-    pos2, show_tooltip_at_pointer, Align2, Color32, CursorIcon, Id, NumExt, PointerButton, Pos2,
-    Rect, Shape, Stroke, Vec2,
+    pos2, show_tooltip_at_pointer, Color32, CursorIcon, Id, NumExt, PointerButton, Rect, Shape,
+    Vec2,
 };
 use itertools::Itertools;
 
 use re_data_store::{EntityTree, InstancePath};
-use re_log_types::{
-    ComponentPath, Duration, EntityPathPart, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
-};
+use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
 
 use crate::{Item, TimeControl, TimeView, ViewerContext};
 
@@ -260,8 +258,9 @@ impl TimePanel {
             full_y_range.clone(),
         );
         time_selection_ui::loop_selection_ui(
-            &self.time_ranges_ui,
+            ctx.log_db,
             &mut ctx.rec_cfg.time_ctrl,
+            &self.time_ranges_ui,
             ui,
             &time_bg_area_painter,
             &timeline_rect,
@@ -584,10 +583,43 @@ fn help_button(ui: &mut egui::Ui) {
     );
 }
 
-fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+/// A user can drag the time slider to between the timeless data and the first real data.
+///
+/// The time interpolated there is really weird, as it goes from [`TimeInt::BEGINNING`]
+/// (which is extremely long time ago) to whatever tim the user logged.
+/// So we do not want to display these times to the user.
+///
+/// This functions returns `true` iff the given time is safe to show.
+fn is_time_safe_to_show(
+    log_db: &re_data_store::LogDb,
+    timeline: &re_arrow_store::Timeline,
+    time: TimeReal,
+) -> bool {
+    if log_db.num_timeless_messages() == 0 {
+        return true; // no timeless messages, no problem
+    }
+
+    if let Some(times) = log_db.entity_db.tree.prefix_times.get(timeline) {
+        if let Some(first_time) = times.keys().next() {
+            let margin = match timeline.typ() {
+                re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
+                re_arrow_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
+            };
+
+            return *first_time <= time + margin;
+        }
+    }
+
+    TimeInt::BEGINNING < time
+}
+
+fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     if let Some(time_int) = ctx.rec_cfg.time_ctrl.time_int() {
-        let time_type = ctx.rec_cfg.time_ctrl.time_type();
-        ui.monospace(time_type.format(time_int));
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        if is_time_safe_to_show(ctx.log_db, timeline, time_int.into()) {
+            let time_type = ctx.rec_cfg.time_ctrl.time_type();
+            ui.monospace(time_type.format(time_int));
+        }
     }
 }
 
@@ -1073,78 +1105,6 @@ fn interact_with_streams_rect(
     }
 
     response
-}
-
-fn paint_range_text(
-    time_ctrl: &mut TimeControl,
-    selected_range: TimeRangeF,
-    ui: &mut egui::Ui,
-    painter: &egui::Painter,
-    selection_rect: Rect,
-) {
-    if selected_range.min <= TimeInt::BEGINNING {
-        return; // huge time selection, don't show a confusing times
-    }
-
-    let text_color = ui.visuals().strong_text_color();
-
-    let arrow_color = text_color.gamma_multiply(0.75);
-    let arrow_stroke = Stroke::new(1.0, arrow_color);
-
-    fn paint_arrow_from_to(painter: &egui::Painter, origin: Pos2, to: Pos2, stroke: Stroke) {
-        use egui::emath::Rot2;
-        let vec = to - origin;
-        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
-        let tip_length = 6.0;
-        let tip = origin + vec;
-        let dir = vec.normalized();
-        painter.line_segment([origin, tip], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
-        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
-    }
-
-    let range_text = format_duration(time_ctrl.time_type(), selected_range.length().abs());
-    if range_text.is_empty() {
-        return;
-    }
-
-    let font_id = egui::TextStyle::Small.resolve(ui.style());
-    let text_rect = painter.text(
-        selection_rect.center(),
-        Align2::CENTER_CENTER,
-        range_text,
-        font_id,
-        text_color,
-    );
-
-    // Draw arrows on either side, if we have the space for it:
-    let text_rect = text_rect.expand(2.0); // Add some margin around text
-    let selection_rect = selection_rect.shrink(1.0); // Add some margin inside of the selection rect
-    let min_arrow_length = 12.0;
-    if selection_rect.left() + min_arrow_length <= text_rect.left() {
-        paint_arrow_from_to(
-            painter,
-            text_rect.left_center(),
-            selection_rect.left_center(),
-            arrow_stroke,
-        );
-    }
-    if text_rect.right() + min_arrow_length <= selection_rect.right() {
-        paint_arrow_from_to(
-            painter,
-            text_rect.right_center(),
-            selection_rect.right_center(),
-            arrow_stroke,
-        );
-    }
-}
-
-/// Human-readable description of a duration
-fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
-    match time_typ {
-        TimeType::Time => Duration::from(duration).to_string(),
-        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
-    }
 }
 
 /// A vertical line that shows the current time.

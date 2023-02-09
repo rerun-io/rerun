@@ -53,7 +53,7 @@ impl From<&TimeRange> for RangeInclusive<TimeInt> {
 // ----------------------------------------------------------------------------
 
 /// Like [`TimeRange`], but using [`TimeReal`] for improved precison.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeRangeF {
     pub min: TimeReal,
