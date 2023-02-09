@@ -52,7 +52,9 @@ class SampleARFrame:
     image_path: Path
 
 
-def read_ar_frames(dirpath: Path, num_frames: int, run_forever: bool, per_frame_sleep: float) -> Iterator[SampleARFrame]:
+def read_ar_frames(
+    dirpath: Path, num_frames: int, run_forever: bool, per_frame_sleep: float
+) -> Iterator[SampleARFrame]:
     """
     Loads up to `num_frames` consecutive ARFrames from the given path on disk.
 
