@@ -12,10 +12,13 @@ use pyo3::{
 
 // init
 pub use rerun::{global_session, ApplicationId, RecordingId};
+
 // time
 use rerun::{Time, TimeInt, TimePoint, TimeType, Timeline};
+
 // messages
 use rerun::{EntityPath, LogMsg, MsgBundle, MsgId, PathOp};
+
 // components
 pub use rerun::{
     AnnotationContext, AnnotationInfo, Arrow3D, Axis3, Box3D, ClassDescription, ClassId, ColorRGBA,
@@ -490,8 +493,6 @@ fn log_view_coordinates_xyz(
     right_handed: Option<bool>,
     timeless: bool,
 ) -> PyResult<()> {
-    use rerun::{Handedness, ViewCoordinates};
-
     let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
 
     if let Some(right_handed) = right_handed {
@@ -517,8 +518,6 @@ fn log_view_coordinates_up_handedness(
     right_handed: bool,
     timeless: bool,
 ) -> PyResult<()> {
-    use rerun::{Handedness, SignedAxis3, ViewCoordinates};
-
     let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
     let handedness = Handedness::from_right_handed(right_handed);
     let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
