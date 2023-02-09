@@ -1294,34 +1294,7 @@ fn loop_selection_ui(
                     }
 
                     if middle_response.dragged() {
-                        (|| {
-                            let pointer_delta = ui.input(|i| i.pointer.delta());
-
-                            let min_x =
-                                time_ranges_ui.x_from_time(selected_range.min)? + pointer_delta.x;
-                            let max_x =
-                                time_ranges_ui.x_from_time(selected_range.max)? + pointer_delta.x;
-
-                            let min_time = time_ranges_ui.time_from_x(min_x)?;
-                            let max_time = time_ranges_ui.time_from_x(max_x)?;
-
-                            let mut new_range = TimeRangeF::new(min_time, max_time);
-
-                            if egui::emath::almost_equal(
-                                selected_range.length().as_f32(),
-                                new_range.length().as_f32(),
-                                1e-5,
-                            ) {
-                                // Avoid numerical inaccuracies: maintain length if very close
-                                new_range.max = new_range.min + selected_range.length();
-                            }
-
-                            time_ctrl.set_loop_selection(new_range);
-                            if ui.input(|i| i.pointer.is_moving()) {
-                                time_ctrl.set_looping(Looping::Selection);
-                            }
-                            Some(())
-                        })();
+                        on_drag_loop_selection(ui, time_ranges_ui, selected_range, time_ctrl);
                     }
                 } else {
                     // inactive - show a tooltip at least:
@@ -1346,6 +1319,39 @@ fn loop_selection_ui(
             }
         }
     }
+}
+
+fn on_drag_loop_selection(
+    ui: &mut egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    selected_range: TimeRangeF,
+    time_ctrl: &mut TimeControl,
+) -> Option<()> {
+    let pointer_delta = ui.input(|i| i.pointer.delta());
+
+    let min_x = time_ranges_ui.x_from_time(selected_range.min)? + pointer_delta.x;
+    let max_x = time_ranges_ui.x_from_time(selected_range.max)? + pointer_delta.x;
+
+    let min_time = time_ranges_ui.time_from_x(min_x)?;
+    let max_time = time_ranges_ui.time_from_x(max_x)?;
+
+    let mut new_range = TimeRangeF::new(min_time, max_time);
+
+    if egui::emath::almost_equal(
+        selected_range.length().as_f32(),
+        new_range.length().as_f32(),
+        1e-5,
+    ) {
+        // Avoid numerical inaccuracies: maintain length if very close
+        new_range.max = new_range.min + selected_range.length();
+    }
+
+    time_ctrl.set_loop_selection(new_range);
+    if ui.input(|i| i.pointer.is_moving()) {
+        time_ctrl.set_looping(Looping::Selection);
+    }
+
+    Some(())
 }
 
 fn paint_range_text(
