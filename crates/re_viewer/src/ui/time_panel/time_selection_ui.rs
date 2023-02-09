@@ -161,7 +161,7 @@ fn initial_time_selection(
     // Try to find a long duration first, then fall back to shorter
     for min_duration in [2.0, 0.5, 0.0] {
         for segment in ranges {
-            let range = &segment.tight_time;
+            let range = &segment.tight_time_range;
             if range.min < range.max {
                 match time_type {
                     TimeType::Time => {
@@ -190,8 +190,8 @@ fn initial_time_selection(
     } else {
         let end = (ranges.len() / 2).at_least(1);
         Some(TimeRangeF::new(
-            ranges[0].tight_time.min,
-            ranges[end].tight_time.max,
+            ranges[0].tight_time_range.min,
+            ranges[end].tight_time_range.max,
         ))
     }
 }
