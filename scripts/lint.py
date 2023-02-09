@@ -77,6 +77,8 @@ def test_lint() -> None:
         'if let Err(err) = foo',
         'if let Err(_err) = foo',
         'if let Err(_) = foo',
+        'num_instances',
+        'instances_count',
     ]
 
     should_error = [
@@ -91,6 +93,7 @@ def test_lint() -> None:
         'eprintln!("{:?}", err)',
         'eprintln!("{:#?}", err)',
         'if let Err(error) = foo',
+        'nb_instances',
     ]
 
     for line in should_pass:
