@@ -52,6 +52,7 @@ py-format:
     isort {{py_folders}}
     pyupgrade --py37-plus `find rerun_py/rerun/ -name "*.py" -type f`
 
+# Check that all the requirements.txt files for all the examples are correct
 py-requirements:
     find examples/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && pip-missing-reqs . || exit 255'
 
