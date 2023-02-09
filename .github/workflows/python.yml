@@ -132,7 +132,6 @@ jobs:
           cp car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
 
       - name: Build Wheel
-        if: matrix.target == 'universal2'
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
