@@ -144,7 +144,7 @@ fn log_baseline_objects(
             .with_component(&[bbox])?
             .with_component(&[transform])?
             .with_component(&[label])?
-            .with_splat(rerun::ColorRGBA::from([160, 230, 130, 255]))?
+            .with_splat(rerun::ColorRGBA::from_rgb(160, 230, 130))?
             .send(session)?;
     }
 
@@ -251,7 +251,7 @@ fn log_feature_points(
         .with_timepoint(timepoint)
         .with_component(&points)?
         .with_component(&ids)?
-        .with_splat(rerun::ColorRGBA::from([255, 255, 255, 255]))?
+        .with_splat(rerun::ColorRGBA::from_rgb(255, 255, 255))?
         .send(session)?;
 
     Ok(())
@@ -280,7 +280,7 @@ fn log_frame_annotations(
             ann.object_id
         ))
         .with_timepoint(timepoint.clone())
-        .with_splat(rerun::ColorRGBA::from([130, 160, 250, 255]))?;
+        .with_splat(rerun::ColorRGBA::from_rgb(130, 160, 250))?;
 
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.
