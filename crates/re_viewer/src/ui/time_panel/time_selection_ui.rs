@@ -71,7 +71,7 @@ pub fn loop_selection_ui(
             }
 
             if is_active && !selected_range.is_empty() {
-                super::paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
+                paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
             }
 
             // Check for interaction:
@@ -279,4 +279,78 @@ fn on_drag_loop_selection(
     *selected_range = new_range;
 
     Some(())
+}
+
+fn paint_range_text(
+    time_ctrl: &mut TimeControl,
+    selected_range: TimeRangeF,
+    ui: &mut egui::Ui,
+    painter: &egui::Painter,
+    selection_rect: Rect,
+) {
+    use egui::{Pos2, Stroke};
+
+    if selected_range.min <= TimeInt::BEGINNING {
+        return; // huge time selection, don't show a confusing times
+    }
+
+    let text_color = ui.visuals().strong_text_color();
+
+    let arrow_color = text_color.gamma_multiply(0.75);
+    let arrow_stroke = Stroke::new(1.0, arrow_color);
+
+    fn paint_arrow_from_to(painter: &egui::Painter, origin: Pos2, to: Pos2, stroke: Stroke) {
+        use egui::emath::Rot2;
+        let vec = to - origin;
+        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
+        let tip_length = 6.0;
+        let tip = origin + vec;
+        let dir = vec.normalized();
+        painter.line_segment([origin, tip], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
+    }
+
+    let range_text = format_duration(time_ctrl.time_type(), selected_range.length().abs());
+    if range_text.is_empty() {
+        return;
+    }
+
+    let font_id = egui::TextStyle::Small.resolve(ui.style());
+    let text_rect = painter.text(
+        selection_rect.center(),
+        egui::Align2::CENTER_CENTER,
+        range_text,
+        font_id,
+        text_color,
+    );
+
+    // Draw arrows on either side, if we have the space for it:
+    let text_rect = text_rect.expand(2.0); // Add some margin around text
+    let selection_rect = selection_rect.shrink(1.0); // Add some margin inside of the selection rect
+    let min_arrow_length = 12.0;
+    if selection_rect.left() + min_arrow_length <= text_rect.left() {
+        paint_arrow_from_to(
+            painter,
+            text_rect.left_center(),
+            selection_rect.left_center(),
+            arrow_stroke,
+        );
+    }
+    if text_rect.right() + min_arrow_length <= selection_rect.right() {
+        paint_arrow_from_to(
+            painter,
+            text_rect.right_center(),
+            selection_rect.right_center(),
+            arrow_stroke,
+        );
+    }
+}
+
+/// Human-readable description of a duration
+fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
+    match time_typ {
+        TimeType::Time => Duration::from(duration).to_string(),
+        TimeType::Sequence => duration.round().as_i64().to_string(), // TODO(emilk): show real part?
+    }
 }
