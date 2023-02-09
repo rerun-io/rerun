@@ -141,14 +141,10 @@ impl TimeRangesUi {
                 let x_range =
                     (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
 
-                let time_range = if tight_time_range.min == tight_time_range.max {
-                    TimeRangeF::from(tight_time_range) // don't expand zero-width segments (e.g. `TimeInt::BEGINNING`).
-                } else {
-                    TimeRangeF::new(
-                        tight_time_range.min - expansion_in_time,
-                        tight_time_range.max + expansion_in_time,
-                    )
-                };
+                let time_range = TimeRangeF::new(
+                    tight_time_range.min - expansion_in_time,
+                    tight_time_range.max + expansion_in_time,
+                );
 
                 Segment {
                     x: x_range,
