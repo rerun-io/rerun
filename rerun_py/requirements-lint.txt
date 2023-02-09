@@ -8,6 +8,7 @@ flake8-tidy-imports==4.8.0
 flake8==5.0.4
 isort==5.10.1
 mypy==0.971
+numpy==1.23 # For mypy plugin
+pip-check-reqs==2.4.3 # Checks for missing deps in requirements.txt files
 pyupgrade==2.37.3
 types-requests==2.28.10
-numpy==1.23 # For mypy plugin
