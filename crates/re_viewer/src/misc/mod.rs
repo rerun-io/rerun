@@ -5,7 +5,6 @@ mod item;
 pub(crate) mod mesh_loader;
 mod selection_state;
 pub(crate) mod space_info;
-pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
 mod transform_cache;
