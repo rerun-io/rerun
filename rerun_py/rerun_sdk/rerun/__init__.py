@@ -147,7 +147,20 @@ def init(application_id: str, spawn: bool = False) -> None:
         import inspect
         import pathlib
 
-        app_path = pathlib.Path(inspect.stack()[1][1]).resolve()
+        # We're trying to grab the filesystem path of the example script that called `init()`.
+        # The tricky part is that we don't know how many layers are between this script and the
+        # original caller, so we have to walk the stack and look for anything that might look like
+        # an official Rerun example.
+
+        MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
+        FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
+
+        stack = inspect.stack()
+        for frame in stack[:MAX_FRAMES]:
+            filename = frame[FRAME_FILENAME_INDEX]
+            path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
+            if "rerun/examples" in str(path):
+                app_path = path
     except Exception:
         pass
 
