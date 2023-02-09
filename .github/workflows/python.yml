@@ -14,10 +14,9 @@ on:
 
 env:
   PYTHON_VERSION: "3.8"
-  INSTALL_INSTRUCTIONS: |
+  PRE_RELEASE_INSTRUCTIONS: |
     ## Installing the pre-release Python SDK
-    1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
-    (for Mac M1/M2, grab the "universal2" `.whl`)
+    1. Download the correct `.whl`.  For Mac M1/M2, grab the "universal2" `.whl`
     2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
     3. Test it: `rerun --version`
 
@@ -333,46 +332,27 @@ jobs:
   # See https://github.com/marvinpinto/action-automatic-releases#automatically-generate-a-pre-release-when-changes-land-on-master for details
   pre-release:
     name: Pre Release
-    #needs: [macos, windows, linux]
-    needs: [windows, linux]
-    #if: github.ref == 'refs/heads/main'
+    needs: [macos, windows, linux]
+    if: github.ref == 'refs/heads/main'
     runs-on: "ubuntu-latest"
     steps:
-      #- uses: actions/checkout@v3
-
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
           name: wheels
           path: dist
 
-      #- name: Github Release
-      #  uses: marvinpinto/action-automatic-releases@v1.2.1
-      #  with:
-      #    repo_token: "${{ secrets.GITHUB_TOKEN }}"
-      #    automatic_release_tag: "latest"
-      #    prerelease: true
-      #    title: "Development Build"
-      #    files: |
-      #      dist/*
-
       - name: Github Release
         uses: softprops/action-gh-release@v0.1.15
-        #if: startsWith(github.ref, 'refs/tags/')
         with:
-          body: ${{ env.INSTALL_INSTRUCTIONS }}
-          #body_path: CHANGELOG.md
-          # note you'll typically need to create a personal access token
-          # with permissions to create releases in the other repo
+          body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
           prerelease: true
           files: dist/*
-          name: "latest-test"
+          name: "Development Build"
           tag_name: "latest-test"
           token: ${{ secrets.GITHUB_TOKEN }}
           generate_release_notes: true
           append_body: true
-        env:
-          GITHUB_REPOSITORY: my_gh_org/my_gh_repo
 
   # ---------------------------------------------------------------------------
 
@@ -393,17 +373,19 @@ jobs:
       # Santiy check the git tag vs. the crate version.
 
       - name: Github Release
-        uses: "marvinpinto/action-automatic-releases@1.2.1"
+        uses: softprops/action-gh-release@v0.1.15
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: |
-            dist/*
+          files: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: true
 
       - name: Publish to PyPI
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         uses: PyO3/maturin-action@v1
+        env:
+          # These are both set in the Github project configuration
+          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         with:
           command: upload
           args: --skip-existing *
