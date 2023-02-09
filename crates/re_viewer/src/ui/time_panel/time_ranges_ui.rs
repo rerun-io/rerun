@@ -202,15 +202,20 @@ impl TimeRangesUi {
             // BEGINNING (-∞ = timeless data) and some real time.
             // Otherwise we get weird times (e.g. dates in 1923).
             // Selecting times between other segments is not as problematic, as all other segments are
-            // real times, so interpolating between them always produces valid times.
+            // real times, so interpolating between them always produces valid times
+            // (we want users to have a smooth experience dragging the time handle anywhere else).
             // By disallowing times between BEGINNING and the first real segment,
             // we also disallow users dragging the time to be between -∞ and the
             // real beginning of their data. That further highlights the specialness of -∞.
-            // Furthermore, we want users to have a smooth experience dragging the time handle anywhere else.
-            if first.tight_time == TimeRange::point(TimeInt::BEGINNING) {
+            if first.tight_time.contains(TimeInt::BEGINNING) {
                 if let Some(second) = self.segments.get(1) {
-                    if TimeInt::BEGINNING < time && time < second.tight_time.min {
-                        time = TimeReal::from(second.tight_time.min);
+                    let half_way =
+                        TimeRangeF::new(TimeInt::BEGINNING, second.tight_time.min).lerp(0.5);
+
+                    if time < half_way {
+                        time = TimeReal::from(TimeInt::BEGINNING);
+                    } else if time < second.tight_time.min {
+                        time = second.tight_time.min.into();
                     }
                 }
             }
