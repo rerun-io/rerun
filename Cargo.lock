@@ -4031,6 +4031,7 @@ dependencies = [
  "tobj",
  "tracing",
  "type-map",
+ "unindent",
  "walkdir",
  "wasm-bindgen-futures",
  "web-sys",
