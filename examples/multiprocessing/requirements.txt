@@ -1,2 +1,1 @@
-pillow
 rerun-sdk

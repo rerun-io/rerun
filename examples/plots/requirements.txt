@@ -1,2 +1,2 @@
-pillow
+numpy
 rerun-sdk

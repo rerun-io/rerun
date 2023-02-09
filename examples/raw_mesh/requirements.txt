@@ -1,3 +1,4 @@
-rerun
+numpy
 requests==2.28.1
+rerun-sdk
 trimesh==3.15.2
