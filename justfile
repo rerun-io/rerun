@@ -52,8 +52,11 @@ py-format:
     isort {{py_folders}}
     pyupgrade --py37-plus `find rerun_py/rerun/ -name "*.py" -type f`
 
+py-requirements:
+    find examples/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && pip-missing-reqs . || exit 255'
+
 # Run linting
-py-lint:
+py-lint: py-requirements
     black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
     blackdoc --check {{py_folders}}
     isort --check {{py_folders}}
