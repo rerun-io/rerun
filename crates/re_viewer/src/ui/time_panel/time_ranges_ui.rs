@@ -41,7 +41,7 @@ pub struct Segment {
     pub time: TimeRangeF,
 
     /// Does NOT match any of the above. Instead this is a tight bound.
-    pub tight_time_range: TimeRange,
+    pub tight_time: TimeRange,
 }
 
 /// Represents a compressed view of time.
@@ -153,7 +153,7 @@ impl TimeRangesUi {
                 Segment {
                     x: x_range,
                     time: time_range,
-                    tight_time_range,
+                    tight_time: tight_time_range,
                 }
             })
             .collect();
@@ -180,7 +180,7 @@ impl TimeRangesUi {
                 "Overlapping x in segments: {a:#?}, {b:#?}"
             );
             debug_assert!(
-                a.tight_time_range.max < b.tight_time_range.min,
+                a.tight_time.max < b.tight_time.min,
                 "Overlapping time in segments: {a:#?}, {b:#?}"
             );
         }
@@ -194,8 +194,8 @@ impl TimeRangesUi {
     pub fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
         if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
             time = time.clamp(
-                TimeReal::from(first.tight_time_range.min),
-                TimeReal::from(last.tight_time_range.max),
+                TimeReal::from(first.tight_time.min),
+                TimeReal::from(last.tight_time.max),
             );
 
             // Special: don't allow users dragging time between
@@ -207,10 +207,10 @@ impl TimeRangesUi {
             // we also disallow users dragging the time to be between -∞ and the
             // real beginning of their data. That further highlights the specialness of -∞.
             // Furthermore, we want users to have a smooth experience dragging the time handle anywhere else.
-            if first.tight_time_range == TimeRange::point(TimeInt::BEGINNING) {
+            if first.tight_time == TimeRange::point(TimeInt::BEGINNING) {
                 if let Some(second) = self.segments.get(1) {
-                    if TimeInt::BEGINNING < time && time < second.tight_time_range.min {
-                        time = TimeReal::from(second.tight_time_range.min);
+                    if TimeInt::BEGINNING < time && time < second.tight_time.min {
+                        time = TimeReal::from(second.tight_time.min);
                     }
                 }
             }
