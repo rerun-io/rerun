@@ -42,7 +42,6 @@ serde = [
 [dependencies]
 
 # Rerun
-re_log = { path = "../re_log" }
 re_string_interner = { path = "../re_string_interner" }
 re_tuid = { path = "../re_tuid" }
 re_format = { path = "../re_format" }
