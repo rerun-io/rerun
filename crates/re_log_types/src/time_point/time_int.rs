@@ -25,6 +25,24 @@ impl TimeInt {
     pub const MIN: Self = Self(i64::MIN);
     pub const MAX: Self = Self(i64::MAX);
 
+    /// For time timelines.
+    #[inline]
+    pub fn from_nanos(nanos: i64) -> Self {
+        Self(nanos)
+    }
+
+    /// For time timelines.
+    #[inline]
+    pub fn from_seconds(seconds: i64) -> Self {
+        Self::from_nanos(seconds.saturating_mul(1_000_000_000))
+    }
+
+    /// For sequence timelines.
+    #[inline]
+    pub fn from_sequence(sequence: i64) -> Self {
+        Self(sequence)
+    }
+
     #[inline]
     pub fn as_i64(&self) -> i64 {
         self.0

@@ -601,7 +601,12 @@ fn is_time_safe_to_show(
 
     if let Some(times) = log_db.entity_db.tree.prefix_times.get(timeline) {
         if let Some(first_time) = times.keys().next() {
-            return *first_time <= time;
+            let margin = match timeline.typ() {
+                re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
+                re_arrow_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
+            };
+
+            return *first_time <= time + margin;
         }
     }
 
