@@ -1,4 +1,4 @@
-"""The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
+"""The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 
 import atexit
 from typing import Optional

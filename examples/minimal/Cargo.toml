@@ -1,0 +1,10 @@
+[package]
+name = "minimal"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rerun = { path = "../../crates/rerun", features = ["glam"] }

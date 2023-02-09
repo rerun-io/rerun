@@ -188,6 +188,17 @@ impl Session {
     }
 }
 
+#[cfg(feature = "re_viewer")]
+impl Session {
+    /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
+    /// been logged so far.
+    pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
+        let log_messages = self.drain_log_messages_buffer();
+        let startup_options = re_viewer::StartupOptions::default();
+        re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
+    }
+}
+
 impl Default for Session {
     fn default() -> Self {
         Self::new()

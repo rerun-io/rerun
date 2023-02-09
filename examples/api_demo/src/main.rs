@@ -44,7 +44,7 @@ fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
             rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
             translation: Vec3D::default(),
         })])?
-        .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
+        .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".to_owned())])?
         .send(session)?;
@@ -56,7 +56,7 @@ fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
             rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
             translation: Vec3D::new(1.0, 0.0, 0.0),
         })])?
-        .with_component(&[ColorRGBA::from([255, 255, 0, 255])])?
+        .with_component(&[ColorRGBA::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
         .with_component(&[Label("box/t1".to_owned())])?
         .send(session)?;
@@ -88,7 +88,7 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
     MsgSender::new("extension_components/point")
         .with_timepoint(sim_time(0 as _))
         .with_component(&[Point2D::new(64.0, 64.0)])?
-        .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
+        .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
         .with_component(&[Confidence(0.9)])?
         .send(session)?;
 
@@ -120,7 +120,7 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
             Point2D::new(96.0, 32.0),
             Point2D::new(96.0, 96.0),
         ])?
-        .with_splat(ColorRGBA::from([0, 255, 0, 255]))?
+        .with_splat(ColorRGBA::from_rgb(0, 255, 0))?
         .with_component(&[
             Corner("upper left".into()),
             Corner("lower left".into()),
@@ -154,13 +154,13 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
     MsgSender::new("null_demo/rect/0")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[ColorRGBA::from([255, 0, 0, 255])])?
+        .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
         .with_component(&[Label("Rect1".into())])?
         .send(session)?;
     MsgSender::new("null_demo/rect/1")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
-        .with_component(&[ColorRGBA::from([0, 255, 0, 255])])?
+        .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
         .with_component(&[Label("Rect2".into())])?
         .send(session)?;
 
@@ -212,7 +212,7 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
                 Label(i.to_string()),
                 Point3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
-                ColorRGBA::from([rng.gen(), rng.gen(), rng.gen(), 255]),
+                ColorRGBA::from_rgb(rng.gen(), rng.gen(), rng.gen()),
             )
         }))
     }
@@ -259,7 +259,7 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
         .collect::<Vec<_>>();
     let colors = Array::random((20, 3), Uniform::new(0, 255))
         .axis_iter(Axis(0))
-        .map(|c| ColorRGBA::from([c[0], c[1], c[2], 255]))
+        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]))
         .collect::<Vec<_>>();
     MsgSender::new("rects_demo/rects")
         .with_timepoint(sim_time(2 as _))
@@ -363,7 +363,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
                 info: AnnotationInfo {
                     id,
                     label: label.map(|label| Label(label.into())),
-                    color: color.map(|c| ColorRGBA::from([c[0], c[1], c[2], 255])),
+                    color: color.map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2])),
                 },
                 ..Default::default()
             },
@@ -439,7 +439,7 @@ fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
         // same system for the Rust SDK?
         .with_timepoint(sim_time(0 as _))
         .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
-        .with_component(&[ColorRGBA::from([255, 215, 0, 255])])?
+        .with_component(&[ColorRGBA::from_rgb(255, 215, 0)])?
         .send(session)?;
 
     MsgSender::new("logs")
@@ -471,7 +471,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
         MsgSender::new(ent_path.into())
             .with_timeless(true)
             .with_component(&[view_coords])?
-            .with_component(&[ColorRGBA::from([255, 215, 0, 255])])?
+            .with_component(&[ColorRGBA::from_rgb(255, 215, 0)])?
             .send(session)
             .map_err(Into::into)
     }
@@ -491,7 +491,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
             .with_timepoint(sim_time(0 as _))
             .with_component(&[Point3D::ZERO])?
             .with_component(&[Radius(radius)])?
-            .with_component(&[ColorRGBA::from([color[0], color[1], color[2], 255])])?
+            .with_component(&[ColorRGBA::from_rgb(color[0], color[1], color[2])])?
             .send(session)
             .map_err(Into::into)
     }
@@ -524,7 +524,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
         .with_timepoint(sim_time(0 as _))
         .with_component(&points)?
         .with_splat(Radius(0.025))?
-        .with_splat(ColorRGBA::from([80, 80, 80, 255]))?
+        .with_splat(ColorRGBA::from_rgb(80, 80, 80))?
         .send(session)?;
 
     // paths where the planet & moon move
@@ -659,8 +659,7 @@ fn main() -> anyhow::Result<()> {
     // TODO(cmc): missing flags: save, serve
     // TODO(cmc): expose an easy to use async local mode.
     if args.connect.is_none() {
-        let log_messages = session.drain_log_messages_buffer();
-        rerun::viewer::show(log_messages)?;
+        session.show()?;
     }
 
     Ok(())
