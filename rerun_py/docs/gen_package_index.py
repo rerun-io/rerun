@@ -41,33 +41,34 @@ package_dir = Path("package")
 nav = mkdocs_gen_files.Nav()
 nav["index"] = "index.md"
 
-for path in sorted(root.joinpath("rerun").rglob("*.py")):
-    rel_path = path.relative_to(root)
+for package in ["rerun", "rerun_demo"]:
+    for path in sorted(root.joinpath(package).rglob("*.py")):
+        rel_path = path.relative_to(root)
 
-    # Build up a python-style dotted identifier for the module
-    # This is how `mkdocstrings-python` will import the module and also how
-    # we refer to it with links internal to the docs
-    module_path = rel_path.with_suffix("")
-    ident_parts = tuple(module_path.parts)
-    if ident_parts[-1] == "__init__":
-        ident_parts = ident_parts[:-1]
-    elif ident_parts[-1] == "__main__":
-        continue
-    ident = ".".join(ident_parts)
+        # Build up a python-style dotted identifier for the module
+        # This is how `mkdocstrings-python` will import the module and also how
+        # we refer to it with links internal to the docs
+        module_path = rel_path.with_suffix("")
+        ident_parts = tuple(module_path.parts)
+        if ident_parts[-1] == "__init__":
+            ident_parts = ident_parts[:-1]
+        elif ident_parts[-1] == "__main__":
+            continue
+        ident = ".".join(ident_parts)
 
-    # The doc_path is the md file that we will generate inside the virtual package folder
-    doc_path = rel_path.with_suffix(".md")
-    write_path = package_dir.joinpath(doc_path)
+        # The doc_path is the md file that we will generate inside the virtual package folder
+        doc_path = rel_path.with_suffix(".md")
+        write_path = package_dir.joinpath(doc_path)
 
-    # Within the nav, we want non-leaf nodes to appear as folders
-    nav_parts = tuple(p + "/" for p in rel_path.parts[:-1]) + (path.parts[-1],)
+        # Within the nav, we want non-leaf nodes to appear as folders
+        nav_parts = tuple(p + "/" for p in rel_path.parts[:-1]) + (path.parts[-1],)
 
-    # Register the nav-parts index with the generated doc-path
-    nav[nav_parts] = doc_path.as_posix()
+        # Register the nav-parts index with the generated doc-path
+        nav[nav_parts] = doc_path.as_posix()
 
-    # Write the virtual file
-    with mkdocs_gen_files.open(write_path, "w") as fd:
-        fd.write(f"::: {ident}")
+        # Write the virtual file
+        with mkdocs_gen_files.open(write_path, "w") as fd:
+            fd.write(f"::: {ident}")
 
 # Generate the SUMMARY.txt file
 with mkdocs_gen_files.open(package_dir.joinpath("SUMMARY.txt"), "w") as nav_file:
