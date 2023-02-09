@@ -29,6 +29,16 @@ pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {
     #[inline]
+    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
+        Self::from([r, g, b, 255])
+    }
+
+    #[inline]
+    pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self::from([r, g, b, a])
+    }
+
+    #[inline]
     pub fn to_array(&self) -> [u8; 4] {
         [
             (self.0 >> 24) as u8,

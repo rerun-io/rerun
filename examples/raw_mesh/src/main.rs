@@ -171,8 +171,7 @@ fn main() -> anyhow::Result<()> {
     // TODO(cmc): missing flags: save, serve
     // TODO(cmc): expose an easy to use async local mode.
     if args.connect.is_none() {
-        let log_messages = session.drain_log_messages_buffer();
-        rerun::viewer::show(log_messages)?;
+        session.show()?;
     }
 
     Ok(())

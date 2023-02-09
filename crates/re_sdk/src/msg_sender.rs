@@ -381,7 +381,7 @@ mod tests {
     fn full() -> Result<(), MsgSenderError> {
         let labels = vec![crate::Label("label1".into()), crate::Label("label2".into())];
         let transform = vec![crate::Transform::Rigid3(crate::Rigid3::default())];
-        let color = crate::ColorRGBA::from([255, 0, 255, 255]);
+        let color = crate::ColorRGBA::from_rgb(255, 0, 255);
 
         let [standard, transforms, splats] = MsgSender::new("some/path")
             .with_component(&labels)?

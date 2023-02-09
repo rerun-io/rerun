@@ -1,5 +1,5 @@
 # Rerun Examples
-The simplest example is [`hello_world`](hello_world/main.py). You may want to start there!
+The simplest example is [`minimal`](minimal/main.py). You may want to start there!
 
 ## Setup
 First install the Rerun Python SDK with `pip install rerun-sdk` (coming soon!)
