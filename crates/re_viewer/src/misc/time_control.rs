@@ -7,7 +7,7 @@ use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub(crate) struct TimeView {
+pub struct TimeView {
     /// Where start of the the range.
     pub min: TimeReal,
 
