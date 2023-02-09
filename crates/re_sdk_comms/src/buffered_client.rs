@@ -303,7 +303,7 @@ fn send_until_success(
 
                         // Only produce subsequent warnings once we've saturated the back-off
                         if sleep_ms == MAX_SLEEP_MS && new_err.to_string() != err.to_string() {
-                                re_log::warn!("Still failing to send message: {err}");
+                            re_log::warn!("Still failing to send message: {err}");
                         }
                     } else {
                         return None;
