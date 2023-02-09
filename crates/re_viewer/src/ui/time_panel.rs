@@ -1245,15 +1245,6 @@ fn loop_selection_ui(
                     );
                 }
 
-                if middle_response.clicked() {
-                    // Click to toggle looping
-                    if time_ctrl.looping() == Looping::Selection {
-                        time_ctrl.set_looping(Looping::Off);
-                    } else {
-                        time_ctrl.set_looping(Looping::Selection);
-                    }
-                }
-
                 if middle_response.dragged() {
                     on_drag_loop_selection(ui, time_ranges_ui, selected_range, time_ctrl);
                 }
