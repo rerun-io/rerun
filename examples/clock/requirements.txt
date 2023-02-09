@@ -1,3 +1,2 @@
 numpy
 rerun-sdk
-scipy

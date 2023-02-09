@@ -9,4 +9,5 @@
 -r objectron/requirements.txt
 -r raw_mesh/requirements.txt
 -r stable_diffusion/requirements.txt
+-r text_logging/requirements.txt
 -r tracking_hf_opencv/requirements.txt
