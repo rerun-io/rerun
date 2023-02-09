@@ -53,7 +53,7 @@ def lint_line(line: str) -> Optional[str]:
         # if name not in ("err", "_err", "_"):
         if name in ("e", "error"):
             return "Errors should be called 'err', '_err' or '_'"
-        
+
     if wasm_caps.search(line):
         return "WASM should be written 'Wasm'"
 
@@ -171,4 +171,3 @@ if __name__ == "__main__":
     else:
         print(f"{num_errors} errors.")
         sys.exit(1)
-
