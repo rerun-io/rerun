@@ -70,10 +70,10 @@ jobs:
           - runs_on: ubuntu-latest-16-cores
             platform: linux
 
-    # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
-    if: matrix.platform != "macos" || startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.runs_on }}
 
-    runs-on: ${{ matrix.run_on }}
+    # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || matrix.platform != "macos"
 
     steps:
       - uses: actions/checkout@v3
