@@ -9,7 +9,7 @@ This document describes the technical architecture of Rerun.
 
 
 ## The major components
-### Logging SDKs
+### Logging APIs
 It all starts with logging. You can log rich data (point clouds, images, etc) with either our Python SDK or our Rust SDK.
 
 The logging SDK:s encodes the data using Apache Arrow (see more below).
@@ -18,8 +18,10 @@ The logging data can be written to disk as `.rrd` files, or transmitted over TCP
 
 ### Rerun viewer
 The Rerun Viewer is where log data is visualized. It is usually run as a native app, but can also be compiled to WebAssembly (Wasm) and run in a browser.
+
 #### Native viewer
-The easiest way to launch the viewer is directly from the logging API with `rr.init("my_app", spawn=True)`. However, the standalone viewer can also be run from the command line, for example to view an rrd file: `rerun mydata.rrd`.
+The easiest way to launch the viewer is directly from the logging API with `rr.init("my_app", spawn=True)`. However, the standalone viewer can also be run from the command line, for example to view an `.rrd` file: `rerun mydata.rrd`.
+
 #### Web viewer
 You can try running the viewer in a browser using `rr.serve()` in python, or using `rerun --web-viewer mydata.rrd`.
 

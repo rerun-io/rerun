@@ -21,28 +21,31 @@ rr.log_points("points", positions)
 
 <!--- TODO(emilk): insert an image or gif here, preferably hosted elsewhere -->
 
+
 ## Documentation
 - [Examples](examples)
 - [Python API docs](https://rerun-io.github.io/rerun)
 - [Rust getting-started guide](rerun_py/USAGE.md)
-<!--- TODO(emilk): link to high-level docs and API docs
+<!--- TODO(#1161): update doclinks
 - [High-level documentation](http://rerun.io/docs)
 - [Rust API docs](https://docs.rs/rerun/)
 -->
 
+
 ## Installing the pre-release Python SDK
-<!-- TODO(emilk): replace with `pip install rerun-sdk` -->
+<!-- TODO(#1161): replace with `pip install rerun-sdk` -->
 1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
   (for Mac M1/M2, grab the "universal2" `.whl`)
 2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
 3. Test it: `rerun --version`
 
+
 ## Installing the Rust SDK
 Coming soon
-<!-- TODO(emilk): `cargo add rerun` -->
+<!-- TODO(#1161): `cargo add rerun` + `cargo install rerun` -->
+
 
 ## Rerun Viewer without Python
-
 You can also build and install the Rerun Viewer to be used from the terminal without going through Python.
 
 To build and install run:
