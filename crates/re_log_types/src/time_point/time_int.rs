@@ -20,10 +20,10 @@ impl TimeInt {
     // The reason we don't use i64::MIN is because in the time panel we need
     // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
     // a bit of leeway.
-    pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
+    pub const BEGINNING: Self = Self(i64::MIN / 2);
 
-    pub const MIN: TimeInt = TimeInt(i64::MIN);
-    pub const MAX: TimeInt = TimeInt(i64::MAX);
+    pub const MIN: Self = Self(i64::MIN);
+    pub const MAX: Self = Self(i64::MAX);
 
     #[inline]
     pub fn as_i64(&self) -> i64 {
