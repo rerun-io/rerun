@@ -13,13 +13,11 @@ docstring-convention = all
 extend-ignore =
     # pydocstyle: http://www.pydocstyle.org/en/stable/error_codes.html
     # numpy convention with a few additional lints
-    ; D107, D203, D212, D401, D402, D415, D416,
+    D107, D203, D212, D401, D402, D415, D416,
 
-    # TODO(emilk): enable more of these:
-    D1, # Missing docstring in public function
+    D202, # No blank lines allowed after function docstring.
 
-    # No blank lines allowed after function docstring
-    D202, # This just makes code look worse
+    D1, # Missing docstring in public function - TODO(emilk): enable for SDK but not for examples
 
 extend-exclude =
     # Automatically generated test artifacts
