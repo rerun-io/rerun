@@ -248,8 +248,7 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
                          keypoints[1], keypoints[5],
                          keypoints[2], keypoints[6],
                          keypoints[3], keypoints[7],
-                         keypoints[4], keypoints[8]],
-                         dtype=np.float32)
+                         keypoints[4], keypoints[8]], dtype=np.float32)
     # fmt: on
 
     rr.log_line_segments(path, segments, color=[130, 160, 250, 255])
