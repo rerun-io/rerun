@@ -1,6 +1,6 @@
 FROM rust:1.67
 LABEL maintainer="opensource@rerun.io"
-LABEL version="0.1"
+LABEL version="0.4"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install some cargo tools we know we'll always need
@@ -34,7 +34,7 @@ RUN pip install -r requirements-build.txt
 RUN cargo install wasm-bindgen-cli@0.2.84
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.1
+ENV CACHE_KEY=rerun_docker_v0.4
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'
