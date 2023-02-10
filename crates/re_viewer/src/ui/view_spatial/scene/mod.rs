@@ -180,7 +180,7 @@ impl SceneSpatial {
             part.load(self, ctx, query, transforms, highlights);
         }
 
-        self.primitives.recalculate_bounding_box();
+        self.primitives.recalculate_bounding_boxes();
     }
 
     // TODO(andreas): Better ways to determine these?

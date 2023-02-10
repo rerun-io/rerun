@@ -283,15 +283,17 @@ impl ViewSpatialState {
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
     ) {
-        self.scene_bbox = scene.primitives.bounding_box();
         // If this is the first time the bounding box is set, (re-)determine the nav_mode.
         // TODO(andreas): Keep track of user edits
         if self.scene_bbox_accum.is_nothing() {
-            self.scene_bbox_accum = self.scene_bbox;
             self.nav_mode = scene.preferred_navigation_mode(space);
+            self.scene_bbox = scene.primitives.bounding_box(self.nav_mode);
+            self.scene_bbox_accum = self.scene_bbox;
         } else {
+            self.scene_bbox = scene.primitives.bounding_box(self.nav_mode);
             self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
         }
+
         self.scene_num_primitives = scene.primitives.num_primitives();
 
         match self.nav_mode {

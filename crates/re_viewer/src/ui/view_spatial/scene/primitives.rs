@@ -1,6 +1,9 @@
-use egui::Color32;
+use egui::{Color32, NumExt};
+use macaw::BoundingBox;
 use re_data_store::InstancePathHash;
 use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
+
+use crate::ui::view_spatial::SpatialNavigationMode;
 
 use super::MeshSource;
 
@@ -13,7 +16,8 @@ use super::MeshSource;
 #[derive(Default)]
 pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
-    pub(super) bounding_box: macaw::BoundingBox,
+    pub(super) bounding_box_2d: macaw::BoundingBox,
+    pub(super) bounding_box_3d: macaw::BoundingBox,
 
     // TODO(andreas): Storing extra data like so is unsafe and not future proof either
     //                (see also above comment on the need to separate cpu-readable data)
@@ -32,14 +36,18 @@ const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 impl SceneSpatialPrimitives {
     /// bounding box covering the rendered scene
-    pub fn bounding_box(&self) -> macaw::BoundingBox {
-        self.bounding_box
+    pub fn bounding_box(&self, nav_mode: SpatialNavigationMode) -> macaw::BoundingBox {
+        match nav_mode {
+            SpatialNavigationMode::TwoD => self.bounding_box_2d,
+            SpatialNavigationMode::ThreeD => self.bounding_box_3d,
+        }
     }
 
     /// Number of primitives. Rather arbitrary what counts as a primitive so use this only for heuristic purposes!
     pub fn num_primitives(&self) -> usize {
         let Self {
-            bounding_box: _,
+            bounding_box_2d: _,
+            bounding_box_3d: _,
             textured_rectangles,
             textured_rectangles_ids: _,
             line_strips,
@@ -53,40 +61,50 @@ impl SceneSpatialPrimitives {
             + meshes.len()
     }
 
-    pub fn recalculate_bounding_box(&mut self) {
+    pub fn recalculate_bounding_boxes(&mut self) {
         crate::profile_function!();
 
-        self.bounding_box = macaw::BoundingBox::nothing();
+        self.bounding_box_2d = macaw::BoundingBox::nothing();
+        self.bounding_box_3d = macaw::BoundingBox::nothing();
 
-        for rect in &self.textured_rectangles {
-            self.bounding_box.extend(rect.top_left_corner_position);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_u);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_v);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
+        for bb in [&mut self.bounding_box_2d, &mut self.bounding_box_3d] {
+            for rect in &self.textured_rectangles {
+                bb.extend(rect.top_left_corner_position);
+                bb.extend(rect.top_left_corner_position + rect.extent_u);
+                bb.extend(rect.top_left_corner_position + rect.extent_v);
+                bb.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
+            }
         }
 
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
         // TODO(andreas): We should keep these around to speed up picking!
         for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
+            let proj = &glam::Affine3A::from_mat4(batch.world_from_obj);
+
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-            self.bounding_box = self.bounding_box.union(
-                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_obj)),
-            );
+
+            let bb_3d = batch_bb.transform_affine3(proj);
+
+            let bb_2d = macaw::BoundingBox::from_points(batch_bb.corners().iter().map(|c| {
+                let pt = proj.transform_point3(*c);
+                let norm = pt.z.signum() * pt.z.abs().at_least(1.0);
+                pt / norm
+            }));
+
+            self.bounding_box_2d = self.bounding_box_2d.union(bb_2d);
+            self.bounding_box_3d = self.bounding_box_3d.union(bb_3d);
         }
         for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-            self.bounding_box = self.bounding_box.union(
+            self.bounding_box_3d = self.bounding_box_3d.union(
                 batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_obj)),
             );
         }
 
         for mesh in &self.meshes {
-            self.bounding_box = self
-                .bounding_box
+            self.bounding_box_3d = self
+                .bounding_box_3d
                 .union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
         }
     }

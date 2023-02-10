@@ -160,7 +160,8 @@ pub fn picking(
     };
 
     let SceneSpatialPrimitives {
-        bounding_box: _,
+        bounding_box_2d: _,
+        bounding_box_3d: _,
         textured_rectangles,
         textured_rectangles_ids,
         line_strips,
