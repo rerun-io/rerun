@@ -15,28 +15,34 @@ pub use self::session::Session;
 
 // ---
 
-// init
-pub use re_log_types::{ApplicationId, RecordingId};
-pub use re_sdk_comms::default_server_addr;
-
-// messages
 pub use re_log_types::{
-    msg_bundle::{Component, ComponentBundle, MsgBundle, SerializableComponent},
-    ComponentName, EntityPath, LogMsg, MsgId, PathOp,
+    msg_bundle::{Component, SerializableComponent},
+    ApplicationId, ComponentName, EntityPath, RecordingId,
 };
 
-// time
-pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
+pub mod log {
+    pub use re_log_types::{
+        msg_bundle::{ComponentBundle, MsgBundle},
+        LogMsg, MsgId, PathOp,
+    };
+    pub use re_sdk_comms::default_server_addr;
+}
 
-// components
-pub use re_log_types::component_types::{
-    coordinates::{Axis3, Handedness, Sign, SignedAxis3},
-    AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
-    EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
-    MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Rigid3,
-    Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDataMeaning, TensorDimension,
-    TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
-};
+pub mod time {
+    pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
+}
+
+pub mod components {
+    pub use re_log_types::component_types::{
+        coordinates::{Axis3, Handedness, Sign, SignedAxis3},
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+        EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
+        MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
+        Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDataMeaning,
+        TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
+        ViewCoordinates,
+    };
+}
 
 // re-exports
 pub mod external {

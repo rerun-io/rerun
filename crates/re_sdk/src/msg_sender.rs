@@ -4,10 +4,10 @@ use re_log_types::external::arrow2_convert::serialize::TryIntoArrow;
 use re_log_types::msg_bundle::MsgBundleError;
 use re_log_types::{component_types::InstanceKey, msg_bundle::wrap_in_listarray};
 
-use crate::{
-    Component, ComponentBundle, ComponentName, EntityPath, LogMsg, MsgBundle, MsgId,
-    SerializableComponent, Session, Time, TimeInt, TimePoint, Timeline, Transform,
-};
+use crate::components::Transform;
+use crate::log::{ComponentBundle, LogMsg, MsgBundle, MsgId};
+use crate::time::{Time, TimeInt, TimePoint, Timeline};
+use crate::{Component, ComponentName, EntityPath, SerializableComponent, Session};
 
 // ---
 
@@ -369,6 +369,8 @@ fn bundle_from_iter<'a, C: SerializableComponent>(
 mod tests {
     use super::*;
 
+    use crate::{components, time};
+
     #[test]
     fn empty() {
         let [standard, transforms, splats] = MsgSender::new("some/path").into_messages().unwrap();
@@ -379,9 +381,12 @@ mod tests {
 
     #[test]
     fn full() -> Result<(), MsgSenderError> {
-        let labels = vec![crate::Label("label1".into()), crate::Label("label2".into())];
-        let transform = vec![crate::Transform::Rigid3(crate::Rigid3::default())];
-        let color = crate::ColorRGBA::from_rgb(255, 0, 255);
+        let labels = vec![
+            components::Label("label1".into()),
+            components::Label("label2".into()),
+        ];
+        let transform = vec![components::Transform::Rigid3(components::Rigid3::default())];
+        let color = components::ColorRGBA::from_rgb(255, 0, 255);
 
         let [standard, transforms, splats] = MsgSender::new("some/path")
             .with_component(&labels)?
@@ -392,7 +397,7 @@ mod tests {
 
         {
             let standard = standard.unwrap();
-            let idx = standard.find_component(&crate::Label::name()).unwrap();
+            let idx = standard.find_component(&components::Label::name()).unwrap();
             let bundle = &standard.components[idx];
             assert!(bundle.num_rows() == 1);
             assert!(bundle.num_instances(0).unwrap() == 2);
@@ -401,7 +406,7 @@ mod tests {
         {
             let transforms = transforms.unwrap();
             let idx = transforms
-                .find_component(&crate::Transform::name())
+                .find_component(&components::Transform::name())
                 .unwrap();
             let bundle = &transforms.components[idx];
             assert!(bundle.num_rows() == 1);
@@ -410,7 +415,9 @@ mod tests {
 
         {
             let splats = splats.unwrap();
-            let idx = splats.find_component(&crate::ColorRGBA::name()).unwrap();
+            let idx = splats
+                .find_component(&components::ColorRGBA::name())
+                .unwrap();
             let bundle = &splats.components[idx];
             assert!(bundle.num_rows() == 1);
             assert!(bundle.num_instances(0).unwrap() == 1);
@@ -421,7 +428,7 @@ mod tests {
 
     #[test]
     fn timepoint_last_write_wins() {
-        let my_timeline = Timeline::new("my_timeline", crate::TimeType::Sequence);
+        let my_timeline = Timeline::new("my_timeline", time::TimeType::Sequence);
         let sender = MsgSender::new("some/path")
             .with_time(my_timeline, 0)
             .with_time(my_timeline, 1)
@@ -434,11 +441,11 @@ mod tests {
 
     #[test]
     fn timepoint_timeless() -> Result<(), MsgSenderError> {
-        let my_timeline = Timeline::new("my_timeline", crate::TimeType::Sequence);
+        let my_timeline = Timeline::new("my_timeline", time::TimeType::Sequence);
 
         let sender = MsgSender::new("some/path")
             .with_timeless(true)
-            .with_component(&vec![crate::Label("label1".into())])?
+            .with_component(&vec![components::Label("label1".into())])?
             .with_time(my_timeline, 2);
         assert!(!sender.timepoint.is_empty()); // not yet
 
@@ -451,12 +458,12 @@ mod tests {
     #[test]
     fn attempted_batch() -> Result<(), MsgSenderError> {
         let res = MsgSender::new("some/path")
-            .with_component(&vec![crate::Label("label1".into())])?
-            .with_component(&vec![crate::Label("label2".into())])?
+            .with_component(&vec![components::Label("label1".into())])?
+            .with_component(&vec![components::Label("label2".into())])?
             .into_messages();
 
         let Err(MsgSenderError::MoreThanOneRow(err)) = res else { panic!() };
-        assert_eq!([(crate::Label::name(), 2)].to_vec(), err);
+        assert_eq!([(components::Label::name(), 2)].to_vec(), err);
 
         Ok(())
     }
@@ -464,8 +471,8 @@ mod tests {
     #[test]
     fn illegal_instance_key() -> Result<(), MsgSenderError> {
         let _ = MsgSender::new("some/path")
-            .with_component(&vec![crate::Label("label1".into())])?
-            .with_component(&vec![crate::InstanceKey(u64::MAX)])?
+            .with_component(&vec![components::Label("label1".into())])?
+            .with_component(&vec![components::InstanceKey(u64::MAX)])?
             .into_messages()?;
 
         // TODO(cmc): This is not detected as of today, but it probably should.
@@ -476,8 +483,8 @@ mod tests {
     #[test]
     fn splatted_instance_key() -> Result<(), MsgSenderError> {
         let res = MsgSender::new("some/path")
-            .with_component(&vec![crate::Label("label1".into())])?
-            .with_splat(crate::InstanceKey(42));
+            .with_component(&vec![components::Label("label1".into())])?
+            .with_splat(components::InstanceKey(42));
 
         assert!(matches!(res, Err(MsgSenderError::SplattedInstanceKeys)));
 

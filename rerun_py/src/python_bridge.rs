@@ -10,17 +10,13 @@ use pyo3::{
     types::PyDict,
 };
 
-// init
-pub use rerun::{global_session, ApplicationId, RecordingId};
+use rerun::{global_session, ApplicationId, EntityPath, RecordingId};
 
-// time
-use rerun::{Time, TimeInt, TimePoint, TimeType, Timeline};
+use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
 
-// messages
-use rerun::{EntityPath, LogMsg, MsgBundle, MsgId, PathOp};
+use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
 
-// components
-pub use rerun::{
+pub use rerun::components::{
     AnnotationContext, AnnotationInfo, Arrow3D, Axis3, Box3D, ClassDescription, ClassId, ColorRGBA,
     EncodedMesh3D, Handedness, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
     Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,

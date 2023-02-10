@@ -10,15 +10,12 @@
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
 
-#[cfg(not(feature = "sdk"))]
-use re_log_types::LogMsg;
-
 // ---
 
 use anyhow::Context as _;
-
 use clap::Subcommand;
 use re_format::parse_duration;
+use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
 /// The Rerun Viewer and Server
