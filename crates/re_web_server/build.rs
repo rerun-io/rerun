@@ -107,7 +107,7 @@ fn build_web() {
         .exec()
         .unwrap();
 
-    let target_wasm = [metadata.target_directory.as_str(), "_wasm"].concat();
+    let target_wasm = format!("{}_wasm", metadata.target_directory);
     let release = std::env::var("PROFILE").unwrap() == "release";
 
     let root_dir = metadata.target_directory.parent().unwrap();
@@ -178,7 +178,7 @@ fn build_web() {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .expect("failed to generate JS bindings");
+        .unwrap_or_else(|err| panic!("Failed to generate JS bindings: {err}. target_path: {target_path:?}, build_dir: {build_dir}"));
 
     eprintln!("wasm-bindgen status: {}", output.status);
     eprintln!(
