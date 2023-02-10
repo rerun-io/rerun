@@ -119,8 +119,6 @@ def log_image_file(
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(entity_path,
-                            img_bytes=img_bytes,
-                            img_path=img_path,
-                            img_format=img_format,
-                            timeless=timeless)
+    bindings.log_image_file(
+        entity_path, img_bytes=img_bytes, img_path=img_path, img_format=img_format, timeless=timeless
+    )
