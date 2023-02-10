@@ -86,16 +86,19 @@ impl<'a> Packages<'a> {
 
 // Port of build_web.sh
 fn build_web() {
+    let repository_root_dir = format!("{}/../..", std::env!("CARGO_MANIFEST_DIR"));
+
     let crate_name = "re_viewer";
-    let build_dir = "web_viewer";
+    let build_dir = format!("{repository_root_dir}/web_viewer");
 
     assert!(
-        Path::new(build_dir).exists(),
-        "Failed to find dir {build_dir}. Expected to be run at repository root. CWD: {:?}",
-        std::env::current_dir()
+        Path::new(&build_dir).exists(),
+        "Failed to find dir {build_dir}. CWD: {:?}, CARGO_MANIFEST_DIR: {:?}",
+        std::env::current_dir(),
+        std::env!("CARGO_MANIFEST_DIR")
     );
 
-    let wasm_path = Path::new(build_dir).join([crate_name, "_bg.wasm"].concat());
+    let wasm_path = Path::new(&build_dir).join([crate_name, "_bg.wasm"].concat());
     fs::remove_file(wasm_path.clone()).ok();
 
     let metadata = MetadataCommand::new()
@@ -164,7 +167,7 @@ fn build_web() {
     cmd.args([
         target_path.to_str().unwrap(),
         "--out-dir",
-        build_dir,
+        &build_dir,
         "--no-modules",
         "--no-typescript",
     ]);
