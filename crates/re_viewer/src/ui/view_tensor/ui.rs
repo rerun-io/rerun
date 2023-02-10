@@ -540,6 +540,7 @@ impl TextureSettings {
         ui.end_row();
 
         re_ui.grid_left_hand_label(ui, "Filtering");
+
         fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
             match tf {
                 egui::TextureFilter::Nearest => "Nearest",

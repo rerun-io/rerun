@@ -50,6 +50,7 @@ struct ImageCacheKey {
     tensor_id: component_types::TensorId,
     annotation_msg_id: MsgId,
 }
+
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
 
 // required for [`nohash_hasher`].

@@ -95,6 +95,7 @@ where
     Self: Component + ArrowSerialize + ArrowField<Type = Self> + 'static,
 {
 }
+
 impl<C> SerializableComponent for C where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static
 {
@@ -116,6 +117,7 @@ impl<C> SerializableComponent for C where
 pub struct ComponentBundle {
     /// The name of the Component, used as column name in the table `Field`.
     name: ComponentName,
+
     /// The Component payload `Array`.
     value: ListArray<i32>,
 }

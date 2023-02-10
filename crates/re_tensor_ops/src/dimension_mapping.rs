@@ -201,6 +201,7 @@ fn test_find_width_height_dim_indices() {
     fn named(size: u64, name: &str) -> component_types::TensorDimension {
         component_types::TensorDimension::named(size, name.to_owned())
     }
+
     fn dim(size: u64) -> component_types::TensorDimension {
         component_types::TensorDimension::unnamed(size)
     }

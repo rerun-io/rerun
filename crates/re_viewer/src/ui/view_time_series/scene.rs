@@ -18,6 +18,7 @@ pub struct PlotPointAttrs {
     pub radius: f32,
     pub scattered: bool,
 }
+
 impl PartialEq for PlotPointAttrs {
     fn eq(&self, rhs: &Self) -> bool {
         let Self {
@@ -32,6 +33,7 @@ impl PartialEq for PlotPointAttrs {
             && scattered.eq(&rhs.scattered)
     }
 }
+
 impl Eq for PlotPointAttrs {}
 
 #[derive(Clone, Debug)]

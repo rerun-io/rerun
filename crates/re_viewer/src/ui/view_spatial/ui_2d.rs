@@ -53,6 +53,7 @@ impl Default for ZoomState2D {
         ZoomState2D::Auto
     }
 }
+
 impl View2DState {
     /// Determine the optimal sub-region and size based on the `ZoomState` and
     /// available size. This will generally be used to construct the painter and

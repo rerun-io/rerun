@@ -11,12 +11,15 @@ use super::{Item, ItemCollection};
 pub enum HoveredSpace {
     #[default]
     None,
+
     /// Hovering in a 2D space.
     TwoD {
         space_2d: EntityPath,
+
         /// Where in this 2D space (+ depth)?
         pos: glam::Vec3,
     },
+
     /// Hovering in a 3D space.
     ThreeD {
         /// The 3D space with the camera(s)

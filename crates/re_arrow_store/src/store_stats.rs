@@ -326,6 +326,7 @@ fn test_arrow_estimated_size_bytes() {
             x: f64,
             y: f64,
         }
+
         impl Default for Point {
             fn default() -> Self {
                 Self { x: 42.0, y: 666.0 }
@@ -357,6 +358,7 @@ fn test_arrow_estimated_size_bytes() {
             x: f64,
             y: f64,
         }
+
         impl Default for Point {
             fn default() -> Self {
                 Self { x: 42.0, y: 666.0 }
