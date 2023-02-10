@@ -1,3 +1,5 @@
+# https://flake8.pycqa.org/en/latest/user/configuration.html
+
 [flake8]
 max-line-length = 120
 ban-relative-imports = true
@@ -17,6 +19,3 @@ extend-exclude =
     # Automatically generated test artifacts
     venv/,
     target/,
-
-    # Disabled for now TODO(john)
-    examples/,
