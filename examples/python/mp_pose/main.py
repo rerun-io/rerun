@@ -134,6 +134,10 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
 
 
 def main() -> None:
+    # Ensure the logging gets written to stderr:
+    logging.getLogger().addHandler(logging.StreamHandler())
+    logging.getLogger().setLevel("INFO")
+
     parser = argparse.ArgumentParser(description="Uses the MediaPipe Pose solution to track a human pose in video.")
     parser.add_argument(
         "--video",

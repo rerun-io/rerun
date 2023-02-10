@@ -17,7 +17,7 @@ from typing import Optional, cast
 
 import numpy as np
 import trimesh
-from dataset.dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
+from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 
 import rerun as rr
 

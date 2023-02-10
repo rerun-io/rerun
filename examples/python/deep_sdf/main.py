@@ -37,7 +37,7 @@ import mesh_to_sdf
 import numpy as np
 import numpy.typing as npt
 import trimesh
-from dataset.dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
+from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 from rerun.log.file import MeshFormat
 from rerun.log.text import LogLevel
 from trimesh import Trimesh

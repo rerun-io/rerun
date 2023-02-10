@@ -19,7 +19,7 @@ AVAILABLE_MESHES: Final = [
     "lantern",
     # "mori_knob",
 ]
-DOWNLOADED_DIR: Final = Path(os.path.dirname(__file__)) / "downloaded"
+DOWNLOADED_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 
 
 def ensure_mesh_downloaded(mesh_name: str) -> Path:
@@ -67,7 +67,7 @@ def download_mcguire_sample(package: str, name: str) -> Path:
     }
     url = f"https://casual-effects.com/g3d/data10/{package}/model/{name}/{name}.zip"
 
-    dir = Path(os.path.dirname(__file__)) / "downloaded"
+    dir = Path(os.path.dirname(__file__)) / "dataset"
     os.makedirs(dir, exist_ok=True)
 
     def download_and_extract(url: str, path: Path) -> None:

@@ -373,6 +373,10 @@ def setup_looging() -> None:
 
 
 def main() -> None:
+    # Ensure the logging gets written to stderr:
+    logging.getLogger().addHandler(logging.StreamHandler())
+    logging.getLogger().setLevel("INFO")
+
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument(
         "--video",
