@@ -31,6 +31,7 @@ def scale_camera(camera: Camera, resize: Tuple[int, int]) -> Tuple[Camera, npt.N
     new_height = resize[1]
     scale_factor = np.array([new_width / camera.width, new_height / camera.height])
 
+    # For PINHOLE camera modle, params are: [focal_length_x, focal_length_y, principal_point_x, principal_point_y]
     new_params = np.append(camera.params[:2] * scale_factor, camera.params[2:] * scale_factor)
 
     return (Camera(camera.id, camera.model, new_width, new_height, new_params), scale_factor)
@@ -81,7 +82,7 @@ def download_with_progress(url: str) -> io.BytesIO:
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
     with tqdm(
-        desc=f"Downloading dataset", total=total_size, unit="B", unit_scale=True, unit_divisor=chunk_size
+        desc="Downloading dataset", total=total_size, unit="B", unit_scale=True, unit_divisor=chunk_size
     ) as progress:
         zip_file = io.BytesIO()
         for data in resp.iter_content(chunk_size):
@@ -164,11 +165,11 @@ def read_and_log_sparse_reconstruction(
                 img = cv2.imread(str(image_file))
                 img = cv2.resize(img, resize)
                 cv2.imwrite(temp.name, img)
-                rr.log_image_file(f"camera/image", Path(temp.name))
+                rr.log_image_file("camera/image", Path(temp.name))
         else:
-            rr.log_image_file(f"camera/image", image_file)
+            rr.log_image_file("camera/image", image_file)
 
-        rr.log_points(f"camera/image/keypoints", visible_xys, colors=point_colors)
+        rr.log_points("camera/image/keypoints", visible_xys, colors=point_colors)
 
 
 def main() -> None:
