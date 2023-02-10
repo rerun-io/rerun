@@ -88,12 +88,17 @@ def log_mesh_file(
 def log_image_file(
     entity_path: str,
     *,
-    img_path: Path,
+    img_bytes: Optional[bytes] = None,
+    img_path: Optional[Path] = None,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
 ) -> None:
     """
-    Log the contents of an image file (only JPEGs supported for now).
+    Log an image file given its contents or path on disk.
+
+    Only JPEGs supported right now.
+
+    You must pass either `img_bytes` or `img_path`.
 
     If no `img_format` is specified, we will try and guess it.
 
@@ -101,8 +106,10 @@ def log_image_file(
     ----------
     entity_path:
         Path to the image in the space hierarchy.
+    img_bytes:
+        Content of an image file, e.g. a `.jpg`.
     img_path:
-        Path to the image file.
+        Path to an image file, e.g. a `.jpg`.
     img_format:
         Format of the image file.
     timeless:
@@ -112,4 +119,8 @@ def log_image_file(
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(entity_path, img_path=img_path, img_format=img_format, timeless=timeless)
+    bindings.log_image_file(entity_path,
+                            img_bytes=img_bytes,
+                            img_path=img_path,
+                            img_format=img_format,
+                            timeless=timeless)
