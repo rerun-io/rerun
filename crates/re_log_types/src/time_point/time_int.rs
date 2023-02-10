@@ -1,6 +1,6 @@
 use crate::time::{Duration, Time};
 
-/// Either nanoseconds or sequence numbers.
+/// A 64-bit number describing either nanoseconds OR sequence numbers.
 ///
 /// Must be matched with a [`crate::TimeType`] to know what.
 ///

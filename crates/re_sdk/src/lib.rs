@@ -42,7 +42,6 @@ pub mod time {
 /// and can be used in [`MsgSender::with_component`].
 pub mod components {
     pub use re_log_types::component_types::{
-        coordinates::{Axis3, Handedness, Sign, SignedAxis3},
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
         EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
         MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
@@ -50,6 +49,11 @@ pub mod components {
         TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
         ViewCoordinates,
     };
+}
+
+/// Coordinate system helpers, for use with [`components::ViewCoordinates`].
+pub mod coordinates {
+    pub use re_log_types::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
 /// Re-exports of other crates.

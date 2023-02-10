@@ -240,13 +240,14 @@ pub struct EntityPathOpMsg {
     pub path_op: PathOp,
 }
 
+/// Operation to perform on an [`EntityPath`], e.g. clearing all components.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum PathOp {
-    // Clear all the components stored at an [`EntityPath`]
+    /// Clear all the components stored at an [`EntityPath`]
     ClearComponents(EntityPath),
 
-    // Clear all the components of an `[EntityPath]` and any descendants.
+    /// Clear all the components of an `[EntityPath]` and any descendants.
     ClearRecursive(EntityPath),
 }
 

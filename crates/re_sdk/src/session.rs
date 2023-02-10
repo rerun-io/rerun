@@ -7,7 +7,7 @@ use re_log_types::{
 
 /// This is the main object you need to create to use the Rerun SDK.
 ///
-///
+/// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
 pub struct Session {
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
@@ -25,6 +25,8 @@ impl Session {
     /// Construct a new session.
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
+    ///
+    /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "web")]

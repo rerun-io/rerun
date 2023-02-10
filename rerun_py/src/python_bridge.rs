@@ -10,19 +10,19 @@ use pyo3::{
     types::PyDict,
 };
 
+use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
+use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
 use rerun::{global_session, ApplicationId, EntityPath, RecordingId};
 
-use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
-
-use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
-
-pub use rerun::components::{
-    AnnotationContext, AnnotationInfo, Arrow3D, Axis3, Box3D, ClassDescription, ClassId, ColorRGBA,
-    EncodedMesh3D, Handedness, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
-    Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
-    Rigid3, Scalar, ScalarPlotProps, Sign, SignedAxis3, Size3D, Tensor, TensorData,
-    TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
-    ViewCoordinates,
+pub use rerun::{
+    components::{
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+        EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
+        MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
+        Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDimension, TensorId,
+        TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    },
+    coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
 use crate::arrow::get_registered_component_names;
