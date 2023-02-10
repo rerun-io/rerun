@@ -2,8 +2,6 @@
 """Shows how to use the Rerun SDK."""
 
 import argparse
-import pathlib
-import sys
 from dataclasses import dataclass
 from typing import Iterator, Tuple
 
@@ -187,8 +185,10 @@ class SimpleDepthCamera:
         """
         Given a depth image, generate a matching point cloud.
 
-        Args:
-        - `depth_image_mm`: Depth image expressed in millimeters
+        Parameters
+        ----------
+        - depth_image_mm: Depth image expressed in millimeters
+
         """
 
         # Apply inverse of the `intrinsics` matrix:
@@ -242,7 +242,7 @@ class SimpleDepthCamera:
 
 
 def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
-    """This function generates dummy data to log."""
+    """Generates dummy data to log."""
     # Generate some fake data
     im_w = 480
     im_h = 270

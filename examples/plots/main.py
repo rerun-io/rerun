@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This example demonstrates how to log simple plots with the Rerun SDK.
+Demonstrates how to log simple plots with the Rerun SDK.
 
 Run:
 ```sh
@@ -12,7 +12,7 @@ Run:
 
 import argparse
 import random
-from math import cos, pi, sin, sqrt, tau
+from math import cos, sin, tau
 
 import numpy as np
 

@@ -39,7 +39,7 @@ import collections
 import os
 import struct
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Mapping
 
 import numpy as np
 

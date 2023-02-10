@@ -6,7 +6,7 @@ import os
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, List, Optional, Tuple
+from typing import Any, Final, Iterator, Optional
 
 import cv2 as cv
 import mediapipe as mp

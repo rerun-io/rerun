@@ -62,7 +62,7 @@ def ensure_dataset_downloaded() -> Iterable[Path]:
     dicom_files = [p for p in list_dicom_files(DATASET_DIR)]
     if dicom_files:
         return dicom_files
-    print(f"downloading dataset…")
+    print("downloading dataset…")
     os.makedirs(DATASET_DIR.absolute(), exist_ok=True)
     resp = requests.get(DATASET_URL, stream=True)
     z = zipfile.ZipFile(io.BytesIO(resp.content))

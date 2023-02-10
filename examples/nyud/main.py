@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Example using an example depth dataset from NYU: https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
+"""Example using an example depth dataset from NYU
+
+https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
 """
 
 import argparse
@@ -7,7 +9,6 @@ import os
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from time import sleep
 from typing import Final, Tuple
 
 import cv2
@@ -152,8 +153,11 @@ def ensure_recording_downloaded(name: str) -> Path:
 
 
 def download_progress(url: str, dst: Path) -> None:
-    """Download file with tqdm progress bar.
-    From: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51"""
+    """
+    Download file with tqdm progress bar.
+
+    From: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
+    """
     resp = requests.get(url, stream=True)
     total = int(resp.headers.get("content-length", 0))
     chunk_size = 1024 * 1024

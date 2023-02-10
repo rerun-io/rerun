@@ -169,7 +169,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
 
     positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
     identifiers = point_cloud.identifier
-    rr.log_points(f"world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
+    rr.log_points("world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
