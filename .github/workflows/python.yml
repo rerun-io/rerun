@@ -16,7 +16,7 @@ env:
   PYTHON_VERSION: "3.8"
   PRE_RELEASE_INSTRUCTIONS: |
     ## Installing the pre-release Python SDK
-    1. Download the correct `.whl`.  For Mac M1/M2, grab the "universal2" `.whl`
+    1. Download the correct `.whl`. For Mac M1/M2, grab the "universal2" `.whl`
     2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
     3. Test it: `rerun --version`
 
