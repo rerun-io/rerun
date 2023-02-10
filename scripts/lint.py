@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Runs custom linting on our code.
 
@@ -16,6 +17,7 @@ debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"\bnb_")
+
 
 def lint_line(line: str) -> Optional[str]:
     if "NOLINT" in line:
@@ -123,7 +125,7 @@ def lint_file(filepath: str) -> int:
 
 
 if __name__ == "__main__":
-    test_lint() # Make sure we are bug free before we run!
+    test_lint()  # Make sure we are bug free before we run!
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
