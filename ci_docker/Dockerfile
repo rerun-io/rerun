@@ -1,5 +1,7 @@
 FROM rust:1.67
 LABEL maintainer="opensource@rerun.io"
+# Remember to update the version in publish.sh
+# TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
 LABEL version="0.4"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
