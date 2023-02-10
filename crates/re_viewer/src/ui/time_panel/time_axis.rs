@@ -30,7 +30,7 @@ impl TimelineAxis {
         // Anything at least this close are considered one thing.
         // Measured in nanos or sequences.
         let min_gap_size: u64 = match time_type {
-            TimeType::Sequence => 1,
+            TimeType::Sequence => 9,
             TimeType::Time => 1_000_000_000, // nanos!
         };
 
