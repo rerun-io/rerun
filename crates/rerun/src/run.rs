@@ -108,9 +108,8 @@ pub enum CallSource {
 ///
 /// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args...]`.
 //
-// If we be nice to use [`std::process::ExitCode`] here but
-// then there's no good way to get back at the exit code from
-// python
+// It would be nice to use [`std::process::ExitCode`] here but
+// then there's no good way to get back at the exit code from python
 pub async fn run<I, T>(call_source: CallSource, args: I) -> anyhow::Result<u8>
 where
     I: IntoIterator<Item = T>,
