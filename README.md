@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://user-images.githubusercontent.com/135094/218064602-933ab2fb-1180-43b1-bea3-741e0e87b558.png" alt="rerun logo white">
+  <img src="https://github.com/rerun-io/.github/raw/main/profile/rerun-logo.png" alt="rerun banner">
   <br>
 </h1>
 
