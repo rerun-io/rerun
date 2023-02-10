@@ -22,6 +22,7 @@ pub use re_log_types::{
     ApplicationId, ComponentName, EntityPath, RecordingId,
 };
 
+/// Things directly related to logging.
 pub mod log {
     pub use re_log_types::{
         msg_bundle::{ComponentBundle, MsgBundle},

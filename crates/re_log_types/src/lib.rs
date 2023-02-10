@@ -123,7 +123,9 @@ impl std::str::FromStr for RecordingId {
 pub struct ApplicationId(pub String);
 
 impl ApplicationId {
-    /// "unknown_app_id"
+    /// The default [`ApplicationId`] if the user hasn't set one.
+    ///
+    /// Currently: `"unknown_app_id"`.
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
     }

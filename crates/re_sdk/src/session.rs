@@ -171,6 +171,7 @@ impl Session {
         }
     }
 
+    /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],

@@ -311,6 +311,7 @@ impl ArrowDeserialize for ViewCoordinates {
 
 // ----------------------------------------------------------------------------
 
+/// One of `X`, `Y`, `Z`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Axis3 {
@@ -344,6 +345,7 @@ impl std::fmt::Display for Axis3 {
 
 // ----------------------------------------------------------------------------
 
+/// Positive (`+`) or Negative (`-`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Sign {
@@ -353,6 +355,8 @@ pub enum Sign {
 
 // ----------------------------------------------------------------------------
 
+/// One of: `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`,
+/// i.e. one of the six cardinal direction in 3D space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct SignedAxis3 {
@@ -415,6 +419,7 @@ impl std::str::FromStr for SignedAxis3 {
 
 // ----------------------------------------------------------------------------
 
+/// Left or right handedness. Used to describe a coordinate system.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Handedness {
