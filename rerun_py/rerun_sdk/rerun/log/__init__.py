@@ -34,10 +34,10 @@ OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
-def rerun_disabled_check(func):
+def rerun_disabled_check(func: callable) -> callable:
     """A Python method decorator that bypasses Rerun logging if `disabled` == True in `_module_state`."""
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> None:
         if not bindings.logging_enabled():
             return
         return func(*args, **kwargs)
