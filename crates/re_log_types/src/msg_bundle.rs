@@ -75,17 +75,20 @@ const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
 const COL_COMPONENTS: &str = "components";
 const COL_TIMELINES: &str = "timelines";
 
+/// A type that can used as a Component of an Entity.
+///
+/// Examples of components include positions and colors.
 pub trait Component: ArrowField {
-    /// The name of the component
+    /// The name of the component.
     fn name() -> ComponentName;
 
-    /// Create a [`Field`] for this `Component`
+    /// Create a [`Field`] for this [`Component`].
     fn field() -> Field {
         Field::new(Self::name().as_str(), Self::data_type(), false)
     }
 }
 
-/// A trait to identify any `Component` that is ready to be collected and subsequently serialized
+/// A trait to identify any [`Component`] that is ready to be collected and subsequently serialized
 /// into an Arrow payload.
 pub trait SerializableComponent
 where
@@ -97,9 +100,9 @@ impl<C> SerializableComponent for C where
 {
 }
 
-/// A `ComponentBundle` holds an Arrow component column, and its field name.
+/// A [`ComponentBundle`] holds an Arrow component column, and its field name.
 ///
-/// A `ComponentBundle` can be created from a collection of any element that implements the
+/// A [`ComponentBundle`] can be created from a collection of any element that implements the
 /// [`Component`] and [`ArrowSerialize`] traits.
 ///
 /// # Example

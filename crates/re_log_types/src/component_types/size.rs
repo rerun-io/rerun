@@ -2,6 +2,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
+/// A 3D size, e.g. the size of a 3D box.
 // TODO(cmc): should just embed a Vec3D?
 #[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Size3D {
