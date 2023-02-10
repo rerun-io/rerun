@@ -194,6 +194,7 @@ fn build_web() {
     if release {
         let wasm_path = wasm_path.to_str().unwrap();
 
+        // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
         cmd.current_dir(root_dir);
         cmd.args([wasm_path, "-O2", "--fast-math", "-o", wasm_path]);
