@@ -11,7 +11,7 @@
 
 # Rerun: Visualization infrastructure for computer vision.
 
-Use one of our logging APIs (Python or Rust atm) to log rich data, such as images and point clouds, to the Rerun Viewer, where it is visualized live or after the fact.
+Use one of our logging APIs (Python or Rust) to log rich data, such as images and point clouds, to the Rerun Viewer, where it is visualized live or after the fact.
 
 ```py
 import rerun as rr
