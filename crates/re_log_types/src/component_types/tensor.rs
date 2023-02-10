@@ -312,13 +312,17 @@ pub enum TensorDataMeaning {
 pub struct Tensor {
     /// Unique identifier for the tensor
     pub tensor_id: TensorId,
+
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
+
     /// Data payload
     pub data: TensorData,
+
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
     pub meaning: TensorDataMeaning,
+
     /// Reciprocal scale of meter unit for depth images
     pub meter: Option<f32>,
 }
