@@ -63,6 +63,7 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 const APPLICATION_NAME: &str = "Rerun Viewer";
 
 pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
