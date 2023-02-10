@@ -39,26 +39,25 @@ def track_pose(video_path: str, segment: bool) -> None:
     )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 
-    with closing(VideoSource(video_path)) as video_source:
-        with mp_pose.Pose(enable_segmentation=segment) as pose:
-            for bgr_frame in video_source.stream_bgr():
+    with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
+        for bgr_frame in video_source.stream_bgr():
 
-                rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
-                rr.set_time_seconds("time", bgr_frame.time)
-                rr.set_time_sequence("frame_idx", bgr_frame.idx)
-                rr.log_image("video/rgb", rgb)
+            rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
+            rr.set_time_seconds("time", bgr_frame.time)
+            rr.set_time_sequence("frame_idx", bgr_frame.idx)
+            rr.log_image("video/rgb", rgb)
 
-                results = pose.process(rgb)
-                h, w, _ = rgb.shape
-                landmark_positions_2d = read_landmark_positions_2d(results, w, h)
-                rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
+            results = pose.process(rgb)
+            h, w, _ = rgb.shape
+            landmark_positions_2d = read_landmark_positions_2d(results, w, h)
+            rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
 
-                landmark_positions_3d = read_landmark_positions_3d(results)
-                rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
+            landmark_positions_3d = read_landmark_positions_3d(results)
+            rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
 
-                segmentation_mask = results.segmentation_mask
-                if segmentation_mask is not None:
-                    rr.log_segmentation_image("video/mask", segmentation_mask)
+            segmentation_mask = results.segmentation_mask
+            if segmentation_mask is not None:
+                rr.log_segmentation_image("video/mask", segmentation_mask)
 
 
 def read_landmark_positions_2d(

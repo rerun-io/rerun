@@ -18,8 +18,6 @@ extend-ignore =
     D107, D203, D212, D401, D402, D415, D416,
     # TODO: Remove errors below to further improve docstring linting
     D1,
-    # flake8-simplify
-    SIM102, SIM117,
 
     # No blank lines allowed after function docstring
     D202, # This just makes code look worse
