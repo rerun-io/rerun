@@ -99,7 +99,7 @@ class Detector:
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
-        things = [self.is_thing_from_id[l] for l in class_ids]
+        things = [self.is_thing_from_id[id] for id in class_ids]
 
         self.log_detections(boxes, class_ids, things)
 

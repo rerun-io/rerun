@@ -29,7 +29,7 @@ def track_pose(video_path: str, segment: bool) -> None:
         "/",
         ClassDescription(
             info=AnnotationInfo(label="Person"),
-            keypoint_annotations=[AnnotationInfo(id=l.value, label=l.name) for l in mp_pose.PoseLandmark],
+            keypoint_annotations=[AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         ),
     )
@@ -69,10 +69,12 @@ def read_landmark_positions_2d(
     if results.pose_landmarks is None:
         return None
     else:
-        normalized_landmarks = [results.pose_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
+        normalized_landmarks = [results.pose_landmarks.landmark[lm] for lm in mp.solutions.pose.PoseLandmark]
         # Log points as 3d points with some scaling so they "pop out" when looked at in a 3d view
         # Negative depth in order to move them towards the camera.
-        return np.array([(image_width * l.x, image_height * l.y, -(l.z + 1.0) * 300.0) for l in normalized_landmarks])
+        return np.array(
+            [(image_width * lm.x, image_height * lm.y, -(lm.z + 1.0) * 300.0) for lm in normalized_landmarks]
+        )
 
 
 def read_landmark_positions_3d(
@@ -81,8 +83,8 @@ def read_landmark_positions_3d(
     if results.pose_landmarks is None:
         return None
     else:
-        landmarks = [results.pose_world_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
-        return np.array([(l.x, l.y, l.z) for l in landmarks])
+        landmarks = [results.pose_world_landmarks.landmark[lm] for lm in mp.solutions.pose.PoseLandmark]
+        return np.array([(lm.x, lm.y, lm.z) for lm in landmarks])
 
 
 @dataclass
