@@ -268,7 +268,7 @@ def update_trackers_with_detections(
     Any detections that don't match existing trackers will generate new trackers.
     Returns the new set of trackers.
     """
-    non_updated_trackers = [tracker for tracker in trackers]  # shallow copy
+    non_updated_trackers = list(trackers)  # shallow copy
     updated_trackers = []  # type: List[Tracker]
 
     logging.debug("Updating %d trackers with %d new detections", len(trackers), len(detections))

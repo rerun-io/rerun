@@ -59,7 +59,7 @@ def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
 
 
 def ensure_dataset_downloaded() -> Iterable[Path]:
-    dicom_files = [p for p in list_dicom_files(DATASET_DIR)]
+    dicom_files = list(list_dicom_files(DATASET_DIR))
     if dicom_files:
         return dicom_files
     print("downloading dataset…")
