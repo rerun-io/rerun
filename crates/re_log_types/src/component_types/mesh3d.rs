@@ -90,8 +90,10 @@ impl ArrowDeserialize for MeshId {
 pub enum RawMeshError {
     #[error("Positions array length must be divisible by 3 (triangle list), got {0}")]
     PositionsNotDivisibleBy3(usize),
+
     #[error("Indices array length must be divisible by 3 (triangle list), got {0}")]
     IndicesNotDivisibleBy3(usize),
+
     #[error(
         "Positions & normals array must have the same length, \
         got positions={0} vs. normals={1}"
@@ -135,11 +137,13 @@ pub struct RawMesh3D {
     /// Meshes are always triangle lists, i.e. the length of this vector should always be
     /// divisible by 3.
     pub positions: Vec<f32>,
+
     /// Optionally, the flattened indices array for this mesh.
     ///
     /// Meshes are always triangle lists, i.e. the length of this vector should always be
     /// divisible by 3.
     pub indices: Option<Vec<u32>>,
+
     /// Optionally, the flattened normals array for this mesh.
     ///
     /// If specified, this must match the length of `Self::positions`.
@@ -219,8 +223,11 @@ impl RawMesh3D {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EncodedMesh3D {
     pub mesh_id: MeshId,
+
     pub format: MeshFormat,
+
     pub bytes: Arc<[u8]>,
+
     /// four columns of an affine transformation matrix
     pub transform: [[f32; 3]; 4],
 }
@@ -229,8 +236,11 @@ pub struct EncodedMesh3D {
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct EncodedMesh3DArrow {
     pub mesh_id: MeshId,
+
     pub format: MeshFormat,
+
     pub bytes: Vec<u8>,
+
     #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<f32, 12>")]
     pub transform: Vec<f32>,
 }
@@ -254,6 +264,7 @@ impl From<&EncodedMesh3D> for EncodedMesh3DArrow {
 
 impl TryFrom<EncodedMesh3DArrow> for EncodedMesh3D {
     type Error = FieldError;
+
     fn try_from(v: EncodedMesh3DArrow) -> super::Result<Self> {
         let EncodedMesh3DArrow {
             mesh_id,

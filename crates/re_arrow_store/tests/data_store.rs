@@ -281,6 +281,7 @@ fn latest_at() {
         latest_at_impl(&mut store);
     }
 }
+
 fn latest_at_impl(store: &mut DataStore) {
     init_logs();
 
@@ -384,6 +385,7 @@ fn range() {
         range_impl(&mut store);
     }
 }
+
 fn range_impl(store: &mut DataStore) {
     init_logs();
 
@@ -915,6 +917,7 @@ fn gc() {
         gc_impl(&mut store);
     }
 }
+
 fn gc_impl(store: &mut DataStore) {
     let mut rng = rand::thread_rng();
 

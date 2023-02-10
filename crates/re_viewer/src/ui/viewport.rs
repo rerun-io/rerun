@@ -574,6 +574,7 @@ fn blueprint_row_with_buttons(
             if !visible || !enabled {
                 // Dim the appearance of things added by `add_content`:
                 let widget_visuals = &mut ui.visuals_mut().widgets;
+
                 fn dim_color(color: &mut egui::Color32) {
                     *color = color.gamma_multiply(0.5);
                 }

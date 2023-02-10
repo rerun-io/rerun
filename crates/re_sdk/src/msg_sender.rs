@@ -73,6 +73,7 @@ pub struct MsgSender {
     ///
     /// The logging time is automatically inserted during creation ([`Self::new`]).
     timepoint: TimePoint,
+
     /// If true, all timestamp data associated with this message will be dropped right before
     /// sending it to Rerun.
     ///
@@ -88,6 +89,7 @@ pub struct MsgSender {
     /// The number of instances per row, on the other hand, will be decided based upon the first
     /// component collection that's appended.
     num_instances: Option<usize>,
+
     /// All the instanced component collections that have been appended to this message.
     ///
     /// As of today, they must have exactly 1 row of data (no batching), which itself must have

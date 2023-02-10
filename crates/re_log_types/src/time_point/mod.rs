@@ -114,6 +114,7 @@ impl TimeType {
 
 impl IntoIterator for TimePoint {
     type Item = (Timeline, TimeInt);
+
     type IntoIter = btree_map::IntoIter<Timeline, TimeInt>;
 
     #[inline]
@@ -124,6 +125,7 @@ impl IntoIterator for TimePoint {
 
 impl<'a> IntoIterator for &'a TimePoint {
     type Item = (&'a Timeline, &'a TimeInt);
+
     type IntoIter = btree_map::Iter<'a, Timeline, TimeInt>;
 
     #[inline]

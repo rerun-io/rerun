@@ -22,8 +22,10 @@ type Level = u64;
 
 /// How many bits we progress in each [`BranchNode`]
 const LEVEL_STEP: u64 = 3;
+
 /// The level used for [`DenseLeaf`].
 const BOTTOM_LEVEL: Level = 1;
+
 /// Number of children in [`DenseLeaf`].
 const NUM_CHILDREN_IN_DENSE: u64 = 16;
 

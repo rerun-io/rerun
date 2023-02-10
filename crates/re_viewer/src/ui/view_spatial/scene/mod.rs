@@ -62,6 +62,7 @@ pub struct Image {
     pub instance_path_hash: InstancePathHash,
 
     pub tensor: Tensor,
+
     /// If this is a depth map, how long is a meter?
     ///
     /// For example, with a `u16` dtype one might have
@@ -76,6 +77,7 @@ pub struct Image {
 pub enum Label2DTarget {
     /// Labels a given rect (in scene coordinates)
     Rect(egui::Rect),
+
     /// Labels a given point (in scene coordinates)
     Point(egui::Pos2),
 }
@@ -84,14 +86,17 @@ pub enum Label2DTarget {
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
+
     /// The shape being labeled.
     pub target: Label2DTarget,
+
     /// What is hovered if this label is hovered.
     pub labled_instance: InstancePathHash,
 }
 
 pub struct Label3D {
     pub(crate) text: String,
+
     /// Origin of the label
     pub(crate) origin: glam::Vec3,
 }
@@ -118,6 +123,7 @@ pub struct SceneSpatial {
 
     /// Number of 2d primitives logged, used for heuristics.
     num_logged_2d_objects: usize,
+
     /// Number of 3d primitives logged, used for heuristics.
     num_logged_3d_objects: usize,
 
