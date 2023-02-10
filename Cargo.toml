@@ -21,8 +21,8 @@ repository = "https://github.com/rerun-io/rerun"
 
 [workspace.dependencies]
 anyhow = "1.0"
-arrow2 = "0.15"
-arrow2_convert = "0.3"
+arrow2 = "0.16"
+arrow2_convert = "0.4"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
 ecolor = "0.21.0"
@@ -40,9 +40,9 @@ image = "0.24"
 lazy_static = "1.4"
 macaw = "0.18"
 ndarray = "0.15"
-polars-core = "0.26"
-polars-lazy = "0.26"
-polars-ops = "0.26"
+polars-core = "0.27.1"
+polars-lazy = "0.27.1"
+polars-ops = "0.27.1"
 puffin = "0.14"
 reqwest = { version = "0.11", default-features = false }
 thiserror = "1.0"
@@ -67,17 +67,3 @@ debug = true
 
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
-# Prefer to put the crate you want to patch under [workspace.dependencies] above, if possible.
-# Of course, if the crates are used transitevly, that is not possible (e.g. polars uses arrow2).
-
-# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1360
-arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c8a1d91d9a741835be0305f" }
-# Upstream PR https://github.com/DataEngineeringLabs/arrow2-convert/pull/91
-arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e63de5ce71741aaea3c36572d3e6831658ec3ed" }
-# arrow2 = { path = "../arrow2" }
-# arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
-
-# 2023-10-12 - Alpha to coverage support for GLES
-# wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
-# wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
-# wgpu = { path = "../wgpu/wgpu" }
