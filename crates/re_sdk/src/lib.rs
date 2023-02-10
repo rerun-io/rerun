@@ -4,6 +4,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![warn(missing_docs)] // Let's keep the this crate well-documented!
+
 // Send data to a rerun session
 mod global;
 mod msg_sender;
@@ -20,6 +22,7 @@ pub use re_log_types::{
     ApplicationId, ComponentName, EntityPath, RecordingId,
 };
 
+/// Things directly related to logging.
 pub mod log {
     pub use re_log_types::{
         msg_bundle::{ComponentBundle, MsgBundle},
@@ -28,13 +31,17 @@ pub mod log {
     pub use re_sdk_comms::default_server_addr;
 }
 
+/// Time-related types.
 pub mod time {
     pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 }
 
+/// These are the different _components_ you can log.
+///
+/// They all implement the [`Component`] trait,
+/// and can be used in [`MsgSender::with_component`].
 pub mod components {
     pub use re_log_types::component_types::{
-        coordinates::{Axis3, Handedness, Sign, SignedAxis3},
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
         EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
         MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
@@ -44,7 +51,12 @@ pub mod components {
     };
 }
 
-// re-exports
+/// Coordinate system helpers, for use with [`components::ViewCoordinates`].
+pub mod coordinates {
+    pub use re_log_types::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
+}
+
+/// Re-exports of other crates.
 pub mod external {
     pub use re_log;
     pub use re_log_types;
