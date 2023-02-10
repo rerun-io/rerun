@@ -6,7 +6,7 @@ from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
-from rerun.log import _normalize_colors
+from rerun.log import _normalize_colors, rerun_disabled_check
 from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
@@ -16,6 +16,7 @@ __all__ = [
 ]
 
 
+@rerun_disabled_check
 def log_scalar(
     entity_path: str,
     scalar: float,

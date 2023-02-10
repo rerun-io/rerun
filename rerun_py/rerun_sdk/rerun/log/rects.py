@@ -14,6 +14,7 @@ from rerun.log import (
     _normalize_colors,
     _normalize_ids,
     _normalize_labels,
+    rerun_disabled_check,
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
@@ -27,6 +28,7 @@ __all__ = [
 ]
 
 
+@rerun_disabled_check
 def log_rect(
     entity_path: str,
     rect: Optional[npt.ArrayLike],
@@ -96,6 +98,7 @@ def log_rect(
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
+@rerun_disabled_check
 def log_rects(
     entity_path: str,
     rects: Optional[npt.ArrayLike],

@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+from rerun.log import rerun_disabled_check
 
 from rerun import bindings
 
@@ -39,6 +40,7 @@ class ImageFormat(Enum):
     """JPEG format."""
 
 
+@rerun_disabled_check
 def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
@@ -85,6 +87,7 @@ def log_mesh_file(
     bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
 
 
+@rerun_disabled_check
 def log_image_file(
     entity_path: str,
     img_path: Path,

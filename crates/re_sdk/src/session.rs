@@ -16,10 +16,23 @@ pub struct Session {
     is_official_example: Option<bool>,
 
     has_sent_begin_recording_msg: bool,
+
+    /// Is Logging enabled globally?
+    logging_enabled: bool,
 }
 
 impl Session {
     pub fn new() -> Self {
+        // Check the "RERUN_LOGGING_ENABLED" environment variable.
+        // If it is set to "0", then disable logging.
+        let logging_enabled = std::env::var("RERUN_LOGGING_ENABLED")
+            .map(|s| s == "1" || s.to_lowercase() == "true")
+            .unwrap_or(true);
+
+        if !logging_enabled {
+            re_log::info!("Logging is disabled, all log messages will be dropped.");
+        }
+
         Self {
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
@@ -29,7 +42,13 @@ impl Session {
             recording_id: None,
             is_official_example: None,
             has_sent_begin_recording_msg: false,
+            logging_enabled,
         }
+    }
+
+    /// Check if logging is enabled on this `Session`.
+    pub fn is_logging_enabled(&self) -> bool {
+        self.logging_enabled
     }
 
     pub fn set_application_id(&mut self, application_id: ApplicationId, is_official_example: bool) {
@@ -145,6 +164,13 @@ impl Session {
     }
 
     pub fn send(&mut self, log_msg: LogMsg) {
+        if !self.logging_enabled {
+            // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
+            // check here is just a safety net.
+            re_log::trace!("Logging is disabled, dropping message.");
+            return;
+        }
+
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
                 let application_id = self

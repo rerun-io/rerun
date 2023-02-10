@@ -99,6 +99,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
+    m.add_function(wrap_pyfunction!(logging_enabled, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
@@ -282,6 +283,12 @@ fn shutdown(py: Python<'_>) {
         session.flush();
         session.disconnect();
     });
+}
+
+/// Is loggine enabled in the global session?
+#[pyfunction]
+fn logging_enabled(py: Python<'_>) -> PyResult<bool> {
+    py.allow_threads(|| Ok(global_session().is_logging_enabled()))
 }
 
 /// Disconnect from remote server (if any).

@@ -17,6 +17,7 @@ from rerun.log import (
     _normalize_ids,
     _normalize_labels,
     _normalize_radii,
+    rerun_disabled_check,
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
@@ -29,6 +30,7 @@ __all__ = [
 ]
 
 
+@rerun_disabled_check
 def log_point(
     entity_path: str,
     position: Union[Sequence[float], npt.NDArray[np.float32], None],
@@ -126,6 +128,7 @@ def log_point(
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
+@rerun_disabled_check
 def log_points(
     entity_path: str,
     positions: Union[Sequence[Sequence[float]], Optional[npt.NDArray[np.float32]]],

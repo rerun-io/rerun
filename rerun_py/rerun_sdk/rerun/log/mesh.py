@@ -2,6 +2,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from rerun.log import rerun_disabled_check
 
 from rerun import bindings
 
@@ -11,6 +12,7 @@ __all__ = [
 ]
 
 
+@rerun_disabled_check
 def log_mesh(
     entity_path: str,
     positions: npt.NDArray[np.float32],
@@ -72,6 +74,7 @@ def log_mesh(
     bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
 
 
+@rerun_disabled_check
 def log_meshes(
     entity_path: str,
     position_buffers: Sequence[npt.NDArray[np.float32]],

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterable, Optional, Sequence, Tuple, Union
 
-from rerun.log import Color, _normalize_colors
+from rerun.log import Color, _normalize_colors, rerun_disabled_check
 
 from rerun import bindings
 
@@ -73,6 +73,7 @@ def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
         return ClassDescription(info=arg)  # type: ignore[arg-type]
 
 
+@rerun_disabled_check
 def log_annotation_context(
     entity_path: str,
     class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],

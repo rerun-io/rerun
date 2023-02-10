@@ -4,7 +4,7 @@ import atexit
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
-from rerun.log import log_cleared
+from rerun.log import log_cleared, rerun_disabled_check
 from rerun.log.annotation import log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
@@ -23,6 +23,7 @@ from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coor
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
+    "LoggingHandler",
     "bindings",
     "components",
     "log_annotation_context",
@@ -30,12 +31,13 @@ __all__ = [
     "log_cleared",
     "log_cleared",
     "log_depth_image",
+    "log_extension_components",
     "log_image",
     "log_image_file",
     "log_line_segments",
     "log_mesh",
-    "log_meshes",
     "log_mesh_file",
+    "log_meshes",
     "log_obb",
     "log_path",
     "log_pinhole",
@@ -49,12 +51,11 @@ __all__ = [
     "log_tensor",
     "log_text_entry",
     "log_unknown_transform",
-    "log_extension_components",
     "log_view_coordinates",
+    "rerun_disabled_check",
     "script_add_args",
     "script_setup",
     "script_teardown",
-    "LoggingHandler",
 ]
 
 
@@ -274,6 +275,7 @@ def save(path: str) -> None:
     bindings.save(path)
 
 
+@rerun_disabled_check
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     """
     Set the current time for this thread as an integer sequence.
@@ -298,6 +300,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     bindings.set_time_sequence(timeline, sequence)
 
 
+@rerun_disabled_check
 def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     """
     Set the current time for this thread in seconds.
@@ -328,6 +331,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     bindings.set_time_seconds(timeline, seconds)
 
 
+@rerun_disabled_check
 def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     """
     Set the current time for this thread.

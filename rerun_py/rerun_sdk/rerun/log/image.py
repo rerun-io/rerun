@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
+from rerun.log import rerun_disabled_check
 from rerun.log.error_utils import _send_warning
 from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
@@ -14,6 +15,7 @@ __all__ = [
 ]
 
 
+@rerun_disabled_check
 def log_image(
     entity_path: str,
     image: Tensor,
@@ -73,6 +75,7 @@ def log_image(
     _log_tensor(entity_path, image, ext=ext, timeless=timeless)
 
 
+@rerun_disabled_check
 def log_depth_image(
     entity_path: str,
     image: Tensor,
@@ -134,6 +137,7 @@ def log_depth_image(
         )
 
 
+@rerun_disabled_check
 def log_segmentation_image(
     entity_path: str,
     image: npt.ArrayLike,

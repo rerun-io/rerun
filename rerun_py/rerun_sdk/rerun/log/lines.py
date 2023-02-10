@@ -6,7 +6,7 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
-from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log import _normalize_colors, _normalize_radii, rerun_disabled_check
 from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 
+@rerun_disabled_check
 def log_path(
     entity_path: str,
     positions: Optional[npt.NDArray[np.float32]],
@@ -84,6 +85,7 @@ def log_path(
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
 
+@rerun_disabled_check
 def log_line_segments(
     entity_path: str,
     positions: npt.NDArray[np.float32],

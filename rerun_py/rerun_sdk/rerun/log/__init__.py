@@ -34,6 +34,17 @@ OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
+def rerun_disabled_check(func):
+    """A Python method decorator that bypasses Rerun logging if `disabled` == True in `_module_state`."""
+
+    def wrapper(*args, **kwargs):
+        if not bindings.logging_enabled():
+            return
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
     if isinstance(array, np.ndarray):
         return np.require(array, float).tolist()  # type: ignore[no-any-return]
