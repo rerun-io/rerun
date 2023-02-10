@@ -89,6 +89,12 @@ fn build_web() {
     let crate_name = "re_viewer";
     let build_dir = "web_viewer";
 
+    assert!(
+        Path::new(build_dir).exists(),
+        "Failed to find dir {build_dir}. Expected to be run at repository root. CWD: {:?}",
+        std::env::current_dir()
+    );
+
     let wasm_path = Path::new(build_dir).join([crate_name, "_bg.wasm"].concat());
     fs::remove_file(wasm_path.clone()).ok();
 
