@@ -98,6 +98,34 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 
 #[must_use]
 pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
+    set_app_icon();
+
+    if let Some(render_state) = &cc.wgpu_render_state {
+        use re_renderer::{config::RenderContextConfig, RenderContext};
+
+        let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
+
+        // TODO(andreas): Query used surface format from eframe/renderer.
+        let output_format_color = if cfg!(target_arch = "wasm32") {
+            wgpu::TextureFormat::Rgba8Unorm
+        } else {
+            wgpu::TextureFormat::Bgra8Unorm
+        };
+
+        paint_callback_resources.insert(RenderContext::new(
+            render_state.device.clone(),
+            render_state.queue.clone(),
+            RenderContextConfig {
+                output_format_color,
+                hardware_tier: crate::hardware_tier(),
+            },
+        ));
+    }
+
+    re_ui::ReUi::load_and_apply(&cc.egui_ctx)
+}
+
+fn set_app_icon() {
     // Set icon & app title for MacOS applications.
     // (can't do this before eframe creation since then we don't have an NSApplication yet)
     //
@@ -137,28 +165,4 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
             // https://stackoverflow.com/questions/28808226/changing-cocoa-app-icon-title-and-menu-labels-at-runtime
         }
     }
-
-    if let Some(render_state) = &cc.wgpu_render_state {
-        use re_renderer::{config::RenderContextConfig, RenderContext};
-
-        let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
-
-        // TODO(andreas): Query used surface format from eframe/renderer.
-        let output_format_color = if cfg!(target_arch = "wasm32") {
-            wgpu::TextureFormat::Rgba8Unorm
-        } else {
-            wgpu::TextureFormat::Bgra8Unorm
-        };
-
-        paint_callback_resources.insert(RenderContext::new(
-            render_state.device.clone(),
-            render_state.queue.clone(),
-            RenderContextConfig {
-                output_format_color,
-                hardware_tier: crate::hardware_tier(),
-            },
-        ));
-    }
-
-    re_ui::ReUi::load_and_apply(&cc.egui_ctx)
 }
