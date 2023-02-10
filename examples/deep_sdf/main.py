@@ -74,7 +74,7 @@ def get_mesh_format(mesh: Trimesh) -> MeshFormat:
             # ".gltf": MeshFormat.GLTF,
             ".obj": MeshFormat.OBJ,
         }[ext]
-    except:
+    except Exception:
         raise ValueError(f"unknown file extension: {ext}")
 
 
@@ -149,7 +149,7 @@ def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: i
         with open(voxvol_path, "rb") as f:
             voxvol = np.load(voxvol_path)
             rr.log_text_entry("global", "loading volumetric SDF from cache")
-    except:
+    except Exception:
         voxvol = compute_voxel_sdf(mesh, resolution)
 
     log_volumetric_sdf(voxvol)
@@ -173,7 +173,7 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
         with open(points_path, "rb") as f:
             points = np.load(points_path)
             rr.log_text_entry("global", "loading point cloud from cache")
-    except:
+    except Exception:
         (points, sdf) = compute_sample_sdf(mesh, num_points)
 
     log_mesh(mesh_path, mesh)
