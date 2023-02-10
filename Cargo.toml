@@ -67,6 +67,10 @@ debug = true
 
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
+# If you do patch always prefer to patch to a commit on the trunk of the upstream repo.
+# If that is not possible, patch to a branch that has a PR open on the upstream repo.
+# As a last resport, patch with a commit to our own repository.
+# ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # https://github.com/DataEngineeringLabs/arrow2-convert/pull/98
 arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "ac65e04a517db0e3f15bc6a0036b7c371023da48" }
