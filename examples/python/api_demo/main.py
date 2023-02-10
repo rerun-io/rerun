@@ -2,8 +2,8 @@
 """Minimal examples of Rerun SDK usage.
 
 Example usage:
-* Run all demos: `examples/api_demo/main.py`
-* Run specific demo: `examples/api_demo/main.py --demo rects`
+* Run all demos: `examples/python/api_demo/main.py`
+* Run specific demo: `examples/python/api_demo/main.py --demo rects`
 """
 
 import argparse

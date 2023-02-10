@@ -3,7 +3,7 @@
 
 Run:
 ``` sh
-python3 examples/dicom/main.py
+python3 examples/python/dicom/main.py
 ```
 """
 

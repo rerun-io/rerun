@@ -5,7 +5,7 @@ This example demonstrates how to log simple plots with the Rerun SDK.
 
 Run:
 ```sh
-./examples/plot/main.py
+./examples/python/plot/main.py
 ```
 """
 

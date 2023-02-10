@@ -7,7 +7,7 @@ This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-call
 Run:
 ```sh
 # assuming your virtual env is up
-examples/raw_mesh/main.py
+examples/python/raw_mesh/main.py
 ```
 """
 

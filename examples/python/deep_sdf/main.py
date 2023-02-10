@@ -22,7 +22,7 @@ the DeepSDF paper ([1]), and visualize the results using the Rerun SDK.
 Run:
 ```sh
 # assuming your virtual env is up
-examples/deep_sdf/main.py
+examples/python/deep_sdf/main.py
 ```
 """
 

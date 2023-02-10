@@ -7,4 +7,4 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rerun = { path = "../../crates/rerun", features = ["glam"] }
+rerun = { path = "../../../crates/rerun", features = ["glam"] }

@@ -7,7 +7,7 @@ import cv2
 import requests
 
 DATASET_BASE_URL = "https://storage.googleapis.com/objectron"
-LOCAL_DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "downloaded"
+LOCAL_DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 IMAGE_RESOLUTION: Final = (1440, 1920)
 GEOMETRY_FILENAME: Final = "geometry.pbdata"
 ANNOTATIONS_FILENAME: Final = "annotation.pbdata"
@@ -29,7 +29,7 @@ AVAILABLE_RECORDINGS = [
 def ensure_downloaded(src_url: str, dst_path: Path) -> None:
     os.makedirs(dst_path.parent, exist_ok=True)
     if not dst_path.exists():
-        logging.info("Downloading from %s to %s", src_url, dst_path)
+        logging.info("Downloading %s to %s")
         with requests.get(src_url, stream=True) as req:
             req.raise_for_status()
             with open(dst_path, "wb") as f:

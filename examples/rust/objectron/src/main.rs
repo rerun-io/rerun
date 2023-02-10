@@ -413,7 +413,7 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!(
             "Could not read the recording, have you downloaded the dataset? \
             Try running the python version first to download it automatically \
-            (`examples/objectron/main.py --recording {}`).",
+            (`examples/python/objectron/main.py --recording {}`).",
             args.recording.to_possible_value().unwrap().get_name(),
         );
     };

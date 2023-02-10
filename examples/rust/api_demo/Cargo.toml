@@ -1,22 +1,18 @@
 [package]
-name = "objectron"
+name = "api_demo"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
 
-
 [dependencies]
-rerun = { path = "../../crates/rerun" }
+rerun = { path = "../../../crates/rerun" }
 
 anyhow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
 glam.workspace = true
-image = { version = "0.24", default-features = false, features = ["jpeg"] }
 itertools = "0.10"
-prost = "0.11"
-
-
-[build-dependencies]
-prost-build = "0.11"
+ndarray.workspace = true
+ndarray-rand = "0.14"
+rand = "0.8"

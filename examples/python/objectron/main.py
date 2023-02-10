@@ -3,7 +3,7 @@
 """
 Example of using the Rerun SDK to log the Objectron dataset.
 
-Example: `examples/objectron/main.py --recording chair`
+Example: `examples/python/objectron/main.py --recording chair`
 """
 
 
@@ -18,7 +18,7 @@ from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
-from dataset.dataset import (
+from download_dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,
     GEOMETRY_FILENAME,
@@ -26,7 +26,7 @@ from dataset.dataset import (
     LOCAL_DATASET_DIR,
     ensure_recording_available,
 )
-from dataset.proto.objectron.proto import (
+from proto.objectron.proto import (
     ARCamera,
     ARFrame,
     ARPointCloud,
