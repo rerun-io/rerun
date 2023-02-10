@@ -45,7 +45,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          save-if: ${{ github.event_name == 'push'}}
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: false
 
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee

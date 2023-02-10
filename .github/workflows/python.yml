@@ -62,26 +62,26 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
-    # Sets TAGGED_OR_MAIN if this workflow is running on a tag or the main branch.
-    - name: Set TAGGED_OR_MAIN
-      if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
-      run: echo "TAGGED_OR_MAIN=1" >> $GITHUB_ENV
+      # Sets TAGGED_OR_MAIN if this workflow is running on a tag or the main branch.
+      - name: Set TAGGED_OR_MAIN
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        run: echo "TAGGED_OR_MAIN=1" >> $GITHUB_ENV
 
-    - id: set-matrix
-      shell: bash
-      run: |
-        matrix=()
+      - id: set-matrix
+        shell: bash
+        run: |
+          matrix=()
 
-        if [[ $TAGGED_OR_MAIN ]]; then
-          # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
-          matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
-        fi
-        matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
-        matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores"}')
+          if [[ $TAGGED_OR_MAIN ]]; then
+            # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
+            matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
+          fi
+          matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
+          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores"}')
 
-        echo "Matrix values: ${matrix[@]}"
+          echo "Matrix values: ${matrix[@]}"
 
-        echo "matrix={\"include\":[${matrix[@]}]}" >> $GITHUB_OUTPUT
+          echo "matrix={\"include\":[${matrix[@]}]}" >> $GITHUB_OUTPUT
 
   wheels:
     name: Build Python Wheels
@@ -108,8 +108,11 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: False
 
       - name: Setup python
         uses: actions/setup-python@v4
