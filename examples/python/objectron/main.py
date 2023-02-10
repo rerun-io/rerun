@@ -6,8 +6,8 @@ Example of using the Rerun SDK to log the Objectron dataset.
 Example: `examples/python/objectron/main.py --recording chair`
 """
 
-import logging
 import argparse
+import logging
 import math
 import os
 import sys
