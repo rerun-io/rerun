@@ -10,23 +10,19 @@ use pyo3::{
     types::PyDict,
 };
 
-// init
-pub use rerun::{global_session, ApplicationId, RecordingId};
+use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
+use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
+use rerun::{global_session, ApplicationId, EntityPath, RecordingId};
 
-// time
-use rerun::{Time, TimeInt, TimePoint, TimeType, Timeline};
-
-// messages
-use rerun::{EntityPath, LogMsg, MsgBundle, MsgId, PathOp};
-
-// components
 pub use rerun::{
-    AnnotationContext, AnnotationInfo, Arrow3D, Axis3, Box3D, ClassDescription, ClassId, ColorRGBA,
-    EncodedMesh3D, Handedness, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
-    Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
-    Rigid3, Scalar, ScalarPlotProps, Sign, SignedAxis3, Size3D, Tensor, TensorData,
-    TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
-    ViewCoordinates,
+    components::{
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+        EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
+        MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
+        Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDimension, TensorId,
+        TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    },
+    coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
 use crate::arrow::get_registered_component_names;
@@ -262,17 +258,20 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve() -> PyResult<()> {
+fn serve(open_browser: bool) -> PyResult<()> {
     #[cfg(feature = "web")]
     {
-        global_session().serve();
+        global_session().serve(open_browser);
         Ok(())
     }
 
     #[cfg(not(feature = "web"))]
-    Err(PyRuntimeError::new_err(
-        "The Rerun SDK was not compiled with the 'web' feature",
-    ))
+    {
+        _ = open_browser;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web' feature",
+        ))
+    }
 }
 
 #[pyfunction]
@@ -331,7 +330,7 @@ fn save(path: &str) -> PyResult<()> {
     re_log::trace!("Saving file to {path:?}…");
 
     let mut session = global_session();
-    if session.is_connected() {
+    if session.is_streaming_over_tcp() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));

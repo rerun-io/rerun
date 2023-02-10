@@ -22,8 +22,10 @@ type Level = u64;
 
 /// How many bits we progress in each [`BranchNode`]
 const LEVEL_STEP: u64 = 3;
+
 /// The level used for [`DenseLeaf`].
 const BOTTOM_LEVEL: Level = 1;
+
 /// Number of children in [`DenseLeaf`].
 const NUM_CHILDREN_IN_DENSE: u64 = 16;
 
@@ -141,7 +143,7 @@ impl Int64Histogram {
     /// To get all individual entries, use `cutoff_size<=1`.
     /// When `cutoff_size > 1` you will get approximate ranges, which may cover elements that has no count.
     ///
-    /// For instance, inserting tow elements at `10` and `15` and setting a `cutoff_size=10`
+    /// For example, inserting two elements at `10` and `15` and setting a `cutoff_size=10`
     /// you may get a single range `[8, 16]` with the total count.
     pub fn range(&self, range: impl std::ops::RangeBounds<i64>, cutoff_size: u64) -> Iter<'_> {
         let range = range_u64_from_range_bounds(range);

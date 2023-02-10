@@ -23,11 +23,13 @@ pub struct ShaderModuleDesc {
     /// Path to the source code of this shader module.
     pub source: PathBuf,
 }
+
 impl PartialEq for ShaderModuleDesc {
     fn eq(&self, rhs: &Self) -> bool {
         self.source.eq(&rhs.source)
     }
 }
+
 impl Hash for ShaderModuleDesc {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // NOTE: for a shader, the only thing that should matter is the source
@@ -35,6 +37,7 @@ impl Hash for ShaderModuleDesc {
         self.source.hash(state);
     }
 }
+
 impl ShaderModuleDesc {
     fn create_shader_module<Fs: FileSystem>(
         &self,

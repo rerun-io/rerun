@@ -63,6 +63,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
         use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
 
         struct FieldVisitor;
+
         impl<'de> serde::de::Visitor<'de> for FieldVisitor {
             type Value = ArrowMsg;
 

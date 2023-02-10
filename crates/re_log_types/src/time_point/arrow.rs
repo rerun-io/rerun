@@ -132,7 +132,9 @@ pub struct TimePointArray;
 
 impl<'a> IntoIterator for &'a TimePointArray {
     type Item = TimePoint;
+
     type IntoIter = TimePointIterator<'a>;
+
     fn into_iter(self) -> Self::IntoIter {
         panic!("Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert.");
     }

@@ -97,6 +97,7 @@ pub struct EntityTree {
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
+
     /// Book-keeping around whether we should clear recursively when data is added
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 

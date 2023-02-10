@@ -26,6 +26,7 @@ impl GpuTexture2DHandle {
 /// It is *not* stored along side the resulting texture resource!
 pub struct Texture2DCreationDesc<'a> {
     pub label: DebugLabel,
+
     /// Data for the highest mipmap level.
     /// Must be padded according to wgpu rules and ready for upload.
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
