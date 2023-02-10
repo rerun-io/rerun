@@ -87,6 +87,7 @@ def log_mesh_file(
 
 def log_image_file(
     entity_path: str,
+    *,
     img_path: Path,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
@@ -111,4 +112,4 @@ def log_image_file(
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
-    bindings.log_image_file(entity_path, img_path, img_format, timeless)
+    bindings.log_image_file(entity_path, img_path=img_path, img_format=img_format, timeless=timeless)
