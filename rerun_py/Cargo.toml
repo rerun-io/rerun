@@ -12,7 +12,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module"]
+default = ["extension-module", "web"]
 
 # We need to enable the `pyo3/extension-module` when building the SDK,
 # but we cannot enable it when building tests and benchmarks, so we
