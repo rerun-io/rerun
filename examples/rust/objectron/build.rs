@@ -13,7 +13,7 @@ fn main() -> Result<(), std::io::Error> {
             "proto/annotation_data.proto",
             "proto/object.proto",
         ],
-        &["dataset/proto"],
+        &["proto"],
     )?;
 
     let out_dir = std::env::var("OUT_DIR").unwrap();
