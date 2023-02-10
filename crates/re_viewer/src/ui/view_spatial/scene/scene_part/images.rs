@@ -119,6 +119,7 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
         }
     }
 }
+
 pub(crate) struct ImagesPart;
 
 impl ImagesPart {

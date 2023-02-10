@@ -37,6 +37,7 @@ pub struct View3DState {
 
     /// Currently tracked camera.
     tracked_camera: Option<InstancePath>,
+
     /// Camera pose just before we took over another camera via [Self::tracked_camera].
     camera_before_tracked_camera: Option<Eye>,
 

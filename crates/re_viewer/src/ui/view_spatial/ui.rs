@@ -34,6 +34,7 @@ pub enum AutoSizeUnit {
     UiPoints,
     World,
 }
+
 impl From<AutoSizeUnit> for WidgetText {
     fn from(val: AutoSizeUnit) -> Self {
         match val {
@@ -54,6 +55,7 @@ pub struct ViewSpatialState {
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
     #[serde(skip, default = "BoundingBox::nothing")]
     pub scene_bbox_accum: BoundingBox,
+
     /// Estimated bounding box of all data for the last scene query.
     #[serde(skip, default = "BoundingBox::nothing")]
     pub scene_bbox: BoundingBox,

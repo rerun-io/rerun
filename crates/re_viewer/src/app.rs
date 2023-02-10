@@ -1171,6 +1171,7 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
     }
 }
+
 fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         // we use monospace so the width doesn't fluctuate as the numbers change.
@@ -1488,6 +1489,7 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
 
     if ui.button("panic! during unwind").clicked() {
         struct PanicOnDrop {}
+
         impl Drop for PanicOnDrop {
             fn drop(&mut self) {
                 panic!("Second intentional panic in Drop::drop");

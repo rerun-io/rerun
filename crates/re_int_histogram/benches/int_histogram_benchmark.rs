@@ -26,6 +26,7 @@ criterion_main!(benches);
 pub struct BTreeeInt64Histogram {
     map: std::collections::BTreeMap<i64, u32>,
 }
+
 impl BTreeeInt64Histogram {
     pub fn increment(&mut self, key: i64, inc: u32) {
         *self.map.entry(key).or_default() += inc;

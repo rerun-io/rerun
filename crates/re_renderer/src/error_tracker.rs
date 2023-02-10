@@ -176,6 +176,7 @@ impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
 /// Used for deduplication purposes.
 #[derive(Debug)]
 pub struct WrappedContextError(Box<ContextError>);
+
 impl std::hash::Hash for WrappedContextError {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.label.hash(state); // e.g. "composite_encoder"
@@ -189,6 +190,7 @@ impl std::hash::Hash for WrappedContextError {
         }
     }
 }
+
 impl PartialEq for WrappedContextError {
     fn eq(&self, rhs: &Self) -> bool {
         let mut is_eq = self.0.label.eq(&rhs.0.label)
@@ -208,6 +210,7 @@ impl PartialEq for WrappedContextError {
         is_eq
     }
 }
+
 impl Eq for WrappedContextError {}
 
 // ---
@@ -218,6 +221,7 @@ impl Eq for WrappedContextError {}
 /// is in a poisoned state.
 pub struct ErrorTracker {
     tick_nr: AtomicUsize,
+
     /// This countdown reaching 0 indicates that the pipeline has stabilized into a
     /// sane state, which might take a few frames if we've just left a poisoned state.
     ///
@@ -225,6 +229,7 @@ pub struct ErrorTracker {
     clear_countdown: AtomicI64,
     errors: Mutex<HashSet<WrappedContextError>>,
 }
+
 impl Default for ErrorTracker {
     fn default() -> Self {
         Self {
@@ -234,6 +239,7 @@ impl Default for ErrorTracker {
         }
     }
 }
+
 impl ErrorTracker {
     /// Increment tick count used in logged errors, and clear the tracker as needed.
     pub fn tick(&self) {
