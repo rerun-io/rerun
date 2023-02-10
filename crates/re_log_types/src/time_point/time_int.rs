@@ -20,10 +20,28 @@ impl TimeInt {
     // The reason we don't use i64::MIN is because in the time panel we need
     // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
     // a bit of leeway.
-    pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
+    pub const BEGINNING: Self = Self(i64::MIN / 2);
 
-    pub const MIN: TimeInt = TimeInt(i64::MIN);
-    pub const MAX: TimeInt = TimeInt(i64::MAX);
+    pub const MIN: Self = Self(i64::MIN);
+    pub const MAX: Self = Self(i64::MAX);
+
+    /// For time timelines.
+    #[inline]
+    pub fn from_nanos(nanos: i64) -> Self {
+        Self(nanos)
+    }
+
+    /// For time timelines.
+    #[inline]
+    pub fn from_seconds(seconds: i64) -> Self {
+        Self::from_nanos(seconds.saturating_mul(1_000_000_000))
+    }
+
+    /// For sequence timelines.
+    #[inline]
+    pub fn from_sequence(sequence: i64) -> Self {
+        Self(sequence)
+    }
 
     #[inline]
     pub fn as_i64(&self) -> i64 {

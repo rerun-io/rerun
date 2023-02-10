@@ -1,6 +1,7 @@
 use std::ops::RangeInclusive;
 
 use egui::{lerp, remap, NumExt};
+use itertools::Itertools as _;
 
 use re_log_types::{TimeInt, TimeRange, TimeRangeF, TimeReal};
 
@@ -12,6 +13,8 @@ use crate::{misc::time_control::PlayState, TimeView, ViewerContext};
 const MAX_GAP: f32 = 40.0;
 
 /// How much of the gap use up to expand segments visually to either side?
+///
+/// Should be strictly less than half, or we will get overlapping segments.
 const GAP_EXPANSION_FRACTION: f32 = 1.0 / 4.0;
 
 /// Sze of the gap between time segments.
@@ -29,31 +32,40 @@ pub fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
 
 #[derive(Debug)]
 pub struct Segment {
+    /// The range on the x-axis in the ui, in screen coordinates.
+    ///
     /// Matches [`Self::time`] (linear transform).
     pub x: RangeInclusive<f32>,
 
     /// Matches [`Self::x`] (linear transform).
     pub time: TimeRangeF,
 
-    /// does NOT match any of the above. Instead this is a tight bound.
+    /// Does NOT match any of the above. Instead this is a tight bound.
     pub tight_time: TimeRange,
 }
 
 /// Represents a compressed view of time.
-/// It does so by breaking up the timeline in linear segments.
+///
+/// It does so by breaking up the timeline in linear [`Segment`]s.
 ///
 /// Recreated each frame.
 #[derive(Debug)]
 pub struct TimeRangesUi {
-    /// The total x-range we are viewing
+    /// The total UI x-range we are viewing.
     x_range: RangeInclusive<f32>,
 
+    /// The range of time we are viewing.
     time_view: TimeView,
 
-    /// x ranges matched to time ranges
+    /// The linear segments.
+    ///
+    /// Before the first and after the last we extrapolate.
+    /// Between the segments we interpolate.
     pub segments: Vec<Segment>,
 
-    /// x distance per time unit
+    /// x distance per time unit inside the segments,
+    /// and before/after the last segment.
+    /// Between segments time moves faster.
     points_per_time: f32,
 }
 
@@ -73,7 +85,11 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(x_range: RangeInclusive<f32>, time_view: TimeView, segments: &[TimeRange]) -> Self {
+    pub fn new(
+        x_range: RangeInclusive<f32>,
+        time_view: TimeView,
+        time_ranges: &[TimeRange],
+    ) -> Self {
         crate::profile_function!();
 
         //        <------- time_view ------>
@@ -82,42 +98,58 @@ impl TimeRangesUi {
         //    [segment] [long segment]
         //             ^ gap
 
-        let gap_width = gap_width(&x_range, segments);
-        let width = *x_range.end() - *x_range.start();
-        let points_per_time = width / time_view.time_spanned as f32;
+        let gap_width_in_ui = gap_width(&x_range, time_ranges);
+        let width_in_ui = *x_range.end() - *x_range.start();
+        let points_per_time = width_in_ui / time_view.time_spanned as f32;
         let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
             points_per_time
         } else {
             1.0
         };
 
-        let mut left = 0.0; // we will translate things left/right later
-        let ranges = segments
+        // We expand each segment slightly, shrinking the gaps.
+        // This is so that when a user drags the time to the start or end of a segment,
+        // and they overshoot, they don't immediately go into the non-linear realm between segments.
+        // When we expand we must take care not to expand so much that the gaps cover _negative_ time!
+        let shortest_time_gap =
+            time_ranges
+                .iter()
+                .tuple_windows()
+                .fold(f32::INFINITY, |shortest, (a, b)| {
+                    debug_assert!(a.max < b.min, "Overlapping time ranges: {a:?}, {b:?}");
+                    let time_gap = b.min - a.max;
+                    time_gap.as_f32().min(shortest)
+                });
+
+        let expansion_in_time = TimeReal::from(
+            (GAP_EXPANSION_FRACTION * gap_width_in_ui / points_per_time)
+                .at_most(shortest_time_gap * GAP_EXPANSION_FRACTION),
+        );
+        let expansion_in_ui = points_per_time * expansion_in_time.as_f32();
+
+        let mut left = 0.0; // we will translate things left/right later to align x_range with time_view
+        let segments = time_ranges
             .iter()
-            .map(|range| {
-                let range_width = range.length().as_f32() * points_per_time;
+            .map(|&tight_time_range| {
+                let range_width = tight_time_range.length().as_f32() * points_per_time;
                 let right = left + range_width;
                 let x_range = left..=right;
-                left = right + gap_width;
-
-                let tight_time = *range;
+                left = right + gap_width_in_ui;
 
                 // expand each span outwards a bit to make selection of outer data points easier.
                 // Also gives zero-width segments some width!
-                let expansion = GAP_EXPANSION_FRACTION * gap_width;
-                let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
+                let x_range =
+                    (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
 
-                let range = if range.min == range.max {
-                    TimeRangeF::from(*range) // don't expand zero-width segments (e.g. `TimeInt::BEGINNING`).
-                } else {
-                    let time_expansion = TimeReal::from(expansion / points_per_time);
-                    TimeRangeF::new(range.min - time_expansion, range.max + time_expansion)
-                };
+                let time_range = TimeRangeF::new(
+                    tight_time_range.min - expansion_in_time,
+                    tight_time_range.max + expansion_in_time,
+                );
 
                 Segment {
                     x: x_range,
-                    time: range,
-                    tight_time,
+                    time: time_range,
+                    tight_time: tight_time_range,
                 }
             })
             .collect();
@@ -125,16 +157,28 @@ impl TimeRangesUi {
         let mut slf = Self {
             x_range: x_range.clone(),
             time_view,
-            segments: ranges,
+            segments,
             points_per_time,
         };
 
         if let Some(time_start_x) = slf.x_from_time(time_view.min) {
-            // Now move things left/right to align `x_range` and `view_range`:
+            // Now move things left/right to align `x_range` and `time_view`:
             let x_translate = *x_range.start() - time_start_x;
             for segment in &mut slf.segments {
                 segment.x = (*segment.x.start() + x_translate)..=(*segment.x.end() + x_translate);
             }
+        }
+
+        #[cfg(debug_assertions)]
+        for (a, b) in slf.segments.iter().tuple_windows() {
+            debug_assert!(
+                a.x.end() < b.x.start(),
+                "Overlapping x in segments: {a:#?}, {b:#?}"
+            );
+            debug_assert!(
+                a.tight_time.max < b.tight_time.min,
+                "Overlapping time in segments: {a:#?}, {b:#?}"
+            );
         }
 
         slf
@@ -154,15 +198,20 @@ impl TimeRangesUi {
             // BEGINNING (-∞ = timeless data) and some real time.
             // Otherwise we get weird times (e.g. dates in 1923).
             // Selecting times between other segments is not as problematic, as all other segments are
-            // real times, so interpolating between them always produces valid times.
+            // real times, so interpolating between them always produces valid times
+            // (we want users to have a smooth experience dragging the time handle anywhere else).
             // By disallowing times between BEGINNING and the first real segment,
             // we also disallow users dragging the time to be between -∞ and the
             // real beginning of their data. That further highlights the specialness of -∞.
-            // Furthermore, we want users to have a smooth experience dragging the time handle anywhere else.
-            if first.tight_time == TimeRange::point(TimeInt::BEGINNING) {
+            if first.tight_time.contains(TimeInt::BEGINNING) {
                 if let Some(second) = self.segments.get(1) {
-                    if TimeInt::BEGINNING < time && time < second.tight_time.min {
-                        time = TimeReal::from(second.tight_time.min);
+                    let half_way =
+                        TimeRangeF::new(TimeInt::BEGINNING, second.tight_time.min).lerp(0.5);
+
+                    if time < half_way {
+                        time = TimeReal::from(TimeInt::BEGINNING);
+                    } else if time < second.tight_time.min {
+                        time = second.tight_time.min.into();
                     }
                 }
             }
