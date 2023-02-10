@@ -61,7 +61,9 @@ def ensure_opencv_version_ok() -> None:
 
 
 def ensure_recording_downloaded(recording_name: str, dataset_dir: Path) -> Path:
-    """Makes sure the recording is downloaded.
+    """
+    Makes sure the recording is downloaded.
+
     Returns the path to where the dataset is downloaded locally.
     """
     ensure_opencv_version_ok()

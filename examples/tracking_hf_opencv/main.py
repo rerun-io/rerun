@@ -267,7 +267,9 @@ def update_trackers_with_detections(
     label_strs: Sequence[str],
     bgr: npt.NDArray[np.uint8],
 ) -> List[Tracker]:
-    """Tries to match detections to existing trackers and updates the trackers if they match.
+    """
+    Tries to match detections to existing trackers and updates the trackers if they match.
+
     Any detections that don't match existing trackers will generate new trackers.
     Returns the new set of trackers.
     """
