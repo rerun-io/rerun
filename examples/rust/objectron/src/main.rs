@@ -408,15 +408,15 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Parse protobuf dataset
-    let Ok(rec_info) = args.recording.info() else {
+    let rec_info = args.recording.info().with_context(|| {
         use clap::ValueEnum as _;
-        anyhow::bail!(
+        format!(
             "Could not read the recording, have you downloaded the dataset? \
             Try running the python version first to download it automatically \
             (`examples/python/objectron/main.py --recording {}`).",
             args.recording.to_possible_value().unwrap().get_name(),
-        );
-    };
+        )
+    })?;
     let annotations = read_annotations(&rec_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
@@ -487,28 +487,33 @@ struct RecordingInfo {
 
 impl Recording {
     fn info(&self) -> anyhow::Result<RecordingInfo> {
-        const DATASET_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/dataset/downloaded");
+        const DATASET_DIR: &str = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../python/objectron/dataset"
+        );
 
         use clap::ValueEnum as _;
         let rec = self.to_possible_value().unwrap();
 
-        // objectron/dataset/downloaded/book
+        // objectron/dataset/book
         let path = PathBuf::from(DATASET_DIR).join(rec.get_name());
-        // objectron/dataset/downloaded/book/batch-20
-        let path = std::fs::read_dir(path)?
+        // objectron/dataset/book/batch-20
+        let path = std::fs::read_dir(&path)
+            .with_context(|| format!("Path: {path:?}"))?
             .next()
             .context("empty directory")??
             .path();
-        // objectron/dataset/downloaded/book/batch-20/35
-        let path = std::fs::read_dir(path)?
+        // objectron/dataset/book/batch-20/35
+        let path = std::fs::read_dir(&path)
+            .with_context(|| format!("Path: {path:?}"))?
             .next()
             .context("empty directory")??
             .path();
 
         Ok(RecordingInfo {
-            // objectron/dataset/downloaded/book/batch-20/35/geometry.pbdata
+            // objectron/dataset/book/batch-20/35/geometry.pbdata
             path_ar_frames: path.join("geometry.pbdata"),
-            // objectron/dataset/downloaded/book/batch-20/35/annotation.pbdata
+            // objectron/dataset/book/batch-20/35/annotation.pbdata
             path_annotations: path.join("annotation.pbdata"),
         })
     }
