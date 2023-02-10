@@ -35,3 +35,6 @@ RUN cargo install wasm-bindgen-cli@0.2.84
 
 # Increment this to invalidate cache
 ENV CACHE_KEY=rerun_docker_v0.1
+
+# See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
+RUN git config --system --add safe.directory '*'
