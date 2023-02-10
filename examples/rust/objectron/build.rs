@@ -9,9 +9,9 @@ fn main() -> Result<(), std::io::Error> {
 
     prost_build::compile_protos(
         &[
-            "dataset/proto/a_r_capture_metadata.proto",
-            "dataset/proto/annotation_data.proto",
-            "dataset/proto/object.proto",
+            "proto/a_r_capture_metadata.proto",
+            "proto/annotation_data.proto",
+            "proto/object.proto",
         ],
         &["dataset/proto"],
     )?;
