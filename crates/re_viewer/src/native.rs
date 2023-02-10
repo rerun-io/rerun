@@ -1,5 +1,7 @@
 use re_log_types::LogMsg;
 
+use crate::APPLICATION_NAME;
+
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
@@ -28,7 +30,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "Rerun Viewer",
+        APPLICATION_NAME,
         native_options,
         Box::new(move |cc| {
             let re_ui = crate::customize_eframe(cc);
