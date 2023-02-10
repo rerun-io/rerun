@@ -122,7 +122,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: python scripts/patch_prerelease_version.py
 
-      - run: ./scripts/setup_web.sh
+      - name: Install prerequisites for building the web-viewer Wasm
+        run: ./scripts/setup_web.sh
 
       - name: Build and install rerun
         run: pip install rerun_py/
@@ -144,6 +145,7 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
+            --features web
             --universal2
             --out dist
 
