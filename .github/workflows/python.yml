@@ -145,7 +145,8 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --features web
+            --no-default-features
+            --features pypi
             --universal2
             --out dist
 
