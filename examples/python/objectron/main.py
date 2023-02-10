@@ -6,7 +6,7 @@ Example of using the Rerun SDK to log the Objectron dataset.
 Example: `examples/python/objectron/main.py --recording chair`
 """
 
-
+import logging
 import argparse
 import math
 import os
@@ -256,6 +256,10 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
 
 
 def main() -> None:
+    # Ensure the logging in download_dataset.py gets written to stderr:
+    logging.getLogger().addHandler(logging.StreamHandler())
+    logging.getLogger().setLevel("INFO")
+
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument(
         "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"

@@ -29,7 +29,7 @@ AVAILABLE_RECORDINGS = [
 def ensure_downloaded(src_url: str, dst_path: Path) -> None:
     os.makedirs(dst_path.parent, exist_ok=True)
     if not dst_path.exists():
-        logging.info("Downloading %s to %s")
+        logging.info("Downloading %s to %s", src_url, dst_path)
         with requests.get(src_url, stream=True) as req:
             req.raise_for_status()
             with open(dst_path, "wb") as f:
