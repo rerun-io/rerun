@@ -12,6 +12,12 @@ impl Icon {
     }
 }
 
+#[cfg(target_os = "macos")]
+pub const APP_ICON: Icon = Icon::new(
+    "app_icon_mac",
+    include_bytes!("../data/icons/app_icon_mac.png"),
+);
+
 pub const RERUN_MENU: Icon =
     Icon::new("rerun_menu", include_bytes!("../data/icons/rerun_menu.png"));
 

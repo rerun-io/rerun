@@ -20,6 +20,7 @@ derive_more = "0.99"
 ecolor = "0.21.0"
 eframe = { version = "0.21.0", default-features = false }
 egui = "0.21.0"
+egui_dock = "0.4"
 egui_extras = "0.21.0"
 egui-wgpu = "0.21.0"
 emath = "0.21.0"
@@ -67,9 +68,6 @@ arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c
 arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e63de5ce71741aaea3c36572d3e6831658ec3ed" }
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
-
-# latest master 2023-02-09, with egui 0.21 update:
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "66d9dd57736532367542840b02e77812cf3bfe99" }
 
 # 2023-10-12 - Alpha to coverage support for GLES
 # wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
