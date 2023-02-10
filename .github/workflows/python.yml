@@ -14,9 +14,14 @@ on:
 
 env:
   PYTHON_VERSION: "3.8"
+  PRE_RELEASE_INSTRUCTIONS: |
+    ## Installing the pre-release Python SDK
+    1. Download the correct `.whl`. For Mac M1/M2, grab the "universal2" `.whl`
+    2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
+    3. Test it: `rerun --version`
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }} # Cancel previous CI jobs only on pull-requests
   cancel-in-progress: true
 
 jobs:
@@ -50,14 +55,48 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  create_rrd:
-    name: Create example RRD files
-    runs-on: ubuntu-latest-16-cores
-    needs: [lint]
+  matrix-setup:
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+    # Sets TAGGED_OR_MAIN if this workflow is running on a tag or the main branch.
+    - name: Set TAGGED_OR_MAIN
+      if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+      run: echo "TAGGED_OR_MAIN=1" >> $GITHUB_ENV
+
+    - id: set-matrix
+      shell: bash
+      run: |
+        matrix=()
+
+        if [[ $TAGGED_OR_MAIN ]]; then
+          # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
+          matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
+        fi
+        matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
+        matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores"}')
+
+        echo "Matrix values: ${matrix[@]}"
+
+        echo "matrix={\"include\":[${matrix[@]}]}" >> $GITHUB_OUTPUT
+
+  wheels:
+    name: Build Python Wheels
+    needs: [lint, matrix-setup]
+
+    strategy:
+      matrix: ${{fromJson(needs.matrix-setup.outputs.matrix)}}
+
+    runs-on: ${{ matrix.runs_on }}
+
     steps:
       - uses: actions/checkout@v3
 
       - name: Cache APT Packages
+        if: matrix.platform == 'linux'
         #uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         #TODO(john) merge upstream
         uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
@@ -69,50 +108,6 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Build and install rerun
-        run: |
-          pip install rerun_py/
-
-      - name: Run Car example
-        run: |
-          mkdir rrd
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless --save rrd/car.rrd
-
-      - name: Upload RRD
-        uses: actions/upload-artifact@v3
-        with:
-          name: rrd
-          path: rrd
-
-  macos:
-    name: Build Python Wheels for MacOS
-    runs-on: macos-latest
-    # This build is really slow (>30 mins); uses up a lot of CI minutes
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
-    needs: [lint, create_rrd]
-    strategy:
-      matrix:
-        target: [x64, universal2]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
@@ -122,44 +117,33 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
-          architecture: x64
 
       - name: Patch Cargo.toml for Pre-Release
         if: github.ref == 'refs/heads/main'
         run: python scripts/patch_prerelease_version.py
 
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: rrd
-          path: rrd
+      - name: Build and install rerun
+        run: pip install rerun_py/
 
-      - name: Inject RRD file
-        run: cp rrd/car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
+      - name: Generate Embedded RRD file
+        shell: bash
+        run: |
+          pip install -r examples/car/requirements.txt
+          python examples/car/main.py --headless --save car.rrd
+          cp car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
 
-      - name: Build wheel - x86_64
-        if: matrix.target == 'x64'
+      - name: Build Wheel
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
-          command: build
-          target: x86_64
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --out dist
-
-      - name: Build wheel - universal2
-        if: matrix.target == 'universal2'
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "0.14.10"
+          manylinux: auto
+          container: off
           command: build
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --out dist
             --universal2
+            --out dist
 
       - name: Install built wheel
         run: |
@@ -180,154 +164,10 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  windows:
-    name: Build Python Wheels for Windows
-    runs-on: windows-latest-8-cores
-    needs: [lint, create_rrd]
-    strategy:
-      matrix:
-        target: [x64]
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          architecture: ${{ matrix.target }}
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Patch Cargo.toml for Pre-Release
-        if: github.ref == 'refs/heads/main'
-        run: python scripts/patch_prerelease_version.py
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: rrd
-          path: rrd
-
-      - name: Inject RRD file
-        run: cp rrd/car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --out dist
-
-      - name: Install built wheel
-        run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest
-          cd rerun_py/tests && pytest
-
-      - name: Run Car example
-        run: |
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
-
-  # ---------------------------------------------------------------------------
-
-  linux:
-    name: Build Python Wheels for Linux
-    runs-on: ubuntu-latest-16-cores
-    needs: [lint, create_rrd]
-    steps:
-      - uses: actions/checkout@v3
-
-      - id: commit
-        uses: pr-mpt/actions-commit-hash@v2
-
-      - name: Cache APT Packages
-        #uses: awalsh128/cache-apt-pkgs-action@v1.2.2
-        #TODO(john) merge upstream
-        uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
-        with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
-          version: 1.0
-          execute_install_scripts: true
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Patch Cargo.toml for Pre-Release
-        if: github.ref == 'refs/heads/main'
-        run: python scripts/patch_prerelease_version.py
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: rrd
-          path: rrd
-
-      - name: Inject RRD file
-        run: cp rrd/car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "0.14.10"
-          target: ${{ matrix.target }}
-          manylinux: auto
-          container: off
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --sdist
-            --out dist
-
-      - name: Install built wheel
-        run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest
-          cd rerun_py/tests && pytest
-
-      - name: Run Car example
-        run: |
-          pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels
-          path: dist
-
-  # ---------------------------------------------------------------------------
-
   # See https://github.com/marvinpinto/action-automatic-releases#automatically-generate-a-pre-release-when-changes-land-on-master for details
   pre-release:
     name: Pre Release
-    needs: [macos, windows, linux]
+    needs: [wheels]
     if: github.ref == 'refs/heads/main'
     runs-on: "ubuntu-latest"
     steps:
@@ -338,14 +178,16 @@ jobs:
           path: dist
 
       - name: Github Release
-        uses: marvinpinto/action-automatic-releases@v1.2.1
+        uses: softprops/action-gh-release@v0.1.15
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
           prerelease: true
-          title: "Development Build"
-          files: |
-            dist/*
+          files: dist/*
+          name: "Development Build"
+          tag_name: "latest-test"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: true
+          append_body: true
 
   # ---------------------------------------------------------------------------
 
@@ -354,7 +196,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [macos, windows, linux]
+    needs: [wheels]
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v3
@@ -366,20 +208,22 @@ jobs:
       # Santiy check the git tag vs. the crate version.
 
       - name: Github Release
-        uses: "marvinpinto/action-automatic-releases@1.2.1"
+        uses: softprops/action-gh-release@v0.1.15
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: |
-            dist/*
+          files: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: true
 
       - name: Publish to PyPI
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         uses: PyO3/maturin-action@v1
+        env:
+          # These are both set in the Github project configuration
+          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         with:
           command: upload
-          args: --skip-existing *
+          args: --skip-existing dist/*
 
   # ---------------------------------------------------------------------------
 
