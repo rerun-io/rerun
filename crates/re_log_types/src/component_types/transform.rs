@@ -226,7 +226,7 @@ pub enum Transform {
     /// Maybe the user intend to set the transform later.
     Unknown,
 
-    /// For instance: the parent is a 3D world space, the child a camera space.
+    /// For example: the parent is a 3D world space, the child a camera space.
     Rigid3(Rigid3),
 
     /// The parent is some local camera space, the child an image space.

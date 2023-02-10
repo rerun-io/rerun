@@ -64,7 +64,7 @@ pub struct Image {
     pub tensor: Tensor,
     /// If this is a depth map, how long is a meter?
     ///
-    /// For instance, with a `u16` dtype one might have
+    /// For example, with a `u16` dtype one might have
     /// `meter == 1000.0` for millimeter precision
     /// up to a ~65m range.
     pub meter: Option<f32>,

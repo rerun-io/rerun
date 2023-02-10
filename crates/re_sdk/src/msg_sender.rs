@@ -24,7 +24,7 @@ pub enum MsgSenderError {
     MoreThanOneRow(Vec<(ComponentName, usize)>),
 
     /// Some components had more or less instances than some other.
-    /// For instance, there were `10` positions and `8` colors.
+    /// For example, there were `10` positions and `8` colors.
     #[error(
         "All component collections must share the same number of instances (i.e. row length) \
             for a given row, got {0:?} instead"
