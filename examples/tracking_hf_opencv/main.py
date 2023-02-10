@@ -30,7 +30,10 @@ DOWNSCALE_FACTOR = 2
 DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
-from transformers import DetrFeatureExtractor, DetrForSegmentation
+from transformers import (  # noqa: E402 module level import not at top of file
+    DetrFeatureExtractor,
+    DetrForSegmentation,
+)
 
 
 @dataclass
