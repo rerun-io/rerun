@@ -15,10 +15,11 @@ use crate::{Component, ComponentName, EntityPath, SerializableComponent, Session
 /// using [`MsgSender`].
 #[derive(thiserror::Error, Debug)]
 pub enum MsgSenderError {
-    /// More than one entity was put in the same log message.
+    /// The same component were put in the same log message multiple times.
+    /// E.g. `with_component()` was called multiple times for `Point3D`.
     /// We don't support that yet.
     #[error(
-        "All component collections must have exactly one row (i.e. no batching), got {0:?} instead"
+        "All component collections must have exactly one row (i.e. no batching), got {0:?} instead. Perhaps with_component() was called multiple times with the same component type?"
     )]
     MoreThanOneRow(Vec<(ComponentName, usize)>),
 
