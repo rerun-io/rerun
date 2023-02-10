@@ -123,6 +123,7 @@ jobs:
         run: python scripts/patch_prerelease_version.py
 
       - name: Install prerequisites for building the web-viewer Wasm
+        shell: bash
         run: ./scripts/setup_web.sh
 
       - name: Build and install rerun
