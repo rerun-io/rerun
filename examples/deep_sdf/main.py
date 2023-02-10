@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 """
-Generate SDFs for arbitrary meshes using both traditional methods as well as the one described in
-the DeepSDF paper ([1]), and visualize the results using the Rerun SDK.
+Generate SDFs for arbitrary meshes and visualize the results using the Rerun SDK.
+
+Using both traditional methods as well as the one described in the DeepSDF paper ([1]).
 
 [1] @InProceedings{Park_2019_CVPR,
     author = {

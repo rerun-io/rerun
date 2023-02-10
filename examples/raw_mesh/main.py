@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Shows how to use the Rerun SDK to log raw 3D meshes (so-called
-"triangle soups") and their transform hierarchy.
+Shows how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy.
 
 Run:
 ```sh

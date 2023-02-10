@@ -221,7 +221,7 @@ class Tracker:
         return self.tracker is not None
 
     def match_score(self, other: Detection) -> float:
-        """Returns bbox IoU if classes match, otherwise 0"""
+        """Returns bbox IoU if classes match, otherwise 0."""
         if self.tracked.class_id != other.class_id:
             return 0.0
         if not self.is_tracking:

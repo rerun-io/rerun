@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Example using an example depth dataset from NYU
+"""
+Example using an example depth dataset from NYU.
 
 https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
 """
