@@ -1,4 +1,10 @@
 # https://flake8.pycqa.org/en/latest/user/configuration.html
+#
+# To ignore a lint on a specifc line, append `# noqa: E731`
+#
+# example = lambda: 'example'  # noqa: E731
+
+
 
 [flake8]
 max-line-length = 120

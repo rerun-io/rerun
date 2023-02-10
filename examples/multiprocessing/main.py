@@ -20,7 +20,7 @@ def task(title: str) -> None:
 
     rr.log_text_entry(
         "log",
-        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
+        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",  # noqa: E501 line too long
     )
     rr.log_rect(title, [10, 20, 30, 40], label=title)
 

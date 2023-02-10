@@ -282,7 +282,7 @@ def main() -> None:
     if args.demo == "all":
         print("Running all demos…")
         for name, demo in demos.items():
-            logging.info(f"Starting {demo}")
+            logging.info(f"Starting {name}")
             demo()
     else:
         demo = demos[args.demo]

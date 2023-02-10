@@ -187,7 +187,8 @@ class SimpleDepthCamera:
 
         Parameters
         ----------
-        - depth_image_mm: Depth image expressed in millimeters
+        depth_image_mm
+            Depth image expressed in millimeters
 
         """
 
