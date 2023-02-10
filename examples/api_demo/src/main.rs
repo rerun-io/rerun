@@ -16,17 +16,20 @@ use std::{
     net::SocketAddr,
 };
 
-use rerun::components::{
-    AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Label,
-    LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3, SignedAxis3, Tensor,
-    TensorDataMeaning, TextEntry, Transform, Vec3D, ViewCoordinates,
+use rerun::{
+    components::{
+        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Label,
+        LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3, Tensor,
+        TensorDataMeaning, TextEntry, Transform, Vec3D, ViewCoordinates,
+    },
+    coordinates::SignedAxis3,
+    external::{
+        re_log,
+        re_log_types::external::{arrow2, arrow2_convert},
+    },
+    time::{Time, TimePoint, TimeType, Timeline},
+    ApplicationId, Component, ComponentName, EntityPath, MsgSender, RecordingId, Session,
 };
-use rerun::external::{
-    re_log,
-    re_log_types::external::{arrow2, arrow2_convert},
-};
-use rerun::time::{Time, TimePoint, TimeType, Timeline};
-use rerun::{ApplicationId, Component, ComponentName, EntityPath, MsgSender, RecordingId, Session};
 
 // --- Rerun logging ---
 
@@ -466,7 +469,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
     ) -> anyhow::Result<()> {
         let view_coords = ViewCoordinates::from_up_and_handedness(
             SignedAxis3::POSITIVE_Z,
-            rerun::components::Handedness::Right,
+            rerun::coordinates::Handedness::Right,
         );
         MsgSender::new(ent_path.into())
             .with_timeless(true)

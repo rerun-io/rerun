@@ -315,12 +315,18 @@ impl ArrowDeserialize for EncodedMesh3D {
 
 // ----------------------------------------------------------------------------
 
+/// The format of a binary mesh file, e.g. `GLTF`, `GLB`, `OBJ`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum MeshFormat {
+    /// [`glTF`](https://en.wikipedia.org/wiki/GlTF).
     Gltf,
+
+    /// Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF).
     Glb,
+
+    /// [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file).
     Obj,
 }
 

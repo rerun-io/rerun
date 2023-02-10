@@ -252,6 +252,7 @@ impl std::fmt::Display for TensorDimension {
     }
 }
 
+/// How to interpret the contents of a tensor.
 // TODO(jleibs) This should be extended to include things like rgb vs bgr
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -259,9 +260,11 @@ impl std::fmt::Display for TensorDimension {
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
+
     /// The data is an annotated [`crate::component_types::ClassId`] which should be
     /// looked up using the appropriate [`crate::context::AnnotationContext`]
     ClassId,
+
     /// Image data interpreted as depth map.
     Depth,
 }
@@ -309,13 +312,17 @@ pub enum TensorDataMeaning {
 pub struct Tensor {
     /// Unique identifier for the tensor
     pub tensor_id: TensorId,
+
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
+
     /// Data payload
     pub data: TensorData,
+
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
     pub meaning: TensorDataMeaning,
+
     /// Reciprocal scale of meter unit for depth images
     pub meter: Option<f32>,
 }

@@ -10,7 +10,7 @@ use crate::{time::Time, TimeRange};
 pub use time_int::TimeInt;
 pub use timeline::{Timeline, TimelineName};
 
-/// A point in time.
+/// A point in time on any number of [`Timeline`]s.
 ///
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
 ///
@@ -69,7 +69,7 @@ impl TimePoint {
 
 // ----------------------------------------------------------------------------
 
-/// The type of a [`TimeInt`].
+/// The type of a [`TimeInt`] or [`Timeline`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
