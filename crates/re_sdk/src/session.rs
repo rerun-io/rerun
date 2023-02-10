@@ -154,6 +154,9 @@ impl Session {
     ///
     /// Returns true after a call to [`Self::connect`].
     ///
+    /// Returns `false` if we are streaming the messages to a web viewer,
+    /// or if we are buffering the messages (to save them to file later).
+    ///
     /// This can return true even before the connection is yet to be established.
     pub fn is_streaming_over_tcp(&self) -> bool {
         matches!(&self.sender, &Sender::Remote(_))
