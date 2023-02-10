@@ -1,5 +1,9 @@
-//! The main Rerun binary.
+//! The main Rerun library and binary.
 //!
+//! ## Library
+//! See [`Session`] and [`MsgSender`].
+//!
+//! ## Binary
 //! This can act either as a server, a viewer, or both, depending on which options you use when you start it.
 //!
 //! ## Feature flags

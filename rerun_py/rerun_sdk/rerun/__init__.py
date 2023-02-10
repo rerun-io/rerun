@@ -229,13 +229,19 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 _spawn = spawn  # we need this because Python scoping is horrible
 
 
-def serve() -> None:
+def serve(open_browser: bool = True) -> None:
     """
     Serve a Rerun Web Viewer.
 
     WARNING: This is an experimental feature.
+
+    Parameters
+    ----------
+    open_browser
+        Open the default browser to the viewer.
+
     """
-    bindings.serve()
+    bindings.serve(open_browser)
 
 
 def disconnect() -> None:

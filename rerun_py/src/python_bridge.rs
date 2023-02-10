@@ -258,10 +258,10 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve() -> PyResult<()> {
+fn serve(open_browser: bool) -> PyResult<()> {
     #[cfg(feature = "web")]
     {
-        global_session().serve();
+        global_session().serve(open_browser);
         Ok(())
     }
 
@@ -327,7 +327,7 @@ fn save(path: &str) -> PyResult<()> {
     re_log::trace!("Saving file to {path:?}…");
 
     let mut session = global_session();
-    if session.is_connected() {
+    if session.is_streaming_over_tcp() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));

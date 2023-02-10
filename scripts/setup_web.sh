@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Installs the prerequisites for compiling Rerun to Wasm for the web.
+# This file is referred to directly by documentation, so do not move it without updating those docs!
+
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."
