@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Example running Depth Guided Stable Diffusion 2.0.
+"""
+Example running Depth Guided Stable Diffusion 2.0.
 
 For more info see: https://github.com/Stability-AI/stablediffusion
-
 """
 import argparse
 import os

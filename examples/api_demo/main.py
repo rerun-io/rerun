@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Minimal examples of Rerun SDK usage.
+"""
+Minimal examples of Rerun SDK usage.
 
 Example usage:
 * Run all demos: `examples/api_demo/main.py`

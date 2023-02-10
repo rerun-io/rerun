@@ -24,10 +24,6 @@ extend-ignore =
     # No blank lines allowed after function docstring
     D202, # This just makes code look worse
 
-    # docstrings:
-    # TODO(emilk): enable more of these:
-    D213,
-
 extend-exclude =
     # Automatically generated test artifacts
     venv/,

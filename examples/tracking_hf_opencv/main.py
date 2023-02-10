@@ -146,7 +146,8 @@ class Detector:
 
 
 class Tracker:
-    """Each instance takes care of tracking a single object.
+    """
+    Each instance takes care of tracking a single object.
 
     The factory class method `create_new_tracker` is used to give unique tracking id's per instance.
     """

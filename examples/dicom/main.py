@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Example using a dicom MRI scan.
+"""
+Example using a dicom MRI scan.
 
 Run:
 ``` sh
