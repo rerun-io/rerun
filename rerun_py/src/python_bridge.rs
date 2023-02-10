@@ -266,9 +266,12 @@ fn serve(open_browser: bool) -> PyResult<()> {
     }
 
     #[cfg(not(feature = "web"))]
-    Err(PyRuntimeError::new_err(
-        "The Rerun SDK was not compiled with the 'web' feature",
-    ))
+    {
+        _ = open_browser;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web' feature",
+        ))
+    }
 }
 
 #[pyfunction]
