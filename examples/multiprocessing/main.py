@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Shows how rerun can work with multiprocessing.
-"""
+"""Shows how rerun can work with multiprocessing."""
 
 import argparse
 import multiprocessing

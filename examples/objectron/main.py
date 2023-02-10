@@ -223,7 +223,9 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
 
 def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     """
-    Projects the 3D bounding box described by the keypoints of an `ObjectAnnotation` to a 2D plane, using line segments.
+    Projects the 3D bounding box to a 2D plane, using line segments.
+
+    The 3D bounding box is described by the keypoints of an `ObjectAnnotation`
     """
 
     # NOTE: we don't yet support projecting arbitrary 3D stuff onto 2D views, so

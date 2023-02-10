@@ -26,7 +26,6 @@ extend-ignore =
 
     # docstrings:
     # TODO(emilk): enable more of these:
-    D200,
     D205,
     D213,
 

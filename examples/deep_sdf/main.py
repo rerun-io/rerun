@@ -49,9 +49,7 @@ CACHE_DIR = Path(os.path.dirname(__file__)) / "cache"
 
 
 def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-def]
-    """
-    Times the inner method using `timeit`, and logs the result using Rerun.
-    """
+    """Times the inner method using `timeit`, and logs the result using Rerun."""
 
     def inner(func):  # type: ignore[no-untyped-def]
         def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
