@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "(MIT OR Apache-2.0) AND OFL-1.1"
+authors.workspace = true
 publish = true
 include = [
   "../../LICENSE-APACHE",
