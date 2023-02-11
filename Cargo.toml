@@ -15,7 +15,6 @@ authors = ["rerun.io <opensource@rerun.io>"]
 edition = "2021"
 homepage = "http://rerun.io"
 license = "MIT OR Apache-2.0"
-readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.67"
 version = "0.1.0"
