@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Minimal examples of Rerun SDK usage.
+This is not an example as much as it is a mess.
+
+It uses a lot of different aspects of the Rerun API in order to test it.
 
 Example usage:
 * Run all demos: `examples/python/api_demo/main.py`
