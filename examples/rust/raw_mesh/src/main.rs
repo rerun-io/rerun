@@ -121,6 +121,15 @@ fn log_coordinate_space(
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum Scene {
+    Buggy,
+    #[value(name("brain_stem"))]
+    BrainStem,
+    Lantern,
+    Avocado,
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
@@ -131,9 +140,40 @@ struct Args {
     #[allow(clippy::option_option)]
     connect: Option<Option<String>>,
 
-    /// Specifies the path of the glTF scene to load.
+    /// Specifies the glTF scene to load.
+    #[clap(long, value_enum, default_value = "buggy")]
+    scene: Scene,
+
+    /// Specifies the path of an arbitrary glTF scene to load.
     #[clap(long)]
-    scene_path: PathBuf,
+    scene_path: Option<PathBuf>,
+}
+impl Args {
+    fn scene_path(&self) -> anyhow::Result<PathBuf> {
+        if let Some(scene_path) = self.scene_path.clone() {
+            return Ok(scene_path);
+        }
+
+        const DATASET_DIR: &str =
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../python/raw_mesh/dataset");
+
+        use clap::ValueEnum as _;
+        let scene = self.scene.to_possible_value().unwrap();
+        let scene_name = scene.get_name();
+
+        let scene_path = PathBuf::from(DATASET_DIR)
+            .join(scene_name)
+            .join(format!("{scene_name}.glb"));
+        if !scene_path.exists() {
+            anyhow::bail!(
+                "Could not load the scene, have you downloaded the dataset? \
+                Try running the python version first to download it automatically \
+                (`examples/python/raw_mesh/main.py --scene {scene_name}`).",
+            )
+        }
+
+        Ok(scene_path)
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -158,7 +198,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Read glTF scene
-    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path)?))?;
+    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
     let nodes = load_gltf(&doc, &buffers);
 
     // Log raw glTF nodes and their transforms with Rerun
