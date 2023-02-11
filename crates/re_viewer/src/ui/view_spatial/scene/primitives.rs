@@ -72,19 +72,30 @@ impl SceneSpatialPrimitives {
         // we calculate a per batch bounding box for lines and points.
         // TODO(andreas): We should keep these around to speed up picking!
         for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
-            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-            self.bounding_box = self.bounding_box.union(
-                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_obj)),
-            );
+            // Only use points which are an IsoTransform to update the bounding box
+            // This prevents crazy bounds-increases when projecting 3d to 2d
+            // See: https://github.com/rerun-io/rerun/issues/1203
+            if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
+                let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+                self.bounding_box = self
+                    .bounding_box
+                    .union(batch_bb.transform_affine3(&transform.into()));
+            }
         }
         for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
-            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-            self.bounding_box = self.bounding_box.union(
-                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_obj)),
-            );
+            // Only use points which are an IsoTransform to update the bounding box
+            // This prevents crazy bounds-increases when projecting 3d to 2d
+            // See: https://github.com/rerun-io/rerun/issues/1203
+            if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
+                let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+                self.bounding_box = self
+                    .bounding_box
+                    .union(batch_bb.transform_affine3(&transform.into()));
+            }
         }
 
         for mesh in &self.meshes {
+            // TODO(jleibs): is this safe for meshes or should we be doing the equivalent of the above?
             self.bounding_box = self
                 .bounding_box
                 .union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
