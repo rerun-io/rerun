@@ -466,6 +466,8 @@ impl eframe::App for App {
             .show(egui_ctx, |ui| {
                 paint_background_fill(ui);
 
+                warning_panel(&self.re_ui, ui, frame);
+
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_stats);
@@ -958,6 +960,30 @@ impl AppState {
         if WATERMARK {
             re_ui.paint_watermark();
         }
+    }
+}
+
+fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    // We have some bugs when running the web viewer on Windows.
+    // See https://github.com/rerun-io/rerun/issues/1206
+    if frame.is_web() && ui.ctx().os() == egui::os::OperatingSystem::Windows {
+        let frame = egui::Frame {
+            fill: ui.visuals().panel_fill,
+            ..re_ui.bottom_panel_frame()
+        };
+
+        egui::TopBottomPanel::bottom("warning_panel")
+            .default_height(20.0)
+            .resizable(true)
+            .frame(frame)
+            .show_inside(ui, |ui| {
+                ui.centered_and_justified(|ui| {
+                    let text = re_ui.warning_text(
+                        "The web viewer has some known issues on Windows. Click for details.",
+                    );
+                    ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1206");
+                });
+            });
     }
 }
 
