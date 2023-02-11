@@ -20,7 +20,7 @@ rr.log_rect("car", bbox)
 </p>
 
 ## Getting started
-See [`USAGE.md`](USAGE.md).
+See [`USAGE.md`](USAGE.md) or go see [our examples](https://github.com/rerun-io/rerun/tree/main/examples/python).
 
 <!-- TODO(#1161): add links to our docs! -->
 
