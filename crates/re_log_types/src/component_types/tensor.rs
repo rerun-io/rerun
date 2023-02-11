@@ -606,6 +606,67 @@ impl Tensor {
             meter: None,
         })
     }
+
+    /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
+    ///
+    /// Requires the `image` feature.
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, ImageError> {
+        Self::from_dynamic_image(image.into())
+    }
+
+    /// Construct a tensor from [`image::DynamicImage`].
+    ///
+    /// Requires the `image` feature.
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageError> {
+        let (w, h) = (image.width(), image.height());
+
+        let (depth, data) = match image {
+            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageLuma16(image) => {
+                (1, TensorData::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb16(image) => (3, TensorData::U16(image.into_raw().into())),
+            image::DynamicImage::ImageRgba16(image) => {
+                (4, TensorData::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb32F(image) => {
+                (3, TensorData::F32(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgba32F(image) => {
+                (4, TensorData::F32(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageLumaA8(image) => {
+                re_log::warn!(
+                    "Rerun doesn't have native support for 8-bit Luma + Alpha - converting to RGB"
+                );
+                return Self::from_image(image::DynamicImage::ImageLumaA8(image).to_rgba8());
+            }
+            image::DynamicImage::ImageLumaA16(image) => {
+                re_log::warn!(
+                    "Rerun doesn't have native support for 16-bit Luma + Alpha - converting to RGB"
+                );
+                return Self::from_image(image::DynamicImage::ImageLumaA16(image).to_rgba16());
+            }
+            _ => {
+                // It is very annoying that DynamicImage is #[non_exhaustive]
+                return Err(ImageError::UnsupportedColorType(image.color()));
+            }
+        };
+
+        Ok(Self {
+            tensor_id: TensorId::random(),
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(depth),
+            ],
+            data,
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        })
+    }
 }
 
 // ----------------------------------------------------------------------------
