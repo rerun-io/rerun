@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example using a dicom MRI scan.
+Example using MRI scan data in the DICOM format.
 
 Run:
 ``` sh
