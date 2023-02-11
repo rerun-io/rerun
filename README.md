@@ -19,9 +19,13 @@ rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to 
 
 rr.log_image("rgb_image", image)
 rr.log_points("points", positions)
+rr.log_rect("car", bbox)
+…
 ```
 
-<!--- TODO(emilk): insert an image or gif here, preferably hosted elsewhere -->
+<p align="center">
+<img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
+</p>
 
 # Setup
 
@@ -37,7 +41,7 @@ pip install rerun-sdk
 Coming soon
 <!-- TODO(#1161): `cargo add rerun` + `cargo install rerun` -->
 
-## C++
+## C
 
 Coming soon
 
@@ -69,6 +73,7 @@ You should now be able to run `rerun --help` in any terminal.
 * The data you want to visualize must fit in RAM.
   - See [`rerun_py/USAGE.md`](rerun_py/USAGE.md) for how to bound memory use
   - We plan on having a disk-based data store some time in the future
+  - Additionally, Rerun is using more memory than it should at the moment
 
 
 ## Business model
