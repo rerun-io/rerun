@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-This is not an example as much as it is a mess.
+A collection of many small examples, in one file.
 
 It uses a lot of different aspects of the Rerun API in order to test it.
 
