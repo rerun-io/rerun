@@ -143,7 +143,7 @@ jobs:
         with:
           name: "wasm-opt.exe"
           url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
-          pathInArchive: "binaryen-version_111/wasm-opt.exe"
+          pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
 
       - name: Build and install rerun
         run: pip install rerun_py/
