@@ -10,13 +10,13 @@ import requests
 
 # TODO(cmc): re-enable obj meshes when we support those on the viewer's side
 AVAILABLE_MESHES: Final = [
+    "lantern",
     "avocado",
+    "buggy",
     "brain_stem",
     # "buddha",
-    "buggy",
     # "bunny",
     # "dragon",
-    "lantern",
     # "mori_knob",
 ]
 DOWNLOADED_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
