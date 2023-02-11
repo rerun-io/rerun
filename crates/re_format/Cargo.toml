@@ -1,10 +1,16 @@
 [package]
 name = "re_format"
-version.workspace = true
+authors.workspace = true
+description = "Miscellaneous tools to format and parse numbers, durations, etc."
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
 
 [dependencies]
 arrow2.workspace = true

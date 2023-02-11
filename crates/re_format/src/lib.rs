@@ -1,4 +1,4 @@
-//! Miscellaneous formatting tools.
+//! Miscellaneous tools to format and parse numbers, durations, etc.
 
 pub mod arrow;
 

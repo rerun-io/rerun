@@ -1,10 +1,15 @@
 [package]
 name = "re_error"
-version.workspace = true
+authors.workspace = true
+description = "Helpers for handling errors."
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [dev-dependencies]

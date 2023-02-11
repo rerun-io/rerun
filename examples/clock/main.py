@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-"""An example showing usage of `log_arrow`.
+"""
+An example showing usage of `log_arrow`.
 
 An analog clock is built with Rerun Arrow3D primitives.
 """

@@ -1,10 +1,15 @@
 [package]
-name = "re_ui"
-version.workspace = true
+authors.workspace = true
+description = "Rerun GUI theme and helpers, built around egui"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license = "(MIT OR Apache-2.0) AND OFL-1.1"
-publish = false
+name = "re_ui"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",

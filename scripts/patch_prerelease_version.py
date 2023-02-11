@@ -1,7 +1,9 @@
 #!/bin/env python3
 
 # This script should only be called by the CI system before building Python wheels.
-# This script is used to patch the version number in the Cargo.toml. The git sha is also appended to the version number, and written to the "version" field back into the Cargo.toml.
+# This script is used to patch the version number in the Cargo.toml.
+# The git sha is also appended to the version number,
+# and written to the "version" field back into the Cargo.toml.
 
 import re
 import subprocess

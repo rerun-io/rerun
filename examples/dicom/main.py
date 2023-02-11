@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Example using a dicom MRI scan.
+"""
+Example using MRI scan data in the DICOM format.
 
 Run:
 ``` sh
@@ -59,10 +60,10 @@ def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
 
 
 def ensure_dataset_downloaded() -> Iterable[Path]:
-    dicom_files = [p for p in list_dicom_files(DATASET_DIR)]
+    dicom_files = list(list_dicom_files(DATASET_DIR))
     if dicom_files:
         return dicom_files
-    print(f"downloading dataset…")
+    print("downloading dataset…")
     os.makedirs(DATASET_DIR.absolute(), exist_ok=True)
     resp = requests.get(DATASET_URL, stream=True)
     z = zipfile.ZipFile(io.BytesIO(resp.content))

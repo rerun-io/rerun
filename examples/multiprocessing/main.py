@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Shows how rerun can work with multiprocessing.
-"""
+"""Shows how rerun can work with multiprocessing."""
 
 import argparse
 import multiprocessing
@@ -20,14 +18,14 @@ def task(title: str) -> None:
 
     rr.log_text_entry(
         "log",
-        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
+        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",  # noqa: E501 line too long
     )
     rr.log_rect(title, [10, 20, 30, 40], label=title)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Test multi-process logging to the same Rerun server")
-    args = parser.parse_args()
+    parser.parse_args()
 
     rr.init("multiprocessing")
     rr.spawn(connect=False)  # this is the viewer that each process will connect to

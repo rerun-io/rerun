@@ -1,10 +1,15 @@
 [package]
 name = "re_data_store"
-version.workspace = true
+authors.workspace = true
+description = "In-memory storage of Rerun log data, indexed for fast fast queries."
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [features]

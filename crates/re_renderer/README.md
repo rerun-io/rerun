@@ -1,6 +1,6 @@
 # The Rerun renderer
 
-A custom [wgpu](https://github.com/gfx-rs/wgpu/) based renderer tailored towards re_viewer's needs.  
+A custom [wgpu](https://github.com/gfx-rs/wgpu/) based renderer tailored towards re_viewer's needs.
 Nevertheless, it can be used standalone and comes with its own examples!
 
 Some key features:

@@ -1,9 +1,15 @@
 [package]
 name = "re_viewer"
-version.workspace = true
+authors.workspace = true
+description = "The Rerun viewer"
 edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
 rust-version.workspace = true
-publish = false
+version.workspace = true
 include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
