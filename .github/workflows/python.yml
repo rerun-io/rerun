@@ -131,8 +131,8 @@ jobs:
           cargo check
 
       - name: Install prerequisites for building the web-viewer Wasm
-        if: (matrix.platform == 'linux') || (matrix.platform == 'macos')
         shell: bash
+        continue-on-error: true
         run: ./scripts/setup_web.sh
 
       # winget not available within the github runner, so download the package directly
