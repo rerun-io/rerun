@@ -4013,6 +4013,7 @@ dependencies = [
  "puffin",
  "rand",
  "re_format",
+ "re_log",
  "re_string_interner",
  "re_tuid",
  "rmp-serde",

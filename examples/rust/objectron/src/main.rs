@@ -154,28 +154,12 @@ fn log_baseline_objects(
 }
 
 fn log_video_frame(session: &mut Session, ar_frame: &ArFrame) -> anyhow::Result<()> {
-    use image::ImageDecoder as _;
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
-    let jpeg_bytes = std::fs::read(image_path)?;
-    let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
-    assert_eq!(jpeg.color_type(), image::ColorType::Rgb8); // TODO(emilk): support gray-scale jpeg aswell
-    let (w, h) = jpeg.dimensions();
+    let tensor = rerun::components::Tensor::tensor_from_jpeg_file(image_path)?;
 
-    use rerun::components::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId};
     MsgSender::new("world/camera/video")
         .with_timepoint(ar_frame.timepoint.clone())
-        // TODO(cmc): `Tensor` should have an `image` integration really
-        .with_component(&[Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
-                TensorDimension::height(h as _),
-                TensorDimension::width(w as _),
-                TensorDimension::depth(3),
-            ],
-            data: TensorData::JPEG(jpeg_bytes),
-            meaning: TensorDataMeaning::Unknown,
-            meter: None,
-        }])?
+        .with_component(&[tensor])?
         .send(session)?;
 
     Ok(())
