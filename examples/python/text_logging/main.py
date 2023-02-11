@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This example demonstrates how to integrate python's native `logging` with the Rerun SDK.
+How to integrate python's native `logging` with the Rerun SDK.
 
 Run:
 ```sh

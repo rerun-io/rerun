@@ -19,7 +19,7 @@ lint: toml-lint py-lint
 
 ### Python
 
-py_folders := "examples rerun_py"
+py_folders := "examples rerun_py scripts"
 
 # Set up a Pythonvirtual environment for development
 py-dev-env:

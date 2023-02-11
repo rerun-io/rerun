@@ -169,7 +169,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
 
     positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
     identifiers = point_cloud.identifier
-    rr.log_points(f"world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
+    rr.log_points("world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -223,8 +223,9 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
 
 def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
     """
-    Projects the 3D bounding box described by the keypoints of an `ObjectAnnotation`
-    to a 2D plane, using line segments.
+    Projects the 3D bounding box to a 2D plane, using line segments.
+
+    The 3D bounding box is described by the keypoints of an `ObjectAnnotation`
     """
 
     # NOTE: we don't yet support projecting arbitrary 3D stuff onto 2D views, so
@@ -248,8 +249,7 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
                          keypoints[1], keypoints[5],
                          keypoints[2], keypoints[6],
                          keypoints[3], keypoints[7],
-                         keypoints[4], keypoints[8]],
-                         dtype=np.float32)
+                         keypoints[4], keypoints[8]], dtype=np.float32)
     # fmt: on
 
     rr.log_line_segments(path, segments, color=[130, 160, 250, 255])

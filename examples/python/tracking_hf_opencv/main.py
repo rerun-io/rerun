@@ -30,7 +30,10 @@ DOWNSCALE_FACTOR = 2
 DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
-from transformers import DetrFeatureExtractor, DetrForSegmentation
+from transformers import (  # noqa: E402 module level import not at top of file
+    DetrFeatureExtractor,
+    DetrForSegmentation,
+)
 
 
 @dataclass
@@ -99,7 +102,7 @@ class Detector:
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
-        things = [self.is_thing_from_id[l] for l in class_ids]
+        things = [self.is_thing_from_id[id] for id in class_ids]
 
         self.log_detections(boxes, class_ids, things)
 
@@ -143,7 +146,8 @@ class Detector:
 
 
 class Tracker:
-    """Each instance takes care of tracking a single object.
+    """
+    Each instance takes care of tracking a single object.
 
     The factory class method `create_new_tracker` is used to give unique tracking id's per instance.
     """
@@ -218,7 +222,7 @@ class Tracker:
         return self.tracker is not None
 
     def match_score(self, other: Detection) -> float:
-        """Returns bbox IoU if classes match, otherwise 0"""
+        """Returns bbox IoU if classes match, otherwise 0."""
         if self.tracked.class_id != other.class_id:
             return 0.0
         if not self.is_tracking:
@@ -264,11 +268,13 @@ def update_trackers_with_detections(
     label_strs: Sequence[str],
     bgr: npt.NDArray[np.uint8],
 ) -> List[Tracker]:
-    """Tries to match detections to existing trackers and updates the trackers if they match.
+    """
+    Tries to match detections to existing trackers and updates the trackers if they match.
+
     Any detections that don't match existing trackers will generate new trackers.
     Returns the new set of trackers.
     """
-    non_updated_trackers = [tracker for tracker in trackers]  # shallow copy
+    non_updated_trackers = list(trackers)  # shallow copy
     updated_trackers = []  # type: List[Tracker]
 
     logging.debug("Updating %d trackers with %d new detections", len(trackers), len(detections))

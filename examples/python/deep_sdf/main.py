@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 """
-Generate SDFs for arbitrary meshes using both traditional methods as well as the one described in
-the DeepSDF paper ([1]), and visualize the results using the Rerun SDK.
+Generate SDFs for arbitrary meshes and visualize the results using the Rerun SDK.
+
+Using both traditional methods as well as the one described in the DeepSDF paper ([1]).
 
 [1] @InProceedings{Park_2019_CVPR,
     author = {
@@ -48,9 +49,7 @@ CACHE_DIR = Path(os.path.dirname(__file__)) / "cache"
 
 
 def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-def]
-    """
-    Times the inner method using `timeit`, and logs the result using Rerun.
-    """
+    """Times the inner method using `timeit`, and logs the result using Rerun."""
 
     def inner(func):  # type: ignore[no-untyped-def]
         def wrapper(*args, **kwargs):  # type: ignore[no-untyped-def]
@@ -74,7 +73,7 @@ def get_mesh_format(mesh: Trimesh) -> MeshFormat:
             # ".gltf": MeshFormat.GLTF,
             ".obj": MeshFormat.OBJ,
         }[ext]
-    except:
+    except Exception:
         raise ValueError(f"unknown file extension: {ext}")
 
 
@@ -149,7 +148,7 @@ def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: i
         with open(voxvol_path, "rb") as f:
             voxvol = np.load(voxvol_path)
             rr.log_text_entry("global", "loading volumetric SDF from cache")
-    except:
+    except Exception:
         voxvol = compute_voxel_sdf(mesh, resolution)
 
     log_volumetric_sdf(voxvol)
@@ -173,7 +172,7 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
         with open(points_path, "rb") as f:
             points = np.load(points_path)
             rr.log_text_entry("global", "loading point cloud from cache")
-    except:
+    except Exception:
         (points, sdf) = compute_sample_sdf(mesh, num_points)
 
     log_mesh(mesh_path, mesh)
