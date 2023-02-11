@@ -287,8 +287,8 @@ fn shutdown(py: Python<'_>) {
 
 /// Is logging enabled in the global session?
 #[pyfunction]
-fn logging_enabled(py: Python<'_>) -> PyResult<bool> {
-    Ok(global_session().is_logging_enabled())
+fn logging_enabled() -> bool {
+    global_session().is_logging_enabled()
 }
 
 /// Disconnect from remote server (if any).

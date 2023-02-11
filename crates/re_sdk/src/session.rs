@@ -31,7 +31,7 @@ impl Session {
                 "1" | "true" | "on" => true,
                 _ => {
                     re_log::warn!(
-                        "Invalid value for environment variable {RERUN_KEY}: {s}. \
+                        "Invalid value for environment variable {RERUN_KEY}=\"{s}\". \
                             Logging is enabled by default."
                     );
                     true
