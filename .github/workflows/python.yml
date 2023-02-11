@@ -130,6 +130,21 @@ jobs:
           python scripts/patch_prerelease_version.py
           cargo check
 
+      - name: Install prerequisites for building the web-viewer Wasm
+        shell: bash
+        continue-on-error: true
+        run: ./scripts/setup_web.sh
+
+      # winget not available within the github runner, so download the package directly
+      # See: https://github.com/marketplace/actions/engineerd-configurator
+      - name: Install prerequisites for building the web-viewer Wasm on windows
+        if: matrix.platform == 'windows'
+        uses: engineerd/configurator@v0.0.9
+        with:
+          name: "wasm-opt.exe"
+          url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
+          pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
+
       - name: Build and install rerun
         run: pip install rerun_py/
 
@@ -150,6 +165,8 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
+            --no-default-features
+            --features pypi
             --universal2
             --out dist
 
