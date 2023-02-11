@@ -10,8 +10,11 @@ use pyo3::{
     types::PyDict,
 };
 
-use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
 use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
+use rerun::{
+    get_rerun_env,
+    log::{LogMsg, MsgBundle, MsgId, PathOp},
+};
 use rerun::{global_session, ApplicationId, EntityPath, RecordingId};
 
 pub use rerun::{
@@ -100,6 +103,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(logging_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(set_logging_enabled, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
@@ -228,7 +232,11 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn init(application_id: String, application_path: Option<PathBuf>) {
+fn init(
+    application_id: String,
+    application_path: Option<PathBuf>,
+    default_logging_enabled: Option<bool>,
+) {
     // The sentinel file we use to identify the official examples directory.
     const SENTINEL_FILENAME: &str = ".rerun_examples";
     let is_official_example = application_path.map_or(false, |mut path| {
@@ -243,6 +251,10 @@ fn init(application_id: String, application_path: Option<PathBuf>) {
     });
 
     global_session().set_application_id(ApplicationId(application_id), is_official_example);
+
+    // Logging enabled logic: Highest priority is the RERUN env var, then the default_logging_enabled, otherwise false.
+    global_session()
+        .set_logging_enabled(get_rerun_env().or(default_logging_enabled).unwrap_or(false));
 }
 
 #[pyfunction]
@@ -292,6 +304,14 @@ fn shutdown(py: Python<'_>) {
 #[pyfunction]
 fn logging_enabled() -> bool {
     global_session().is_logging_enabled()
+}
+
+/// Enable or disable logging in the global session.
+/// This is a global setting that affects all threads.
+/// By default logging is enabled.
+#[pyfunction]
+fn set_logging_enabled(enabled: bool) {
+    global_session().set_logging_enabled(enabled);
 }
 
 /// Disconnect from remote server (if any).

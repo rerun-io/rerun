@@ -22,6 +22,23 @@ pub use re_log_types::{
     ApplicationId, ComponentName, EntityPath, RecordingId,
 };
 
+/// Helper to get the value of the `RERUN` environment variable.
+pub fn get_rerun_env() -> Option<bool> {
+    const RERUN_KEY: &str = "RERUN";
+    std::env::var(RERUN_KEY)
+        .ok()
+        .and_then(|s| match s.to_lowercase().as_str() {
+            "0" | "false" | "off" => Some(false),
+            "1" | "true" | "on" => Some(true),
+            _ => {
+                re_log::warn!(
+                    "Invalid value for environment variable {RERUN_KEY}=\"{s}\", it will be ignored"
+                );
+                None
+            }
+        })
+}
+
 /// Things directly related to logging.
 pub mod log {
     pub use re_log_types::{

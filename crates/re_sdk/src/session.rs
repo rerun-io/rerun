@@ -5,8 +5,6 @@ use re_log_types::{
     TimePoint,
 };
 
-const RERUN_KEY: &str = "RERUN";
-
 /// This is the main object you need to create to use the Rerun SDK.
 ///
 /// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
@@ -31,21 +29,13 @@ impl Session {
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
     ///
+    /// # Parameters:
+    /// - `default_enabled`: If `true`, logging will be enabled by default. This can be overridden by the RERUN
+    /// environment variable at runtime.
+    ///
     /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
-    pub fn new() -> Self {
-        let logging_enabled = std::env::var(RERUN_KEY)
-            .map(|s| match s.to_lowercase().as_str() {
-                "0" | "false" | "off" => false,
-                "1" | "true" | "on" => true,
-                _ => {
-                    re_log::warn!(
-                        "Invalid value for environment variable {RERUN_KEY}=\"{s}\". \
-                            Logging is enabled by default."
-                    );
-                    true
-                }
-            })
-            .unwrap_or(true);
+    pub fn new(default_enabled: bool) -> Self {
+        let logging_enabled = crate::get_rerun_env().unwrap_or(default_enabled);
 
         if !logging_enabled {
             re_log::info!("Rerun Logging is disabled.");
@@ -67,6 +57,11 @@ impl Session {
     /// Check if logging is enabled on this `Session`.
     pub fn is_logging_enabled(&self) -> bool {
         self.logging_enabled
+    }
+
+    /// Enable or disable logging on this `Session`.
+    pub fn set_logging_enabled(&mut self, enabled: bool) {
+        self.logging_enabled = enabled;
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -280,7 +275,7 @@ impl Session {
 
 impl Default for Session {
     fn default() -> Self {
-        Self::new()
+        Self::new(true)
     }
 }
 

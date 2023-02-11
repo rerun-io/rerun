@@ -2,7 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
-* 2023-02-10: Add the ability to globally toggle logging with new env-var RERUN_LOGGING_ENABLED. [#1186](https://github.com/rerun-io/rerun/pull/1186).
+* 2023-02-10: Add the ability to globally override logging-enabled with new env-var RERUN. [#1186](https://github.com/rerun-io/rerun/pull/1186).
 * 2023-02-05: `spawn_viewer` and `spawn_and_connect` has been unified into one single function called `spawn` [#1101](https://github.com/rerun-io/rerun/pull/1101).
 * 2023-02-02: Automate Python Wheel deployments. The Rerun python package is renamed to `rerun-sdk` [#996](https://github.com/rerun-io/rerun/pull/996).
 * 2023-02-02: Introduce extension_components [#1023](https://github.com/rerun-io/rerun/pull/1023)
