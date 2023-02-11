@@ -14,7 +14,7 @@ default-run = "rerun"
 
 
 [features]
-default = ["analytics", "server", "sdk"]
+default = ["analytics", "image", "server", "sdk"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics", "re_viewer/analytics"]
@@ -22,6 +22,9 @@ analytics = ["dep:re_analytics", "re_viewer/analytics"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 ## Only relevant if feature `sdk` is enabled.
 glam = ["re_sdk?/glam"]
+
+## Integration with the [`image`](https://crates.io/crates/image/) crate.
+image = ["re_log_types/image"]
 
 ## Embed the Rerun SDK and re-export all of its public symbols.
 sdk = ["dep:re_sdk", "re_sdk?/re_viewer"]

@@ -25,8 +25,8 @@ ecolor = ["dep:ecolor"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam", "dep:macaw"]
 
-## Enables support for converting 2d-tensors into images
-image_tensor = ["dep:image"]
+## Integration with the [`image`](https://crates.io/crates/image/) crate.
+image = ["dep:image"]
 
 ## Enable loading data from a file.
 load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
@@ -47,9 +47,10 @@ serde = [
 [dependencies]
 
 # Rerun
+re_log = { path = "../re_log" }
+re_format = { path = "../re_format" }
 re_string_interner = { path = "../re_string_interner" }
 re_tuid = { path = "../re_tuid" }
-re_format = { path = "../re_format" }
 
 # External
 ahash = "0.8"
@@ -79,11 +80,13 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 anyhow = { workspace = true, optional = true }
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
-image = { workspace = true, default-features = false, optional = true }
+image = { workspace = true, optional = true, default-features = false, features = [
+  "jpeg",
+] }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
 rmp-serde = { version = "1", optional = true }
-serde = { version = "1", features = ["derive", "rc"], optional = true }
+serde = { version = "1", optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
 
 # Native dependencies:

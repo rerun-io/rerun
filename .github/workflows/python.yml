@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "rerun_py/**"
-      - "examples/**"
+      - "examples/python/**"
       - ".github/workflows/python.yml"
   push:
     branches:
@@ -156,8 +156,8 @@ jobs:
       - name: Generate Embedded RRD file
         shell: bash
         run: |
-          pip install -r examples/car/requirements.txt
-          python examples/car/main.py --headless --save car.rrd
+          pip install -r examples/python/car/requirements.txt
+          python examples/python/car/main.py --headless --save car.rrd
           cp car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
 
       - name: Build Wheel
@@ -183,8 +183,8 @@ jobs:
 
       - name: Run Car example
         run: |
-          pip install -r examples/car/requirements.txt
-          python examples/car/main.py --headless
+          pip install -r examples/python/car/requirements.txt
+          python examples/python/car/main.py --headless
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -236,8 +236,6 @@ jobs:
 
       #TODO(#966) https://github.com/rerun-io/rerun/issues/1054
       # Santiy check the git tag vs. the crate version.
-
-      # github.ref_name
 
       - name: Github Release
         uses: softprops/action-gh-release@v0.1.15
