@@ -296,9 +296,7 @@ pub fn view_3d(
     }
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
-    // No hover effect when user is dragging something (e.g. rotating the camera)
-    let is_anything_being_dragged = ui.ctx().memory(|mem| mem.is_anything_being_dragged());
-    if let (false, Some(pointer_pos)) = (is_anything_being_dragged, response.hover_pos()) {
+    if let Some(pointer_pos) = response.hover_pos() {
         let picking_result =
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
 
