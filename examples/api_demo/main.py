@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Minimal examples of Rerun SDK usage.
+"""
+Minimal examples of Rerun SDK usage.
 
 Example usage:
 * Run all demos: `examples/api_demo/main.py`
@@ -9,10 +10,6 @@ Example usage:
 import argparse
 import logging
 import math
-import os
-from pathlib import Path
-from time import sleep
-from typing import Any, Final
 
 import numpy as np
 from rerun.log.annotation import AnnotationInfo
@@ -286,6 +283,7 @@ def main() -> None:
     if args.demo == "all":
         print("Running all demos…")
         for name, demo in demos.items():
+            logging.info(f"Starting {name}")
             demo()
     else:
         demo = demos[args.demo]

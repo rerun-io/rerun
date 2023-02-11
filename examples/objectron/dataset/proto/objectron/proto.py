@@ -781,8 +781,7 @@ class FrameAnnotation(betterproto.Message):
 @dataclass
 class Sequence(betterproto.Message):
     """
-    The sequence protocol contains the annotation data for the entire video
-    clip.
+    The sequence protocol contains the annotation data for the entire video clip.
     """
 
     # List of all the annotated 3D objects in this sequence in the world

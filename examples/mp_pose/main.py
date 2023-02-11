@@ -6,7 +6,7 @@ import os
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, List, Optional, Tuple
+from typing import Any, Final, Iterator, Optional
 
 import cv2 as cv
 import mediapipe as mp
@@ -29,7 +29,7 @@ def track_pose(video_path: str, segment: bool) -> None:
         "/",
         ClassDescription(
             info=AnnotationInfo(label="Person"),
-            keypoint_annotations=[AnnotationInfo(id=l.value, label=l.name) for l in mp_pose.PoseLandmark],
+            keypoint_annotations=[AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         ),
     )
@@ -39,26 +39,25 @@ def track_pose(video_path: str, segment: bool) -> None:
     )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 
-    with closing(VideoSource(video_path)) as video_source:
-        with mp_pose.Pose(enable_segmentation=segment) as pose:
-            for bgr_frame in video_source.stream_bgr():
+    with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
+        for bgr_frame in video_source.stream_bgr():
 
-                rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
-                rr.set_time_seconds("time", bgr_frame.time)
-                rr.set_time_sequence("frame_idx", bgr_frame.idx)
-                rr.log_image("video/rgb", rgb)
+            rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
+            rr.set_time_seconds("time", bgr_frame.time)
+            rr.set_time_sequence("frame_idx", bgr_frame.idx)
+            rr.log_image("video/rgb", rgb)
 
-                results = pose.process(rgb)
-                h, w, _ = rgb.shape
-                landmark_positions_2d = read_landmark_positions_2d(results, w, h)
-                rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
+            results = pose.process(rgb)
+            h, w, _ = rgb.shape
+            landmark_positions_2d = read_landmark_positions_2d(results, w, h)
+            rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
 
-                landmark_positions_3d = read_landmark_positions_3d(results)
-                rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
+            landmark_positions_3d = read_landmark_positions_3d(results)
+            rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
 
-                segmentation_mask = results.segmentation_mask
-                if segmentation_mask is not None:
-                    rr.log_segmentation_image("video/mask", segmentation_mask)
+            segmentation_mask = results.segmentation_mask
+            if segmentation_mask is not None:
+                rr.log_segmentation_image("video/mask", segmentation_mask)
 
 
 def read_landmark_positions_2d(
@@ -69,10 +68,12 @@ def read_landmark_positions_2d(
     if results.pose_landmarks is None:
         return None
     else:
-        normalized_landmarks = [results.pose_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
+        normalized_landmarks = [results.pose_landmarks.landmark[lm] for lm in mp.solutions.pose.PoseLandmark]
         # Log points as 3d points with some scaling so they "pop out" when looked at in a 3d view
         # Negative depth in order to move them towards the camera.
-        return np.array([(image_width * l.x, image_height * l.y, -(l.z + 1.0) * 300.0) for l in normalized_landmarks])
+        return np.array(
+            [(image_width * lm.x, image_height * lm.y, -(lm.z + 1.0) * 300.0) for lm in normalized_landmarks]
+        )
 
 
 def read_landmark_positions_3d(
@@ -81,8 +82,8 @@ def read_landmark_positions_3d(
     if results.pose_landmarks is None:
         return None
     else:
-        landmarks = [results.pose_world_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
-        return np.array([(l.x, l.y, l.z) for l in landmarks])
+        landmarks = [results.pose_world_landmarks.landmark[lm] for lm in mp.solutions.pose.PoseLandmark]
+        return np.array([(lm.x, lm.y, lm.z) for lm in landmarks])
 
 
 @dataclass
