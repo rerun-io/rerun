@@ -74,6 +74,7 @@ impl SceneSpatialPrimitives {
         for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
             // Only use points which are an IsoTransform to update the bounding box
             // This prevents crazy bounds-increases when projecting 3d to 2d
+            // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
                 let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
                 self.bounding_box = self
@@ -84,6 +85,7 @@ impl SceneSpatialPrimitives {
         for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
             // Only use points which are an IsoTransform to update the bounding box
             // This prevents crazy bounds-increases when projecting 3d to 2d
+            // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
                 let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
                 self.bounding_box = self
