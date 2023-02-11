@@ -1,5 +1,25 @@
-# Rerun
-The main Rerun logging API and binary.
+<h1 align="center">
+  <a href="https://www.rerun.io/">
+    <img alt="banner" src="https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png">
+  </a>
+</h1>
+
+# Rerun Rust logging SDK
+Log rich data, such as images and point clouds, and visualize it live or after the fact, with time scrubbing.
+
+`rust add rerun`
+
+``` rust
+rerun::MsgSender::new("points")
+    .with_component(&points)?
+    .with_component(&colors)?
+    .send(&mut rerun::global_session())?;
+```
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
+</p>
+
 
 ## Library
 You can add the `rerun` crate to your project with `cargo add rerun` (soon)

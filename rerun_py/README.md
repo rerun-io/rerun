@@ -1,8 +1,30 @@
-# The Rerun Python Log SDK.
+# The Rerun Python Log SDK
 
-Goal: an ergonomic Python library for logging rich data, over TCP, to a rerun server.
+Log rich data, such as images and point clouds, and instantly visualize them, with time scrubbing.
 
-ℹ️ Note:
+`pip install rerun-sdk`
+
+```py
+import rerun as rr
+
+rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
+
+rr.log_image("rgb_image", image)
+rr.log_points("points", positions)
+rr.log_rect("car", bbox)
+…
+```
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
+</p>
+
+## Getting started
+See [`USAGE.md`](USAGE.md).
+
+<!-- TODO(#1161): add links to our docs! -->
+
+## Notes
 - The rust crate is called `rerun_py`, the Python module is called `rerun`, and the package published on PyPI is `rerun-sdk`.
 - These instructions assume you're running from the `rerun` root folder and have Python 3.8 or later available.
 
@@ -17,8 +39,6 @@ pip3 install "./rerun_py"
 ℹ️ Note:
 - If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
 
-## Usage
-See [`USAGE.md`](USAGE.md).
 
 ## Running the example code
 ```sh
