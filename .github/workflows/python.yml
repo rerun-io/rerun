@@ -121,15 +121,6 @@ jobs:
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
 
-      - name: Patch Cargo.toml for Pre-Release
-        if: github.ref == 'refs/heads/main'
-        # After patching the pre-release version, run cargo check
-        # this updates the cargo.lock file with the new version numbers
-        # and keeps the wheel build from failing
-        run: |
-          python scripts/patch_prerelease_version.py
-          cargo check
-
       - name: Install prerequisites for building the web-viewer Wasm
         shell: bash
         continue-on-error: true
@@ -144,6 +135,16 @@ jobs:
           name: "wasm-opt.exe"
           url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
+
+      - name: Patch Cargo.toml for Pre-Release
+        if: github.ref == 'refs/heads/main'
+        # After patching the pre-release version, run cargo check
+        # this updates the cargo.lock file with the new version numbers
+        # and keeps the wheel build from failing
+        run: |
+          python scripts/patch_prerelease_version.py
+          cargo check
+
 
       - name: Build and install rerun
         run: pip install rerun_py/
