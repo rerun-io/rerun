@@ -1,10 +1,13 @@
 [package]
 name = "re_viewer"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
 authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
 publish = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
