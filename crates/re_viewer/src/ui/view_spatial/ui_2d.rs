@@ -343,7 +343,11 @@ fn view_2d_scrollable(
 
     // Check if we're hovering any hover primitive.
     let mut depth_at_pointer = None;
-    if let Some(pointer_pos_ui) = response.hover_pos() {
+
+    let disallow_hovering = parent_ui
+        .ctx()
+        .memory(|mem| mem.is_anything_being_dragged());
+    if let (false, Some(pointer_pos_ui)) = (disallow_hovering, response.hover_pos()) {
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
