@@ -8,7 +8,7 @@ publish = false
 
 
 [dependencies]
-rerun = { path = "../../../crates/rerun" }
+rerun = { path = "../../../crates/rerun", features = ["image"] }
 
 anyhow.workspace = true
 clap = { version = "4.0", features = ["derive"] }
