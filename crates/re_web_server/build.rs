@@ -86,10 +86,19 @@ impl<'a> Packages<'a> {
 
 // Port of build_web.sh
 fn build_web() {
-    let crate_name = "re_viewer";
-    let build_dir = "web_viewer";
+    let repository_root_dir = format!("{}/../..", std::env!("CARGO_MANIFEST_DIR"));
 
-    let wasm_path = Path::new(build_dir).join([crate_name, "_bg.wasm"].concat());
+    let crate_name = "re_viewer";
+    let build_dir = format!("{repository_root_dir}/web_viewer");
+
+    assert!(
+        Path::new(&build_dir).exists(),
+        "Failed to find dir {build_dir}. CWD: {:?}, CARGO_MANIFEST_DIR: {:?}",
+        std::env::current_dir(),
+        std::env!("CARGO_MANIFEST_DIR")
+    );
+
+    let wasm_path = Path::new(&build_dir).join([crate_name, "_bg.wasm"].concat());
     fs::remove_file(wasm_path.clone()).ok();
 
     let metadata = MetadataCommand::new()
@@ -98,7 +107,7 @@ fn build_web() {
         .exec()
         .unwrap();
 
-    let target_wasm = [metadata.target_directory.as_str(), "_wasm"].concat();
+    let target_wasm = format!("{}_wasm", metadata.target_directory);
     let release = std::env::var("PROFILE").unwrap() == "release";
 
     let root_dir = metadata.target_directory.parent().unwrap();
@@ -158,7 +167,7 @@ fn build_web() {
     cmd.args([
         target_path.to_str().unwrap(),
         "--out-dir",
-        build_dir,
+        &build_dir,
         "--no-modules",
         "--no-typescript",
     ]);
@@ -169,7 +178,7 @@ fn build_web() {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .expect("failed to generate JS bindings");
+        .unwrap_or_else(|err| panic!("Failed to generate JS bindings: {err}. target_path: {target_path:?}, build_dir: {build_dir}"));
 
     eprintln!("wasm-bindgen status: {}", output.status);
     eprintln!(
@@ -185,6 +194,7 @@ fn build_web() {
     if release {
         let wasm_path = wasm_path.to_str().unwrap();
 
+        // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
         cmd.current_dir(root_dir);
         cmd.args([wasm_path, "-O2", "--fast-math", "-o", wasm_path]);
