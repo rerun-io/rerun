@@ -4,6 +4,7 @@ authors.workspace = true
 description = "The Rerun viewer"
 edition.workspace = true
 homepage.workspace = true
+license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
