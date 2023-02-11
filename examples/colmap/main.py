@@ -165,7 +165,7 @@ def read_and_log_sparse_reconstruction(
             _, encimg = cv2.imencode(".jpg", img)
             rr.log_image_file("camera/image", img_bytes=encimg)
         else:
-            rr.log_image_file("camera/image/rgb", img_path=dataset_path / "images" / image.name)
+            rr.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
 
         rr.log_points("camera/image/keypoints", visible_xys, colors=point_colors)
 
