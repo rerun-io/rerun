@@ -124,9 +124,9 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool) 
             height=camera.height,
         )
 
-        rr.log_image_file(f"camera/image/rgb", dataset_path / "images" / image.name)
+        rr.log_image_file("camera/image/rgb", img_path=dataset_path / "images" / image.name)
 
-        rr.log_points(f"camera/image/keypoints", visible_xys, colors=point_colors)
+        rr.log_points("camera/image/keypoints", visible_xys, colors=point_colors)
 
 
 def main() -> None:
