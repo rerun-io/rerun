@@ -118,12 +118,13 @@ def log_point(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
-
+    # Always log splats first so they show up in range-based queries. See(#1215)
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
 def log_points(
@@ -244,8 +245,9 @@ def log_points(
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
-
+    # Always log splats first so they show up in range-based queries. See(#1215)
     if comps[1]:
         comps[1]["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
