@@ -562,8 +562,11 @@ pub enum ImageError {
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
-    #[error("Unsupported color type: {0:?}")]
-    UnsupportedColorType(image::ColorType),
+    #[error("Unsupported JPEG color type: {0:?}. Only RGB Jpegs are supported")]
+    UnsupportedJpegColorType(image::ColorType),
+
+    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    UnsupportedImageColorType(image::ColorType),
 
     #[error("Failed to load file: {0}")]
     ReadError(#[from] std::io::Error),
@@ -590,7 +593,7 @@ impl Tensor {
         let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
         if jpeg.color_type() != image::ColorType::Rgb8 {
             // TODO(emilk): support gray-scale jpeg as well
-            return Err(ImageError::UnsupportedColorType(jpeg.color_type()));
+            return Err(ImageError::UnsupportedJpegColorType(jpeg.color_type()));
         }
         let (w, h) = jpeg.dimensions();
 
@@ -651,7 +654,7 @@ impl Tensor {
             }
             _ => {
                 // It is very annoying that DynamicImage is #[non_exhaustive]
-                return Err(ImageError::UnsupportedColorType(image.color()));
+                return Err(ImageError::UnsupportedImageColorType(image.color()));
             }
         };
 
