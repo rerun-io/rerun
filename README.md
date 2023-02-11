@@ -1,5 +1,7 @@
 <h1 align="center">
-  <img alt="banner" src="https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png">
+  <a href="https://www.rerun.io/">
+    <img alt="banner" src="https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png">
+  </a>
 </h1>
 
 [![CI (Python)](https://github.com/rerun-io/rerun/actions/workflows/python.yml/badge.svg?branch=main)](https://github.com/rerun-io/rerun/actions/workflows/python.yml)
