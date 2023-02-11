@@ -16,6 +16,7 @@ pub enum EventKind {
     ///
     /// Used e.g. to send an event everytime the app start.
     Append,
+
     /// Update the permanent state associated with this analytics ID.
     ///
     /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
@@ -124,6 +125,7 @@ pub enum AnalyticsError {
 
 pub struct Analytics {
     config: Config,
+
     /// `None` if analytics are disabled.
     pipeline: Option<Pipeline>,
 

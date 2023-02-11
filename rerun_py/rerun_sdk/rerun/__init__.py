@@ -126,7 +126,7 @@ def init(application_id: str, spawn: bool = False) -> None:
         Your Rerun recordings will be categorized by this application id, so
         try to pick a unique one for each application that uses the Rerun SDK.
 
-        For instance, if you have one application doing object detection
+        For example, if you have one application doing object detection
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
     spawn : bool
@@ -219,7 +219,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
     subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
 
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
-    # For instance, wait until it prints "Hosting a SDK server over TCP at …"
+    # For example, wait until it prints "Hosting a SDK server over TCP at …"
     sleep(0.2)  # almost as good as waiting the correct amount of time
 
     if connect:
@@ -229,13 +229,19 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 _spawn = spawn  # we need this because Python scoping is horrible
 
 
-def serve() -> None:
+def serve(open_browser: bool = True) -> None:
     """
     Serve a Rerun Web Viewer.
 
     WARNING: This is an experimental feature.
+
+    Parameters
+    ----------
+    open_browser
+        Open the default browser to the viewer.
+
     """
-    bindings.serve()
+    bindings.serve(open_browser)
 
 
 def disconnect() -> None:
@@ -281,7 +287,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     Used for all subsequent logging on the same thread,
     until the next call to `set_time_sequence`.
 
-    For instance: `set_time_sequence("frame_nr", frame_nr)`.
+    For example: `set_time_sequence("frame_nr", frame_nr)`.
 
     You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 
@@ -305,7 +311,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     Used for all subsequent logging on the same thread,
     until the next call to `set_time_seconds`.
 
-    For instance: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
+    For example: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
 
     You can remove a timeline again using `set_time_seconds("capture_time", None)`.
 
@@ -335,7 +341,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     Used for all subsequent logging on the same thread,
     until the next call to `set_time_nanos`.
 
-    For instance: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
+    For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
 
     You can remove a timeline again using `set_time_nanos("capture_time", None)`.
 

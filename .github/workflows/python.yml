@@ -108,8 +108,11 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: False
 
       - name: Setup python
         uses: actions/setup-python@v4
@@ -120,7 +123,12 @@ jobs:
 
       - name: Patch Cargo.toml for Pre-Release
         if: github.ref == 'refs/heads/main'
-        run: python scripts/patch_prerelease_version.py
+        # After patching the pre-release version, run cargo check
+        # this updates the cargo.lock file with the new version numbers
+        # and keeps the wheel build from failing
+        run: |
+          python scripts/patch_prerelease_version.py
+          cargo check
 
       - name: Install prerequisites for building the web-viewer Wasm
         shell: bash

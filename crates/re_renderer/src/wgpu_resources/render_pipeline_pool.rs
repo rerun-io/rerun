@@ -85,6 +85,7 @@ pub struct RenderPipelineDesc {
     /// The multi-sampling properties of the pipeline.
     pub multisample: wgpu::MultisampleState,
 }
+
 impl RenderPipelineDesc {
     fn create_render_pipeline(
         &self,

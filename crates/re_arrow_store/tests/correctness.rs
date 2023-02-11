@@ -115,6 +115,7 @@ fn write_errors() {
             let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 3, 2]).boxed());
             ComponentBundle::new(InstanceKey::name(), ids)
         }
+
         pub fn build_duped_instances() -> ComponentBundle {
             let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 2, 2]).boxed());
             ComponentBundle::new(InstanceKey::name(), ids)
@@ -167,6 +168,7 @@ fn latest_at_emptiness_edge_cases() {
         latest_at_emptiness_edge_cases_impl(&mut store);
     }
 }
+
 fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
@@ -298,6 +300,7 @@ fn range_join_across_single_row() {
         range_join_across_single_row_impl(&mut store);
     }
 }
+
 fn range_join_across_single_row_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 

@@ -34,7 +34,7 @@ sublime_fuzzy = "0.7"
 
 ## Optional dependencies:
 eframe = { workspace = true, optional = true, default-features = false }
-egui_dock = { version = "0.3", optional = true, features = ["serde"] }
+egui_dock = { workspace = true, optional = true, features = ["serde"] }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }

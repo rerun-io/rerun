@@ -1,4 +1,4 @@
-//! Communications between server and viewer.
+//! TCP communications between a Rerun logging SDK and server/viewer.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -27,6 +27,7 @@ pub const PROTOCOL_VERSION: u16 = 0;
 
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 
+/// The default address of a Rerun TCP server which an SDK connects to.
 pub fn default_server_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }

@@ -13,6 +13,7 @@ pub use crate::component_types::{Arrow3D, Pinhole, Rigid3, Transform};
 pub struct BBox2D {
     /// Upper left corner.
     pub min: [f32; 2],
+
     /// Lower right corner.
     pub max: [f32; 2],
 }
@@ -127,33 +128,43 @@ pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
 impl TensorDataTypeTrait for u8 {
     const DTYPE: TensorDataType = TensorDataType::U8;
 }
+
 impl TensorDataTypeTrait for u16 {
     const DTYPE: TensorDataType = TensorDataType::U16;
 }
+
 impl TensorDataTypeTrait for u32 {
     const DTYPE: TensorDataType = TensorDataType::U32;
 }
+
 impl TensorDataTypeTrait for u64 {
     const DTYPE: TensorDataType = TensorDataType::U64;
 }
+
 impl TensorDataTypeTrait for i8 {
     const DTYPE: TensorDataType = TensorDataType::I8;
 }
+
 impl TensorDataTypeTrait for i16 {
     const DTYPE: TensorDataType = TensorDataType::I16;
 }
+
 impl TensorDataTypeTrait for i32 {
     const DTYPE: TensorDataType = TensorDataType::I32;
 }
+
 impl TensorDataTypeTrait for i64 {
     const DTYPE: TensorDataType = TensorDataType::I64;
 }
+
 impl TensorDataTypeTrait for f16 {
     const DTYPE: TensorDataType = TensorDataType::F16;
 }
+
 impl TensorDataTypeTrait for f32 {
     const DTYPE: TensorDataType = TensorDataType::F32;
 }
+
 impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }

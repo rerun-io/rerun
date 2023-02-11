@@ -68,6 +68,7 @@ impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
 #[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
     type Item = anyhow::Result<LogMsg>;
+
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
         use std::io::Read as _;
@@ -129,6 +130,7 @@ impl<R: std::io::Read> Decoder<R> {
 #[cfg(target_arch = "wasm32")]
 impl<R: std::io::Read> Iterator for Decoder<R> {
     type Item = anyhow::Result<LogMsg>;
+
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
         use std::io::Read as _;

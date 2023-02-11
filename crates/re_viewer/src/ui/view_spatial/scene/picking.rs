@@ -11,8 +11,10 @@ use crate::{
 pub enum AdditionalPickingInfo {
     /// No additional picking information.
     None,
+
     /// The hit was a textured rect at the given uv coordinates (ranging from 0 to 1)
     TexturedRect(glam::Vec2),
+
     /// We hit a egui ui element, meaning that depth information is not usable.
     GuiOverlay,
 }

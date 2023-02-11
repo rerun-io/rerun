@@ -11,25 +11,35 @@ use crate::{Component, ComponentName, EntityPath, SerializableComponent, Session
 
 // ---
 
+/// Errors that can occur when constructing or sending messages
+/// using [`MsgSender`].
 #[derive(thiserror::Error, Debug)]
 pub enum MsgSenderError {
+    /// The same component were put in the same log message multiple times.
+    /// E.g. `with_component()` was called multiple times for `Point3D`.
+    /// We don't support that yet.
     #[error(
-        "All component collections must have exactly one row (i.e. no batching), got {0:?} instead"
+        "All component collections must have exactly one row (i.e. no batching), got {0:?} instead. Perhaps with_component() was called multiple times with the same component type?"
     )]
     MoreThanOneRow(Vec<(ComponentName, usize)>),
 
+    /// Some components had more or less instances than some other.
+    /// For example, there were `10` positions and `8` colors.
     #[error(
         "All component collections must share the same number of instances (i.e. row length) \
             for a given row, got {0:?} instead"
     )]
     MismatchedRowLengths(Vec<(ComponentName, usize)>),
 
+    /// Instance keys cannot be splatted
     #[error("Instance keys cannot be splatted")]
     SplattedInstanceKeys,
 
+    /// [`InstanceKey`] with a [`u64::MAX`] was found, but is reserved for Rerun internals.
     #[error("InstanceKey(u64::MAX) is reserved for Rerun internals")]
     IllegalInstanceKey,
 
+    /// A message during packing. See [`MsgBundleError`].
     #[error(transparent)]
     PackingError(#[from] MsgBundleError),
 }
@@ -63,6 +73,7 @@ pub struct MsgSender {
     ///
     /// The logging time is automatically inserted during creation ([`Self::new`]).
     timepoint: TimePoint,
+
     /// If true, all timestamp data associated with this message will be dropped right before
     /// sending it to Rerun.
     ///
@@ -78,6 +89,7 @@ pub struct MsgSender {
     /// The number of instances per row, on the other hand, will be decided based upon the first
     /// component collection that's appended.
     num_instances: Option<usize>,
+
     /// All the instanced component collections that have been appended to this message.
     ///
     /// As of today, they must have exactly 1 row of data (no batching), which itself must have

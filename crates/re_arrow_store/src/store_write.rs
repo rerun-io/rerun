@@ -25,12 +25,14 @@ pub enum WriteError {
     // Batches
     #[error("Cannot insert more than 1 row at a time, got {0}")]
     MoreThanOneRow(usize),
+
     #[error("All components must have the same number of rows, got {0:?}")]
     MismatchedRows(Vec<(ComponentName, usize)>),
 
     // Clustering key
     #[error("The cluster component must be dense, got {0:?}")]
     SparseClusteringComponent(Box<dyn Array>),
+
     #[error(
         "The cluster component must be increasingly sorted and not contain \
                 any duplicates, got {0:?}"
