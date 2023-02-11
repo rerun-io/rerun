@@ -17,9 +17,6 @@ macro_rules! include_file {
             //
             // Note that we grab the env-var at _compile time_, that way this will work for
             // all cases: `cargo run`, `./rerun`, `python example.py`.
-            //
-            // `CARGO_WORKSPACE_DIR` is instantiated by our workspace's cargo config, see
-            // `.cargo/config.toml`.
             let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             let workspace_path = manifest_path.parent().unwrap().parent().unwrap();
 
