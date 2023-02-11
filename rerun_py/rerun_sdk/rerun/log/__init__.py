@@ -1,3 +1,4 @@
+import functools
 from typing import Optional, Sequence, Union
 
 import numpy as np
@@ -35,8 +36,9 @@ OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
 def rerun_disabled_check(func: callable) -> callable:
-    """A Python method decorator that bypasses Rerun logging if `disabled` == True in `_module_state`."""
+    """A Python method decorator that checks if logging is enabled before calling the method."""
 
+    @functools.wraps(func)
     def wrapper(*args, **kwargs) -> None:
         if not bindings.logging_enabled():
             return

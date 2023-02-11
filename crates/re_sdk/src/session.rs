@@ -5,6 +5,8 @@ use re_log_types::{
     TimePoint,
 };
 
+const RERUN_KEY: &str = "RERUN";
+
 pub struct Session {
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
@@ -23,14 +25,22 @@ pub struct Session {
 
 impl Session {
     pub fn new() -> Self {
-        // Check the "RERUN_LOGGING_ENABLED" environment variable.
-        // If it is set to "0", then disable logging.
-        let logging_enabled = std::env::var("RERUN_LOGGING_ENABLED")
-            .map(|s| s == "1" || s.to_lowercase() == "true")
+        let logging_enabled = std::env::var(RERUN_KEY)
+            .map(|s| match s.to_lowercase().as_str() {
+                "0" | "false" | "off" => false,
+                "1" | "true" | "on" => true,
+                _ => {
+                    re_log::warn!(
+                        "Invalid value for environment variable {RERUN_KEY}: {s}. \
+                            Logging is enabled by default."
+                    );
+                    true
+                }
+            })
             .unwrap_or(true);
 
         if !logging_enabled {
-            re_log::info!("Logging is disabled, all log messages will be dropped.");
+            re_log::info!("Rerun Logging is disabled.");
         }
 
         Self {

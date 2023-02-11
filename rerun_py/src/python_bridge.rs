@@ -285,10 +285,10 @@ fn shutdown(py: Python<'_>) {
     });
 }
 
-/// Is loggine enabled in the global session?
+/// Is logging enabled in the global session?
 #[pyfunction]
 fn logging_enabled(py: Python<'_>) -> PyResult<bool> {
-    py.allow_threads(|| Ok(global_session().is_logging_enabled()))
+    Ok(global_session().is_logging_enabled())
 }
 
 /// Disconnect from remote server (if any).
