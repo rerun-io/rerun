@@ -136,15 +136,19 @@ jobs:
           url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
 
-      - name: Patch Cargo.toml for Pre-Release
+      - name: Patch Cargo.toml for pre-release
         if: github.ref == 'refs/heads/main'
-        # After patching the pre-release version, run cargo check
-        # this updates the cargo.lock file with the new version numbers
-        # and keeps the wheel build from failing
+        # After patching the pre-release version, run cargo check.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
-          python scripts/patch_prerelease_version.py
+          python scripts/version_util.py --patch_prerelease
           cargo check
 
+      - name: Version check for tagged-release
+        if: startsWith(github.ref, 'refs/tags/v')
+        # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
+        run: |
+          python scripts/version_util.py --check_version
 
       - name: Build and install rerun
         run: pip install rerun_py/
@@ -180,7 +184,7 @@ jobs:
       - name: Run Car example
         run: |
           pip install -r examples/car/requirements.txt
-          ./examples/car/main.py --headless
+          python examples/car/main.py --headless
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -210,7 +214,7 @@ jobs:
           prerelease: true
           files: dist/*
           name: "Development Build"
-          tag_name: "latest-test"
+          tag_name: "latest"
           token: ${{ secrets.GITHUB_TOKEN }}
           generate_release_notes: true
           append_body: true
@@ -232,6 +236,8 @@ jobs:
 
       #TODO(#966) https://github.com/rerun-io/rerun/issues/1054
       # Santiy check the git tag vs. the crate version.
+
+      # github.ref_name
 
       - name: Github Release
         uses: softprops/action-gh-release@v0.1.15
