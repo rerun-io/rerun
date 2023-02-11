@@ -4,6 +4,7 @@ This is a guide to how to build Rerun.
 
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 * [`RELEASES.md`](RELEASES.md)

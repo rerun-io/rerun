@@ -1,10 +1,15 @@
 [package]
 name = "re_ws_comms"
-version.workspace = true
+authors.workspace = true
+description = "WebSocket communication library (encoding, decoding, client, server) between a Rerun server and viewer"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [features]

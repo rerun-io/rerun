@@ -1,4 +1,6 @@
-//! Crate for tracking memory use.
+//! Run-time memory tracking and profiling.
+//!
+//! See [`AccountingAllocator`] and [`accounting_allocator`].
 
 pub mod accounting_allocator;
 mod allocation_tracker;

@@ -3,6 +3,7 @@ This document describes the technical architecture of Rerun.
 
 ## See also
 * [`BUILD.md`](BUILD.md)
+* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 * [`RELEASES.md`](RELEASES.md)
