@@ -126,7 +126,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         rr.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        rr.log_image_file("world/camera/video", sample.image_path, img_format=ImageFormat.JPEG)
+        rr.log_image_file("world/camera/video", img_path=sample.image_path, img_format=ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
