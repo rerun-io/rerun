@@ -14,6 +14,10 @@ rerun::MsgSender::new("points")
     .with_component(&points)?
     .with_component(&colors)?
     .send(&mut rerun::global_session())?;
+
+rerun::MsgSender::new("image")
+    .with_component(&[rerun::component::Tensor::from_image(image)])?
+    .send(&mut rerun::global_session())?;
 ```
 
 <p align="center">
