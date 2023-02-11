@@ -11,9 +11,10 @@ use std::{
 // Mapping to cargo:rerun-if-changed with glob support
 fn rerun_if_changed(path: &str) {
     // Workaround for windows verbatim paths not working with glob.
-    // https://github.com/rust-lang/glob/issues/111
+    // Issue: https://github.com/rust-lang/glob/issues/111
+    // Fix: https://github.com/rust-lang/glob/pull/112
     // Fixed on upstream, but no release containing the fix as of writing.
-    let path = path.trim_start_matches("\\\\?\\");
+    let path = path.trim_start_matches(r"\\?\");
 
     for path in glob::glob(path).unwrap() {
         println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
