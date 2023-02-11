@@ -554,6 +554,62 @@ tensor_type!(i64, I64);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "image")]
+#[derive(thiserror::Error, Debug)]
+pub enum ImageError {
+    #[error(transparent)]
+    Image(#[from] image::ImageError),
+
+    #[error("Unsupported color type: {0:?}")]
+    UnsupportedColorType(image::ColorType),
+
+    #[error("Failed to load file: {0}")]
+    ReadError(#[from] std::io::Error),
+}
+
+#[cfg(feature = "image")]
+impl Tensor {
+    /// Construct a tensor from the contents of a JPEG file on disk.
+    ///
+    /// Requires the `image` feature.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn tensor_from_jpeg_file(
+        image_path: impl AsRef<std::path::Path>,
+    ) -> Result<Self, ImageError> {
+        let jpeg_bytes = std::fs::read(image_path)?;
+        Self::tensor_from_jpeg_bytes(jpeg_bytes)
+    }
+
+    /// Construct a tensor from the contents of a JPEG file.
+    ///
+    /// Requires the `image` feature.
+    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, ImageError> {
+        use image::ImageDecoder as _;
+        let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
+        if jpeg.color_type() != image::ColorType::Rgb8 {
+            // TODO(emilk): support gray-scale jpeg as well
+            return Err(ImageError::UnsupportedColorType(jpeg.color_type()));
+        }
+        let (w, h) = jpeg.dimensions();
+
+        Ok(Self {
+            tensor_id: TensorId::random(),
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(3),
+            ],
+            data: TensorData::JPEG(jpeg_bytes),
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        })
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[cfg(feature = "disabled")]
 #[test]
 fn test_ndarray() {
