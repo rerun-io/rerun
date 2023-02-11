@@ -1,5 +1,19 @@
 # The Rerun renderer
 
-A [`wgpu`](https://github.com/gfx-rs/wgpu/) based renderer for all your visualization needs.
+A custom [wgpu](https://github.com/gfx-rs/wgpu/) based renderer tailored towards re_viewer's needs.
+Nevertheless, it can be used standalone and comes with its own examples!
 
-Supports points, lines, arrows, images and meshes.
+Some key features:
+* Key primitives for visualization like lines and points are first class citizens
+* Built with multiple independent views/cameras in mind
+* WebGL compatible quality tier allows use in the browser without WebGPU support
+* Hot shader reloading
+* ... and more to come!
+
+Goals & philosophy:
+* Handle fully dynamic data
+  * assumes that most data may change every frame!
+* Automatic resource re-use & caching
+* Lazy loading whenever possible for best startup performance
+* Run great both on the desktop and web
+* No dependencies on `re_viewer` or rerun data store libraries
