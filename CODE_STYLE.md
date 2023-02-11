@@ -3,6 +3,7 @@
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
+* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 * [`RELEASES.md`](RELEASES.md)
 
