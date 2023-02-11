@@ -1,16 +1,22 @@
 [package]
 name = "re_tensor_ops"
-version.workspace = true
+authors.workspace = true
+description = "Helpers for using ndarray together with Rerun tensors"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [dependencies]
+re_log_types = { path = "../re_log_types" }
+
 ahash = "0.8"
 bytemuck = { version = "1.12", features = ["extern_crate_alloc"] }
 ndarray.workspace = true
-re_log_types = { path = "../re_log_types" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0"

@@ -23,6 +23,7 @@ pub enum ConfigError {
 pub struct Config {
     #[serde(rename = "analytics_enabled")]
     pub analytics_enabled: bool,
+
     // NOTE: not a UUID on purpose, it is sometimes useful to use handcrafted IDs.
     #[serde(rename = "analytics_id")]
     pub analytics_id: String,

@@ -1,10 +1,15 @@
 [package]
 name = "re_log_types"
-version.workspace = true
+authors.workspace = true
+description = "The different types that make up the rerun log format."
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [features]

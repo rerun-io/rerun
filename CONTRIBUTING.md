@@ -5,6 +5,7 @@ This is written for anyone who wants to contribute to the Rerun repository.
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
+* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`RELEASES.md`](RELEASES.md)
 

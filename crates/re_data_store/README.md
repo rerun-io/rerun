@@ -1,1 +1,3 @@
-In-memory storage of log data, indexed for fast fast queries. Used by `re_viewer`.
+# re_data_store
+
+In-memory storage of Rerun log data, indexed for fast fast queries.
