@@ -4284,6 +4284,7 @@ dependencies = [
  "vec1",
  "wasm-bindgen-futures",
  "wgpu",
+ "winapi",
 ]
 
 [[package]]
