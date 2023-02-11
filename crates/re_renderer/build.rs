@@ -19,6 +19,11 @@ use walkdir::{DirEntry, WalkDir};
 
 // Mapping to cargo:rerun-if-changed with glob support
 fn rerun_if_changed(path: &str) {
+    // Workaround for windows verbatim paths not working with glob.
+    // https://github.com/rust-lang/glob/issues/111
+    // Fixed on upstream, but no release containing the fix as of writing.
+    let path = path.trim_start_matches("\\\\?\\");
+
     for path in glob::glob(path).unwrap() {
         println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
     }
