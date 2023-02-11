@@ -51,7 +51,16 @@ macro_rules! include_file {
                 .unwrap()
                 .join($path);
 
-            // The path returned by the `file!()` macro is always hermetic, and we pre-load
+            // If an external project imports `rerun` as a dependency, `file!()` will _not_ behave
+            // hermetically... so we need to make sure workspace prefix always get stripped no
+            // matter what before we move on.
+            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let workspace_path = manifest_path.parent().unwrap().parent().unwrap();
+            let path = path
+                .strip_prefix(workspace_path)
+                .map_or_else(|_| path.clone(), ToOwned::to_owned);
+
+            // At this point our path is guaranteed to be hermetic, and we pre-load
             // our run-time virtual filesystem using the exact same hermetic prefix.
             //
             // Therefore, the in-memory filesystem will actually be able to find this path,
