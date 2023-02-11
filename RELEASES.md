@@ -5,6 +5,7 @@ This document describes the current release and versioning strategy. This strate
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
+* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 

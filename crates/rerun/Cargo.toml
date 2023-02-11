@@ -1,10 +1,15 @@
 [package]
 name = "rerun"
-version.workspace = true
+authors.workspace = true
+description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 default-run = "rerun"
 
 

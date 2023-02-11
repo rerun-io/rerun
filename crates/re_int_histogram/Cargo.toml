@@ -1,10 +1,15 @@
 [package]
 name = "re_int_histogram"
-version.workspace = true
+authors.workspace = true
+description = "A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses."
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [dependencies]
