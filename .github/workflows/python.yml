@@ -234,9 +234,6 @@ jobs:
           name: wheels
           path: dist
 
-      #TODO(#966) https://github.com/rerun-io/rerun/issues/1054
-      # Santiy check the git tag vs. the crate version.
-
       - name: Github Release
         uses: softprops/action-gh-release@v0.1.15
         with:
