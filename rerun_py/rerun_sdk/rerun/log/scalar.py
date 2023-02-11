@@ -31,7 +31,7 @@ def log_scalar(
     The current simulation time will be used for the time/X-axis, hence scalars
     cannot be timeless!
 
-    See also examples/plots.
+    See also examples/python/plots.
 
     Understanding the plot and attributes hierarchy
 
