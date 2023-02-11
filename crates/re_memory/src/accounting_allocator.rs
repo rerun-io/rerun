@@ -113,17 +113,25 @@ pub fn global_allocs() -> Option<CountAndSize> {
     (count_and_size.count > 0).then_some(count_and_size)
 }
 
-/// Are we doing (rather expensive) tracking of the callstacks of large allocations?
+/// Are we doing (slightly expensive) tracking of the callstacks of large allocations?
 pub fn is_tracking_callstacks() -> bool {
     GLOBAL_STATS.track_callstacks.load(Relaxed)
 }
 
-/// Should we do (rather expensive) tracking of the callstacks of large allocations?
+/// Should we do (slightly expensive) tracking of the callstacks of large allocations?
+///
+/// See also [`turn_on_tracking_if_env_var`].
+///
+/// Requires that you have installed the [`AccountingAllocator`].
 pub fn set_tracking_callstacks(track: bool) {
     GLOBAL_STATS.track_callstacks.store(track, Relaxed);
 }
 
-/// Turn on callstack tracking (rather expensive) if a given env-var is set.
+/// Turn on callstack tracking (slightly expensive) if a given env-var is set.
+///
+/// See also [`set_tracking_callstacks`].
+///
+/// Requires that you have installed the [`AccountingAllocator`].
 #[cfg(not(target_arch = "wasm32"))]
 pub fn turn_on_tracking_if_env_var(env_var: &str) {
     if std::env::var(env_var).is_ok() {
@@ -159,6 +167,8 @@ pub struct TrackingStatistics {
 /// Gather statistics from the live tracking, if enabled.
 ///
 /// Enable this with [`set_tracking_callstacks`], preferably the first thing you do in `main`.
+///
+/// Requires that you have installed the [`AccountingAllocator`].
 pub fn tracking_stats() -> Option<TrackingStatistics> {
     /// NOTE: we use a rather large [`smallvec::SmallVec`] here to avoid dynamic allocations,
     /// which would otherwise confuse the memory tracking.
@@ -206,6 +216,9 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
 // ----------------------------------------------------------------------------
 
 /// Install this as the global allocator to get memory usage tracking.
+///
+/// Use [`set_tracking_callstacks`] or [`turn_on_tracking_if_env_var`] to turn on memory tracking.
+/// Collect the stats with [`tracking_stats`].
 ///
 /// Usage:
 /// ```
