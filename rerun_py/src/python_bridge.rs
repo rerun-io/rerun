@@ -742,20 +742,31 @@ fn log_mesh_file(
     Ok(())
 }
 
-/// Log an image file given its path on disk.
+/// Log an image file given its contents or path on disk.
 ///
 /// If no `img_format` is specified, we will try and guess it.
 #[pyfunction]
-#[pyo3(signature = (entity_path, img_path, img_format = None, timeless = false))]
+#[pyo3(signature = (entity_path, img_bytes = None, img_path = None, img_format = None, timeless = false))]
 fn log_image_file(
     entity_path: &str,
-    img_path: PathBuf,
+    img_bytes: Option<Vec<u8>>,
+    img_path: Option<PathBuf>,
     img_format: Option<&str>,
     timeless: bool,
 ) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
 
-    let img_bytes = std::fs::read(img_path)?;
+    let img_bytes = match (img_bytes, img_path) {
+        (Some(img_bytes), None) => img_bytes,
+        (None, Some(img_path)) => std::fs::read(img_path)?,
+        (None, None) => Err(PyTypeError::new_err(
+            "log_image_file: You must pass either img_bytes or img_path",
+        ))?,
+        (Some(_), Some(_)) => Err(PyTypeError::new_err(
+            "log_image_file: You must pass either img_bytes or img_path, but not both!",
+        ))?,
+    };
+
     let img_format = match img_format {
         Some(img_format) => image::ImageFormat::from_extension(img_format)
             .ok_or_else(|| PyTypeError::new_err(format!("Unknown image format {img_format:?}.")))?,

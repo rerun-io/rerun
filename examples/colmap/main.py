@@ -3,7 +3,6 @@
 import io
 import os
 import re
-import tempfile
 import zipfile
 from argparse import ArgumentParser
 from pathlib import Path
@@ -161,13 +160,12 @@ def read_and_log_sparse_reconstruction(
         )
 
         if resize:
-            with tempfile.NamedTemporaryFile(suffix=".jpg") as temp:
-                img = cv2.imread(str(image_file))
-                img = cv2.resize(img, resize)
-                cv2.imwrite(temp.name, img)
-                rr.log_image_file("camera/image", Path(temp.name))
+            img = cv2.imread(str(image_file))
+            img = cv2.resize(img, resize)
+            _, encimg = cv2.imencode(".jpg", img)
+            rr.log_image_file("camera/image", img_bytes=encimg)
         else:
-            rr.log_image_file("camera/image", image_file)
+            rr.log_image_file("camera/image/rgb", img_path=dataset_path / "images" / image.name)
 
         rr.log_points("camera/image/keypoints", visible_xys, colors=point_colors)
 
