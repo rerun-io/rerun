@@ -466,6 +466,8 @@ impl eframe::App for App {
             .show(egui_ctx, |ui| {
                 paint_background_fill(ui);
 
+                warning_panel(&self.re_ui, ui, frame);
+
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_stats);
@@ -961,6 +963,29 @@ impl AppState {
     }
 }
 
+fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    // We have some bugs when running the web viewer on Windows.
+    // See https://github.com/rerun-io/rerun/issues/1206
+    if frame.is_web() && ui.ctx().os() == egui::os::OperatingSystem::Windows {
+        let frame = egui::Frame {
+            fill: ui.visuals().panel_fill,
+            ..re_ui.bottom_panel_frame()
+        };
+
+        egui::TopBottomPanel::bottom("warning_panel")
+            .resizable(false)
+            .frame(frame)
+            .show_inside(ui, |ui| {
+                ui.centered_and_justified(|ui| {
+                    let text = re_ui.warning_text(
+                        "The web viewer has some known issues on Windows. Click for details.",
+                    );
+                    ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1206");
+                });
+            });
+    }
+}
+
 fn top_panel(
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
@@ -1171,6 +1196,7 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
     }
 }
+
 fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         // we use monospace so the width doesn't fluctuate as the numbers change.
@@ -1488,6 +1514,7 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
 
     if ui.button("panic! during unwind").clicked() {
         struct PanicOnDrop {}
+
         impl Drop for PanicOnDrop {
             fn drop(&mut self) {
                 panic!("Second intentional panic in Drop::drop");

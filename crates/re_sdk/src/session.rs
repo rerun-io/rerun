@@ -7,6 +7,9 @@ use re_log_types::{
 
 const RERUN_KEY: &str = "RERUN";
 
+/// This is the main object you need to create to use the Rerun SDK.
+///
+/// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
 pub struct Session {
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
@@ -24,6 +27,11 @@ pub struct Session {
 }
 
 impl Session {
+    /// Construct a new session.
+    ///
+    /// Usually you should only call this once and then reuse the same [`Session`].
+    ///
+    /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
     pub fn new() -> Self {
         let logging_enabled = std::env::var(RERUN_KEY)
             .map(|s| match s.to_lowercase().as_str() {
@@ -61,6 +69,13 @@ impl Session {
         self.logging_enabled
     }
 
+    /// Set the [`ApplicationId`] to use for the following stream of log messages.
+    ///
+    /// This should be called once before anything else.
+    /// If you don't call this, the resulting application id will be [`ApplicationId::unknown`].
+    ///
+    /// Note that many recordings can share the same [`ApplicationId`], but
+    /// they all have unique [`RecordingId`]s.
     pub fn set_application_id(&mut self, application_id: ApplicationId, is_official_example: bool) {
         if self.application_id.as_ref() != Some(&application_id) {
             self.application_id = Some(application_id);
@@ -69,10 +84,19 @@ impl Session {
         }
     }
 
+    /// The current [`RecordingId`], if set.
     pub fn recording_id(&self) -> Option<RecordingId> {
         self.recording_id
     }
 
+    /// Set the [`RecordingId`] of this message stream.
+    ///
+    /// If you're logging from multiple processes and want all the messages
+    /// to end up as the same recording, you must make sure they all set the same
+    /// [`RecordingId`] using this function.
+    ///
+    /// Note that many recordings can share the same [`ApplicationId`], but
+    /// they all have unique [`RecordingId`]s.
     pub fn set_recording_id(&mut self, recording_id: RecordingId) {
         if self.recording_id != Some(recording_id) {
             self.recording_id = Some(recording_id);
@@ -81,6 +105,11 @@ impl Session {
     }
 
     /// Send log data to a remote server.
+    ///
+    /// Send all currently buffered messages.
+    /// If we are already connected, we will re-connect to this new address.
+    ///
+    /// Disconnect with [`Self::disconnect`].
     pub fn connect(&mut self, addr: SocketAddr) {
         match &mut self.sender {
             Sender::Remote(remote) => {
@@ -103,11 +132,15 @@ impl Session {
         }
     }
 
+    /// Serve a Rerun web viewer and stream the log messages to it.
+    ///
+    /// If the `open_browser` argument is set, your default browser
+    /// will be opened to show the viewer.
     #[cfg(feature = "web")]
-    pub fn serve(&mut self) {
+    pub fn serve(&mut self, open_browser: bool) {
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
-        let web_server_join_handle = self.tokio_rt.spawn(async {
+        let web_server_join_handle = self.tokio_rt.spawn(async move {
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
                 .await
@@ -123,8 +156,7 @@ impl Session {
 
             let ws_server_url = re_ws_comms::default_server_url();
             let viewer_url = format!("http://127.0.0.1:{web_port}?url={ws_server_url}");
-            let open = true;
-            if open {
+            if open_browser {
                 webbrowser::open(&viewer_url).ok();
             } else {
                 re_log::info!("Web server is running - view it at {viewer_url}");
@@ -137,6 +169,7 @@ impl Session {
         self.sender = Sender::WebViewer(web_server_join_handle, rerun_tx);
     }
 
+    /// Disconnect the streaming TCP connection, if any.
     #[cfg(feature = "re_viewer")]
     #[allow(unused)] // only used with "re_viewer" feature
     pub fn disconnect(&mut self) {
@@ -146,7 +179,15 @@ impl Session {
         }
     }
 
-    pub fn is_connected(&self) -> bool {
+    /// Are we streaming log messages over TCP?
+    ///
+    /// Returns true after a call to [`Self::connect`].
+    ///
+    /// Returns `false` if we are streaming the messages to a web viewer,
+    /// or if we are buffering the messages (to save them to file later).
+    ///
+    /// This can return true even before the connection is yet to be established.
+    pub fn is_streaming_over_tcp(&self) -> bool {
         matches!(&self.sender, &Sender::Remote(_))
     }
 
@@ -164,6 +205,7 @@ impl Session {
         }
     }
 
+    /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
@@ -173,6 +215,7 @@ impl Session {
         }
     }
 
+    /// Send a [`LogMsg`].
     pub fn send(&mut self, log_msg: LogMsg) {
         if !self.logging_enabled {
             // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
@@ -214,7 +257,7 @@ impl Session {
         self.sender.send(log_msg);
     }
 
-    // convenience
+    /// Send a [`PathOp`].
     pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
         self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
             msg_id: MsgId::random(),

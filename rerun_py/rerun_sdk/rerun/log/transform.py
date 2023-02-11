@@ -27,7 +27,7 @@ def log_view_coordinates(
 
     Each entity defines its own coordinate system, called a space.
     By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
-    This is for instance useful for camera entities ("what axis is forward?").
+    This is for example useful for camera entities ("what axis is forward?").
 
     For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
 

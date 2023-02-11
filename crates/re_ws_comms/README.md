@@ -1,1 +1,3 @@
-WebSocket communication library (encoding, decoding, client, server) between server and viewer.
+# re_ws_comms
+
+WebSocket communication library (encoding, decoding, client, server) between a Rerun server and viewer.

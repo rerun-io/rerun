@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Runs custom linting on our code.
 

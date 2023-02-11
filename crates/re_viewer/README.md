@@ -1,4 +1,4 @@
-The Rerun viewer.
+# The Rerun viewer
 
 This is the main crate with all the GUI.
 

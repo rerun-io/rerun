@@ -1,14 +1,18 @@
-# Rerun
+<h1 align="center">
+  <a href="https://www.rerun.io/">
+    <img alt="banner" src="https://user-images.githubusercontent.com/1148717/218142418-1d320929-6b7a-486e-8277-fbeef2432529.png">
+  </a>
+</h1>
 
-[![Build Status](https://github.com/emilk/egui/workflows/CI/badge.svg)](https://github.com/emilk/egui/actions?workflow=CI)
+[![CI (Python)](https://github.com/rerun-io/rerun/actions/workflows/python.yml/badge.svg?branch=main)](https://github.com/rerun-io/rerun/actions/workflows/python.yml)
+[![CI (Rust)](https://github.com/rerun-io/rerun/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/rerun-io/rerun/actions/workflows/rust.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT)
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE)
 [![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Community%20Discord)](https://discord.gg/Gcm8BbTaAj)
 
+# Rerun: Visualization infrastructure for computer vision.
 
-Rerun is visualization infrastructure for computer vision.
-
-You use one of our logging APIs (Python or Rust atm) to log rich data, such as images and point clouds, to the Rerun Viewer, where it is visualized live or after the fact.
+Use one of our logging APIs (Python or Rust) to log rich data, such as images and point clouds, to the Rerun Viewer, where it is visualized live or after the fact.
 
 ```py
 import rerun as rr
@@ -17,12 +21,34 @@ rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to 
 
 rr.log_image("rgb_image", image)
 rr.log_points("points", positions)
+rr.log_rect("car", bbox)
+…
 ```
 
-<!--- TODO(emilk): insert an image or gif here, preferably hosted elsewhere -->
+<p align="center">
+<img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
+</p>
+
+# Setup
+
+## Python
+
+Install the latest Rerun SDK version with:
+
+```sh
+pip install rerun-sdk
+```
+
+## Rust
+Coming soon
+<!-- TODO(#1161): `cargo add rerun` + `cargo install rerun` -->
+
+## C
+
+Coming soon
 
 
-## Documentation
+# Documentation
 - [Examples](examples)
 - [Python API docs](https://rerun-io.github.io/rerun)
 - [Rust getting-started guide](rerun_py/USAGE.md)
@@ -30,19 +56,6 @@ rr.log_points("points", positions)
 - [High-level documentation](http://rerun.io/docs)
 - [Rust API docs](https://docs.rs/rerun/)
 -->
-
-
-## Installing the pre-release Python SDK
-<!-- TODO(#1161): replace with `pip install rerun-sdk` -->
-1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
-  (for Mac M1/M2, grab the "universal2" `.whl`)
-2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
-3. Test it: `rerun --version`
-
-
-## Installing the Rust SDK
-Coming soon
-<!-- TODO(#1161): `cargo add rerun` + `cargo install rerun` -->
 
 
 ## Rerun Viewer without Python
@@ -62,17 +75,26 @@ You should now be able to run `rerun --help` in any terminal.
 * The data you want to visualize must fit in RAM.
   - See [`rerun_py/USAGE.md`](rerun_py/USAGE.md) for how to bound memory use
   - We plan on having a disk-based data store some time in the future
+  - Additionally, Rerun is using more memory than it should at the moment
 
 
 ## Business model
-Rerun uses an open core model. Everything in this repository will stay open source and free (as in beer), forever. In the future, Rerun will offer a commercial product that builds on top of the core free project. 
+Rerun uses an open core model. Everything in this repository will stay open source and free (as in beer), forever. In the future, Rerun will offer a commercial product that builds on top of the core free project.
 
-The Rerun open source project targets the needs of individual developers. The commercial product targets the needs specific to teams that build and run computer vision and robotics products. 
+The Rerun open source project targets the needs of individual developers. The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
 
 
 # Development
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
+* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 * [`RELEASES.md`](RELEASES.md)
+
+
+## Installing a pre-release Python SDK
+
+1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
+2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
+3. Test it: `rerun --version`

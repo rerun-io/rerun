@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+# NOTE: this file has been replaced by crates/re_web_server/build.rs
+
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."

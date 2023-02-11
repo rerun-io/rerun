@@ -1,10 +1,16 @@
 [package]
 name = "re_sdk"
-version.workspace = true
+authors.workspace = true
+description = "Rerun logging SDK"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
 
 [features]
 default = ["re_viewer"]
@@ -19,6 +25,9 @@ re_viewer = ["dep:re_viewer"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
+##
+## You also need to install some additional tools, which you can do by running
+## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 

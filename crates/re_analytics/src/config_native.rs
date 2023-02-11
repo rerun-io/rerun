@@ -29,6 +29,7 @@ pub enum ConfigError {
 pub struct Config {
     #[serde(rename = "analytics_enabled")]
     pub analytics_enabled: bool,
+
     // NOTE: not a UUID on purpose, it is sometimes useful to use handcrafted IDs.
     #[serde(rename = "analytics_id")]
     pub analytics_id: String,
@@ -43,6 +44,7 @@ pub struct Config {
     /// The path of the config file.
     #[serde(rename = "config_file_path")]
     pub config_file_path: PathBuf,
+
     /// The directory where pending data is stored.
     #[serde(rename = "data_dir_path")]
     pub data_dir_path: PathBuf,
@@ -92,9 +94,11 @@ impl Config {
     pub fn config_dir(&self) -> &Path {
         self.config_file_path.parent().unwrap()
     }
+
     pub fn config_file(&self) -> &Path {
         &self.config_file_path
     }
+
     pub fn data_dir(&self) -> &Path {
         &self.data_dir_path
     }

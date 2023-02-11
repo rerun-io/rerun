@@ -1,22 +1,34 @@
+# https://flake8.pycqa.org/en/latest/user/configuration.html
+#
+# To ignore a lint on a specifc line, append `# noqa: E731`
+#
+# example = lambda: 'example'  # noqa: E731
+
+
+
 [flake8]
 max-line-length = 120
 ban-relative-imports = true
 docstring-convention = all
 extend-ignore =
-    # Satisfy black: https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#flake8
-    E203,
     # pydocstyle: http://www.pydocstyle.org/en/stable/error_codes.html
     # numpy convention with a few additional lints
     D107, D203, D212, D401, D402, D415, D416,
-    # TODO: Remove errors below to further improve docstring linting
-    D1,
-    # flake8-simplify
-    SIM102, SIM117,
+
+    D202, # No blank lines allowed after function docstring.
+
+    D1, # Missing docstring in public function - TODO(emilk): enable for SDK but not for examples
 
 extend-exclude =
     # Automatically generated test artifacts
     venv/,
     target/,
 
-    # Disabled for now TODO(john)
-    examples/,
+    # generated
+    examples/python/objectron/proto/objectron/proto.py,
+
+    # Copied from https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
+    examples/python/stable_diffusion/huggingface_pipeline.py,
+
+    # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
+    examples/python/colmap/read_write_model.py,

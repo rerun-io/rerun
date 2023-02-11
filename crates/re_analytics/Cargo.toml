@@ -1,10 +1,15 @@
 [package]
 name = "re_analytics"
-version.workspace = true
+authors.workspace = true
+description = "Rerun's analytics SDK"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 
 [dependencies]

@@ -150,7 +150,7 @@ dependencies = [
  "objc-foundation",
  "objc_id",
  "once_cell",
- "parking_lot",
+ "parking_lot 0.12.1",
  "thiserror",
  "winapi",
  "x11rb",
@@ -192,8 +192,9 @@ dependencies = [
 
 [[package]]
 name = "arrow2"
-version = "0.15.0"
-source = "git+https://github.com/rerun-io/arrow2?rev=c6ef5e3dde4a18c35c8a1d91d9a741835be0305f#c6ef5e3dde4a18c35c8a1d91d9a741835be0305f"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a4c5b03335bc1cb0fd9f5297f8fd3bbfd6fb04f3cb0bc7d6c91b7128cb8336a"
 dependencies = [
  "ahash 0.8.2",
  "arrow-format",
@@ -216,8 +217,8 @@ dependencies = [
 
 [[package]]
 name = "arrow2_convert"
-version = "0.3.2"
-source = "git+https://github.com/rerun-io/arrow2-convert?rev=7e63de5ce71741aaea3c36572d3e6831658ec3ed#7e63de5ce71741aaea3c36572d3e6831658ec3ed"
+version = "0.4.0"
+source = "git+https://github.com/DataEngineeringLabs/arrow2-convert?rev=a270bb6da73afb20dba09f45ce27cd18ddf4838d#a270bb6da73afb20dba09f45ce27cd18ddf4838d"
 dependencies = [
  "arrow2",
  "arrow2_convert_derive",
@@ -228,8 +229,8 @@ dependencies = [
 
 [[package]]
 name = "arrow2_convert_derive"
-version = "0.3.2"
-source = "git+https://github.com/rerun-io/arrow2-convert?rev=7e63de5ce71741aaea3c36572d3e6831658ec3ed#7e63de5ce71741aaea3c36572d3e6831658ec3ed"
+version = "0.4.0"
+source = "git+https://github.com/DataEngineeringLabs/arrow2-convert?rev=a270bb6da73afb20dba09f45ce27cd18ddf4838d#a270bb6da73afb20dba09f45ce27cd18ddf4838d"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -718,6 +719,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "cocoa"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f425db7937052c684daec3bd6375c8abe2d146dca4b8b143d6db777c39138f3a"
+dependencies = [
+ "bitflags",
+ "block",
+ "cocoa-foundation",
+ "core-foundation",
+ "core-graphics",
+ "foreign-types",
+ "libc",
+ "objc",
+]
+
+[[package]]
+name = "cocoa-foundation"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ade49b65d560ca58c403a479bb396592b155c0185eada742ee323d1d68d6318"
+dependencies = [
+ "bitflags",
+ "block",
+ "core-foundation",
+ "core-graphics-types",
+ "foreign-types",
+ "libc",
+ "objc",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -762,9 +794,9 @@ dependencies = [
 
 [[package]]
 name = "comfy-table"
-version = "6.1.3"
+version = "6.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e621e7e86c46fd8a14c32c6ae3cb95656621b4743a27d0cffedb831d46e7ad21"
+checksum = "6e7b787b0dc42e8111badfdbe4c3059158ccb2db8780352fa1b01e8ccf45cc4d"
 dependencies = [
  "crossterm",
  "strum 0.24.1",
@@ -1004,7 +1036,7 @@ dependencies = [
  "crossterm_winapi",
  "libc",
  "mio",
- "parking_lot",
+ "parking_lot 0.12.1",
  "signal-hook",
  "signal-hook-mio",
  "winapi",
@@ -1343,8 +1375,9 @@ dependencies = [
 
 [[package]]
 name = "egui_dock"
-version = "0.3.1"
-source = "git+https://github.com/rerun-io/egui_dock?rev=66d9dd57736532367542840b02e77812cf3bfe99#66d9dd57736532367542840b02e77812cf3bfe99"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f86bdfe987f753ffcdf896932f09babfc63580b21e1899c304166f0befc85c8"
 dependencies = [
  "egui",
  "serde",
@@ -1454,7 +1487,7 @@ dependencies = [
  "ecolor",
  "emath",
  "nohash-hasher",
- "parking_lot",
+ "parking_lot 0.12.1",
  "serde",
 ]
 
@@ -3277,12 +3310,37 @@ checksum = "427c3892f9e783d91cc128285287e70a59e206ca452770ece88a76f7a3eddd72"
 
 [[package]]
 name = "parking_lot"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
+dependencies = [
+ "instant",
+ "lock_api",
+ "parking_lot_core 0.8.6",
+]
+
+[[package]]
+name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
- "parking_lot_core",
+ "parking_lot_core 0.9.4",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a2cfe6f0ad2bfc16aefa463b497d5c7a5ecd44a23efa72aa342d90177356dc"
+dependencies = [
+ "cfg-if",
+ "instant",
+ "libc",
+ "redox_syscall 0.2.16",
+ "smallvec",
+ "winapi",
 ]
 
 [[package]]
@@ -3424,9 +3482,9 @@ dependencies = [
 
 [[package]]
 name = "polars-arrow"
-version = "0.26.1"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d5e894b6908d288ea24b56c8d99c2944f4b94af51ba662d58631c04806511b7"
+checksum = "38fad08b4d4d3e21e8935d5d3d4dfcbb5ca65ffc5fa19364c254751bc1d62f93"
 dependencies = [
  "arrow2",
  "hashbrown 0.13.1",
@@ -3436,16 +3494,16 @@ dependencies = [
 
 [[package]]
 name = "polars-core"
-version = "0.26.1"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3ab5c1e10e42a34a44a6e1421869c84ad56fe217c6120cda697c84bc467eb9c"
+checksum = "2256086865cfa7db31af5e66a088f0089bff1ba9692f7195d1661497cebdca05"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
  "bitflags",
  "chrono",
- "comfy-table 6.1.3",
+ "comfy-table 6.1.4",
  "hashbrown 0.13.1",
  "indexmap",
  "num",
@@ -3456,14 +3514,15 @@ dependencies = [
  "regex",
  "smartstring",
  "thiserror",
+ "wasm-timer",
  "xxhash-rust",
 ]
 
 [[package]]
 name = "polars-ops"
-version = "0.26.1"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "771a404f0f84e6801632c534a7b99410a017e227ecc7b9c64bab728c614f05d6"
+checksum = "31168b91a6edddb8dc4dcc4b53af15e9ffefc23f0bff054c1975423e01f3ae15"
 dependencies = [
  "arrow2",
  "polars-arrow",
@@ -3473,10 +3532,11 @@ dependencies = [
 
 [[package]]
 name = "polars-utils"
-version = "0.26.1"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e4fda3c2781247ef4137221f1013398e3d56aa1899f4f99ecf86fa96f64670"
+checksum = "bda7fb126f8c77d0a106620fd525bc4fdd1c7e32cb100aa9a82ba3f7c969485a"
 dependencies = [
+ "once_cell",
  "rayon",
 ]
 
@@ -3632,7 +3692,7 @@ dependencies = [
  "bincode",
  "byteorder",
  "once_cell",
- "parking_lot",
+ "parking_lot 0.12.1",
  "ruzstd",
  "serde",
  "zstd",
@@ -3660,7 +3720,7 @@ dependencies = [
  "indoc",
  "libc",
  "memoffset 0.8.0",
- "parking_lot",
+ "parking_lot 0.12.1",
  "pyo3-build-config",
  "pyo3-ffi",
  "pyo3-macros",
@@ -3852,7 +3912,7 @@ dependencies = [
  "itertools",
  "mimalloc",
  "nohash-hasher",
- "parking_lot",
+ "parking_lot 0.12.1",
  "polars-core",
  "polars-ops",
  "puffin",
@@ -3899,7 +3959,7 @@ name = "re_format"
 version = "0.1.0"
 dependencies = [
  "arrow2",
- "comfy-table 6.1.3",
+ "comfy-table 6.1.4",
  "derive_more",
 ]
 
@@ -3953,6 +4013,7 @@ dependencies = [
  "puffin",
  "rand",
  "re_format",
+ "re_log",
  "re_string_interner",
  "re_tuid",
  "rmp-serde",
@@ -3977,7 +4038,7 @@ dependencies = [
  "memory-stats",
  "nohash-hasher",
  "once_cell",
- "parking_lot",
+ "parking_lot 0.12.1",
  "re_format",
  "re_log",
  "smallvec",
@@ -4033,7 +4094,7 @@ dependencies = [
  "memoffset 0.8.0",
  "notify",
  "ordered-float",
- "parking_lot",
+ "parking_lot 0.12.1",
  "pathdiff",
  "pollster",
  "puffin",
@@ -4119,7 +4180,7 @@ dependencies = [
  "ahash 0.8.2",
  "nohash-hasher",
  "once_cell",
- "parking_lot",
+ "parking_lot 0.12.1",
  "serde",
 ]
 
@@ -4157,7 +4218,7 @@ dependencies = [
  "egui_dock",
  "egui_extras",
  "image",
- "parking_lot",
+ "parking_lot 0.12.1",
  "serde",
  "serde_json",
  "strum 0.24.1",
@@ -4173,6 +4234,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "bytemuck",
+ "cocoa",
  "console_error_panic_hook",
  "ctrlc",
  "eframe",
@@ -4192,6 +4254,7 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
+ "objc",
  "ordered-float",
  "poll-promise",
  "puffin",
@@ -4247,7 +4310,7 @@ dependencies = [
  "ewebsock",
  "futures-channel",
  "futures-util",
- "parking_lot",
+ "parking_lot 0.12.1",
  "re_log",
  "re_log_types",
  "re_smart_channel",
@@ -5771,6 +5834,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-timer"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be0ecb0db480561e9a7642b5d3e4187c128914e58aa84330b9493e3eb68c5e7f"
+dependencies = [
+ "futures",
+ "js-sys",
+ "parking_lot 0.11.2",
+ "pin-utils",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "wasmparser"
 version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5927,7 +6005,7 @@ dependencies = [
  "js-sys",
  "log",
  "naga",
- "parking_lot",
+ "parking_lot 0.12.1",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -5953,7 +6031,7 @@ dependencies = [
  "fxhash",
  "log",
  "naga",
- "parking_lot",
+ "parking_lot 0.12.1",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -5992,7 +6070,7 @@ dependencies = [
  "metal",
  "naga",
  "objc",
- "parking_lot",
+ "parking_lot 0.12.1",
  "profiling",
  "range-alloc",
  "raw-window-handle",

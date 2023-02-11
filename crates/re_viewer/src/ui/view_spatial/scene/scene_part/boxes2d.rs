@@ -19,6 +19,7 @@ use crate::{
 };
 
 use super::ScenePart;
+
 pub struct Boxes2DPart;
 
 impl Boxes2DPart {

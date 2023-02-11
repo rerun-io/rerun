@@ -56,6 +56,7 @@ pub enum RowIndexKind {
 /// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RowIndex(pub(crate) NonZeroU64);
+
 impl RowIndex {
     const KIND_MASK: u64 = 0x8000_0000_0000_0000;
 
@@ -79,6 +80,7 @@ impl RowIndex {
         }
     }
 }
+
 impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind() {
@@ -90,6 +92,7 @@ impl std::fmt::Display for RowIndex {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct IndexRowNr(pub(crate) u64);
+
 impl std::fmt::Display for IndexRowNr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
@@ -116,6 +119,7 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub component_bucket_size_bytes: u64,
+
     /// The maximum number of rows in a component bucket before triggering a split.
     /// Does not apply to timeless data.
     ///
@@ -148,6 +152,7 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_size_bytes: u64,
+
     /// The maximum number of rows in an index bucket before triggering a split.
     /// Does not apply to timeless data.
     ///
@@ -218,6 +223,7 @@ pub struct DataStore {
     ///
     /// See [`Self::insert`] for more information.
     pub(crate) cluster_key: ComponentName,
+
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
@@ -234,6 +240,7 @@ pub struct DataStore {
     ///
     /// See also `Self::indices`.
     pub(crate) timeless_indices: IntMap<EntityPathHash, PersistentIndexTable>,
+
     /// Dedicated component tables for timeless data. Never garbage collected.
     ///
     /// See also `Self::components`.
@@ -243,6 +250,7 @@ pub struct DataStore {
     ///
     /// An index maps specific points in time to rows in component tables.
     pub(crate) indices: HashMap<(Timeline, EntityPathHash), IndexTable>,
+
     /// Maps a component name to its associated table, for all timelines and all entities.
     ///
     /// A component table holds all the values ever inserted for a given component.
@@ -250,8 +258,10 @@ pub struct DataStore {
 
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
+
     /// Monotonically increasing ID for queries.
     pub(crate) query_id: AtomicU64,
+
     /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
 }
@@ -739,6 +749,7 @@ impl PersistentIndexTable {
 pub struct IndexTable {
     /// The timeline this table operates in, for debugging purposes.
     pub(crate) timeline: Timeline,
+
     /// The entity this table is related to, for debugging purposes.
     pub(crate) ent_path: EntityPath,
 
@@ -1020,6 +1031,7 @@ impl IndexBucket {
 pub struct PersistentComponentTable {
     /// Name of the underlying component, for debugging purposes.
     pub(crate) name: ComponentName,
+
     /// Type of the underlying component.
     pub(crate) datatype: DataType,
 
@@ -1051,6 +1063,7 @@ pub struct PersistentComponentTable {
 
     /// The total number of rows present in this bucket, across all chunks.
     pub(crate) total_rows: u64,
+
     /// The size of this bucket in bytes, across all chunks.
     ///
     /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we
@@ -1200,6 +1213,7 @@ impl PersistentComponentTable {
 pub struct ComponentTable {
     /// Name of the underlying component.
     pub(crate) name: ComponentName,
+
     /// Type of the underlying component.
     pub(crate) datatype: DataType,
 
@@ -1338,6 +1352,7 @@ pub struct ComponentBucket {
 
     /// The total number of rows present in this bucket, across all chunks.
     pub(crate) total_rows: u64,
+
     /// The size of this bucket in bytes, across all chunks.
     ///
     /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we

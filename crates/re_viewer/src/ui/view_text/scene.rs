@@ -17,13 +17,16 @@ use super::ui::ViewTextFilters;
 pub struct TextEntry {
     // props
     pub msg_id: MsgId,
+
     pub entity_path: EntityPath,
+
     /// `None` for timeless data.
     pub time: Option<i64>,
+
     pub color: Option<[u8; 4]>,
 
-    // text entry
     pub level: Option<String>,
+
     pub body: String,
 }
 

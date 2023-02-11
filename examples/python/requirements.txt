@@ -1,0 +1,17 @@
+-r api_demo/requirements.txt
+-r car/requirements.txt
+-r clock/requirements.txt
+-r colmap/requirements.txt
+-r deep_sdf/requirements.txt
+-r dicom/requirements.txt
+-r minimal/requirements.txt
+-r mp_pose/requirements.txt
+-r multiprocessing/requirements.txt
+-r multithreading/requirements.txt
+-r nyud/requirements.txt
+-r objectron/requirements.txt
+-r plots/requirements.txt
+-r raw_mesh/requirements.txt
+-r stable_diffusion/requirements.txt
+-r text_logging/requirements.txt
+-r tracking_hf_opencv/requirements.txt

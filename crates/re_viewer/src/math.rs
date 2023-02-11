@@ -67,6 +67,7 @@ pub fn ray_bbox_intersect(ray: &macaw::Ray3, bbox: &macaw::BoundingBox) -> f32 {
 fn min(a: f32, b: f32) -> f32 {
     a.min(b)
 }
+
 fn max(a: f32, b: f32) -> f32 {
     a.max(b)
 }

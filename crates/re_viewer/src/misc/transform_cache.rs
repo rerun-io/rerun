@@ -33,10 +33,13 @@ pub enum UnreachableTransform {
     ///
     /// If at all, this should only happen for a single frame until space infos are rebuilt.
     UnknownSpaceInfo,
+
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,
+
     /// Exiting out of a space with a pinhole camera that doesn't have a resolution is not supported.
     InversePinholeCameraWithoutResolution,
+
     /// Unknown transform between this and the reference space.
     UnknownTransform,
 }

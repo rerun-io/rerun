@@ -1,15 +1,20 @@
 [package]
 name = "rerun"
-version.workspace = true
+authors.workspace = true
+description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
-rust-version.workspace = true
+homepage.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 default-run = "rerun"
 
 
 [features]
-default = ["analytics", "server", "sdk"]
+default = ["analytics", "image", "server", "sdk"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics", "re_viewer/analytics"]
@@ -17,6 +22,9 @@ analytics = ["dep:re_analytics", "re_viewer/analytics"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 ## Only relevant if feature `sdk` is enabled.
 glam = ["re_sdk?/glam"]
+
+## Integration with the [`image`](https://crates.io/crates/image/) crate.
+image = ["re_log_types/image"]
 
 ## Embed the Rerun SDK and re-export all of its public symbols.
 sdk = ["dep:re_sdk", "re_sdk?/re_viewer"]
@@ -28,6 +36,9 @@ server = ["re_sdk_comms/server"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
+##
+## You also need to install some additional tools, which you can do by running
+## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web = [
   "re_ws_comms/server",
   "re_sdk?/web",

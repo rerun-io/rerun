@@ -16,6 +16,7 @@ pub enum ResourceHandle<InnerHandle: slotmap::Key> {
     /// Handle that is valid for a single frame
     Frame {
         key: InnerHandle,
+
         /// This handle is only valid for this frame.
         /// Querying it during any other frame will fail.
         valid_frame_index: u64,

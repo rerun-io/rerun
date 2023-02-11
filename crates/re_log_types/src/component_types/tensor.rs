@@ -252,6 +252,7 @@ impl std::fmt::Display for TensorDimension {
     }
 }
 
+/// How to interpret the contents of a tensor.
 // TODO(jleibs) This should be extended to include things like rgb vs bgr
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -259,9 +260,11 @@ impl std::fmt::Display for TensorDimension {
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
+
     /// The data is an annotated [`crate::component_types::ClassId`] which should be
     /// looked up using the appropriate [`crate::context::AnnotationContext`]
     ClassId,
+
     /// Image data interpreted as depth map.
     Depth,
 }
@@ -309,13 +312,17 @@ pub enum TensorDataMeaning {
 pub struct Tensor {
     /// Unique identifier for the tensor
     pub tensor_id: TensorId,
+
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
+
     /// Data payload
     pub data: TensorData,
+
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
     pub meaning: TensorDataMeaning,
+
     /// Reciprocal scale of meter unit for depth images
     pub meter: Option<f32>,
 }
@@ -546,6 +553,126 @@ tensor_type!(i64, I64);
 
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
+
+// ----------------------------------------------------------------------------
+
+#[cfg(feature = "image")]
+#[derive(thiserror::Error, Debug)]
+pub enum ImageError {
+    #[error(transparent)]
+    Image(#[from] image::ImageError),
+
+    #[error("Unsupported JPEG color type: {0:?}. Only RGB Jpegs are supported")]
+    UnsupportedJpegColorType(image::ColorType),
+
+    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    UnsupportedImageColorType(image::ColorType),
+
+    #[error("Failed to load file: {0}")]
+    ReadError(#[from] std::io::Error),
+}
+
+#[cfg(feature = "image")]
+impl Tensor {
+    /// Construct a tensor from the contents of a JPEG file on disk.
+    ///
+    /// Requires the `image` feature.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn tensor_from_jpeg_file(
+        image_path: impl AsRef<std::path::Path>,
+    ) -> Result<Self, ImageError> {
+        let jpeg_bytes = std::fs::read(image_path)?;
+        Self::tensor_from_jpeg_bytes(jpeg_bytes)
+    }
+
+    /// Construct a tensor from the contents of a JPEG file.
+    ///
+    /// Requires the `image` feature.
+    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, ImageError> {
+        use image::ImageDecoder as _;
+        let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
+        if jpeg.color_type() != image::ColorType::Rgb8 {
+            // TODO(emilk): support gray-scale jpeg as well
+            return Err(ImageError::UnsupportedJpegColorType(jpeg.color_type()));
+        }
+        let (w, h) = jpeg.dimensions();
+
+        Ok(Self {
+            tensor_id: TensorId::random(),
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(3),
+            ],
+            data: TensorData::JPEG(jpeg_bytes),
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        })
+    }
+
+    /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
+    ///
+    /// Requires the `image` feature.
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, ImageError> {
+        Self::from_dynamic_image(image.into())
+    }
+
+    /// Construct a tensor from [`image::DynamicImage`].
+    ///
+    /// Requires the `image` feature.
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageError> {
+        let (w, h) = (image.width(), image.height());
+
+        let (depth, data) = match image {
+            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageLuma16(image) => {
+                (1, TensorData::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb16(image) => (3, TensorData::U16(image.into_raw().into())),
+            image::DynamicImage::ImageRgba16(image) => {
+                (4, TensorData::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb32F(image) => {
+                (3, TensorData::F32(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgba32F(image) => {
+                (4, TensorData::F32(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageLumaA8(image) => {
+                re_log::warn!(
+                    "Rerun doesn't have native support for 8-bit Luma + Alpha. The image will be convert to RGBA."
+                );
+                return Self::from_image(image::DynamicImage::ImageLumaA8(image).to_rgba8());
+            }
+            image::DynamicImage::ImageLumaA16(image) => {
+                re_log::warn!(
+                    "Rerun doesn't have native support for 16-bit Luma + Alpha. The image will be convert to RGBA."
+                );
+                return Self::from_image(image::DynamicImage::ImageLumaA16(image).to_rgba16());
+            }
+            _ => {
+                // It is very annoying that DynamicImage is #[non_exhaustive]
+                return Err(ImageError::UnsupportedImageColorType(image.color()));
+            }
+        };
+
+        Ok(Self {
+            tensor_id: TensorId::random(),
+            shape: vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(depth),
+            ],
+            data,
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        })
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[cfg(feature = "disabled")]
 #[test]

@@ -19,7 +19,7 @@ lint: toml-lint py-lint
 
 ### Python
 
-py_folders := "rerun_py examples"
+py_folders := "examples rerun_py scripts"
 
 # Set up a Pythonvirtual environment for development
 py-dev-env:
@@ -54,7 +54,7 @@ py-format:
 
 # Check that all the requirements.txt files for all the examples are correct
 py-requirements:
-    find examples/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && pip-missing-reqs . || exit 255'
+    find examples/python/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && pip-missing-reqs . || exit 255'
 
 # Run linting
 py-lint: py-requirements

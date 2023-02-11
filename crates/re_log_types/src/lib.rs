@@ -1,4 +1,4 @@
-//! Types used for the log data.
+//! The different types that make up the rerun log format.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -123,6 +123,9 @@ impl std::str::FromStr for RecordingId {
 pub struct ApplicationId(pub String);
 
 impl ApplicationId {
+    /// The default [`ApplicationId`] if the user hasn't set one.
+    ///
+    /// Currently: `"unknown_app_id"`.
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
     }
@@ -237,13 +240,14 @@ pub struct EntityPathOpMsg {
     pub path_op: PathOp,
 }
 
+/// Operation to perform on an [`EntityPath`], e.g. clearing all components.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum PathOp {
-    // Clear all the components stored at an [`EntityPath`]
+    /// Clear all the components stored at an [`EntityPath`]
     ClearComponents(EntityPath),
 
-    // Clear all the components of an `[EntityPath]` and any descendants.
+    /// Clear all the components of an `[EntityPath]` and any descendants.
     ClearRecursive(EntityPath),
 }
 

@@ -66,8 +66,10 @@ pub enum TextureFilterMin {
 pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
+
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
     pub extent_u: glam::Vec3,
+
     /// Vector that spans up the rectangle from its top left corner along the v axis of the texture.
     pub extent_v: glam::Vec3,
 

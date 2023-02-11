@@ -10,19 +10,19 @@ use pyo3::{
     types::PyDict,
 };
 
+use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
+use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
 use rerun::{global_session, ApplicationId, EntityPath, RecordingId};
 
-use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
-
-use rerun::log::{LogMsg, MsgBundle, MsgId, PathOp};
-
-pub use rerun::components::{
-    AnnotationContext, AnnotationInfo, Arrow3D, Axis3, Box3D, ClassDescription, ClassId, ColorRGBA,
-    EncodedMesh3D, Handedness, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
-    Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
-    Rigid3, Scalar, ScalarPlotProps, Sign, SignedAxis3, Size3D, Tensor, TensorData,
-    TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
-    ViewCoordinates,
+pub use rerun::{
+    components::{
+        AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
+        EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
+        MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
+        Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDimension, TensorId,
+        TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    },
+    coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
 use crate::arrow::get_registered_component_names;
@@ -259,17 +259,20 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve() -> PyResult<()> {
+fn serve(open_browser: bool) -> PyResult<()> {
     #[cfg(feature = "web")]
     {
-        global_session().serve();
+        global_session().serve(open_browser);
         Ok(())
     }
 
     #[cfg(not(feature = "web"))]
-    Err(PyRuntimeError::new_err(
-        "The Rerun SDK was not compiled with the 'web' feature",
-    ))
+    {
+        _ = open_browser;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web' feature",
+        ))
+    }
 }
 
 #[pyfunction]
@@ -334,7 +337,7 @@ fn save(path: &str) -> PyResult<()> {
     re_log::trace!("Saving file to {path:?}…");
 
     let mut session = global_session();
-    if session.is_connected() {
+    if session.is_streaming_over_tcp() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));
@@ -746,20 +749,31 @@ fn log_mesh_file(
     Ok(())
 }
 
-/// Log an image file given its path on disk.
+/// Log an image file given its contents or path on disk.
 ///
 /// If no `img_format` is specified, we will try and guess it.
 #[pyfunction]
-#[pyo3(signature = (entity_path, img_path, img_format = None, timeless = false))]
+#[pyo3(signature = (entity_path, img_bytes = None, img_path = None, img_format = None, timeless = false))]
 fn log_image_file(
     entity_path: &str,
-    img_path: PathBuf,
+    img_bytes: Option<Vec<u8>>,
+    img_path: Option<PathBuf>,
     img_format: Option<&str>,
     timeless: bool,
 ) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
 
-    let img_bytes = std::fs::read(img_path)?;
+    let img_bytes = match (img_bytes, img_path) {
+        (Some(img_bytes), None) => img_bytes,
+        (None, Some(img_path)) => std::fs::read(img_path)?,
+        (None, None) => Err(PyTypeError::new_err(
+            "log_image_file: You must pass either img_bytes or img_path",
+        ))?,
+        (Some(_), Some(_)) => Err(PyTypeError::new_err(
+            "log_image_file: You must pass either img_bytes or img_path, but not both!",
+        ))?,
+    };
+
     let img_format = match img_format {
         Some(img_format) => image::ImageFormat::from_extension(img_format)
             .ok_or_else(|| PyTypeError::new_err(format!("Unknown image format {img_format:?}.")))?,

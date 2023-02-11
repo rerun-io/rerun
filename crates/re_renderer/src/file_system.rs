@@ -13,12 +13,15 @@ use parking_lot::RwLock;
 /// A very limited filesystem, just enough for our internal needs.
 pub trait FileSystem {
     fn read_to_string(&self, path: impl AsRef<Path>) -> anyhow::Result<Cow<'static, str>>;
+
     fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf>;
+
     fn exists(&self, path: impl AsRef<Path>) -> bool;
 
     fn create_dir_all(&self, _path: impl AsRef<Path>) -> anyhow::Result<()> {
         panic!("create_dir_all() is not supported on this backend")
     }
+
     fn create_file(
         &self,
         _path: impl AsRef<Path>,
