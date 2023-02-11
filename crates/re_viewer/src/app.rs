@@ -973,8 +973,7 @@ fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Fra
         };
 
         egui::TopBottomPanel::bottom("warning_panel")
-            .default_height(20.0)
-            .resizable(true)
+            .resizable(false)
             .frame(frame)
             .show_inside(ui, |ui| {
                 ui.centered_and_justified(|ui| {
