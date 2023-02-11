@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 
-"""
-Demonstration of using rerun from multiple threads
-"""
+"""Demonstration of using rerun from multiple threads."""
 
 import argparse
 import random
 import threading
-import time
 
 import numpy as np
 import numpy.typing as npt
