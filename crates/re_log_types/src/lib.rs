@@ -1,4 +1,4 @@
-//! Types used for the log data.
+//! The different types that make up the rerun log format.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]

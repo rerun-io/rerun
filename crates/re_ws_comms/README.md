@@ -1,1 +1,1 @@
-WebSocket communication library (encoding, decoding, client, server) between server and viewer.
+WebSocket communication library (encoding, decoding, client, server) between a Rerun server and viewer.

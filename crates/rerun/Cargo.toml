@@ -1,6 +1,7 @@
 [package]
 name = "rerun"
 authors.workspace = true
+description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

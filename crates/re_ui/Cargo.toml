@@ -1,5 +1,6 @@
 [package]
 authors.workspace = true
+description = "Rerun GUI theme and helpers, built around egui"
 edition.workspace = true
 homepage.workspace = true
 license = "(MIT OR Apache-2.0) AND OFL-1.1"

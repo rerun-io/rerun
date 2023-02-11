@@ -1,3 +1,4 @@
+# Rerun
 The main Rerun logging API and binary.
 
 ## Library

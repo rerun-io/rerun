@@ -1,6 +1,7 @@
 [package]
 name = "re_format"
 authors.workspace = true
+description = "Miscellaneous tools to format and parse numbers, durations, etc."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

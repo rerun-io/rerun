@@ -1,6 +1,7 @@
 [package]
 name = "re_log_types"
 authors.workspace = true
+description = "The different types that make up the rerun log format."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
