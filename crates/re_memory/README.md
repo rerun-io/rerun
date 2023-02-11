@@ -1,4 +1,4 @@
-Run-time memory tracking and profiling.
+# Run-time memory tracking and profiling.
 
 Includes an opt-in sampling profiler for allocation callstacks.
 Each time memory is allocated there is a chance a callstack will be collected.

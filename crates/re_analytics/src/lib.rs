@@ -1,4 +1,6 @@
 //! Rerun's analytics SDK.
+//!
+//! All the event we collect analytics about can be found in [`events`].
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -14,7 +16,7 @@ use time::OffsetDateTime;
 pub enum EventKind {
     /// Append a new event to the time series associated with this analytics ID.
     ///
-    /// Used e.g. to send an event everytime the app start.
+    /// Used e.g. to send an event every time the app start.
     Append,
 
     /// Update the permanent state associated with this analytics ID.
