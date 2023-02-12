@@ -147,7 +147,7 @@ fn setup_app_icon_windows() -> AppIconStatus {
     AppIconStatus::Set
 }
 
-/// Set icon & app title for MacOS applications.
+/// Set icon & app title for `MacOS` applications.
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
 fn setup_app_icon_mac() -> AppIconStatus {
@@ -174,7 +174,7 @@ fn setup_app_icon_mac() -> AppIconStatus {
         // Change the title in the top bar - for python processes this would be again "python" otherwise.
         let main_menu = app.mainMenu();
         let app_menu: id = msg_send![main_menu.itemAtIndex_(0), submenu];
-        app_menu.setTitle_(NSString::alloc(nil).init_str(APPLICATION_NAME));
+        app_menu.setTitle_(NSString::alloc(nil).init_str(crate::APPLICATION_NAME));
 
         // The title in the Dock apparently can't be changed.
         // At least these people didn't figure it out either:
