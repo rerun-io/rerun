@@ -44,10 +44,15 @@ impl<'a> Packages<'a> {
     /// so that package `pkg_name` as well as all of it direct and indirect
     /// dependencies are properly tracked whether they are remote, in-workspace,
     /// or locally patched.
-    pub fn track_implicit_dep(&self, root: &Package) {
+    pub fn track_implicit_dep(&self, pkg_name: &str) {
+        let pkg = self.pkgs.get(pkg_name).unwrap_or_else(|| {
+            let found_names: Vec<&str> = self.pkgs.values().map(|pkg| pkg.name.as_str()).collect();
+            panic!("Failed to find package {pkg_name:?} among {found_names:?}")
+        });
+
         // Track the root package itself
         {
-            let mut path = root.manifest_path.clone();
+            let mut path = pkg.manifest_path.clone();
             path.pop();
 
             // NOTE: Since we track the cargo manifest, past this point we only need to
@@ -58,7 +63,7 @@ impl<'a> Packages<'a> {
 
         // Track all direct and indirect dependencies of that root package
         let mut tracked = HashSet::new();
-        self.track_patched_deps(&mut tracked, root);
+        self.track_patched_deps(&mut tracked, pkg);
     }
 
     /// Recursively walk the tree of dependencies of the given `root` package, making sure
@@ -247,17 +252,10 @@ fn main() {
     rerun_if_changed("../../web_viewer/sw.js");
 
     let pkgs = Packages::from_metadata(&metadata);
-
     // We implicitly depend on re_viewer, which means we also implicitly depend on
     // all of its direct and indirect dependencies (which are potentially in-workspace
     // or patched!).
-    if let Some(re_viewer) = pkgs.pkgs.get("re_viewer") {
-        pkgs.track_implicit_dep(re_viewer);
-    } else {
-        // We are probably not in the rerun workspace,
-        // but in a `cargo publish` or on a user machine.
-        // No need to consider changes to `re_viewer`!
-    }
+    pkgs.track_implicit_dep("re_viewer");
 
     if std::env::var("CARGO_FEATURE___CI").is_ok() {
         // This saves a lot of CI time.
