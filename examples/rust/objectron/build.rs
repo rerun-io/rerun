@@ -37,13 +37,19 @@ fn main() -> Result<(), std::io::Error> {
     // Make sure to _not_ rewrite identical data, so as to avoid being stuck in an infinite build
     // loop when using tools like e.g. `bacon` that watch the filesystem for any changes to the
     // project's files.
+    write_file_if_necessary(dst_path, &bytes)
+}
+
+/// Only touch the file if the contents has actually changed
+fn write_file_if_necessary(
+    dst_path: impl AsRef<std::path::Path>,
+    content: &[u8],
+) -> std::io::Result<()> {
     if let Ok(cur_bytes) = std::fs::read(&dst_path) {
-        if bytes == cur_bytes {
+        if cur_bytes == content {
             return Ok(());
         }
     }
 
-    std::fs::write(dst_path, &bytes)?;
-
-    Ok(())
+    std::fs::write(dst_path, content)
 }

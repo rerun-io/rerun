@@ -218,7 +218,7 @@ fn main() {
 
     contents += "}";
 
-    std::fs::write(&file_path, contents).unwrap();
+    write_file_if_necessary(&file_path, contents.as_bytes()).unwrap();
 
     let output = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned()))
         .args(["fmt", "--", file_path.to_string_lossy().as_ref()])
@@ -229,4 +229,18 @@ fn main() {
     eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 
     assert!(output.status.success());
+}
+
+/// Only touch the file if the contents has actually changed
+fn write_file_if_necessary(
+    dst_path: impl AsRef<std::path::Path>,
+    content: &[u8],
+) -> std::io::Result<()> {
+    if let Ok(cur_bytes) = std::fs::read(&dst_path) {
+        if cur_bytes == content {
+            return Ok(());
+        }
+    }
+
+    std::fs::write(dst_path, content)
 }
