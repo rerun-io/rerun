@@ -709,13 +709,16 @@ fn main() -> anyhow::Result<()> {
                 .spawn(move |mut session| run(&mut session, &args))
                 .map_err(Into::into)
         }
-        _ => {
-            // TODO(cmc): handle serve
-        }
+        Behavior::Serve => session.serve(true),
+        Behavior::Save(_) => {}
     }
 
     run(&mut session, &args)?;
 
+    if matches!(behavior, Behavior::Serve) {
+        eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
+        std::thread::sleep(std::time::Duration::from_secs(1_000_000));
+    }
     if let Behavior::Save(path) = behavior {
         session.save(path)?;
     }
