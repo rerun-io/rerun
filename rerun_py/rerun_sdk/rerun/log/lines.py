@@ -27,7 +27,7 @@ def log_path(
     timeless: bool = False,
 ) -> None:
     r"""
-    Log a 3D path.
+    Log a line strip through 3D space.
 
     A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
