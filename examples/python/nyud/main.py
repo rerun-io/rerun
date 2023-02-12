@@ -168,7 +168,7 @@ def download_progress(url: str, dst: Path) -> None:
         total=total,
         unit="iB",
         unit_scale=True,
-        unit_divisor=chunk_size,
+        unit_divisor=1024,
     ) as bar:
         for data in resp.iter_content(chunk_size=chunk_size):
             size = file.write(data)
