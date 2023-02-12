@@ -14,10 +14,9 @@ This script accepts one argument:
 
 import os
 import re
-import sys
 import subprocess
+import sys
 from typing import Final
-
 
 CARGO_VERSION_REGEX: Final = r"^version\s*=\s*\"(?P<version>([0-9]+)\.([0-9]+)\.([0-9]+))\"$"
 VERSION_TAG_REGEX: Final = r"^v(?P<version>([0-9]+)\.([0-9]+)\.([0-9]+))$"
