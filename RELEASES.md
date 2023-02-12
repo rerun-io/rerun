@@ -51,22 +51,22 @@ Copy this checklist to the the PR description, go through it from top to bottom,
     * [ ] A gif showing a major new feature
 * [ ] Test the branch ([see below](#testing-a-release))
 * [ ] Open the PR up for review
-* [ ] Bump version numbers
+* [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
     * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
 * [ ] Publish new Rust crates
-* [ ] Publish new Python wheels
 * [ ] Merge PR
 * [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
 * [ ] `git tag -d latest && git tag -a latest -m 'Latest release'` (unless this is an alpha pre-release)
 * [ ] `git push && git push --tags`
 * [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
+* [ ] Wait for documentation to build: https://docs.rs/releases/queue
 * [ ] Post on:
-  * [ ] Community Discord
-  * [ ] Rerun Twitter
-  * [ ] Reddit?
+    * [ ] Community Discord
+    * [ ] Rerun Twitter
+    * [ ] Reddit?
 
 
 ### Testing a release
@@ -79,7 +79,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
             * [ ] Firefox
             * [ ] Mobile
 * After tagging and the CI has published:
-    * [ ] Test the Python packages from PyPI: `pip install -U rerun-sdk`
+    * [ ] Test the Python packages from PyPI: `pip install --upgrade rerun-sdk`
 
 
 ## To do before first release
@@ -91,3 +91,48 @@ Copy this checklist to the the PR description, go through it from top to bottom,
     * [ ] Release new `egui`
     * [ ] Update wgpu
     * [ ] Either try to get a new `arrow2` and `polars` published, or use unreleased versions of both
+
+
+## Publishing
+First login as https://crates.io/users/rerunio with:
+
+```bash
+cargo login <API Key>
+```
+
+Ask Emil for the API Key.
+
+# VERY IMPORTANT!
+Build new wasm file:
+`cargo build --release -p re_web_server`
+This is bundled in `re_web_server`!
+
+
+```ls
+# Already published:
+cargo publish -p re_log
+cargo publish -p re_error
+cargo publish -p re_format
+cargo publish -p re_string_interner
+cargo publish -p re_analytics
+cargo publish -p re_memory
+cargo publish -p re_tuid
+cargo publish -p re_log_types
+cargo publish -p re_smart_channel
+cargo publish -p re_tensor_ops
+cargo publish -p re_ui
+cargo publish -p re_arrow_store
+cargo publish -p re_data_store
+cargo publish -p re_query
+cargo publish -p re_sdk_comms
+cargo publish -p re_ws_comms
+
+
+# TODO:
+cargo publish -p re_renderer
+cargo publish -p re_viewer
+RERUN_IS_PUBLISHING=yes cargo publish -p re_web_server
+cargo publish -p rerun
+cargo publish -p re_sdk
+cargo publish -p re_int_histogram
+```

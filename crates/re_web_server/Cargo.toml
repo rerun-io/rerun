@@ -4,13 +4,20 @@ authors.workspace = true
 description = "Serves the Rerun web viewer (Wasm and HTML) over HTTP"
 edition.workspace = true
 homepage.workspace = true
-include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "web_viewer/*",
+]
+
 
 [package.metadata.docs.rs]
 all-features = true
