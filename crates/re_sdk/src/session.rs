@@ -245,8 +245,8 @@ impl Session {
         re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
     }
 
-    /// Spawns a native viewer on the main thread (for platform compatibility's sake) and then move
-    /// user's code to a dedicated thread with the current `Session`.
+    /// Starts a Rerun viewer on the main thread (for platform compatibility's sake) and migrates
+    /// the given callback, along with the `Session` itself, to a new thread.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn spawn<F, T>(mut self, run: F) -> re_viewer::external::eframe::Result<()>
     where
