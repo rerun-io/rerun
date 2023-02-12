@@ -5,7 +5,8 @@ pub enum AppIconStatus {
     NotSetIgnored,
 
     /// We haven't set the icon yet, we should try again next frame.
-    /// This can happen due to lazy window creation.
+    ///
+    /// This can happen repeatedly due to lazy window creation on some platforms.
     NotSetTryAgain,
 
     /// We successfully set the icon and it should be visible now.
@@ -17,9 +18,11 @@ pub enum AppIconStatus {
 /// By setting the icon at runtime and not via resource files etc. we ensure that we'll get the chance
 /// to set the same icon when the process/window is started from python (which sets its own icon ahead of us!).
 ///
-/// Since window creation can be lazy, call this every frame until it's either succesfull or gave up.
+/// Since window creation can be lazy, call this every frame until it's either successfully or gave up.
 /// (See [`AppIconStatus`])
 pub fn setup_app_icon() -> AppIconStatus {
+    crate::profile_function!();
+
     #[cfg(target_os = "windows")]
     return setup_app_icon_windows();
 
