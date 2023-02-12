@@ -88,11 +88,11 @@ def log_rect(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    # Always log splats first so they show up in range-based queries. See(#1215)
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
 
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
@@ -191,9 +191,9 @@ def log_rects(
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
-    # Always log splats first so they show up in range-based queries. See(#1215)
     if comps[1]:
         comps[1]["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
 
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
     bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
