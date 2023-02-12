@@ -7,7 +7,7 @@ fn main() -> Result<(), std::io::Error> {
         return Ok(());
     }
     if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
-        // Only run if we are in the rerun workspace, not on cargo publish or on users machines.
+        // Only run if we are in the rerun workspace, not on users machines (if we ever publish the example).
         return Ok(());
     }
 

@@ -129,7 +129,7 @@ cargo publish -p re_ws_comms
 
 
 # TODO:
-cargo publish -p re_renderer
+RERUN_IS_PUBLISHING=yes cargo publish -p re_renderer
 cargo publish -p re_viewer
 RERUN_IS_PUBLISHING=yes cargo publish -p re_web_server
 cargo publish -p rerun

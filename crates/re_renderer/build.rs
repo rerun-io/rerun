@@ -124,7 +124,12 @@ fn main() {
         return;
     }
     if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
-        // Only run if we are in the rerun workspace, not on cargo publish or on users machines.
+        // Only run if we are in the rerun workspace, not on users machines.
+        return;
+    }
+    if std::env::var("RERUN_IS_PUBLISHING") == Ok("yes".to_owned()) {
+        // We don't need to rebuild - we should have done so beforehand!
+        // See `RELEASES.md`
         return;
     }
 
