@@ -177,6 +177,11 @@ pub fn init() {
         entries
     };
 
+    assert!(
+        entries.is_empty(),
+        "re_renderer build.rs found no shaders - I think some path is wrong!"
+    );
+
     for entry in entries {
         rerun_if_changed(entry.path().to_string_lossy().as_ref());
 
