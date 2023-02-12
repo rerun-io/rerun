@@ -94,6 +94,8 @@ impl Session {
                 }
                 self.sender = Sender::Remote(client);
             }
+            #[cfg(feature = "re_viewer")]
+            Sender::NativeViewer(_) => {}
             #[cfg(feature = "web")]
             Sender::WebViewer(web_server, _) => {
                 re_log::info!("Shutting down web server.");
@@ -181,6 +183,8 @@ impl Session {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
+            #[cfg(feature = "re_viewer")]
+            Sender::NativeViewer(_) => vec![],
             #[cfg(feature = "web")]
             Sender::WebViewer(_, _) => vec![],
         }
@@ -240,6 +244,38 @@ impl Session {
         let startup_options = re_viewer::StartupOptions::default();
         re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
     }
+
+    /// Spawns a native viewer on the main thread (for platform compatibility's sake) and then move
+    /// user's code to a dedicated thread with the current `Session`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn spawn<F, T>(mut self, run: F) -> re_viewer::external::eframe::Result<()>
+    where
+        F: FnOnce(Session) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
+
+        for msg in self.drain_log_messages_buffer() {
+            tx.send(msg).ok();
+        }
+
+        self.sender = Sender::NativeViewer(tx);
+
+        // NOTE: Forget the handle on purpose, leave that thread be.
+        _ = std::thread::spawn(move || run(self));
+
+        // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
+        // to spawn the viewer in place and move the user callback to a new thread.
+        re_viewer::run_native_app(Box::new(move |cc, re_ui| {
+            let startup_options = re_viewer::StartupOptions::default();
+            Box::new(re_viewer::App::from_receiver(
+                startup_options,
+                re_ui,
+                cc.storage,
+                rx,
+            ))
+        }))
+    }
 }
 
 impl Default for Session {
@@ -253,6 +289,9 @@ enum Sender {
 
     #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
     Buffered(Vec<LogMsg>),
+
+    #[cfg(feature = "re_viewer")]
+    NativeViewer(re_smart_channel::Sender<LogMsg>),
 
     /// Send it to the web viewer over WebSockets
     #[cfg(feature = "web")]
@@ -273,6 +312,13 @@ impl Sender {
         match self {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
+
+            #[cfg(feature = "re_viewer")]
+            Self::NativeViewer(sender) => {
+                if let Err(err) = sender.send(msg) {
+                    re_log::error!("Failed to send log message to viewer: {err}");
+                }
+            }
 
             #[cfg(feature = "web")]
             Self::WebViewer(_, sender) => {
