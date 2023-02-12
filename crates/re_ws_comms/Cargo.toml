@@ -4,12 +4,16 @@ authors.workspace = true
 description = "WebSocket communication library (encoding, decoding, client, server) between a Rerun server and viewer"
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]

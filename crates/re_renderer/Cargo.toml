@@ -4,12 +4,17 @@ authors.workspace = true
 description = "A wgpu based renderer for all your visualization needs."
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
