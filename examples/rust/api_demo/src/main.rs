@@ -1,4 +1,4 @@
-//! This is not an example as much as it is a mess.
+//! An amalgamation of various usages of the API with synthetic "data" without any particular focus.
 //!
 //! It uses a lot of different aspects of the Rerun API in order to test it.
 //!
