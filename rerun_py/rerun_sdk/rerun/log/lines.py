@@ -44,7 +44,7 @@ def log_line_strip(
     r"""
     Log a line strip through 3D space.
 
-    A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
+    A line strip is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
     ```
