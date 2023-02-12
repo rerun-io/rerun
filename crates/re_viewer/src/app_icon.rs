@@ -9,7 +9,7 @@ pub enum AppIconStatus {
     NotSetTryAgain,
 
     /// We successfully set the icon and it should be visible now.
-    Success,
+    Set,
 }
 
 /// Sets app icon at runtime.
@@ -38,13 +38,12 @@ fn setup_app_icon_windows() -> AppIconStatus {
 
     // We would get fairly far already with winit's `set_window_icon` (which is exposed to eframe) actually!
     // However, it only sets ICON_SMALL, i.e. doesn't allow us to set a higher resolution icon for the task bar.
+    // Also, there is scaling issues, detailed below.
 
     // TODO(andreas): This does not set the task bar icon for when our application is started from python.
     //      Things tried so far:
     //      * Querying for an owning window and setting icon there (there doesn't seem to be an owning window)
     //      * using undocumented SetConsoleIcon method (successfully queried via GetProcAddress)
-
-    let icon_data = &re_ui::icons::APP_ICON.png_bytes;
 
     // SAFETY: WinApi function without side-effects.
     let window_handle = unsafe { winuser::GetActiveWindow() };
@@ -94,7 +93,7 @@ fn setup_app_icon_windows() -> AppIconStatus {
         }
     }
 
-    let Ok(unscaled_image) = image::load_from_memory(icon_data) else {
+    let Ok(unscaled_image) = image::load_from_memory(re_ui::icons::APP_ICON.png_bytes) else {
         re_log::debug!("Failed to decode icon png data.");
         return AppIconStatus::NotSetIgnored;
     };
@@ -103,12 +102,17 @@ fn setup_app_icon_windows() -> AppIconStatus {
     // but the scaling it does then for the small icon is pretty bad.
     // Instead we set the correct sizes manually and take over the scaling ourselves.
     // For this to work we first need to set the big icon and then the small one.
+    //
+    // Note that ICON_SMALL may be used even if we don't render a title bar as it may be used in alt+tab!
     {
+        // SAFETY: WinAPI getter function with no known side effects.
         let icon_size_big = unsafe { winuser::GetSystemMetrics(winuser::SM_CXICON) };
         let icon_big = create_hicon_with_scale(&unscaled_image, icon_size_big);
         if icon_big.is_null() {
             re_log::debug!("Failed to create HICON (for big icon) from embedded png data.");
+            return AppIconStatus::NotSetIgnored; // We could try independently with the small icon but what's the point, it would look bad!
         } else {
+            // SAFETY: Unsafe WinApi function, takes objects previously created with WinAPI, all checked for null prior.
             unsafe {
                 winuser::SendMessageW(
                     window_handle,
@@ -120,11 +124,14 @@ fn setup_app_icon_windows() -> AppIconStatus {
         }
     }
     {
+        // SAFETY: WinAPI getter function with no known side effects.
         let icon_size_small = unsafe { winuser::GetSystemMetrics(winuser::SM_CXSMICON) };
         let icon_small = create_hicon_with_scale(&unscaled_image, icon_size_small);
         if icon_small.is_null() {
             re_log::debug!("Failed to create HICON (for small icon) from embedded png data.");
+            return AppIconStatus::NotSetIgnored;
         } else {
+            // SAFETY: Unsafe WinApi function, takes objects previously created with WinAPI, all checked for null prior.
             unsafe {
                 winuser::SendMessageW(
                     window_handle,
@@ -137,7 +144,7 @@ fn setup_app_icon_windows() -> AppIconStatus {
     }
 
     // It _probably_ worked out.
-    AppIconStatus::Success
+    AppIconStatus::Set
 }
 
 /// Set icon & app title for MacOS applications.
@@ -175,5 +182,5 @@ fn setup_app_icon_mac() -> AppIconStatus {
         // https://stackoverflow.com/questions/28808226/changing-cocoa-app-icon-title-and-menu-labels-at-runtime
     }
 
-    AppIconStatus::Success
+    AppIconStatus::Set
 }
