@@ -115,6 +115,9 @@ puffin.workspace = true
 cocoa = "0.24.1"
 objc = "0.2.7"
 
+[target.'cfg(any(target_os = "windows"))'.dependencies]
+winapi = "0.3.9"
+
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
