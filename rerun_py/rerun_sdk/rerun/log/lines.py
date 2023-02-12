@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from deprecated import deprecated
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
@@ -13,10 +14,12 @@ from rerun import bindings
 
 __all__ = [
     "log_path",
+    "log_line_strip",
     "log_line_segments",
 ]
 
 
+@deprecated(version="0.2.0", reason="Use log_line_strip instead")
 def log_path(
     entity_path: str,
     positions: Optional[npt.NDArray[np.float32]],
@@ -26,10 +29,22 @@ def log_path(
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
-    r"""
-    Log a 3D path.
+    log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
 
-    A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
+
+def log_line_strip(
+    entity_path: str,
+    positions: Optional[npt.NDArray[np.float32]],
+    *,
+    stroke_width: Optional[float] = None,
+    color: Optional[Sequence[int]] = None,
+    ext: Optional[Dict[str, Any]] = None,
+    timeless: bool = False,
+) -> None:
+    r"""
+    Log a line strip through 3D space.
+
+    A line strip is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
     ```

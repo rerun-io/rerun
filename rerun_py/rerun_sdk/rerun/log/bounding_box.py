@@ -33,7 +33,7 @@ def log_obb(
     timeless: bool = False,
 ) -> None:
     """
-    Log a 3D oriented bounding box, defined by its half size.
+    Log a 3D oriented bounding box.
 
     Parameters
     ----------
