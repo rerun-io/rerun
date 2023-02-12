@@ -174,11 +174,11 @@ def transforms_rigid_3d() -> None:
     # paths where the planet & moon move
     angles = np.arange(0.0, 1.01, 0.01) * math.tau
     circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
-    rr.log_path(
+    rr.log_line_strip(
         "transforms3d/sun/planet_path",
         circle * sun_to_planet_distance,
     )
-    rr.log_path(
+    rr.log_line_strip(
         "transforms3d/sun/planet/moon_path",
         circle * planet_to_moon_distance,
     )

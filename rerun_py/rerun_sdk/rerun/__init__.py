@@ -12,7 +12,7 @@ from rerun.log.camera import log_pinhole
 from rerun.log.extension_components import log_extension_components
 from rerun.log.file import log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
-from rerun.log.lines import log_line_segments, log_path
+from rerun.log.lines import log_line_segments, log_line_strip, log_path
 from rerun.log.mesh import log_mesh, log_meshes
 from rerun.log.points import log_point, log_points
 from rerun.log.rects import log_rect, log_rects
@@ -30,12 +30,14 @@ __all__ = [
     "log_cleared",
     "log_cleared",
     "log_depth_image",
-    "log_image",
+    "log_extension_components",
     "log_image_file",
+    "log_image",
     "log_line_segments",
+    "log_line_strip",
+    "log_mesh_file",
     "log_mesh",
     "log_meshes",
-    "log_mesh_file",
     "log_obb",
     "log_path",
     "log_pinhole",
@@ -49,12 +51,11 @@ __all__ = [
     "log_tensor",
     "log_text_entry",
     "log_unknown_transform",
-    "log_extension_components",
     "log_view_coordinates",
+    "LoggingHandler",
     "script_add_args",
     "script_setup",
     "script_teardown",
-    "LoggingHandler",
 ]
 
 
