@@ -45,7 +45,10 @@ impl<'a> Packages<'a> {
     /// dependencies are properly tracked whether they are remote, in-workspace,
     /// or locally patched.
     pub fn track_implicit_dep(&self, pkg_name: &str) {
-        let pkg = self.pkgs.values().find(|pkg| pkg.name == pkg_name).unwrap();
+        let pkg = self.pkgs.get(pkg_name).unwrap_or_else(|| {
+            let found_names: Vec<&str> = self.pkgs.values().map(|pkg| pkg.name.as_str()).collect();
+            panic!("Failed to find package {pkg_name:?} among {found_names:?}")
+        });
 
         // Track the root package itself
         {
