@@ -61,7 +61,7 @@ SECTION_TABLE: Final[List[Section]] = [
             "log_rect",
             "log_rects",
             "log_obb",
-            "log_path",
+            "log_line_strip",
             "log_line_segments",
             "log_arrow",
         ],

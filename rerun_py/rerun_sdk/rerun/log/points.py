@@ -42,7 +42,7 @@ def log_point(
     timeless: bool = False,
 ) -> None:
     """
-    Log a 2D or 3D point, with optional color.
+    Log a 2D or 3D point, with a positions and optional colors, radii, label, etc.
 
     Logging again to the same `entity_path` will replace the previous point.
 
@@ -140,7 +140,7 @@ def log_points(
     timeless: bool = False,
 ) -> None:
     """
-    Log 2D or 3D points, with optional colors.
+    Log 2D or 3D points, with positions and optional colors, radii, labels, etc.
 
     Logging again to the same `entity_path` will replace all the previous points.
 
