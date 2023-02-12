@@ -178,7 +178,7 @@ pub fn init() {
     };
 
     assert!(
-        entries.is_empty(),
+        !entries.is_empty(),
         "re_renderer build.rs found no shaders - I think some path is wrong!"
     );
 
