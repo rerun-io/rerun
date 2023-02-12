@@ -1,7 +1,7 @@
 //! This build script implements the second half of our cross-platform shader #import system.
 //! The first half can be found in `src/file_resolver.rs`.
 //!
-//! It finds all WGSL shaders defined anywhere within re_renderer, and embeds them
+//! It finds all WGSL shaders defined anywhere within `re_renderer`, and embeds them
 //! directly into the released artifact for our `re_renderer` library.
 //!
 //! At run-time, for release builds only, those shaders will be available through an hermetic
