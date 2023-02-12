@@ -26,6 +26,8 @@ This means we might add breaking changes in each new release.
 
 In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical bug fix. These patch releases will not contain any breaking changes.
 
+We sometimes to pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
+
 
 ## Data and communication versioning
 We have not yet committed to any backwards or forwards compatibility.
@@ -34,7 +36,7 @@ We tag all data files (`.rrd` files) and communication protocols with the rerun 
 
 
 ## Releases
-Release builds of the Python Wheels are triggered by pushing a release tag to github in the form `v0.2.0`.
+Release builds of the Python Wheels are triggered by pushing a release tag to GitHub in the form `v0.2.0`.
 When doing a normal release, we tag the release commit on the `main` branch. If we are doing a patch release, we do a branch off of the latest release tag (e.g. `v0.3.0`) and cherry-pick any fixes we want into that branch.
 
 ### Release checklist
@@ -58,6 +60,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Publish new Python wheels
 * [ ] Merge PR
 * [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
+* [ ] `git tag -d latest && git tag -a latest -m 'Latest release'` (unless this is an alpha pre-release)
 * [ ] `git push && git push --tags`
 * [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
 * [ ] Post on:
