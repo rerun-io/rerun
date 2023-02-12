@@ -46,42 +46,97 @@ fn setup_app_icon_windows() -> AppIconStatus {
 
     let icon_data = &re_ui::icons::APP_ICON.png_bytes;
 
-    // SAFETY: Accessing raw data from icon in a read-only manner. Icon data is static.
-    unsafe {
-        let hwnd = winuser::GetActiveWindow();
-        if hwnd.is_null() {
-            // The Window isn't available yet. Try again later!
-            return AppIconStatus::NotSetTryAgain;
+    // SAFETY: WinApi function without side-effects.
+    let window_handle = unsafe { winuser::GetActiveWindow() };
+    if window_handle.is_null() {
+        // The Window isn't available yet. Try again later!
+        return AppIconStatus::NotSetTryAgain;
+    }
+
+    fn create_hicon_with_scale(
+        unscaled_image: &image::DynamicImage,
+        target_size: i32,
+    ) -> winapi::shared::windef::HICON {
+        let image_scaled = image::imageops::resize(
+            unscaled_image,
+            target_size as _,
+            target_size as _,
+            image::imageops::Lanczos3,
+        );
+
+        // Creating transparent icons with WinApi is a huge mess.
+        // We'd need ot go through CreateIconIndirect's ICONINFO struct which then
+        // takes a mask HBITMAP and a color HBITMAP and creating each of these is pain.
+        // Instead we workaround this by creating a png which CreateIconFromResourceEx magically understands.
+        // This is a pretty horrible hack as we spend a lot of time encoding and decoding, but at least the code is a lot shorter.
+        let mut image_scaled_bytes: Vec<u8> = Vec::new();
+        if image_scaled
+            .write_to(
+                &mut std::io::Cursor::new(&mut image_scaled_bytes),
+                image::ImageOutputFormat::Png,
+            )
+            .is_err()
+        {
+            return std::ptr::null_mut();
         }
 
-        // Different sources say on the web say different things on what to do with ICON_SMALL when ICON_BIG is set.
-        // Tried around a bit myself: Only setting ICON_BIG with the icon size for big icons (SM_CXICON) seems to be best,
-        // both for the big taskbar icon and the small window/alt-tab icon.
-        // The scaling algorithm doesn't seem to be great, so we shouldn't feed in a too large icon.
-
-        let icon_size_big = winuser::GetSystemMetrics(winuser::SM_CXICON);
-        #[allow(clippy::as_ptr_cast_mut)] // as_mut_ptr is a compile error here
-        let hicon_big = winuser::CreateIconFromResourceEx(
-            icon_data.as_ptr() as winapi::shared::minwindef::PBYTE,
-            icon_data.len() as u32,
-            1,             // Means this is an icon, not a cursor.
-            0x00030000,    // Version number of the HICON
-            icon_size_big, // This is the *desired* size. This method will scale for us
-            icon_size_big,
-            winuser::LR_DEFAULTCOLOR,
-        );
-        if hicon_big.is_null() {
-            re_log::debug!("Failed to create HICON (for big icon) from embedded png data.");
-        } else {
-            winuser::SendMessageW(
-                hwnd,
-                winuser::WM_SETICON,
-                winuser::ICON_BIG as usize,
-                hicon_big as isize,
-            );
+        // SAFETY: Creating an HICON which should be readonly on our data.
+        unsafe {
+            winuser::CreateIconFromResourceEx(
+                image_scaled_bytes.as_mut_ptr(),
+                image_scaled_bytes.len() as u32,
+                1,           // Means this is an icon, not a cursor.
+                0x00030000,  // Version number of the HICON
+                target_size, // This is the *desired* size. This method will scale for us
+                target_size,
+                winuser::LR_DEFAULTCOLOR,
+            )
         }
     }
 
+    let Ok(unscaled_image) = image::load_from_memory(icon_data) else {
+        re_log::debug!("Failed to decode icon png data.");
+        return AppIconStatus::NotSetIgnored;
+    };
+
+    // Only setting ICON_BIG with the icon size for big icons (SM_CXICON) works fine
+    // but the scaling it does then for the small icon is pretty bad.
+    // Instead we set the correct sizes manually and take over the scaling ourselves.
+    // For this to work we first need to set the big icon and then the small one.
+    {
+        let icon_size_big = unsafe { winuser::GetSystemMetrics(winuser::SM_CXICON) };
+        let icon_big = create_hicon_with_scale(&unscaled_image, icon_size_big);
+        if icon_big.is_null() {
+            re_log::debug!("Failed to create HICON (for big icon) from embedded png data.");
+        } else {
+            unsafe {
+                winuser::SendMessageW(
+                    window_handle,
+                    winuser::WM_SETICON,
+                    winuser::ICON_BIG as usize,
+                    icon_big as isize,
+                );
+            }
+        }
+    }
+    {
+        let icon_size_small = unsafe { winuser::GetSystemMetrics(winuser::SM_CXSMICON) };
+        let icon_small = create_hicon_with_scale(&unscaled_image, icon_size_small);
+        if icon_small.is_null() {
+            re_log::debug!("Failed to create HICON (for small icon) from embedded png data.");
+        } else {
+            unsafe {
+                winuser::SendMessageW(
+                    window_handle,
+                    winuser::WM_SETICON,
+                    winuser::ICON_SMALL as usize,
+                    icon_small as isize,
+                );
+            }
+        }
+    }
+
+    // It _probably_ worked out.
     AppIconStatus::Success
 }
 
