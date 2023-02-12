@@ -80,9 +80,7 @@ def download_with_progress(url: str) -> io.BytesIO:
     chunk_size = 1024 * 1024
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
-    with tqdm(
-        desc="Downloading dataset", total=total_size, unit="B", unit_scale=True, unit_divisor=chunk_size
-    ) as progress:
+    with tqdm(desc="Downloading dataset", total=total_size, unit="iB", unit_scale=True, unit_divisor=1024) as progress:
         zip_file = io.BytesIO()
         for data in resp.iter_content(chunk_size):
             zip_file.write(data)
