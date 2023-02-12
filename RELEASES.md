@@ -102,14 +102,11 @@ cargo login <API Key>
 
 Ask Emil for the API Key.
 
-# VERY IMPORTANT!
-Build new wasm file:
-`cargo build --release -p re_web_server`
-This is bundled in `re_web_server`!
 
-
-```ls
-# Already published:
+TODO(emilk): make a script of the below:
+```sh
+# IMPORTANT! bundled by re_web_server:
+cargo build --release -p re_web_server
 cargo publish -p re_log
 cargo publish -p re_error
 cargo publish -p re_format
@@ -126,13 +123,10 @@ cargo publish -p re_data_store
 cargo publish -p re_query
 cargo publish -p re_sdk_comms
 cargo publish -p re_ws_comms
-
-
-# TODO:
 RERUN_IS_PUBLISHING=yes cargo publish -p re_renderer
-cargo publish -p re_viewer
 RERUN_IS_PUBLISHING=yes cargo publish -p re_web_server
-cargo publish -p rerun
+cargo publish -p re_viewer
 cargo publish -p re_sdk
+cargo publish -p rerun
 cargo publish -p re_int_histogram
 ```
