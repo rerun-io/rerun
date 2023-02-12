@@ -1,5 +1,6 @@
 /// In which state the app icon is (as far as we know).
 #[derive(PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum AppIconStatus {
     /// We did not set it or failed to do it. In any case we won't try again.
     NotSetIgnored,
