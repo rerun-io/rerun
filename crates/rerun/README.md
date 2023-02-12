@@ -4,7 +4,6 @@
   </a>
 </h1>
 
-[<img alt="github" src="https://img.shields.io/badge/github-emilk/egui-8da0cb?logo=github" height="20">](https://github.com/emilk/egui)
 [![Latest version](https://img.shields.io/crates/v/re_ws_comms.svg)](https://crates.io/crates/re_ws_comms)
 [![Documentation](https://docs.rs/re_ws_comms/badge.svg)](https://docs.rs/re_ws_comms)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
