@@ -140,8 +140,11 @@ def read_and_log_sparse_reconstruction(
 
         points = [point.xyz for point in visible_xyzs]
         point_colors = [point.rgb for point in visible_xyzs]
+        point_errors = [point.error for point in visible_xyzs]
 
-        rr.log_points("points", points, colors=point_colors)
+        rr.log_scalar("plot/average_reprojection_error", np.mean(point_errors), color=[240, 45, 58])
+
+        rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
 
         rr.log_rigid3(
             "camera",
@@ -165,7 +168,7 @@ def read_and_log_sparse_reconstruction(
         else:
             rr.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
 
-        rr.log_points("camera/image/keypoints", visible_xys, colors=point_colors)
+        rr.log_points("camera/image/keypoints", visible_xys, colors=[34, 138, 167])
 
 
 def main() -> None:
