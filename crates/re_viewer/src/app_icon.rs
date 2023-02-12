@@ -68,7 +68,7 @@ fn setup_app_icon_windows() -> AppIconStatus {
         );
 
         // Creating transparent icons with WinApi is a huge mess.
-        // We'd need ot go through CreateIconIndirect's ICONINFO struct which then
+        // We'd need to go through CreateIconIndirect's ICONINFO struct which then
         // takes a mask HBITMAP and a color HBITMAP and creating each of these is pain.
         // Instead we workaround this by creating a png which CreateIconFromResourceEx magically understands.
         // This is a pretty horrible hack as we spend a lot of time encoding and decoding, but at least the code is a lot shorter.
@@ -90,7 +90,7 @@ fn setup_app_icon_windows() -> AppIconStatus {
                 image_scaled_bytes.len() as u32,
                 1,           // Means this is an icon, not a cursor.
                 0x00030000,  // Version number of the HICON
-                target_size, // This is the *desired* size. This method will scale for us
+                target_size, // Note that this method can scale, but it does so *very* poorly. So let's avoid that!
                 target_size,
                 winuser::LR_DEFAULTCOLOR,
             )
