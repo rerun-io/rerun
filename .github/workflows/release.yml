@@ -3,7 +3,7 @@ name: Release Tag
 on:
   push:
     tags:
-      - "*.*.*" # on release tag
+      - "v*.*.*" # on release tag
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
