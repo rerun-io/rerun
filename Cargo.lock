@@ -217,20 +217,21 @@ dependencies = [
 
 [[package]]
 name = "arrow2_convert"
-version = "0.4.0"
-source = "git+https://github.com/DataEngineeringLabs/arrow2-convert?rev=a270bb6da73afb20dba09f45ce27cd18ddf4838d#a270bb6da73afb20dba09f45ce27cd18ddf4838d"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5c08c10a0089a07e63614a21e9c581175a934bbbecc0f41983b83810fe6fc97"
 dependencies = [
  "arrow2",
  "arrow2_convert_derive",
  "chrono",
  "err-derive",
- "trybuild",
 ]
 
 [[package]]
 name = "arrow2_convert_derive"
-version = "0.4.0"
-source = "git+https://github.com/DataEngineeringLabs/arrow2-convert?rev=a270bb6da73afb20dba09f45ce27cd18ddf4838d#a270bb6da73afb20dba09f45ce27cd18ddf4838d"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9847142964fcd99c30d56bf51ab4e1b0a3daa1ff7d59f44527088cdd42fad49f"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -375,15 +376,6 @@ name = "base64"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
-
-[[package]]
-name = "basic-toml"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e819b667739967cd44d308b8c7b71305d8bb0729ac44a248aa08f33d01950b4"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bincode"
@@ -5440,21 +5432,6 @@ name = "try-lock"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
-
-[[package]]
-name = "trybuild"
-version = "1.0.77"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a44da5a6f2164c8e14d3bbc0657d69c5966af9f5f6930d4f600b1f5c4a673413"
-dependencies = [
- "basic-toml",
- "glob",
- "once_cell",
- "serde",
- "serde_derive",
- "serde_json",
- "termcolor",
-]
 
 [[package]]
 name = "ttf-parser"
