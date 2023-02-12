@@ -8,6 +8,7 @@
 
 #![allow(clippy::doc_markdown)]
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
@@ -130,15 +131,35 @@ enum Scene {
     Avocado,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum Behavior {
+    Save,
+    Serve,
+    Connect(SocketAddr),
+    Spawn,
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
+    /// Start a viewer and feed it data in real-time.
+    #[clap(long, default_value = "true")]
+    spawn: bool,
+
+    /// Saves the data to an rrd file rather than visualizing it immediately.
+    #[clap(long)]
+    save: bool,
+
     /// If specified, connects and sends the logged data to a remote Rerun viewer.
     ///
     /// Optionally takes an ip:port, otherwise uses Rerun's defaults.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    connect: Option<Option<String>>,
+    connect: Option<Option<SocketAddr>>,
+
+    /// Connects and sends the logged data to a web-based Rerun viewer.
+    #[clap(long)]
+    serve: bool,
 
     /// Specifies the glTF scene to load.
     #[clap(long, value_enum, default_value = "buggy")]
@@ -174,48 +195,67 @@ impl Args {
 
         Ok(scene_path)
     }
+
+    // TODO(cmc): move all rerun args handling to helpers
+    pub fn to_behavior(&self) -> Behavior {
+        if self.save {
+            return Behavior::Save;
+        }
+
+        if self.serve {
+            return Behavior::Serve;
+        }
+
+        match self.connect {
+            Some(Some(addr)) => return Behavior::Connect(addr),
+            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
+            None => {}
+        }
+
+        Behavior::Spawn
+    }
 }
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
     let args = Args::parse();
-    let addr = match args.connect.as_ref() {
-        Some(Some(addr)) => Some(addr.parse()?),
-        Some(None) => Some(rerun::log::default_server_addr()),
-        None => None,
-    };
+    let behavior = args.to_behavior();
 
     let mut session = Session::new();
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.
     // This needs to take care of the whole `official_example` thing, and also keeps track of
     // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("objectron-rs".into()), true);
+    session.set_application_id(ApplicationId("raw_mesh_rs".into()), true);
     session.set_recording_id(RecordingId::random());
-    if let Some(addr) = addr {
-        session.connect(addr);
+
+    let run = move |mut session| {
+        // Read glTF scene
+        let (doc, buffers, _) =
+            gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
+        let nodes = load_gltf(&doc, &buffers);
+
+        // Log raw glTF nodes and their transforms with Rerun
+        for root in nodes {
+            re_log::info!(scene = root.name, "logging glTF scene");
+            log_coordinate_space(&mut session, root.name.as_str(), "RUB")?;
+            log_node(&mut session, root)?;
+        }
+
+        Ok::<_, anyhow::Error>(())
+    };
+
+    match behavior {
+        Behavior::Connect(addr) => session.connect(addr),
+        Behavior::Spawn => return session.spawn(run).map_err(Into::into),
+        _ => {
+            // TODO(cmc): handle save
+            // TODO(cmc): handle serve
+        }
     }
 
-    // Read glTF scene
-    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
-    let nodes = load_gltf(&doc, &buffers);
-
-    // Log raw glTF nodes and their transforms with Rerun
-    for root in nodes {
-        re_log::info!(scene = root.name, "logging glTF scene");
-        log_coordinate_space(&mut session, root.name.as_str(), "RUB")?;
-        log_node(&mut session, root)?;
-    }
-
-    // TODO(cmc): arg parsing and arg interpretation helpers
-    // TODO(cmc): missing flags: save, serve
-    // TODO(cmc): expose an easy to use async local mode.
-    if args.connect.is_none() {
-        session.show()?;
-    }
-
-    Ok(())
+    run(session)
 }
 
 // --- glTF parsing ---
