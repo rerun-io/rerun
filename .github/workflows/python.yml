@@ -145,16 +145,24 @@ jobs:
           python scripts/patch_prerelease_version.py
           cargo check
 
-
       - name: Build and install rerun
         run: pip install rerun_py/
 
+      - name: Cache RRD dataset
+        id: dataset
+        uses: actions/cache@v3
+        with:
+          path: examples/python/colmap/dataset/
+          # TODO(jleibs): Derive this key from the invocation below
+          key: colmap-dataset-colmap-fiat
+
       - name: Generate Embedded RRD file
         shell: bash
+        # If you change the line below you should almost definitely change the key line above
         run: |
-          pip install -r examples/python/car/requirements.txt
-          python examples/python/car/main.py --headless --save car.rrd
-          cp car.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
+          pip install -r examples/python/colmap/requirements.txt
+          python examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap_fiat.rrd
+          cp colmap_fiat.rrd rerun_py/rerun_sdk/rerun_demo/demo.rrd
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
