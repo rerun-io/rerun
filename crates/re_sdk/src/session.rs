@@ -292,8 +292,9 @@ impl Session {
         }));
     }
 
-    // TODO: real errors all the way...
     /// Drains all pending log messages and saves them to disk into an rrd file.
+    // TODO(cmc): We're gonna have to properly type all these errors all the way up to the encoding
+    // methods in re_log_types at some point...
     #[cfg(not(target_arch = "wasm32"))]
     pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
         let path = path.into();
