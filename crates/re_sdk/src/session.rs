@@ -291,6 +291,43 @@ impl Session {
             path_op,
         }));
     }
+
+    // TODO: real errors all the way...
+    /// Drains all pending log messages and saves them to disk into an rrd file.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
+        let path = path.into();
+
+        re_log::trace!("Saving file to {path:?}…");
+
+        if self.is_streaming_over_tcp() {
+            anyhow::bail!(
+                "Can't show the log messages: Rerun was configured to send the data to a server!",
+            );
+        }
+
+        let log_messages = self.drain_log_messages_buffer();
+
+        if log_messages.is_empty() {
+            re_log::info!("Nothing logged, so nothing to save");
+        }
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("rrd") {
+            re_log::warn!("Expected path to end with .rrd, got {path:?}");
+        }
+
+        match std::fs::File::create(&path) {
+            Ok(file) => {
+                if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
+                    anyhow::bail!("Failed to write to file at {path:?}: {err}")
+                } else {
+                    re_log::info!("Rerun data file saved to {path:?}");
+                    Ok(())
+                }
+            }
+            Err(err) => anyhow::bail!("Failed to create file at {path:?}: {err}",),
+        }
+    }
 }
 
 #[cfg(feature = "re_viewer")]

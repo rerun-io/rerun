@@ -4115,6 +4115,7 @@ dependencies = [
 name = "re_sdk"
 version = "0.2.0-alpha.1"
 dependencies = [
+ "anyhow",
  "arrow2",
  "arrow2_convert",
  "clap 4.1.4",
