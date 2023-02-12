@@ -1,10 +1,11 @@
-# Rerun Examples
+# Rerun Python Examples
 The simplest example is [`minimal`](minimal/main.py). You may want to start there!
 
 ## Setup
 First install the Rerun Python SDK with `pip install rerun-sdk` (coming soon!)
 
-<!-- TODO(emilk): remove the coming soon -->
+<!-- TODO(#1161): remove the coming soon -->
+<!-- TODO(#1161): move docs/getting-started/examples.md here -->
 
 ## Dependencies
 Each example comes with its own set of dependencies listed in a `requirements.txt` file. For example, to install dependencies and run the toy `car` example (which doesn't need to download any data) run:

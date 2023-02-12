@@ -7,6 +7,7 @@ use re_log_types::{
 
 /// This is the main object you need to create to use the Rerun SDK.
 ///
+/// You should ideally create one session object and reuse it.
 /// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
 pub struct Session {
     #[cfg(feature = "web")]
