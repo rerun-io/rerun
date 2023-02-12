@@ -26,7 +26,7 @@ This means we might add breaking changes in each new release.
 
 In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical bug fix. These patch releases will not contain any breaking changes.
 
-We sometimes to pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
+We sometimes do pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
 
 
 ## Data and communication versioning
@@ -94,16 +94,15 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 
 
 ## Publishing
-First login as https://crates.io/users/rerunio with:
+First login as https://crates.io/users/rerunio with and API key you get from Emil:
 
 ```bash
-cargo login <API Key>
+cargo login $API_KEY
 ```
 
-Ask Emil for the API Key.
 
 
-TODO(emilk): make a script of the below:
+TODO(emilk): make a script for the below:
 ```sh
 # IMPORTANT! bundled by re_web_server:
 cargo build --release -p re_web_server
