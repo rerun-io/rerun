@@ -1,7 +1,7 @@
 //! This build script implements the second half of our cross-platform shader #import system.
 //! The first half can be found in `src/file_resolver.rs`.
 //!
-//! It finds all WGSL shaders defined anywhere within our Cargo workspace, and embeds them
+//! It finds all WGSL shaders defined anywhere within re_renderer, and embeds them
 //! directly into the released artifact for our `re_renderer` library.
 //!
 //! At run-time, for release builds only, those shaders will be available through an hermetic
@@ -126,11 +126,16 @@ fn main() {
 
     let manifest_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
     let workspace_path = manifest_path.parent().unwrap().parent().unwrap();
+
+    // Where to look for shader files
+    let root_dir = manifest_path.clone().join("shader");
+
     // On windows at least, it's been shown that the paths we get out of these env-vars can
     // actually turn out _not_ to be canonicalized in practice, which of course will break
     // hermeticity checks later down the line.
     //
     // So: canonicalize them all, just in case... ¯\_(ツ)_/¯
+    let root_dir = std::fs::canonicalize(root_dir).unwrap();
     let workspace_path = std::fs::canonicalize(workspace_path).unwrap();
     let manifest_path = std::fs::canonicalize(manifest_path).unwrap();
 
@@ -166,7 +171,7 @@ pub fn init() {
 "#
     .to_owned();
 
-    let walker = WalkDir::new(&workspace_path).into_iter();
+    let walker = WalkDir::new(&root_dir).into_iter();
     let entries = {
         let mut entries = walker
             .filter_entry(is_wgsl_or_dir)
@@ -213,7 +218,7 @@ pub fn init() {
         // know what those external top-level files are to begin with.
         // Not worth it... for now.
         if is_release || targets_wasm {
-            check_hermeticity(&workspace_path, entry.path()); // will fail if not hermetic
+            check_hermeticity(&manifest_path, entry.path()); // will fail if not hermetic
         }
 
         contents += &format!(
