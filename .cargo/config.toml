@@ -2,3 +2,8 @@
 # To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.
 # Temporary solution while we wait for our own xtasks!
 run-wasm = "run --release --package run_wasm --"
+
+[env]
+# Some of our build.rs files only run if this is set,
+# so that we don't run them on cargo publish or on users machines.
+IS_IN_RERUN_WORKSPACE = "yes"

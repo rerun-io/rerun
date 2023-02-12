@@ -123,6 +123,10 @@ fn main() {
     if std::env::var("CI").is_ok() {
         return;
     }
+    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+        // Only run if we are in the rerun workspace, not on cargo publish or on users machines.
+        return;
+    }
 
     let manifest_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
     let workspace_path = manifest_path.parent().unwrap().parent().unwrap();

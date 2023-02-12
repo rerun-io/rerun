@@ -1,9 +1,13 @@
 use std::path::PathBuf;
 
 fn main() -> Result<(), std::io::Error> {
-    // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
-    // anyway.
     if std::env::var("CI").is_ok() {
+        // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
+        // anyway.
+        return Ok(());
+    }
+    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+        // Only run if we are in the rerun workspace, not on cargo publish or on users machines.
         return Ok(());
     }
 
