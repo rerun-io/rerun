@@ -52,14 +52,14 @@ web = [
 ]
 
 [dependencies]
-re_error = { path = "../re_error" }
-re_format = { path = "../re_format" }
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types" }
-re_memory = { path = "../re_memory" }
-re_smart_channel = { path = "../re_smart_channel" }
-re_viewer = { path = "../re_viewer", default-features = false }
-re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
+re_error.workspace = true
+re_format.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
+re_memory.workspace = true
+re_smart_channel.workspace = true
+re_viewer = { workspace = true, default-features = false }
+re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
 crossbeam = "0.8"
@@ -68,10 +68,10 @@ egui = { workspace = true, default-features = false }
 puffin.workspace = true
 
 # Optional dependencies:
-re_analytics = { path = "../re_analytics", optional = true }
-re_sdk = { path = "../re_sdk", optional = true }
-re_sdk_comms = { path = "../re_sdk_comms", optional = true }
-re_web_server = { path = "../re_web_server", optional = true }
+re_analytics = { workspace = true, optional = true }
+re_sdk = { workspace = true, optional = true }
+re_sdk_comms = { workspace = true, optional = true }
+re_web_server = { workspace = true, optional = true }
 
 webbrowser = { version = "0.8", optional = true }
 

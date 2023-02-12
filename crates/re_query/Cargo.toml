@@ -25,11 +25,11 @@ polars = ["dep:polars-core", "re_arrow_store/polars"]
 
 [dependencies]
 # Rerun dependencies:
-re_arrow_store = { path = "../re_arrow_store" }
-re_data_store = { path = "../re_data_store" }
-re_format = { path = "../re_format" }
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types" }
+re_arrow_store.workspace = true
+re_data_store.workspace = true
+re_format.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
 
 # External dependencies:
 anyhow.workspace = true

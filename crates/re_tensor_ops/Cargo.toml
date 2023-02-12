@@ -17,7 +17,7 @@ all-features = true
 
 
 [dependencies]
-re_log_types = { path = "../re_log_types" }
+re_log_types.workspace = true
 
 ahash = "0.8"
 bytemuck = { version = "1.12", features = ["extern_crate_alloc"] }

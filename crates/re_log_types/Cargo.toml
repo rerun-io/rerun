@@ -51,10 +51,10 @@ serde = [
 [dependencies]
 
 # Rerun
-re_log = { path = "../re_log" }
-re_format = { path = "../re_format" }
-re_string_interner = { path = "../re_string_interner" }
-re_tuid = { path = "../re_tuid" }
+re_format.workspace = true
+re_log.workspace = true
+re_string_interner.workspace = true
+re_tuid.workspace = true
 
 # External
 ahash = "0.8"

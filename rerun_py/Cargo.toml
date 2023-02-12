@@ -34,13 +34,13 @@ extension-module = ["pyo3/extension-module"]
 web = ["rerun/web"]
 
 [dependencies]
-re_error = { path = "../crates/re_error" }
-re_log = { path = "../crates/re_log" }
-re_log_types = { path = "../crates/re_log_types" }
-re_memory = { path = "../crates/re_memory" }
-re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
-re_tensor_ops = { path = "../crates/re_tensor_ops" }
-rerun = { path = "../crates/rerun" }
+re_error.workspace = true
+re_log.workspace = true
+re_log_types.workspace = true
+re_memory.workspace = true
+re_sdk_comms = { workspace = true, features = ["client"] }
+re_tensor_ops.workspace = true
+rerun.workspace = true
 
 ahash = "0.8"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
