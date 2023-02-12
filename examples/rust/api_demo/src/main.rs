@@ -606,16 +606,59 @@ enum Demo {
     Transforms3D,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum Behavior {
+    Save,
+    Serve,
+    Connect(SocketAddr),
+    Spawn,
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// If specified, connects and sends the logged data to a remote Rerun viewer.
+    /// Start a viewer and feed it data in real-time.
+    #[clap(long, default_value = "true")]
+    spawn: bool,
+
+    /// Saves the data to an rrd file rather than visualizing it immediately.
+    #[clap(long)]
+    save: bool,
+
+    /// Connects and sends the logged data to a remote Rerun viewer.
+    ///
+    /// Optionally takes an `ip:port`.
     #[clap(long)]
     #[allow(clippy::option_option)]
     connect: Option<Option<SocketAddr>>,
 
+    /// Connects and sends the logged data to a web-based Rerun viewer.
+    #[clap(long)]
+    serve: bool,
+
+    /// Which demo should we run? All of them by default.
     #[clap(long, value_enum)]
     demo: Option<Vec<Demo>>,
+}
+// TODO(cmc): move all rerun args handling to helpers
+impl Args {
+    pub fn to_behavior(&self) -> Behavior {
+        if self.save {
+            return Behavior::Save;
+        }
+
+        if self.serve {
+            return Behavior::Serve;
+        }
+
+        match self.connect {
+            Some(Some(addr)) => return Behavior::Connect(addr),
+            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
+            None => {}
+        }
+
+        Behavior::Spawn
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -623,11 +666,7 @@ fn main() -> anyhow::Result<()> {
 
     use clap::{Parser as _, ValueEnum as _};
     let args = Args::parse();
-    let addr = match args.connect {
-        Some(Some(addr)) => Some(addr),
-        Some(None) => Some(rerun::log::default_server_addr()),
-        None => None,
-    };
+    let behavior = args.to_behavior();
 
     let mut session = rerun::Session::new();
     // TODO(cmc): application id should take selected demos into account
@@ -637,33 +676,36 @@ fn main() -> anyhow::Result<()> {
     // whether we're using the rust or python sdk.
     session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
     session.set_recording_id(RecordingId::random());
-    if let Some(addr) = addr {
-        session.connect(addr);
-    }
 
     let demos: HashSet<Demo> = args.demo.map_or_else(
         || Demo::value_variants().iter().copied().collect(),
         |demos| demos.into_iter().collect(),
     );
-    for demo in demos {
-        match demo {
-            Demo::BoundingBox => demo_bbox(&mut session)?,
-            Demo::ExtensionComponents => demo_extension_components(&mut session)?,
-            Demo::LogCleared => demo_log_cleared(&mut session)?,
-            Demo::Points3D => demo_3d_points(&mut session)?,
-            Demo::Rects => demo_rects(&mut session)?,
-            Demo::Segmentation => demo_segmentation(&mut session)?,
-            Demo::TextLogs => demo_text_logs(&mut session)?,
-            Demo::Transforms3D => demo_transforms_3d(&mut session)?,
+
+    let run_demos = |mut session| {
+        for demo in demos {
+            match demo {
+                Demo::BoundingBox => demo_bbox(&mut session)?,
+                Demo::ExtensionComponents => demo_extension_components(&mut session)?,
+                Demo::LogCleared => demo_log_cleared(&mut session)?,
+                Demo::Points3D => demo_3d_points(&mut session)?,
+                Demo::Rects => demo_rects(&mut session)?,
+                Demo::Segmentation => demo_segmentation(&mut session)?,
+                Demo::TextLogs => demo_text_logs(&mut session)?,
+                Demo::Transforms3D => demo_transforms_3d(&mut session)?,
+            }
+        }
+        Ok::<_, anyhow::Error>(())
+    };
+
+    match behavior {
+        Behavior::Connect(addr) => session.connect(addr),
+        Behavior::Spawn => return session.spawn(run_demos).map_err(Into::into),
+        _ => {
+            // TODO(cmc): handle save
+            // TODO(cmc): handle serve
         }
     }
 
-    // TODO(cmc): arg parsing and arg interpretation helpers
-    // TODO(cmc): missing flags: save, serve
-    // TODO(cmc): expose an easy to use async local mode.
-    if args.connect.is_none() {
-        session.show()?;
-    }
-
-    Ok(())
+    run_demos(session)
 }
