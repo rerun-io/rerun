@@ -332,15 +332,35 @@ enum Recording {
     Shoe,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum Behavior {
+    Save,
+    Serve,
+    Connect(SocketAddr),
+    Spawn,
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
+    /// Start a viewer and feed it data in real-time.
+    #[clap(long, default_value = "true")]
+    spawn: bool,
+
+    /// Saves the data to an rrd file rather than visualizing it immediately.
+    #[clap(long)]
+    save: bool,
+
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
     /// Optionally takes an `ip:port`.
     #[clap(long)]
     #[allow(clippy::option_option)]
     connect: Option<Option<SocketAddr>>,
+
+    /// Connects and sends the logged data to a web-based Rerun viewer.
+    #[clap(long)]
+    serve: bool,
 
     /// Specifies the recording to replay.
     #[clap(long, value_enum, default_value = "book")]
@@ -362,6 +382,26 @@ struct Args {
     #[clap(long, value_parser = parse_duration)]
     per_frame_sleep: Option<Duration>,
 }
+// TODO(cmc): move all rerun args handling to helpers
+impl Args {
+    pub fn to_behavior(&self) -> Behavior {
+        if self.save {
+            return Behavior::Save;
+        }
+
+        if self.serve {
+            return Behavior::Serve;
+        }
+
+        match self.connect {
+            Some(Some(addr)) => return Behavior::Connect(addr),
+            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
+            None => {}
+        }
+
+        Behavior::Spawn
+    }
+}
 
 fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloatError> {
     let seconds = arg.parse()?;
@@ -373,11 +413,7 @@ fn main() -> anyhow::Result<()> {
 
     use clap::Parser as _;
     let args = Args::parse();
-    let addr = match args.connect {
-        Some(Some(addr)) => Some(addr),
-        Some(None) => Some(rerun::log::default_server_addr()),
-        None => None,
-    };
+    let behavior = args.to_behavior();
 
     let mut session = Session::new();
     // TODO(cmc): application id should take selected recording into account
@@ -385,11 +421,8 @@ fn main() -> anyhow::Result<()> {
     // does... which they can probably share.
     // This needs to take care of the whole `official_example` thing, and also keeps track of
     // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
+    session.set_application_id(ApplicationId("objectron_rs".to_owned()), true);
     session.set_recording_id(RecordingId::random());
-    if let Some(addr) = addr {
-        session.connect(addr);
-    }
 
     // Parse protobuf dataset
     let rec_info = args.recording.info().with_context(|| {
@@ -403,62 +436,68 @@ fn main() -> anyhow::Result<()> {
     })?;
     let annotations = read_annotations(&rec_info.path_annotations)?;
 
-    // See https://github.com/google-research-datasets/Objectron/issues/39
-    log_coordinate_space(&mut session, "world", "RUB")?;
-    log_coordinate_space(&mut session, "world/camera", "RDF")?;
+    let run = move |mut session| {
+        // See https://github.com/google-research-datasets/Objectron/issues/39
+        log_coordinate_space(&mut session, "world", "RUB")?;
+        log_coordinate_space(&mut session, "world/camera", "RDF")?;
 
-    let mut global_frame_offset = 0;
-    let mut global_time_offset = 0.0;
+        let mut global_frame_offset = 0;
+        let mut global_time_offset = 0.0;
 
-    'outer: loop {
-        let mut frame_offset = 0;
-        let mut time_offset = 0.0;
+        'outer: loop {
+            let mut frame_offset = 0;
+            let mut time_offset = 0.0;
 
-        // Iterate through the parsed dataset and log Rerun primitives
-        let ar_frames = read_ar_frames(&rec_info.path_ar_frames);
-        for (idx, ar_frame) in ar_frames.enumerate() {
-            if idx + global_frame_offset >= args.frames.unwrap_or(usize::MAX) {
-                break 'outer;
+            // Iterate through the parsed dataset and log Rerun primitives
+            let ar_frames = read_ar_frames(&rec_info.path_ar_frames);
+            for (idx, ar_frame) in ar_frames.enumerate() {
+                if idx + global_frame_offset >= args.frames.unwrap_or(usize::MAX) {
+                    break 'outer;
+                }
+
+                let ar_frame = ar_frame?;
+                let ar_frame = ArFrame::from_raw(
+                    rec_info.path_ar_frames.parent().unwrap().into(),
+                    idx,
+                    timepoint(
+                        idx + global_frame_offset,
+                        ar_frame.timestamp() + global_time_offset,
+                    ),
+                    ar_frame,
+                );
+                let objects = &annotations.objects;
+                let annotations = annotations.frame_annotations.as_slice().into();
+                log_ar_frame(&mut session, objects, &annotations, &ar_frame)?;
+
+                if let Some(d) = args.per_frame_sleep {
+                    std::thread::sleep(d);
+                }
+
+                time_offset = f64::max(time_offset, ar_frame.data.timestamp());
+                frame_offset += 1;
             }
 
-            let ar_frame = ar_frame?;
-            let ar_frame = ArFrame::from_raw(
-                rec_info.path_ar_frames.parent().unwrap().into(),
-                idx,
-                timepoint(
-                    idx + global_frame_offset,
-                    ar_frame.timestamp() + global_time_offset,
-                ),
-                ar_frame,
-            );
-            let objects = &annotations.objects;
-            let annotations = annotations.frame_annotations.as_slice().into();
-            log_ar_frame(&mut session, objects, &annotations, &ar_frame)?;
-
-            if let Some(d) = args.per_frame_sleep {
-                std::thread::sleep(d);
+            if !args.run_forever {
+                break;
             }
 
-            time_offset = f64::max(time_offset, ar_frame.data.timestamp());
-            frame_offset += 1;
+            global_time_offset += time_offset;
+            global_frame_offset += frame_offset;
         }
 
-        if !args.run_forever {
-            break;
+        Ok::<_, anyhow::Error>(())
+    };
+
+    match behavior {
+        Behavior::Connect(addr) => session.connect(addr),
+        Behavior::Spawn => return session.spawn(run).map_err(Into::into),
+        _ => {
+            // TODO(cmc): handle save
+            // TODO(cmc): handle serve
         }
-
-        global_time_offset += time_offset;
-        global_frame_offset += frame_offset;
     }
 
-    // TODO(cmc): arg parsing and arg interpretation helpers
-    // TODO(cmc): missing flags: save, serve
-    // TODO(cmc): expose an easy to use async local mode.
-    if args.connect.is_none() {
-        session.show()?;
-    }
-
-    Ok(())
+    run(session)
 }
 
 // --- Protobuf parsing ---
