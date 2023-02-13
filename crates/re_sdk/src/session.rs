@@ -184,9 +184,12 @@ impl Session {
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
+            
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
+            
             #[cfg(feature = "re_viewer")]
             Sender::NativeViewer(_) => vec![],
+            
             #[cfg(feature = "web")]
             Sender::WebViewer(_, _) => vec![],
         }
