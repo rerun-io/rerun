@@ -45,7 +45,10 @@ impl<'a> Packages<'a> {
     /// dependencies are properly tracked whether they are remote, in-workspace,
     /// or locally patched.
     pub fn track_implicit_dep(&self, pkg_name: &str) {
-        let pkg = self.pkgs.values().find(|pkg| pkg.name == pkg_name).unwrap();
+        let pkg = self.pkgs.get(pkg_name).unwrap_or_else(|| {
+            let found_names: Vec<&str> = self.pkgs.values().map(|pkg| pkg.name.as_str()).collect();
+            panic!("Failed to find package {pkg_name:?} among {found_names:?}")
+        });
 
         // Track the root package itself
         {
@@ -226,6 +229,16 @@ fn build_web() {
 // ---
 
 fn main() {
+    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+        // Only run if we are in the rerun workspace, not on users machines.
+        return;
+    }
+    if std::env::var("RERUN_IS_PUBLISHING") == Ok("yes".to_owned()) {
+        // We don't need to rebuild - we should have done so beforehand!
+        // See `RELEASES.md`
+        return;
+    }
+
     // Rebuild the web-viewer Wasm,
     // because the web_server library bundles it with `include_bytes!`
 

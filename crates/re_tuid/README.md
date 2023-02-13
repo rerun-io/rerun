@@ -1,4 +1,12 @@
 # TUID: Time-based Unique IDentifier
+
+Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
+
+[![Latest version](https://img.shields.io/crates/v/re_tuid.svg)](https://crates.io/crates/re_tuid)
+[![Documentation](https://docs.rs/re_tuid/badge.svg)](https://docs.rs/re_tuid)
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
+
 TUID:s are 128-bit identifiers, that have a global time-based order, with tie-breaking between threads. This means you can use a TUID as a tie-breaker in time series databases.
 
 ## Implementation

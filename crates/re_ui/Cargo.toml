@@ -18,6 +18,9 @@ include = [
   "data/*",
 ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 
 [features]
 default = ["eframe", "egui_dock"]

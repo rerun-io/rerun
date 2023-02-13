@@ -1,4 +1,11 @@
 # re_int_histogram
+Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
+
+
+[![Latest version](https://img.shields.io/crates/v/re_int_histogram.svg)](https://crates.io/crates/re_int_histogram)
+[![Documentation](https://docs.rs/re_int_histogram/badge.svg)](https://docs.rs/re_int_histogram)
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
 A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses.
 

@@ -4,12 +4,16 @@ authors.workspace = true
 description = "Rerun logging SDK"
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]
@@ -32,13 +36,13 @@ web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
-re_error = { path = "../re_error" }
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types" }
-re_memory = { path = "../re_memory" }
-re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
-re_smart_channel = { path = "../re_smart_channel" }
-re_string_interner = { path = "../re_string_interner" }
+re_error.workspace = true
+re_log.workspace = true
+re_log_types.workspace = true
+re_memory.workspace = true
+re_sdk_comms = { workspace = true, features = ["client"] }
+re_smart_channel.workspace = true
+re_string_interner.workspace = true
 
 
 arrow2.workspace = true
@@ -50,11 +54,9 @@ once_cell = "1.12"
 thiserror.workspace = true
 
 # Optional dependencies:
-re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
-  "server",
-] }
-re_viewer = { path = "../re_viewer", default-features = false, optional = true }
-re_web_server = { path = "../re_web_server", optional = true }
+re_ws_comms = { workspace = true, optional = true, features = ["server"] }
+re_viewer = { workspace = true, default-features = false, optional = true }
+re_web_server = { workspace = true, optional = true }
 
 webbrowser = { version = "0.8", optional = true }
 

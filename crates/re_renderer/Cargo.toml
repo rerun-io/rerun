@@ -10,6 +10,17 @@ readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "shader/*",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
@@ -26,8 +37,8 @@ serde = ["dep:serde"]
 
 
 [dependencies]
-re_error = { path = "../re_error" }
-re_log = { path = "../re_log" }
+re_error.workspace = true
+re_log.workspace = true
 
 ahash = "0.8"
 anyhow.workspace = true
@@ -60,7 +71,7 @@ crossbeam = "0.8"
 notify = "5.0"
 puffin.workspace = true
 wgpu = { workspace = true, default-features = false, features = ["wgsl"] }
-wgpu-core = { workspace = true }
+wgpu-core.workspace = true
 
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dependencies]
