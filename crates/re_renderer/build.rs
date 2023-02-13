@@ -116,11 +116,11 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
 // ---
 
 fn main() {
-    // Don't run on CI!
-    //
-    // The code we're generating here is actual source code that gets committed into the
-    // repository.
     if std::env::var("CI").is_ok() {
+        // Don't run on CI!
+        //
+        // The code we're generating here is actual source code that gets committed into the
+        // repository.
         return;
     }
     if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
