@@ -12,7 +12,6 @@
 use std::{
     collections::HashMap,
     io::Read,
-    net::SocketAddr,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -332,35 +331,11 @@ enum Recording {
     Shoe,
 }
 
-#[derive(Debug, Clone)]
-enum Behavior {
-    Save(PathBuf),
-    Serve,
-    Connect(SocketAddr),
-    Spawn,
-}
-
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// Start a viewer and feed it data in real-time.
-    #[clap(long, default_value = "true")]
-    spawn: bool,
-
-    /// Saves the data to an rrd file rather than visualizing it immediately.
-    #[clap(long)]
-    save: Option<PathBuf>,
-
-    /// Connects and sends the logged data to a remote Rerun viewer.
-    ///
-    /// Optionally takes an `ip:port`.
-    #[clap(long)]
-    #[allow(clippy::option_option)]
-    connect: Option<Option<SocketAddr>>,
-
-    /// Connects and sends the logged data to a web-based Rerun viewer.
-    #[clap(long)]
-    serve: bool,
+    #[command(flatten)]
+    rerun: rerun::clap::RerunArgs,
 
     /// Specifies the recording to replay.
     #[clap(long, value_enum, default_value = "book")]
@@ -381,27 +356,6 @@ struct Args {
     /// Throttle logging by sleeping between each frame (e.g. `0.25`).
     #[clap(long, value_parser = parse_duration)]
     per_frame_sleep: Option<Duration>,
-}
-
-// TODO(cmc): move all rerun args handling to helpers
-impl Args {
-    pub fn to_behavior(&self) -> Behavior {
-        if let Some(path) = self.save.as_ref() {
-            return Behavior::Save(path.clone());
-        }
-
-        if self.serve {
-            return Behavior::Serve;
-        }
-
-        match self.connect {
-            Some(Some(addr)) => return Behavior::Connect(addr),
-            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
-            None => {}
-        }
-
-        Behavior::Spawn
-    }
 }
 
 fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloatError> {
@@ -488,26 +442,16 @@ fn main() -> anyhow::Result<()> {
     session.set_application_id(ApplicationId("objectron_rs".to_owned()), true);
     session.set_recording_id(RecordingId::random());
 
-    let behavior = args.to_behavior();
-    match behavior {
-        Behavior::Connect(addr) => session.connect(addr),
-        Behavior::Spawn => {
-            return session
-                .spawn(move |mut session| run(&mut session, &args))
-                .map_err(Into::into)
-        }
-        Behavior::Serve => session.serve(true),
-        Behavior::Save(_) => {}
+    let should_spawn = args.rerun.on_startup(&mut session);
+    if should_spawn {
+        return session
+            .spawn(move |mut session| run(&mut session, &args))
+            .map_err(Into::into);
     }
 
     run(&mut session, &args)?;
 
-    if matches!(behavior, Behavior::Serve) {
-        eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
-        std::thread::sleep(std::time::Duration::from_secs(1_000_000));
-    } else if let Behavior::Save(path) = behavior {
-        session.save(path)?;
-    }
+    args.rerun.on_teardown(&mut session)?;
 
     Ok(())
 }
