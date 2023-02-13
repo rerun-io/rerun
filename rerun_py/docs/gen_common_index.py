@@ -134,7 +134,7 @@ hide:
     - toc
 ---
 # Examples
-You can find examples on our GitHub [here](https://github.com/rerun-io/rerun/tree/main/examples/python).
+You can find examples on our GitHub [here](https://github.com/rerun-io/rerun/tree/latest/examples/python).
 
 # Troubleshooting
 You can set `RUST_LOG=debug` before running your Python script

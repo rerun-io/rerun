@@ -1,5 +1,5 @@
 # Rerun Rust Examples
-These are examples for how to use the [`rerun`](https://github.com/rerun-io/rerun/tree/main/crates/rerun) crate.
+These are examples for how to use the [`rerun`](https://github.com/rerun-io/rerun/tree/latest/crates/rerun) crate.
 
 To run the minimal example:
 * `cargo r -p minimal`

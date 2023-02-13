@@ -1,7 +1,7 @@
 //! The main Rerun library and binary.
 //!
 //! ## Examples
-//! See <https://github.com/rerun-io/rerun/tree/main/examples/rust>.
+//! See <https://github.com/rerun-io/rerun/tree/latest/examples/rust>.
 //!
 //! ## Library
 //! See [`Session`] and [`MsgSender`].
