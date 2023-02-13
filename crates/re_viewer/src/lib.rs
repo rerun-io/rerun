@@ -18,6 +18,7 @@ pub use remote_viewer_app::RemoteViewerApp;
 
 pub mod external {
     pub use eframe;
+    pub use egui;
 }
 
 // ----------------------------------------------------------------------------
@@ -123,4 +124,35 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
     }
 
     re_ui::ReUi::load_and_apply(&cc.egui_ctx)
+}
+
+// ---------------------------------------------------------------------------
+
+/// This wakes up the ui thread each time we receive a new message.
+#[cfg(not(feature = "web"))]
+#[cfg(not(target_arch = "wasm32"))]
+pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
+    rx: re_smart_channel::Receiver<T>,
+    ctx: egui::Context,
+) -> re_smart_channel::Receiver<T> {
+    // We need to intercept messages to wake up the ui thread.
+    // For that, we need a new channel.
+    // However, we want to make sure the channel latency numbers are from the start
+    // of the first channel, to the end of the second.
+    // For that we need to use `chained_channel`, `recv_with_send_time` and `send_at`.
+    let (tx, new_rx) = rx.chained_channel();
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
+                if tx.send_at(sent_at, msg).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::debug!("Shutting down ui_waker thread");
+        })
+        .unwrap();
+    new_rx
 }

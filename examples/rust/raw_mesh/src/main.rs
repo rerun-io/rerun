@@ -8,11 +8,11 @@
 
 #![allow(clippy::doc_markdown)]
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use clap::Parser;
 use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
 use rerun::time::{TimeType, Timeline};
 use rerun::{
@@ -130,15 +130,35 @@ enum Scene {
     Avocado,
 }
 
+#[derive(Debug, Clone)]
+enum Behavior {
+    Save(PathBuf),
+    Serve,
+    Connect(SocketAddr),
+    Spawn,
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
+    /// Start a viewer and feed it data in real-time.
+    #[clap(long, default_value = "true")]
+    spawn: bool,
+
+    /// Saves the data to an rrd file rather than visualizing it immediately.
+    #[clap(long)]
+    save: Option<PathBuf>,
+
     /// If specified, connects and sends the logged data to a remote Rerun viewer.
     ///
     /// Optionally takes an ip:port, otherwise uses Rerun's defaults.
     #[clap(long)]
     #[allow(clippy::option_option)]
-    connect: Option<Option<String>>,
+    connect: Option<Option<SocketAddr>>,
+
+    /// Connects and sends the logged data to a web-based Rerun viewer.
+    #[clap(long)]
+    serve: bool,
 
     /// Specifies the glTF scene to load.
     #[clap(long, value_enum, default_value = "buggy")]
@@ -148,6 +168,8 @@ struct Args {
     #[clap(long)]
     scene_path: Option<PathBuf>,
 }
+
+// TODO(cmc): move all rerun args handling to helpers
 impl Args {
     fn scene_path(&self) -> anyhow::Result<PathBuf> {
         if let Some(scene_path) = self.scene_path.clone() {
@@ -174,29 +196,28 @@ impl Args {
 
         Ok(scene_path)
     }
+
+    // TODO(cmc): move all rerun args handling to helpers
+    pub fn to_behavior(&self) -> Behavior {
+        if let Some(path) = self.save.as_ref() {
+            return Behavior::Save(path.clone());
+        }
+
+        if self.serve {
+            return Behavior::Serve;
+        }
+
+        match self.connect {
+            Some(Some(addr)) => return Behavior::Connect(addr),
+            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
+            None => {}
+        }
+
+        Behavior::Spawn
+    }
 }
 
-fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
-
-    let args = Args::parse();
-    let addr = match args.connect.as_ref() {
-        Some(Some(addr)) => Some(addr.parse()?),
-        Some(None) => Some(rerun::log::default_server_addr()),
-        None => None,
-    };
-
-    let mut session = Session::new();
-    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
-    // does... which they can probably share.
-    // This needs to take care of the whole `official_example` thing, and also keeps track of
-    // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("objectron-rs".into()), true);
-    session.set_recording_id(RecordingId::random());
-    if let Some(addr) = addr {
-        session.connect(addr);
-    }
-
+fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
     // Read glTF scene
     let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
     let nodes = load_gltf(&doc, &buffers);
@@ -204,16 +225,41 @@ fn main() -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        log_coordinate_space(&mut session, root.name.as_str(), "RUB")?;
-        log_node(&mut session, root)?;
+        log_coordinate_space(session, root.name.as_str(), "RUB")?;
+        log_node(session, root)?;
     }
 
-    // TODO(cmc): arg parsing and arg interpretation helpers
-    // TODO(cmc): missing flags: save, serve
-    // TODO(cmc): expose an easy to use async local mode.
-    if args.connect.is_none() {
-        session.show()?;
+    Ok(())
+}
+
+fn main() -> anyhow::Result<()> {
+    re_log::setup_native_logging();
+
+    use clap::Parser as _;
+    let args = Args::parse();
+
+    let mut session = Session::new();
+    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // does... which they can probably share.
+    // This needs to take care of the whole `official_example` thing, and also keeps track of
+    // whether we're using the rust or python sdk.
+    session.set_application_id(ApplicationId("raw_mesh_rs".into()), true);
+    session.set_recording_id(RecordingId::random());
+
+    let behavior = args.to_behavior();
+    match behavior {
+        Behavior::Connect(addr) => session.connect(addr),
+        Behavior::Spawn => {
+            return session
+                .spawn(move |mut session| run(&mut session, &args))
+                .map_err(Into::into)
+        }
+        _ => {
+            // TODO(cmc): handle serve
+        }
     }
+
+    run(&mut session, &args)?;
 
     Ok(())
 }
