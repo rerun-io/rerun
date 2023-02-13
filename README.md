@@ -8,7 +8,7 @@
 [![CI (Rust)](https://github.com/rerun-io/rerun/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/rerun-io/rerun/actions/workflows/rust.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT)
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE)
-[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Community%20Discord)](https://discord.gg/Gcm8BbTaAj)
+[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Discord)](https://discord.gg/Gcm8BbTaAj)
 
 # Rerun: Visualization infrastructure for computer vision.
 
@@ -51,9 +51,8 @@ Coming soon
 # Documentation
 - [Examples](examples)
 - [Python API docs](https://rerun-io.github.io/rerun)
-- [Rust getting-started guide](rerun_py/USAGE.md)
-<!--- TODO(#1161): update doclinks
 - [High-level documentation](http://rerun.io/docs)
+<!--- TODO(#1161): update doclinks
 - [Rust API docs](https://docs.rs/rerun/)
 -->
 
@@ -73,7 +72,7 @@ You should now be able to run `rerun --help` in any terminal.
 ## Shortcomings
 * Big points clouds (1M+) are slow ([#1136](https://github.com/rerun-io/rerun/issues/1136))
 * The data you want to visualize must fit in RAM.
-  - See [`rerun_py/USAGE.md`](rerun_py/USAGE.md) for how to bound memory use
+  - See <https://github.com/rerun-io/rerun/issues/1138> for how to bound memory use
   - We plan on having a disk-based data store some time in the future
   - Additionally, Rerun is using more memory than it should at the moment
 
