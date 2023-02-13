@@ -123,7 +123,7 @@ def log_text_entry(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     instanced: Dict[str, Any] = {}

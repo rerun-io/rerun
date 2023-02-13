@@ -60,7 +60,7 @@ def log_obb(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     instanced: Dict[str, Any] = {}

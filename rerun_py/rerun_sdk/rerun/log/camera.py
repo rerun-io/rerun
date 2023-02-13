@@ -44,7 +44,7 @@ def log_pinhole(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     # Transform arrow handling happens inside the python bridge

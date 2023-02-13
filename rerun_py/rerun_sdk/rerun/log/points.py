@@ -85,7 +85,7 @@ def log_point(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     if keypoint_id is not None and class_id is None:
@@ -191,7 +191,7 @@ def log_points(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     if keypoint_ids is not None and class_ids is None:

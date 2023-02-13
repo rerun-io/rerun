@@ -77,7 +77,7 @@ def log_mesh_file(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     if transform is None:
@@ -121,7 +121,7 @@ def log_image_file(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     img_format = getattr(img_format, "value", None)

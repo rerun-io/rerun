@@ -85,7 +85,7 @@ def _log_tensor(
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     if names is not None:

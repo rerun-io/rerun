@@ -111,7 +111,7 @@ def log_extension_components(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     identifiers_np = np.array((), dtype="uint64")

@@ -61,7 +61,7 @@ def log_mesh(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     positions = positions.flatten().astype(np.float32)
@@ -112,7 +112,7 @@ def log_meshes(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     position_buffers = [p.flatten().astype(np.float32) for p in position_buffers]

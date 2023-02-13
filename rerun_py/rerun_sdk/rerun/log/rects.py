@@ -64,7 +64,7 @@ def log_rect(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     if np.any(rect):  # type: ignore[arg-type]
@@ -153,7 +153,7 @@ def log_rects(
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     # Treat None the same as []

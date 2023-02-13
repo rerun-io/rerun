@@ -179,7 +179,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True)
         _spawn()
 
 
-def enabled() -> bool:
+def is_enabled() -> bool:
     """
     Is the Rerun SDK enabled?
 
@@ -191,7 +191,7 @@ def enabled() -> bool:
     (e.g. `RERUN=on` or `RERUN=off`) and with [`set_enabled`].
 
     """
-    return bindings.enabled()
+    return bindings.is_enabled()
 
 
 def set_enabled(enabled: bool) -> None:
@@ -220,7 +220,7 @@ def connect(addr: Optional[str] = None) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         print("Rerun is disabled - connect() call ignored")
         return
 
@@ -248,7 +248,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         print("Rerun is disabled - spawn() call ignored")
         return
 
@@ -289,7 +289,7 @@ def serve(open_browser: bool = True) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         print("Rerun is disabled - serve() call ignored")
         return
 
@@ -313,7 +313,7 @@ def show() -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         print("Rerun is disabled - show() call ignored")
         return
 
@@ -335,7 +335,7 @@ def save(path: str) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         print("Rerun is disabled - serve() call ignored")
         return
 
@@ -364,7 +364,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     bindings.set_time_sequence(timeline, sequence)
@@ -398,7 +398,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     bindings.set_time_seconds(timeline, seconds)
@@ -432,7 +432,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
 
     """
 
-    if not bindings.enabled():
+    if not bindings.is_enabled():
         return
 
     bindings.set_time_nanos(timeline, nanos)
