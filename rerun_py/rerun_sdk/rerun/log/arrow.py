@@ -58,7 +58,7 @@ def log_arrow(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     instanced: Dict[str, Any] = {}

@@ -118,7 +118,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn: bool = False, default_logging_enabled: bool = True) -> None:
+def init(application_id: str, spawn: bool = False, default_enabled: bool = True) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -136,7 +136,7 @@ def init(application_id: str, spawn: bool = False, default_logging_enabled: bool
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
-    default_logging_enabled:
+    default_enabled:
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
 
@@ -172,26 +172,29 @@ def init(application_id: str, spawn: bool = False, default_logging_enabled: bool
     bindings.init(
         application_id=application_id,
         application_path=application_path,
-        default_logging_enabled=default_logging_enabled,
+        default_enabled=default_enabled,
     )
 
     if spawn:
         _spawn()
 
 
-def logging_enabled() -> bool:
+def enabled() -> bool:
     """
-    Is logging enabled?
+    Is the Rerun SDK enabled?
+
+    If false, all call to the rerun library are ignored.
+
+    The default is `True`.
 
     This can be controlled with the enviornment variable `RERUN`,
-    e.g. `RERUN=on` or `RERUN=off`.
+    (e.g. `RERUN=on` or `RERUN=off`) and with [`set_enabled`].
 
-    The default is on.
     """
-    return bindings.logging_enabled()
+    return bindings.enabled()
 
 
-def set_logging_enabled(enabled: bool) -> None:
+def set_enabled(enabled: bool) -> None:
     """
     Enable or disable logging.
 
@@ -201,7 +204,7 @@ def set_logging_enabled(enabled: bool) -> None:
     This is a global setting that affects all threads.
     By default logging is enabled.
     """
-    bindings.set_logging_enabled(enabled)
+    bindings.set_enabled(enabled)
 
 
 def connect(addr: Optional[str] = None) -> None:
@@ -217,7 +220,7 @@ def connect(addr: Optional[str] = None) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         print("Rerun is disabled - connect() call ignored")
         return
 
@@ -245,7 +248,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         print("Rerun is disabled - spawn() call ignored")
         return
 
@@ -286,7 +289,7 @@ def serve(open_browser: bool = True) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         print("Rerun is disabled - serve() call ignored")
         return
 
@@ -310,7 +313,7 @@ def show() -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         print("Rerun is disabled - show() call ignored")
         return
 
@@ -332,7 +335,7 @@ def save(path: str) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         print("Rerun is disabled - serve() call ignored")
         return
 
@@ -361,7 +364,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     bindings.set_time_sequence(timeline, sequence)
@@ -395,7 +398,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     bindings.set_time_seconds(timeline, seconds)
@@ -429,7 +432,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     bindings.set_time_nanos(timeline, nanos)

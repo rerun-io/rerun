@@ -102,8 +102,8 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
-    m.add_function(wrap_pyfunction!(logging_enabled, m)?)?;
-    m.add_function(wrap_pyfunction!(set_logging_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
@@ -232,8 +232,8 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (application_id, application_path=None, default_logging_enabled=true))]
-fn init(application_id: String, application_path: Option<PathBuf>, default_logging_enabled: bool) {
+#[pyo3(signature = (application_id, application_path=None, default_enabled=true))]
+fn init(application_id: String, application_path: Option<PathBuf>, default_enabled: bool) {
     // The sentinel file we use to identify the official examples directory.
     const SENTINEL_FILENAME: &str = ".rerun_examples";
     let is_official_example = application_path.map_or(false, |mut path| {
@@ -249,8 +249,8 @@ fn init(application_id: String, application_path: Option<PathBuf>, default_loggi
 
     global_session().set_application_id(ApplicationId(application_id), is_official_example);
 
-    // Logging enabled logic: Highest priority is the RERUN env var, then the default_logging_enabled.
-    global_session().set_logging_enabled(get_rerun_env().unwrap_or(default_logging_enabled));
+    // Logging enabled logic: Highest priority is the RERUN env var, then the default_enabled.
+    global_session().set_enabled(get_rerun_env().unwrap_or(default_enabled));
 }
 
 #[pyfunction]
@@ -298,8 +298,8 @@ fn shutdown(py: Python<'_>) {
 
 /// Is logging enabled in the global session?
 #[pyfunction]
-fn logging_enabled() -> bool {
-    global_session().is_logging_enabled()
+fn enabled() -> bool {
+    global_session().is_enabled()
 }
 
 /// Enable or disable logging in the global session.
@@ -307,8 +307,8 @@ fn logging_enabled() -> bool {
 /// This is a global setting that affects all threads.
 /// By default logging is enabled.
 #[pyfunction]
-fn set_logging_enabled(enabled: bool) {
-    global_session().set_logging_enabled(enabled);
+fn set_enabled(enabled: bool) {
+    global_session().set_enabled(enabled);
 }
 
 /// Disconnect from remote server (if any).

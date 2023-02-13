@@ -115,7 +115,7 @@ def log_annotation_context(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     if not isinstance(class_descriptions, Iterable):

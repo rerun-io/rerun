@@ -107,7 +107,7 @@ def log_scalar(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     instanced: Dict[str, Any] = {}

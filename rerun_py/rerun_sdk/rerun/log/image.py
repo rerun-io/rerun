@@ -47,7 +47,7 @@ def log_image(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     image = _to_numpy(image)
@@ -111,7 +111,7 @@ def log_depth_image(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     image = _to_numpy(image)
@@ -174,7 +174,7 @@ def log_segmentation_image(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     image = np.array(image, dtype=np.uint16, copy=False)

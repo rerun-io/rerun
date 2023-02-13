@@ -22,7 +22,7 @@ pub struct Session {
     has_sent_begin_recording_msg: bool,
 
     /// Is Logging enabled globally?
-    logging_enabled: bool,
+    enabled: bool,
 }
 
 impl Session {
@@ -35,10 +35,10 @@ impl Session {
     /// environment variable at runtime.
     ///
     /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
-    pub fn new(default_logging_enabled: bool) -> Self {
-        let logging_enabled = crate::get_rerun_env().unwrap_or(default_logging_enabled);
+    pub fn new(default_enabled: bool) -> Self {
+        let enabled = crate::get_rerun_env().unwrap_or(default_enabled);
 
-        if !logging_enabled {
+        if !enabled {
             re_log::info!("Rerun Logging is disabled.");
         }
 
@@ -51,18 +51,18 @@ impl Session {
             recording_id: None,
             is_official_example: None,
             has_sent_begin_recording_msg: false,
-            logging_enabled,
+            enabled,
         }
     }
 
     /// Check if logging is enabled on this `Session`.
-    pub fn is_logging_enabled(&self) -> bool {
-        self.logging_enabled
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     /// Enable or disable logging on this `Session`.
-    pub fn set_logging_enabled(&mut self, enabled: bool) {
-        self.logging_enabled = enabled;
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -213,7 +213,7 @@ impl Session {
 
     /// Send a [`LogMsg`].
     pub fn send(&mut self, log_msg: LogMsg) {
-        if !self.logging_enabled {
+        if !self.enabled {
             // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
             // check here is just a safety net.
             re_log::debug_once!("Logging is disabled, dropping message.");

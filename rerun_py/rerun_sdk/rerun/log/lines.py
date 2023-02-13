@@ -29,7 +29,7 @@ def log_path(
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
     log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
 
@@ -73,7 +73,7 @@ def log_line_strip(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     if positions is not None:
@@ -144,7 +144,7 @@ def log_line_segments(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     if positions is None:

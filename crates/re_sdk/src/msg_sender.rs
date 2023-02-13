@@ -254,7 +254,7 @@ impl MsgSender {
     /// Consumes, packs, sanity checkes and finally sends the message to the currently configured
     /// target of the SDK.
     pub fn send(self, session: &mut Session) -> Result<(), MsgSenderError> {
-        if !session.is_logging_enabled() {
+        if !session.is_enabled() {
             return Ok(()); // silently drop the message
         }
 

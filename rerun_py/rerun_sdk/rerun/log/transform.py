@@ -89,7 +89,7 @@ def log_view_coordinates(
 def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
     """Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate."""
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     bindings.log_unknown_transform(entity_path, timeless=timeless)
@@ -141,7 +141,7 @@ def log_rigid3(
 
     """
 
-    if not bindings.logging_enabled():
+    if not bindings.enabled():
         return
 
     if parent_from_child and child_from_parent:
