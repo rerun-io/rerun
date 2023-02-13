@@ -45,4 +45,5 @@ tracing-subscriber = "0.3"
 
 
 [build-dependencies]
+anyhow.workspace = true
 glob = "0.3"
