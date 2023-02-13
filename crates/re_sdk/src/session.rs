@@ -135,10 +135,10 @@ impl Session {
                 }
                 self.sender = Sender::Remote(client);
             }
-            
+
             #[cfg(feature = "re_viewer")]
             Sender::NativeViewer(_) => {}
-            
+
             #[cfg(feature = "web")]
             Sender::WebViewer(web_server, _) => {
                 re_log::info!("Shutting down web server.");
@@ -230,12 +230,12 @@ impl Session {
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
-            
+
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
-            
+
             #[cfg(feature = "re_viewer")]
             Sender::NativeViewer(_) => vec![],
-            
+
             #[cfg(feature = "web")]
             Sender::WebViewer(_, _) => vec![],
         }
@@ -308,14 +308,28 @@ impl Session {
         re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
     }
 
-    /// Starts a Rerun viewer on the main thread (for platform compatibility's sake) and migrates
-    /// the given callback, along with the `Session` itself, to a new thread.
+    /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
+    /// the active `Session`, to a newly spawned thread where the callback will run until
+    /// completion.
+    ///
+    /// All messages logged from the passed-in callback will be streamed to the viewer in
+    /// real-time.
+    ///
+    /// This method will not return as long as the viewer runs.
+    ///
+    /// ⚠️  This function must be called from the main thread since some platforms require that
+    /// their UI runs on the main thread! ⚠️
     #[cfg(not(target_arch = "wasm32"))]
     pub fn spawn<F, T>(mut self, run: F) -> re_viewer::external::eframe::Result<()>
     where
         F: FnOnce(Session) -> T + Send + 'static,
         T: Send + 'static,
     {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to spawn() ignored");
+            return Ok(());
+        }
+
         let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
         for msg in self.drain_log_messages_buffer() {
@@ -328,8 +342,10 @@ impl Session {
         _ = std::thread::spawn(move || run(self));
 
         // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
-        // to spawn the viewer in place and move the user callback to a new thread.
+        // to spawn the viewer in place and migrate the user callback to a new thread.
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
+            // TODO(cmc): it'd be nice to centralize all the UI wake up logic somewhere.
+            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let startup_options = re_viewer::StartupOptions::default();
             Box::new(re_viewer::App::from_receiver(
                 startup_options,
