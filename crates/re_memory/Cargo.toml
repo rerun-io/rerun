@@ -4,6 +4,7 @@ authors.workspace = true
 description = "Run-time memory tracking and profiling."
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
@@ -11,10 +12,13 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[package.metadata.docs.rs]
+all-features = true
+
 
 [dependencies]
-re_format = { path = "../re_format" }
-re_log = { path = "../re_log" }
+re_format.workspace = true
+re_log.workspace = true
 
 ahash = "0.8"
 backtrace = { version = "0.3" }

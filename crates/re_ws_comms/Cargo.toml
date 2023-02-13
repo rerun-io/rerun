@@ -4,12 +4,16 @@ authors.workspace = true
 description = "WebSocket communication library (encoding, decoding, client, server) between a Rerun server and viewer"
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]
@@ -35,8 +39,8 @@ tls = [
 
 
 [dependencies]
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types", features = ["serde"] }
+re_log.workspace = true
+re_log_types = { workspace = true, features = ["serde"] }
 
 anyhow.workspace = true
 bincode = "1.3"
@@ -46,7 +50,7 @@ document-features = "0.2"
 ewebsock = { version = "0.2", optional = true }
 
 # Server:
-re_smart_channel = { path = "../re_smart_channel", optional = true }
+re_smart_channel = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 futures-channel = { version = "0.3", optional = true }

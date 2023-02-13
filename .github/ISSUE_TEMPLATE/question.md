@@ -1,8 +1,8 @@
 ---
-name: Other
-about: For issues that are neither bugs or feature requests
+name: Question
+about: For questions please use the Rerun Discord
 title: ''
-labels: other, 👀 needs triage
+labels: 👀 needs triage
 assignees: ''
 
 ---

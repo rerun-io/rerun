@@ -15,6 +15,9 @@ pub use self::global::global_session;
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::session::Session;
 
+#[cfg(feature = "demo")]
+pub mod demo_util;
+
 // ---
 
 pub use re_log_types::{
