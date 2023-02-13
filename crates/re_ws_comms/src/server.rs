@@ -97,7 +97,7 @@ async fn accept_connection(
     // );
     // let _enter = span.enter();
 
-    re_log::info!("New WebSocket connection");
+    re_log::debug!("New WebSocket connection");
 
     if let Err(err) = handle_connection(log_stream, tcp_stream, history).await {
         match err {
