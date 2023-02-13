@@ -496,6 +496,10 @@ fn main() -> anyhow::Result<()> {
 
     run(&mut session, &args)?;
 
+    if let Behavior::Save(path) = behavior {
+        session.save(path)?;
+    }
+
     Ok(())
 }
 

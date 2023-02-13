@@ -350,41 +350,10 @@ fn show() -> PyResult<()> {
 
 #[pyfunction]
 fn save(path: &str) -> PyResult<()> {
-    re_log::trace!("Saving file to {path:?}…");
-
     let mut session = global_session();
-    if session.is_streaming_over_tcp() {
-        return Err(PyRuntimeError::new_err(
-            "Can't show the log messages: Rerun was configured to send the data to a server!",
-        ));
-    }
-
-    let log_messages = session.drain_log_messages_buffer();
-    drop(session);
-
-    if log_messages.is_empty() {
-        re_log::info!("Nothing logged, so nothing to save");
-    }
-
-    if !path.ends_with(".rrd") {
-        re_log::warn!("Expected path to end with .rrd, got {path:?}");
-    }
-
-    match std::fs::File::create(path) {
-        Ok(file) => {
-            if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
-                Err(PyRuntimeError::new_err(format!(
-                    "Failed to write to file at {path:?}: {err}",
-                )))
-            } else {
-                re_log::info!("Rerun data file saved to {path:?}");
-                Ok(())
-            }
-        }
-        Err(err) => Err(PyRuntimeError::new_err(format!(
-            "Failed to create file at {path:?}: {err}",
-        ))),
-    }
+    session
+        .save(path)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 // ----------------------------------------------------------------------------

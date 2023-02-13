@@ -48,6 +48,7 @@ re_smart_channel.workspace = true
 re_string_interner.workspace = true
 
 
+anyhow.workspace = true
 arrow2.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
