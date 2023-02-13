@@ -10,6 +10,10 @@ use re_log_types::{
 /// You should ideally create one session object and reuse it.
 /// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
 pub struct Session {
+    /// Is this session enabled?
+    /// If not, all calls into it are ignored!
+    enabled: bool,
+
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
 
@@ -20,9 +24,6 @@ pub struct Session {
     is_official_example: Option<bool>,
 
     has_sent_begin_recording_msg: bool,
-
-    /// Is Logging enabled globally?
-    enabled: bool,
 }
 
 impl Session {
@@ -43,6 +44,8 @@ impl Session {
         }
 
         Self {
+            enabled,
+
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
@@ -51,7 +54,6 @@ impl Session {
             recording_id: None,
             is_official_example: None,
             has_sent_begin_recording_msg: false,
-            enabled,
         }
     }
 
@@ -107,6 +109,11 @@ impl Session {
     ///
     /// Disconnect with [`Self::disconnect`].
     pub fn connect(&mut self, addr: SocketAddr) {
+        if !self.enabled {
+            re_log::info!("Rerun disabled - call to connect() ignored");
+            return;
+        }
+
         match &mut self.sender {
             Sender::Remote(remote) => {
                 remote.set_addr(addr);
@@ -134,6 +141,11 @@ impl Session {
     /// will be opened to show the viewer.
     #[cfg(feature = "web")]
     pub fn serve(&mut self, open_browser: bool) {
+        if !self.enabled {
+            re_log::info!("Rerun disabled - call to serve() ignored");
+            return;
+        }
+
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
         let web_server_join_handle = self.tokio_rt.spawn(async move {
