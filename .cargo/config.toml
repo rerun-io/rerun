@@ -2,8 +2,3 @@
 # To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.
 # Temporary solution while we wait for our own xtasks!
 run-wasm = "run --release --package run_wasm --"
-
-[env]
-# Manually define CARGO_WORKSPACE_DIR while we wait for #3946 to be settled.
-# See https://github.com/rust-lang/cargo/issues/3946.
-CARGO_WORKSPACE_DIR = { value = "", relative = true }

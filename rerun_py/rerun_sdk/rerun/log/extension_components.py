@@ -128,9 +128,10 @@ def log_extension_components(
 
     _add_extension_components(instanced, splats, ext, identifiers_np)
 
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
-
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

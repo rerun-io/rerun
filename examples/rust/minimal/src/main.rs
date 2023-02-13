@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|v| ColorRGBA::from_rgb(v.x as u8, v.y as u8, v.z as u8))
         .collect::<Vec<_>>();
 
-    MsgSender::new("my_point")
+    MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
         .send(&mut session)?;

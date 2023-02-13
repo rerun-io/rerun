@@ -44,7 +44,7 @@ def log_point(
     timeless: bool = False,
 ) -> None:
     """
-    Log a 2D or 3D point, with optional color.
+    Log a 2D or 3D point, with a positions and optional colors, radii, label, etc.
 
     Logging again to the same `entity_path` will replace the previous point.
 
@@ -120,12 +120,13 @@ def log_point(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
-
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
 @rerun_disabled_check
@@ -143,7 +144,7 @@ def log_points(
     timeless: bool = False,
 ) -> None:
     """
-    Log 2D or 3D points, with optional colors.
+    Log 2D or 3D points, with positions and optional colors, radii, labels, etc.
 
     Logging again to the same `entity_path` will replace all the previous points.
 
@@ -247,8 +248,9 @@ def log_points(
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
-
     if comps[1]:
         comps[1]["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
