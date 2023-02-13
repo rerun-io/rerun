@@ -18,11 +18,16 @@ import subprocess
 import sys
 from typing import Final
 
-CARGO_VERSION_REGEX: Final = r"^version\s*=\s*\"(?P<version>([0-9]+)\.([0-9]+)\.([0-9]+))\"$"
-VERSION_TAG_REGEX: Final = r"^v(?P<version>([0-9]+)\.([0-9]+)\.([0-9]+))$"
+import semver
+
+# A regex to match the version number in Cargo.toml as SemVer, e.g., 1.2.3-alpha.0
+CARGO_VERSION_REGEX: Final = r"^version\s*=\s*\"(.+)\"$"
+
+# A regex to match the version number in the tag name, e.g. v1.2.3
+VERSION_TAG_REGEX: Final = r"^v(.+)$"
 
 
-def get_cargo_version(cargo_toml: str) -> str:
+def get_cargo_version(cargo_toml: str) -> semver.VersionInfo:
     """Using regex, parse the version number from Cargo.toml."""
 
     match = re.search(CARGO_VERSION_REGEX, cargo_toml, re.MULTILINE)
@@ -30,7 +35,7 @@ def get_cargo_version(cargo_toml: str) -> str:
     if match is None:
         raise Exception("Could not find valid base version number in Cargo.toml")
 
-    return match.group("version")
+    return semver.parse_version_info(match.groups()[0])
 
 
 def get_git_sha() -> str:
@@ -38,7 +43,7 @@ def get_git_sha() -> str:
     return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
 
 
-def get_ref_name_version() -> str:
+def get_ref_name_version() -> semver.VersionInfo:
     """Return the parsed tag version from the GITHUB_REF_NAME environment variable."""
 
     # This is the branch, or tag name that triggered the workflow.
@@ -53,7 +58,7 @@ def get_ref_name_version() -> str:
     if match is None:
         raise Exception("Could not find valid version number in GITHUB_REF_NAME")
 
-    return match.group("version")
+    return semver.parse_version_info(match.groups()[0])
 
 
 def patch_cargo_version(cargo_toml: str, new_version: str) -> str:
@@ -86,7 +91,7 @@ def main() -> None:
 
     if sys.argv[1] == "--patch_prerelease":
         git_sha = get_git_sha()
-        new_version = f"{cargo_version}+{git_sha}"
+        new_version = cargo_version.bump_build(git_sha)
         new_cargo_toml = patch_cargo_version(cargo_toml, new_version)
 
         # Write the patched Cargo.toml back to disk
