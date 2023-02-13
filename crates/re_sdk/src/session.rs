@@ -37,11 +37,7 @@ impl Session {
     ///
     /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
     pub fn new(default_enabled: bool) -> Self {
-        let enabled = crate::get_rerun_env().unwrap_or(default_enabled);
-
-        if !enabled {
-            re_log::info!("Rerun Logging is disabled.");
-        }
+        let enabled = crate::decide_logging_enabled(default_enabled);
 
         Self {
             enabled,

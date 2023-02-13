@@ -10,12 +10,12 @@ use pyo3::{
     types::PyDict,
 };
 
-use rerun::time::{Time, TimeInt, TimePoint, TimeType, Timeline};
 use rerun::{
-    get_rerun_env,
+    global_session,
     log::{LogMsg, MsgBundle, MsgId, PathOp},
+    time::{Time, TimeInt, TimePoint, TimeType, Timeline},
+    ApplicationId, EntityPath, RecordingId,
 };
-use rerun::{global_session, ApplicationId, EntityPath, RecordingId};
 
 pub use rerun::{
     components::{
@@ -247,10 +247,9 @@ fn init(application_id: String, application_path: Option<PathBuf>, default_enabl
         false
     });
 
-    global_session().set_application_id(ApplicationId(application_id), is_official_example);
+    let mut session = rerun::global_session_with_default_enabled(default_enabled);
 
-    // Logging enabled logic: Highest priority is the RERUN env var, then the default_enabled.
-    global_session().set_enabled(get_rerun_env().unwrap_or(default_enabled));
+    session.set_application_id(ApplicationId(application_id), is_official_example);
 }
 
 #[pyfunction]

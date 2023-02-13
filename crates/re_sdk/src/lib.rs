@@ -11,7 +11,7 @@ mod global;
 mod msg_sender;
 mod session;
 
-pub use self::global::global_session;
+pub use self::global::{global_session, global_session_with_default_enabled};
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::session::Session;
 
@@ -25,21 +25,48 @@ pub use re_log_types::{
     ApplicationId, ComponentName, EntityPath, RecordingId,
 };
 
+const RERUN_ENV_VAR: &str = "RERUN";
+
 /// Helper to get the value of the `RERUN` environment variable.
-pub fn get_rerun_env() -> Option<bool> {
-    const RERUN_KEY: &str = "RERUN";
-    std::env::var(RERUN_KEY)
+fn get_rerun_env() -> Option<bool> {
+    std::env::var(RERUN_ENV_VAR)
         .ok()
         .and_then(|s| match s.to_lowercase().as_str() {
             "0" | "false" | "off" => Some(false),
             "1" | "true" | "on" => Some(true),
             _ => {
                 re_log::warn!(
-                    "Invalid value for environment variable {RERUN_KEY}={s:?}. Expected 'on' or 'off'. It will be ignored"
+                    "Invalid value for environment variable {RERUN_ENV_VAR}={s:?}. Expected 'on' or 'off'. It will be ignored"
                 );
                 None
             }
         })
+}
+
+/// Checks the `RERUN` environment variable. If not found, returns the argument.
+fn decide_logging_enabled(default_enabled: bool) -> bool {
+    match get_rerun_env() {
+        Some(true) => {
+            re_log::info!(
+                "Rerun Logging is enabled by the '{RERUN_ENV_VAR}' environment variable."
+            );
+            true
+        }
+        Some(false) => {
+            re_log::info!(
+                "Rerun Logging is disabled by the '{RERUN_ENV_VAR}' environment variable."
+            );
+            false
+        }
+        None => {
+            if !default_enabled {
+                re_log::info!(
+                    "Rerun Logging is disabled by default. Turn it on with the '{RERUN_ENV_VAR}' environment variable."
+                );
+            }
+            default_enabled
+        }
+    }
 }
 
 /// Things directly related to logging.
