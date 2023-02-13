@@ -19,6 +19,7 @@ env:
     1. Download the correct `.whl`. For Mac M1/M2, grab the "universal2" `.whl`
     2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
     3. Test it: `rerun --version`
+  UBUNTU_REQUIRED_PKGS: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }} # Cancel previous CI jobs only on pull-requests
@@ -97,11 +98,9 @@ jobs:
 
       - name: Cache APT Packages
         if: matrix.platform == 'linux'
-        #uses: awalsh128/cache-apt-pkgs-action@v1.2.2
-        #TODO(john) merge upstream
-        uses: rerun-io/cache-apt-pkgs-action@59534850182063abf1b2c11bb3686722a12a8397
+        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
+          packages: ${{ env.UBUNTU_REQUIRED_PKGS }}
           version: 1.0
           execute_install_scripts: true
 
@@ -149,6 +148,7 @@ jobs:
         # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
         run: |
           python scripts/version_util.py --check_version
+
       - name: Build and install rerun
         run: pip install rerun_py/
 
