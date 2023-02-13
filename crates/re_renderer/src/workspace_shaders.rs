@@ -14,109 +14,109 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/composite.wgsl");
+        let virtpath = Path::new("shader/composite.wgsl");
         let content = include_str!("../shader/composite.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/generic_skybox.wgsl");
+        let virtpath = Path::new("shader/generic_skybox.wgsl");
         let content = include_str!("../shader/generic_skybox.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/global_bindings.wgsl");
+        let virtpath = Path::new("shader/global_bindings.wgsl");
         let content = include_str!("../shader/global_bindings.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/instanced_mesh.wgsl");
+        let virtpath = Path::new("shader/instanced_mesh.wgsl");
         let content = include_str!("../shader/instanced_mesh.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/lines.wgsl");
+        let virtpath = Path::new("shader/lines.wgsl");
         let content = include_str!("../shader/lines.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/mesh_vertex.wgsl");
+        let virtpath = Path::new("shader/mesh_vertex.wgsl");
         let content = include_str!("../shader/mesh_vertex.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/point_cloud.wgsl");
+        let virtpath = Path::new("shader/point_cloud.wgsl");
         let content = include_str!("../shader/point_cloud.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/rectangle.wgsl");
+        let virtpath = Path::new("shader/rectangle.wgsl");
         let content = include_str!("../shader/rectangle.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/screen_triangle.wgsl");
+        let virtpath = Path::new("shader/screen_triangle.wgsl");
         let content = include_str!("../shader/screen_triangle.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/test_triangle.wgsl");
+        let virtpath = Path::new("shader/test_triangle.wgsl");
         let content = include_str!("../shader/test_triangle.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/types.wgsl");
+        let virtpath = Path::new("shader/types.wgsl");
         let content = include_str!("../shader/types.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/camera.wgsl");
+        let virtpath = Path::new("shader/utils/camera.wgsl");
         let content = include_str!("../shader/utils/camera.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/depth_offset.wgsl");
+        let virtpath = Path::new("shader/utils/depth_offset.wgsl");
         let content = include_str!("../shader/utils/depth_offset.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/encoding.wgsl");
+        let virtpath = Path::new("shader/utils/encoding.wgsl");
         let content = include_str!("../shader/utils/encoding.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/flags.wgsl");
+        let virtpath = Path::new("shader/utils/flags.wgsl");
         let content = include_str!("../shader/utils/flags.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/quaternion.wgsl");
+        let virtpath = Path::new("shader/utils/quaternion.wgsl");
         let content = include_str!("../shader/utils/quaternion.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/size.wgsl");
+        let virtpath = Path::new("shader/utils/size.wgsl");
         let content = include_str!("../shader/utils/size.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
     {
-        let virtpath = Path::new("crates/re_renderer/shader/utils/srgb.wgsl");
+        let virtpath = Path::new("shader/utils/srgb.wgsl");
         let content = include_str!("../shader/utils/srgb.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
