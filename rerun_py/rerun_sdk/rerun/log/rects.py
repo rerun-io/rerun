@@ -63,6 +63,10 @@ def log_rect(
          If true, the rect will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
     else:
@@ -148,6 +152,10 @@ def log_rects(
             If true, the rects will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     # Treat None the same as []
     if np.any(rects):  # type: ignore[arg-type]
         rects = np.asarray(rects, dtype="float32")

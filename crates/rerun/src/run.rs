@@ -233,7 +233,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
         anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(startup_options, re_ui, cc.storage, rx);
             app.set_profiler(profiler);
             Box::new(app)
@@ -312,33 +312,6 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
 #[cfg(not(feature = "web"))]
 async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
-}
-
-/// This wakes up the ui thread each time we receive a new message.
-fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: Receiver<T>,
-    ctx: egui::Context,
-) -> re_smart_channel::Receiver<T> {
-    // We need to intercept messages to wake up the ui thread.
-    // For that, we need a new channel.
-    // However, we want to make sure the channel latency numbers are from the start
-    // of the first channel, to the end of the second.
-    // For that we need to use `chained_channel`, `recv_with_send_time` and `send_at`.
-    let (tx, new_rx) = rx.chained_channel();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
-                if tx.send_at(sent_at, msg).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::debug!("Shutting down ui_waker thread");
-        })
-        .unwrap();
-    new_rx
 }
 
 #[cfg(feature = "server")]

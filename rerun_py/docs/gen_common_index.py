@@ -58,7 +58,7 @@ SECTION_TABLE: Final[List[Section]] = [
         func_list=["set_time_sequence", "set_time_seconds", "set_time_nanos"],
     ),
     Section(
-        title="Logging Primitives",
+        title="Spatial Primitives",
         module_summary=None,
         func_list=[
             "log_point",
@@ -74,9 +74,14 @@ SECTION_TABLE: Final[List[Section]] = [
         ],
     ),
     Section(
-        title="Logging Images",
+        title="Images",
         module_summary=None,
         func_list=["log_image", "log_image_file", "log_depth_image", "log_segmentation_image"],
+    ),
+    Section(
+        title="Tensors",
+        module_summary=None,
+        func_list=["log_tensor"],
     ),
     Section(
         title="Annotations",

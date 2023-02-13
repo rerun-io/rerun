@@ -114,6 +114,10 @@ def log_annotation_context(
         If true, the annotation context will be timeless (default: True).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if not isinstance(class_descriptions, Iterable):
         class_descriptions = [class_descriptions]
 

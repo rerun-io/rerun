@@ -254,6 +254,10 @@ impl MsgSender {
     /// Consumes, packs, sanity checkes and finally sends the message to the currently configured
     /// target of the SDK.
     pub fn send(self, session: &mut Session) -> Result<(), MsgSenderError> {
+        if !session.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
         let [msg_standard, msg_transforms, msg_splats] = self.into_messages()?;
 
         if let Some(msg_transforms) = msg_transforms {

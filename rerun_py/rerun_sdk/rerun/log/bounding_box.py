@@ -59,6 +59,10 @@ def log_obb(
         If true, the bounding box will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
 

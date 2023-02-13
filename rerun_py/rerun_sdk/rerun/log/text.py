@@ -122,6 +122,10 @@ def log_text_entry(
         Whether the text entry should be timeless.
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
 

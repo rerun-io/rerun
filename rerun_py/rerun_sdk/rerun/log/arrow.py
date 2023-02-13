@@ -57,6 +57,10 @@ def log_arrow(
         The entity is not time-dependent, and will be visible at any time point.
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
 

@@ -332,15 +332,35 @@ enum Recording {
     Shoe,
 }
 
+#[derive(Debug, Clone)]
+enum Behavior {
+    Save(PathBuf),
+    Serve,
+    Connect(SocketAddr),
+    Spawn,
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
+    /// Start a viewer and feed it data in real-time.
+    #[clap(long, default_value = "true")]
+    spawn: bool,
+
+    /// Saves the data to an rrd file rather than visualizing it immediately.
+    #[clap(long)]
+    save: Option<PathBuf>,
+
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
     /// Optionally takes an `ip:port`.
     #[clap(long)]
     #[allow(clippy::option_option)]
     connect: Option<Option<SocketAddr>>,
+
+    /// Connects and sends the logged data to a web-based Rerun viewer.
+    #[clap(long)]
+    serve: bool,
 
     /// Specifies the recording to replay.
     #[clap(long, value_enum, default_value = "book")]
@@ -363,34 +383,33 @@ struct Args {
     per_frame_sleep: Option<Duration>,
 }
 
+// TODO(cmc): move all rerun args handling to helpers
+impl Args {
+    pub fn to_behavior(&self) -> Behavior {
+        if let Some(path) = self.save.as_ref() {
+            return Behavior::Save(path.clone());
+        }
+
+        if self.serve {
+            return Behavior::Serve;
+        }
+
+        match self.connect {
+            Some(Some(addr)) => return Behavior::Connect(addr),
+            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
+            None => {}
+        }
+
+        Behavior::Spawn
+    }
+}
+
 fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloatError> {
     let seconds = arg.parse()?;
     Ok(std::time::Duration::from_secs_f64(seconds))
 }
 
-fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
-
-    use clap::Parser as _;
-    let args = Args::parse();
-    let addr = match args.connect {
-        Some(Some(addr)) => Some(addr),
-        Some(None) => Some(rerun::log::default_server_addr()),
-        None => None,
-    };
-
-    let mut session = Session::new();
-    // TODO(cmc): application id should take selected recording into account
-    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
-    // does... which they can probably share.
-    // This needs to take care of the whole `official_example` thing, and also keeps track of
-    // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
-    session.set_recording_id(RecordingId::random());
-    if let Some(addr) = addr {
-        session.connect(addr);
-    }
-
+fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
     // Parse protobuf dataset
     let rec_info = args.recording.info().with_context(|| {
         use clap::ValueEnum as _;
@@ -404,8 +423,8 @@ fn main() -> anyhow::Result<()> {
     let annotations = read_annotations(&rec_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
-    log_coordinate_space(&mut session, "world", "RUB")?;
-    log_coordinate_space(&mut session, "world/camera", "RDF")?;
+    log_coordinate_space(session, "world", "RUB")?;
+    log_coordinate_space(session, "world/camera", "RDF")?;
 
     let mut global_frame_offset = 0;
     let mut global_time_offset = 0.0;
@@ -433,7 +452,7 @@ fn main() -> anyhow::Result<()> {
             );
             let objects = &annotations.objects;
             let annotations = annotations.frame_annotations.as_slice().into();
-            log_ar_frame(&mut session, objects, &annotations, &ar_frame)?;
+            log_ar_frame(session, objects, &annotations, &ar_frame)?;
 
             if let Some(d) = args.per_frame_sleep {
                 std::thread::sleep(d);
@@ -451,11 +470,41 @@ fn main() -> anyhow::Result<()> {
         global_frame_offset += frame_offset;
     }
 
-    // TODO(cmc): arg parsing and arg interpretation helpers
-    // TODO(cmc): missing flags: save, serve
-    // TODO(cmc): expose an easy to use async local mode.
-    if args.connect.is_none() {
-        session.show()?;
+    Ok(())
+}
+
+fn main() -> anyhow::Result<()> {
+    re_log::setup_native_logging();
+
+    use clap::Parser as _;
+    let args = Args::parse();
+
+    let mut session = Session::new();
+    // TODO(cmc): application id should take selected recording into account
+    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
+    // does... which they can probably share.
+    // This needs to take care of the whole `official_example` thing, and also keeps track of
+    // whether we're using the rust or python sdk.
+    session.set_application_id(ApplicationId("objectron_rs".to_owned()), true);
+    session.set_recording_id(RecordingId::random());
+
+    let behavior = args.to_behavior();
+    match behavior {
+        Behavior::Connect(addr) => session.connect(addr),
+        Behavior::Spawn => {
+            return session
+                .spawn(move |mut session| run(&mut session, &args))
+                .map_err(Into::into)
+        }
+        _ => {
+            // TODO(cmc): handle serve
+        }
+    }
+
+    run(&mut session, &args)?;
+
+    if let Behavior::Save(path) = behavior {
+        session.save(path)?;
     }
 
     Ok(())

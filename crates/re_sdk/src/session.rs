@@ -10,6 +10,10 @@ use re_log_types::{
 /// You should ideally create one session object and reuse it.
 /// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
 pub struct Session {
+    /// Is this session enabled?
+    /// If not, all calls into it are ignored!
+    enabled: bool,
+
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
 
@@ -22,14 +26,35 @@ pub struct Session {
     has_sent_begin_recording_msg: bool,
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::with_default_enabled(true)
+    }
+}
+
 impl Session {
     /// Construct a new session.
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
     ///
     /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
+    ///
+    /// Logging is enabled by default, but can be turned off with the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
     pub fn new() -> Self {
+        Self::with_default_enabled(true)
+    }
+
+    /// Construct a new session, with control of wether or not logging is enabled by default.
+    ///
+    /// The default can always be overridden using the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
+    pub fn with_default_enabled(default_enabled: bool) -> Self {
+        let enabled = crate::decide_logging_enabled(default_enabled);
+
         Self {
+            enabled,
+
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
@@ -39,6 +64,16 @@ impl Session {
             is_official_example: None,
             has_sent_begin_recording_msg: false,
         }
+    }
+
+    /// Check if logging is enabled on this `Session`.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable logging on this `Session`.
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -83,6 +118,11 @@ impl Session {
     ///
     /// Disconnect with [`Self::disconnect`].
     pub fn connect(&mut self, addr: SocketAddr) {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to connect() ignored");
+            return;
+        }
+
         match &mut self.sender {
             Sender::Remote(remote) => {
                 remote.set_addr(addr);
@@ -95,6 +135,10 @@ impl Session {
                 }
                 self.sender = Sender::Remote(client);
             }
+
+            #[cfg(feature = "re_viewer")]
+            Sender::NativeViewer(_) => {}
+
             #[cfg(feature = "web")]
             Sender::WebViewer(web_server, _) => {
                 re_log::info!("Shutting down web server.");
@@ -110,6 +154,11 @@ impl Session {
     /// will be opened to show the viewer.
     #[cfg(feature = "web")]
     pub fn serve(&mut self, open_browser: bool) {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to serve() ignored");
+            return;
+        }
+
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
         let web_server_join_handle = self.tokio_rt.spawn(async move {
@@ -181,7 +230,12 @@ impl Session {
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
+
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
+
+            #[cfg(feature = "re_viewer")]
+            Sender::NativeViewer(_) => vec![],
+
             #[cfg(feature = "web")]
             Sender::WebViewer(_, _) => vec![],
         }
@@ -189,6 +243,13 @@ impl Session {
 
     /// Send a [`LogMsg`].
     pub fn send(&mut self, log_msg: LogMsg) {
+        if !self.enabled {
+            // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
+            // check here is just a safety net.
+            re_log::debug_once!("Logging is disabled, dropping message.");
+            return;
+        }
+
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
                 let application_id = self
@@ -230,6 +291,49 @@ impl Session {
             path_op,
         }));
     }
+
+    /// Drains all pending log messages and saves them to disk into an rrd file.
+    // TODO(cmc): We're gonna have to properly type all these errors all the way up to the encoding
+    // methods in re_log_types at some point...
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to save() ignored");
+            return Ok(());
+        }
+
+        let path = path.into();
+
+        re_log::debug!("Saving file to {path:?}…");
+
+        if self.is_streaming_over_tcp() {
+            anyhow::bail!(
+                "Can't show the log messages: Rerun was configured to send the data to a server!",
+            );
+        }
+
+        let log_messages = self.drain_log_messages_buffer();
+
+        if log_messages.is_empty() {
+            re_log::info!("Nothing logged, so nothing to save");
+        }
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("rrd") {
+            re_log::warn!("Expected path to end with .rrd, got {path:?}");
+        }
+
+        match std::fs::File::create(&path) {
+            Ok(file) => {
+                if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
+                    anyhow::bail!("Failed to write to file at {path:?}: {err}")
+                } else {
+                    re_log::info!("Rerun data file saved to {path:?}");
+                    Ok(())
+                }
+            }
+            Err(err) => anyhow::bail!("Failed to create file at {path:?}: {err}",),
+        }
+    }
 }
 
 #[cfg(feature = "re_viewer")]
@@ -237,15 +341,62 @@ impl Session {
     /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
     /// been logged so far.
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to show() ignored");
+            return Ok(());
+        }
+
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
         re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
     }
-}
 
-impl Default for Session {
-    fn default() -> Self {
-        Self::new()
+    /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
+    /// the active `Session`, to a newly spawned thread where the callback will run until
+    /// completion.
+    ///
+    /// All messages logged from the passed-in callback will be streamed to the viewer in
+    /// real-time.
+    ///
+    /// This method will not return as long as the viewer runs.
+    ///
+    /// ⚠️  This function must be called from the main thread since some platforms require that
+    /// their UI runs on the main thread! ⚠️
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn spawn<F, T>(mut self, run: F) -> re_viewer::external::eframe::Result<()>
+    where
+        F: FnOnce(Session) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to spawn() ignored");
+            return Ok(());
+        }
+
+        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
+
+        for msg in self.drain_log_messages_buffer() {
+            tx.send(msg).ok();
+        }
+
+        self.sender = Sender::NativeViewer(tx);
+
+        // NOTE: Forget the handle on purpose, leave that thread be.
+        _ = std::thread::spawn(move || run(self));
+
+        // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
+        // to spawn the viewer in place and migrate the user callback to a new thread.
+        re_viewer::run_native_app(Box::new(move |cc, re_ui| {
+            // TODO(cmc): it'd be nice to centralize all the UI wake up logic somewhere.
+            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+            let startup_options = re_viewer::StartupOptions::default();
+            Box::new(re_viewer::App::from_receiver(
+                startup_options,
+                re_ui,
+                cc.storage,
+                rx,
+            ))
+        }))
     }
 }
 
@@ -254,6 +405,9 @@ enum Sender {
 
     #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
     Buffered(Vec<LogMsg>),
+
+    #[cfg(feature = "re_viewer")]
+    NativeViewer(re_smart_channel::Sender<LogMsg>),
 
     /// Send it to the web viewer over WebSockets
     #[cfg(feature = "web")]
@@ -274,6 +428,13 @@ impl Sender {
         match self {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
+
+            #[cfg(feature = "re_viewer")]
+            Self::NativeViewer(sender) => {
+                if let Err(err) = sender.send(msg) {
+                    re_log::error!("Failed to send log message to viewer: {err}");
+                }
+            }
 
             #[cfg(feature = "web")]
             Self::WebViewer(_, sender) => {

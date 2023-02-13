@@ -46,6 +46,10 @@ def log_image(
         If true, the image will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     image = _to_numpy(image)
 
     shape = image.shape
@@ -106,6 +110,10 @@ def log_depth_image(
         If true, the image will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     image = _to_numpy(image)
 
     # TODO(#635): Remove when issue with displaying f64 depth images is fixed.
@@ -165,6 +173,10 @@ def log_segmentation_image(
         If true, the image will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     image = np.array(image, dtype=np.uint16, copy=False)
     non_empty_dims = [d for d in image.shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)

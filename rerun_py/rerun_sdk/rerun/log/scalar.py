@@ -106,6 +106,10 @@ def log_scalar(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
 
