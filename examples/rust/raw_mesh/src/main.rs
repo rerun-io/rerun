@@ -17,7 +17,7 @@ use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordin
 use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    ApplicationId, EntityPath, MsgSender, RecordingId, Session,
+    EntityPath, MsgSender, Session,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.

@@ -21,7 +21,7 @@ use anyhow::{anyhow, Context as _};
 
 use rerun::external::re_log;
 use rerun::time::{Time, TimePoint, TimeType, Timeline};
-use rerun::{ApplicationId, MsgSender, RecordingId, Session};
+use rerun::{MsgSender, Session};
 
 // --- Rerun logging ---
 
