@@ -124,7 +124,6 @@ jobs:
 
       - name: Install prerequisites for building the web-viewer Wasm
         shell: bash
-        continue-on-error: true
         run: ./scripts/setup_web.sh
 
       # winget not available within the github runner, so download the package directly
