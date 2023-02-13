@@ -75,3 +75,5 @@ cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun
 cargo publish $FLAGS -p re_int_histogram
+
+echo "All crates successfully published!"

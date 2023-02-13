@@ -51,6 +51,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
     * [ ] A gif showing a major new feature
 * [ ] Test the branch ([see below](#testing-a-release))
 * [ ] Open the PR up for review
+* [ ] `./scripts/publish_crates.sh --dry-run`
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
     * [ ] Make sure to it includes instructions for handling any breaking changes
@@ -100,5 +101,4 @@ First login as https://crates.io/users/rerunio with and API key you get from Emi
 cargo login $API_KEY
 ```
 
-./scripts/publish_crates.sh --dry-run
 ./scripts/publish_crates.sh --execute
