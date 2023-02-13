@@ -118,7 +118,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn: bool = False) -> None:
+def init(application_id: str, spawn: bool = False, default_logging_enabled: bool = True) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -136,9 +136,12 @@ def init(application_id: str, spawn: bool = False) -> None:
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
+    default_logging_enabled:
+        Should Rerun logging be on by default?
+        Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
 
     """
-    app_path = None
+    application_path = None
 
     # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
     # only need to be written once and just work for all languages out of the box... unfortunately
@@ -162,14 +165,43 @@ def init(application_id: str, spawn: bool = False) -> None:
             filename = frame[FRAME_FILENAME_INDEX]
             path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
             if "rerun/examples" in str(path):
-                app_path = path
+                application_path = path
     except Exception:
         pass
 
-    bindings.init(application_id, app_path)
+    bindings.init(
+        application_id=application_id,
+        application_path=application_path,
+        default_logging_enabled=default_logging_enabled,
+    )
 
     if spawn:
         _spawn()
+
+
+def logging_enabled() -> bool:
+    """
+    Is logging enabled?
+
+    This can be controlled with the enviornment variable `RERUN`,
+    e.g. `RERUN=on` or `RERUN=off`.
+
+    The default is on.
+    """
+    return bindings.logging_enabled()
+
+
+def set_logging_enabled(enabled: bool) -> None:
+    """
+    Enable or disable logging.
+
+    When disabled, all Rerun log calls return early, and do nothing.
+    Same with spawn, connect, serve, show, etc.
+
+    This is a global setting that affects all threads.
+    By default logging is enabled.
+    """
+    bindings.set_logging_enabled(enabled)
 
 
 def connect(addr: Optional[str] = None) -> None:
@@ -184,6 +216,11 @@ def connect(addr: Optional[str] = None) -> None:
         The ip:port to connect to
 
     """
+
+    if not bindings.logging_enabled():
+        print("Rerun is disabled - connect() call ignored")
+        return
+
     bindings.connect(addr)
 
 
@@ -207,6 +244,11 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
         also connect to the viewer and stream logging data to it.
 
     """
+
+    if not bindings.logging_enabled():
+        print("Rerun is disabled - spawn() call ignored")
+        return
+
     import subprocess
     import sys
     from time import sleep
@@ -243,6 +285,11 @@ def serve(open_browser: bool = True) -> None:
         Open the default browser to the viewer.
 
     """
+
+    if not bindings.logging_enabled():
+        print("Rerun is disabled - serve() call ignored")
+        return
+
     bindings.serve(open_browser)
 
 
@@ -262,6 +309,11 @@ def show() -> None:
     NOTE: There is a bug which causes this function to only work once on some platforms.
 
     """
+
+    if not bindings.logging_enabled():
+        print("Rerun is disabled - show() call ignored")
+        return
+
     bindings.show()
 
 
@@ -279,6 +331,11 @@ def save(path: str) -> None:
         The path to save the data to.
 
     """
+
+    if not bindings.logging_enabled():
+        print("Rerun is disabled - serve() call ignored")
+        return
+
     bindings.save(path)
 
 
