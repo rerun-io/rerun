@@ -19,6 +19,9 @@ all-features = true
 [features]
 default = ["demo", "re_viewer"]
 
+## Integration with [`clap`](https://github.com/clap-rs/clap).
+clap = ["dep:clap"]
+
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
 
@@ -62,6 +65,7 @@ re_ws_comms = { workspace = true, optional = true, features = ["server"] }
 re_viewer = { workspace = true, default-features = false, optional = true }
 re_web_server = { workspace = true, optional = true }
 
+clap = { workspace = true, optional = true, features = ["derive"] }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
@@ -73,7 +77,3 @@ arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-clap = { version = "4.0", features = ["derive"] }
-mimalloc = "0.1.29"
