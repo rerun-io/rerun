@@ -53,6 +53,11 @@ SECTION_TABLE: Final[List[Section]] = [
         func_list=["init", "set_recording_id", "connect", "spawn"],
     ),
     Section(
+        title="Time",
+        module_summary=None,
+        func_list=["set_time_sequence", "set_time_seconds", "set_time_nanos"],
+    ),
+    Section(
         title="Logging Primitives",
         module_summary=None,
         func_list=[
