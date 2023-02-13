@@ -191,7 +191,7 @@ def is_enabled() -> bool:
     (e.g. `RERUN=on` or `RERUN=off`) and with [`set_enabled`].
 
     """
-    return bindings.is_enabled()
+    return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
 def set_enabled(enabled: bool) -> None:
