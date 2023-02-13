@@ -67,7 +67,7 @@ def script_setup(
         The application ID to use for the viewer.
 
     """
-    rr.init(application_id=application_id)
+    rr.init(application_id=application_id, default_enabled=True)
 
     if args.serve:
         rr.serve()

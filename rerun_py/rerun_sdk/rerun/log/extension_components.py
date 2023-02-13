@@ -110,6 +110,10 @@ def log_extension_components(
         If true, the components will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     identifiers_np = np.array((), dtype="uint64")
     if identifiers:
         try:
