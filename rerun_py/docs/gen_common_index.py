@@ -72,7 +72,7 @@ SECTION_TABLE: Final[List[Section]] = [
         func_list=["log_image", "log_image_file", "log_depth_image", "log_segmentation_image"],
     ),
     Section(
-        title="Logging Tensors",
+        title="Tensors",
         module_summary=None,
         func_list=["log_tensor"],
     ),
