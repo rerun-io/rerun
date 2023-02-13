@@ -13,7 +13,6 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use clap::Parser;
 use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
 use rerun::time::{TimeType, Timeline};
 use rerun::{
@@ -131,9 +130,9 @@ enum Scene {
     Avocado,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Behavior {
-    Save,
+    Save(PathBuf),
     Serve,
     Connect(SocketAddr),
     Spawn,
@@ -148,7 +147,7 @@ struct Args {
 
     /// Saves the data to an rrd file rather than visualizing it immediately.
     #[clap(long)]
-    save: bool,
+    save: Option<PathBuf>,
 
     /// If specified, connects and sends the logged data to a remote Rerun viewer.
     ///
@@ -198,8 +197,8 @@ impl Args {
 
     // TODO(cmc): move all rerun args handling to helpers
     pub fn to_behavior(&self) -> Behavior {
-        if self.save {
-            return Behavior::Save;
+        if let Some(path) = self.save.as_ref() {
+            return Behavior::Save(path.clone());
         }
 
         if self.serve {
@@ -216,11 +215,26 @@ impl Args {
     }
 }
 
+fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
+    // Read glTF scene
+    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
+    let nodes = load_gltf(&doc, &buffers);
+
+    // Log raw glTF nodes and their transforms with Rerun
+    for root in nodes {
+        re_log::info!(scene = root.name, "logging glTF scene");
+        log_coordinate_space(session, root.name.as_str(), "RUB")?;
+        log_node(session, root)?;
+    }
+
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
+    use clap::Parser as _;
     let args = Args::parse();
-    let behavior = args.to_behavior();
 
     let mut session = Session::new();
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
@@ -230,32 +244,22 @@ fn main() -> anyhow::Result<()> {
     session.set_application_id(ApplicationId("raw_mesh_rs".into()), true);
     session.set_recording_id(RecordingId::random());
 
-    let run = move |mut session| {
-        // Read glTF scene
-        let (doc, buffers, _) =
-            gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
-        let nodes = load_gltf(&doc, &buffers);
-
-        // Log raw glTF nodes and their transforms with Rerun
-        for root in nodes {
-            re_log::info!(scene = root.name, "logging glTF scene");
-            log_coordinate_space(&mut session, root.name.as_str(), "RUB")?;
-            log_node(&mut session, root)?;
-        }
-
-        Ok::<_, anyhow::Error>(())
-    };
-
+    let behavior = args.to_behavior();
     match behavior {
         Behavior::Connect(addr) => session.connect(addr),
-        Behavior::Spawn => return session.spawn(run).map_err(Into::into),
+        Behavior::Spawn => {
+            return session
+                .spawn(move |mut session| run(&mut session, &args))
+                .map_err(Into::into)
+        }
         _ => {
-            // TODO(cmc): handle save
             // TODO(cmc): handle serve
         }
     }
 
-    run(session)
+    run(&mut session, &args)?;
+
+    Ok(())
 }
 
 // --- glTF parsing ---

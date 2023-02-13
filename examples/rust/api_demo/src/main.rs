@@ -1,6 +1,4 @@
-//! An amalgamation of various usages of the API with synthetic "data" without any particular focus.
-//!
-//! It uses a lot of different aspects of the Rerun API in order to test it.
+//! Minimal examples of Rerun SDK usage.
 //!
 //! Run all demos:
 //! ```
@@ -16,6 +14,7 @@ use std::{
     collections::HashSet,
     f32::consts::{PI, TAU},
     net::SocketAddr,
+    path::PathBuf,
 };
 
 use rerun::{
@@ -608,9 +607,9 @@ enum Demo {
     Transforms3D,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Behavior {
-    Save,
+    Save(PathBuf),
     Serve,
     Connect(SocketAddr),
     Spawn,
@@ -625,7 +624,7 @@ struct Args {
 
     /// Saves the data to an rrd file rather than visualizing it immediately.
     #[clap(long)]
-    save: bool,
+    save: Option<PathBuf>,
 
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
@@ -645,8 +644,8 @@ struct Args {
 // TODO(cmc): move all rerun args handling to helpers
 impl Args {
     pub fn to_behavior(&self) -> Behavior {
-        if self.save {
-            return Behavior::Save;
+        if let Some(path) = self.save.as_ref() {
+            return Behavior::Save(path.clone());
         }
 
         if self.serve {
@@ -663,12 +662,34 @@ impl Args {
     }
 }
 
+fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
+    use clap::ValueEnum as _;
+    let demos: HashSet<Demo> = args.demo.as_ref().map_or_else(
+        || Demo::value_variants().iter().copied().collect(),
+        |demos| demos.iter().cloned().collect(),
+    );
+
+    for demo in demos {
+        match demo {
+            Demo::BoundingBox => demo_bbox(session)?,
+            Demo::ExtensionComponents => demo_extension_components(session)?,
+            Demo::LogCleared => demo_log_cleared(session)?,
+            Demo::Points3D => demo_3d_points(session)?,
+            Demo::Rects => demo_rects(session)?,
+            Demo::Segmentation => demo_segmentation(session)?,
+            Demo::TextLogs => demo_text_logs(session)?,
+            Demo::Transforms3D => demo_transforms_3d(session)?,
+        }
+    }
+
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
-    use clap::{Parser as _, ValueEnum as _};
+    use clap::Parser as _;
     let args = Args::parse();
-    let behavior = args.to_behavior();
 
     let mut session = rerun::Session::new();
     // TODO(cmc): application id should take selected demos into account
@@ -679,35 +700,20 @@ fn main() -> anyhow::Result<()> {
     session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
     session.set_recording_id(RecordingId::random());
 
-    let demos: HashSet<Demo> = args.demo.map_or_else(
-        || Demo::value_variants().iter().copied().collect(),
-        |demos| demos.into_iter().collect(),
-    );
-
-    let run_demos = |mut session| {
-        for demo in demos {
-            match demo {
-                Demo::BoundingBox => demo_bbox(&mut session)?,
-                Demo::ExtensionComponents => demo_extension_components(&mut session)?,
-                Demo::LogCleared => demo_log_cleared(&mut session)?,
-                Demo::Points3D => demo_3d_points(&mut session)?,
-                Demo::Rects => demo_rects(&mut session)?,
-                Demo::Segmentation => demo_segmentation(&mut session)?,
-                Demo::TextLogs => demo_text_logs(&mut session)?,
-                Demo::Transforms3D => demo_transforms_3d(&mut session)?,
-            }
-        }
-        Ok::<_, anyhow::Error>(())
-    };
-
+    let behavior = args.to_behavior();
     match behavior {
         Behavior::Connect(addr) => session.connect(addr),
-        Behavior::Spawn => return session.spawn(run_demos).map_err(Into::into),
+        Behavior::Spawn => {
+            return session
+                .spawn(move |mut session| run(&mut session, &args))
+                .map_err(Into::into)
+        }
         _ => {
-            // TODO(cmc): handle save
             // TODO(cmc): handle serve
         }
     }
 
-    run_demos(session)
+    run(&mut session, &args)?;
+
+    Ok(())
 }
