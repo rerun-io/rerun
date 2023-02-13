@@ -7,7 +7,7 @@ This script accepts one argument:
     --patch_prerelease: This will patch the version in rerun/Cargo.toml with the current git sha. This is intended to
     create a prerelease version for continuous releases.
 
-    --check_version: This will check that the version in rerun/Cargo.toml matches the version in the tag name. This is
+    --check_version: This will check that the version in rerun/Cargo.toml matches the version in the tag name from `GITHUB_REF_NAME`. This is
     intended to be used to check that the version number in Cargo.toml is correct before creating a release on PyPI. If
     the versions don't match, an exception will be raised.
 """
