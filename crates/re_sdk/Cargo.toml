@@ -19,9 +19,6 @@ all-features = true
 [features]
 default = ["demo", "re_viewer"]
 
-## Integration with [`clap`](https://github.com/clap-rs/clap).
-clap = ["dep:clap"]
-
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
 
@@ -65,11 +62,11 @@ re_ws_comms = { workspace = true, optional = true, features = ["server"] }
 re_viewer = { workspace = true, default-features = false, optional = true }
 re_web_server = { workspace = true, optional = true }
 
-clap = { workspace = true, optional = true, features = ["derive"] }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+clap = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
