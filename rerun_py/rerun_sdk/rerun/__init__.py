@@ -181,7 +181,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True)
 
 def is_enabled() -> bool:
     """
-    Is the Rerun SDK enabled?
+    Is the Rerun SDK enabled.
 
     If false, all call to the rerun library are ignored.
 
