@@ -24,32 +24,28 @@ rerun::MsgSender::new("image")
 <img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
 </p>
 
-
 ## Library
-You can add the `rerun` crate to your project with `cargo add rerun` (soon)
+You can add the `rerun` crate to your project with `cargo add rerun` (soon).
 <!-- TODO(#1161): remove the (soon) -->
 
-To get started, see [the examples](https://github.com/rerun-io/rerun/tree/main/examples).
+To get started, see [the examples](https://github.com/rerun-io/rerun/tree/main/examples/rust).
 <!-- TODO(#1161): update link to point to the rust examples -->
 
 ## Binary
-You can install the binary with `cargo install rerun` (soon)
+You can install the binary with `cargo install rerun` (soon).
 <!-- TODO(#1161): remove the (soon) -->
 
 This can act either as a server, a viewer, or both, depending on which options you use when you start it.
 
-`cargo run -p rerun -- --help`
+Running `rerun` with no arguments will start the viewer, waiting for an SDK to connect to it over TCP.
 
-### Hosting an SDK server
-This will host an SDK server that SDK:s can connect to:
+Run `rerun --help` for more.
 
-```sh
-cargo run -p rerun
-```
 
 ### Running a web viewer
 The web viewer is an experimental feature, but you can try it out with:
 
 ```sh
-cargo run -p rerun --features web -- --web-viewer ../nyud.rrd
+cargo install --features web rerun
+rerun -- --web-viewer ../nyud.rrd
 ```

@@ -17,6 +17,11 @@ pub const APP_ICON: Icon = Icon::new(
     "app_icon_mac",
     include_bytes!("../data/icons/app_icon_mac.png"),
 );
+#[cfg(target_os = "windows")]
+pub const APP_ICON: Icon = Icon::new(
+    "app_icon_windows",
+    include_bytes!("../data/icons/app_icon_windows.png"),
+);
 
 pub const RERUN_MENU: Icon =
     Icon::new("rerun_menu", include_bytes!("../data/icons/rerun_menu.png"));
