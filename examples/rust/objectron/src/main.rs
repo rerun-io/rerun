@@ -382,6 +382,7 @@ struct Args {
     #[clap(long, value_parser = parse_duration)]
     per_frame_sleep: Option<Duration>,
 }
+
 // TODO(cmc): move all rerun args handling to helpers
 impl Args {
     pub fn to_behavior(&self) -> Behavior {

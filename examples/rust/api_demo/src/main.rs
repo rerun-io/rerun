@@ -641,6 +641,7 @@ struct Args {
     #[clap(long, value_enum)]
     demo: Option<Vec<Demo>>,
 }
+
 // TODO(cmc): move all rerun args handling to helpers
 impl Args {
     pub fn to_behavior(&self) -> Behavior {

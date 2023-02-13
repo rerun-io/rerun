@@ -168,6 +168,8 @@ struct Args {
     #[clap(long)]
     scene_path: Option<PathBuf>,
 }
+
+// TODO(cmc): move all rerun args handling to helpers
 impl Args {
     fn scene_path(&self) -> anyhow::Result<PathBuf> {
         if let Some(scene_path) = self.scene_path.clone() {
