@@ -122,13 +122,19 @@ jobs:
 
       - run: pip install -r rerun_py/requirements-build.txt
 
-      - name: Install prerequisites for building the web-viewer Wasm
+      - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
+        if: matrix.platform != 'windows'
         shell: bash
         run: ./scripts/setup_web.sh
 
+      - name: Install wasm32 and wasm-bindgen-cli for building the web-viewer Wasm on windows
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
+
       # winget not available within the github runner, so download the package directly
       # See: https://github.com/marketplace/actions/engineerd-configurator
-      - name: Install prerequisites for building the web-viewer Wasm on windows
+      - name: Install binaryen for building the web-viewer Wasm on windows
         if: matrix.platform == 'windows'
         uses: engineerd/configurator@v0.0.9
         with:
