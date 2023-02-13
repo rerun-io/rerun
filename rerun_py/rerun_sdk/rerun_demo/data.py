@@ -1,6 +1,7 @@
-"""Simple data to be used for rerun demos."""
+"""Simple data to be used for Rerun demos."""
 
 from collections import namedtuple
+from math import cos, pi, sin, tau
 
 import numpy as np
 from rerun.log.rects import RectFormat
@@ -62,3 +63,43 @@ def build_rect_pyramid(count=20, width=100, height=100):
 
 rect_pyramid = build_rect_pyramid()
 """Default rect pyramid data"""
+
+
+ColorSpiral = namedtuple("ColorSpiral", ["positions", "colors"])
+
+
+def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offset=0, z_step=0.1):
+    """
+    Create a spiral of points with colors along the Z axis.
+
+    Parameters
+    ----------
+    num_points:
+        Total number of points.
+    radius:
+        The radius of the spiral.
+    angular_step:
+        The factor applied between each step along the trigonemetric circle.
+    angular_offset:
+        Offsets the starting position on the trigonemetric circle.
+    z_step:
+        The factor applied between between each step along the Z axis.
+
+    """
+    positions = np.array(
+        [
+            [
+                sin(i * tau * angular_step + angular_offset) * radius,
+                cos(i * tau * angular_step + angular_offset) * radius,
+                i * z_step,
+            ]
+            for i in range(num_points)
+        ]
+    )
+    colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, num_points, dtype=int)]
+
+    return ColorSpiral(positions, colors)
+
+
+color_spiral = build_color_spiral()
+"""Default color spiral"""
