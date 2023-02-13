@@ -84,6 +84,10 @@ def log_point(
         If true, the point will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if keypoint_id is not None and class_id is None:
         class_id = 0
     if position is not None:
@@ -186,6 +190,10 @@ def log_points(
         If true, the points will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0
     if positions is None:

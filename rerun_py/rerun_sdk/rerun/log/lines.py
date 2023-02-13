@@ -29,6 +29,8 @@ def log_path(
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
+    if not bindings.is_enabled():
+        return
     log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
 
 
@@ -70,6 +72,10 @@ def log_line_strip(
         If true, the path will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
@@ -137,6 +143,10 @@ def log_line_segments(
         If true, the line segments will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if positions is None:
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")

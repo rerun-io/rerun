@@ -10,6 +10,10 @@ use re_log_types::{
 /// You should ideally create one session object and reuse it.
 /// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
 pub struct Session {
+    /// Is this session enabled?
+    /// If not, all calls into it are ignored!
+    enabled: bool,
+
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
 
@@ -22,14 +26,35 @@ pub struct Session {
     has_sent_begin_recording_msg: bool,
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::with_default_enabled(true)
+    }
+}
+
 impl Session {
     /// Construct a new session.
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
     ///
     /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
+    ///
+    /// Logging is enabled by default, but can be turned off with the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
     pub fn new() -> Self {
+        Self::with_default_enabled(true)
+    }
+
+    /// Construct a new session, with control of wether or not logging is enabled by default.
+    ///
+    /// The default can always be overridden using the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
+    pub fn with_default_enabled(default_enabled: bool) -> Self {
+        let enabled = crate::decide_logging_enabled(default_enabled);
+
         Self {
+            enabled,
+
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
@@ -39,6 +64,16 @@ impl Session {
             is_official_example: None,
             has_sent_begin_recording_msg: false,
         }
+    }
+
+    /// Check if logging is enabled on this `Session`.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    /// Enable or disable logging on this `Session`.
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -83,6 +118,11 @@ impl Session {
     ///
     /// Disconnect with [`Self::disconnect`].
     pub fn connect(&mut self, addr: SocketAddr) {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to connect() ignored");
+            return;
+        }
+
         match &mut self.sender {
             Sender::Remote(remote) => {
                 remote.set_addr(addr);
@@ -110,6 +150,11 @@ impl Session {
     /// will be opened to show the viewer.
     #[cfg(feature = "web")]
     pub fn serve(&mut self, open_browser: bool) {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to serve() ignored");
+            return;
+        }
+
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
         let web_server_join_handle = self.tokio_rt.spawn(async move {
@@ -189,6 +234,13 @@ impl Session {
 
     /// Send a [`LogMsg`].
     pub fn send(&mut self, log_msg: LogMsg) {
+        if !self.enabled {
+            // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
+            // check here is just a safety net.
+            re_log::debug_once!("Logging is disabled, dropping message.");
+            return;
+        }
+
         if !self.has_sent_begin_recording_msg {
             if let Some(recording_id) = self.recording_id {
                 let application_id = self
@@ -237,15 +289,14 @@ impl Session {
     /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
     /// been logged so far.
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to show() ignored");
+            return Ok(());
+        }
+
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
         re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
-    }
-}
-
-impl Default for Session {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

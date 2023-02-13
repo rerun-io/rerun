@@ -84,6 +84,10 @@ def _log_tensor(
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
+
+    if not bindings.is_enabled():
+        return
+
     if names is not None:
         names = list(names)
 
