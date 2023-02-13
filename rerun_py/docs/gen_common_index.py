@@ -92,6 +92,13 @@ SECTION_TABLE: Final[List[Section]] = [
         func_list=["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
     ),
     Section(
+        title="Text",
+        module_summary=None,
+        # TODO(#1251): Classes aren't supported yet
+        # "LogLevel", "LoggingHandler"
+        func_list=["log_text_entry"],
+    ),
+    Section(
         title="Helpers",
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
