@@ -297,9 +297,14 @@ impl Session {
     // methods in re_log_types at some point...
     #[cfg(not(target_arch = "wasm32"))]
     pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to save() ignored");
+            return Ok(());
+        }
+
         let path = path.into();
 
-        re_log::trace!("Saving file to {path:?}…");
+        re_log::debug!("Saving file to {path:?}…");
 
         if self.is_streaming_over_tcp() {
             anyhow::bail!(
