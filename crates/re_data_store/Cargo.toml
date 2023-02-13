@@ -4,12 +4,16 @@ authors.workspace = true
 description = "In-memory storage of Rerun log data, indexed for fast fast queries."
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]
@@ -20,10 +24,10 @@ serde = ["dep:serde", "re_log_types/serde"]
 
 
 [dependencies]
-re_arrow_store = { path = "../re_arrow_store" }
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types" }
-re_string_interner = { path = "../re_string_interner" }
+re_arrow_store.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
+re_string_interner.workspace = true
 
 ahash = "0.8"
 anyhow = "1.0"

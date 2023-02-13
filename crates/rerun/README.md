@@ -4,6 +4,12 @@
   </a>
 </h1>
 
+[![Latest version](https://img.shields.io/crates/v/re_ws_comms.svg)](https://crates.io/crates/rerun)
+[![Documentation](https://docs.rs/re_ws_comms/badge.svg)](https://docs.rs/rerun)
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
+[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Community%20Discord)](https://discord.gg/Gcm8BbTaAj)
+
 # Rerun Rust logging SDK
 Log rich data, such as images and point clouds, and visualize it live or after the fact, with time scrubbing.
 

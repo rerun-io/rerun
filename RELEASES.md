@@ -26,6 +26,8 @@ This means we might add breaking changes in each new release.
 
 In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical bug fix. These patch releases will not contain any breaking changes.
 
+We sometimes do pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
+
 
 ## Data and communication versioning
 We have not yet committed to any backwards or forwards compatibility.
@@ -34,7 +36,7 @@ We tag all data files (`.rrd` files) and communication protocols with the rerun 
 
 
 ## Releases
-Release builds of the Python Wheels are triggered by pushing a release tag to github in the form `v0.2.0`.
+Release builds of the Python Wheels are triggered by pushing a release tag to GitHub in the form `v0.2.0`.
 When doing a normal release, we tag the release commit on the `main` branch. If we are doing a patch release, we do a branch off of the latest release tag (e.g. `v0.3.0`) and cherry-pick any fixes we want into that branch.
 
 ### Release checklist
@@ -49,21 +51,22 @@ Copy this checklist to the the PR description, go through it from top to bottom,
     * [ ] A gif showing a major new feature
 * [ ] Test the branch ([see below](#testing-a-release))
 * [ ] Open the PR up for review
-* [ ] Bump version numbers
+* [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
     * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
 * [ ] Publish new Rust crates
-* [ ] Publish new Python wheels
 * [ ] Merge PR
 * [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
+* [ ] `git tag -d latest && git tag -a latest -m 'Latest release'` (unless this is an alpha pre-release)
 * [ ] `git push && git push --tags`
 * [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
+* [ ] Wait for documentation to build: https://docs.rs/releases/queue
 * [ ] Post on:
-  * [ ] Community Discord
-  * [ ] Rerun Twitter
-  * [ ] Reddit?
+    * [ ] Community Discord
+    * [ ] Rerun Twitter
+    * [ ] Reddit?
 
 
 ### Testing a release
@@ -76,7 +79,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
             * [ ] Firefox
             * [ ] Mobile
 * After tagging and the CI has published:
-    * [ ] Test the Python packages from PyPI: `pip install -U rerun-sdk`
+    * [ ] Test the Python packages from PyPI: `pip install --upgrade rerun-sdk`
 
 
 ## To do before first release
@@ -88,3 +91,41 @@ Copy this checklist to the the PR description, go through it from top to bottom,
     * [ ] Release new `egui`
     * [ ] Update wgpu
     * [ ] Either try to get a new `arrow2` and `polars` published, or use unreleased versions of both
+
+
+## Publishing
+First login as https://crates.io/users/rerunio with and API key you get from Emil:
+
+```bash
+cargo login $API_KEY
+```
+
+
+
+TODO(emilk): make a script for the below:
+```sh
+# IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish re_web_server:
+cargo build --release -p re_web_server
+cargo publish -p re_log
+cargo publish -p re_error
+cargo publish -p re_format
+cargo publish -p re_string_interner
+cargo publish -p re_analytics
+cargo publish -p re_memory
+cargo publish -p re_tuid
+cargo publish -p re_log_types
+cargo publish -p re_smart_channel
+cargo publish -p re_tensor_ops
+cargo publish -p re_ui
+cargo publish -p re_arrow_store
+cargo publish -p re_data_store
+cargo publish -p re_query
+cargo publish -p re_sdk_comms
+cargo publish -p re_ws_comms
+RERUN_IS_PUBLISHING=yes cargo publish -p re_renderer
+RERUN_IS_PUBLISHING=yes cargo publish -p re_web_server
+cargo publish -p re_viewer
+cargo publish -p re_sdk
+cargo publish -p rerun
+cargo publish -p re_int_histogram
+```
