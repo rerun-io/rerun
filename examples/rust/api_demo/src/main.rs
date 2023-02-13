@@ -631,7 +631,7 @@ fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    let mut session = rerun::Session::new();
+    let mut session = rerun::Session::new(true);
     // TODO(cmc): application id should take selected demos into account
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.

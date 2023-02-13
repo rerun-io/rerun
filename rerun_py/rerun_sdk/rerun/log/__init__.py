@@ -1,5 +1,5 @@
 import functools
-from typing import Optional, Sequence, Union
+from typing import Any, Callable, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -35,11 +35,11 @@ OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
-def rerun_disabled_check(func: callable) -> callable:
+def rerun_disabled_check(func: Callable[..., None]) -> Callable[..., None]:
     """A Python method decorator that checks if logging is enabled before calling the method."""
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> None:
+    def wrapper(*args: Any, **kwargs: Any) -> None:
         if not bindings.logging_enabled():
             return
         return func(*args, **kwargs)

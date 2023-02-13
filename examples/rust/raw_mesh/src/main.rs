@@ -186,7 +186,7 @@ fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    let mut session = Session::new();
+    let mut session = Session::new(true);
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.
     // This needs to take care of the whole `official_example` thing, and also keeps track of
