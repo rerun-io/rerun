@@ -32,7 +32,7 @@ pub fn get_rerun_env() -> Option<bool> {
             "1" | "true" | "on" => Some(true),
             _ => {
                 re_log::warn!(
-                    "Invalid value for environment variable {RERUN_KEY}=\"{s}\", it will be ignored"
+                    "Invalid value for environment variable {RERUN_KEY}={s:?}. Expected 'on' or 'off'. It will be ignored"
                 );
                 None
             }
