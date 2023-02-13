@@ -316,6 +316,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy via mike # https://github.com/jimporter/mike
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python -u ${{github.ref_name}} latest
+
+      - name: Deploy tag via mike # https://github.com/jimporter/mike
+        if: github.ref == 'refs/heads/main'
         run: |
           git fetch
           mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python HEAD
