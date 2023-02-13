@@ -37,7 +37,21 @@ fn main() {
                 println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
             }
         }
-        Err(_) => println!("cargo:rustc-env=__RERUN_GIT_HASH=<unknown>"),
+        // NOTE: In 99% of cases, if `git_hash` failed it's because we're not in a git repository
+        // to begin with, which happens because we've imported the published crate from crates.io.
+        //
+        // When that happens, we want the commit hash to be the git tag that corresponds to the
+        // published version, so that one can always easily checkout the `git_hash` field in the
+        // analytics.
+        //
+        // Example of unlikely cases where the above does not hold:
+        // - `git` is not installed
+        // - the user downloaded rerun as a tarball and then imported via a `path = ...` import
+        // - others?
+        Err(_) => println!(
+            "cargo:rustc-env=__RERUN_GIT_HASH=v{}",
+            env!("CARGO_PKG_VERSION")
+        ),
     }
 }
 
