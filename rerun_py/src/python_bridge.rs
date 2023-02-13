@@ -307,6 +307,7 @@ fn logging_enabled() -> bool {
 }
 
 /// Enable or disable logging in the global session.
+///
 /// This is a global setting that affects all threads.
 /// By default logging is enabled.
 #[pyfunction]
