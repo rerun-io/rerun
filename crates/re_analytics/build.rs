@@ -47,7 +47,7 @@ fn git_hash() -> anyhow::Result<String> {
     let git_hash = String::from_utf8(output.stdout)?;
     let git_hash = git_hash.trim();
     if git_hash.is_empty() {
-        return Ok("<unknown>".into());
+        anyhow::bail!("empty commit hash");
     }
 
     let clean = Command::new("git")
