@@ -10,30 +10,17 @@ macro_rules! include_file {
     ($path:expr $(,)?) => {{
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
         {
+            // Native debug build, we have access to the disk both while building and while
+            // running, we just need to interpolated the relative paths passed into the macro.
+
             let mut resolver = $crate::new_recommended_file_resolver();
 
-            // There's no guarantee that users will `cargo run` from the workspace root, so
-            // we need to know where that is and make sure we look for shaders from there.
-            //
-            // Note that we grab the env-var at _compile time_, that way this will work for
-            // all cases: `cargo run`, `./rerun`, `python example.py`.
-            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            let workspace_path = manifest_path.parent().unwrap().parent().unwrap();
-
-            // The path returned by the `file!()` macro is always hermetic, which is actually
-            // an issue for us in this case since we allow non-hermetic imports in debug
-            // builds (we encourage them, even!).
-            //
-            // Thus, we need to do an actual OS canonicalization here, but it turns out that
-            // `FileServer::watch()` already does it for us, so we're covered.
             let file_path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
                 .join($path);
 
-            let path = ::std::path::Path::new(&workspace_path).join(&file_path);
-
-            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false)).unwrap()
+            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &file_path, false)).unwrap()
         }
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
@@ -51,13 +38,21 @@ macro_rules! include_file {
                 .unwrap()
                 .join($path);
 
-            // If an external project imports `rerun` as a dependency, `file!()` will _not_ behave
-            // hermetically... so we need to make sure workspace prefix always get stripped no
-            // matter what before we move on.
-            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            let workspace_path = manifest_path.parent().unwrap().parent().unwrap();
+            // If we're building from within the workspace, `file!()` will return a relative path
+            // starting at the workspace root.
+            // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
+            // problems when publishing: as we lose workspace information when publishing!), so we
+            // need to make sure to strip the path down.
             let path = path
-                .strip_prefix(workspace_path)
+                .strip_prefix("crates/re_renderer")
+                .map_or_else(|_| path.clone(), ToOwned::to_owned);
+
+            // If we're building from outside the workspace, `file!()` will return an absolute path
+            // that might point to anywhere: it doesn't matter, just strip it down to a relative
+            // re_renderer path no matter what.
+            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let path = path
+                .strip_prefix(&manifest_path)
                 .map_or_else(|_| path.clone(), ToOwned::to_owned);
 
             // At this point our path is guaranteed to be hermetic, and we pre-load
