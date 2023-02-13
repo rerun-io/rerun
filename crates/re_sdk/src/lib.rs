@@ -63,7 +63,7 @@ fn decide_logging_enabled(default_enabled: bool) -> bool {
         None => {
             if !default_enabled {
                 re_log::info!(
-                    "Rerun Logging is disabled by default. Turn it on with the '{RERUN_ENV_VAR}' environment variable."
+                    "Rerun Logging has been disabled. Turn it on with the '{RERUN_ENV_VAR}' environment variable."
                 );
             }
             default_enabled
