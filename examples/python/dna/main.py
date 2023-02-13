@@ -3,8 +3,15 @@
 """
 The example from our Getting Started page.
 
-Example: `examples/objectron/main.py --recording chair`
+`examples/python/dna/main.py`
 """
+
+from math import tau
+
+import numpy as np
+from rerun_demo.data import build_color_spiral
+from rerun_demo.util import bounce_lerp, interleave
+from scipy.spatial.transform import Rotation
 
 import rerun as rr
 
@@ -14,13 +21,6 @@ rr.spawn()
 rr.set_time_seconds("stable_time", 0)
 
 NUM_POINTS = 100
-
-from math import tau
-
-import numpy as np
-from rerun_demo.data import build_color_spiral
-from rerun_demo.util import bounce_lerp, interleave
-from scipy.spatial.transform import Rotation
 
 # points and colors are both np.array((NUM_POINTS, 3))
 points1, colors1 = build_color_spiral(NUM_POINTS)

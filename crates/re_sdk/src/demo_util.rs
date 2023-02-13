@@ -36,7 +36,7 @@ where
     }
 }
 
-/// Linear interpolates from `a` through `b` in `n` steps, returning the intermediate result at
+/// Linearly interpolates from `a` through `b` in `n` steps, returning the intermediate result at
 /// each step.
 #[inline]
 pub fn linspace<T>(
