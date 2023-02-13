@@ -1250,15 +1250,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dna"
-version = "0.1.0"
-dependencies = [
- "itertools",
- "rand",
- "rerun",
-]
-
-[[package]]
 name = "document-features"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
