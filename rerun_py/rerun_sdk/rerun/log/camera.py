@@ -2,12 +2,14 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.log import rerun_disabled_check
 
 __all__ = [
     "log_pinhole",
 ]
 
 
+@rerun_disabled_check
 def log_pinhole(
     entity_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
 ) -> None:

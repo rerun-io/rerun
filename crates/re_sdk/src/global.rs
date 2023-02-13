@@ -1,10 +1,15 @@
 use crate::session::Session;
 
 /// Access a global [`Session`] singleton for convenient logging.
+///
+/// By default, logging is enabled. To disable logging, call `set_logging_enabled(false)` on the global `Session`, or
+/// set the `RERUN` environment variable to `false`.
 pub fn global_session() -> std::sync::MutexGuard<'static, Session> {
     use once_cell::sync::OnceCell;
     use std::sync::Mutex;
     static INSTANCE: OnceCell<Mutex<Session>> = OnceCell::new();
-    let mutex = INSTANCE.get_or_init(|| Mutex::new(Session::new(true)));
+
+    let default_logging_enabled = true;
+    let mutex = INSTANCE.get_or_init(|| Mutex::new(Session::new(default_logging_enabled)));
     mutex.lock().unwrap()
 }

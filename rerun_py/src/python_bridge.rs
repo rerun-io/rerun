@@ -232,11 +232,8 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn init(
-    application_id: String,
-    application_path: Option<PathBuf>,
-    default_logging_enabled: Option<bool>,
-) {
+#[pyo3(signature = (application_id, application_path=None, default_logging_enabled=true))]
+fn init(application_id: String, application_path: Option<PathBuf>, default_logging_enabled: bool) {
     // The sentinel file we use to identify the official examples directory.
     const SENTINEL_FILENAME: &str = ".rerun_examples";
     let is_official_example = application_path.map_or(false, |mut path| {
@@ -252,9 +249,8 @@ fn init(
 
     global_session().set_application_id(ApplicationId(application_id), is_official_example);
 
-    // Logging enabled logic: Highest priority is the RERUN env var, then the default_logging_enabled, otherwise false.
-    global_session()
-        .set_logging_enabled(get_rerun_env().or(default_logging_enabled).unwrap_or(false));
+    // Logging enabled logic: Highest priority is the RERUN env var, then the default_logging_enabled.
+    global_session().set_logging_enabled(get_rerun_env().unwrap_or(default_logging_enabled));
 }
 
 #[pyfunction]
