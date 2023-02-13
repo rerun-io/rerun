@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.typing as npt
+from rerun.log import rerun_disabled_check
 
 from rerun import bindings
-from rerun.log import rerun_disabled_check
 
 __all__ = [
     "log_pinhole",

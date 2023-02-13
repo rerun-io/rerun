@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Sequence, TypeVar, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -34,17 +34,19 @@ Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
+_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
-def rerun_disabled_check(func: Callable[..., None]) -> Callable[..., None]:
+
+def rerun_disabled_check(func: _TFunc) -> _TFunc:
     """A Python method decorator that checks if logging is enabled before calling the method."""
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> None:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         if not bindings.logging_enabled():
             return
         return func(*args, **kwargs)
 
-    return wrapper
+    return cast(_TFunc, wrapper)
 
 
 def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
