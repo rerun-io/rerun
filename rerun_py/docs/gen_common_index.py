@@ -136,6 +136,10 @@ hide:
 # Examples
 You can find examples on our GitHub [here](https://github.com/rerun-io/rerun/tree/main/examples/python).
 
+# Troubleshooting
+You can set `RUST_LOG=debug` before running your Python script
+and/or `rerun` process to get some verbose logging output.
+
 # Common APIs
 """
     )
