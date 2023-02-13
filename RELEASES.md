@@ -100,32 +100,5 @@ First login as https://crates.io/users/rerunio with and API key you get from Emi
 cargo login $API_KEY
 ```
 
-
-
-TODO(emilk): make a script for the below:
-```sh
-# IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish re_web_server:
-cargo build --release -p re_web_server
-cargo publish -p re_log
-cargo publish -p re_error
-cargo publish -p re_format
-cargo publish -p re_string_interner
-cargo publish -p re_analytics
-cargo publish -p re_memory
-cargo publish -p re_tuid
-cargo publish -p re_log_types
-cargo publish -p re_smart_channel
-cargo publish -p re_tensor_ops
-cargo publish -p re_ui
-cargo publish -p re_arrow_store
-cargo publish -p re_data_store
-cargo publish -p re_query
-cargo publish -p re_sdk_comms
-cargo publish -p re_ws_comms
-RERUN_IS_PUBLISHING=yes cargo publish -p re_renderer
-RERUN_IS_PUBLISHING=yes cargo publish -p re_web_server
-cargo publish -p re_viewer
-cargo publish -p re_sdk
-cargo publish -p rerun
-cargo publish -p re_int_histogram
-```
+./scripts/publish_crates.sh --dry-run
+./scripts/publish_crates.sh --execute
