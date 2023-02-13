@@ -20,6 +20,6 @@ pub fn global_session_with_default_enabled(
     use std::sync::Mutex;
     static INSTANCE: OnceCell<Mutex<Session>> = OnceCell::new();
 
-    let mutex = INSTANCE.get_or_init(|| Mutex::new(Session::new(default_enabled)));
+    let mutex = INSTANCE.get_or_init(|| Mutex::new(Session::with_default_enabled(default_enabled)));
     mutex.lock().unwrap()
 }

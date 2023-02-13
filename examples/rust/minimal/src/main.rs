@@ -8,7 +8,7 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut session = Session::new(true);
+    let mut session = Session::new();
 
     let points = grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 10)
         .map(Point3D::from)

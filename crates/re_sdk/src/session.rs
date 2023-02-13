@@ -26,17 +26,30 @@ pub struct Session {
     has_sent_begin_recording_msg: bool,
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::with_default_enabled(true)
+    }
+}
+
 impl Session {
     /// Construct a new session.
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
     ///
-    /// # Parameters:
-    /// - `default_enabled`: If `true`, logging will be enabled by default. This can be overridden by the RERUN
-    /// environment variable at runtime.
-    ///
     /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
-    pub fn new(default_enabled: bool) -> Self {
+    ///
+    /// Logging is enabled by default, but can be turned off with the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
+    pub fn new() -> Self {
+        Self::with_default_enabled(true)
+    }
+
+    /// Construct a new session, with control of wether or not logging is enabled by default.
+    ///
+    /// The default can always be overridden using the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
+    pub fn with_default_enabled(default_enabled: bool) -> Self {
         let enabled = crate::decide_logging_enabled(default_enabled);
 
         Self {
@@ -284,12 +297,6 @@ impl Session {
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
         re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
-    }
-}
-
-impl Default for Session {
-    fn default() -> Self {
-        Self::new(true)
     }
 }
 

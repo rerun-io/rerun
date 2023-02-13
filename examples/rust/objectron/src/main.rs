@@ -379,7 +379,7 @@ fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    let mut session = Session::new(true);
+    let mut session = Session::new();
     // TODO(cmc): application id should take selected recording into account
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.

@@ -44,6 +44,8 @@ fn get_rerun_env() -> Option<bool> {
 }
 
 /// Checks the `RERUN` environment variable. If not found, returns the argument.
+///
+/// Also adds some helpful logging.
 fn decide_logging_enabled(default_enabled: bool) -> bool {
     match get_rerun_env() {
         Some(true) => {
