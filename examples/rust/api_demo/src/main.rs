@@ -694,7 +694,7 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut session = rerun::Session::new();
+    let mut session = rerun::Session::init("api_demo_rs", true);
     // TODO(cmc): application id should take selected demos into account
     // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
     // does... which they can probably share.
