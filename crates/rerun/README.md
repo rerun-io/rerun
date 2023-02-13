@@ -31,7 +31,7 @@ rerun::MsgSender::new("image")
 </p>
 
 ## Getting started
-- [Examples](https://github.com/rerun-io/rerun/tree/main/examples/rust)
+- [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 - [High-level documentation](http://rerun.io/docs)
 <!--- TODO(#1161): update doclinks
 - [Rust API docs](https://docs.rs/rerun/)
@@ -41,7 +41,7 @@ rerun::MsgSender::new("image")
 You can add the `rerun` crate to your project with `cargo add rerun` (soon).
 <!-- TODO(#1161): remove the (soon) -->
 
-To get started, see [the examples](https://github.com/rerun-io/rerun/tree/main/examples/rust).
+To get started, see [the examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust).
 <!-- TODO(#1161): update link to point to the rust examples -->
 
 ## Binary
