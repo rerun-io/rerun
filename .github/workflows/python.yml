@@ -120,6 +120,8 @@ jobs:
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
 
+      - run: pip install -r rerun_py/requirements-build.txt
+
       - name: Install prerequisites for building the web-viewer Wasm
         shell: bash
         continue-on-error: true
