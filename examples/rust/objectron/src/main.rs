@@ -505,8 +505,7 @@ fn main() -> anyhow::Result<()> {
     if matches!(behavior, Behavior::Serve) {
         eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
         std::thread::sleep(std::time::Duration::from_secs(1_000_000));
-    }
-    if let Behavior::Save(path) = behavior {
+    } else if let Behavior::Save(path) = behavior {
         session.save(path)?;
     }
 
