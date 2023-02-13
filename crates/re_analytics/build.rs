@@ -6,7 +6,13 @@ fn main() {
         "cargo:rustc-env=__RERUN_TARGET_TRIPLE={}",
         std::env::var("TARGET").unwrap()
     );
-    println!("cargo:rerun-if-changed=build.rs");
+
+    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+        // If we're outside the workspace, we just can't know... but we still need to set the
+        // envvar to the something, else we wouldn't be able to compile.
+        println!("cargo:rustc-env=__RERUN_GIT_HASH=<unknown>",);
+        return;
+    }
 
     // git hash
     let output = Command::new("git")
