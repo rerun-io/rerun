@@ -119,7 +119,7 @@ impl Session {
     /// Disconnect with [`Self::disconnect`].
     pub fn connect(&mut self, addr: SocketAddr) {
         if !self.enabled {
-            re_log::info!("Rerun disabled - call to connect() ignored");
+            re_log::debug!("Rerun disabled - call to connect() ignored");
             return;
         }
 
@@ -151,7 +151,7 @@ impl Session {
     #[cfg(feature = "web")]
     pub fn serve(&mut self, open_browser: bool) {
         if !self.enabled {
-            re_log::info!("Rerun disabled - call to serve() ignored");
+            re_log::debug!("Rerun disabled - call to serve() ignored");
             return;
         }
 
@@ -290,7 +290,7 @@ impl Session {
     /// been logged so far.
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
         if !self.enabled {
-            re_log::info!("Rerun disabled - call to show() ignored");
+            re_log::debug!("Rerun disabled - call to show() ignored");
             return Ok(());
         }
 
