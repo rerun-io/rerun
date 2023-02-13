@@ -104,7 +104,7 @@ cargo login $API_KEY
 
 TODO(emilk): make a script for the below:
 ```sh
-# IMPORTANT! bundled by re_web_server:
+# IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish re_web_server:
 cargo build --release -p re_web_server
 cargo publish -p re_log
 cargo publish -p re_error
