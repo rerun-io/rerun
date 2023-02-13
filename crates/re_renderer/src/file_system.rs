@@ -127,7 +127,6 @@ impl FileSystem for &'static MemFileSystem {
 
     fn canonicalize(&self, path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
         let path = path.as_ref().clean();
-        dbg!(&path);
         let files = self.files.read();
         let files = files.as_ref().unwrap();
         ensure!(files.contains_key(&path), "file does not exist at {path:?}",);
