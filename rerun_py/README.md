@@ -20,7 +20,7 @@ rr.log_rect("car", bbox)
 </p>
 
 ## Getting started
-- [Examples](https://github.com/rerun-io/rerun/tree/main/examples/python)
+- [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 - [Python API docs](https://rerun-io.github.io/rerun)
 - [High-level documentation](http://rerun.io/docs)
 
