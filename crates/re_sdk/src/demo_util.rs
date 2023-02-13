@@ -62,3 +62,39 @@ pub fn grid(from: glam::Vec3, to: glam::Vec3, n: usize) -> impl Iterator<Item = 
             .flat_map(move |y| linspace(from.x, to.x, n).map(move |x| (x, y, z).into()))
     })
 }
+
+/// Create a spiral of points with colors along the Z axis.
+///
+/// * `num_points`: Total number of points.
+/// * `radius`: The radius of the spiral.
+/// * `angular_step`: The factor applied between each step along the trigonemetric circle.
+/// * `angular_offset`: Offsets the starting position on the trigonemetric circle.
+/// * `z_step`: The factor applied between between each step along the Z axis.
+#[cfg(all(feature = "glam", feature = "re_viewer"))]
+pub fn color_spiral(
+    num_points: usize,
+    radius: f32,
+    angular_step: f32,
+    angular_offset: f32,
+    z_step: f32,
+) -> (Vec<glam::Vec3>, Vec<[u8; 4]>) {
+    use std::f32::consts::TAU;
+    let points = (0..num_points)
+        .map(move |i| {
+            let angle = i as f32 * angular_step * TAU + angular_offset;
+            glam::Vec3::new(
+                angle.sin() * radius,
+                angle.cos() * radius,
+                i as f32 * z_step,
+            )
+        })
+        .collect();
+
+    let colors = (0..num_points)
+        .map(move |i| {
+            re_viewer::color_map::turbo_color_map(i as f32 / num_points as f32).to_array()
+        })
+        .collect();
+
+    (points, colors)
+}

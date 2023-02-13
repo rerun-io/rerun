@@ -1,6 +1,6 @@
 mod app_options;
 pub mod caches;
-pub(crate) mod color_map;
+pub mod color_map;
 mod item;
 pub(crate) mod mesh_loader;
 mod selection_state;
