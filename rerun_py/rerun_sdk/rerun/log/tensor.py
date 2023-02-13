@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 from rerun.components.instance import InstanceArray
 from rerun.components.tensor import TensorArray
-from rerun.log import rerun_disabled_check
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
 
@@ -75,7 +74,6 @@ def log_tensor(
     )
 
 
-@rerun_disabled_check
 def _log_tensor(
     entity_path: str,
     tensor: npt.NDArray[Any],
@@ -86,6 +84,10 @@ def _log_tensor(
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
+
+    if not bindings.logging_enabled():
+        return
+
     if names is not None:
         names = list(names)
 

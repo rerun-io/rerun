@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 
 import numpy.typing as npt
-from rerun.log import _to_sequence, rerun_disabled_check
+from rerun.log import _to_sequence
 from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
@@ -13,7 +13,6 @@ __all__ = [
 ]
 
 
-@rerun_disabled_check
 def log_view_coordinates(
     entity_path: str,
     *,
@@ -87,13 +86,15 @@ def log_view_coordinates(
         bindings.log_view_coordinates_up_handedness(entity_path, up, right_handed, timeless)
 
 
-@rerun_disabled_check
 def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
     """Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate."""
+
+    if not bindings.logging_enabled():
+        return
+
     bindings.log_unknown_transform(entity_path, timeless=timeless)
 
 
-@rerun_disabled_check
 def log_rigid3(
     entity_path: str,
     *,
@@ -139,6 +140,10 @@ def log_rigid3(
         If true, the transform will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     if parent_from_child and child_from_parent:
         _send_warning("Set either parent_from_child or child_from_parent, but not both. Ignoring log.", 1)
         return

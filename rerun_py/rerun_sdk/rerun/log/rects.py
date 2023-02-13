@@ -14,7 +14,6 @@ from rerun.log import (
     _normalize_colors,
     _normalize_ids,
     _normalize_labels,
-    rerun_disabled_check,
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
@@ -28,7 +27,6 @@ __all__ = [
 ]
 
 
-@rerun_disabled_check
 def log_rect(
     entity_path: str,
     rect: Optional[npt.ArrayLike],
@@ -65,6 +63,10 @@ def log_rect(
          If true, the rect will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
     else:
@@ -99,7 +101,6 @@ def log_rect(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
-@rerun_disabled_check
 def log_rects(
     entity_path: str,
     rects: Optional[npt.ArrayLike],
@@ -151,6 +152,10 @@ def log_rects(
             If true, the rects will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     # Treat None the same as []
     if np.any(rects):  # type: ignore[arg-type]
         rects = np.asarray(rects, dtype="float32")

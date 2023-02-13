@@ -7,7 +7,6 @@ import pyarrow as pa
 # Fully qualified to avoid circular import
 import rerun.log.error_utils
 from rerun.components.instance import InstanceArray
-from rerun.log import rerun_disabled_check
 
 from rerun import bindings
 
@@ -64,7 +63,6 @@ def _add_extension_components(
             instanced[name] = pa_value
 
 
-@rerun_disabled_check
 def log_extension_components(
     entity_path: str,
     ext: Dict[str, Any],
@@ -112,6 +110,10 @@ def log_extension_components(
         If true, the components will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     identifiers_np = np.array((), dtype="uint64")
     if identifiers:
         try:

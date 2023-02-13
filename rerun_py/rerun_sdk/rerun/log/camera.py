@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.typing as npt
-from rerun.log import rerun_disabled_check
 
 from rerun import bindings
 
@@ -9,7 +8,6 @@ __all__ = [
 ]
 
 
-@rerun_disabled_check
 def log_pinhole(
     entity_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
 ) -> None:
@@ -45,6 +43,10 @@ def log_pinhole(
         If true, the camera will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     # Transform arrow handling happens inside the python bridge
     bindings.log_pinhole(
         entity_path,

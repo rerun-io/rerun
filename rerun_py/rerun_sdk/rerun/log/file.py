@@ -5,7 +5,6 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log import rerun_disabled_check
 
 from rerun import bindings
 
@@ -40,7 +39,6 @@ class ImageFormat(Enum):
     """JPEG format."""
 
 
-@rerun_disabled_check
 def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
@@ -78,6 +76,10 @@ def log_mesh_file(
         If true, the mesh will be timeless (default: False)
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
@@ -87,7 +89,6 @@ def log_mesh_file(
     bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
 
 
-@rerun_disabled_check
 def log_image_file(
     entity_path: str,
     *,
@@ -119,6 +120,10 @@ def log_image_file(
         If true, the image will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge

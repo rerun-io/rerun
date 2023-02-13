@@ -4,7 +4,7 @@ import atexit
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
-from rerun.log import log_cleared, rerun_disabled_check
+from rerun.log import log_cleared
 from rerun.log.annotation import log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
@@ -53,7 +53,6 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
-    "rerun_disabled_check",
     "LoggingHandler",
     "script_add_args",
     "script_setup",
@@ -283,7 +282,6 @@ def save(path: str) -> None:
     bindings.save(path)
 
 
-@rerun_disabled_check
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     """
     Set the current time for this thread as an integer sequence.
@@ -305,10 +303,13 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
         The current time on the timeline in integer units.
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     bindings.set_time_sequence(timeline, sequence)
 
 
-@rerun_disabled_check
 def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     """
     Set the current time for this thread in seconds.
@@ -336,10 +337,13 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
         The current time on the timeline in seconds.
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     bindings.set_time_seconds(timeline, seconds)
 
 
-@rerun_disabled_check
 def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     """
     Set the current time for this thread.
@@ -367,4 +371,8 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
         The current time on the timeline in nanoseconds.
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     bindings.set_time_nanos(timeline, nanos)

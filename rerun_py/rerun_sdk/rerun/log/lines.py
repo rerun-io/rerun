@@ -7,7 +7,7 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
-from rerun.log import _normalize_colors, _normalize_radii, rerun_disabled_check
+from rerun.log import _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 
 from rerun import bindings
@@ -19,7 +19,6 @@ __all__ = [
 ]
 
 
-@rerun_disabled_check
 @deprecated(version="0.2.0", reason="Use log_line_strip instead")
 def log_path(
     entity_path: str,
@@ -30,10 +29,11 @@ def log_path(
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
+    if not bindings.logging_enabled():
+        return
     log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
 
 
-@rerun_disabled_check
 def log_line_strip(
     entity_path: str,
     positions: Optional[npt.NDArray[np.float32]],
@@ -72,6 +72,10 @@ def log_line_strip(
         If true, the path will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
@@ -102,7 +106,6 @@ def log_line_strip(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
-@rerun_disabled_check
 def log_line_segments(
     entity_path: str,
     positions: npt.NDArray[np.float32],
@@ -140,6 +143,10 @@ def log_line_segments(
         If true, the line segments will be timeless (default: False).
 
     """
+
+    if not bindings.logging_enabled():
+        return
+
     if positions is None:
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")
