@@ -183,7 +183,9 @@ def is_enabled() -> bool:
     """
     Is the Rerun SDK enabled.
 
-    If false, all calls to the rerun library are ignored. The default is `True`.
+    If false, all calls to the rerun library are ignored.
+
+    The default can be set in [`rerun.init`][], but is otherwise `True`.
 
     This can be controlled with the enviornment variable `RERUN`,
     (e.g. `RERUN=on` or `RERUN=off`) and with [`set_enabled`].
@@ -202,6 +204,8 @@ def set_enabled(enabled: bool) -> None:
 
     By default logging is enabled, but can be controlled with the enviornment variable `RERUN`,
     (e.g. `RERUN=on` or `RERUN=off`).
+
+    The default can be set in [`rerun.init`][].
     """
     bindings.set_enabled(enabled)
 
