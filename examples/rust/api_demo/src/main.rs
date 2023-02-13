@@ -1,4 +1,6 @@
-//! Minimal examples of Rerun SDK usage.
+//! An amalgamation of various usages of the API with synthetic "data" without any particular focus.
+//!
+//! It uses a lot of different aspects of the Rerun API in order to test it.
 //!
 //! Run all demos:
 //! ```
