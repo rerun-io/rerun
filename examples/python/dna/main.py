@@ -24,7 +24,7 @@ from scipy.spatial.transform import Rotation
 
 # points and colors are both np.array((NUM_POINTS, 3))
 points1, colors1 = build_color_spiral(NUM_POINTS)
-points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau*0.5)
+points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau * 0.5)
 rr.log_points("dna/structure/left", points1, colors=colors1, radii=0.08)
 rr.log_points("dna/structure/right", points2, colors=colors2, radii=0.08)
 
