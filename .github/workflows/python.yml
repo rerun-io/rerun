@@ -134,7 +134,7 @@ jobs:
       - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
         if: matrix.platform != 'windows'
         shell: bash
-        run: ./scripts/setup_web.sh # this script fails on Windows, so we need to t
+        run: ./scripts/setup_web.sh
 
       # The first steps of setup_web.sh, for Windows:
       - name: Install wasm32 and wasm-bindgen-cli for building the web-viewer Wasm on windows
@@ -143,7 +143,7 @@ jobs:
         run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
 
       # The last step of setup_web.sh, for Windows.
-      # Since 'winget' is not available within the github runner, we so download the package directly:
+      # Since 'winget' is not available within the github runner, we download the package directly:
       # See: https://github.com/marketplace/actions/engineerd-configurator
       - name: Install binaryen for building the web-viewer Wasm on windows
         if: matrix.platform == 'windows'
