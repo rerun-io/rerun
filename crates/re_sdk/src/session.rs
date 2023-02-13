@@ -299,7 +299,7 @@ impl Session {
     pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
         let path = path.into();
 
-        re_log::trace!("Saving file to {path:?}…");
+        re_log::debug!("Saving file to {path:?}…");
 
         if self.is_streaming_over_tcp() {
             anyhow::bail!(
