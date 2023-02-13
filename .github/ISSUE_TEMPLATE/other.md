@@ -7,4 +7,4 @@ assignees: ''
 
 ---
 
-If you are asking a question, use [the Rerun discussions forum](https://github.com/rerun-io/rerun/discussions/categories/q-a) instead!
+If you are asking a question, use [the Rerun Discord server](https://discord.gg/PXtCgFBSmH) instead.

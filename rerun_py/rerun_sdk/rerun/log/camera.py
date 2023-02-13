@@ -43,6 +43,10 @@ def log_pinhole(
         If true, the camera will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     # Transform arrow handling happens inside the python bridge
     bindings.log_pinhole(
         entity_path,

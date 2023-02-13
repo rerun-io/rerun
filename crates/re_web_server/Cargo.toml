@@ -10,6 +10,17 @@ readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "web_viewer/*",
+]
+
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]
@@ -22,7 +33,7 @@ __ci = []
 
 
 [dependencies]
-re_log = { path = "../re_log" }
+re_log.workspace = true
 
 anyhow.workspace = true
 document-features = "0.2"

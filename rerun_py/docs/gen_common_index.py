@@ -61,7 +61,7 @@ SECTION_TABLE: Final[List[Section]] = [
             "log_rect",
             "log_rects",
             "log_obb",
-            "log_path",
+            "log_line_strip",
             "log_line_segments",
             "log_arrow",
         ],
@@ -125,12 +125,21 @@ def make_slug(s: str) -> str:
 
 with mkdocs_gen_files.open(index_path, "w") as index_file:
 
+    # TODO(#1161): add links to our high-level docs!
+
     # Hide the TOC for the index since it's identical to the left nav-bar
     index_file.write(
         """---
 hide:
     - toc
 ---
+# Examples
+You can find examples on our GitHub [here](https://github.com/rerun-io/rerun/tree/latest/examples/python).
+
+# Troubleshooting
+You can set `RUST_LOG=debug` before running your Python script
+and/or `rerun` process to get some verbose logging output.
+
 # Common APIs
 """
     )

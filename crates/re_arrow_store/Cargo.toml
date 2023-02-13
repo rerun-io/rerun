@@ -4,12 +4,16 @@ authors.workspace = true
 description = "An in-memory time series database for Rerun log data, based on Apache Arrow"
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]
@@ -24,9 +28,9 @@ polars = ["dep:polars-core", "dep:polars-ops"]
 
 [dependencies]
 # Rerun dependencies:
-re_format = { path = "../re_format" }
-re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types" }
+re_format.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
 
 # External dependencies:
 ahash = "0.8"

@@ -17,12 +17,15 @@ use re_smart_channel::Receiver;
 use re_ui::Command;
 
 use crate::{
+    app_icon::setup_app_icon,
     misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
+
+use super::app_icon::AppIconStatus;
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -87,6 +90,8 @@ pub struct App {
     // the same time opting out of analytics at run-time.
     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
     analytics: Option<re_analytics::Analytics>,
+
+    icon_status: AppIconStatus,
 }
 
 impl App {
@@ -177,6 +182,8 @@ impl App {
 
             #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
             analytics,
+
+            icon_status: AppIconStatus::NotSetTryAgain,
         }
     }
 
@@ -419,6 +426,10 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
+
+        if self.icon_status == AppIconStatus::NotSetTryAgain {
+            self.icon_status = setup_app_icon();
+        }
 
         #[cfg(not(target_arch = "wasm32"))]
         if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {

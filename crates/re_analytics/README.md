@@ -1,5 +1,12 @@
 # Rerun's analytics SDK
 
+Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
+
+[![Latest version](https://img.shields.io/crates/v/re_analytics.svg)](https://crates.io/crates/re_analytics)
+[![Documentation](https://docs.rs/re_analytics/badge.svg)](https://docs.rs/re_analytics)
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
+
 We use [PostHog](https://posthog.com/) to collect anonymous usage statistics.
 
 Usage data we do collect will be sent to and stored in servers within the EU.

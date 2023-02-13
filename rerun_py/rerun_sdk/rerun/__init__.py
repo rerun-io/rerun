@@ -12,7 +12,7 @@ from rerun.log.camera import log_pinhole
 from rerun.log.extension_components import log_extension_components
 from rerun.log.file import log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
-from rerun.log.lines import log_line_segments, log_path
+from rerun.log.lines import log_line_segments, log_line_strip, log_path
 from rerun.log.mesh import log_mesh, log_meshes
 from rerun.log.points import log_point, log_points
 from rerun.log.rects import log_rect, log_rects
@@ -23,6 +23,7 @@ from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coor
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
+    "LoggingHandler",
     "bindings",
     "components",
     "log_annotation_context",
@@ -30,12 +31,14 @@ __all__ = [
     "log_cleared",
     "log_cleared",
     "log_depth_image",
-    "log_image",
+    "log_extension_components",
     "log_image_file",
+    "log_image",
     "log_line_segments",
+    "log_line_strip",
+    "log_mesh_file",
     "log_mesh",
     "log_meshes",
-    "log_mesh_file",
     "log_obb",
     "log_path",
     "log_pinhole",
@@ -49,12 +52,11 @@ __all__ = [
     "log_tensor",
     "log_text_entry",
     "log_unknown_transform",
-    "log_extension_components",
     "log_view_coordinates",
+    "LoggingHandler",
     "script_add_args",
     "script_setup",
     "script_teardown",
-    "LoggingHandler",
 ]
 
 
@@ -116,7 +118,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn: bool = False) -> None:
+def init(application_id: str, spawn: bool = False, default_enabled: bool = True) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -134,9 +136,12 @@ def init(application_id: str, spawn: bool = False) -> None:
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
+    default_enabled:
+        Should Rerun logging be on by default?
+        Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
 
     """
-    app_path = None
+    application_path = None
 
     # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
     # only need to be written once and just work for all languages out of the box... unfortunately
@@ -160,14 +165,49 @@ def init(application_id: str, spawn: bool = False) -> None:
             filename = frame[FRAME_FILENAME_INDEX]
             path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
             if "rerun/examples" in str(path):
-                app_path = path
+                application_path = path
     except Exception:
         pass
 
-    bindings.init(application_id, app_path)
+    bindings.init(
+        application_id=application_id,
+        application_path=application_path,
+        default_enabled=default_enabled,
+    )
 
     if spawn:
         _spawn()
+
+
+def is_enabled() -> bool:
+    """
+    Is the Rerun SDK enabled.
+
+    If false, all calls to the rerun library are ignored.
+
+    The default can be set in [`rerun.init`][], but is otherwise `True`.
+
+    This can be controlled with the enviornment variable `RERUN`,
+    (e.g. `RERUN=on` or `RERUN=off`) and with [`set_enabled`].
+
+    """
+    return bindings.is_enabled()  # type: ignore[no-any-return]
+
+
+def set_enabled(enabled: bool) -> None:
+    """
+    Enable or disable logging.
+
+    If false, all calls to the rerun library are ignored. The default is `True`.
+
+    This is a global setting that affects all threads.
+
+    By default logging is enabled, but can be controlled with the enviornment variable `RERUN`,
+    (e.g. `RERUN=on` or `RERUN=off`).
+
+    The default can be set in [`rerun.init`][].
+    """
+    bindings.set_enabled(enabled)
 
 
 def connect(addr: Optional[str] = None) -> None:
@@ -182,6 +222,11 @@ def connect(addr: Optional[str] = None) -> None:
         The ip:port to connect to
 
     """
+
+    if not bindings.is_enabled():
+        print("Rerun is disabled - connect() call ignored")
+        return
+
     bindings.connect(addr)
 
 
@@ -205,6 +250,11 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
         also connect to the viewer and stream logging data to it.
 
     """
+
+    if not bindings.is_enabled():
+        print("Rerun is disabled - spawn() call ignored")
+        return
+
     import subprocess
     import sys
     from time import sleep
@@ -241,6 +291,11 @@ def serve(open_browser: bool = True) -> None:
         Open the default browser to the viewer.
 
     """
+
+    if not bindings.is_enabled():
+        print("Rerun is disabled - serve() call ignored")
+        return
+
     bindings.serve(open_browser)
 
 
@@ -260,6 +315,11 @@ def show() -> None:
     NOTE: There is a bug which causes this function to only work once on some platforms.
 
     """
+
+    if not bindings.is_enabled():
+        print("Rerun is disabled - show() call ignored")
+        return
+
     bindings.show()
 
 
@@ -277,6 +337,11 @@ def save(path: str) -> None:
         The path to save the data to.
 
     """
+
+    if not bindings.is_enabled():
+        print("Rerun is disabled - serve() call ignored")
+        return
+
     bindings.save(path)
 
 
@@ -301,6 +366,10 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
         The current time on the timeline in integer units.
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     bindings.set_time_sequence(timeline, sequence)
 
 
@@ -331,6 +400,10 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
         The current time on the timeline in seconds.
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     bindings.set_time_seconds(timeline, seconds)
 
 
@@ -361,4 +434,8 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
         The current time on the timeline in nanoseconds.
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     bindings.set_time_nanos(timeline, nanos)

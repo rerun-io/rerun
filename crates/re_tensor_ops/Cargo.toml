@@ -4,6 +4,7 @@ authors.workspace = true
 description = "Helpers for using ndarray together with Rerun tensors"
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
@@ -11,9 +12,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[package.metadata.docs.rs]
+all-features = true
+
 
 [dependencies]
-re_log_types = { path = "../re_log_types" }
+re_log_types.workspace = true
 
 ahash = "0.8"
 bytemuck = { version = "1.12", features = ["extern_crate_alloc"] }

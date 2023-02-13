@@ -254,16 +254,22 @@ impl MsgSender {
     /// Consumes, packs, sanity checkes and finally sends the message to the currently configured
     /// target of the SDK.
     pub fn send(self, session: &mut Session) -> Result<(), MsgSenderError> {
+        if !session.is_enabled() {
+            return Ok(()); // silently drop the message
+        }
+
         let [msg_standard, msg_transforms, msg_splats] = self.into_messages()?;
 
-        if let Some(msg_standard) = msg_standard {
-            session.send(LogMsg::ArrowMsg(msg_standard.try_into()?));
-        }
         if let Some(msg_transforms) = msg_transforms {
             session.send(LogMsg::ArrowMsg(msg_transforms.try_into()?));
         }
         if let Some(msg_splats) = msg_splats {
             session.send(LogMsg::ArrowMsg(msg_splats.try_into()?));
+        }
+        // Always the primary component last so range-based queries will include the other data. See(#1215)
+        // Since the primary component can't be splatted it must be in msg_standard
+        if let Some(msg_standard) = msg_standard {
+            session.send(LogMsg::ArrowMsg(msg_standard.try_into()?));
         }
 
         Ok(())

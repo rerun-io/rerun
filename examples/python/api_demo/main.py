@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Minimal examples of Rerun SDK usage.
+A collection of many small examples, in one file.
+
+It uses a lot of different aspects of the Rerun API in order to test it.
 
 Example usage:
 * Run all demos: `examples/python/api_demo/main.py`
@@ -174,11 +176,11 @@ def transforms_rigid_3d() -> None:
     # paths where the planet & moon move
     angles = np.arange(0.0, 1.01, 0.01) * math.tau
     circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
-    rr.log_path(
+    rr.log_line_strip(
         "transforms3d/sun/planet_path",
         circle * sun_to_planet_distance,
     )
-    rr.log_path(
+    rr.log_line_strip(
         "transforms3d/sun/planet/moon_path",
         circle * planet_to_moon_distance,
     )

@@ -56,4 +56,7 @@
         "--message-format=json",
         "--all-targets"
     ],
+    "python.analysis.extraPaths": [
+        "rerun_py/rerun_sdk"
+    ],
 }

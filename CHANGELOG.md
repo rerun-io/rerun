@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2023-02-10: Add the ability to globally override logging-enabled with new env-var RERUN. [#1186](https://github.com/rerun-io/rerun/pull/1186).
 * 2023-02-05: `spawn_viewer` and `spawn_and_connect` has been unified into one single function called `spawn` [#1101](https://github.com/rerun-io/rerun/pull/1101).
 * 2023-02-02: Automate Python Wheel deployments. The Rerun python package is renamed to `rerun-sdk` [#996](https://github.com/rerun-io/rerun/pull/996).
 * 2023-02-02: Introduce extension_components [#1023](https://github.com/rerun-io/rerun/pull/1023)
@@ -44,7 +45,7 @@ A rough time-line of major user-facing things added, removed and changed. Newest
 * 2022-11-03: Update pinned rust version to 1.65 ([#258](https://github.com/rerun-io/rerun/pull/258).
 * 2022-10-28: Add `rerun.init("my_app")` ([#237](https://github.com/rerun-io/rerun/pull/237)).
 * 2022-10-28: Add buttons to collapse/expand the side panels ([#238](https://github.com/rerun-io/rerun/pull/238)).
-* 2022-10-26: Replace old `space=…` and `set_space_up` code with new space transform hierarchy. See [`USAGE.md`](rerun_py/USAGE.md) for details ([#224](https://github.com/rerun-io/rerun/pull/224)).
+* 2022-10-26: Replace old `space=…` and `set_space_up` code with new space transform hierarchy ([#224](https://github.com/rerun-io/rerun/pull/224)).
 * 2022-10-19: Add support for SegmentationMaps ([#187](https://github.com/rerun-io/rerun/pull/187)).
 * 2022-10-14: Add support for logging 3D Arrows ([#199](https://github.com/rerun-io/rerun/pull/199)).
 * 2022-10-10: Python SDK: add `set_visible` API ([#176](https://github.com/rerun-io/rerun/pull/176)).

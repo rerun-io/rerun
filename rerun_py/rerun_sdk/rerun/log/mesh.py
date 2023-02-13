@@ -60,6 +60,10 @@ def log_mesh(
         If true, the mesh will be timeless (default: False)
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     positions = positions.flatten().astype(np.float32)
     if indices is not None:
         indices = indices.flatten().astype(np.uint32)
@@ -107,6 +111,10 @@ def log_meshes(
         If true, the mesh will be timeless (default: False)
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     position_buffers = [p.flatten().astype(np.float32) for p in position_buffers]
     if index_buffers is not None:
         index_buffers = [i.flatten().astype(np.uint32) if i else None for i in index_buffers]

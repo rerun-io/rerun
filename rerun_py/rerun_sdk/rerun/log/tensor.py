@@ -84,6 +84,10 @@ def _log_tensor(
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
+
+    if not bindings.is_enabled():
+        return
+
     if names is not None:
         names = list(names)
 
@@ -128,9 +132,10 @@ def _log_tensor(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
-
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
+from deprecated import deprecated
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
@@ -13,10 +14,12 @@ from rerun import bindings
 
 __all__ = [
     "log_path",
+    "log_line_strip",
     "log_line_segments",
 ]
 
 
+@deprecated(version="0.2.0", reason="Use log_line_strip instead")
 def log_path(
     entity_path: str,
     positions: Optional[npt.NDArray[np.float32]],
@@ -26,10 +29,24 @@ def log_path(
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
-    r"""
-    Log a 3D path.
+    if not bindings.is_enabled():
+        return
+    log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
 
-    A path is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
+
+def log_line_strip(
+    entity_path: str,
+    positions: Optional[npt.NDArray[np.float32]],
+    *,
+    stroke_width: Optional[float] = None,
+    color: Optional[Sequence[int]] = None,
+    ext: Optional[Dict[str, Any]] = None,
+    timeless: bool = False,
+) -> None:
+    r"""
+    Log a line strip through 3D space.
+
+    A line strip is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
     The points will be connected in order, like so:
     ```
@@ -55,6 +72,10 @@ def log_path(
         If true, the path will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
@@ -76,12 +97,13 @@ def log_path(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
-
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
 def log_line_segments(
@@ -121,6 +143,10 @@ def log_line_segments(
         If true, the line segments will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if positions is None:
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")
@@ -159,9 +185,10 @@ def log_line_segments(
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
-    if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
-
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
         bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

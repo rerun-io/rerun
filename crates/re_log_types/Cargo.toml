@@ -4,12 +4,16 @@ authors.workspace = true
 description = "The different types that make up the rerun log format."
 edition.workspace = true
 homepage.workspace = true
+include.workspace = true
 license.workspace = true
 publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
 
 
 [features]
@@ -47,10 +51,10 @@ serde = [
 [dependencies]
 
 # Rerun
-re_log = { path = "../re_log" }
-re_format = { path = "../re_format" }
-re_string_interner = { path = "../re_string_interner" }
-re_tuid = { path = "../re_tuid" }
+re_format.workspace = true
+re_log.workspace = true
+re_string_interner.workspace = true
+re_tuid.workspace = true
 
 # External
 ahash = "0.8"

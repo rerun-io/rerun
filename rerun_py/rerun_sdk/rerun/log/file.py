@@ -76,6 +76,10 @@ def log_mesh_file(
         If true, the mesh will be timeless (default: False)
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
@@ -116,6 +120,10 @@ def log_image_file(
         If true, the image will be timeless (default: False).
 
     """
+
+    if not bindings.is_enabled():
+        return
+
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge

@@ -19,7 +19,7 @@ mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
 ```
 or
 ```
-just serve-py-docs
+just py-docs-serve
 ```
 
 ### How versioned docs are generated and served
