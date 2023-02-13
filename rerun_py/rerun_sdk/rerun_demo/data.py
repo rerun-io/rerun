@@ -1,7 +1,7 @@
 """Simple data to be used for Rerun demos."""
 
 from collections import namedtuple
-from math import cos, pi, sin, tau
+from math import cos, sin, tau
 
 import numpy as np
 from rerun.log.rects import RectFormat

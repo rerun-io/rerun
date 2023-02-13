@@ -1,4 +1,4 @@
-"""Simpe utilities to be used for Rerun demos"""
+"""Simpe utilities to be used for Rerun demos."""
 
 import numpy as np
 
@@ -15,6 +15,7 @@ def bounce_lerp(a, b, t):
         End value (t == 1).
     t:
         Interpolation coefficient.
+
     """
     tf = t % 1
     if int(t) % 2 == 0:
@@ -33,6 +34,7 @@ def interleave(arr1, arr2):
         A numpy array of arbitrary shape and length.
     arr2:
         A numpy array with the same shape and length as `arr1`.
+
     """
     shape = list(arr1.shape)
     shape[0] *= 2
