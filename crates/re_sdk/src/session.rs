@@ -216,7 +216,7 @@ impl Session {
         if !self.logging_enabled {
             // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
             // check here is just a safety net.
-            re_log::trace!("Logging is disabled, dropping message.");
+            re_log::debug_once!("Logging is disabled, dropping message.");
             return;
         }
 
