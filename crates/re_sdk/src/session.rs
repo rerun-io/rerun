@@ -94,8 +94,10 @@ impl Session {
                 }
                 self.sender = Sender::Remote(client);
             }
+            
             #[cfg(feature = "re_viewer")]
             Sender::NativeViewer(_) => {}
+            
             #[cfg(feature = "web")]
             Sender::WebViewer(web_server, _) => {
                 re_log::info!("Shutting down web server.");
