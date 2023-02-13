@@ -24,7 +24,7 @@ enum RerunBehavior {
 /// #[clap(author, version, about)]
 /// struct MyArgs {
 ///     #[command(flatten)]
-///     rerun: rerun::clap::RerunArgs,
+///     rerun: re_sdk::clap::RerunArgs,
 ///
 ///     #[clap(long)]
 ///     my_arg: bool,
