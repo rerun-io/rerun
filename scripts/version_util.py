@@ -17,6 +17,7 @@ import re
 import subprocess
 import sys
 from typing import Final
+
 import semver
 
 # A regex to match the version number in Cargo.toml as SemVer, e.g., 1.2.3-alpha.0
