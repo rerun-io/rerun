@@ -19,7 +19,7 @@ pub struct Caches {
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn new_frame(&mut self) {
-        let max_image_cache_use = 1_000_000_000;
+        let max_image_cache_use = 5_000_000_000; // TODO(emilk): make configurable, and maybe a function of available+free RAM
         self.image.new_frame(max_image_cache_use);
     }
 
