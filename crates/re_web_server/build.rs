@@ -109,6 +109,8 @@ fn build_web() {
 
     let wasm_path = Path::new(&build_dir).join([crate_name, "_bg.wasm"].concat());
     fs::remove_file(wasm_path.clone()).ok();
+    let js_path = Path::new(&build_dir).join([crate_name, ".js"].concat());
+    fs::remove_file(js_path.clone()).ok();
 
     let metadata = MetadataCommand::new()
         .manifest_path("./Cargo.toml")

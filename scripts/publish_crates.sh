@@ -46,7 +46,13 @@ echo $FLAGS
 set -x
 
 # IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish re_web_server:
+rm -rf target_wasm # force clean build
+rm -f web_viewer/re_viewer_bg.wasm
+rm -f web_viewer/re_viewer.js
+touch crates/re_viewer/src/lib.rs # force recompile of web server
 cargo build --release -p re_web_server
+# scripts/build_web.sh --release # alternative
+
 
 # Some of build.rs scripts checks this env-var:
 export RERUN_IS_PUBLISHING=yes
