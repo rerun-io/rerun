@@ -29,7 +29,7 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
     },
     time::{Time, TimePoint, TimeType, Timeline},
-    ApplicationId, Component, ComponentName, EntityPath, MsgSender, RecordingId, Session,
+    Component, ComponentName, EntityPath, MsgSender, Session,
 };
 
 // --- Rerun logging ---
@@ -648,13 +648,6 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let mut session = rerun::Session::init("api_demo_rs", true);
-    // TODO(cmc): application id should take selected demos into account
-    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
-    // does... which they can probably share.
-    // This needs to take care of the whole `official_example` thing, and also keeps track of
-    // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("api_demo_rs".to_owned()), true);
-    session.set_recording_id(RecordingId::random());
 
     let should_spawn = args.rerun.on_startup(&mut session);
     if should_spawn {
