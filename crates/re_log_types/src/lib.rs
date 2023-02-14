@@ -122,6 +122,18 @@ impl std::str::FromStr for RecordingId {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ApplicationId(pub String);
 
+impl From<&str> for ApplicationId {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
+}
+
+impl From<String> for ApplicationId {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
 impl ApplicationId {
     /// The default [`ApplicationId`] if the user hasn't set one.
     ///
