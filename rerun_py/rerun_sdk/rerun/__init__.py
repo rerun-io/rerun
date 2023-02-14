@@ -29,7 +29,6 @@ __all__ = [
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
-    "log_cleared",
     "log_depth_image",
     "log_extension_components",
     "log_image_file",
