@@ -71,6 +71,7 @@ SECTION_TABLE: Final[List[Section]] = [
             "log_arrow",
             "log_mesh",
             "log_meshes",
+            "log_mesh_file",
         ],
     ),
     Section(
