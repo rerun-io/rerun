@@ -413,7 +413,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     Set the current time for this thread.
 
     Used for all subsequent logging on the same thread,
-    until the next call to [`rerun::set_time_nanos`][] or [`rerun::set_time_seconds`][].
+    until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
 
     For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
 
