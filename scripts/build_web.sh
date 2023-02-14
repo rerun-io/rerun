@@ -63,11 +63,12 @@ export CARGO_ENCODED_RUSTFLAGS=""
 
 # Clear output from old stuff:
 rm -f ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}_bg.wasm
+rm -f ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}.js
 
 TARGET=`cargo metadata --format-version=1 | jq --raw-output .target_directory`
 
 # re_web_server/build.rs calls this scripts, so we need to use
-# a different target folder to support recursive caergo builds.
+# a different target folder to support recursive cargo builds.
 TARGET_WASM="${TARGET}_wasm"
 
 echo "Compiling rust to wasm in folder: ${TARGET_WASM}"

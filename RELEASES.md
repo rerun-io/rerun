@@ -102,4 +102,9 @@ First login as https://crates.io/users/rerunio with and API key you get from Emi
 cargo login $API_KEY
 ```
 
+-----------------------------------------------------------------------------------------------
+!! IMPORTANT !!  Shut off VSCode, and don't touch anything while `publish_crates.sh` is running!
+!! IMPORTANT !!  Read `publish_crates.sh` for details
+-----------------------------------------------------------------------------------------------
+
 ./scripts/publish_crates.sh --execute
