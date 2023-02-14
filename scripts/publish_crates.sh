@@ -51,7 +51,7 @@ set -x
 # that build.rs, which will change the built `.wasm` file while this publish script is running.
 # SUPER BAD! We need to fix this ASAP, but it is the night before our first release public
 # release and I'm tired. Will fix later, mkay?
-echo "MAKE SURE RUST ANALYZER IS OFF!"
+echo "MAKE SURE RUST ANALYZER, BACON, CARGO-WATCH etc are all OFF!"
 rm -rf target_wasm # force clean build
 rm -f web_viewer/re_viewer_bg.wasm
 rm -f web_viewer/re_viewer.js
