@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;425;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap");
 
 /* Indentation. */
@@ -35,8 +35,12 @@ body {
 .md-typeset h1,
 .md-typeset h2 {
   margin-bottom: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   color: inherit;
+}
+
+.md-typeset p + h1 {
+  margin-top: 2rem;
 }
 
 header {
