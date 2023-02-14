@@ -55,7 +55,7 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: Option<Receiver<LogMsg>>,
+    rx: Receiver<LogMsg>,
 
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
@@ -102,20 +102,14 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
-        Self::new(
-            startup_options,
-            re_ui,
-            storage,
-            Some(rx),
-            Default::default(),
-        )
+        Self::new(startup_options, re_ui, storage, rx, Default::default())
     }
 
     fn new(
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
-        rx: Option<Receiver<LogMsg>>,
+        rx: Receiver<LogMsg>,
         log_db: LogDb,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
@@ -491,12 +485,14 @@ impl eframe::App for App {
                     });
                 let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
 
-                self.state
-                    .recording_configs
-                    .entry(self.state.selected_rec_id)
-                    .or_default()
-                    .selection_state
-                    .on_frame_start(log_db, blueprint);
+                recording_config_entry(
+                    &mut self.state.recording_configs,
+                    self.state.selected_rec_id,
+                    self.rx.source(),
+                    log_db,
+                )
+                .selection_state
+                .on_frame_start(log_db, blueprint);
 
                 {
                     // TODO(andreas): store the re_renderer somewhere else.
@@ -510,8 +506,8 @@ impl eframe::App for App {
                         .unwrap();
                     render_ctx.frame_maintenance();
 
-                    if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
-                        wait_screen_ui(ui, rx);
+                    if log_db.is_empty() {
+                        wait_screen_ui(ui, &self.rx);
                     } else {
                         self.state.show(
                             ui,
@@ -519,6 +515,7 @@ impl eframe::App for App {
                             log_db,
                             &self.re_ui,
                             &self.component_ui_registry,
+                            self.rx.source(),
                         );
                     }
                 }
@@ -619,58 +616,57 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 
 impl App {
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
-        if let Some(rx) = &mut self.rx {
-            crate::profile_function!();
-            let start = instant::Instant::now();
+        crate::profile_function!();
 
-            while let Ok(msg) = rx.try_recv() {
-                if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::debug!("Beginning a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
+        let start = instant::Instant::now();
 
-                    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-                    if let Some(analytics) = self.analytics.as_mut() {
-                        use re_analytics::Property;
-                        analytics.default_append_props_mut().extend([
-                            ("application_id".into(), {
-                                let prop: Property = msg.info.application_id.0.clone().into();
-                                if msg.info.is_official_example {
-                                    prop
-                                } else {
-                                    prop.hashed()
-                                }
-                            }),
-                            ("recording_id".into(), {
-                                let prop: Property = msg.info.recording_id.to_string().into();
-                                if msg.info.is_official_example {
-                                    prop
-                                } else {
-                                    prop.hashed()
-                                }
-                            }),
-                            (
-                                "recording_source".into(),
-                                msg.info.recording_source.to_string().into(),
-                            ),
-                            (
-                                "is_official_example".into(),
-                                msg.info.is_official_example.into(),
-                            ),
-                        ]);
+        while let Ok(msg) = self.rx.try_recv() {
+            if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                re_log::debug!("Beginning a new recording: {:?}", msg.info);
+                self.state.selected_rec_id = msg.info.recording_id;
 
-                        analytics.record(re_analytics::Event::data_source_opened());
-                    }
+                #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+                if let Some(analytics) = self.analytics.as_mut() {
+                    use re_analytics::Property;
+                    analytics.default_append_props_mut().extend([
+                        ("application_id".into(), {
+                            let prop: Property = msg.info.application_id.0.clone().into();
+                            if msg.info.is_official_example {
+                                prop
+                            } else {
+                                prop.hashed()
+                            }
+                        }),
+                        ("recording_id".into(), {
+                            let prop: Property = msg.info.recording_id.to_string().into();
+                            if msg.info.is_official_example {
+                                prop
+                            } else {
+                                prop.hashed()
+                            }
+                        }),
+                        (
+                            "recording_source".into(),
+                            msg.info.recording_source.to_string().into(),
+                        ),
+                        (
+                            "is_official_example".into(),
+                            msg.info.is_official_example.into(),
+                        ),
+                    ]);
+
+                    analytics.record(re_analytics::Event::data_source_opened());
                 }
+            }
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+            let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-                if let Err(err) = log_db.add(msg) {
-                    re_log::error!("Failed to add incoming msg: {err}");
-                };
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
-                }
+            if let Err(err) = log_db.add(msg) {
+                re_log::error!("Failed to add incoming msg: {err}");
+            };
+            if start.elapsed() > instant::Duration::from_millis(10) {
+                egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                break; // don't block the main thread for too long
             }
         }
     }
@@ -909,6 +905,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
+        data_source: &re_smart_channel::Source,
     ) {
         crate::profile_function!();
 
@@ -926,7 +923,8 @@ impl AppState {
                 profiler: _,
         } = self;
 
-        let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
+        let rec_cfg =
+            recording_config_entry(recording_configs, *selected_rec_id, data_source, log_db);
         let selected_app_id = log_db
             .recording_info()
             .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1231,43 +1229,41 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 }
 
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
-    if let Some(rx) = &app.rx {
-        // TODO(emilk): it would be nice to know if the network stream is still open
-        let is_latency_interesting = rx.source().is_network();
+    // TODO(emilk): it would be nice to know if the network stream is still open
+    let is_latency_interesting = app.rx.source().is_network();
 
-        let queue_len = rx.len();
+    let queue_len = app.rx.len();
 
-        // empty queue == unreliable latency
-        let latency_sec = rx.latency_ns() as f32 / 1e9;
-        if queue_len > 0
-            && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
-        {
-            // we use this to avoid flicker
-            app.latest_queue_interest = instant::Instant::now();
-        }
+    // empty queue == unreliable latency
+    let latency_sec = app.rx.latency_ns() as f32 / 1e9;
+    if queue_len > 0
+        && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
+    {
+        // we use this to avoid flicker
+        app.latest_queue_interest = instant::Instant::now();
+    }
 
-        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-            ui.separator();
-            if is_latency_interesting {
-                let text = format!(
-                    "Latency: {:.2}s, queue: {}",
-                    latency_sec,
-                    format_number(queue_len),
-                );
-                let hover_text =
+    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+        ui.separator();
+        if is_latency_interesting {
+            let text = format!(
+                "Latency: {:.2}s, queue: {}",
+                latency_sec,
+                format_number(queue_len),
+            );
+            let hover_text =
                     "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
-                if latency_sec < app.state.app_options.warn_latency {
-                    ui.weak(text).on_hover_text(hover_text);
-                } else {
-                    ui.label(app.re_ui.warning_text(text))
-                        .on_hover_text(hover_text);
-                }
+            if latency_sec < app.state.app_options.warn_latency {
+                ui.weak(text).on_hover_text(hover_text);
             } else {
-                ui.weak(format!("Queue: {}", format_number(queue_len)))
-                    .on_hover_text("Number of messages in the inbound queue");
+                ui.label(app.re_ui.warning_text(text))
+                    .on_hover_text(hover_text);
             }
+        } else {
+            ui.weak(format!("Queue: {}", format_number(queue_len)))
+                .on_hover_text("Number of messages in the inbound queue");
         }
     }
 }
@@ -1660,4 +1656,40 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
             None
         }
     }
+}
+
+fn recording_config_entry<'cfgs>(
+    configs: &'cfgs mut IntMap<RecordingId, RecordingConfig>,
+    id: RecordingId,
+    data_source: &'_ re_smart_channel::Source,
+    log_db: &'_ LogDb,
+) -> &'cfgs mut RecordingConfig {
+    configs
+        .entry(id)
+        .or_insert_with(|| new_recording_confg(data_source, log_db))
+}
+
+fn new_recording_confg(
+    data_source: &'_ re_smart_channel::Source,
+    log_db: &'_ LogDb,
+) -> RecordingConfig {
+    use crate::misc::time_control::PlayState;
+
+    let play_state = match data_source {
+        // Play files from the start by default - it feels nice and alive
+        re_smart_channel::Source::File { .. } => PlayState::Playing,
+
+        // Live data - follow it!
+        re_smart_channel::Source::Sdk
+        | re_smart_channel::Source::WsClient { .. }
+        | re_smart_channel::Source::TcpServer { .. } => PlayState::Following,
+    };
+
+    let mut rec_cfg = RecordingConfig::default();
+
+    rec_cfg
+        .time_ctrl
+        .set_play_state(log_db.times_per_timeline(), play_state);
+
+    rec_cfg
 }
