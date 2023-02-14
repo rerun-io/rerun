@@ -10,30 +10,30 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.67"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 
 [workspace.dependencies]
-re_analytics = { path = "crates/re_analytics", version = "0.2.0-alpha.3" }
-re_arrow_store = { path = "crates/re_arrow_store", version = "0.2.0-alpha.3" }
-re_data_store = { path = "crates/re_data_store", version = "0.2.0-alpha.3" }
-re_error = { path = "crates/re_error", version = "0.2.0-alpha.3" }
-re_format = { path = "crates/re_format", version = "0.2.0-alpha.3" }
-re_log = { path = "crates/re_log", version = "0.2.0-alpha.3" }
-re_log_types = { path = "crates/re_log_types", version = "0.2.0-alpha.3" }
-re_memory = { path = "crates/re_memory", version = "0.2.0-alpha.3" }
-re_query = { path = "crates/re_query", version = "0.2.0-alpha.3" }
-re_renderer = { path = "crates/re_renderer", version = "0.2.0-alpha.3" }
-re_sdk = { path = "crates/re_sdk", version = "0.2.0-alpha.3" }
-re_sdk_comms = { path = "crates/re_sdk_comms", version = "0.2.0-alpha.3" }
-re_smart_channel = { path = "crates/re_smart_channel", version = "0.2.0-alpha.3" }
-re_string_interner = { path = "crates/re_string_interner", version = "0.2.0-alpha.3" }
-re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.2.0-alpha.3" }
-re_tuid = { path = "crates/re_tuid", version = "0.2.0-alpha.3" }
-re_ui = { path = "crates/re_ui", version = "0.2.0-alpha.3" }
-re_viewer = { path = "crates/re_viewer", version = "0.2.0-alpha.3" }
-re_web_server = { path = "crates/re_web_server", version = "0.2.0-alpha.3" }
-re_ws_comms = { path = "crates/re_ws_comms", version = "0.2.0-alpha.3" }
-rerun = { path = "crates/rerun", version = "0.2.0-alpha.3" }
+re_analytics = { path = "crates/re_analytics", version = "0.2.0-alpha.4" }
+re_arrow_store = { path = "crates/re_arrow_store", version = "0.2.0-alpha.4" }
+re_data_store = { path = "crates/re_data_store", version = "0.2.0-alpha.4" }
+re_error = { path = "crates/re_error", version = "0.2.0-alpha.4" }
+re_format = { path = "crates/re_format", version = "0.2.0-alpha.4" }
+re_log = { path = "crates/re_log", version = "0.2.0-alpha.4" }
+re_log_types = { path = "crates/re_log_types", version = "0.2.0-alpha.4" }
+re_memory = { path = "crates/re_memory", version = "0.2.0-alpha.4" }
+re_query = { path = "crates/re_query", version = "0.2.0-alpha.4" }
+re_renderer = { path = "crates/re_renderer", version = "0.2.0-alpha.4" }
+re_sdk = { path = "crates/re_sdk", version = "0.2.0-alpha.4" }
+re_sdk_comms = { path = "crates/re_sdk_comms", version = "0.2.0-alpha.4" }
+re_smart_channel = { path = "crates/re_smart_channel", version = "0.2.0-alpha.4" }
+re_string_interner = { path = "crates/re_string_interner", version = "0.2.0-alpha.4" }
+re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.2.0-alpha.4" }
+re_tuid = { path = "crates/re_tuid", version = "0.2.0-alpha.4" }
+re_ui = { path = "crates/re_ui", version = "0.2.0-alpha.4" }
+re_viewer = { path = "crates/re_viewer", version = "0.2.0-alpha.4" }
+re_web_server = { path = "crates/re_web_server", version = "0.2.0-alpha.4" }
+re_ws_comms = { path = "crates/re_ws_comms", version = "0.2.0-alpha.4" }
+rerun = { path = "crates/rerun", version = "0.2.0-alpha.4" }
 
 anyhow = "1.0"
 arrow2 = "0.16"
