@@ -20,7 +20,7 @@ Use e.g. `cargo r -p api_demo -- --help` for a detailed listing.
 The predefined Rerun flags go as follow and are all mutually exclusive:
 - `--spawn`: start a viewer and feed it data in real-time (default behavior)
 - `--save <SAVE>`: saves the data to an rrd file rather than visualizing it immediately
-- `--connect [<CONNECT>]`: connects and sends the logged data to a remote Rerun viewer
+- `--connect [IP:PORT]`: connects and sends the logged data to a remote Rerun viewer
 - `--serve`: connects and sends the data to a web-based Rerun viewer.
 
 ## Datasets
