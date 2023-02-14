@@ -31,6 +31,9 @@ pub mod external {
 
     #[cfg(feature = "glam")]
     pub use glam;
+
+    #[cfg(feature = "image")]
+    pub use image;
 }
 
 pub use self::component_types::context;
