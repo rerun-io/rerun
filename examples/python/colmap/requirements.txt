@@ -1,5 +1,8 @@
 opencv-python<4.6 # Avoid opencv-4.6 since it rotates images incorrectly (https://github.com/opencv/opencv/issues/22088)
 numpy
+Pillow
 requests==2.28.1
 rerun-sdk
 tqdm
+transformers
+

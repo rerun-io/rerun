@@ -11,11 +11,14 @@ from typing import Any, Final, Optional, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
+from PIL import Image
 import requests
 from read_write_model import Camera, read_model
 from tqdm import tqdm
+from transformers import pipeline
 
 import rerun as rr
+from rerun.log.rects import RectFormat
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
@@ -55,7 +58,6 @@ def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
 
 
 def get_downloaded_dataset_path(dataset_name: str) -> Path:
-
     dataset_url = f"{DATASET_URL_BASE}/{dataset_name}.zip"
 
     recording_dir = DATASET_DIR / dataset_name
@@ -91,7 +93,7 @@ def download_with_progress(url: str) -> io.BytesIO:
 
 
 def read_and_log_sparse_reconstruction(
-    dataset_path: Path, filter_output: bool, resize: Optional[Tuple[int, int]]
+    dataset_path: Path, filter_output: bool, resize: Optional[Tuple[int, int]], detect: bool = False
 ) -> None:
     print("Reading sparse COLMAP reconstruction")
     cameras, images, points3D = read_model(dataset_path / "sparse", ext=".bin")
@@ -102,6 +104,8 @@ def read_and_log_sparse_reconstruction(
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
     rr.log_view_coordinates("/", up="-Y", timeless=True)
+
+    obj_detector = pipeline("object-detection") if detect else None
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -160,14 +164,31 @@ def read_and_log_sparse_reconstruction(
             height=camera.height,
         )
 
+        detect_input = None
         if resize:
             img = cv2.imread(str(image_file))
             img = cv2.resize(img, resize)
             jpeg_quality = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
             _, encimg = cv2.imencode(".jpg", img, jpeg_quality)
             rr.log_image_file("camera/image", img_bytes=encimg)
+
+            if obj_detector is not None:
+                rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                detect_input = Image.fromarray(rgb)
+
         else:
-            rr.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
+            rr.log_image_file("camera/image", img_path=image_file)
+
+            if obj_detector is not None:
+                detect_input = Image.open(image_file)
+
+        if detect_input is not None:
+            detections = obj_detector(detect_input)
+            if len(detections) > 0:
+                box = detections[0]["box"]
+                bbox = np.array([box["xmin"], box["ymin"], box["xmax"], box["ymax"]])
+
+                rr.log_rects("camera/image/detected", bbox, rect_format=RectFormat.XYXY, colors=(255, 255, 255))
 
         rr.log_points("camera/image/keypoints", visible_xys, colors=[34, 138, 167])
 
@@ -183,6 +204,7 @@ def main() -> None:
         help="Which dataset to download",
     )
     parser.add_argument("--resize", action="store", help="Target resolution to resize images")
+    parser.add_argument("--detect", action="store_true", help="Run object detection on each frame")
     rr.script_add_args(parser)
     args = parser.parse_args()
 
@@ -191,7 +213,9 @@ def main() -> None:
 
     rr.script_setup(args, "colmap")
     dataset_path = get_downloaded_dataset_path(args.dataset)
-    read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered, resize=args.resize)
+    read_and_log_sparse_reconstruction(
+        dataset_path, filter_output=not args.unfiltered, resize=args.resize, detect=args.detect
+    )
     rr.script_teardown(args)
 
 
