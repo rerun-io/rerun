@@ -4,11 +4,13 @@
   </a>
 </h1>
 
-[![Latest version](https://img.shields.io/crates/v/re_ws_comms.svg)](https://crates.io/crates/rerun)
-[![Documentation](https://docs.rs/re_ws_comms/badge.svg)](https://docs.rs/rerun)
-![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
-[![Discord](https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord)](https://discord.gg/Gcm8BbTaAj)
+<h1 align="center">
+  <a href="https://crates.io/crates/rerun">                               <img alt="Latest version" src="https://img.shields.io/crates/v/rerun.svg">                               </a>
+  <a href="https://docs.rs/rerun">                                        <img alt="Documentation"  src="https://docs.rs/rerun/badge.svg">                                         </a>
+  <a href="https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT">    <img alt="MIT"            src="https://img.shields.io/badge/license-MIT-blue.svg">                        </a>
+  <a href="https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE"> <img alt="Apache"         src="https://img.shields.io/badge/license-Apache-blue.svg">                     </a>
+  <a href="https://discord.gg/Gcm8BbTaAj">                                <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
+</h1>
 
 # Rerun Rust logging SDK
 Rerun is an SDK for logging computer vision and robotics data paired with a visualizer for exploring that data over time. It lets you debug and understand the internal state and data of your systems with minimal code.
