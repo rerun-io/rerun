@@ -6,12 +6,21 @@ import sys
 
 
 def run_cube():
+    import math
+
+    import numpy as np
+
     import rerun as rr
 
     rr.init("Cube", spawn=True, default_enabled=True)
-    from rerun_demo.data import color_grid
+    from rerun_demo.data import build_color_grid
 
-    rr.log_points("cube", positions=color_grid.positions, colors=color_grid.colors, radii=0.5)
+    STEPS = 100
+    twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4
+    for t in range(STEPS):
+        rr.set_time_sequence("step", t)
+        cube = build_color_grid(10, 10, 10, twist=twists[t])
+        rr.log_points("cube", positions=cube.positions, colors=cube.colors, radii=0.5)
 
 
 def run_colmap():
