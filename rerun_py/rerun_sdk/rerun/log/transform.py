@@ -126,8 +126,10 @@ def log_rigid3(
     Example
     -------
     ```
-    rerun.log_rigid3("world/camera", parent_from_child=(t,q))
-    rerun.log_pinhole("world/camera/image", …)
+    t = 0.0
+    translation = [math.sin(t), math.cos(t), 0.0] # circle around origin
+    rotation = [0.5, 0.0, 0.0, np.sin(np.pi/3)] # 60 degrees around x-axis
+    rerun.log_rigid3("sun/planet", parent_from_child=(translation, rotation))
     ```
 
     Parameters
