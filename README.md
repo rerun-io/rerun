@@ -47,7 +47,7 @@ You should now be able to run `rerun --help` in any terminal.
 - ⚙️ [Examples](examples)
 - 🐍 [Python API docs](https://rerun-io.github.io/rerun)
 - 🦀 [Rust API docs](https://docs.rs/rerun/)
-- 🦀 [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+- ⁉️ [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
 
 ## Status
