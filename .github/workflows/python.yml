@@ -122,19 +122,38 @@ jobs:
 
       - run: pip install -r rerun_py/requirements-build.txt
 
-      - name: Install prerequisites for building the web-viewer Wasm
+      # ----------------------------------------------------------------------------------
+      # Install prerequisites for building the web-viewer Wasm
+
+      # We have a nice script for that: ./scripts/setup_web.sh
+      # Unfortunately, we can't run that on Windows, because Windows doesn't come with
+      # a package manager like grown-up OSes do (at least not the CI version of Windows).
+      # So we only run the script on !Windows, and then on Windows we do the parts of the script manually.
+      # That way we still get to test the script on Linux and Mac.
+
+      - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
+        if: matrix.platform != 'windows'
         shell: bash
         run: ./scripts/setup_web.sh
 
-      # winget not available within the github runner, so download the package directly
+      # The first steps of setup_web.sh, for Windows:
+      - name: Install wasm32 and wasm-bindgen-cli for building the web-viewer Wasm on windows
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
+
+      # The last step of setup_web.sh, for Windows.
+      # Since 'winget' is not available within the github runner, we download the package directly:
       # See: https://github.com/marketplace/actions/engineerd-configurator
-      - name: Install prerequisites for building the web-viewer Wasm on windows
+      - name: Install binaryen for building the web-viewer Wasm on windows
         if: matrix.platform == 'windows'
         uses: engineerd/configurator@v0.0.9
         with:
           name: "wasm-opt.exe"
           url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
+
+      # ----------------------------------------------------------------------------------
 
       - name: Patch Cargo.toml for pre-release
         if: github.ref == 'refs/heads/main'
