@@ -80,10 +80,12 @@ impl Session {
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
     ///
-    /// For convenience, there is also a global [`Session`] object you can access with [`crate::global_session`].
+    /// For convenience, there is also a global [`Session`] object you can access with
+    /// [`crate::global_session`].
     ///
     /// Logging is enabled by default, but can be turned off with the `RERUN` environment variable
     /// or by calling [`Self::set_enabled`].
+    #[doc(hidden)]
     pub fn new() -> Self {
         Self::with_default_enabled(true)
     }
@@ -92,6 +94,7 @@ impl Session {
     ///
     /// The default can always be overridden using the `RERUN` environment variable
     /// or by calling [`Self::set_enabled`].
+    #[doc(hidden)]
     pub fn with_default_enabled(default_enabled: bool) -> Self {
         let enabled = crate::decide_logging_enabled(default_enabled);
 
