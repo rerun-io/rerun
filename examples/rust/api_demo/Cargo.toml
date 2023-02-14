@@ -10,7 +10,7 @@ publish = false
 rerun = { workspace = true, features = ["web"] }
 
 anyhow.workspace = true
-clap = { version = "4.0", features = ["derive"] }
+clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
 itertools = "0.10"
 ndarray.workspace = true

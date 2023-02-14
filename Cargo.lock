@@ -4122,7 +4122,6 @@ dependencies = [
  "crossbeam",
  "document-features",
  "lazy_static",
- "mimalloc",
  "ndarray",
  "ndarray-rand",
  "nohash-hasher",

@@ -38,6 +38,7 @@ rerun = { path = "crates/rerun", version = "0.2.0-alpha.2" }
 anyhow = "1.0"
 arrow2 = "0.16"
 arrow2_convert = "0.4.2"
+clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
 ecolor = "0.21.0"

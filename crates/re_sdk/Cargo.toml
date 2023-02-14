@@ -66,6 +66,7 @@ webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+clap = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
@@ -73,7 +74,3 @@ arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-clap = { version = "4.0", features = ["derive"] }
-mimalloc = "0.1.29"
