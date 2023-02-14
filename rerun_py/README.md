@@ -1,51 +1,74 @@
 # The Rerun Python Log SDK
 
-Log rich data, such as images and point clouds, and instantly visualize them, with time scrubbing.
+Rerun is an SDK for logging computer vision and robotics data paired with a visualizer for exploring that data over time.
+It lets you debug and understand the internal state and data of your systems with minimal code.
 
-`pip install rerun-sdk`
-
-```py
-import rerun as rr
-
-rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
-
-rr.log_image("rgb_image", image)
-rr.log_points("points", positions)
-rr.log_rect("car", bbox)
-…
-```
 
 <p align="center">
   <img width="800" alt="Rerun Viewer" src="https://user-images.githubusercontent.com/1148717/218763490-f6261ecd-e19e-4520-9b25-446ce1ee6328.png">
 </p>
 
-## Getting started
-- [High-level docs](http://rerun.io/docs)
-- [Python API docs](https://rerun-io.github.io/rerun)
-- [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/python)
+## Install
 
-## Notes
-- The rust crate is called `rerun_py`, the Python module is called `rerun`, and the package published on PyPI is `rerun-sdk`.
-- These instructions assume you're running from the `rerun` root folder and have Python 3.8 or later available.
+```sh
+pip3 install rerun-sdk
+```
 
-## Building from Source
-To build from source and install the `rerun` into your *current* Python environment run:
+ℹ️ Note:  
+The Python module is called `rerun`, while the package published on PyPI is `rerun-sdk`.
+
+## Example
+```py
+import rerun as rr
+import numpy as np
+
+rr.spawn()
+
+positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-5, 5, 10j)]]]).T
+colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).astype(np.uint8).T
+
+rr.log_points("my_points", positions=positions, colors=colors)
+```
+
+## Resources
+* [Quick start](https://www.rerun.io/docs/getting-started/python)
+* [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
+* [Examples on Github](https://github.com/rerun-io/rerun/tree/latest/examples/python)
+* [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
+
+## Logging and viewing in different processes
+
+You can run the viewer and logger in different processes.
+
+In one terminal, start up a viewer with a server that the SDK can connect to:
+```sh
+python3 -m rerun
+```
+
+In a second terminal, run the example with the `--connect` option:
+```sh
+python3 examples/python/car/main.py --connect
+```
+
+-------------------------
+
+# From Source
+
+Checkout the [Github repository](https://github.com/rerun-io/rerun):
+```sh
+git clone git@github.com:rerun-io/rerun.git
+```
+
+## Building
+To build from source and install Rerun into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
-pip3 install "./rerun_py"
+pip3 install maturin "./rerun_py"
 ```
 
-ℹ️ Note:
-- If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
-
-
-## Running the example code
-```sh
-python examples/python/car/main.py
-```
-
-By default, the example runs Rerun in buffered mode, in the same process as the example code. This means all logged data is buffered until `rerun.show()` is called in the end, which shows the viewer and blocks until the viewer is closed.
+ℹ️ Note:  
+If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
 
 ## Development
 
@@ -81,20 +104,6 @@ just py-lint
 python examples/python/car/main.py
 ```
 
-### Logging and viewing in different processes
-
-Rerun can also be run in non-blocking mode with viewer and logger in different processes.
-
-In one terminal, start up a viewer with a server that the SDK can connect to:
-```sh
-cargo run -p rerun --release
-```
-
-In a second terminal, run the example with the `--connect` option:
-```sh
-examples/python/car/main.py --connect
-```
-
 ## Building an installable Python Wheel
 The Python bindings to the core Rust library are built using https://github.com/PyO3/pyo3.
 
@@ -108,7 +117,7 @@ By default the wheels will be built to `target/wheels` (use the `-o` flag to set
 
 Now you can install `rerun` in any Python3 environment using:
 
-```
+```sh
 pip3 install target/wheels/*.whl
 ```
 
@@ -121,11 +130,11 @@ pip install -r rerun_py/requirements-doc.txt
 ```
 
 Serve the docs:
-```
+```sh
 mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
 ```
 or
-```
+```sh
 just py-docs-serve
 ```
 
