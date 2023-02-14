@@ -22,7 +22,7 @@ __all__ = [
 @deprecated(version="0.2.0", reason="Use log_line_strip instead")
 def log_path(
     entity_path: str,
-    positions: Optional[npt.NDArray[np.float32]],
+    positions: Optional[npt.ArrayLike],
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
@@ -36,7 +36,7 @@ def log_path(
 
 def log_line_strip(
     entity_path: str,
-    positions: Optional[npt.NDArray[np.float32]],
+    positions: Optional[npt.ArrayLike],
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
@@ -63,7 +63,7 @@ def log_line_strip(
     positions:
         A Nx3 array of points along the path.
     stroke_width:
-        Width of the line.
+        Optional width of the line.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
     ext:
@@ -108,7 +108,7 @@ def log_line_strip(
 
 def log_line_segments(
     entity_path: str,
-    positions: npt.NDArray[np.float32],
+    positions: npt.ArrayLike,
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
@@ -134,7 +134,7 @@ def log_line_segments(
     positions:
         A Nx3 array of points along the path.
     stroke_width:
-        Width of the line.
+        Optional width of the line.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
     ext:
