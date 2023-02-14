@@ -19,7 +19,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["analytics", "image", "server", "sdk"]
+default = ["analytics", "glam", "image", "server", "sdk"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics", "re_viewer/analytics"]

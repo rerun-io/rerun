@@ -40,7 +40,11 @@ re_log_types.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
 re_tensor_ops.workspace = true
-rerun.workspace = true
+rerun = { workspace = true, default-features = false, features = [
+  "analytics",
+  "server",
+  "sdk",
+] }
 
 ahash = "0.8"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }

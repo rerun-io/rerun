@@ -7,4 +7,4 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rerun = { workspace = true, features = ["glam"] }
+rerun.workspace = true

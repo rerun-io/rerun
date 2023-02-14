@@ -17,7 +17,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "image", "re_viewer"]
+default = ["demo", "glam", "image", "re_viewer"]
 
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
