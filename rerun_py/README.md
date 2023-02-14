@@ -34,6 +34,7 @@ rr.log_points("my_points", positions=positions, colors=colors)
 * [Quick start](https://www.rerun.io/docs/getting-started/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
 * [Examples on Github](https://github.com/rerun-io/rerun/tree/latest/examples/python)
+* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 * [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
 
 ## Logging and viewing in different processes
