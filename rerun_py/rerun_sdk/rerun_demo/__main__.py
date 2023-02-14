@@ -1,21 +1,61 @@
 """Demo program which loads an rrd file built into the package."""
 
+import argparse
 import pathlib
 import sys
 
-from rerun import bindings, unregister_shutdown  # type: ignore[attr-defined]
+
+def run_cube():
+    import rerun as rr
+
+    rr.init("Cube", spawn=True, default_enabled=True)
+    from rerun_demo.data import color_grid
+
+    rr.log_points("cube", positions=color_grid.positions, colors=color_grid.colors, radii=0.5)
 
 
-def main() -> None:
+def run_colmap():
+    from rerun import bindings, unregister_shutdown  # type: ignore[attr-defined]
+
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
 
-    rrd_file = pathlib.Path(__file__).parent.joinpath("demo.rrd").resolve()
+    rrd_file = pathlib.Path(__file__).parent.joinpath("colmap.rrd").resolve()
     if not rrd_file.exists():
         print("No demo file found at {}. Package was built without demo support".format(rrd_file), file=sys.stderr)
         exit(1)
     else:
         exit(bindings.main([sys.argv[0], str(rrd_file)]))
+
+
+def main() -> None:
+
+    parser = argparse.ArgumentParser(description="Run rerun example programs")
+
+    group = parser.add_mutually_exclusive_group()
+
+    group.add_argument(
+        "--cube",
+        action="store_true",
+        help="Run the color grid cube demo",
+    )
+
+    group.add_argument(
+        "--colmap",
+        action="store_true",
+        help="Run the COLMAP data demo",
+    )
+
+    args = parser.parse_args()
+
+    if not any([args.cube, args.colmap]):
+        args.cube = True
+
+    if args.cube:
+        run_cube()
+
+    elif args.colmap:
+        run_colmap()
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from rerun_demo.turbo import turbo_colormap_data
 ColorGrid = namedtuple("ColorGrid", ["positions", "colors"])
 
 
-def build_color_grid(x_count=6, y_count=6, z_count=6):
+def build_color_grid(x_count=10, y_count=10, z_count=10):
     """
     Create a cube of points with colors.
 
