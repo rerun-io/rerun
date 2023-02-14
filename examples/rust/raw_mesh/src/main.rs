@@ -17,7 +17,7 @@ use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordin
 use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    ApplicationId, EntityPath, MsgSender, RecordingId, Session,
+    EntityPath, MsgSender, Session,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -238,13 +238,7 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut session = Session::new();
-    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
-    // does... which they can probably share.
-    // This needs to take care of the whole `official_example` thing, and also keeps track of
-    // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("raw_mesh_rs".into()), true);
-    session.set_recording_id(RecordingId::random());
+    let mut session = Session::init("raw_mesh_rs", true);
 
     let behavior = args.to_behavior();
     match behavior {
