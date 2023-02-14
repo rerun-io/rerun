@@ -53,6 +53,11 @@ SECTION_TABLE: Final[List[Section]] = [
         func_list=["init", "set_recording_id", "connect", "spawn"],
     ),
     Section(
+        title="Time",
+        module_summary=None,
+        func_list=["set_time_sequence", "set_time_seconds", "set_time_nanos"],
+    ),
+    Section(
         title="Spatial Primitives",
         module_summary=None,
         func_list=[
@@ -64,6 +69,9 @@ SECTION_TABLE: Final[List[Section]] = [
             "log_line_strip",
             "log_line_segments",
             "log_arrow",
+            "log_mesh",
+            "log_meshes",
+            "log_mesh_file",
         ],
     ),
     Section(
@@ -95,6 +103,13 @@ SECTION_TABLE: Final[List[Section]] = [
         title="Transforms",
         module_summary=None,
         func_list=["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
+    ),
+    Section(
+        title="Text",
+        module_summary=None,
+        # TODO(#1251): Classes aren't supported yet
+        # "LogLevel", "LoggingHandler"
+        func_list=["log_text_entry"],
     ),
     Section(
         title="Helpers",
