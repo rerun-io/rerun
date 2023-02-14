@@ -55,7 +55,7 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: Option<Receiver<LogMsg>>,
+    rx: Receiver<LogMsg>,
 
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
@@ -102,20 +102,14 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
-        Self::new(
-            startup_options,
-            re_ui,
-            storage,
-            Some(rx),
-            Default::default(),
-        )
+        Self::new(startup_options, re_ui, storage, rx, Default::default())
     }
 
     fn new(
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
-        rx: Option<Receiver<LogMsg>>,
+        rx: Receiver<LogMsg>,
         log_db: LogDb,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
@@ -510,8 +504,8 @@ impl eframe::App for App {
                         .unwrap();
                     render_ctx.frame_maintenance();
 
-                    if let (true, Some(rx)) = (log_db.is_empty(), &self.rx) {
-                        wait_screen_ui(ui, rx);
+                    if log_db.is_empty() {
+                        wait_screen_ui(ui, &self.rx);
                     } else {
                         self.state.show(
                             ui,
@@ -619,58 +613,57 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 
 impl App {
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
-        if let Some(rx) = &mut self.rx {
-            crate::profile_function!();
-            let start = instant::Instant::now();
+        crate::profile_function!();
 
-            while let Ok(msg) = rx.try_recv() {
-                if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::debug!("Beginning a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
+        let start = instant::Instant::now();
 
-                    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-                    if let Some(analytics) = self.analytics.as_mut() {
-                        use re_analytics::Property;
-                        analytics.default_append_props_mut().extend([
-                            ("application_id".into(), {
-                                let prop: Property = msg.info.application_id.0.clone().into();
-                                if msg.info.is_official_example {
-                                    prop
-                                } else {
-                                    prop.hashed()
-                                }
-                            }),
-                            ("recording_id".into(), {
-                                let prop: Property = msg.info.recording_id.to_string().into();
-                                if msg.info.is_official_example {
-                                    prop
-                                } else {
-                                    prop.hashed()
-                                }
-                            }),
-                            (
-                                "recording_source".into(),
-                                msg.info.recording_source.to_string().into(),
-                            ),
-                            (
-                                "is_official_example".into(),
-                                msg.info.is_official_example.into(),
-                            ),
-                        ]);
+        while let Ok(msg) = self.rx.try_recv() {
+            if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                re_log::debug!("Beginning a new recording: {:?}", msg.info);
+                self.state.selected_rec_id = msg.info.recording_id;
 
-                        analytics.record(re_analytics::Event::data_source_opened());
-                    }
+                #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+                if let Some(analytics) = self.analytics.as_mut() {
+                    use re_analytics::Property;
+                    analytics.default_append_props_mut().extend([
+                        ("application_id".into(), {
+                            let prop: Property = msg.info.application_id.0.clone().into();
+                            if msg.info.is_official_example {
+                                prop
+                            } else {
+                                prop.hashed()
+                            }
+                        }),
+                        ("recording_id".into(), {
+                            let prop: Property = msg.info.recording_id.to_string().into();
+                            if msg.info.is_official_example {
+                                prop
+                            } else {
+                                prop.hashed()
+                            }
+                        }),
+                        (
+                            "recording_source".into(),
+                            msg.info.recording_source.to_string().into(),
+                        ),
+                        (
+                            "is_official_example".into(),
+                            msg.info.is_official_example.into(),
+                        ),
+                    ]);
+
+                    analytics.record(re_analytics::Event::data_source_opened());
                 }
+            }
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+            let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-                if let Err(err) = log_db.add(msg) {
-                    re_log::error!("Failed to add incoming msg: {err}");
-                };
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
-                }
+            if let Err(err) = log_db.add(msg) {
+                re_log::error!("Failed to add incoming msg: {err}");
+            };
+            if start.elapsed() > instant::Duration::from_millis(10) {
+                egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                break; // don't block the main thread for too long
             }
         }
     }
@@ -1231,43 +1224,41 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 }
 
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
-    if let Some(rx) = &app.rx {
-        // TODO(emilk): it would be nice to know if the network stream is still open
-        let is_latency_interesting = rx.source().is_network();
+    // TODO(emilk): it would be nice to know if the network stream is still open
+    let is_latency_interesting = app.rx.source().is_network();
 
-        let queue_len = rx.len();
+    let queue_len = app.rx.len();
 
-        // empty queue == unreliable latency
-        let latency_sec = rx.latency_ns() as f32 / 1e9;
-        if queue_len > 0
-            && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
-        {
-            // we use this to avoid flicker
-            app.latest_queue_interest = instant::Instant::now();
-        }
+    // empty queue == unreliable latency
+    let latency_sec = app.rx.latency_ns() as f32 / 1e9;
+    if queue_len > 0
+        && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
+    {
+        // we use this to avoid flicker
+        app.latest_queue_interest = instant::Instant::now();
+    }
 
-        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-            ui.separator();
-            if is_latency_interesting {
-                let text = format!(
-                    "Latency: {:.2}s, queue: {}",
-                    latency_sec,
-                    format_number(queue_len),
-                );
-                let hover_text =
+    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+        ui.separator();
+        if is_latency_interesting {
+            let text = format!(
+                "Latency: {:.2}s, queue: {}",
+                latency_sec,
+                format_number(queue_len),
+            );
+            let hover_text =
                     "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
-                if latency_sec < app.state.app_options.warn_latency {
-                    ui.weak(text).on_hover_text(hover_text);
-                } else {
-                    ui.label(app.re_ui.warning_text(text))
-                        .on_hover_text(hover_text);
-                }
+            if latency_sec < app.state.app_options.warn_latency {
+                ui.weak(text).on_hover_text(hover_text);
             } else {
-                ui.weak(format!("Queue: {}", format_number(queue_len)))
-                    .on_hover_text("Number of messages in the inbound queue");
+                ui.label(app.re_ui.warning_text(text))
+                    .on_hover_text(hover_text);
             }
+        } else {
+            ui.weak(format!("Queue: {}", format_number(queue_len)))
+                .on_hover_text("Number of messages in the inbound queue");
         }
     }
 }
