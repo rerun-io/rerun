@@ -2,7 +2,6 @@
 
 import atexit
 from typing import Optional
-from deprecated import deprecated
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 from rerun.log import log_cleared
@@ -219,7 +218,7 @@ def connect(addr: Optional[str] = None) -> None:
 
     Parameters
     ----------
-    addr : Optional[str]
+    addr
         The ip:port to connect to
 
     """
@@ -247,7 +246,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
     ----------
     port : int
         The port to listen on.
-    connect : bool
+    connect
         also connect to the viewer and stream logging data to it.
 
     """
@@ -288,7 +287,7 @@ def serve(open_browser: bool = True) -> None:
 
     Parameters
     ----------
-    open_browser : bool
+    open_browser
         Open the default browser to the viewer.
 
     """
@@ -305,7 +304,6 @@ def disconnect() -> None:
     bindings.disconnect()
 
 
-@deprecated(version="0.2.0", reason="Use spawn instead")
 def show() -> None:
     """
     Show previously logged data.
