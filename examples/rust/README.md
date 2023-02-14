@@ -34,15 +34,21 @@ The datasets will be added to a subdir called `dataset`, which is in the repo-wi
 
 ### [`minimal`](minimal)
 
+`cargo r -p minimal`
+
 A minimal example, showing how to log a point cloud.
 
 ### [`api_demo`](api_demo)
+
+`cargo r -p api_demo`
 
 An amalgamation of various usages of the API with synthetic "data" without any particular focus.
 
 It demonstrates a lot of different aspects of the Rerun API.
 
 ### [`objectron`](objectron)
+
+`cargo r -p objectron`
 
 Demonstrates how to log:
 * Points
@@ -52,6 +58,8 @@ Demonstrates how to log:
 
 ### [`raw_mesh`](raw_mesh)
 
+`cargo r -p raw_mesh`
+
 Reads a GLTF mesh file and logs it to Rerun, preserving the transform hierarchy of the GLTF file.
 
 Demonstrates how to log:
@@ -59,5 +67,7 @@ Demonstrates how to log:
 * Rigid transforms
 
 ### [`dna`](dna)
+
+`cargo r -p dna`
 
 This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/getting-started/logging-rust).
