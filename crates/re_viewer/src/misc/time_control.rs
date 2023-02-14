@@ -127,9 +127,13 @@ impl TimeControl {
                 // then the user decides to switch timelines.
                 // When they do so, it might be the case that they switch to a timeline they've
                 // never interacted with before, in which case we don't even have a time state yet.
-                self.states
-                    .entry(self.timeline)
-                    .or_insert_with(|| TimeState::new(full_range.max));
+                self.states.entry(self.timeline).or_insert_with(|| {
+                    TimeState::new(if self.following {
+                        full_range.max
+                    } else {
+                        full_range.min
+                    })
+                });
             }
             PlayState::Playing => {
                 let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
