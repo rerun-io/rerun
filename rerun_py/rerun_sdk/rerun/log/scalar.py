@@ -31,9 +31,10 @@ def log_scalar(
     The current simulation time will be used for the time/X-axis, hence scalars
     cannot be timeless!
 
-    See also examples/python/plots.
+    See [here](https://github.com/rerun-io/rerun/blob/main/examples/python/plots/main.py) for a larger example.
 
     Understanding the plot and attributes hierarchy
+    -----------------------------------------------
 
     Timeseries come in three parts: points, lines and finally the plots
     themselves. As a user of the Rerun SDK, your one and only entrypoint into
@@ -53,8 +54,9 @@ def log_scalar(
 
     E.g. the following:
     ```
-    rerun.log_scalar("trig/sin", sin(t), label="sin(t)", color=RED)
-    rerun.log_scalar("trig/cos", cos(t), label="cos(t)", color=BLUE)
+    t=1.0
+    rerun.log_scalar("trig/sin", math.sin(t), label="sin(t)", color=[255, 0, 0])
+    rerun.log_scalar("trig/cos", math.cos(t), label="cos(t)", color=[0, 0, 255])
     ```
     will yield a single plot (space = `trig`), comprised of two lines
     (entity paths `trig/sin` and `trig/cos`).
@@ -70,11 +72,12 @@ def log_scalar(
         An optional label for the point.
 
         This won't show up on points at the moment, as our plots don't yet
-        support displaying labels for individual points. If all points within a
-        single entity path (i.e. a line) share the same label, then this label
-        will be used as the label for the line itself. Otherwise, the line will
-        be named after the entity path. The plot itself is named after the space
-        it's in.
+        support displaying labels for individual points
+        TODO(https://github.com/rerun-io/rerun/issues/1289). If all points
+        within a single entity path (i.e. a line) share the same label, then
+        this label will be used as the label for the line itself. Otherwise, the
+        line will be named after the entity path. The plot itself is named after
+        the space it's in.
     color:
         An optional color in the form of a RGB or RGBA triplet in 0-255 sRGB.
 
