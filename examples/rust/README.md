@@ -14,7 +14,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ### Additional settings
 
-Most examples come with a set of predefined Rerun flags and optionally a number of example-specific flags.  
+Most examples come with a set of predefined Rerun flags and optionally a number of example-specific flags.
 Use e.g. `cargo run -p api_demo -- --help` for a detailed listing.
 
 The predefined Rerun flags go as follow and are all mutually exclusive:
@@ -25,7 +25,7 @@ The predefined Rerun flags go as follow and are all mutually exclusive:
 
 ## Datasets
 
-Some examples require small datasets to be downloaded before they run.  
+Some examples require small datasets to be downloaded before they run.
 These datasets can be downloaded by running the homonymous python examples (each example that requires it will tell you how to).
 
 The datasets will be added to a subdir called `dataset`, which is in the repo-wide `.gitignore`.

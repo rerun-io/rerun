@@ -20,11 +20,9 @@ rr.log_rect("car", bbox)
 </p>
 
 ## Getting started
-- [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/python)
+- [High-level docs](http://rerun.io/docs)
 - [Python API docs](https://rerun-io.github.io/rerun)
-- [High-level documentation](http://rerun.io/docs)
-
-<!-- TODO(#1161): add links to our docs! -->
+- [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 
 ## Notes
 - The rust crate is called `rerun_py`, the Python module is called `rerun`, and the package published on PyPI is `rerun-sdk`.
