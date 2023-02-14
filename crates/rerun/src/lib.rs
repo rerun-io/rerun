@@ -11,6 +11,7 @@
 //! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 //! - [High-level docs](http://rerun.io/docs)
 //! - [Rust API docs](https://docs.rs/rerun/)
+//! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 //!
 //! If you get stuck on anything, open an issue at <https://github.com/rerun-io/rerun/issues>.
 //! You can also ask questions on the [Rerun Discord](https://discord.gg/Gcm8BbTaAj).

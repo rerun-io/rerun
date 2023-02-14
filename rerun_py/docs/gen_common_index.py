@@ -162,6 +162,7 @@ hide:
 * [Quick start](https://www.rerun.io/docs/getting-started/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
 * [Examples on Github](https://github.com/rerun-io/rerun/tree/latest/examples/python)
+* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
 # APIs
 """
