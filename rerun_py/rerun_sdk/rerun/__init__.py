@@ -2,6 +2,7 @@
 
 import atexit
 from typing import Optional
+from deprecated import deprecated
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 from rerun.log import log_cleared
@@ -218,7 +219,7 @@ def connect(addr: Optional[str] = None) -> None:
 
     Parameters
     ----------
-    addr : str
+    addr : Optional[str]
         The ip:port to connect to
 
     """
@@ -246,7 +247,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
     ----------
     port : int
         The port to listen on.
-    connect
+    connect : bool
         also connect to the viewer and stream logging data to it.
 
     """
@@ -287,7 +288,7 @@ def serve(open_browser: bool = True) -> None:
 
     Parameters
     ----------
-    open_browser
+    open_browser : bool
         Open the default browser to the viewer.
 
     """
@@ -304,13 +305,12 @@ def disconnect() -> None:
     bindings.disconnect()
 
 
+@deprecated(version="0.2.0", reason="Use spawn instead")
 def show() -> None:
     """
     Show previously logged data.
 
     This only works if you have not called `connect`.
-
-    This will clear the logged data after showing it.
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
 
@@ -328,8 +328,6 @@ def save(path: str) -> None:
     Save previously logged data to a file.
 
     This only works if you have not called `connect`.
-
-    This will clear the logged data after saving.
 
     Parameters
     ----------
@@ -356,7 +354,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 
-    There is no requirement of monoticity. You can move the time backwards if you like.
+    There is no requirement of monotonicity. You can move the time backwards if you like.
 
     Parameters
     ----------
