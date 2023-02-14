@@ -5,7 +5,7 @@ use std::{net::SocketAddr, path::PathBuf};
 
 // ---
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum RerunBehavior {
     Save(PathBuf),
     #[cfg(feature = "web")]
@@ -75,7 +75,7 @@ impl RerunArgs {
         let behavior = self.to_behavior();
 
         #[cfg(feature = "web")]
-        if matches!(behavior, RerunBehavior::Serve) {
+        if behavior == RerunBehavior::Serve {
             eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
             std::thread::sleep(std::time::Duration::from_secs(1_000_000));
         }
@@ -99,7 +99,7 @@ impl RerunArgs {
 
         match self.connect {
             Some(Some(addr)) => return RerunBehavior::Connect(addr),
-            Some(None) => return RerunBehavior::Connect(crate::log::default_server_addr()),
+            Some(None) => return RerunBehavior::Connect(crate::default_server_addr()),
             None => {}
         }
 

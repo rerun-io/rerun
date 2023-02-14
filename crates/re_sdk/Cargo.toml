@@ -17,7 +17,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "glam", "re_viewer"]
+default = ["demo", "glam", "image", "re_viewer"]
 
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
@@ -25,8 +25,11 @@ demo = []
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["re_log_types/glam"]
 
+## Integration with the [`image`](https://crates.io/crates/image/) crate.
+image = ["re_log_types/image"]
+
 ## Support for the viewer.
-re_viewer = ["dep:re_viewer"]
+re_viewer = ["image", "dep:re_viewer"]
 
 ## Support serving a web viewer over HTTP.
 ##

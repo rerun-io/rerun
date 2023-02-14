@@ -21,13 +21,14 @@ pub mod clap;
 #[cfg(feature = "demo")]
 pub mod demo_util;
 
+pub use re_sdk_comms::default_server_addr;
+
 /// Things directly related to logging.
 pub mod log {
     pub use re_log_types::{
         msg_bundle::{ComponentBundle, MsgBundle},
         LogMsg, MsgId, PathOp,
     };
-    pub use re_sdk_comms::default_server_addr;
 }
 
 /// Time-related types.
@@ -64,6 +65,9 @@ pub mod external {
 
     #[cfg(feature = "glam")]
     pub use re_log_types::external::glam;
+
+    #[cfg(feature = "image")]
+    pub use re_log_types::external::image;
 }
 
 // ---

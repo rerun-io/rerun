@@ -8,7 +8,7 @@
 [![CI (Rust)](https://github.com/rerun-io/rerun/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/rerun-io/rerun/actions/workflows/rust.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT)
 [![Apache](https://img.shields.io/badge/license-Apache-blue.svg)](https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE)
-[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Discord)](https://discord.gg/Gcm8BbTaAj)
+[![Discord](https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord)](https://discord.gg/Gcm8BbTaAj)
 
 # Rerun: Visualization infrastructure for computer vision.
 
