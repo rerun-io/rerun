@@ -9,7 +9,12 @@ __all__ = [
 
 
 def log_pinhole(
-    entity_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
+    entity_path: str,
+    *,
+    child_from_parent: npt.ArrayLike,
+    width: int,
+    height: int,
+    timeless: bool = False,
 ) -> None:
     """
     Log a perspective camera model.
@@ -25,8 +30,18 @@ def log_pinhole(
     Example
     -------
     ```
-    rerun.log_rigid3("world/camera", …)
-    rerun.log_pinhole("world/camera/image", …)
+    width = 640
+    height = 480
+    u_cen = width / 2
+    v_cen = height / 2
+    f_len = (height * width) ** 0.5
+
+    rerun.log_pinhole("world/camera/image",
+                      child_from_parent = [[f_len, 0,     u_c],
+                                           [0,     f_len, v_c],
+                                           [0,     0,     1  ]],
+                      width = width,
+                      height = height)
     ```
 
     Parameters
@@ -36,9 +51,9 @@ def log_pinhole(
     child_from_parent:
         Row-major intrinsics matrix for projecting from camera space to image space.
     width:
-        Horizontal resolution of the child space.
+        Width of the image in pixels.
     height:
-        Vertical resolution of the child space.
+        Height of the image in pixels.
     timeless:
         If true, the camera will be timeless (default: False).
 
