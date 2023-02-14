@@ -4,8 +4,6 @@ These are examples for how to use the [`rerun`](https://github.com/rerun-io/reru
 To run the minimal example:
 * `cargo r -p minimal`
 
-<!-- TODO(#1161): move docs/getting-started/examples.md here -->
-
 ## Examples:
 
 ### [`minimal`](minimal)
