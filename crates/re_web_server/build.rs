@@ -107,10 +107,11 @@ fn build_web() {
         std::env!("CARGO_MANIFEST_DIR")
     );
 
+    // Clean previous version of what we are building:
     let wasm_path = Path::new(&build_dir).join([crate_name, "_bg.wasm"].concat());
     fs::remove_file(wasm_path.clone()).ok();
     let js_path = Path::new(&build_dir).join([crate_name, ".js"].concat());
-    fs::remove_file(js_path.clone()).ok();
+    fs::remove_file(js_path).ok();
 
     let metadata = MetadataCommand::new()
         .manifest_path("./Cargo.toml")
