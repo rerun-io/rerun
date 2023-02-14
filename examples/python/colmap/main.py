@@ -11,14 +11,14 @@ from typing import Any, Final, Optional, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-from PIL import Image
 import requests
+from PIL import Image
 from read_write_model import Camera, read_model
+from rerun.log.rects import RectFormat
 from tqdm import tqdm
 from transformers import pipeline
 
 import rerun as rr
-from rerun.log.rects import RectFormat
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
