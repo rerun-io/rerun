@@ -3,6 +3,7 @@
 """Demonstrates the most barebone usage of the Rerun SDK."""
 
 import numpy as np
+
 import rerun as rr
 
 positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-5, 5, 10j)]]]).T

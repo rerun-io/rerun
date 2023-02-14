@@ -22,12 +22,29 @@ def build_color_grid(x_count=6, y_count=6, z_count=6):
         Number of points in each dimension.
 
     """
-    x, y, z = np.meshgrid(np.linspace(-10, 10, x_count), np.linspace(-10, 10, y_count), np.linspace(-10, 10, z_count))
-    r, g, b = np.meshgrid(np.linspace(0, 255, x_count), np.linspace(0, 255, y_count), np.linspace(0, 255, z_count))
-    positions = np.array(list(zip(x.reshape(-1), y.reshape(-1), z.reshape(-1))))
-    colors = np.array(list(zip(r.reshape(-1), g.reshape(-1), b.reshape(-1))), dtype=np.uint8)
+    positions = np.vstack(
+        [
+            xyz.ravel()
+            for xyz in np.mgrid[
+                slice(-10, 10, x_count * 1j),
+                slice(-10, 10, y_count * 1j),
+                slice(-10, 10, z_count * 1j),
+            ]
+        ]
+    )
 
-    return ColorGrid(positions, colors)
+    colors = np.vstack(
+        [
+            xyz.ravel()
+            for xyz in np.mgrid[
+                slice(0, 255, x_count * 1j),
+                slice(0, 255, y_count * 1j),
+                slice(0, 255, z_count * 1j),
+            ]
+        ]
+    )
+
+    return ColorGrid(positions.T, colors.T.astype(np.uint8))
 
 
 color_grid = build_color_grid()
