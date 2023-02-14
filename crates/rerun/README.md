@@ -24,7 +24,7 @@ rerun::MsgSender::new("points")
     .send(&mut rerun::global_session())?;
 
 rerun::MsgSender::new("image")
-    .with_component(&[rerun::components::Tensor::from_image(image)])?
+    .with_component(&[rerun::components::Tensor::from_image(image)?])?
     .send(&mut rerun::global_session())?;
 ```
 
