@@ -136,7 +136,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True)
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
-    default_enabled:
+    default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
 
@@ -187,7 +187,7 @@ def is_enabled() -> bool:
 
     The default can be set in [`rerun.init`][], but is otherwise `True`.
 
-    This can be controlled with the enviornment variable `RERUN`,
+    This can be controlled with the environment variable `RERUN`,
     (e.g. `RERUN=on` or `RERUN=off`) and with [`set_enabled`].
 
     """
@@ -206,6 +206,12 @@ def set_enabled(enabled: bool) -> None:
     (e.g. `RERUN=on` or `RERUN=off`).
 
     The default can be set in [`rerun.init`][].
+
+    Parameters
+    ----------
+    enabled : bool
+        Whether to enable or disable logging.
+
     """
     bindings.set_enabled(enabled)
 
