@@ -4,7 +4,7 @@ These are examples of how to use the [`rerun`](https://github.com/rerun-io/rerun
 
 ## Running the examples
 
-To try out any example in the list that follows, simply run `cargo r -p <example_name>`; e.g. `cargo r -p api_demo`.
+To try out any example in the list that follows, simply run `cargo r -p <example_name>`; e.g. `cargo r -p minimal`.
 
 By default, the examples spawn a Rerun Viewer and stream log data to it.
 
