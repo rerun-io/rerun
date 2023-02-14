@@ -1,10 +1,11 @@
 //! # Rerun - log point clouds, images, etc and visualize them effortlessly
 //!
-//! Add the library to your crate with `cargo add rerun`.
+//! Add the `rerun` library to your crate with `cargo add rerun`.
 //!
-//! Install the `rerun` binary with `cargo install rerun`.
-//! The binary is required in order to stream log data over the networks,
-//! and to open our `.rrd` data files.
+//! There is also a `rerun` binary.
+//! The binary is required in order to stream log data
+//! over the networks, and to open our `.rrd` data files.
+//! If you need it, install the `rerun` binary with `cargo install rerun`.
 //!
 //! ## Links
 //! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
@@ -64,7 +65,11 @@
 //! ```
 //!
 //! ## Binary
-//! This can act either as a server, a viewer, or both, depending on which options you use when you start it.
+//! The `rerun` binary is required in order to stream log data
+//! over the networks, and to open our `.rrd` data files.
+//!
+//! The binary can act either as a server, a viewer, or both,
+//! depending on which options you use when you start it.
 //!
 //! ```ignore
 //! cargo install rerun
