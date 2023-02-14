@@ -29,7 +29,7 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
     },
     time::{Time, TimePoint, TimeType, Timeline},
-    ApplicationId, Component, ComponentName, EntityPath, MsgSender, RecordingId, Session,
+    Component, ComponentName, EntityPath, MsgSender, Session,
 };
 
 // --- Rerun logging ---
