@@ -19,7 +19,9 @@ pub struct Caches {
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn new_frame(&mut self) {
-        let max_image_cache_use = 5_000_000_000; // TODO(emilk): make configurable, and maybe a function of available+free RAM
+        // TODO(emilk): make max_image_cache_use configurable, and maybe a function of available VRAM
+        // Beware that a lof of people have very little VRAM: https://store.steampowered.com/hwsurvey/Steam-Hardware-Software-Survey-Welcome-to-Steam
+        let max_image_cache_use = 2_000_000_000;
         self.image.new_frame(max_image_cache_use);
     }
 
