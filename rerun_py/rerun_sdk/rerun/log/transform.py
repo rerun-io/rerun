@@ -1,3 +1,8 @@
+"""
+Methods for logging transforms on entity paths.
+
+Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/spaces-and-transforms)
+"""
 from typing import Optional, Tuple
 
 import numpy.typing as npt
