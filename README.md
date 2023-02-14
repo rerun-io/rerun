@@ -29,44 +29,25 @@ rr.log_rect("car", bbox)
 <img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
 </p>
 
-# Setup
+## Getting started
+* **Python**: `pip install rerun-sdk`
+* **Rust**: `cargo add rerun`
+* **C / C++**: Coming soon
 
-## Python
+### Rerun Viewer binary
+Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
 
-Install the latest Rerun SDK version with:
-
-```sh
-pip install rerun-sdk
-```
-
-## Rust
-Coming soon
-<!-- TODO(#1161): `cargo add rerun` + `cargo install rerun` -->
-
-## C
-
-Coming soon
-
-
-# Documentation
-- [Examples](examples)
-- [Python API docs](https://rerun-io.github.io/rerun)
-- [High-level documentation](http://rerun.io/docs)
-<!--- TODO(#1161): update doclinks
-- [Rust API docs](https://docs.rs/rerun/)
--->
-
-
-## Rerun Viewer without Python
-You can also build and install the Rerun Viewer to be used from the terminal without going through Python.
-
-To build and install run:
-
-```sh
-cargo install --path ./crates/rerun/
-```
+It can be installed with `pip install rerun-sdk` or with `cargo install rerun`.
 
 You should now be able to run `rerun --help` in any terminal.
+
+
+### Documentation
+- 📚 [High-level docs](http://rerun.io/docs)
+- ⚙️ [Examples](examples)
+- 🐍 [Python API docs](https://rerun-io.github.io/rerun)
+- 🦀 [Rust API docs](https://docs.rs/rerun/)
+
 
 
 ## Shortcomings
@@ -74,7 +55,7 @@ You should now be able to run `rerun --help` in any terminal.
 * The data you want to visualize must fit in RAM.
   - See <https://github.com/rerun-io/rerun/issues/1138> for how to bound memory use
   - We plan on having a disk-based data store some time in the future
-  - Additionally, Rerun is using more memory than it should at the moment
+  - Additionally, Rerun is using more memory than it should at the moment ([#1242](https://github.com/rerun-io/rerun/pull/1242))
 
 
 ## Business model

@@ -34,7 +34,7 @@ Python API docs can be found at <https://rerun-io.github.io/rerun> and are built
 Rust documentation is hosted on <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`
 
 ## Build and install the Rerun Python SDK
-Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk` (coming soon!) <!-- TODO(#1161) -->
+Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`
 
 Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/latest>.
 

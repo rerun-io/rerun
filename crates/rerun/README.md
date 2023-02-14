@@ -13,7 +13,9 @@
 # Rerun Rust logging SDK
 Log rich data, such as images and point clouds, and visualize it live or after the fact, with time scrubbing.
 
-`rust add rerun`
+```
+cargo add rerun
+````
 
 ``` rust
 rerun::MsgSender::new("points")
@@ -22,7 +24,7 @@ rerun::MsgSender::new("points")
     .send(&mut rerun::global_session())?;
 
 rerun::MsgSender::new("image")
-    .with_component(&[rerun::component::Tensor::from_image(image)])?
+    .with_component(&[rerun::components::Tensor::from_image(image)])?
     .send(&mut rerun::global_session())?;
 ```
 
@@ -32,21 +34,16 @@ rerun::MsgSender::new("image")
 
 ## Getting started
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
-- [High-level documentation](http://rerun.io/docs)
-<!--- TODO(#1161): update doclinks
+- [High-level docs](http://rerun.io/docs)
 - [Rust API docs](https://docs.rs/rerun/)
--->
 
 ## Library
-You can add the `rerun` crate to your project with `cargo add rerun` (soon).
-<!-- TODO(#1161): remove the (soon) -->
+You can add the `rerun` crate to your project with `cargo add rerun`.
 
 To get started, see [the examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust).
-<!-- TODO(#1161): update link to point to the rust examples -->
 
 ## Binary
-You can install the binary with `cargo install rerun` (soon).
-<!-- TODO(#1161): remove the (soon) -->
+You can install the binary with `cargo install rerun`
 
 This can act either as a server, a viewer, or both, depending on which options you use when you start it.
 
@@ -60,5 +57,5 @@ The web viewer is an experimental feature, but you can try it out with:
 
 ```sh
 cargo install --features web rerun
-rerun -- --web-viewer ../nyud.rrd
+rerun --web-viewer ../nyud.rrd
 ```
