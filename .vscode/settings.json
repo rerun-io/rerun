@@ -56,6 +56,10 @@
         "--message-format=json",
         "--all-targets"
     ],
+    // Our build scripts are generating code.
+    // Having Rust Analyzer do this while doing other builds can lead to catastrophic failures.
+    // INCLUDING attempts to publish a new release!
+    "rust-analyzer.cargo.buildScripts.enable": false,
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],
