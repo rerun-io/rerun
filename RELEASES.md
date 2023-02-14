@@ -50,7 +50,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
     * [ ] A multi-line summary of the release
     * [ ] A gif showing a major new feature
 * [ ] Test the branch ([see below](#testing-a-release))
-* [ ] Open the PR up for review
+* [ ] Open the PR up for review with the `⛴ release` label
 * [ ] `./scripts/publish_crates.sh --dry-run`
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
