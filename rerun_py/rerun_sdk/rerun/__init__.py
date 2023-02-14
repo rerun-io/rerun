@@ -275,7 +275,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
     # For example, wait until it prints "Hosting a SDK server over TCP at …"
-    sleep(0.2)  # almost as good as waiting the correct amount of time
+    sleep(0.5)  # almost as good as waiting the correct amount of time
 
     if connect:
         _connect(f"127.0.0.1:{port}")
