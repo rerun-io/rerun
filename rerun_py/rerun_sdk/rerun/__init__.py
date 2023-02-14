@@ -378,19 +378,18 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     Set the current time for this thread in seconds.
 
     Used for all subsequent logging on the same thread,
-    until the next call to `set_time_seconds`.
+    until the next call to `set_time_seconds` or `set_time_nanos`.
 
     For example: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
 
     You can remove a timeline again using `set_time_seconds("capture_time", None)`.
 
-    The argument should be in seconds, and should be measured either from the
-    unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
+    Very large values will automatically be interpreted as seconds since unix epoch (1970-01-01).
 
     The bindings has a built-in time which is `log_time`, and is logged as seconds
     since unix epoch.
 
-    There is no requirement of monoticity. You can move the time backwards if you like.
+    There is no requirement of monotonicity. You can move the time backwards if you like.
 
     Parameters
     ----------
@@ -412,19 +411,18 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     Set the current time for this thread.
 
     Used for all subsequent logging on the same thread,
-    until the next call to `set_time_nanos`.
+    until the next call to `set_time_nanos` or `set_time_seconds`.
 
     For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
 
     You can remove a timeline again using `set_time_nanos("capture_time", None)`.
 
-    The argument should be in nanoseconds, and should be measured either from the
-    unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
+    Very large values will automatically be interpreted as nanoseconds since unix epoch (1970-01-01).
 
     The bindings has a built-in time which is `log_time`, and is logged as nanos since
     unix epoch.
 
-    There is no requirement of monoticity. You can move the time backwards if you like.
+    There is no requirement of monotonicity. You can move the time backwards if you like.
 
     Parameters
     ----------
