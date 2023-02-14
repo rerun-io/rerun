@@ -58,11 +58,11 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
 * [ ] Publish new Rust crates
-* [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'
+* [ ] Merge PR
+* [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
 * [ ] `git push --tags`
 * [ ] Unless this is an alpha release:
-    * `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push origin latest --force`
-* [ ] Merge PR
+    * `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
 * [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
 * [ ] Wait for documentation to build: https://docs.rs/releases/queue
 * [ ] Post on:
