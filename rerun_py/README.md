@@ -16,7 +16,7 @@ rr.log_rect("car", bbox)
 ```
 
 <p align="center">
-<img src="https://user-images.githubusercontent.com/1148717/218265704-1863c270-1422-48fe-9009-d67f8133c4cc.gif">
+  <img width="800" alt="Rerun Viewer" src="https://user-images.githubusercontent.com/1148717/218763490-f6261ecd-e19e-4520-9b25-446ce1ee6328.png">
 </p>
 
 ## Getting started
