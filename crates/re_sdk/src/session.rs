@@ -478,14 +478,14 @@ impl Sender {
             #[cfg(feature = "re_viewer")]
             Self::NativeViewer(sender) => {
                 if let Err(err) = sender.send(msg) {
-                    re_log::error!("Failed to send log message to viewer: {err}");
+                    re_log::error_once!("Failed to send log message to viewer: {err}");
                 }
             }
 
             #[cfg(feature = "web")]
             Self::WebViewer(_, sender) => {
                 if let Err(err) = sender.send(msg) {
-                    re_log::error!("Failed to send log message to web server: {err}");
+                    re_log::error_once!("Failed to send log message to web server: {err}");
                 }
             }
         }
