@@ -10,6 +10,7 @@ mod misc;
 mod remote_viewer_app;
 mod ui;
 
+pub use self::misc::color_map;
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
 pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, UiVerbosity};
 

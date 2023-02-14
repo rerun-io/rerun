@@ -8,7 +8,6 @@
 
 #![allow(clippy::doc_markdown)]
 
-use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
@@ -17,7 +16,7 @@ use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordin
 use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    ApplicationId, EntityPath, MsgSender, RecordingId, Session,
+    EntityPath, MsgSender, Session,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -130,35 +129,11 @@ enum Scene {
     Avocado,
 }
 
-#[derive(Debug, Clone)]
-enum Behavior {
-    Save(PathBuf),
-    Serve,
-    Connect(SocketAddr),
-    Spawn,
-}
-
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// Start a viewer and feed it data in real-time.
-    #[clap(long, default_value = "true")]
-    spawn: bool,
-
-    /// Saves the data to an rrd file rather than visualizing it immediately.
-    #[clap(long)]
-    save: Option<PathBuf>,
-
-    /// If specified, connects and sends the logged data to a remote Rerun viewer.
-    ///
-    /// Optionally takes an ip:port, otherwise uses Rerun's defaults.
-    #[clap(long)]
-    #[allow(clippy::option_option)]
-    connect: Option<Option<SocketAddr>>,
-
-    /// Connects and sends the logged data to a web-based Rerun viewer.
-    #[clap(long)]
-    serve: bool,
+    #[command(flatten)]
+    rerun: rerun::clap::RerunArgs,
 
     /// Specifies the glTF scene to load.
     #[clap(long, value_enum, default_value = "buggy")]
@@ -196,25 +171,6 @@ impl Args {
 
         Ok(scene_path)
     }
-
-    // TODO(cmc): move all rerun args handling to helpers
-    pub fn to_behavior(&self) -> Behavior {
-        if let Some(path) = self.save.as_ref() {
-            return Behavior::Save(path.clone());
-        }
-
-        if self.serve {
-            return Behavior::Serve;
-        }
-
-        match self.connect {
-            Some(Some(addr)) => return Behavior::Connect(addr),
-            Some(None) => return Behavior::Connect(rerun::log::default_server_addr()),
-            None => {}
-        }
-
-        Behavior::Spawn
-    }
 }
 
 fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
@@ -238,32 +194,18 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut session = Session::new();
-    // TODO(cmc): The Rust SDK needs a higher-level `init()` method, akin to what the python SDK
-    // does... which they can probably share.
-    // This needs to take care of the whole `official_example` thing, and also keeps track of
-    // whether we're using the rust or python sdk.
-    session.set_application_id(ApplicationId("raw_mesh_rs".into()), true);
-    session.set_recording_id(RecordingId::random());
+    let mut session = Session::init("raw_mesh_rs", true);
 
-    let behavior = args.to_behavior();
-    match behavior {
-        Behavior::Connect(addr) => session.connect(addr),
-        Behavior::Spawn => {
-            return session
-                .spawn(move |mut session| run(&mut session, &args))
-                .map_err(Into::into)
-        }
-        _ => {
-            // TODO(cmc): handle serve
-        }
+    let should_spawn = args.rerun.on_startup(&mut session);
+    if should_spawn {
+        return session
+            .spawn(move |mut session| run(&mut session, &args))
+            .map_err(Into::into);
     }
 
     run(&mut session, &args)?;
 
-    if let Behavior::Save(path) = behavior {
-        session.save(path)?;
-    }
+    args.rerun.on_teardown(&mut session)?;
 
     Ok(())
 }

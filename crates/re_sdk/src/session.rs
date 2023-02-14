@@ -33,6 +33,49 @@ impl Default for Session {
 }
 
 impl Session {
+    /// Initializes a new session with a properly set [`ApplicationId`], [`RecordingId`] and
+    /// logging toggle.
+    /// This is a higher-level interface on top of [`Self::new`] and
+    /// [`Self::with_default_enabled`].
+    ///
+    /// `default_enabled` controls whether or not logging is enabled by default.
+    /// The default can always be overridden using the `RERUN` environment variable
+    /// or by calling [`Self::set_enabled`].
+    ///
+    /// Usually you should only call this once and then reuse the same [`Session`].
+    #[track_caller]
+    pub fn init(application_id: impl Into<ApplicationId>, default_enabled: bool) -> Self {
+        // official example detection
+        let is_official_example = {
+            // The sentinel file we use to identify the official examples directory.
+            const SENTINEL_FILENAME: &str = ".rerun_examples";
+
+            // TODO(cmc): Normally we should be collecting a full backtrace here in order to
+            // support cases where the caller we're interested in isn't necessarily the direct one.
+            // For now this'll do and avoids pulling `backtrace` and adding yet another feature
+            // flag.
+            let caller = core::panic::Location::caller();
+            let mut path = std::path::PathBuf::from(caller.file());
+
+            let mut is_official_example = false;
+            // more than 4 layers would be really pushing it
+            for _ in 0..4 {
+                path.pop(); // first iteration is always a file path in our examples
+                if path.join(SENTINEL_FILENAME).exists() {
+                    is_official_example = true;
+                }
+            }
+
+            is_official_example
+        };
+
+        let mut session = Self::with_default_enabled(default_enabled);
+        session.set_application_id(application_id.into(), is_official_example);
+        session.set_recording_id(RecordingId::random());
+
+        session
+    }
+
     /// Construct a new session.
     ///
     /// Usually you should only call this once and then reuse the same [`Session`].
@@ -45,7 +88,7 @@ impl Session {
         Self::with_default_enabled(true)
     }
 
-    /// Construct a new session, with control of wether or not logging is enabled by default.
+    /// Construct a new session, with control of whether or not logging is enabled by default.
     ///
     /// The default can always be overridden using the `RERUN` environment variable
     /// or by calling [`Self::set_enabled`].

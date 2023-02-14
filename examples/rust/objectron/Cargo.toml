@@ -8,10 +8,10 @@ publish = false
 
 
 [dependencies]
-rerun = { workspace = true, features = ["image"] }
+rerun = { workspace = true, features = ["image", "web"] }
 
 anyhow.workspace = true
-clap = { version = "4.0", features = ["derive"] }
+clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
 image = { version = "0.24", default-features = false, features = ["jpeg"] }
 itertools = "0.10"
