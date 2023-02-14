@@ -11,9 +11,9 @@
 [![Discord](https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord)](https://discord.gg/Gcm8BbTaAj)
 
 # Rerun Rust logging SDK
-Log rich data, such as images and point clouds, and visualize it live or after the fact, with time scrubbing.
+Rerun is an SDK for logging computer vision and robotics data paired with a visualizer for exploring that data over time. It lets you debug and understand the internal state and data of your systems with minimal code.
 
-```
+```shell
 cargo add rerun
 ````
 
