@@ -109,13 +109,18 @@ impl ViewSpatialState {
     }
 
     pub fn default_point_radius(&self, viewport_size_in_points: egui::Vec2) -> re_renderer::Size {
+        // More points -> smaller points.
         let num_points = self.scene_num_primitives; // approximately the same thing when there are many points
 
         // Larger view -> larger points.
         let viewport_area = viewport_size_in_points.x * viewport_size_in_points.y;
 
-        // More points -> smaller points.
-        let radius = (0.3 * (viewport_area / (num_points + 1) as f32).sqrt()).clamp(0.2, 5.0);
+        const RADIUS_MULTIPLIER: f32 = 0.15;
+        const MIN_POINT_RADIUS: f32 = 0.2;
+        const MAX_POINT_RADIUS: f32 = 3.0;
+
+        let radius = (RADIUS_MULTIPLIER * (viewport_area / (num_points + 1) as f32).sqrt())
+            .clamp(MIN_POINT_RADIUS, MAX_POINT_RADIUS);
 
         re_renderer::Size::new_points(radius)
     }
