@@ -10,6 +10,7 @@ __all__ = [
 
 def log_pinhole(
     entity_path: str,
+    *,
     child_from_parent: npt.ArrayLike,
     width: int,
     height: int,
@@ -38,7 +39,7 @@ def log_pinhole(
     rerun.log_pinhole("world/camera/image",
                       child_from_parent = [[f_len, 0,     u_c],
                                            [0,     f_len, v_c],
-                                           [0,     0,     1]],
+                                           [0,     0,     1  ]],
                       width = width,
                       height = height)
     ```
@@ -50,9 +51,9 @@ def log_pinhole(
     child_from_parent:
         Row-major intrinsics matrix for projecting from camera space to image space.
     width:
-        Horizontal resolution of the child space in pixels.
+        Width of the image in pixels.
     height:
-        Vertical resolution of the child space in pixels.
+        Height of the image in pixels.
     timeless:
         If true, the camera will be timeless (default: False).
 
