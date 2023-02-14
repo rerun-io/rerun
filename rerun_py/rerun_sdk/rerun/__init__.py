@@ -223,7 +223,7 @@ def connect(addr: Optional[str] = None) -> None:
 
     Parameters
     ----------
-    addr : str
+    addr
         The ip:port to connect to
 
     """
@@ -315,8 +315,6 @@ def show() -> None:
 
     This only works if you have not called `connect`.
 
-    This will clear the logged data after showing it.
-
     NOTE: There is a bug which causes this function to only work once on some platforms.
 
     """
@@ -333,8 +331,6 @@ def save(path: str) -> None:
     Save previously logged data to a file.
 
     This only works if you have not called `connect`.
-
-    This will clear the logged data after saving.
 
     Parameters
     ----------
@@ -361,7 +357,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 
-    There is no requirement of monoticity. You can move the time backwards if you like.
+    There is no requirement of monotonicity. You can move the time backwards if you like.
 
     Parameters
     ----------
