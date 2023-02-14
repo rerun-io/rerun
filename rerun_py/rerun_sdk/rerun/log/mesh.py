@@ -13,11 +13,11 @@ __all__ = [
 
 def log_mesh(
     entity_path: str,
-    positions: npt.NDArray[np.float32],
+    positions: npt.ArrayLike,
     *,
-    indices: Optional[npt.NDArray[np.uint32]] = None,
-    normals: Optional[npt.NDArray[np.float32]] = None,
-    albedo_factor: Optional[npt.NDArray[np.float32]] = None,
+    indices: Optional[npt.ArrayLike] = None,
+    normals: Optional[npt.ArrayLike] = None,
+    albedo_factor: Optional[npt.ArrayLike] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -25,23 +25,34 @@ def log_mesh(
 
     The data is _always_ interpreted as a triangle list:
 
-    * `positions` is a flattened array of 3D points, i.e. its length must be divisible by 3.
+    * `positions` is a (potentially flattened) array of 3D points, i.e. the total number of elements must be divisible
+      by 3.
     * `indices`, if specified, is a flattened array of indices that describe the mesh's faces,
       i.e. its length must be divisible by 3.
-    * `normals`, if specified, is a flattened array of 3D vectors that describe the normal
-      for each vertex, i.e. its length must be divisible by 3 and more importantly it has to be
-      equal to the length of `positions`.
-    * `albedo_factor`, if specified, is either a linear, unmultiplied, normalized RGB (vec3) or
-      RGBA (vec4) value.
+    * `normals`, if specified, is a (potentially flattened) array of 3D vectors that describe the normal for each
+      vertex, i.e. the total number of elements must be divisible by 3 and more importantly, `len(normals)` should be
+      equal to `len(positions)`.
+    * `albedo_factor`, if specified, is either a linear, unmultiplied, normalized RGB (vec3) or RGBA (vec4) value.
 
     Example:
     -------
     ```
     # A simple red triangle:
-    positions = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-    indices = np.array([0, 1, 2])
-    normals = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0])
-    albedo_factor = np.array([1.0, 0.0, 0.0])
+    rerun.log_mesh(
+        "world/mesh",
+        positions = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0]
+        ],
+        indices = [0, 1, 2],
+        normals = [
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0]
+        ],
+        albedo_factor = [1.0, 0.0, 0.0],
+    )
     ```
 
     Parameters
@@ -49,11 +60,11 @@ def log_mesh(
     entity_path:
         Path to the mesh in the space hierarchy
     positions:
-        A flattened array of 3D points
+        An array of 3D points
     indices:
-        Optional flattened array of indices that describe the mesh's faces
+        Optional array of indices that describe the mesh's faces
     normals:
-        Optional flattened array of 3D vectors that describe the normal of each vertices
+        Optional array of 3D vectors that describe the normal of each vertices
     albedo_factor:
         Optional RGB(A) color for the albedo factor of the mesh, aka base color factor.
     timeless:
@@ -64,13 +75,14 @@ def log_mesh(
     if not bindings.is_enabled():
         return
 
-    positions = positions.flatten().astype(np.float32)
+    positions = np.asarray(positions, dtype=np.float32).flatten()
+
     if indices is not None:
-        indices = indices.flatten().astype(np.uint32)
+        indices = np.asarray(indices, dtype=np.uint32).flatten()
     if normals is not None:
-        normals = normals.flatten().astype(np.float32)
+        normals = np.asarray(normals, dtype=np.float32).flatten()
     if albedo_factor is not None:
-        albedo_factor = albedo_factor.flatten().astype(np.float32)
+        albedo_factor = np.asarray(albedo_factor, dtype=np.float32).flatten()
 
     # Mesh arrow handling happens inside the python bridge
     bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
@@ -78,11 +90,11 @@ def log_mesh(
 
 def log_meshes(
     entity_path: str,
-    position_buffers: Sequence[npt.NDArray[np.float32]],
+    position_buffers: Sequence[npt.ArrayLike],
     *,
-    index_buffers: Sequence[Optional[npt.NDArray[np.uint32]]],
-    normal_buffers: Sequence[Optional[npt.NDArray[np.float32]]],
-    albedo_factors: Sequence[Optional[npt.NDArray[np.float32]]],
+    index_buffers: Sequence[Optional[npt.ArrayLike]],
+    normal_buffers: Sequence[Optional[npt.ArrayLike]],
+    albedo_factors: Sequence[Optional[npt.ArrayLike]],
     timeless: bool = False,
 ) -> None:
     """
@@ -115,13 +127,13 @@ def log_meshes(
     if not bindings.is_enabled():
         return
 
-    position_buffers = [p.flatten().astype(np.float32) for p in position_buffers]
+    position_buffers = [np.asarray(p, dtype=np.float32).flatten() for p in position_buffers]
     if index_buffers is not None:
-        index_buffers = [i.flatten().astype(np.uint32) if i else None for i in index_buffers]
+        index_buffers = [np.asarray(i, dtype=np.uint32).flatten() if i else None for i in index_buffers]
     if normal_buffers is not None:
-        normal_buffers = [n.flatten().astype(np.float32) if n else None for n in normal_buffers]
+        normal_buffers = [np.asarray(n, dtype=np.float32).flatten() if n else None for n in normal_buffers]
     if albedo_factors is not None:
-        albedo_factors = [af.flatten().astype(np.float32) if af else None for af in albedo_factors]
+        albedo_factors = [np.asarray(af, dtype=np.float32).flatten() if af else None for af in albedo_factors]
 
     # Mesh arrow handling happens inside the python bridge
     bindings.log_meshes(entity_path, position_buffers, index_buffers, normal_buffers, albedo_factors, timeless)
