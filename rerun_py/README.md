@@ -14,17 +14,18 @@ pip3 install rerun-sdk
 ```
 
 ℹ️ Note:  
-The rust crate is called `rerun_py`, the Python module is called `rerun`, and the package published on PyPI is `rerun-sdk`.
+The Python module is called `rerun`, while the package published on PyPI is `rerun-sdk`.
 
 ## Example
 ```py
 import rerun as rr
 import numpy as np
 
+rr.spawn()
+
 positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-5, 5, 10j)]]]).T
 colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).astype(np.uint8).T
 
-rr.spawn()
 rr.log_points("my_points", positions=positions, colors=colors)
 ```
 
@@ -40,7 +41,7 @@ You can run the viewer and logger in different processes.
 
 In one terminal, start up a viewer with a server that the SDK can connect to:
 ```sh
-python3 rerun
+python3 -m rerun
 ```
 
 In a second terminal, run the example with the `--connect` option:
