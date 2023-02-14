@@ -378,13 +378,15 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     Set the current time for this thread in seconds.
 
     Used for all subsequent logging on the same thread,
-    until the next call to `set_time_seconds` or `set_time_nanos`.
+    until the next call to [`rerun.set_time_seconds`][] or [`rerun.set_time_nanos`][].
 
     For example: `set_time_seconds("capture_time", seconds_since_unix_epoch)`.
 
     You can remove a timeline again using `set_time_seconds("capture_time", None)`.
 
     Very large values will automatically be interpreted as seconds since unix epoch (1970-01-01).
+    Small values (less than a few years) will be interpreted as relative
+    some unknown point in time, and will be shown as e.g. `+3.132s`.
 
     The bindings has a built-in time which is `log_time`, and is logged as seconds
     since unix epoch.
@@ -411,13 +413,15 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     Set the current time for this thread.
 
     Used for all subsequent logging on the same thread,
-    until the next call to `set_time_nanos` or `set_time_seconds`.
+    until the next call to [`rerun::set_time_nanos`][] or [`rerun::set_time_seconds`][].
 
     For example: `set_time_nanos("capture_time", nanos_since_unix_epoch)`.
 
     You can remove a timeline again using `set_time_nanos("capture_time", None)`.
 
     Very large values will automatically be interpreted as nanoseconds since unix epoch (1970-01-01).
+    Small values (less than a few years) will be interpreted as relative
+    some unknown point in time, and will be shown as e.g. `+3.132s`.
 
     The bindings has a built-in time which is `log_time`, and is logged as nanos since
     unix epoch.
