@@ -8,7 +8,7 @@
 [![Documentation](https://docs.rs/re_ws_comms/badge.svg)](https://docs.rs/rerun)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
-[![Discord](https://img.shields.io/discord/900275882684477440?label=Rerun%20Community%20Discord)](https://discord.gg/Gcm8BbTaAj)
+[![Discord](https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord)](https://discord.gg/Gcm8BbTaAj)
 
 # Rerun Rust logging SDK
 Log rich data, such as images and point clouds, and visualize it live or after the fact, with time scrubbing.
@@ -24,7 +24,7 @@ rerun::MsgSender::new("points")
     .send(&mut rerun::global_session())?;
 
 rerun::MsgSender::new("image")
-    .with_component(&[rerun::components::Tensor::from_image(image)])?
+    .with_component(&[rerun::components::Tensor::from_image(image)?])?
     .send(&mut rerun::global_session())?;
 ```
 
