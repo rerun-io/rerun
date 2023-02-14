@@ -18,5 +18,5 @@ def _send_warning(message: str, depth_to_user_code: int) -> None:
     """Sends a warning about the usage of the Rerun SDK."""
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
-    log_text_entry("rerun", warning, LogLevel.WARN)
+    log_text_entry("rerun", warning, level=LogLevel.WARN)
     logging.warning(warning)

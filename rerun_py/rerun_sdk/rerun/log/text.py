@@ -96,6 +96,7 @@ class LoggingHandler(logging.Handler):
 def log_text_entry(
     entity_path: str,
     text: str,
+    *,
     level: Optional[str] = LogLevel.INFO,
     color: Optional[Sequence[int]] = None,
     ext: Optional[Dict[str, Any]] = None,

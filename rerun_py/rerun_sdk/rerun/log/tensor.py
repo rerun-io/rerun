@@ -40,20 +40,21 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
 def log_tensor(
     entity_path: str,
     tensor: npt.ArrayLike,
+    *,
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
     """
-    Log an arbitrary-dimensional tensor.
+    Log an n-dimensional tensor.
 
     Parameters
     ----------
     entity_path:
         Path to the tensor in the space hierarchy.
     tensor:
-        A [Tensor][rerun.log.tensor.Tensor] objector.
+        A [Tensor][rerun.log.tensor.Tensor] object.
     names:
         Optional names for each dimension of the tensor.
     meter:

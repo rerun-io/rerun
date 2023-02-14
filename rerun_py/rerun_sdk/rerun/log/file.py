@@ -44,7 +44,7 @@ def log_mesh_file(
     mesh_format: MeshFormat,
     mesh_file: bytes,
     *,
-    transform: Optional[npt.NDArray[np.float32]] = None,
+    transform: Optional[npt.ArrayLike] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -100,7 +100,7 @@ def log_image_file(
     """
     Log an image file given its contents or path on disk.
 
-    Only JPEGs supported right now.
+    Only JPEGs are supported right now.
 
     You must pass either `img_bytes` or `img_path`.
 
