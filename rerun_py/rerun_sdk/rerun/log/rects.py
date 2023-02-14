@@ -46,7 +46,7 @@ def log_rect(
     entity_path:
         Path to the rectangle in the space hierarchy.
     rect:
-        the recangle in [x, y, w, h], or some format you pick with the `rect_format` argument.
+        the rectangle in [x, y, w, h], or some format you pick with the `rect_format` argument.
     rect_format:
         how to interpret the `rect` argument
     color:

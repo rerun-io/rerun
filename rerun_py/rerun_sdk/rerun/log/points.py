@@ -31,7 +31,7 @@ __all__ = [
 
 def log_point(
     entity_path: str,
-    position: Union[Sequence[float], npt.NDArray[np.float32], None],
+    position: Optional[npt.ArrayLike] = None,
     *,
     radius: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
@@ -133,9 +133,9 @@ def log_point(
 
 def log_points(
     entity_path: str,
-    positions: Union[Sequence[Sequence[float]], Optional[npt.NDArray[np.float32]]],
+    positions: Optional[npt.ArrayLike] = None,
     *,
-    identifiers: Optional[Union[Sequence[int], npt.NDArray[Any]]] = None,
+    identifiers: Optional[npt.ArrayLike] = None,
     colors: Optional[Union[Color, Colors]] = None,
     radii: Optional[npt.ArrayLike] = None,
     labels: Optional[Sequence[str]] = None,
