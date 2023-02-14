@@ -33,7 +33,13 @@ def log_obb(
     timeless: bool = False,
 ) -> None:
     """
-    Log a 3D oriented bounding box.
+    Log a 3D Oriented Bounding Box, or OBB.
+
+    Example:
+    --------
+    ```
+    rr.log_obb("my_obb", half_size=[1.0, 2.0, 3.0], position=[0, 0, 0], rotation_q=[0, 0, 0, 1])
+    ```
 
     Parameters
     ----------
@@ -42,13 +48,13 @@ def log_obb(
     half_size:
         Array with [x, y, z] half dimensions of the OBB.
     position:
-        Array with [x, y, z] position of the OBB in world space.
+        Optional array with [x, y, z] position of the OBB in world space.
     rotation_q:
-        Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
+        Optional array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
     color:
         Optional RGB or RGBA triplet in 0-255 sRGB.
     stroke_width:
-        Optional width of the OBB edges.
+        Optional width of the line edges.
     label:
         Optional text label placed at `position`.
     class_id:
