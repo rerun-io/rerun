@@ -10,13 +10,11 @@ use rerun::components::{
 use rerun::demo_util::{bounce_lerp, color_spiral};
 use rerun::external::glam;
 use rerun::time::{Time, TimeType, Timeline};
-use rerun::{MsgSender, Session};
+use rerun::{MsgSender, MsgSenderError, Session};
 
 const NUM_POINTS: usize = 100;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut session = Session::init("DNA Abacus", true);
-
+fn run(mut session: Session) -> Result<(), MsgSenderError> {
     let stable_time = Timeline::new("stable_time", TimeType::Time);
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
@@ -94,7 +92,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .send(&mut session)?;
     }
 
-    session.show()?;
-
     Ok(())
+}
+
+fn main() {
+    let session = Session::init("DNA Abacus", true);
+
+    session.spawn(run).unwrap();
 }
