@@ -153,6 +153,7 @@ impl SpaceViewHighlights {
 
 /// Selection and hover state
 #[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct SelectionState {
     /// Currently selected things; shown in the [`crate::selection_panel::SelectionPanel`].
     ///

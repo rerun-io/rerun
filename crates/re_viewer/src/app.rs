@@ -485,12 +485,14 @@ impl eframe::App for App {
                     });
                 let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
 
-                self.state
-                    .recording_configs
-                    .entry(self.state.selected_rec_id)
-                    .or_default()
-                    .selection_state
-                    .on_frame_start(log_db, blueprint);
+                recording_config_entry(
+                    &mut self.state.recording_configs,
+                    self.state.selected_rec_id,
+                    self.rx.source(),
+                    log_db,
+                )
+                .selection_state
+                .on_frame_start(log_db, blueprint);
 
                 {
                     // TODO(andreas): store the re_renderer somewhere else.
@@ -513,6 +515,7 @@ impl eframe::App for App {
                             log_db,
                             &self.re_ui,
                             &self.component_ui_registry,
+                            self.rx.source(),
                         );
                     }
                 }
@@ -902,6 +905,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
+        data_source: &re_smart_channel::Source,
     ) {
         crate::profile_function!();
 
@@ -919,7 +923,8 @@ impl AppState {
                 profiler: _,
         } = self;
 
-        let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
+        let rec_cfg =
+            recording_config_entry(recording_configs, *selected_rec_id, data_source, log_db);
         let selected_app_id = log_db
             .recording_info()
             .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1651,4 +1656,40 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
             None
         }
     }
+}
+
+fn recording_config_entry<'cfgs>(
+    configs: &'cfgs mut IntMap<RecordingId, RecordingConfig>,
+    id: RecordingId,
+    data_source: &'_ re_smart_channel::Source,
+    log_db: &'_ LogDb,
+) -> &'cfgs mut RecordingConfig {
+    configs
+        .entry(id)
+        .or_insert_with(|| new_recording_confg(data_source, log_db))
+}
+
+fn new_recording_confg(
+    data_source: &'_ re_smart_channel::Source,
+    log_db: &'_ LogDb,
+) -> RecordingConfig {
+    use crate::misc::time_control::PlayState;
+
+    let play_state = match data_source {
+        // Play files from the start by default - it feels nice and alive
+        re_smart_channel::Source::File { .. } => PlayState::Playing,
+
+        // Live data - follow it!
+        re_smart_channel::Source::Sdk
+        | re_smart_channel::Source::WsClient { .. }
+        | re_smart_channel::Source::TcpServer { .. } => PlayState::Following,
+    };
+
+    let mut rec_cfg = RecordingConfig::default();
+
+    rec_cfg
+        .time_ctrl
+        .set_play_state(log_db.times_per_timeline(), play_state);
+
+    rec_cfg
 }
