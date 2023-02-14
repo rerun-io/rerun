@@ -24,7 +24,7 @@ rerun::MsgSender::new("points")
     .send(&mut rerun::global_session())?;
 
 rerun::MsgSender::new("image")
-    .with_component(&[rerun::component::Tensor::from_image(image)])?
+    .with_component(&[rerun::components::Tensor::from_image(image)])?
     .send(&mut rerun::global_session())?;
 ```
 
@@ -57,5 +57,5 @@ The web viewer is an experimental feature, but you can try it out with:
 
 ```sh
 cargo install --features web rerun
-rerun -- --web-viewer ../nyud.rrd
+rerun --web-viewer ../nyud.rrd
 ```
