@@ -58,6 +58,8 @@ jobs:
   # ---------------------------------------------------------------------------
 
   matrix-setup:
+    # Building all the wheels is expensive, so we only run this job when we push (to main or release tags),
+    # or if the PR has the 'build wheels' label for explicit testing of wheels.
     if: github.event.type == 'push' || contains( github.event.pull_request.labels.*.name, '🛞 build wheels')
     runs-on: ubuntu-latest
 
