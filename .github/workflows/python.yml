@@ -58,13 +58,16 @@ jobs:
   # ---------------------------------------------------------------------------
 
   matrix-setup:
-    if: ${{ github.event.type == 'push' }} || ${{ github.event.label.name == '🛞 build wheels' }}
+    if: github.event.type == 'push' || github.event.label.name == '🛞 build wheels'
     runs-on: ubuntu-latest
 
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
     steps:
+      - name: Dump GitHub context
+        id: github_context_step
+        run: echo '${{ toJSON(github) }}'
       # Sets TAGGED_OR_MAIN if this workflow is running on a tag or the main branch.
       - name: Set TAGGED_OR_MAIN
         if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
