@@ -64,7 +64,7 @@ Some shortcomings:
   - We plan on having a disk-based data store some time in the future
   - Additionally, Rerun is using more memory than it should at the moment ([#1242](https://github.com/rerun-io/rerun/pull/1242))
 * The Rust library takes a long time to compile
-  - We have way too many big dependencies, and we are planning on improving the situation.
+  - We have way too many big dependencies, and we are planning on improving the situation ([#1316](https://github.com/rerun-io/rerun/pull/1316))
 
 
 ## Business model
