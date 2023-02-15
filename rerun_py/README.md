@@ -14,7 +14,7 @@ It lets you debug and understand the internal state and data of your systems wit
 pip3 install rerun-sdk
 ```
 
-ℹ️ Note:  
+ℹ️ Note:
 The Python module is called `rerun`, while the package published on PyPI is `rerun-sdk`.
 
 ## Example
@@ -32,6 +32,7 @@ rr.log_points("my_points", positions=positions, colors=colors)
 
 ## Resources
 * [Quick start](https://www.rerun.io/docs/getting-started/python)
+* [Python API docs](https://ref.rerun.io/docs/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
@@ -68,7 +69,7 @@ python3 -m pip install --upgrade pip
 pip3 install maturin "./rerun_py"
 ```
 
-ℹ️ Note:  
+ℹ️ Note:
 If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip3 install` command.
 
 ## Development
