@@ -38,6 +38,8 @@ The datasets will be added to a subdir called `dataset`, which is in the repo-wi
 
 A minimal example, showing how to log a point cloud.
 
+<img width="712" alt="image" src="https://user-images.githubusercontent.com/1148717/219135171-f8681819-d0ed-45d4-8d41-d54b15f21aa8.png">
+
 ### [`api_demo`](api_demo)
 
 `cargo run -p api_demo`
