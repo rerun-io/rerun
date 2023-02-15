@@ -25,18 +25,18 @@ just py-docs-serve
 ### How versioned docs are generated and served
 Our documentation is versioned with releases and generated via [mike](https://github.com/jimporter/mike)
 
-The documentation exists as a [Github Pages](https://pages.github.com/) project which is hosted from the
+The documentation exists as a [GitHub Pages](https://pages.github.com/) project which is hosted from the
 contents of the `gh-pages` branch.
 
 `mike` updates this branch with new content as part of CI
 
 Every commit that lands to main will generate bleeding edge documentation as HEAD. Behind the scenes, a
-github action is just running:
+GitHub action is just running:
 ```
 mike deploy -F rerun_py/mkdocs.yml HEAD
 ```
 
-On release, when github sees a new tag: `X.Y.Z`, the github action will instead deploy with a version tag:
+On release, when GitHub sees a new tag: `X.Y.Z`, the GitHub action will instead deploy with a version tag:
 ```
 mike deploy -F rerun_py/mkdocs.yml X.Y.Z latest
 ```

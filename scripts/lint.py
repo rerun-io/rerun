@@ -23,6 +23,12 @@ def lint_line(line: str) -> Optional[str]:
     if "NOLINT" in line:
         return None  # NOLINT ignores the linter
 
+    if "Github" in line:
+        return "It's 'GitHub', not 'Github'"
+
+    if " github " in line:
+        return "It's 'GitHub', not 'github'"
+
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
 
