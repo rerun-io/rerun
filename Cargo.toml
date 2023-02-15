@@ -87,3 +87,6 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
+# Upstream PR https://github.com/baoyachi/shadow-rs/pull/128
+shadow-rs = { git = "https://github.com/rerun-io/shadow-rs", branch = "john/fix_gen_docs" }

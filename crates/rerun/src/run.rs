@@ -19,7 +19,7 @@ use clap::Subcommand;
 ///
 /// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
 #[derive(Debug, clap::Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = crate::build::CLAP_LONG_VERSION, about)]
 struct Args {
     /// Either a path to a `.rrd` file to load, or a websocket url to a Rerun Server from which to read data
     ///

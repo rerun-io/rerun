@@ -66,6 +66,7 @@ crossbeam = "0.8"
 document-features = "0.2"
 egui = { workspace = true, default-features = false }
 puffin.workspace = true
+shadow-rs = "0.20"
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
@@ -81,3 +82,6 @@ clap = { workspace = true, features = ["derive"] }
 mimalloc = "0.1.29"
 puffin_http = "0.11"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+shadow-rs = "0.20"
