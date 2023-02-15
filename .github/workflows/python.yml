@@ -6,6 +6,7 @@ on:
       - "rerun_py/**"
       - "examples/python/**"
       - ".github/workflows/python.yml"
+    types: [labeled, synchronize, opened]
   push:
     branches:
       - "main"
@@ -57,6 +58,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   matrix-setup:
+    if: ${{ github.event.type == 'push' }} || ${{ github.event.label.name == '🛞 build wheels' }}
     runs-on: ubuntu-latest
 
     outputs:
