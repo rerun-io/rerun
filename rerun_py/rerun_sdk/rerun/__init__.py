@@ -1,10 +1,10 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 
 import atexit
-import semver
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
+import semver
 from rerun.log import log_cleared
 from rerun.log.annotation import log_annotation_context
 from rerun.log.arrow import log_arrow
