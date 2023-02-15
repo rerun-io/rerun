@@ -211,6 +211,7 @@ impl TimePanel {
             let size = egui::vec2(self.prev_col_width, 28.0);
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
+                ui.style_mut().wrap = Some(false);
                 ui.add_space(4.0); // hack to vertically center the text
                 ui.strong("Streams");
             })
