@@ -42,7 +42,7 @@ clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
 ecolor = "0.21.0"
-eframe = { version = "0.21.2", default-features = false }
+eframe = { version = "0.21.3", default-features = false }
 egui = "0.21.0"
 egui_dock = "0.4"
 egui_extras = "0.21.0"
