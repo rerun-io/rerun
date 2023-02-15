@@ -92,6 +92,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     global_session().set_recording_id(default_recording_id(py));
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
+    m.add_function(wrap_pyfunction!(get_version, m)?)?;
 
     m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
 
@@ -209,6 +210,11 @@ fn main(argv: Vec<String>) -> PyResult<u8> {
         .unwrap()
         .block_on(rerun::run(rerun::CallSource::Python, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
+}
+
+#[pyfunction]
+fn get_version() -> &'static str {
+    rerun::build::PKG_VERSION
 }
 
 #[pyfunction]

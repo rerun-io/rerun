@@ -1,6 +1,7 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 
 import atexit
+import semver
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -71,6 +72,19 @@ def unregister_shutdown() -> None:
 
 
 # -----------------------------------------------------------------------------
+
+
+def get_version() -> semver.VersionInfo:
+    """
+    Get the version of the Rerun SDK.
+
+    Returns
+    -------
+    semver.VersionInfo
+        The version of the Rerun SDK.
+
+    """
+    return semver.parse_version_info(bindings.get_version())
 
 
 def get_recording_id() -> str:
