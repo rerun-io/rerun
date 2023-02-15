@@ -143,7 +143,7 @@ jobs:
         run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
 
       # The last step of setup_web.sh, for Windows.
-      # Since 'winget' is not available within the github runner, we download the package directly:
+      # Since 'winget' is not available within the GitHub runner, we download the package directly:
       # See: https://github.com/marketplace/actions/engineerd-configurator
       - name: Install binaryen for building the web-viewer Wasm on windows
         if: matrix.platform == 'windows'
@@ -235,7 +235,7 @@ jobs:
           name: wheels
           path: dist
 
-      - name: Github Release
+      - name: GitHub Release
         uses: softprops/action-gh-release@v0.1.15
         with:
           body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
@@ -262,7 +262,7 @@ jobs:
           name: wheels
           path: dist
 
-      - name: Github Release
+      - name: GitHub Release
         uses: softprops/action-gh-release@v0.1.15
         with:
           prerelease: false
@@ -273,7 +273,7 @@ jobs:
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
-          # These are both set in the Github project configuration
+          # These are both set in the GitHub project configuration
           MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
           MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
         with:
