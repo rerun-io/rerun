@@ -8,7 +8,6 @@ LABEL description="Docker image used for the CI of https://github.com/rerun-io/r
 # Install the ubuntu package dependencies
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    binaryen \
     build-essential \
     curl \
     git \
@@ -28,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
-# We need a more modern patchelf than ships on ubuntu
+# We need a more modern patchelf than ships on ubuntu-20.04
 RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
 
 ENV RUSTUP_HOME=/usr/local/rustup \
@@ -64,6 +63,9 @@ RUN pip install -r requirements-build.txt
 
 # Install some additional versioned cargo tools
 RUN cargo install wasm-bindgen-cli@0.2.84
+
+# We need a more modern binaryen than ships on ubuntu-20.4
+RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
 ENV CACHE_KEY=rerun_docker_v0.5
