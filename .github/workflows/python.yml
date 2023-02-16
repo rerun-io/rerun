@@ -90,7 +90,7 @@ jobs:
             matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
           fi
           matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
-          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores"}')
+          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores", container: "ci_docker:0.5"}')
 
           echo "Matrix values: ${matrix[@]}"
 
@@ -108,6 +108,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
       - name: Cache APT Packages
         if: matrix.platform == 'linux'
         uses: awalsh128/cache-apt-pkgs-action@v1.2.2
@@ -125,6 +128,9 @@ jobs:
           # the cache. Better cross-job sequencing would be nice here
           save-if: False
 
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
       - name: Setup python
         uses: actions/setup-python@v4
         with:
