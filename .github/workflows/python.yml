@@ -152,7 +152,7 @@ jobs:
       # Unfortunately, we can't run that on Windows, because Windows doesn't come with
       # a package manager like grown-up OSes do (at least not the CI version of Windows).
       # Also we can't run it on linux because the 20.04 Docker container will install
-      # an old version that barfs on the --fast-math flag
+      # an old version of binaryen/wasm-opt that barfs on the `--fast-math` flag
       # So we only run the script on macos, and then on Windows we do the parts of the script manually.
       # On ubuntu, the correct packages are pre-installed in our docker container.
 
@@ -238,7 +238,7 @@ jobs:
         shell: bash
         run: |
           mkdir dist
-          wheel pack pre-dist/rerun_sdk-* --dest dist/
+          wheel pack pre-dist/rerun_sdk-*/ --dest dist/
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
