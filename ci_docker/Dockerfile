@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-shape0-dev \
     libxcb-xfixes0-dev \
     libxkbcommon-dev \
+    lsb-release \
     python3-pip \
     sudo \
     wget && \
