@@ -209,11 +209,12 @@ jobs:
             --universal2
             --out pre-dist
 
-      - name: Install built wheel and run tests
+      - name: Install built wheel
         run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest #TODO(john) move to requirements-build.txt
-          cd rerun_py/tests && pytest
+          pip install rerun-sdk --find-links pre-dist --force-reinstall
+
+      - name: Run tests
+        run: cd rerun_py/tests && pytest
 
       - name: Unpack the wheel
         run: wheel unpack pre-dist/*.whl --dest pre-dist
