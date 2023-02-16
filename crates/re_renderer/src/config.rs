@@ -90,14 +90,20 @@ pub struct RenderContextConfig {
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.
 pub fn supported_backends() -> wgpu::Backends {
-    // Native - we primarily test Vulkan & Metal
-    // DX12 is added since as of writing some Windows VMs provide DX12 but no Vulkan drivers.
-    // We want to keep this list small in order to keep variance low!
+    // Native.
+    // Only use Vulkan & Metal unless explicitly told so since this reduces surfaces and thus surprises.
+    //
+    // Bunch of cases where it's still useful to switch though:
+    // * Some Windows VMs only provide DX12 drivers, observed with Parallels on Apple Silicon
+    // * May run into Linux issues that warrant trying out the GL backend.
+    //
+    // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
     #[cfg(not(target_arch = "wasm32"))]
     {
-        wgpu::Backends::VULKAN | wgpu::Backends::DX12 | wgpu::Backends::METAL
+        wgpu::util::backend_bits_from_env()
+            .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
     }
-    // Web - we support only WebGL right now!
+    // Web - we support only WebGL right now, WebGPU should work but hasn't been tested.
     #[cfg(target_arch = "wasm32")]
     {
         wgpu::Backends::GL

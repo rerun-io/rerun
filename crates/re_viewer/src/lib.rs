@@ -96,6 +96,8 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
             }),
             backends: re_renderer::config::supported_backends(),
             device_descriptor: crate::hardware_tier().device_descriptor(),
+            // TODO(andreas): This should be the default for egui-wgpu.
+            power_preference: wgpu::util::power_preference_from_env().unwrap_or(wgpu::PowerPreference::HighPerformance),
             ..Default::default()
         }
 }
