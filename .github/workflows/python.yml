@@ -151,11 +151,13 @@ jobs:
       # We have a nice script for that: ./scripts/setup_web.sh
       # Unfortunately, we can't run that on Windows, because Windows doesn't come with
       # a package manager like grown-up OSes do (at least not the CI version of Windows).
-      # So we only run the script on !Windows, and then on Windows we do the parts of the script manually.
-      # That way we still get to test the script on Linux and Mac.
+      # Also we can't run it on linux because the 20.04 Docker container will install
+      # an old version that barfs on the --fast-math flag
+      # So we only run the script on macos, and then on Windows we do the parts of the script manually.
+      # On ubuntu, the correct packages are pre-installed in our docker container.
 
       - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
-        if: matrix.platform != 'windows'
+        if: matrix.platform == 'macos'
         shell: bash
         run: ./scripts/setup_web.sh
 
