@@ -192,8 +192,29 @@ jobs:
         run: |
           python scripts/version_util.py --check_version
 
-      - name: Build and install rerun
-        run: pip install rerun_py/
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --no-default-features
+            --features pypi
+            --universal2
+            --out pre-dist
+
+      - name: Install built wheel and run tests
+        run: |
+          pip install rerun-sdk --find-links dist --force-reinstall
+          pip install pytest #TODO(john) move to requirements-build.txt
+          cd rerun_py/tests && pytest
+
+      - name: Unpack the wheel
+        run: wheel unpack pre-dist/*.whl --dest pre-dist
 
       - name: Cache RRD dataset
         id: dataset
@@ -209,33 +230,13 @@ jobs:
         run: |
           pip install -r examples/python/colmap/requirements.txt
           python examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
-          cp colmap.rrd rerun_py/rerun_sdk/rerun_demo/colmap.rrd
+          cp colmap.rrd pre-dist/rerun_sdk-*/rerun_sdk/rerun_demo/colmap.rrd
 
-      - name: Build Wheel
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "0.14.10"
-          manylinux: manylinux_2_31
-          container: off
-          command: build
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --no-default-features
-            --features pypi
-            --universal2
-            --out dist
-
-      - name: Install built wheel
+      - name: Repack the wheel
+        shell: bash
         run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest #TODO(john) move to requirements-build.txt
-          cd rerun_py/tests && pytest
-
-      - name: Run Car example
-        run: |
-          pip install -r examples/python/car/requirements.txt
-          python examples/python/car/main.py --headless
+          mkdir dist
+          wheel pack pre-dist/rerun_sdk-* --dest dist/
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
