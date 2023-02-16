@@ -210,7 +210,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
-          manylinux: auto
+          manylinux: manylinux_2_31
           container: off
           command: build
           args: |
