@@ -5,8 +5,6 @@ LABEL maintainer="opensource@rerun.io"
 LABEL version="0.5"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
-ENV foo=1
-
 # Install the ubuntu package dependencies
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -25,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-xfixes0-dev \
     libxkbcommon-dev \
     python3-pip \
+    sudo \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
