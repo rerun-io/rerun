@@ -4435,10 +4435,12 @@ name = "rerun"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "backtrace",
  "clap 4.1.4",
  "crossbeam",
  "document-features",
  "egui",
+ "libc",
  "mimalloc",
  "puffin",
  "puffin_http",
