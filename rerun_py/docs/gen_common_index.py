@@ -10,7 +10,6 @@ Function | Description
 [rerun.set_recording_id()](initialization/#rerun.set_recording_id) | Set the recording ID ...
 [rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the ...
 [rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer ...
-
 ...
 
 The Summary should look like:
@@ -163,6 +162,13 @@ hide:
 * [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+
+There are many different ways of sending data to the Rerun Viewer depending on what you're trying
+to achieve and whether the viewer is running in the same process as your code, in another process,
+or even as a separate web application.
+
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+overview of what's possible and how.
 
 # APIs
 """
