@@ -1551,6 +1551,27 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
                 std::ptr::write_volatile(bad_ptr, 1);
             }
         }
+
+        if ui.button("Stack overflow").clicked() {
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            fn recurse(data: u64) -> u64 {
+                let mut buff = [0u8; 256];
+                buff[..9].copy_from_slice(b"junk data");
+
+                let mut result = data;
+                for c in buff {
+                    result += c as u64;
+                }
+
+                if result == 0 {
+                    result
+                } else {
+                    recurse(result) + 1
+                }
+            }
+
+            recurse(42);
+        }
     });
 }
 
