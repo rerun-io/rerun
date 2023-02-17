@@ -380,7 +380,7 @@ impl TextureManager3D {
     /// Retrieves gpu handle.
     ///
     /// TODO(andreas): Lifetime dependency from incoming and returned handle will likely be removed in the future.
-    #[allow(clippy::unnecessary_wraps, clippy::unused_self)]
+    #[allow(clippy::unnecessary_wraps, clippy::unused_self, dead_code)]
     pub(crate) fn get<'a>(
         &self,
         handle: &'a GpuTexture3DHandle,
