@@ -90,7 +90,7 @@ jobs:
             matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
           fi
           matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
-          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores"}')
+          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.5"}}')
 
           echo "Matrix values: ${matrix[@]}"
 
@@ -105,15 +105,20 @@ jobs:
 
     runs-on: ${{ matrix.runs_on }}
 
+    container: ${{ matrix.container }}
+
     steps:
       - uses: actions/checkout@v3
 
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
       - name: Cache APT Packages
         if: matrix.platform == 'linux'
         uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         with:
           packages: ${{ env.UBUNTU_REQUIRED_PKGS }}
-          version: 1.0
+          version: 2.0 # Increment this to pull newer packages
           execute_install_scripts: true
 
       - name: Set up cargo cache
@@ -125,13 +130,19 @@ jobs:
           # the cache. Better cross-job sequencing would be nice here
           save-if: False
 
+      # The pip-cache setup logic doesn't work in the ubuntu docker container
+      # That's probably fine since we bake these deps into the container already
       - name: Setup python
+        if: matrix.platform != 'linux'
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
           cache-dependency-path: "rerun_py/requirements-build.txt"
 
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
       - run: pip install -r rerun_py/requirements-build.txt
 
       # ----------------------------------------------------------------------------------
@@ -140,11 +151,13 @@ jobs:
       # We have a nice script for that: ./scripts/setup_web.sh
       # Unfortunately, we can't run that on Windows, because Windows doesn't come with
       # a package manager like grown-up OSes do (at least not the CI version of Windows).
-      # So we only run the script on !Windows, and then on Windows we do the parts of the script manually.
-      # That way we still get to test the script on Linux and Mac.
+      # Also we can't run it on linux because the 20.04 Docker container will install
+      # an old version of binaryen/wasm-opt that barfs on the `--fast-math` flag
+      # So we only run the script on macos, and then on Windows we do the parts of the script manually.
+      # On ubuntu, the correct packages are pre-installed in our docker container.
 
       - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
-        if: matrix.platform != 'windows'
+        if: matrix.platform == 'macos'
         shell: bash
         run: ./scripts/setup_web.sh
 
@@ -181,8 +194,38 @@ jobs:
         run: |
           python scripts/version_util.py --check_version
 
-      - name: Build and install rerun
-        run: pip install rerun_py/
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --no-default-features
+            --features pypi
+            --universal2
+            --out pre-dist
+
+      - name: Install built wheel
+        run: |
+          pip install rerun-sdk --find-links pre-dist --force-reinstall
+
+      - name: Run tests
+        run: cd rerun_py/tests && pytest
+
+      - name: Unpack the wheel
+        shell: bash
+        run: |
+          mkdir unpack-dist
+          wheel unpack pre-dist/*.whl --dest unpack-dist
+
+      - name: Get the folder name
+        shell: bash
+        run: |
+          echo "pkg_folder=$(ls unpack-dist)" >> $GITHUB_ENV
 
       - name: Cache RRD dataset
         id: dataset
@@ -197,34 +240,14 @@ jobs:
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
           pip install -r examples/python/colmap/requirements.txt
-          python examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
-          cp colmap.rrd rerun_py/rerun_sdk/rerun_demo/colmap.rrd
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
+          cp colmap.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap.rrd
 
-      - name: Build Wheel
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "0.14.10"
-          manylinux: auto
-          container: off
-          command: build
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --no-default-features
-            --features pypi
-            --universal2
-            --out dist
-
-      - name: Install built wheel
+      - name: Repack the wheel
+        shell: bash
         run: |
-          pip install rerun-sdk --find-links dist --force-reinstall
-          pip install pytest #TODO(john) move to requirements-build.txt
-          cd rerun_py/tests && pytest
-
-      - name: Run Car example
-        run: |
-          pip install -r examples/python/car/requirements.txt
-          python examples/python/car/main.py --headless
+          mkdir dist
+          wheel pack unpack-dist/${{ env.pkg_folder }} --dest dist/
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
