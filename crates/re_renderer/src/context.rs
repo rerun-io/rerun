@@ -184,6 +184,7 @@ impl RenderContext {
 
         self.mesh_manager.frame_maintenance(self.frame_index);
         self.texture_manager_2d.frame_maintenance(self.frame_index);
+        self.texture_manager_3d.frame_maintenance(self.frame_index);
 
         {
             let WgpuResourcePools {
