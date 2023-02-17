@@ -39,6 +39,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     RUST_VERSION=1.67 \
     RUSTUP_VERSION=1.25.2
 
+# Install Rust
 # Borrowed from: https://github.com/rust-lang/docker-rust/blob/master/1.67.1/bookworm/Dockerfile
 RUN set -eux; \
     rustArch='x86_64-unknown-linux-gnu'; \
