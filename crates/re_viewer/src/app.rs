@@ -1514,23 +1514,44 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
 
     ui.separator();
 
-    #[allow(clippy::manual_assert)]
-    if ui.button("panic!").clicked() {
-        panic!("Intentional panic");
-    }
-
-    if ui.button("panic! during unwind").clicked() {
-        struct PanicOnDrop {}
-
-        impl Drop for PanicOnDrop {
-            fn drop(&mut self) {
-                panic!("Second intentional panic in Drop::drop");
-            }
+    ui.menu_button("Crash", |ui| {
+        #[allow(clippy::manual_assert)]
+        if ui.button("panic!").clicked() {
+            panic!("Intentional panic");
         }
 
-        let _this_will_panic_when_dropped = PanicOnDrop {};
-        panic!("First intentional panic");
-    }
+        if ui.button("panic! during unwind").clicked() {
+            struct PanicOnDrop {}
+
+            impl Drop for PanicOnDrop {
+                fn drop(&mut self) {
+                    panic!("Second intentional panic in Drop::drop");
+                }
+            }
+
+            let _this_will_panic_when_dropped = PanicOnDrop {};
+            panic!("First intentional panic");
+        }
+
+        if ui.button("SEGFAULT").clicked() {
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+
+            /// This is the fixed address used to generate a segfault. It's possible that
+            /// this address can be mapped and writable by the your process in which case a
+            /// crash may not occur
+            #[cfg(target_pointer_width = "64")]
+            pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
+            #[cfg(target_pointer_width = "32")]
+            pub const SEGFAULT_ADDRESS: u32 = 0x42;
+
+            let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
+            #[allow(unsafe_code)]
+            // SAFETY: this is not safe. We are _trying_ to crash.
+            unsafe {
+                std::ptr::write_volatile(bad_ptr, 1);
+            }
+        }
+    });
 }
 
 // ---
