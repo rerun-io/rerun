@@ -217,7 +217,15 @@ jobs:
         run: cd rerun_py/tests && pytest
 
       - name: Unpack the wheel
-        run: wheel unpack pre-dist/*.whl --dest pre-dist
+        shell: bash
+        run: |
+          mkdir unpack-dist
+          wheel unpack pre-dist/*.whl --dest unpack-dist
+
+      - name: Get the folder name
+        shell: bash
+        run: |
+          echo "pkg_folder=$(ls unpack-dist)" >> $GITHUB_ENV
 
       - name: Cache RRD dataset
         id: dataset
@@ -233,13 +241,13 @@ jobs:
         run: |
           pip install -r examples/python/colmap/requirements.txt
           python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
-          cp colmap.rrd pre-dist/rerun_sdk-*/rerun_sdk/rerun_demo/colmap.rrd
+          cp colmap.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap.rrd
 
       - name: Repack the wheel
         shell: bash
         run: |
           mkdir dist
-          wheel pack pre-dist/rerun_sdk-*/ --dest dist/
+          wheel pack unpack-dist/${{ env.pkg_folder }} --dest dist/
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
