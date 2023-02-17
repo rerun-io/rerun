@@ -90,6 +90,7 @@
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
+mod crash_handler;
 mod run;
 
 pub use run::{run, CallSource};
