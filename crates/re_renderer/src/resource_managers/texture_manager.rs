@@ -252,7 +252,6 @@ impl<'a> Texture3DCreationDesc<'a> {
 pub struct TextureManager3D {
     // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
     // optimize for short lived textures as we do with buffer data.
-    // TODO
     //manager: ResourceManager<Texture3DHandleInner, GpuTextureHandleStrong>,
     white_texture: GpuTexture3DHandle,
 
