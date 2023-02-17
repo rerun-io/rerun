@@ -20,7 +20,10 @@ macro_rules! include_file {
                 .unwrap()
                 .join($path);
 
-            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &file_path, false)).unwrap()
+            use anyhow::Context as _;
+            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &file_path, false))
+                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {file_path:?}", $path, file!()))
+                .unwrap()
         }
 
         #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
@@ -60,7 +63,10 @@ macro_rules! include_file {
             //
             // Therefore, the in-memory filesystem will actually be able to find this path,
             // and canonicalize it.
-            $crate::get_filesystem().canonicalize(&path).unwrap()
+            use anyhow::Context as _;
+            $crate::get_filesystem().canonicalize(&path)
+                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
+                .unwrap()
         }
     }};
 }
