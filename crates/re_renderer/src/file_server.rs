@@ -22,7 +22,7 @@ macro_rules! include_file {
 
             use anyhow::Context as _;
             $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &file_path, false))
-                .with_context(|| format!("include_file!({}) failed while trying to import physical path {file_path:?}", $path))
+                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {file_path:?}", $path, file!()))
                 .unwrap()
         }
 
@@ -65,7 +65,7 @@ macro_rules! include_file {
             // and canonicalize it.
             use anyhow::Context as _;
             $crate::get_filesystem().canonicalize(&path)
-                .with_context(|| format!("include_file!({}) failed while trying to import virtual path {path:?}", $path))
+                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
                 .unwrap()
         }
     }};
