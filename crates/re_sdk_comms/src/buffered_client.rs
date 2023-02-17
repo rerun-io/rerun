@@ -113,7 +113,7 @@ impl Client {
         self.send_msg_msg(MsgMsg::LogMsg(log_msg));
     }
 
-    /// Stall untill all messages so far has been sent.
+    /// Stall until all messages so far has been sent.
     pub fn flush(&mut self) {
         re_log::debug!("Flushing message queue…");
         self.send_msg_msg(MsgMsg::Flush);
