@@ -15,14 +15,32 @@ macro_rules! include_file {
 
             let mut resolver = $crate::new_recommended_file_resolver();
 
-            let file_path = ::std::path::Path::new(file!())
+            let root_path = ::std::path::PathBuf::from(file!());
+
+            // If we're building from within the workspace, `file!()` will return a relative path
+            // starting at the workspace root.
+            // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
+            // problems when publishing: as we lose workspace information when publishing!), so we
+            // need to make sure to strip the path down.
+            let root_path = root_path
+                .strip_prefix("crates/re_renderer")
+                .map_or_else(|_| root_path.clone(), ToOwned::to_owned);
+
+            let path = root_path
                 .parent()
                 .unwrap()
                 .join($path);
 
+            // If we're building from outside the workspace, `path` is an absolute path already and
+            // we're good to go; but if we're building from within, `path` is currently a relative
+            // path that assumes the CWD is the root of re_renderer, we need to make it absolute as
+            // there is no guarantee that this is where `cargo run` is being run from.
+            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let path = manifest_path.join(path);
+
             use anyhow::Context as _;
-            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &file_path, false))
-                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {file_path:?}", $path, file!()))
+            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false))
+                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {path:?}", $path, root_path))
                 .unwrap()
         }
 
