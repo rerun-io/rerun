@@ -185,14 +185,14 @@ jobs:
         # After patching the pre-release version, run cargo check.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
-          python scripts/version_util.py --patch_prerelease
+          python3 scripts/version_util.py --patch_prerelease
           cargo check
 
       - name: Version check for tagged-release
         if: startsWith(github.ref, 'refs/tags/v')
         # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
         run: |
-          python scripts/version_util.py --check_version
+          python3 scripts/version_util.py --check_version
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
