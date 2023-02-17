@@ -168,6 +168,8 @@ fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliEr
 }
 
 async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
+    install_panic_hook();
+
     let mut profiler = re_viewer::Profiler::default();
     if args.profile {
         profiler.start();
@@ -320,4 +322,18 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
+}
+
+fn install_panic_hook() {
+    let previous_panic_hook = std::panic::take_hook();
+
+    std::panic::set_hook(Box::new(move |panic_info: &std::panic::PanicInfo<'_>| {
+        // The prints the callstack etc
+        (*previous_panic_hook)(panic_info);
+
+        eprintln!(
+            "\n\
+            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting"
+        );
+    }));
 }
