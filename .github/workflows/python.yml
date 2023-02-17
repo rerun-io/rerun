@@ -232,7 +232,7 @@ jobs:
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
           pip install -r examples/python/colmap/requirements.txt
-          python examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
           cp colmap.rrd pre-dist/rerun_sdk-*/rerun_sdk/rerun_demo/colmap.rrd
 
       - name: Repack the wheel
