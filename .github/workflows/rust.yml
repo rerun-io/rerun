@@ -34,7 +34,7 @@ jobs:
 
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.4
+      image: rerunio/ci_docker:0.5
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -89,7 +89,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.4
+      image: rerunio/ci_docker:0.5
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -186,7 +186,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.4
+      image: rerunio/ci_docker:0.5
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -227,7 +227,7 @@ jobs:
     name: Check Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.4
+      image: rerunio/ci_docker:0.5
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
