@@ -55,8 +55,7 @@ RUN set -eux; \
     rustc --version;
 
 # Install some cargo tools we know we'll always need
-# We do this first in its own layer because the layer is quite large (500MB+)
-# And updating the crates.io index is one of the slower steps
+# We can't do this until after we've installed rust / cargo above
 RUN cargo install cargo-deny && \
     cargo install cargo-cranky
 
@@ -64,10 +63,9 @@ RUN cargo install cargo-deny && \
 ADD rerun_py/requirements-build.txt requirements-build.txt
 RUN pip install -r requirements-build.txt
 
-# Install some additional versioned cargo tools
+# Install tools from setup_web.sh
 RUN cargo install wasm-bindgen-cli@0.2.84
-
-# We need a more modern binaryen than ships on ubuntu-20.4
+# Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
