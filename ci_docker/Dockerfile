@@ -27,6 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
+# Need a more recent pip for manylinux packages to work properly
+RUN python3 -m pip install -U pip
+
 # We need a more modern patchelf than ships on ubuntu-20.04
 RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
 
@@ -72,3 +75,4 @@ ENV CACHE_KEY=rerun_docker_v0.5
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'
+
