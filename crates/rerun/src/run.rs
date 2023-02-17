@@ -17,7 +17,16 @@ use clap::Subcommand;
 ///
 /// Environment variables:
 ///
+/// * `RERUN`: force enable/disable logging with rerun (only relevant for the Rerun API, not the Viewer itself). Either `on`/`1`/`true` or `off`/`0`/`false`
+///
+/// * `RERUN_SHADER_PATH`: change the search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
+///
 /// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+///
+/// * `WGPU_BACKEND`: overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
+///     Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
+///
+/// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
