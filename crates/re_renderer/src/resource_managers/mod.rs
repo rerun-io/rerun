@@ -10,7 +10,10 @@ mod mesh_manager;
 pub use mesh_manager::{GpuMeshHandle, MeshManager};
 
 mod texture_manager;
-pub use texture_manager::{GpuTexture2DHandle, Texture2DCreationDesc, TextureManager2D};
+pub use texture_manager::{
+    GpuTexture2DHandle, GpuTexture3DHandle, Texture2DCreationDesc, Texture3DCreationDesc,
+    TextureManager2D, TextureManager3D,
+};
 
 mod resource_manager;
 pub use resource_manager::{ResourceHandle, ResourceLifeTime, ResourceManagerError};
