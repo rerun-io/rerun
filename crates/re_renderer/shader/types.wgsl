@@ -8,6 +8,8 @@ type UVec4 = vec4<u32>;
 type IVec2 = vec2<i32>;
 type IVec3 = vec3<i32>;
 type IVec4 = vec4<i32>;
+type Mat3 = mat4x3<f32>;
+type Mat4x3 = mat4x3<f32>;
 type Mat4 = mat4x4<f32>;
 
 const f32min = -3.4028235e38;
@@ -21,5 +23,5 @@ const X = Vec3(1.0, 0.0, 0.0);
 const Y = Vec3(0.0, 1.0, 0.0);
 const Z = Vec3(0.0, 0.0, 1.0);
 
-const ZERO = Vec3(0.0, 0.0, 0.0);
-const ONE  = Vec3(1.0, 1.0, 1.0);
+const ZERO = Vec4(0.0, 0.0, 0.0, 0.0);
+const ONE  = Vec4(1.0, 1.0, 1.0, 1.0);

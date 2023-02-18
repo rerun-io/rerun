@@ -16,6 +16,9 @@ pub use test_triangle::TestTriangleDrawData;
 mod rectangles;
 pub use rectangles::{RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect};
 
+mod volumes;
+pub use self::volumes::{Volume, VolumeDrawData, VolumeRenderer};
+
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
 pub use mesh_renderer::{MeshDrawData, MeshInstance};

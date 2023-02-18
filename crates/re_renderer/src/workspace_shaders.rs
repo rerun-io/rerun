@@ -86,6 +86,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/utils/cube.wgsl");
+        let content = include_str!("../shader/utils/cube.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/utils/depth_offset.wgsl");
         let content = include_str!("../shader/utils/depth_offset.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -118,6 +124,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/srgb.wgsl");
         let content = include_str!("../shader/utils/srgb.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/volume.wgsl");
+        let content = include_str!("../shader/volume.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 }
