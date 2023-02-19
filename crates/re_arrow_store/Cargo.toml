@@ -39,7 +39,7 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
 ] }
-chrono = "0.4"
+chrono.workspace = true # TODO(emilk): replace `chrono` with `time` crate
 document-features = "0.2"
 indent = "0.1"
 itertools = "0.10"

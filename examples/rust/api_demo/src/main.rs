@@ -591,18 +591,25 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
 enum Demo {
     #[value(name("bbox"))]
     BoundingBox,
+
     #[value(name("extension_components"))]
     ExtensionComponents,
+
     #[value(name("log_cleared"))]
     LogCleared,
+
     #[value(name("3d_points"))]
     Points3D,
+
     #[value(name("rects"))]
     Rects,
+
     #[value(name("segmentation"))]
     Segmentation,
+
     #[value(name("text"))]
     TextLogs,
+
     #[value(name("transforms_3d"))]
     Transforms3D,
 }
