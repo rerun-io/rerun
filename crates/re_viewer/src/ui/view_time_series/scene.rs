@@ -118,13 +118,15 @@ impl SceneTimeSeries {
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);
                         let label = annotation_info.label(label.map(|l| l.into()).as_ref());
 
+                        const DEFAULT_RADIUS: f32 = 0.75;
+
                         points.push(PlotPoint {
                             time: time.unwrap().as_i64(), // scalars cannot be timeless
                             value: scalar.into(),
                             attrs: PlotPointAttrs {
                                 label,
                                 color,
-                                radius: radius.map_or(1.0, |r| r.into()),
+                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.into()),
                                 scattered: props.map_or(false, |props| props.scattered),
                             },
                         });
@@ -169,7 +171,7 @@ impl SceneTimeSeries {
         let mut line: PlotSeries = PlotSeries {
             label: line_label.to_owned(),
             color: attrs.color,
-            width: attrs.radius,
+            width: 2.0 * attrs.radius,
             kind: if attrs.scattered {
                 PlotSeriesKind::Scatter
             } else {
@@ -199,7 +201,7 @@ impl SceneTimeSeries {
                     PlotSeries {
                         label: line_label.to_owned(),
                         color: attrs.color,
-                        width: attrs.radius,
+                        width: 2.0 * attrs.radius,
                         kind,
                         points: Vec::with_capacity(num_points - i),
                     },
