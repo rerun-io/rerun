@@ -1,5 +1,13 @@
 # Rerun changelog
 
+
+## Unreleased
+
+* 2023-02-19: Improve display of date-times in plots [#1356](https://github.com/rerun-io/rerun/pull/1356).
+
+
+## Pre-release
+
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
 * 2023-02-10: Add the ability to globally override logging-enabled with new env-var RERUN. [#1186](https://github.com/rerun-io/rerun/pull/1186).
