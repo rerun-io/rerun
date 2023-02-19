@@ -3,6 +3,8 @@ use egui::{
     Color32,
 };
 
+use re_arrow_store::TimeType;
+
 use crate::{ui::view_time_series::scene::PlotSeriesKind, ViewerContext};
 
 use super::SceneTimeSeries;
@@ -42,70 +44,85 @@ pub(crate) fn view_time_series(
         .unwrap_or(0);
 
     // …then use that as an offset to avoid nasty precision issues with
-    // large times (nanos since epoch does not fit into a f64).
-    let time_offset = min_time;
+    // large times (nanos since epoch does not fit into an f64).
+    let time_offset = if timeline.typ() == TimeType::Time {
+        // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
+        // we need to round to a whole day:
+        round_ns_to_start_of_day(min_time)
+    } else {
+        min_time
+    };
 
     // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
     let plot_id_src = ("plot", &timeline_name);
 
-    let egui::InnerResponse {
-        inner: time_x,
-        response,
-    } = Plot::new(plot_id_src)
+    let mut plot = Plot::new(plot_id_src)
         .legend(Legend {
             position: egui::plot::Corner::RightBottom,
             ..Default::default()
         })
-        .x_axis_formatter(move |time, _| time_type.format((time as i64 + time_offset).into()))
+        .x_axis_formatter(move |time, _| format_time(time_type, time as i64 + time_offset))
         .label_formatter(move |name, value| {
             let name = if name.is_empty() { "y" } else { name };
+            let is_integer = value.y.round() == value.y;
+            let decimals = if is_integer { 0 } else { 5 };
             format!(
-                "{timeline_name}: {}\n{name}: {:.5}",
+                "{timeline_name}: {}\n{name}: {:.*}",
                 time_type.format((value.x as i64 + time_offset).into()),
-                value.y
+                decimals,
+                value.y,
             )
-        })
-        .show(ui, |plot_ui| {
-            if plot_ui.plot_secondary_clicked() {
-                let timeline = ctx.rec_cfg.time_ctrl.timeline();
-                ctx.rec_cfg.time_ctrl.set_timeline_and_time(
-                    *timeline,
-                    plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
-                );
-                ctx.rec_cfg.time_ctrl.pause();
-            }
-
-            for line in &scene.lines {
-                let points = line
-                    .points
-                    .iter()
-                    .map(|p| [(p.0 - time_offset) as _, p.1])
-                    .collect::<Vec<_>>();
-
-                let c = line.color;
-                let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
-
-                match line.kind {
-                    PlotSeriesKind::Continuous => plot_ui.line(
-                        Line::new(points)
-                            .name(&line.label)
-                            .color(color)
-                            .width(line.width),
-                    ),
-                    PlotSeriesKind::Scatter => plot_ui.points(
-                        Points::new(points)
-                            .name(&line.label)
-                            .color(color)
-                            .radius(line.width),
-                    ),
-                }
-            }
-
-            current_time.map(|current_time| {
-                let time_x = (current_time - time_offset) as f64;
-                plot_ui.screen_from_plot([time_x, 0.0].into()).x
-            })
         });
+
+    if timeline.typ() == TimeType::Time {
+        let canvas_size = ui.available_size();
+        plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+    }
+
+    let egui::InnerResponse {
+        inner: time_x,
+        response,
+    } = plot.show(ui, |plot_ui| {
+        if plot_ui.plot_secondary_clicked() {
+            let timeline = ctx.rec_cfg.time_ctrl.timeline();
+            ctx.rec_cfg.time_ctrl.set_timeline_and_time(
+                *timeline,
+                plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
+            );
+            ctx.rec_cfg.time_ctrl.pause();
+        }
+
+        for line in &scene.lines {
+            let points = line
+                .points
+                .iter()
+                .map(|p| [(p.0 - time_offset) as _, p.1])
+                .collect::<Vec<_>>();
+
+            let c = line.color;
+            let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+
+            match line.kind {
+                PlotSeriesKind::Continuous => plot_ui.line(
+                    Line::new(points)
+                        .name(&line.label)
+                        .color(color)
+                        .width(line.width),
+                ),
+                PlotSeriesKind::Scatter => plot_ui.points(
+                    Points::new(points)
+                        .name(&line.label)
+                        .color(color)
+                        .radius(line.width),
+                ),
+            }
+        }
+
+        current_time.map(|current_time| {
+            let time_x = (current_time - time_offset) as f64;
+            plot_ui.screen_from_plot([time_x, 0.0].into()).x
+        })
+    });
 
     if let Some(time_x) = time_x {
         // TODO(emilk): allow interacting with the timeline (may require `egui::Plot` to return the `plot_from_screen` transform)
@@ -119,4 +136,104 @@ pub(crate) fn view_time_series(
     }
 
     response
+}
+
+fn format_time(time_type: TimeType, time_int: i64) -> String {
+    if time_type == TimeType::Time {
+        let ns_since_epoch = time_int;
+        let time = re_log_types::Time::from_ns_since_epoch(ns_since_epoch);
+        if time.is_abolute_date() {
+            use chrono::TimeZone as _;
+            if let chrono::LocalResult::Single(datetime) = chrono::Utc.timestamp_opt(
+                ns_since_epoch / 1_000_000_000,
+                (ns_since_epoch % 1_000_000_000) as _,
+            ) {
+                let is_start_of_new_day =
+                    datetime.time() == chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap();
+                if is_start_of_new_day {
+                    // Show just the date:
+                    return datetime.format("%Y-%m-%dZ").to_string();
+                } else {
+                    // Show just the time:
+                    let is_whole_minute = ns_since_epoch % 60_000_000_000 == 0;
+                    let is_whole_second = ns_since_epoch % 1_000_000_000 == 0;
+                    if is_whole_minute {
+                        return datetime.time().format("%H:%MZ").to_string();
+                    } else if is_whole_second {
+                        return datetime.time().format("%H:%M:%SZ").to_string();
+                    } else {
+                        return datetime.time().format("%H:%M:%S.3fZ").to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    time_type.format(re_log_types::TimeInt::from(time_int))
+}
+
+fn ns_grid_spacer(
+    canvas_size: egui::Vec2,
+    input: &egui::plot::GridInput,
+) -> Vec<egui::plot::GridMark> {
+    fn next_time_step(spacing_ns: i64) -> i64 {
+        if spacing_ns <= 1_000_000_000 {
+            spacing_ns * 10 // up to 10 second ticks
+        } else if spacing_ns == 10_000_000_000 {
+            spacing_ns * 6 // to the whole minute
+        } else if spacing_ns == 60_000_000_000 {
+            spacing_ns * 10 // to ten minutes
+        } else if spacing_ns == 600_000_000_000 {
+            spacing_ns * 6 // to an hour
+        } else if spacing_ns == 60 * 60 * 1_000_000_000 {
+            spacing_ns * 12 // to 12 h
+        } else if spacing_ns == 12 * 60 * 60 * 1_000_000_000 {
+            spacing_ns * 2 // to a day
+        } else {
+            spacing_ns.checked_mul(10).unwrap_or(spacing_ns) // multiple of ten days
+        }
+    }
+
+    let minimum_medium_line_spacing = 150.0; // ≈min size of a label
+    let max_medium_lines = canvas_size.x as f64 / minimum_medium_line_spacing;
+
+    let (min_ns, max_ns) = input.bounds;
+    let width_ns = max_ns - min_ns;
+
+    let mut small_spacing_ns = 1;
+    while width_ns / (next_time_step(small_spacing_ns) as f64) > max_medium_lines {
+        small_spacing_ns = next_time_step(small_spacing_ns);
+    }
+    let medium_spacing_ns = next_time_step(small_spacing_ns);
+    let big_spacing_ns = next_time_step(medium_spacing_ns);
+
+    let mut current_ns = (min_ns.floor() as i64) / small_spacing_ns * small_spacing_ns;
+    let mut marks = vec![];
+
+    while current_ns <= max_ns.ceil() as i64 {
+        let is_big_line = current_ns % big_spacing_ns == 0;
+        let is_medium_line = current_ns % medium_spacing_ns == 0;
+
+        let step_size = if is_big_line {
+            big_spacing_ns
+        } else if is_medium_line {
+            medium_spacing_ns
+        } else {
+            small_spacing_ns
+        };
+
+        marks.push(egui::plot::GridMark {
+            value: current_ns as f64,
+            step_size: step_size as f64,
+        });
+
+        current_ns += small_spacing_ns;
+    }
+
+    marks
+}
+
+fn round_ns_to_start_of_day(ns: i64) -> i64 {
+    let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
+    (ns + ns_per_day / 2) / ns_per_day * ns_per_day
 }
