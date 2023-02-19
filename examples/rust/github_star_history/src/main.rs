@@ -455,7 +455,7 @@ fn github_token() -> Result<String> {
             Err(gh_token::Error::NotConfigured(path)) => {
                 Err(Error::MissingToken(path.to_string_lossy().into()))
             }
-            Err(error) => Err(Error::GhToken(error)),
+            Err(err) => Err(Error::GhToken(err)),
         }
     }
 }
