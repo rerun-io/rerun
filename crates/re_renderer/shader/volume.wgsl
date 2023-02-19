@@ -86,42 +86,49 @@ fn ceil_frac(v: f32) -> f32 {
     return (1.0 - v + floor(v));
 }
 
-// TODO: normalized model space only!!
 // TODO: mipmaps
-fn raymarch_volume(ray: Ray, hit: Vec3) -> Collision {
-    var step = sign(ray.dir);
-    let delta = abs(ray.dir_inv.xyz);
+fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
+    var step = sign(ray_in_model.dir);
+    let delta = abs(ray_in_model.dir_inv.xyz);
 
-    let size = volume_info.size;
+    // let size = volume_info.size;
+    let dimensions = Vec3(volume_info.dimensions);
+
     // NOTE: shifting to voxel space is just a matter of scale in this case (because
     // the chunk itself is already offset properly), do not treat `hit_ms` as a point!
-    var vox_hit = hit * size;
+    var hit_in_voxel = hit_in_model * dimensions;
     // NOTE: AFAIK/AFAICT, the only way this can happen is due to floating point
     // imprecision when computing the hit point (ro + rd * t).
-    vox_hit = clamp(vox_hit, ZERO.xyz, size);
+    hit_in_voxel = clamp(hit_in_voxel, ZERO.xyz, dimensions);
 
-    var pos = Vec3(floor(vox_hit));
+    if false {
+        return Collision(ZERO.xyz, 1.0, Vec4(hit_in_model, 1.0));
+    }
+    if false {
+        return Collision(ZERO.xyz, 1.0, Vec4(hit_in_voxel, 1.0));
+    }
+
+    var pos = Vec3(floor(hit_in_voxel));
     var pos_prv = pos;
 
     var tmax = ZERO.xyz;
     if step.x > 0.0 {
-        tmax.x = delta.x * ceil_frac(vox_hit.x);
+        tmax.x = delta.x * ceil_frac(hit_in_voxel.x);
     } else {
-        tmax.x = delta.x * floor_frac(vox_hit.x);
+        tmax.x = delta.x * floor_frac(hit_in_voxel.x);
     }
     if step.y > 0.0 {
-        tmax.y = delta.y * ceil_frac(vox_hit.y);
+        tmax.y = delta.y * ceil_frac(hit_in_voxel.y);
     } else {
-        tmax.y = delta.y * floor_frac(vox_hit.y);
+        tmax.y = delta.y * floor_frac(hit_in_voxel.y);
     }
     if step.z > 0.0 {
-        tmax.z = delta.z * ceil_frac(vox_hit.z);
+        tmax.z = delta.z * ceil_frac(hit_in_voxel.z);
     } else {
-        tmax.z = delta.z * floor_frac(vox_hit.z);
+        tmax.z = delta.z * floor_frac(hit_in_voxel.z);
     }
 
     let tmax_init = tmax;
-    let extents = Vec3(textureDimensions(texture)); // TODO
 
     let MAX_ITER = 10000u;
     for (var i = 0u; i < MAX_ITER; i = i + 1u) {
@@ -135,7 +142,7 @@ fn raymarch_volume(ray: Ray, hit: Vec3) -> Collision {
                 normal = normalize(pos_prv - pos);
             }
 
-            return Collision(normal, t, Vec4(voxel) / 256.0);
+            return Collision(normal, t, Vec4(voxel) / 255.0);
         }
 
         pos_prv = pos;
@@ -147,9 +154,9 @@ fn raymarch_volume(ray: Ray, hit: Vec3) -> Collision {
         );
 
         pos = pos + (xyz * step.xyz);
-        let x_oob = pos.x < 0.0 || pos.x >= extents.x;
-        let y_oob = pos.y < 0.0 || pos.y >= extents.y;
-        let z_oob = pos.z < 0.0 || pos.z >= extents.z;
+        let x_oob = pos.x < 0.0 || pos.x >= dimensions.x;
+        let y_oob = pos.y < 0.0 || pos.y >= dimensions.y;
+        let z_oob = pos.z < 0.0 || pos.z >= dimensions.z;
         if x_oob || y_oob || z_oob {
             break;
         }
@@ -222,8 +229,14 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // TODO: prob inverted the name here -.-
     let ray_dir_in_model = normalize(in.pos_in_model.xyz - in.cam_pos_in_model.xyz);
+
+    if false {
+        return Vec4(abs(normalize(in.cam_pos_in_model.xyz)), 1.0);
+    }
+    if false {
+        return Vec4(abs(normalize(ray_dir_in_model)), 1.0);
+    }
 
     let ray_in_model = Ray_init(in.cam_pos_in_model.xyz, ray_dir_in_model.xyz);
     let aabb_in_model = AABB_init(CUBE_MIN, CUBE_MAX);
@@ -247,17 +260,20 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         res = Collision(in.normal_in_world.xyz, t, res.voxel);
     }
 
-    // TODO: normally we'd need the raymarch to happen in model space, but since it just so happens
-    // that we don't support model transforms on the volume itself right now, this should be
-    // straightforward
-
     let voxel = res.voxel;
+    if false {
+        return Vec4(voxel.rgb, 1.0);
+        // return Vec4(voxel.rgb, 1.0);
+    }
 
-    let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
-    let normal = normalize((volume_info.world_from_model * Vec4(res.normal, 0.0)).xyz);
+    // let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
+    // let normal = normalize((volume_info.world_from_model * Vec4(res.normal, 0.0)).xyz);
+    let light_dir = -ray_dir_in_model;
+    let normal = normalize(res.normal);
     let shading = clamp(dot(normal, light_dir), 0.0, 1.0) + 0.2;
 
-    let albedo = clamp(voxel.rgb * (30.0 / res.t), ZERO.rgb, ONE.rgb); // BSAO :D
+    // let albedo = clamp(voxel.rgb * (30.0 / res.t), ZERO.rgb, ONE.rgb); // BSAO :D
+    let albedo = voxel.rgb;
     let radiance = albedo * shading;
 
     return Vec4(radiance, 1.0);

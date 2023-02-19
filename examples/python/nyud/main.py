@@ -58,6 +58,7 @@ def back_project(depth_image: npt.NDArray[np.float32]) -> npt.NDArray[np.float32
     y = (v_coords.reshape(-1).astype(float) - v_center) * z / focal_length
 
     back_projected = np.vstack((x, y, z)).T
+    print(back_projected)
     return back_projected
 
 
@@ -67,6 +68,7 @@ def read_image_rgb(buf: bytes) -> npt.NDArray[np.uint8]:
     # OpenCV reads images in BGR rather than RGB format
     img_bgr = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
     img_rgb: npt.NDArray[np.uint8] = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    cv2.imwrite("/tmp/nyud_albedo.png", img_bgr)
     return img_rgb
 
 
@@ -128,6 +130,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
                     )
 
                     # Log the depth image to the cameras image-space:
+                    cv2.imwrite("/tmp/nyud_depth.png", img_depth)
                     rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
                 depth_images_counter += 1

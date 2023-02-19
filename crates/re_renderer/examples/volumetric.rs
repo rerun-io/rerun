@@ -47,19 +47,17 @@ impl framework::Example for RenderVolumetric {
         const G: [u8; 4] = [0, 255, 0, 255];
         const EMPTY: [u8; 4] = [0, 0, 0, 0];
 
-        const DIMENSION: u32 = 32;
-
-        let size = Vec3::splat(DIMENSION as f32); // TODO
-        let dimensions = UVec3::splat(DIMENSION);
+        let dimensions = UVec3::new(20, 20, 32);
+        let size = dimensions.as_vec3() * 2.0; // TODO
 
         let mut rng = rand::thread_rng();
         let mut pos = UVec3::ZERO;
         let checkerboard = std::iter::repeat_with(|| {
-            let lo = UVec3::splat(DIMENSION / 2 - DIMENSION / 10);
-            let hi = UVec3::splat(DIMENSION / 2 + DIMENSION / 10);
+            let lo = (dimensions.as_vec3() * 0.5 - dimensions.as_vec3() * 0.1).as_uvec3();
+            let hi = (dimensions.as_vec3() * 0.5 + dimensions.as_vec3() * 0.1).as_uvec3();
 
-            let mlo = UVec3::splat(DIMENSION / 2 - DIMENSION / 5);
-            let mhi = UVec3::splat(DIMENSION / 2 + DIMENSION / 5);
+            let mlo = (dimensions.as_vec3() * 0.5 - dimensions.as_vec3() * 0.2).as_uvec3();
+            let mhi = (dimensions.as_vec3() * 0.5 + dimensions.as_vec3() * 0.2).as_uvec3();
 
             let color = if pos.x >= lo.x
                 && pos.x <= hi.x
@@ -106,10 +104,10 @@ impl framework::Example for RenderVolumetric {
             };
 
             pos += UVec3::new(1, 0, 0);
-            if pos.x >= DIMENSION {
+            if pos.x >= dimensions.x {
                 pos.x = 0;
                 pos.y += 1;
-                if pos.y >= DIMENSION {
+                if pos.y >= dimensions.y {
                     pos.y = 0;
                     pos.z += 1;
                 }
@@ -117,11 +115,11 @@ impl framework::Example for RenderVolumetric {
 
             color
         })
-        .take((DIMENSION * DIMENSION * DIMENSION) as _)
+        .take((dimensions.x * dimensions.y * dimensions.z) as _)
         .flatten()
         .collect::<Vec<_>>();
-        // let checkerboard = std::iter::repeat([R, G, B])
-        //     .take((DIMENSION * DIMENSION * DIMENSION) as _)
+        // let checkerboard = std::iter::repeat([R, Y, G])
+        //     .take((dimensions.x * dimensions.y * dimensions.z) as _)
         //     .flatten()
         //     .flatten()
         //     .collect::<Vec<_>>();
@@ -151,6 +149,7 @@ impl framework::Example for RenderVolumetric {
         time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
+        // let seconds_since_startup = 0f32;
         let seconds_since_startup = time.seconds_since_startup();
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             self.camera_position = Vec3::new(
@@ -174,6 +173,7 @@ impl framework::Example for RenderVolumetric {
                 let rotation = self.initial_rotations[idx]
                     * glam::Quat::from_rotation_y(seconds_since_startup * 2.0);
                 let rotation = glam::Mat4::from_quat(rotation);
+                let rotation = glam::Mat4::IDENTITY;
 
                 let translation_center =
                     glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * self.checkerboard_size);
