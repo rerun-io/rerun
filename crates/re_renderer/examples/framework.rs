@@ -207,7 +207,7 @@ impl<E: Example + 'static> Application<E> {
                     self.window.request_redraw();
                 }
                 Event::RedrawRequested(_) => {
-                    self.re_ctx.frame_maintenance();
+                    self.re_ctx.begin_frame();
 
                     // native debug build
                     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]

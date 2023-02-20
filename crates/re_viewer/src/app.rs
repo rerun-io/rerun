@@ -441,7 +441,7 @@ impl eframe::App for App {
                 .paint_callback_resources
                 .get::<re_renderer::RenderContext>()
                 .unwrap();
-            // Query statistics before frame_maintenance as this might be more accurate if there's resources that we recreate every frame.
+            // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
         };
 
@@ -504,7 +504,7 @@ impl eframe::App for App {
                         .paint_callback_resources
                         .get_mut::<re_renderer::RenderContext>()
                         .unwrap();
-                    render_ctx.frame_maintenance();
+                    render_ctx.begin_frame();
 
                     if log_db.is_empty() {
                         wait_screen_ui(ui, &self.rx);
