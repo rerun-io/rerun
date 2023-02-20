@@ -193,7 +193,7 @@ impl TextureManager2D {
     }
 
     #[allow(clippy::unused_self)]
-    pub(crate) fn frame_maintenance(&mut self, _frame_index: u64) {
+    pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
         // no-op.
         // In the future we might add handling of background processing or introduce frame-lived textures.
     }

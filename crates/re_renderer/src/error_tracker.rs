@@ -266,7 +266,7 @@ impl ErrorTracker {
     /// Logs a wgpu error, making sure to deduplicate them as needed.
     pub fn handle_error(&self, error: wgpu::Error) {
         // The pipeline is in a poisoned state, errors are still coming in: we won't be
-        // clearing the tracker until it had at least 2 complete frame_maintenance cycles
+        // clearing the tracker until it had at least 2 complete begin_frame cycles
         // without any errors (meaning the swapchain surface is stabilized).
         self.clear_countdown.store(3, Ordering::Relaxed);
 
