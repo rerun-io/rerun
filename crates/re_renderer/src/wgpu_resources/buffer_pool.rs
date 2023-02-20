@@ -56,7 +56,8 @@ impl GpuBufferPool {
 
     /// Called by `RenderContext` every frame. Updates statistics and may free unused buffers.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.frame_maintenance(frame_index);
+        self.pool
+            .frame_maintenance(frame_index, |res| res.destroy());
     }
 
     /// Takes strong buffer handle to ensure the user is still holding on to the buffer.
