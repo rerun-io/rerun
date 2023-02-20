@@ -381,13 +381,13 @@ impl CpuWriteGpuReadBelt {
     }
 }
 
-// impl fmt::Debug for StagingBelt {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         f.debug_struct("StagingBelt")
-//             .field("chunk_size", &self.chunk_size)
-//             .field("active_chunks", &self.active_chunks.len())
-//             .field("closed_chunks", &self.closed_chunks.len())
-//             .field("free_chunks", &self.free_chunks.len())
-//             .finish_non_exhaustive()
-//     }
-// }
+impl std::fmt::Debug for CpuWriteGpuReadBelt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StagingBelt")
+            .field("chunk_size", &self.chunk_size)
+            .field("active_chunks", &self.active_chunks.len())
+            .field("closed_chunks", &self.closed_chunks.len())
+            .field("free_chunks", &self.free_chunks.len())
+            .finish_non_exhaustive()
+    }
+}

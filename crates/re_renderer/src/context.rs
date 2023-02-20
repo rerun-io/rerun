@@ -30,7 +30,7 @@ pub struct RenderContext {
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
-    pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
+    pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
 
     pub(crate) active_frame: ActiveFrameContext,
 }
