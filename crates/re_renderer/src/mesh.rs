@@ -167,6 +167,7 @@ impl GpuMesh {
                     label: data.label.clone().push_str(" - vertices"),
                     size: vertex_buffer_combined_size,
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
                 },
             );
             let mut staging_buffer = queue
@@ -195,6 +196,7 @@ impl GpuMesh {
                     label: data.label.clone().push_str(" - indices"),
                     size: index_buffer_size,
                     usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
                 },
             );
             let mut staging_buffer = queue
@@ -224,6 +226,7 @@ impl GpuMesh {
                     label: data.label.clone().push_str(" - material uniforms"),
                     size: combined_buffers_size,
                     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+                    mapped_at_creation: false,
                 },
             );
 

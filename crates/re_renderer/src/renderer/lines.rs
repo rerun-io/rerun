@@ -511,6 +511,7 @@ impl LineDrawData {
                     label: "lines batch uniform buffers".into(),
                     size: combined_buffers_size,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
                 },
             );
 

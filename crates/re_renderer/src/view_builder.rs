@@ -270,6 +270,7 @@ impl ViewBuilder {
                 label: format!("{:?} - frame uniform buffer", config.name).into(),
                 size: std::mem::size_of::<FrameUniformBuffer>() as _,
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
             },
         );
 

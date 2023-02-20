@@ -11,8 +11,12 @@ use smallvec::{smallvec, SmallVec};
 
 use super::resource::PoolError;
 
-pub trait SizedResourceDesc {
+pub trait DynamicResourcesDesc {
     fn resource_size_in_bytes(&self) -> u64;
+
+    /// If true, a unused resources will be kept around for while and then re-used in following frames.
+    /// If false, it will be destroyed on [`DynamicResourcePool::begin_frame`].
+    fn allow_reuse(&self) -> bool;
 }
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
@@ -54,11 +58,15 @@ impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> 
 impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
-    Desc: Clone + Eq + Hash + Debug + SizedResourceDesc,
+    Desc: Clone + Eq + Hash + Debug + DynamicResourcesDesc,
 {
-    pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
+    fn alloc_internal<F: FnOnce(&Desc) -> Res>(
+        &mut self,
+        desc: &Desc,
+        creation_func: F,
+    ) -> Arc<Handle> {
         // First check if we can reclaim a resource we have around from a previous frame.
-        let handle =
+        if desc.allow_reuse() {
             if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
                 re_log::trace!(?desc, "Reclaimed previously discarded resource",);
 
@@ -66,14 +74,18 @@ where
                 if entry.get().is_empty() {
                     entry.remove();
                 }
-                handle
-            // Otherwise create a new resource
-            } else {
-                let resource = creation_func(desc);
-                self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
-                Arc::new(self.resources.insert((desc.clone(), resource)))
-            };
+                return handle;
+            }
+        }
 
+        // Otherwise create a new resource
+        let resource = creation_func(desc);
+        self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
+        Arc::new(self.resources.insert((desc.clone(), resource)))
+    }
+
+    pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
+        let handle = self.alloc_internal(desc, creation_func);
         self.alive_handles.insert(*handle, Arc::clone(&handle));
         handle
     }
@@ -102,10 +114,10 @@ where
                 "Drained dangling resources from last frame",
             );
             for handle in handles {
-                if let Some((_, res)) = self.resources.remove(*handle) {
+                if let Some((desc, res)) = self.resources.remove(*handle) {
                     on_destroy_resource(&res);
+                    self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
                 }
-                self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
             }
         }
 
@@ -117,13 +129,20 @@ where
         self.alive_handles.retain(|handle, strong_handle| {
             if Arc::strong_count(strong_handle) == 1 {
                 let desc = &self.resources[handle].0;
-                match self.last_frame_deallocated.entry(desc.clone()) {
-                    Entry::Occupied(mut e) => {
-                        e.get_mut().push(Arc::clone(strong_handle));
+
+                // If allowed, put it on the "last frame deallocated" list instead of destroying the resource immediately.
+                if desc.allow_reuse() {
+                    match self.last_frame_deallocated.entry(desc.clone()) {
+                        Entry::Occupied(mut e) => {
+                            e.get_mut().push(Arc::clone(strong_handle));
+                        }
+                        Entry::Vacant(e) => {
+                            e.insert(smallvec![Arc::clone(strong_handle)]);
+                        }
                     }
-                    Entry::Vacant(e) => {
-                        e.insert(smallvec![Arc::clone(strong_handle)]);
-                    }
+                } else if let Some((desc, res)) = self.resources.remove(handle) {
+                    on_destroy_resource(&res);
+                    self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
                 }
                 false
             } else {
@@ -159,7 +178,7 @@ mod tests {
 
     use slotmap::Key;
 
-    use super::{DynamicResourcePool, SizedResourceDesc};
+    use super::{DynamicResourcePool, DynamicResourcesDesc};
     use crate::wgpu_resources::resource::PoolError;
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
@@ -167,9 +186,13 @@ mod tests {
     #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     pub struct ConcreteResourceDesc(u32);
 
-    impl SizedResourceDesc for ConcreteResourceDesc {
+    impl DynamicResourcesDesc for ConcreteResourceDesc {
         fn resource_size_in_bytes(&self) -> u64 {
             1
+        }
+
+        fn allow_reuse(&self) -> bool {
+            true
         }
     }
 
@@ -255,6 +278,8 @@ mod tests {
             );
         }
     }
+
+    // TODO: Add test for resources without re-use
 
     fn allocate_resources(
         descs: &[u32],
