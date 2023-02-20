@@ -153,7 +153,7 @@ where
         }
     }
 
-    pub(crate) fn frame_maintenance(&mut self, frame_index: u64) {
+    pub(crate) fn begin_frame(&mut self, frame_index: u64) {
         // Kill single frame resources.
         self.single_frame_resources.clear();
 

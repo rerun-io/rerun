@@ -161,11 +161,11 @@ impl RenderContext {
     /// Call this at the beginning of a new frame.
     ///
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
-    pub fn frame_maintenance(&mut self) {
+    pub fn begin_frame(&mut self) {
         self.frame_index += 1;
 
         // Tick the error tracker so that it knows when to reset!
-        // Note that we're ticking on frame_maintenance rather than raw frames, which
+        // Note that we're ticking on begin_frame rather than raw frames, which
         // makes a world of difference when we're in a poisoned state.
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         self.err_tracker.tick();
@@ -178,8 +178,8 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.mesh_manager.frame_maintenance(self.frame_index);
-        self.texture_manager_2d.frame_maintenance(self.frame_index);
+        self.mesh_manager.begin_frame(self.frame_index);
+        self.texture_manager_2d.begin_frame(self.frame_index);
 
         {
             let WgpuResourcePools {
@@ -195,13 +195,13 @@ impl RenderContext {
 
             // Shader module maintenance must come before render pipelines because render pipeline
             // recompilation picks up all shaders that have been recompiled this frame.
-            shader_modules.frame_maintenance(
+            shader_modules.begin_frame(
                 &self.device,
                 &mut self.resolver,
                 self.frame_index,
                 &modified_paths,
             );
-            render_pipelines.frame_maintenance(
+            render_pipelines.begin_frame(
                 &self.device,
                 self.frame_index,
                 shader_modules,
@@ -210,14 +210,14 @@ impl RenderContext {
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use
-            bind_groups.frame_maintenance(self.frame_index, textures, buffers, samplers);
+            bind_groups.begin_frame(self.frame_index, textures, buffers, samplers);
 
-            textures.frame_maintenance(self.frame_index);
-            buffers.frame_maintenance(self.frame_index);
+            textures.begin_frame(self.frame_index);
+            buffers.begin_frame(self.frame_index);
 
-            pipeline_layouts.frame_maintenance(self.frame_index);
-            bind_group_layouts.frame_maintenance(self.frame_index);
-            samplers.frame_maintenance(self.frame_index);
+            pipeline_layouts.begin_frame(self.frame_index);
+            bind_group_layouts.begin_frame(self.frame_index);
+            samplers.begin_frame(self.frame_index);
         }
     }
 }

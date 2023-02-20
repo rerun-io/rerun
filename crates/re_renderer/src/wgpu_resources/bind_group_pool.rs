@@ -178,14 +178,14 @@ impl GpuBindGroupPool {
         }
     }
 
-    pub fn frame_maintenance(
+    pub fn begin_frame(
         &mut self,
         frame_index: u64,
         _textures: &mut GpuTexturePool,
         _buffers: &mut GpuBufferPool,
         _samplers: &mut GpuSamplerPool,
     ) {
-        self.pool.frame_maintenance(frame_index, |_res| {});
+        self.pool.begin_frame(frame_index, |_res| {});
         // TODO(andreas): Update usage counter on dependent resources.
     }
 

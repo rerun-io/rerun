@@ -154,7 +154,7 @@ impl GpuRenderPipelinePool {
         })
     }
 
-    pub fn frame_maintenance(
+    pub fn begin_frame(
         &mut self,
         device: &wgpu::Device,
         frame_index: u64,
@@ -179,7 +179,7 @@ impl GpuRenderPipelinePool {
             // The frame counter just got bumped by one. So any shader that has `frame_created`,
             // equal the current frame now, must have been recompiled since the user didn't have a
             // chance yet to add new shaders for this frame!
-            // (note that this assumes that shader `frame_maintenance` happens before pipeline `frame_maintenance`)
+            // (note that this assumes that shader `begin_frame` happens before pipeline `begin_frame`)
             if frame_created < frame_index {
                 return None;
             }
