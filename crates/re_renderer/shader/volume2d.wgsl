@@ -91,25 +91,27 @@ fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
     var step = sign(ray_in_model.dir);
     let delta = abs(ray_in_model.dir_inv.xyz);
 
-    // let size = volume_info.size;
     let dimensions = Vec3(volume_info.dimensions);
 
-    // NOTE: shifting to voxel space is just a matter of scale in this case (because
-    // the chunk itself is already offset properly), do not treat `hit_ms` as a point!
     var hit_in_voxel = hit_in_model * dimensions;
-    // NOTE: AFAIK/AFAICT, the only way this can happen is due to floating point
-    // imprecision when computing the hit point (ro + rd * t).
     hit_in_voxel = clamp(hit_in_voxel, ZERO.xyz, dimensions);
 
     if false {
-        return Collision(ZERO.xyz, 1.0, Vec4(hit_in_model, 1.0));
+        return Collision(Vec3(0.0, 1.0, 0.0), 1.0, Vec4(ray_in_model.dir.xyz, 1.0));
     }
     if false {
-        return Collision(ZERO.xyz, 1.0, Vec4(hit_in_voxel, 1.0));
+        return Collision(Vec3(0.0, 1.0, 0.0), 1.0, Vec4(hit_in_voxel / dimensions, 1.0));
+    }
+    if false {
+        return Collision(Vec3(0.0, 1.0, 0.0), 1.0, Vec4(hit_in_model, 1.0));
     }
 
     var pos = Vec3(floor(hit_in_voxel));
     var pos_prv = pos;
+
+    if false {
+        return Collision(Vec3(0.0, 1.0, 0.0), 1.0, Vec4(pos / dimensions, 1.0));
+    }
 
     var tmax = ZERO.xyz;
     if step.x > 0.0 {
@@ -132,17 +134,85 @@ fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
 
     let MAX_ITER = 10000u;
     for (var i = 0u; i < MAX_ITER; i = i + 1u) {
-        let voxel = textureLoad(texture, IVec3(pos), 0);
-        if voxel.a > 0u { // TODO
+        // TODO: we need to do some magic so that we check if the corresponding texcoord in the
+        // depth texture contains a Z value that is between the min and max Z values of this voxel.
+
+        // TODO: should there be sampling?????????????
+
+        let cam_npos_in_volume = Vec3(0.5, 0.5, 1.0); // cam at center of front panel
+
+        // TODO: should i floor?
+        // let pos_in_model = trunc(pos) / dimensions;
+        let pos_in_model = pos / dimensions;
+        let v = pos_in_model - cam_npos_in_volume;
+        let pos_in_model_backpanel = cam_npos_in_volume + v * distance(cam_npos_in_volume, Vec3(0.1, 0.1, 0.0));
+
+
+        // TODO: this is wrong! not the correct depth used
+        let texcoords_in_volume = Vec3(pos_in_model_backpanel.xy, 0.0); // back panel
+
+        let texcoords = Vec2(pos_in_model_backpanel.x, 1.0 - pos_in_model.y);
+        let depth = textureSample(depth_texture, nearest_sampler, texcoords).x;
+        let albedo = textureSample(albedo_texture, nearest_sampler, texcoords);
+
+        let npos_in_volume = cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * depth; //
+
+        // let pos_next = Vec3(pos.x, pos.y, pos.z + 1.0);
+        // let pos_in_model_next = pos_next / dimensions;
+
+        let pos_int = IVec3((pos));
+        let pos_int_guessed = IVec3(npos_in_volume * (dimensions - 1.0));
+
+//        if pos_in_model_backpanel.x < 0.0 || pos_in_model_backpanel.x > 1.0 {
+//            break;
+//        }
+//        if pos_in_model_backpanel.y < 0.0 || pos_in_model_backpanel.y > 1.0 {
+//            break;
+//        }
+//        if pos_in_model_backpanel.z < 0.0 || pos_in_model_backpanel.z > 1.0 {
+//            break;
+//        }
+
+        // if pos_in_model.x > 1.0 || pos_in_model.y > 1.0 || pos_in_model.x < 0.0 || pos_in_model.y < 0.0 {
+        //     break;
+        // }
+
+        if pos_int.z == pos_int_guessed.z {
+        // if true {
+        // if abs(pos_int.z - pos_int_guessed.z) < 2 {
+        // if pos_int.x == pos_int_guessed.x && pos_int.y == pos_int_guessed.y {
+        // if pos_in_model.z <= depth && depth <= pos_in_model_next.z {
+        // if pos_in_volume.x == pos.x {
             let tmax_diff = tmax - tmax_init;
             let t = tmax_diff.x + tmax_diff.y + tmax_diff.z;
-
             var normal = ZERO.xyz;
             if i > 0u {
                 normal = normalize(pos_prv - pos);
             }
 
-            return Collision(normal, t, Vec4(voxel) / 255.0);
+            if false {
+                return Collision(normal, t, Vec4(Vec3(min(ONE.xyz, pos_in_model_backpanel)), 1.0));
+            }
+            if false {
+                if pos_in_model_backpanel.x > 1.0 {
+                    return Collision(normal, t, Vec4(Vec3(0.0), 1.0));
+                }
+                if pos_in_model_backpanel.y > 1.0 {
+                    return Collision(normal, t, Vec4(Vec3(0.0), 1.0));
+                }
+                return Collision(normal, t, Vec4(Vec3(pos_in_model_backpanel), 1.0));
+            }
+            if false {
+                return Collision(normal, t, Vec4(Vec3(depth), 1.0));
+            }
+            if false {
+                //return Collision(normal, t, Vec4(Vec3(pos_in_model.z), 1.0));
+                // return Collision(normal, t, Vec4(Vec3(pos_in_model_backpanel.xyz), 1.0));
+                // return Collision(normal, t, Vec4(Vec3(pos_in_model.z), 1.0));
+                // return Collision(normal, t, Vec4(Vec3(abs(pos_int - pos_int_guessed)), 1.0));
+            }
+
+            return Collision(normal, t, albedo);
         }
 
         pos_prv = pos;
@@ -169,13 +239,9 @@ fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
 
 // ---
 
-// TODO: do I have to handle padding here or no?
 struct VolumeInfo {
     world_from_model: Mat4,
     model_from_world: Mat4,
-
-    // The actual world-size of the volume.
-    size: Vec3,
     // The dimensions (i.e. number of voxels on each axis) of the volume.
     dimensions: UVec3,
 };
@@ -183,9 +249,10 @@ struct VolumeInfo {
 var<uniform> volume_info: VolumeInfo;
 
 @group(1) @binding(1)
-var texture: texture_3d<u32>;
+var depth_texture: texture_2d<f32>;
 
-// TODO: will we ever need sampling here?
+@group(1) @binding(2)
+var albedo_texture: texture_2d<f32>;
 
 struct VertexOut {
     @builtin(position) pos_in_clip: Vec4,
@@ -268,7 +335,6 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
     // let normal = normalize((volume_info.world_from_model * Vec4(res.normal, 0.0)).xyz);
-    // let light_dir = -ray_dir_in_model;
     let light_dir = Vec3(0.0, 0.0, -1.0);
     let normal = normalize(res.normal);
     let shading = clamp(dot(normal, -light_dir), 0.0, 1.0) + 0.2;
