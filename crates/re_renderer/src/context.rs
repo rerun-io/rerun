@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use parking_lot::Mutex;
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
+    allocator::CpuWriteGpuReadBelt,
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -28,6 +30,13 @@ pub struct RenderContext {
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
+    pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
+
+    /// Command encoder for all commands that should go in before view builder are submitted.
+    ///
+    /// This should be used for any gpu copy operation outside of a renderer or view builder.
+    /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
+    pub(crate) frame_global_command_encoder: wgpu::CommandEncoder,
 
     // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
@@ -137,6 +146,8 @@ impl RenderContext {
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
+        let frame_global_command_encoder = Self::create_frame_global_command_encoder(&device);
+
         RenderContext {
             device,
             queue,
@@ -148,6 +159,10 @@ impl RenderContext {
 
             mesh_manager,
             texture_manager_2d,
+            // 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
+            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(1024 * 1024 * 32)),
+
+            frame_global_command_encoder,
 
             resolver,
 
@@ -156,6 +171,12 @@ impl RenderContext {
 
             frame_index: 0,
         }
+    }
+
+    fn create_frame_global_command_encoder(device: &wgpu::Device) -> wgpu::CommandEncoder {
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder").get(),
+        })
     }
 
     /// Call this at the beginning of a new frame.
@@ -219,6 +240,35 @@ impl RenderContext {
             bind_group_layouts.begin_frame(self.frame_index);
             samplers.begin_frame(self.frame_index);
         }
+
+        // Retrieve unused staging buffer.
+        self.cpu_write_gpu_read_belt
+            .lock()
+            .after_queue_submit(&self.gpu_resources.buffers);
+    }
+
+    /// Call this at the end of a frame but before submitting command buffers from [`crate::view_builder::ViewBuilder`]
+    pub fn before_submit(&mut self) {
+        // Unmap all staging buffers.
+        self.cpu_write_gpu_read_belt
+            .lock()
+            .before_queue_submit(&self.gpu_resources.buffers);
+
+        let mut command_encoder = Self::create_frame_global_command_encoder(&self.device);
+        std::mem::swap(&mut self.frame_global_command_encoder, &mut command_encoder);
+        let command_buffer = command_encoder.finish();
+
+        // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
+        //                  How do we hook in there and make sure this buffer is submitted first?
+        self.queue.submit([command_buffer]);
+    }
+}
+
+impl Drop for RenderContext {
+    fn drop(&mut self) {
+        // Delete the CpuWriteGpuReadBelt beforehand since its active chunks may keep unsafe references into the buffer pool.
+        // (if we don't do this and buffers get destroyed before the belt, wgpu will panic)
+        *self.cpu_write_gpu_read_belt.lock() = CpuWriteGpuReadBelt::new(0);
     }
 }
 

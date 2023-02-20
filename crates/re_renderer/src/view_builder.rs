@@ -388,6 +388,38 @@ impl ViewBuilder {
         // Factor applied to depth offsets.
         let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
 
+        let mut frame_uniform_buffer_cpu = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .allocate::<FrameUniformBuffer>(&ctx.device, &mut ctx.gpu_resources.buffers, 1);
+        frame_uniform_buffer_cpu.write_single(
+            &FrameUniformBuffer {
+                view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
+                projection_from_view: projection_from_view.into(),
+                projection_from_world: projection_from_world.into(),
+                camera_position,
+                camera_forward,
+                tan_half_fov: tan_half_fov.into(),
+                pixel_world_size_from_camera_distance,
+                pixels_from_point: config.pixels_from_point,
+
+                auto_size_points: auto_size_points.0,
+                auto_size_lines: auto_size_lines.0,
+
+                depth_offset_factor,
+                _padding: glam::Vec3::ZERO,
+            },
+            0,
+        );
+        frame_uniform_buffer_cpu
+            .copy_to_buffer(
+                &mut ctx.frame_global_command_encoder,
+                &ctx.gpu_resources.buffers,
+                &frame_uniform_buffer,
+                0,
+            )
+            .unwrap();
+
         ctx.queue.write_buffer(
             ctx.gpu_resources
                 .buffers
