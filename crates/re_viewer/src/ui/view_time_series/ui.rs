@@ -162,7 +162,7 @@ fn format_time(time_type: TimeType, time_int: i64) -> String {
                     } else if is_whole_second {
                         return datetime.time().format("%H:%M:%SZ").to_string();
                     } else {
-                        return datetime.time().format("%H:%M:%S.3fZ").to_string();
+                        return datetime.time().format("%H:%M:%S%.3fZ").to_string();
                     }
                 }
             }
