@@ -91,7 +91,11 @@ where
             })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
+    pub fn frame_maintenance(
+        &mut self,
+        frame_index: u64,
+        mut on_destroy_resource: impl FnMut(&Res),
+    ) {
         self.current_frame_index = frame_index;
 
         // Throw out any resources that we haven't reclaimed last frame.
@@ -102,7 +106,9 @@ where
                 "Drained dangling resources from last frame",
             );
             for handle in handles {
-                self.resources.remove(*handle);
+                if let Some((_, res)) = self.resources.remove(*handle) {
+                    on_destroy_resource(&res);
+                }
                 self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
             }
         }
@@ -199,8 +205,10 @@ mod tests {
         // Still, no resources were dropped.
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            pool.frame_maintenance(1);
+            let mut called_destroy = false;
+            pool.frame_maintenance(1, |_| called_destroy = true);
 
+            assert!(!called_destroy);
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
         }
 
@@ -212,8 +220,11 @@ mod tests {
         // Doing frame maintenance twice will drop all resources
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            pool.frame_maintenance(2);
-            pool.frame_maintenance(3);
+            let mut called_destroy = false;
+            pool.frame_maintenance(2, |_| called_destroy = true);
+            assert!(!called_destroy);
+            pool.frame_maintenance(3, |_| called_destroy = true);
+            assert!(called_destroy);
             let drop_counter_now = drop_counter.load(Ordering::Acquire);
             assert_eq!(
                 drop_counter_before + initial_resource_descs.len() * 2,
@@ -236,9 +247,12 @@ mod tests {
             assert_ne!(handle0, handle1);
             drop(handle1);
 
-            pool.frame_maintenance(4);
+            let mut called_destroy = false;
+            pool.frame_maintenance(4, |_| called_destroy = true);
+            assert!(!called_destroy);
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
-            pool.frame_maintenance(5);
+            pool.frame_maintenance(5, |_| called_destroy = true);
+            assert!(called_destroy);
             assert_eq!(
                 drop_counter_before + 1,
                 drop_counter.load(Ordering::Acquire),
@@ -314,8 +328,8 @@ mod tests {
         // Query with invalid handle
         let inner_handle = *handle;
         drop(handle);
-        pool.frame_maintenance(0);
-        pool.frame_maintenance(1);
+        pool.frame_maintenance(0, |_| {});
+        pool.frame_maintenance(1, |_| {});
         assert!(matches!(
             pool.get_resource(inner_handle),
             Err(PoolError::ResourceNotAvailable)

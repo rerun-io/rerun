@@ -99,7 +99,8 @@ impl GpuTexturePool {
 
     /// Called by `RenderContext` every frame. Updates statistics and may free unused textures.
     pub fn frame_maintenance(&mut self, frame_index: u64) {
-        self.pool.frame_maintenance(frame_index);
+        self.pool
+            .frame_maintenance(frame_index, |res| res.texture.destroy());
     }
 
     /// Takes strong texture handle to ensure the user is still holding on to the texture.
