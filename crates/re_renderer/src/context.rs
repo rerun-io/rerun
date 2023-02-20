@@ -166,6 +166,8 @@ impl RenderContext {
     ///
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
+        crate::profile_function!();
+
         self.active_frame = ActiveFrameContext {
             frame_global_command_encoder: None,
             frame_index: self.active_frame.frame_index + 1,
@@ -236,6 +238,8 @@ impl RenderContext {
 
     /// Call this at the end of a frame but before submitting command buffers from [`crate::view_builder::ViewBuilder`]
     pub fn before_submit(&mut self) {
+        crate::profile_function!();
+
         // Unmap all staging buffers.
         self.cpu_write_gpu_read_belt
             .lock()

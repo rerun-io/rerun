@@ -7,11 +7,6 @@ use crate::{
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
-///
-/// TODO(andreas): We could make significant optimizations here by making this builder capable
-/// of writing to a GPU readable memory location.
-/// This will require some ahead of time size limit, but should be feasible.
-/// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
 pub struct PointCloudBuilder<PerPointUserData> {
     // Size of `point`/color`/`per_point_user_data` must be equal.
     pub vertices: Vec<PointCloudVertex>,
