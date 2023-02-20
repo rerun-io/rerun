@@ -56,19 +56,37 @@ impl Time {
             );
             match datetime {
                 chrono::LocalResult::Single(datetime) => {
-                    if datetime.date_naive() == chrono::offset::Utc::now().date_naive() {
-                        datetime.format("%H:%M:%S%.6fZ").to_string()
+                    let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
+                    let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
+
+                    let time_format = if is_whole_second {
+                        "%H:%M:%SZ"
+                    } else if is_whole_millisecond {
+                        "%H:%M:%S%.3fZ"
                     } else {
-                        datetime.format("%Y-%m-%d %H:%M:%S%.6fZ").to_string()
+                        "%H:%M:%S%.6fZ"
+                    };
+
+                    if datetime.date_naive() == chrono::offset::Utc::now().date_naive() {
+                        datetime.format(time_format).to_string()
+                    } else {
+                        let date_format = format!("%Y-%m-%d {time_format}");
+                        datetime.format(&date_format).to_string()
                     }
                 }
                 chrono::LocalResult::None => "Invalid timestamp".to_owned(),
                 chrono::LocalResult::Ambiguous(_, _) => "Ambiguous timestamp".to_owned(),
             }
         } else {
+            // Relative time
             let secs = nanos_since_epoch as f64 * 1e-9;
-            // assume relative time
-            format!("{secs:+.03}s")
+
+            let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
+            if is_whole_second {
+                format!("{secs:+.0}s")
+            } else {
+                format!("{secs:+.3}s")
+            }
         }
     }
 
