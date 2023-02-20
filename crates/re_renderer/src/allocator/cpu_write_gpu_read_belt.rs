@@ -1,4 +1,4 @@
-use std::{ops::DerefMut, sync::mpsc};
+use std::{num::NonZeroU32, ops::DerefMut, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBufferHandleStrong, GpuBufferPool, PoolError};
 
@@ -11,7 +11,9 @@ struct Chunk {
     unused_offset: wgpu::BufferAddress,
 }
 
-/// A suballocated staging buffer that can be written to.
+/// A sub-allocated staging buffer that can be written to.
+///
+/// Behaves a bit like a fixed sized `Vec` in that far it keeps track of how many elements were written to it.
 ///
 /// We do *not* allow reading from this buffer as it is typically write-combined memory.
 /// Reading would work, but it can be *very* slow.
@@ -21,6 +23,9 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + 'static> {
     /// UNSAFE: The lifetime is transmuted to be `'static`.
     /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk.chunk_buffer)!
     write_view: wgpu::BufferViewMut<'static>,
+
+    /// How many elements of T were already pushed into this buffer.
+    write_counter: usize,
 
     chunk_buffer: GpuBufferHandleStrong,
     offset_in_chunk_buffer: wgpu::BufferAddress,
@@ -38,73 +43,72 @@ where
     /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
     fn as_slice(&mut self) -> &mut [T] {
-        bytemuck::cast_slice_mut(&mut self.write_view)
+        &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.write_counter..]
     }
 
-    /// Writes several objects using to the buffer at a given location using a slice.
+    /// Pushes a slice of elements into the buffer.
     ///
-    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
-    /// (panics otherwise)
+    /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn write_slice(&mut self, elements: &[T], num_elements_offset: usize) {
-        self.as_slice()[num_elements_offset..].copy_from_slice(elements);
+    pub fn extend_from_slice(&mut self, elements: &[T]) {
+        self.as_slice().copy_from_slice(elements);
+        self.write_counter += elements.len();
     }
 
-    /// Writes several objects using to the buffer at a given location using an iterator.
+    /// Pushes several elements into the buffer.
     ///
-    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
-    /// (panics otherwise)
+    /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn write_iterator(
-        &mut self,
-        elements: impl Iterator<Item = T>,
-        num_elements_offset: usize,
-    ) {
-        for (target, source) in self
-            .as_slice()
-            .iter_mut()
-            .skip(num_elements_offset)
-            .zip(elements)
-        {
+    pub fn extend(&mut self, elements: impl Iterator<Item = T>) {
+        let mut num_elements = 0;
+        for (target, source) in self.as_slice().iter_mut().zip(elements) {
             *target = source;
+            num_elements += 1;
         }
+        self.write_counter += num_elements;
     }
 
-    /// Writes a single objects to the buffer at a given location.
+    /// Pushes a single element into the buffer and advances the write pointer.
     ///
-    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
-    /// (panics otherwise)
+    /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn write_single(&mut self, element: &T, num_elements_offset: usize) {
-        self.as_slice()[num_elements_offset] = *element;
+    pub fn push(&mut self, element: &T) {
+        *self.as_slice().first_mut().unwrap() = *element;
+        self.write_counter += 1;
     }
 
-    // pub fn copy_to_texture(
-    //     self,
-    //     encoder: &mut wgpu::CommandEncoder,
-    //     buffer_pool: &GpuBufferPool,
-    //     destination: wgpu::ImageCopyTexture<'_>,
-    //     bytes_per_row: Option<NonZeroU32>,
-    //     rows_per_image: Option<NonZeroU32>,
-    //     copy_size: wgpu::Extent3d,
-    // ) -> Result<(), PoolError> {
-    //     let buffer = buffer_pool.get_resource(&self.chunk_buffer)?;
+    /// The number of elements pushed into the buffer so far.
+    #[inline]
+    pub fn num_written(&self) -> usize {
+        self.write_counter
+    }
 
-    //     encoder.copy_buffer_to_texture(
-    //         wgpu::ImageCopyBuffer {
-    //             buffer,
-    //             layout: wgpu::ImageDataLayout {
-    //                 offset: self.offset_in_chunk,
-    //                 bytes_per_row,
-    //                 rows_per_image,
-    //             },
-    //         },
-    //         destination,
-    //         copy_size,
-    //     );
+    pub fn copy_to_texture(
+        self,
+        encoder: &mut wgpu::CommandEncoder,
+        buffer_pool: &GpuBufferPool,
+        destination: wgpu::ImageCopyTexture<'_>,
+        bytes_per_row: Option<NonZeroU32>,
+        rows_per_image: Option<NonZeroU32>,
+        copy_size: wgpu::Extent3d,
+    ) -> Result<(), PoolError> {
+        let source_buffer = buffer_pool.get_resource(&self.chunk_buffer)?;
 
-    //     Ok(())
-    // }
+        encoder.copy_buffer_to_texture(
+            wgpu::ImageCopyBuffer {
+                buffer: source_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: self.offset_in_chunk_buffer,
+                    bytes_per_row,
+                    rows_per_image,
+                },
+            },
+            destination,
+            copy_size,
+        );
+
+        Ok(())
+    }
 
     /// Consume this data view and copy it to another gpu buffer.
     pub fn copy_to_buffer(
@@ -114,13 +118,16 @@ where
         destination: &GpuBufferHandleStrong,
         destination_offset: wgpu::BufferAddress,
     ) -> Result<(), PoolError> {
+        let source_buffer = buffer_pool.get_resource(&self.chunk_buffer)?;
+
         encoder.copy_buffer_to_buffer(
-            buffer_pool.get_resource(&self.chunk_buffer)?,
+            source_buffer,
             self.offset_in_chunk_buffer,
             buffer_pool.get_resource(destination)?,
             destination_offset,
             self.write_view.deref_mut().len() as u64,
         );
+
         Ok(())
     }
 }
@@ -322,6 +329,7 @@ impl CpuWriteGpuReadBelt {
             chunk_buffer: chunk.buffer.clone(),
             offset_in_chunk_buffer: start_offset,
             write_view,
+            write_counter: 0,
             _type: std::marker::PhantomData,
         };
 
@@ -375,7 +383,8 @@ impl CpuWriteGpuReadBelt {
     /// Move all chunks that the GPU is done with (and are now mapped again)
     /// from `self.receiver` to `self.free_chunks`.
     fn receive_chunks(&mut self) {
-        while let Ok(chunk) = self.receiver.try_recv() {
+        while let Ok(mut chunk) = self.receiver.try_recv() {
+            chunk.unused_offset = 0;
             self.free_chunks.push(chunk);
         }
     }

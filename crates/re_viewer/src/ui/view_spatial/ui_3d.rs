@@ -473,7 +473,7 @@ pub fn view_3d(
         ui,
         eye,
         rect,
-        &scene,
+        scene,
         ctx.render_ctx,
         &space.to_string(),
         state.auto_size_config(rect.size()),
@@ -484,7 +484,7 @@ fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: &SceneSpatial,
+    scene: SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
@@ -516,7 +516,7 @@ fn paint_view(
         render_ctx,
         target_config,
         rect,
-        &scene.primitives, &ScreenBackground::GenericSkybox)
+        scene.primitives, &ScreenBackground::GenericSkybox)
     else {
         return;
     };

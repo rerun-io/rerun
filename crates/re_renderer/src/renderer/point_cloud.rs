@@ -19,7 +19,7 @@ use std::{
 };
 
 use crate::{
-    context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, Color32, DebugLabel,
+    context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, DebugLabel,
     PointCloudBuilder,
 };
 use bitflags::bitflags;
@@ -151,7 +151,7 @@ impl PointCloudDrawData {
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new<T>(
         ctx: &mut RenderContext,
-        builder: &PointCloudBuilder<T>,
+        builder: PointCloudBuilder<T>,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
@@ -163,7 +163,6 @@ impl PointCloudDrawData {
         );
 
         let vertices = builder.vertices.as_slice();
-        let colors = builder.colors.as_slice();
         let batches = builder.batches.as_slice();
 
         if vertices.is_empty() {
@@ -197,23 +196,16 @@ impl PointCloudDrawData {
             0
         );
 
-        if vertices.len() != colors.len() {
-            return Err(PointCloudDrawDataError::NumberOfColorsNotEqualNumberOfVertices);
-        }
-
-        let (vertices, colors) = if vertices.len() >= Self::MAX_NUM_POINTS {
+        let vertices = if vertices.len() >= Self::MAX_NUM_POINTS {
             re_log::error_once!(
                 "Reached maximum number of supported points. Clamping down to {}, passed were {}.
  See also https://github.com/rerun-io/rerun/issues/957",
                 Self::MAX_NUM_POINTS,
                 vertices.len()
             );
-            (
-                &vertices[..Self::MAX_NUM_POINTS],
-                &colors[..Self::MAX_NUM_POINTS],
-            )
+            &vertices[..Self::MAX_NUM_POINTS]
         } else {
-            (vertices, colors)
+            vertices
         };
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
@@ -264,15 +256,6 @@ impl PointCloudDrawData {
                 .collect_vec()
         };
 
-        let color_staging = {
-            crate::profile_scope!("collect_colors");
-            colors
-                .iter()
-                .cloned()
-                .chain(std::iter::repeat(Color32::TRANSPARENT).take(num_points_zeroed))
-                .collect_vec()
-        };
-
         // Upload data from staging buffers to gpu.
         let size = wgpu::Extent3d {
             width: DATA_TEXTURE_SIZE,
@@ -308,28 +291,27 @@ impl PointCloudDrawData {
 
         {
             crate::profile_scope!("write_color_texture");
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &ctx
-                        .gpu_resources
-                        .textures
-                        .get_resource(&color_texture)
-                        .unwrap()
-                        .texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&color_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: NonZeroU32::new(
-                        DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                size,
-            );
+            builder
+                .color_buffer
+                .copy_to_texture(
+                    ctx.active_frame.frame_global_command_encoder(&ctx.device),
+                    &ctx.gpu_resources.buffers,
+                    wgpu::ImageCopyTexture {
+                        texture: &ctx
+                            .gpu_resources
+                            .textures
+                            .get_resource(&color_texture)
+                            .unwrap()
+                            .texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    NonZeroU32::new(DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
+                    None,
+                    size,
+                )
+                .expect("invalid color cpu->gpu buffer");
         }
 
         let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(

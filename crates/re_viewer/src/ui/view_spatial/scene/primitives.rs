@@ -10,7 +10,6 @@ use super::MeshSource;
 /// TODO(andreas): Right now we're using `re_renderer` data structures for reading (bounding box & picking).
 ///                 In the future, this will be more limited as we're going to gpu staging data as soon as possible
 ///                 which is very slow to read. See [#594](https://github.com/rerun-io/rerun/pull/594)
-#[derive(Default)]
 pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     pub(super) bounding_box: macaw::BoundingBox,
@@ -31,6 +30,17 @@ const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 impl SceneSpatialPrimitives {
+    pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+        Self {
+            bounding_box: macaw::BoundingBox::nothing(),
+            textured_rectangles_ids: Default::default(),
+            textured_rectangles: Default::default(),
+            line_strips: Default::default(),
+            points: PointCloudBuilder::new(re_ctx),
+            meshes: Default::default(),
+        }
+    }
+
     /// bounding box covering the rendered scene
     pub fn bounding_box(&self) -> macaw::BoundingBox {
         self.bounding_box

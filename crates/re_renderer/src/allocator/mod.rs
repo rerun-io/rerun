@@ -5,4 +5,4 @@
 
 mod cpu_write_gpu_read_belt;
 
-pub use cpu_write_gpu_read_belt::CpuWriteGpuReadBelt;
+pub use cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};

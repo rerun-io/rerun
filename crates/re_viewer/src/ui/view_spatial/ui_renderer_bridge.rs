@@ -17,7 +17,7 @@ pub fn create_scene_paint_callback(
     render_ctx: &mut RenderContext,
     target_config: TargetConfiguration,
     clip_rect: egui::Rect,
-    primitives: &SceneSpatialPrimitives,
+    primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
 ) -> anyhow::Result<egui::PaintCallback> {
     let pixels_from_point = target_config.pixels_from_point;
@@ -39,7 +39,7 @@ pub enum ScreenBackground {
 fn create_and_fill_view_builder(
     render_ctx: &mut RenderContext,
     target_config: TargetConfiguration,
-    primitives: &SceneSpatialPrimitives,
+    primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
 ) -> anyhow::Result<(wgpu::CommandBuffer, ViewBuilder)> {
     let mut view_builder = ViewBuilder::default();
