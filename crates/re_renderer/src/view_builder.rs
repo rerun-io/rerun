@@ -413,7 +413,7 @@ impl ViewBuilder {
         );
         frame_uniform_buffer_cpu
             .copy_to_buffer(
-                &mut ctx.frame_global_command_encoder,
+                ctx.active_frame.frame_global_command_encoder(&ctx.device),
                 &ctx.gpu_resources.buffers,
                 &frame_uniform_buffer,
                 0,

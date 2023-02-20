@@ -278,6 +278,7 @@ impl<E: Example + 'static> Application<E> {
                         // drop the pass so we can finish() the main encoder!
                     };
 
+                    self.re_ctx.before_submit();
                     self.re_ctx.queue.submit(
                         view_cmd_buffers
                             .into_iter()

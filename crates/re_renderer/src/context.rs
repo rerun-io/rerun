@@ -32,14 +32,7 @@ pub struct RenderContext {
     pub texture_manager_2d: TextureManager2D,
     pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
 
-    /// Command encoder for all commands that should go in before view builder are submitted.
-    ///
-    /// This should be used for any gpu copy operation outside of a renderer or view builder.
-    /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
-    pub(crate) frame_global_command_encoder: wgpu::CommandEncoder,
-
-    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
-    frame_index: u64,
+    pub(crate) active_frame: ActiveFrameContext,
 }
 
 /// Immutable data that is shared between all [`Renderer`]
@@ -146,8 +139,6 @@ impl RenderContext {
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
-        let frame_global_command_encoder = Self::create_frame_global_command_encoder(&device);
-
         RenderContext {
             device,
             queue,
@@ -160,30 +151,26 @@ impl RenderContext {
             mesh_manager,
             texture_manager_2d,
             // 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
-            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(1024 * 1024 * 32)),
-
-            frame_global_command_encoder,
+            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(wgpu::BufferSize::new(1024 * 1024 * 32).unwrap())),
 
             resolver,
 
             #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
             err_tracker,
 
-            frame_index: 0,
+            active_frame: ActiveFrameContext { frame_global_command_encoder: None, frame_index: 0 }
         }
-    }
-
-    fn create_frame_global_command_encoder(device: &wgpu::Device) -> wgpu::CommandEncoder {
-        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder").get(),
-        })
     }
 
     /// Call this at the beginning of a new frame.
     ///
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
-        self.frame_index += 1;
+        self.active_frame = ActiveFrameContext {
+            frame_global_command_encoder: None,
+            frame_index: self.active_frame.frame_index + 1,
+        };
+        let frame_index = self.active_frame.frame_index;
 
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on begin_frame rather than raw frames, which
@@ -199,8 +186,8 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.mesh_manager.begin_frame(self.frame_index);
-        self.texture_manager_2d.begin_frame(self.frame_index);
+        self.mesh_manager.begin_frame(frame_index);
+        self.texture_manager_2d.begin_frame(frame_index);
 
         {
             let WgpuResourcePools {
@@ -219,26 +206,26 @@ impl RenderContext {
             shader_modules.begin_frame(
                 &self.device,
                 &mut self.resolver,
-                self.frame_index,
+                frame_index,
                 &modified_paths,
             );
             render_pipelines.begin_frame(
                 &self.device,
-                self.frame_index,
+                frame_index,
                 shader_modules,
                 pipeline_layouts,
             );
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use
-            bind_groups.begin_frame(self.frame_index, textures, buffers, samplers);
+            bind_groups.begin_frame(frame_index, textures, buffers, samplers);
 
-            textures.begin_frame(self.frame_index);
-            buffers.begin_frame(self.frame_index);
+            textures.begin_frame(frame_index);
+            buffers.begin_frame(frame_index);
 
-            pipeline_layouts.begin_frame(self.frame_index);
-            bind_group_layouts.begin_frame(self.frame_index);
-            samplers.begin_frame(self.frame_index);
+            pipeline_layouts.begin_frame(frame_index);
+            bind_group_layouts.begin_frame(frame_index);
+            samplers.begin_frame(frame_index);
         }
 
         // Retrieve unused staging buffer.
@@ -254,21 +241,49 @@ impl RenderContext {
             .lock()
             .before_queue_submit(&self.gpu_resources.buffers);
 
-        let mut command_encoder = Self::create_frame_global_command_encoder(&self.device);
-        std::mem::swap(&mut self.frame_global_command_encoder, &mut command_encoder);
-        let command_buffer = command_encoder.finish();
+        if let Some(command_encoder) = self.active_frame.frame_global_command_encoder.take() {
+            let command_buffer = command_encoder.finish();
 
-        // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
-        //                  How do we hook in there and make sure this buffer is submitted first?
-        self.queue.submit([command_buffer]);
+            // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
+            //                  How do we hook in there and make sure this buffer is submitted first?
+            self.queue.submit([command_buffer]);
+        }
     }
 }
 
 impl Drop for RenderContext {
     fn drop(&mut self) {
-        // Delete the CpuWriteGpuReadBelt beforehand since its active chunks may keep unsafe references into the buffer pool.
-        // (if we don't do this and buffers get destroyed before the belt, wgpu will panic)
-        *self.cpu_write_gpu_read_belt.lock() = CpuWriteGpuReadBelt::new(0);
+        // Close global command encoder if there is any pending.
+        // Not doing so before shutdown causes errors.
+        if let Some(encoder) = self.active_frame.frame_global_command_encoder.take() {
+            encoder.finish();
+        }
+    }
+}
+
+pub struct ActiveFrameContext {
+    /// Command encoder for all commands that should go in before view builder are submitted.
+    ///
+    /// This should be used for any gpu copy operation outside of a renderer or view builder.
+    /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
+    frame_global_command_encoder: Option<wgpu::CommandEncoder>,
+
+    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
+    frame_index: u64,
+}
+
+impl ActiveFrameContext {
+    /// Gets or creates a command encoder that runs before all view builder encoder.
+    pub fn frame_global_command_encoder(
+        &mut self,
+        device: &wgpu::Device,
+    ) -> &mut wgpu::CommandEncoder {
+        self.frame_global_command_encoder.get_or_insert_with(|| {
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
+                    .get(),
+            })
+        })
     }
 }
 

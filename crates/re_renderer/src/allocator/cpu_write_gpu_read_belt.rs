@@ -1,114 +1,67 @@
-use std::{
-    ops::DerefMut,
-    sync::{mpsc, Arc},
-};
+use std::{ops::DerefMut, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBufferHandleStrong, GpuBufferPool, PoolError};
 
 /// Internal chunk of the staging belt.
 struct Chunk {
     buffer: GpuBufferHandleStrong,
-    size: usize,
-}
-
-/// Chunk that the CPU is writing to currently.
-struct ActiveChunk {
-    chunk: Chunk,
-
-    /// Write view into the entire buffer.
-    ///
-    /// UNSAFE: The lifetime is transmuted to be `'static`.
-    /// In actuality it is tied to the lifetime of [`buffer`](#structfield.chunk.buffer)!
-    write_view: wgpu::BufferViewMut<'static>,
-
-    /// Safety mechanism to track the number of uses of this buffer.
-    ///
-    /// As long it is bigger 1, we are NOT allowed to deactivate the chunk!
-    safety_usage_counter: Arc<()>,
+    size: wgpu::BufferAddress,
 
     /// At what offset is [`write_view`](#structfield.write_view) unused.
-    unused_offset: usize,
+    unused_offset: wgpu::BufferAddress,
 }
-
-impl Chunk {
-    #[allow(unsafe_code)]
-    fn into_active(self, buffer_pool: &GpuBufferPool) -> ActiveChunk {
-        // Get the entire mapped slice up front because mainly because there is no way to know the memory alignment beforehand!
-        // After discussing this on the wgpu dev channel, consensus was reached that they should be 4xf32 aligned.
-        // TODO: Github issue link.
-        //
-        // It also safes us a bit of time since we don't have to run through all the checks on every `allocate` call,
-        // but this is likely negligible (citation needed).
-        //
-        // Wgpu isn't fond of that though since it ties the (compile time) lifetime of the returned `wgpu::BufferSlice`
-        // to the lifetime of the buffer (after all the mapping should never outlive the buffer!).
-        // Therefore, we need to workaround this a bit.
-        //
-        // Note that in the JavaScript/wasm api of WebGPU this is trivially possible, see
-        // https://www.w3.org/TR/webgpu/#dom-gpubuffer-getmappedrange
-        // (but it also ends up doing an extra memcpy to that's an unfair comparison)
-
-        let wgpu_buffer = buffer_pool
-            .get_resource(&self.buffer)
-            .expect("Invalid buffer handle");
-        let buffer_slice = wgpu_buffer.slice(..);
-        let write_view = buffer_slice.get_mapped_range_mut();
-
-        // SAFETY:
-        // Things we need to guarantee manually now:
-        // * Buffer needs to stay alive for the time CpuWriteGpuReadBuffer is held.
-        //      -> We keep a reference count to `chunk.buffer`
-        // * Nobody holds a view into our memory by the time
-        //      -> We use `safety_usage_counter` and panic if there is more than one owner when we close the buffer view
-        // * Returned ranges into `write_view` NEVER overlap.
-        //      -> We track the unused_offset and never return any range ahead of it!
-        let write_view = unsafe {
-            std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
-        };
-
-        ActiveChunk {
-            chunk: self,
-            write_view,
-            unused_offset: 0,
-            safety_usage_counter: Arc::new(()),
-        }
-    }
-}
-
-// TODO(andreas): Make wgpu::BufferMappedRange Send upstream
-#[allow(unsafe_code)]
-/// SAFETY:
-/// TODO: Link to pr here doing so
-unsafe impl std::marker::Send for ActiveChunk {}
 
 /// A suballocated staging buffer that can be written to.
 ///
 /// We do *not* allow reading from this buffer as it is typically write-combined memory.
 /// Reading would work, but it can be *very* slow.
-pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod> {
-    write_only_memory: &'static mut [T],
-
-    #[allow(dead_code)]
-    safety_usage_counter: Arc<()>,
+pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + 'static> {
+    /// Write view into the relevant buffer portion.
+    ///
+    /// UNSAFE: The lifetime is transmuted to be `'static`.
+    /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk.chunk_buffer)!
+    write_view: wgpu::BufferViewMut<'static>,
 
     chunk_buffer: GpuBufferHandleStrong,
-    offset_in_chunk_buffer: usize,
+    offset_in_chunk_buffer: wgpu::BufferAddress,
+
+    /// Marker for the type whose alignment and size requirements are honored by `write_view`.
+    _type: std::marker::PhantomData<T>,
 }
 
 impl<T> CpuWriteGpuReadBuffer<T>
 where
     T: bytemuck::Pod + 'static,
 {
-    /// Writes several objects to the buffer at a given location.
+    /// Memory as slice of T.
+    ///
+    /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
+    #[inline(always)]
+    fn as_slice(&mut self) -> &mut [T] {
+        bytemuck::cast_slice_mut(&mut self.write_view)
+    }
+
+    /// Writes several objects using to the buffer at a given location using a slice.
+    ///
     /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
     /// (panics otherwise)
-    ///
-    /// We do *not* allow reading from this buffer as it is typically write-combined memory.
-    /// Reading would work, but it can be *very* slow.
     #[inline]
-    pub fn write(&mut self, elements: impl Iterator<Item = T>, num_elements_offset: usize) {
+    pub fn write_slice(&mut self, elements: &[T], num_elements_offset: usize) {
+        self.as_slice()[num_elements_offset..].copy_from_slice(elements);
+    }
+
+    /// Writes several objects using to the buffer at a given location using an iterator.
+    ///
+    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
+    /// (panics otherwise)
+    #[inline]
+    pub fn write_iterator(
+        &mut self,
+        elements: impl Iterator<Item = T>,
+        num_elements_offset: usize,
+    ) {
         for (target, source) in self
-            .write_only_memory
+            .as_slice()
             .iter_mut()
             .skip(num_elements_offset)
             .zip(elements)
@@ -118,11 +71,12 @@ where
     }
 
     /// Writes a single objects to the buffer at a given location.
+    ///
     /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
     /// (panics otherwise)
-    #[inline(always)]
+    #[inline]
     pub fn write_single(&mut self, element: &T, num_elements_offset: usize) {
-        self.write_only_memory[num_elements_offset] = *element;
+        self.as_slice()[num_elements_offset] = *element;
     }
 
     // pub fn copy_to_texture(
@@ -154,7 +108,7 @@ where
 
     /// Consume this data view and copy it to another gpu buffer.
     pub fn copy_to_buffer(
-        self,
+        mut self,
         encoder: &mut wgpu::CommandEncoder,
         buffer_pool: &GpuBufferPool,
         destination: &GpuBufferHandleStrong,
@@ -162,10 +116,10 @@ where
     ) -> Result<(), PoolError> {
         encoder.copy_buffer_to_buffer(
             buffer_pool.get_resource(&self.chunk_buffer)?,
-            self.offset_in_chunk_buffer as _,
+            self.offset_in_chunk_buffer,
             buffer_pool.get_resource(destination)?,
             destination_offset,
-            (self.write_only_memory.len() * std::mem::size_of::<T>()) as u64,
+            self.write_view.deref_mut().len() as u64,
         );
         Ok(())
     }
@@ -183,10 +137,10 @@ where
 /// * handles alignment
 pub struct CpuWriteGpuReadBelt {
     /// Minimum size for new buffers.
-    chunk_size: usize,
+    chunk_size: wgpu::BufferSize,
 
     /// Chunks which are CPU write at the moment.
-    active_chunks: Vec<ActiveChunk>,
+    active_chunks: Vec<Chunk>,
 
     /// Chunks which are GPU read at the moment.
     ///
@@ -224,7 +178,7 @@ impl CpuWriteGpuReadBelt {
     ///
     /// TODO(andreas): Adaptive chunk sizes
     /// TODO(andreas): Shrinking after usage spikes?
-    pub fn new(chunk_size: usize) -> Self {
+    pub fn new(chunk_size: wgpu::BufferSize) -> Self {
         let (sender, receiver) = mpsc::channel();
         CpuWriteGpuReadBelt {
             chunk_size,
@@ -246,28 +200,32 @@ impl CpuWriteGpuReadBelt {
         buffer_pool: &mut GpuBufferPool,
         num_elements: usize,
     ) -> CpuWriteGpuReadBuffer<T> {
-        let alignment = std::mem::align_of::<T>().min(wgpu::MAP_ALIGNMENT as usize);
-        let size = std::mem::size_of::<T>() * num_elements;
+        let alignment = (std::mem::align_of::<T>() as wgpu::BufferAddress).min(wgpu::MAP_ALIGNMENT);
+        let size = (std::mem::size_of::<T>() * num_elements) as wgpu::BufferAddress;
 
-        // We need to be super careful with alignment since wgpu
-        // has no guarantees on how pointers to mapped memory are aligned!
+        // We need to be super careful with alignment since today wgpu
+        // has NO guarantees on how pointers to mapped memory are aligned!
+        // For all we know, pointers might be 1 aligned, causing even a u32 write to crash the process!
+        //
+        // See https://github.com/gfx-rs/wgpu/issues/3508
+        //
+        // To work around this, we require a bigger size to begin with.
+        //
+        // TODO(andreas): Either fix the wgpu issue or come up with a more conservative strategy,
+        //                where we first look for a buffer slice with `size` and then again with required_size if needed.
+        let required_size = size + alignment - 1;
 
         // We explicitly use `deref_mut` on write_view everywhere, since wgpu warns if we accidentally use `deref`.
 
         // Try to find space in any of the active chunks first.
-        let mut active_chunk = if let Some(index) =
-            self.active_chunks.iter_mut().position(|active_chunk| {
-                size + (active_chunk.write_view.deref_mut().as_ptr() as usize
-                    + active_chunk.unused_offset)
-                    % alignment
-                    <= active_chunk.chunk.size - active_chunk.unused_offset
-            }) {
+        let mut chunk = if let Some(index) = self
+            .active_chunks
+            .iter_mut()
+            .position(|chunk| chunk.size - chunk.unused_offset >= required_size)
+        {
             self.active_chunks.swap_remove(index)
         } else {
             self.receive_chunks(); // ensure self.free_chunks is up to date
-
-            // We don't know yet how aligned the mapped pointer is. So we need to ask for more memory!
-            let required_size = size + alignment - 1;
 
             // Use a free chunk if possible, fall back to creating a new one if necessary.
             if let Some(index) = self
@@ -275,50 +233,99 @@ impl CpuWriteGpuReadBelt {
                 .iter()
                 .position(|chunk| chunk.size >= required_size)
             {
-                self.free_chunks.swap_remove(index).into_active(buffer_pool)
+                self.free_chunks.swap_remove(index)
             } else {
                 // Allocation might be bigger than a chunk.
-                let size = self.chunk_size.max(required_size);
+                let size = self.chunk_size.get().max(required_size);
 
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {
                         label: "CpuWriteGpuReadBelt buffer".into(),
-                        size: size as _,
+                        size,
                         usage: wgpu::BufferUsages::MAP_WRITE | wgpu::BufferUsages::COPY_SRC,
                         mapped_at_creation: true,
                     },
                 );
 
-                Chunk { buffer, size }.into_active(buffer_pool)
+                Chunk {
+                    buffer,
+                    size,
+                    unused_offset: 0,
+                }
             }
         };
 
-        let alignment_padding = (active_chunk.write_view.deref_mut().as_ptr() as usize
-            + active_chunk.unused_offset)
-            % alignment;
-        let start_offset = active_chunk.unused_offset + alignment_padding;
-        let end_offset = start_offset + size;
+        let buffer = buffer_pool
+            .get_resource(&chunk.buffer)
+            .expect("invalid chunk buffer");
 
-        let write_only_memory = bytemuck::cast_slice_mut(
-            &mut active_chunk.write_view.deref_mut()[start_offset..end_offset],
-        );
+        // Allocate mapping from a chunk.
+        fn allocate_mapping<'a>(
+            chunk: &mut Chunk,
+            size: u64,
+            buffer: &'a wgpu::Buffer,
+        ) -> (u64, wgpu::BufferViewMut<'a>) {
+            let start_offset = chunk.unused_offset;
+            let end_offset = start_offset + size;
+
+            debug_assert!(end_offset <= chunk.size);
+            chunk.unused_offset = end_offset;
+
+            let buffer_slice = buffer.slice(start_offset..end_offset);
+            (start_offset, buffer_slice.get_mapped_range_mut())
+        }
+
+        // Allocate mapping from a chunk with alignment requirements.
+        //
+        // Depending on how https://github.com/gfx-rs/wgpu/issues/3508 will be solved, this will become trivial
+        // as we will have knowledge of a full buffer mapping alignment beforehand.
+        // (we then should probably always align to 32 byte and don't allow types with even higher alignment requirements!)
+        fn allocate_chunk_mapping_with_alignment<'a>(
+            chunk: &mut Chunk,
+            size: u64,
+            buffer: &'a wgpu::Buffer,
+            alignment: u64,
+        ) -> (u64, wgpu::BufferViewMut<'a>) {
+            // First optimistically try without explicit padding.
+            let (start_offset, mut write_view) = allocate_mapping(chunk, size, buffer);
+            let required_padding = write_view.deref_mut().as_ptr() as u64 % alignment; // use deref_mut because wgpu warns otherwise that read access is slow.
+
+            if required_padding == 0 {
+                (start_offset, write_view)
+            } else {
+                // Undo mapping and try again with padding.
+                // We made sure earlier that the chunk has enough space for this case!
+                drop(write_view);
+                chunk.unused_offset = start_offset + required_padding;
+
+                let (start_offset, mut write_view) = allocate_mapping(chunk, size, buffer);
+                let required_padding = write_view.deref_mut().as_ptr() as u64 % alignment; // use deref_mut because wgpu warns otherwise that read access is slow.
+                debug_assert_eq!(required_padding, 0);
+
+                (start_offset, write_view)
+            }
+        }
+
+        let (start_offset, write_view) =
+            allocate_chunk_mapping_with_alignment(&mut chunk, size, buffer, alignment);
 
         // SAFETY:
-        // The slice we take out of the write view has a lifetime dependency on the write_view.
-        // This means it is self-referential. We handle this lifetime at runtime instead by
-        //
-        // See also `ActiveChunk::into_active`.
-        let write_only_memory =
-            unsafe { std::mem::transmute::<&mut [T], &'static mut [T]>(write_only_memory) };
-        let cpu_buffer_view = CpuWriteGpuReadBuffer {
-            write_only_memory,
-            safety_usage_counter: active_chunk.safety_usage_counter.clone(),
-            chunk_buffer: active_chunk.chunk.buffer.clone(),
-            offset_in_chunk_buffer: start_offset,
+        // write_view has a lifetime dependency on the chunk's buffer.
+        // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
+        // However, this also implies that the buffer pool is still alive! The renderer context needs to make sure of this.
+        let write_view = unsafe {
+            std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
         };
 
-        self.active_chunks.push(active_chunk);
+        let cpu_buffer_view = CpuWriteGpuReadBuffer {
+            chunk_buffer: chunk.buffer.clone(),
+            offset_in_chunk_buffer: start_offset,
+            write_view,
+            _type: std::marker::PhantomData,
+        };
+
+        self.active_chunks.push(chunk);
 
         cpu_buffer_view
     }
@@ -335,18 +342,12 @@ impl CpuWriteGpuReadBelt {
         // https://github.com/gfx-rs/wgpu/issues/1468
         // However, WebGPU does not support this!
 
-        for active_chunk in self.active_chunks.drain(..) {
-            assert!(Arc::strong_count(&active_chunk.safety_usage_counter) == 1,
-                "Chunk still in use. All instances of `CpuWriteGpuReadBelt` need to be freed before submitting.");
-
-            // Ensure write view is dropped before we unmap!
-            drop(active_chunk.write_view);
-
+        for chunk in self.active_chunks.drain(..) {
             buffer_pool
-                .get_resource(&active_chunk.chunk.buffer)
+                .get_resource(&chunk.buffer)
                 .expect("invalid buffer handle")
                 .unmap();
-            self.closed_chunks.push(active_chunk.chunk);
+            self.closed_chunks.push(chunk);
         }
     }
 
