@@ -1,5 +1,5 @@
 use ecolor::Hsva;
-use glam::{UVec3, Vec2, Vec3};
+use glam::{UVec3, Vec2, Vec3, Vec3Swizzles};
 use image::{DynamicImage, GenericImageView};
 use itertools::Itertools;
 use macaw::IsoTransform;
@@ -47,16 +47,33 @@ impl framework::Example for RenderVolumetric {
         let albedo = image::open("/tmp/teardown_albedo.png").unwrap();
         let albedo = albedo.resize_exact(640, 480, image::imageops::Nearest);
 
-        // let img = image::open("/tmp/nyud_depth.png").unwrap();
+        // let img = image::open("/tmp/nyud_depth.pgm").unwrap();
         // dbg!(img.width(), img.height());
-        // let img = img.resize_exact(640, 480, image::imageops::Nearest);
-        // let albedo = image::open("/tmp/nyud_albedo.png").unwrap();
-        // let albedo = albedo.resize_exact(640, 480, image::imageops::Nearest);
+        // // let img = img.resize_exact(640, 480, image::imageops::Nearest);
+        // // TODO: does the albedo texture need any flipping on X and/or Y?
+        // let albedo = image::open("/tmp/nyud_albedo.ppm").unwrap();
+        // // let albedo = albedo.resize_exact(640, 480, image::imageops::Nearest);
+
+        fn get_norm_pixel(img: &DynamicImage, x: u32, y: u32) -> f32 {
+            match &img {
+                DynamicImage::ImageLuma8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
+                DynamicImage::ImageLumaA8(_) => todo!(),
+                DynamicImage::ImageRgb8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
+                DynamicImage::ImageRgba8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
+                DynamicImage::ImageLuma16(img) => img.get_pixel(x, y).0[0] as f32 / u16::MAX as f32,
+                DynamicImage::ImageLumaA16(_) => todo!(),
+                DynamicImage::ImageRgb16(_) => todo!(),
+                DynamicImage::ImageRgba16(_) => todo!(),
+                DynamicImage::ImageRgb32F(_) => todo!(),
+                DynamicImage::ImageRgba32F(_) => todo!(),
+                _ => todo!(),
+            }
+        }
+
+        let img_size = Vec2::new(img.width() as f32, img.height() as f32);
 
         // TODO: Z is arbitrary I guess?
-        let img_size = Vec3::new(img.width() as f32, img.height() as f32, 640.0 / 4.0);
-
-        let vol_size = Vec3::new(img.width() as f32, img.height() as f32, 640.0 / 1.0) * 0.15;
+        let vol_size = Vec3::new(img.width() as f32, img.height() as f32, 640.0 * 1.0) * 0.15;
         // TODO: shouldnt have to be cubic
         let vol_dimensions = UVec3::new(640, 640, 640) / 4;
 
@@ -67,40 +84,38 @@ impl framework::Example for RenderVolumetric {
         let mut faked =
             vec![0u8; (vol_dimensions.x * vol_dimensions.y * vol_dimensions.z * 4) as usize];
 
-        let uv_center = Vec2::new(img_size.x as f32 * 0.5, img_size.y as f32 * 0.5);
-
-        let focal_length = vol_dimensions.x as f32 * 0.7;
-        // let intrinsics = glam::Mat3::from_cols(
-        //     glam::vec3(focal_length, 0.0, uv_center.x),
-        //     glam::vec3(0.0, focal_length, uv_center.y),
-        //     glam::vec3(0.0, 0.0, 1.0),
-        // )
-        // .inverse();
-        let zmax = img
-            .pixels()
-            .max_by(|p1, p2| p1.2 .0[0].cmp(&p2.2 .0[0]))
-            .unwrap();
-        dbg!(zmax);
+        // TODO: somehow this needs to happen in a pre-pass then?
         let mut pixels_set = 0;
-        for (x, y, p) in img.pixels() {
-            let z = p.0[0] as f32 / 255.0 * (img_size.z as f32 - 1.0);
-            // let texcoords = Vec3::new(x as f32, y as f32, z) / img_size;
-            // let xy = dbg!((texcoords - uv_center.extend(0.0)) * z / focal_length)
-            //     + vol_dimensions.as_vec3() * 0.5;
-            // let pos = Vec3::new(xy.x, xy.y, z);
-            // // dbg!(((x, y), pos));
-            // let pos = pos.as_uvec3();
-            // let z = (p.0[0] as f32 / 295.0 * (dimensions.z as f32 - 1.0)) as u32;
-            // let z = linearize(p.0[0]) as u32;
-            // let z = 0;
-            // dbg!(z);
-            // for z in 0..dimensions.z {
+        let (mut zmin, mut zmax) = (f32::MAX, f32::MIN);
+        for (x, y, _) in img.pixels() {
+            // TODO: is the depth texture..:
+            // - linear?
+            // - inversed?
+            // - distance from camera plane or distance from camera?
+            let z = get_norm_pixel(&img, x, y);
+            zmin = f32::min(zmin, z);
+            zmax = f32::max(zmax, z);
 
-            let texcoords = Vec3::new(x as f32, y as f32, z) / img_size;
-            let pos = texcoords * (vol_dimensions.as_vec3() - 1.0);
-            let mut pos = pos.as_uvec3();
-            pos.x = vol_dimensions.x - pos.x;
-            pos.y = vol_dimensions.y - pos.y;
+            // TODO: it doesn't matter how Z started, at this point we need it to be:
+            // - linear
+            // - 0.0 = near, 1.0 = far
+            // - distance from camera
+
+            // Compute texture coordinates in the depth image's space.
+            let texcoords = Vec2::new(x as f32, y as f32) / img_size;
+
+            // Compute texture coordinates in the volume's back panel space (z=1.0).
+            // let texcoords_in_volume = texcoords.extend(1.0);
+            let texcoords_in_volume = Vec3::new(1.0 - texcoords.x, 1.0 - texcoords.y, 1.0);
+
+            // Assume a virtual camera sitting at the center of the volume's front panel (z=0.0).
+            let cam_npos_in_volume = Vec3::new(0.5, 0.5, 0.0);
+
+            let npos_in_volume =
+                cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * z;
+            let pos_in_volume = npos_in_volume * (vol_dimensions.as_vec3() - 1.0);
+
+            let pos = pos_in_volume.as_uvec3();
 
             let idx = (pos.x
                 + pos.y * vol_dimensions.x
@@ -109,13 +124,10 @@ impl framework::Example for RenderVolumetric {
 
             faked[idx..idx + 4].copy_from_slice(&albedo.get_pixel(x, y).0);
             pixels_set += 1;
-            // }
         }
 
+        dbg!((zmin, zmax));
         dbg!(pixels_set);
-        // if let DynamicImage::ImageRgb8(img) = img {
-        //     img.enumerate_pixels
-        // }
 
         RenderVolumetric {
             checkerboard: faked,
@@ -146,6 +158,7 @@ impl framework::Example for RenderVolumetric {
 
         let splits = framework::split_resolution(resolution, 1, 1).collect::<Vec<_>>();
 
+        let mut bbox_builder = LineStripSeriesBuilder::<()>::default();
         let volume_instances = vec![{
             let scale = glam::Mat4::from_scale(self.checkerboard_size);
 
@@ -156,6 +169,13 @@ impl framework::Example for RenderVolumetric {
 
             let world_from_model = rotation * translation_center * scale;
             let model_from_world = world_from_model.inverse();
+
+            let mut line_batch = bbox_builder.batch("bbox").world_from_obj(world_from_model);
+            line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(
+                glam::Vec3::ONE,
+                Default::default(),
+                glam::Vec3::ONE * 0.5,
+            ));
 
             Volume {
                 world_from_model,
@@ -195,6 +215,7 @@ impl framework::Example for RenderVolumetric {
                 let command_buffer = view_builder
                     .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
                     .queue_draw(&volume_draw_data)
+                    .queue_draw(&bbox_builder.to_draw_data(re_ctx))
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {

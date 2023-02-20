@@ -83,7 +83,7 @@ wgpu = { workspace = true, default-features = false, features = [
 
 # For examples:
 [dev-dependencies]
-image = { version = "0.24", default-features = false, features = ["png"] }
+image = { version = "0.24", default-features = false, features = ["png", "pnm"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.3"

@@ -19,6 +19,11 @@ pub use rectangles::{RectangleDrawData, TextureFilterMag, TextureFilterMin, Text
 mod volumes;
 pub use self::volumes::{Volume, VolumeDrawData, VolumeRenderer};
 
+mod volumes2d;
+pub use self::volumes2d::{
+    Volume as Volume2D, VolumeDrawData as Volume2DDrawData, VolumeRenderer as Volume2DRenderer,
+};
+
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
 pub use mesh_renderer::{MeshDrawData, MeshInstance};

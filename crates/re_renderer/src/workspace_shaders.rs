@@ -132,4 +132,10 @@ pub fn init() {
         let content = include_str!("../shader/volume.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
+
+    {
+        let virtpath = Path::new("shader/volume2d.wgsl");
+        let content = include_str!("../shader/volume2d.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
 }
