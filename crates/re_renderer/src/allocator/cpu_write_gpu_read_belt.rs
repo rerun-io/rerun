@@ -2,21 +2,17 @@ use std::{num::NonZeroU32, ops::DerefMut, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBufferHandleStrong, GpuBufferPool, PoolError};
 
-/// Internal chunk of the staging belt.
-struct Chunk {
-    buffer: GpuBufferHandleStrong,
-    size: wgpu::BufferAddress,
-
-    /// At what offset is [`write_view`](#structfield.write_view) unused.
-    unused_offset: wgpu::BufferAddress,
-}
-
 /// A sub-allocated staging buffer that can be written to.
 ///
 /// Behaves a bit like a fixed sized `Vec` in that far it keeps track of how many elements were written to it.
 ///
 /// We do *not* allow reading from this buffer as it is typically write-combined memory.
 /// Reading would work, but it can be *very* slow.
+/// For details on why, see
+/// [Write combining is not your friend, by Fabian Giesen](https://fgiesen.wordpress.com/2013/01/29/write-combining-is-not-your-friend/)
+/// Note that the "vec like behavior" further encourages
+/// * not leaving holes
+/// * keeping writes sequential
 pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + 'static> {
     /// Write view into the relevant buffer portion.
     ///
@@ -132,6 +128,15 @@ where
     }
 }
 
+/// Internal chunk of the staging belt.
+struct Chunk {
+    buffer: GpuBufferHandleStrong,
+    size: wgpu::BufferAddress,
+
+    /// At what offset is [`write_view`](#structfield.write_view) unused.
+    unused_offset: wgpu::BufferAddress,
+}
+
 /// Efficiently performs many buffer writes by sharing and reusing temporary buffers.
 ///
 /// Internally it uses a ring-buffer of staging buffers that are sub-allocated.
@@ -200,7 +205,6 @@ impl CpuWriteGpuReadBelt {
     /// Allocates a cpu writable buffer for `num_elements` instances of T.
     ///
     /// Handles alignment requirements automatically which allows faster copy operations.
-    #[allow(unsafe_code)]
     pub fn allocate<T: bytemuck::Pod + 'static>(
         &mut self,
         device: &wgpu::Device,
@@ -317,6 +321,7 @@ impl CpuWriteGpuReadBelt {
         let (start_offset, write_view) =
             allocate_chunk_mapping_with_alignment(&mut chunk, size, buffer, alignment);
 
+        #[allow(unsafe_code)]
         // SAFETY:
         // write_view has a lifetime dependency on the chunk's buffer.
         // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
