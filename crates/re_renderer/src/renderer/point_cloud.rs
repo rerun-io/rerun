@@ -20,6 +20,7 @@ use std::{
 
 use crate::{
     context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, Color32, DebugLabel,
+    PointCloudBuilder,
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable;
@@ -148,11 +149,9 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new(
+    pub fn new<T>(
         ctx: &mut RenderContext,
-        vertices: &[PointCloudVertex],
-        colors: &[Color32],
-        batches: &[PointCloudBatchInfo],
+        builder: &PointCloudBuilder<T>,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
@@ -162,6 +161,10 @@ impl PointCloudDrawData {
             &ctx.device,
             &mut ctx.resolver,
         );
+
+        let vertices = builder.vertices.as_slice();
+        let colors = builder.colors.as_slice();
+        let batches = builder.batches.as_slice();
 
         if vertices.is_empty() {
             return Ok(PointCloudDrawData {

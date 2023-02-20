@@ -13,7 +13,7 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub colors: Vec<Color32>,
     pub user_data: Vec<PerPointUserData>,
 
-    batches: Vec<PointCloudBatchInfo>,
+    pub(crate) batches: Vec<PointCloudBatchInfo>,
 }
 
 impl<PerPointUserData> Default for PointCloudBuilder<PerPointUserData> {
@@ -100,7 +100,7 @@ where
         &self,
         ctx: &mut crate::context::RenderContext,
     ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
-        PointCloudDrawData::new(ctx, &self.vertices, &self.colors, &self.batches)
+        PointCloudDrawData::new(ctx, self)
     }
 }
 
