@@ -4235,6 +4235,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "bytemuck",
+ "chrono",
  "cocoa",
  "console_error_panic_hook",
  "ctrlc",
