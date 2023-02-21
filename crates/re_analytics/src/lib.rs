@@ -207,7 +207,7 @@ impl Analytics {
             config,
             default_append_props: Default::default(),
             pipeline,
-            event_id: AtomicU64::new(0),
+            event_id: AtomicU64::new(1), // we skip 0 just to be explicit (zeroes can often be implicit)
         })
     }
 
