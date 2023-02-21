@@ -47,7 +47,18 @@ use std::time::Duration;
 use re_log::trace;
 use time::OffsetDateTime;
 
-// ---
+// ----------------------------------------------------------------------------
+
+/// What target triplet (os, cpu) `re_analytics` was compiled for.
+pub const TARGET_TRIPLET: &str = env!("__RERUN_TARGET_TRIPLE");
+
+/// What git hash of the Rerun repository we were compiled in.
+///
+/// If we are not in the Rerun repository, this will be set
+/// to the `re_analytics` crate version (`CARGO_PKG_VERSION`) instead.
+pub const GIT_HASH: &str = env!("__RERUN_GIT_HASH");
+
+// ----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
@@ -195,34 +206,6 @@ impl Analytics {
             pipeline,
             event_id: AtomicU64::new(1),
         })
-    }
-
-    /// Sends:
-    /// * `re_analytics` crate version
-    /// * rust version
-    /// * target triplet (os and cpu architecture)
-    /// * git hash
-    /// * opt-in email for Rerun developers (registered with `rerun analytics email`)
-    pub fn send_metadata(&mut self) {
-        if let Some(pipeline) = &self.pipeline {
-            let rerun_version = env!("CARGO_PKG_VERSION").to_owned();
-            let rust_version = env!("CARGO_PKG_RUST_VERSION").to_owned();
-            let target_triple = env!("__RERUN_TARGET_TRIPLE").to_owned();
-            let git_hash = env!("__RERUN_GIT_HASH").to_owned();
-
-            let mut event = Event::update("update_metadata".into())
-                .with_prop("rerun_version".into(), rerun_version)
-                .with_prop("rust_version".into(), rust_version)
-                .with_prop("target".into(), target_triple)
-                .with_prop("git_hash".into(), git_hash);
-
-            for (name, value) in self.config.opt_in_metadata.clone() {
-                event = event.with_prop(name.into(), value);
-            }
-
-            // NOTE: no event_id
-            pipeline.record(event);
-        }
     }
 
     pub fn config(&self) -> &Config {

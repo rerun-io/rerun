@@ -65,13 +65,26 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &mut self.analytics {
-            // Sends:
-            // * `re_analytics` crate version
-            // * rust version
-            // * target triplet (os and cpu architecture)
-            // * git hash
-            // * opt-in email for Rerun developers (registered with `rerun analytics email`)
-            analytics.send_metadata();
+            let rerun_version = env!("CARGO_PKG_VERSION");
+            let rust_version = env!("CARGO_PKG_RUST_VERSION");
+            let target = re_analytics::TARGET_TRIPLET;
+            let git_hash = re_analytics::GIT_HASH;
+
+            let mut event = Event::update("update_metadata".into())
+                .with_prop("rerun_version".into(), rerun_version.to_owned())
+                .with_prop("rust_version".into(), rust_version.to_owned())
+                .with_prop("target".into(), target.to_owned())
+                .with_prop("git_hash".into(), git_hash.to_owned());
+
+            // Append opt-in metadata.
+            // In practice this is the email of Rerun employees
+            // who register their emails with `rerun analytics email`.
+            // This is how we filter out employees from actual users!
+            for (name, value) in analytics.config().opt_in_metadata.clone() {
+                event = event.with_prop(name.into(), value);
+            }
+
+            analytics.record(event);
         }
 
         self.record(Event::append("viewer_started".into()));
