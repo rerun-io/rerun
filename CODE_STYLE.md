@@ -113,7 +113,7 @@ Use debug-formatting (`{:?}`) when logging strings in logs and error messages. T
 
 Use `re_error::format(err)` when displaying an error.
 
-### Naming
+## Naming
 When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 
 Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg_id`.
@@ -122,7 +122,7 @@ Avoid negations in names. A lot of people struggle with double negations, so thi
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 
-#### Spaces
+### Spaces
 Points, vectors, rays etc all live in different _spaces_. Whenever there is room for ambiguity, we explicitly state which space something is in, e.g. with `ray_in_world`.
 
 Here are some of our standard spaces:
@@ -133,7 +133,7 @@ Here are some of our standard spaces:
 * `world`: the common coordinate system of a 3D scene, usually same as `space`
 * `view`: X=right, Y=down, Z=back, origin = center of screen
 
-#### Matrices
+### Matrices
 We use column vectors, which means matrix multiplication is done as `M * v`, i.e. we read all matrix/vector operations right-to-left. We therefore name all transform matrices as `foo_from_bar`, for instance:
 
 ```rust
@@ -150,5 +150,5 @@ See <https://www.sebastiansylvan.com/post/matrix_naming_convention/> for motivat
 
 For consistency, we use the same naming convention for other non-matrix transforms too. For instance, functions: `let screen = screen_from_world(world);`.
 
-#### Vectors vs points
+### Vectors vs points
 Vectors are directions with magnitudes. Points are positions.
