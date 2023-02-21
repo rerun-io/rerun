@@ -9,6 +9,27 @@
 
 ## Rust code
 
+### Avoid `unsafe`
+`unsafe` code should be only used when necessary, and should be carefully scrutinized during PR reviews.
+
+### Avoid `unwrap`, `expect` etc.
+The code should never panic or crash, which means that any instance of `unwrap` or `expect` is a potential time-bomb. Even if you structured your code to make them impossible, any reader will have to read the code very carefully to prove to themselves that an `unwrap` won't panic. Often you can instead rewrite your code so as to avoid it. The same goes for indexing into a slice (which will panic on out-of-bounds) - it is often preferable to use `.get()`.
+
+For instance:
+
+``` rust
+let first = if vec.is_empty() {
+    return;
+} else {
+    vec[0]
+};
+```
+can be better written as:
+
+``` rust
+let Some(first) = vec.get(0) else { return; };
+```
+
 ### Error handling and logging
 We log problems using our own `re_log` crate (which is currently a wrapper around [`tracing`](https://crates.io/crates/tracing/)).
 
@@ -22,6 +43,10 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * The code should only panic if there is a bug in the code.
 * Never ignore an error: either pass it on, or log it.
 * Handle each error exactly once. If you log it, don't pass it on. If you pass it on, don't log it.
+
+Strive to encode code invariants and contracts in the type system as much as possible. So if a vector cannot be empty, consider using [`vec1`](https://crates.io/crates/vec1). [Parse, don’t validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
+
+Some contracts cannot be enforced using the type system. In those cases you should explicitly enforce them using `assert` (self-documenting code) and in documentation (if it is part of a public API).
 
 ### Log levels
 
@@ -73,7 +98,7 @@ We have blank lines before functions, types, `impl` blocks, and docstrings.
 
 We format comments `// Like this`, and `//not like this`.
 
-When importing a `trait` to use it's trait methods, do this: `use Trait as _;`. That lets the reader know why you imported it, even though it seems unused.
+When importing a `trait` to use its trait methods, do this: `use Trait as _;`. That lets the reader know why you imported it, even though it seems unused.
 
 When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo`:s return type ever changes.
 
@@ -88,7 +113,7 @@ Use debug-formatting (`{:?}`) when logging strings in logs and error messages. T
 
 Use `re_error::format(err)` when displaying an error.
 
-### Naming
+## Naming
 When in doubt, be explicit. BAD: `id`. GOOD: `msg_id`.
 
 Be terse when it doesn't hurt readability. BAD: `message_identifier`. GOOD: `msg_id`.
@@ -97,7 +122,7 @@ Avoid negations in names. A lot of people struggle with double negations, so thi
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 
-#### Spaces
+### Spaces
 Points, vectors, rays etc all live in different _spaces_. Whenever there is room for ambiguity, we explicitly state which space something is in, e.g. with `ray_in_world`.
 
 Here are some of our standard spaces:
@@ -108,7 +133,7 @@ Here are some of our standard spaces:
 * `world`: the common coordinate system of a 3D scene, usually same as `space`
 * `view`: X=right, Y=down, Z=back, origin = center of screen
 
-#### Matrices
+### Matrices
 We use column vectors, which means matrix multiplication is done as `M * v`, i.e. we read all matrix/vector operations right-to-left. We therefore name all transform matrices as `foo_from_bar`, for instance:
 
 ```rust
@@ -125,5 +150,5 @@ See <https://www.sebastiansylvan.com/post/matrix_naming_convention/> for motivat
 
 For consistency, we use the same naming convention for other non-matrix transforms too. For instance, functions: `let screen = screen_from_world(world);`.
 
-#### Vectors vs points
+### Vectors vs points
 Vectors are directions with magnitudes. Points are positions.
