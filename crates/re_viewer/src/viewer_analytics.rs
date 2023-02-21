@@ -53,16 +53,8 @@ impl ViewerAnalytics {
 /// Here follows all the analytics collected by the Rerun Viewer.
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
+    /// When the viewer is first started
     pub fn on_viewer_started(&self) {
-        // TODO(cmc): start_method
-        //
-        // We want to know (I think..?):
-        // - Loading rrd (either URL or file, whatever)
-        // - Standalone boot, waiting for network data
-        // - Standalone boot, feeding from another server (??)
-        // - SDK boot, show()
-        // - SDK book, spawn()
-
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
             let rerun_version = env!("CARGO_PKG_VERSION");
@@ -90,6 +82,21 @@ impl ViewerAnalytics {
         self.record(Event::append("viewer_started".into()));
     }
 
+    /// Called when rerun is first started, or when you open a new file.
+    pub fn on_new_data_source(&self, data_source: &re_smart_channel::Source) {
+        let data_source = match data_source {
+            re_smart_channel::Source::File { .. } => "file", // .rrd
+            re_smart_channel::Source::Sdk => "sdk",          // show()
+            re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
+            re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
+        };
+        self.record(
+            Event::append("new_data_source".into())
+                .with_prop("data_source".into(), data_source.to_owned()),
+        );
+    }
+
+    /// When we have loaded the start of a new recording.
     pub fn on_new_recording(&mut self, msg: &re_log_types::BeginRecordingMsg) {
         // We hash the application_id and recording_id unless this is an official example.
         // That's because we want to be able to track which are the popular examples,
@@ -112,7 +119,7 @@ impl ViewerAnalytics {
         });
         self.register("recording_source", msg.info.recording_source.to_string());
         self.register("is_official_example", msg.info.is_official_example);
-        self.record(Event::append("data_source_opened".into()));
+        self.record(Event::append("new_recording".into()));
     }
 }
 
@@ -123,4 +130,5 @@ impl ViewerAnalytics {
 impl ViewerAnalytics {
     pub fn on_viewer_started(&self) {}
     pub fn on_new_recording(&self, _msg: &re_log_types::BeginRecordingMsg) {}
+    pub fn on_new_data_source(&self, _data_source: &re_smart_channel::Source) {}
 }

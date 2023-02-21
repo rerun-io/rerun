@@ -140,6 +140,7 @@ impl App {
 
         let analytics = ViewerAnalytics::new();
         analytics.on_viewer_started();
+        analytics.on_new_data_source(rx.source());
 
         Self {
             startup_options,
@@ -745,7 +746,8 @@ impl App {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
     }
 
-    fn show_log_db(&mut self, log_db: LogDb) {
+    fn show_log_db(&mut self, source: &re_smart_channel::Source, log_db: LogDb) {
+        self.analytics.on_new_data_source(source);
         self.state.selected_rec_id = log_db.recording_id();
         self.log_dbs.insert(log_db.recording_id(), log_db);
     }
@@ -764,7 +766,10 @@ impl App {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
-                    self.show_log_db(log_db);
+                    let source = re_smart_channel::Source::File {
+                        path: file.name.into(),
+                    };
+                    self.show_log_db(&source, log_db);
 
                     #[allow(clippy::needless_return)] // false positive on wasm32
                     return;
@@ -774,7 +779,8 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
                 if let Some(log_db) = load_file_path(path) {
-                    self.show_log_db(log_db);
+                    let source = re_smart_channel::Source::File { path: path.into() };
+                    self.show_log_db(&source, log_db);
                 }
             }
         }
@@ -1331,7 +1337,8 @@ fn open(app: &mut App) {
         .pick_file()
     {
         if let Some(log_db) = load_file_path(&path) {
-            app.show_log_db(log_db);
+            let source = re_smart_channel::Source::File { path };
+            app.show_log_db(&source, log_db);
         }
     }
 }
