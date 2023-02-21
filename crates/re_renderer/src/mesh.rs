@@ -8,8 +8,8 @@ use crate::{
     debug_label::DebugLabel,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError, TextureManager2D},
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuBufferHandleStrong, WgpuResourcePools,
+        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuBuffer, WgpuResourcePools,
     },
 };
 
@@ -103,11 +103,11 @@ pub struct Material {
 pub(crate) struct GpuMesh {
     // It would be desirable to put both vertex and index buffer into the same buffer, BUT
     // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)
-    pub index_buffer: GpuBufferHandleStrong,
+    pub index_buffer: GpuBuffer,
 
     /// Buffer for all vertex data, subdivided in several sections for different vertex buffer bindings.
     /// See [`mesh_vertices`]
-    pub vertex_buffer_combined: GpuBufferHandleStrong,
+    pub vertex_buffer_combined: GpuBuffer,
     pub vertex_buffer_positions_range: Range<u64>,
     pub vertex_buffer_data_range: Range<u64>,
 
@@ -122,7 +122,7 @@ pub(crate) struct GpuMaterial {
     /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 
-    pub bind_group: GpuBindGroupHandleStrong,
+    pub bind_group: GpuBindGroup,
 }
 
 pub(crate) mod gpu_data {

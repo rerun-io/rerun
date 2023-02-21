@@ -1,9 +1,8 @@
 use crate::{
     wgpu_buffer_types,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuBufferHandleStrong, GpuSamplerHandle, SamplerDesc,
-        WgpuResourcePools,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuBuffer, GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
     },
 };
 
@@ -129,8 +128,8 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: &GpuBufferHandleStrong,
-    ) -> GpuBindGroupHandleStrong {
+        frame_uniform_buffer: &GpuBuffer,
+    ) -> GpuBindGroup {
         pools.bind_groups.alloc(
             device,
             // Needs to be kept in sync with `global_bindings.wgsl` / `self.layout`

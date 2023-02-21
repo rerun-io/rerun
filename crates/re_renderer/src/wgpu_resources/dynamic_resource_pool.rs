@@ -116,7 +116,7 @@ where
         state.alive_resources[handle].as_ref().unwrap().clone()
     }
 
-    pub fn get_strong_handle(
+    pub fn get_from_handle(
         &self,
         handle: Handle,
     ) -> Result<Arc<DynamicResource<Handle, Desc, Res>>, PoolError> {

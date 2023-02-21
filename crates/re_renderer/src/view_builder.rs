@@ -9,7 +9,7 @@ use crate::{
         compositor::{Compositor, CompositorDrawData},
         DrawData, Renderer,
     },
-    wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
+    wgpu_resources::{BufferDesc, GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,
 };
 
@@ -41,10 +41,10 @@ struct ViewTargetSetup {
 
     compositor_draw_data: CompositorDrawData,
 
-    bind_group_0: GpuBindGroupHandleStrong,
-    main_target_msaa: GpuTextureHandleStrong,
-    main_target_resolved: GpuTextureHandleStrong,
-    depth_buffer: GpuTextureHandleStrong,
+    bind_group_0: GpuBindGroup,
+    main_target_msaa: GpuTexture,
+    main_target_resolved: GpuTexture,
+    depth_buffer: GpuTexture,
 
     resolution_in_pixel: [u32; 2],
 }

@@ -1,7 +1,7 @@
 use std::{num::NonZeroU32, sync::Arc};
 
 use crate::{
-    wgpu_resources::{GpuTextureHandleStrong, GpuTexturePool, TextureDesc},
+    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
     DebugLabel,
 };
 
@@ -13,7 +13,7 @@ use super::ResourceManagerError;
 /// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
 /// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
-pub struct GpuTexture2DHandle(Option<GpuTextureHandleStrong>);
+pub struct GpuTexture2DHandle(Option<GpuTexture>);
 
 impl GpuTexture2DHandle {
     pub fn invalid() -> Self {
@@ -185,7 +185,7 @@ impl TextureManager2D {
     pub(crate) fn get(
         &self,
         handle: &GpuTexture2DHandle,
-    ) -> Result<GpuTextureHandleStrong, ResourceManagerError> {
+    ) -> Result<GpuTexture, ResourceManagerError> {
         handle
             .0
             .as_ref()

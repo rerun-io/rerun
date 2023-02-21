@@ -119,7 +119,7 @@ use crate::{
     size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError,
         RenderPipelineDesc, ShaderModuleDesc, TextureDesc,
     },
@@ -170,7 +170,7 @@ pub mod gpu_data {
 /// Internal, ready to draw representation of [`LineBatchInfo`]
 #[derive(Clone)]
 struct LineStripBatch {
-    bind_group: GpuBindGroupHandleStrong,
+    bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
 }
 
@@ -178,7 +178,7 @@ struct LineStripBatch {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawData {
-    bind_group_all_lines: Option<GpuBindGroupHandleStrong>,
+    bind_group_all_lines: Option<GpuBindGroup>,
     batches: Vec<LineStripBatch>,
 }
 

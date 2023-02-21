@@ -30,9 +30,9 @@ use crate::{
     include_file,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-        ShaderModuleDesc, TextureDesc,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        TextureDesc,
     },
     Size,
 };
@@ -80,7 +80,7 @@ mod gpu_data {
 /// Internal, ready to draw representation of [`PointCloudBatchInfo`]
 #[derive(Clone)]
 struct PointCloudBatch {
-    bind_group: GpuBindGroupHandleStrong,
+    bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
 }
 
@@ -88,7 +88,7 @@ struct PointCloudBatch {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawData {
-    bind_group_all_points: Option<GpuBindGroupHandleStrong>,
+    bind_group_all_points: Option<GpuBindGroup>,
     batches: Vec<PointCloudBatch>,
 }
 

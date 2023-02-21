@@ -14,7 +14,7 @@ use crate::{
     resource_managers::GpuMeshHandle,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
+        BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
     },
     Color32,
@@ -88,7 +88,7 @@ pub struct MeshDrawData {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
-    instance_buffer: Option<GpuBufferHandleStrong>,
+    instance_buffer: Option<GpuBuffer>,
     batches: Vec<MeshBatch>,
 }
 

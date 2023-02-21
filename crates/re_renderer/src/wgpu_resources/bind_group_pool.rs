@@ -6,26 +6,26 @@ use crate::debug_label::DebugLabel;
 
 use super::{
     bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
-    buffer_pool::{GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool},
+    buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
     dynamic_resource_pool::{DynamicResource, DynamicResourcePool, SizedResourceDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
-    texture_pool::{GpuTextureHandle, GpuTextureHandleStrong, GpuTexturePool},
+    texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
 };
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 
-/// A reference counter baked bind group handle.
+/// A reference counter baked bind group.
 ///
-/// Once all strong handles are dropped, the bind group will be marked for reclamation in the following frame.
+/// Once instances handles are dropped, the bind group will be marked for reclamation in the following frame.
 /// Tracks use of dependent resources as well.
 #[derive(Clone)]
-pub struct GpuBindGroupHandleStrong {
+pub struct GpuBindGroup {
     resource: Arc<DynamicResource<GpuBindGroupHandle, BindGroupDesc, wgpu::BindGroup>>,
-    _owned_buffers: SmallVec<[GpuBufferHandleStrong; 4]>,
-    _owned_textures: SmallVec<[GpuTextureHandleStrong; 4]>,
+    _owned_buffers: SmallVec<[GpuBuffer; 4]>,
+    _owned_textures: SmallVec<[GpuTexture; 4]>,
 }
 
-impl std::ops::Deref for GpuBindGroupHandleStrong {
+impl std::ops::Deref for GpuBindGroup {
     type Target = wgpu::BindGroup;
 
     fn deref(&self) -> &Self::Target {
@@ -109,17 +109,17 @@ impl GpuBindGroupPool {
         textures: &GpuTexturePool,
         buffers: &GpuBufferPool,
         samplers: &GpuSamplerPool,
-    ) -> GpuBindGroupHandleStrong {
+    ) -> GpuBindGroup {
         // Retrieve strong handles to buffers and textures.
         // This way, an owner of a bind group handle keeps buffers & textures alive!.
-        let owned_buffers: SmallVec<[GpuBufferHandleStrong; 4]> = desc
+        let owned_buffers: SmallVec<[GpuBuffer; 4]> = desc
             .entries
             .iter()
             .filter_map(|e| {
                 if let BindGroupEntry::Buffer { handle, .. } = e {
                     Some(
                         buffers
-                            .get_strong_handle(*handle)
+                            .get_from_handle(*handle)
                             .expect("BindGroupDesc had an invalid buffer handle"),
                     )
                 } else {
@@ -128,14 +128,14 @@ impl GpuBindGroupPool {
             })
             .collect();
 
-        let owned_textures: SmallVec<[GpuTextureHandleStrong; 4]> = desc
+        let owned_textures: SmallVec<[GpuTexture; 4]> = desc
             .entries
             .iter()
             .filter_map(|e| {
                 if let BindGroupEntry::DefaultTextureView(handle) = e {
                     Some(
                         textures
-                            .get_strong_handle(*handle)
+                            .get_from_handle(*handle)
                             .expect("BindGroupDesc had an invalid texture handle"),
                     )
                 } else {
@@ -189,7 +189,7 @@ impl GpuBindGroupPool {
             })
         });
 
-        GpuBindGroupHandleStrong {
+        GpuBindGroup {
             resource,
             _owned_buffers: owned_buffers,
             _owned_textures: owned_textures,

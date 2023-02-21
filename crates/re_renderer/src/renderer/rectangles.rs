@@ -20,7 +20,7 @@ use crate::{
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         SamplerDesc, ShaderModuleDesc,
     },
@@ -102,7 +102,7 @@ impl Default for TexturedRect {
 
 #[derive(Clone)]
 pub struct RectangleDrawData {
-    bind_groups: Vec<GpuBindGroupHandleStrong>,
+    bind_groups: Vec<GpuBindGroup>,
 }
 
 impl DrawData for RectangleDrawData {

@@ -2,9 +2,9 @@ use crate::{
     context::SharedRendererData,
     include_file,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, GpuTextureHandleStrong,
-        PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc, WgpuResourcePools,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, WgpuResourcePools,
     },
 };
 
@@ -21,7 +21,7 @@ pub struct Compositor {
 pub struct CompositorDrawData {
     /// [`GpuBindGroupHandleStrong`] pointing at the current image source and
     /// a uniform buffer for describing a tonemapper/compositor configuration.
-    bind_group: GpuBindGroupHandleStrong,
+    bind_group: GpuBindGroup,
 }
 
 impl DrawData for CompositorDrawData {
@@ -29,7 +29,7 @@ impl DrawData for CompositorDrawData {
 }
 
 impl CompositorDrawData {
-    pub fn new(ctx: &mut RenderContext, target: &GpuTextureHandleStrong) -> Self {
+    pub fn new(ctx: &mut RenderContext, target: &GpuTexture) -> Self {
         let pools = &mut ctx.gpu_resources;
         let compositor = ctx.renderers.get_or_create::<_, Compositor>(
             &ctx.shared_renderer_data,
