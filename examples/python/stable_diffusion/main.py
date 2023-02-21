@@ -32,35 +32,6 @@ IMAGE_NAME_TO_URL: Final = {
 IMAGE_NAMES: Final = list(IMAGE_NAME_TO_URL.keys())
 
 
-def run_stable_diffusion(
-    image_path: str, prompt: str, n_prompt: str, strength: float, guidance_scale: float, num_inference_steps: int
-) -> None:
-
-    pipe = StableDiffusionDepth2ImgPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-depth", local_files_only=False, cache_dir=CACHE_DIR.absolute()
-    )
-
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        pipe = pipe.to("mps")
-    elif torch.cuda.is_available():
-        pipe = pipe.to("cuda")
-    else:
-        pipe = pipe.to("cpu")
-
-    pipe.enable_attention_slicing()
-
-    image = Image.open(image_path)
-
-    pipe(
-        prompt=prompt,
-        strength=strength,
-        guidance_scale=guidance_scale,
-        negative_prompt=n_prompt,
-        num_inference_steps=num_inference_steps,
-        image=image,
-    )
-
-
 def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
     image_url = IMAGE_NAME_TO_URL[image_name]
     image_file_name = image_url.split("/")[-1]
@@ -146,13 +117,28 @@ expense of slower inference. This parameter will be modulated by `strength`.
     if not image_path:
         image_path = get_downloaded_path(args.dataset_dir, args.image)
 
-    run_stable_diffusion(
-        image_path=image_path,
+    pipe = StableDiffusionDepth2ImgPipeline.from_pretrained(
+        "stabilityai/stable-diffusion-2-depth", local_files_only=False, cache_dir=CACHE_DIR.absolute()
+    )
+
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        pipe = pipe.to("mps")
+    elif torch.cuda.is_available():
+        pipe = pipe.to("cuda")
+    else:
+        pipe = pipe.to("cpu")
+
+    pipe.enable_attention_slicing()
+
+    image = Image.open(image_path)
+
+    pipe(
         prompt=args.prompt,
-        n_prompt=args.n_prompt,
         strength=args.strength,
         guidance_scale=args.guidance_scale,
+        negative_prompt=args.n_prompt,
         num_inference_steps=args.num_inference_steps,
+        image=image,
     )
 
     rr.script_teardown(args)
