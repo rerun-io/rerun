@@ -138,7 +138,7 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
-        let mut analytics = ViewerAnalytics::new();
+        let analytics = ViewerAnalytics::new();
         analytics.on_viewer_started();
 
         Self {

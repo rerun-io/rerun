@@ -33,8 +33,8 @@ impl ViewerAnalytics {
     }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-    fn record(&mut self, event: Event) {
-        if let Some(analytics) = &mut self.analytics {
+    fn record(&self, event: Event) {
+        if let Some(analytics) = &self.analytics {
             analytics.record(event);
         }
     }
@@ -53,7 +53,7 @@ impl ViewerAnalytics {
 /// Here follows all the analytics collected by the Rerun Viewer.
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
-    pub fn on_viewer_started(&mut self) {
+    pub fn on_viewer_started(&self) {
         // TODO(cmc): start_method
         //
         // We want to know (I think..?):
@@ -64,7 +64,7 @@ impl ViewerAnalytics {
         // - SDK book, spawn()
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-        if let Some(analytics) = &mut self.analytics {
+        if let Some(analytics) = &self.analytics {
             let rerun_version = env!("CARGO_PKG_VERSION");
             let rust_version = env!("CARGO_PKG_RUST_VERSION");
             let target = re_analytics::TARGET_TRIPLET;
@@ -121,6 +121,6 @@ impl ViewerAnalytics {
 // When analytics are disabled:
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
 impl ViewerAnalytics {
-    pub fn on_viewer_started(&mut self) {}
-    pub fn on_new_recording(&mut self, _msg: &re_log_types::BeginRecordingMsg) {}
+    pub fn on_viewer_started(&self) {}
+    pub fn on_new_recording(&self, _msg: &re_log_types::BeginRecordingMsg) {}
 }
