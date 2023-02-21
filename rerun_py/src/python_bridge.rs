@@ -86,6 +86,8 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // called more than once.
     re_log::setup_native_logging();
 
+    global_session().set_recording_source(re_log_types::RecordingSource::PythonSdk);
+
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
     // See `default_recording_id` for extra information.

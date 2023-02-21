@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, Time,
-    TimePoint,
+    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
+    RecordingSource, Time, TimePoint,
 };
 
 /// This is the main object you need to create to use the Rerun SDK.
@@ -13,6 +13,8 @@ pub struct Session {
     /// Is this session enabled?
     /// If not, all calls into it are ignored!
     enabled: bool,
+
+    recording_source: RecordingSource,
 
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
@@ -101,6 +103,8 @@ impl Session {
         Self {
             enabled,
 
+            recording_source: RecordingSource::RustSdk,
+
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
@@ -155,6 +159,12 @@ impl Session {
             self.recording_id = Some(recording_id);
             self.has_sent_begin_recording_msg = false;
         }
+    }
+
+    /// Set where the recording is coming from.
+    /// The default is [`RecordingSource::RustSdk`].
+    pub fn set_recording_source(&mut self, recording_source: RecordingSource) {
+        self.recording_source = recording_source;
     }
 
     /// Send log data to a remote server.
@@ -317,7 +327,7 @@ impl Session {
                             recording_id,
                             is_official_example: self.is_official_example.unwrap_or_default(),
                             started: Time::now(),
-                            recording_source: re_log_types::RecordingSource::PythonSdk,
+                            recording_source: self.recording_source.clone(),
                         },
                     }
                     .into(),

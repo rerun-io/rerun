@@ -219,8 +219,13 @@ pub struct RecordingInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum RecordingSource {
+    Unknown,
+
     /// The official Rerun Python Logging SDK
     PythonSdk,
+
+    /// The official Rerun Rust Logging SDK
+    RustSdk,
 
     /// Perhaps from some manual data ingestion?
     Other(String),
@@ -229,7 +234,9 @@ pub enum RecordingSource {
 impl std::fmt::Display for RecordingSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Unknown => "Unknown".fmt(f),
             Self::PythonSdk => "Python SDK".fmt(f),
+            Self::RustSdk => "Rust SDK".fmt(f),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
