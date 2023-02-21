@@ -36,12 +36,10 @@ type AliveResourceMap<Handle, Desc, Res> =
     SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
 
 struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
-    /// Handles to all alive resources.
+    /// All currently alive resources.
     /// We story any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
-    /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
-    /// something required by [`super::GpuBindGroupPool`]
     alive_resources: AliveResourceMap<Handle, Desc, Res>,
 
     /// Any resource that has been deallocated last frame.

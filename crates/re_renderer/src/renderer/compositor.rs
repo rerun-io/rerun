@@ -19,7 +19,7 @@ pub struct Compositor {
 
 #[derive(Clone)]
 pub struct CompositorDrawData {
-    /// [`GpuBindGroupHandleStrong`] pointing at the current image source and
+    /// [`GpuBindGroup`] pointing at the current image source and
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroup,
 }
