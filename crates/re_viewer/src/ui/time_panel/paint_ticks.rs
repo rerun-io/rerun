@@ -4,6 +4,8 @@ use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
 
 use re_log_types::{Time, TimeRangeF, TimeReal, TimeType};
 
+use crate::misc::format_time::next_grid_tick_magnitude_ns;
+
 use super::time_ranges_ui::TimeRangesUi;
 
 pub fn paint_time_ranges_and_ticks(
@@ -56,56 +58,6 @@ fn paint_time_range_ticks(
 
     match time_type {
         TimeType::Time => {
-            fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
-                if spacing_ns <= 1_000_000_000 {
-                    spacing_ns * 10 // up to 10 second ticks
-                } else if spacing_ns == 10_000_000_000 {
-                    spacing_ns * 6 // to the whole minute
-                } else if spacing_ns == 60_000_000_000 {
-                    spacing_ns * 10 // to ten minutes
-                } else if spacing_ns == 600_000_000_000 {
-                    spacing_ns * 6 // to an hour
-                } else if spacing_ns == 60 * 60 * 1_000_000_000 {
-                    spacing_ns * 12 // to 12 h
-                } else if spacing_ns == 12 * 60 * 60 * 1_000_000_000 {
-                    spacing_ns * 2 // to a day
-                } else {
-                    spacing_ns.checked_mul(10).unwrap_or(spacing_ns) // multiple of ten days
-                }
-            }
-
-            fn grid_text_from_ns(ns: i64) -> String {
-                let relative_ns = ns % 1_000_000_000;
-                if relative_ns == 0 {
-                    let time = Time::from_ns_since_epoch(ns);
-                    if time.is_abolute_date() {
-                        time.format_time("%H:%M:%S")
-                    } else {
-                        re_log_types::Duration::from_nanos(ns).to_string()
-                    }
-                } else {
-                    // We are in the sub-second resolution.
-                    // Showing the full time (HH:MM:SS.XXX or 3h 2m 6s …) becomes too long,
-                    // so instead we switch to showing the time as milliseconds since the last whole second:
-                    let ms = relative_ns as f64 * 1e-6;
-                    if relative_ns % 1_000_000 == 0 {
-                        format!("{ms:+.0} ms")
-                    } else if relative_ns % 100_000 == 0 {
-                        format!("{ms:+.1} ms")
-                    } else if relative_ns % 10_000 == 0 {
-                        format!("{ms:+.2} ms")
-                    } else if relative_ns % 1_000 == 0 {
-                        format!("{ms:+.3} ms")
-                    } else if relative_ns % 100 == 0 {
-                        format!("{ms:+.4} ms")
-                    } else if relative_ns % 10 == 0 {
-                        format!("{ms:+.5} ms")
-                    } else {
-                        format!("{ms:+.6} ms")
-                    }
-                }
-            }
-
             paint_ticks(
                 ui.ctx(),
                 ui.visuals().dark_mode,
@@ -114,7 +66,7 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range, // ns
                 next_grid_tick_magnitude_ns,
-                grid_text_from_ns,
+                |ns| crate::misc::format_time::format_time_compact(Time::from_ns_since_epoch(ns)),
             )
         }
         TimeType::Sequence => {
