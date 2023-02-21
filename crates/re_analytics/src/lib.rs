@@ -152,16 +152,40 @@ impl Analytics {
         let sink = PostHogSink::default();
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
-        if let Some(pipeline) = pipeline.as_ref() {
-            pipeline.record(Event::update_metadata(config.opt_in_metadata.clone()));
-        }
-
         Ok(Self {
             config,
             default_append_props: Default::default(),
             pipeline,
             event_id: AtomicU64::new(1),
         })
+    }
+
+    /// Sends:
+    /// * `re_analytics` crate version
+    /// * rust version
+    /// * target triplet (os and cpu architecture)
+    /// * git hash
+    /// * opt-in email for Rerun developers (registered with `rerun analytics email`)
+    pub fn send_metadata(&mut self) {
+        if let Some(pipeline) = &self.pipeline {
+            let rerun_version = env!("CARGO_PKG_VERSION").to_owned();
+            let rust_version = env!("CARGO_PKG_RUST_VERSION").to_owned();
+            let target_triple = env!("__RERUN_TARGET_TRIPLE").to_owned();
+            let git_hash = env!("__RERUN_GIT_HASH").to_owned();
+
+            let mut event = Event::update("update_metadata".into())
+                .with_prop("rerun_version".into(), rerun_version)
+                .with_prop("rust_version".into(), rust_version)
+                .with_prop("target".into(), target_triple)
+                .with_prop("git_hash".into(), git_hash);
+
+            for (name, value) in self.config.opt_in_metadata.clone() {
+                event = event.with_prop(name.into(), value);
+            }
+
+            // NOTE: no event_id
+            pipeline.record(event);
+        }
     }
 
     pub fn config(&self) -> &Config {
@@ -231,5 +255,3 @@ use self::sink_web::{PostHogSink, SinkError};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
-
-pub mod events;

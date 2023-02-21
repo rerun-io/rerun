@@ -63,6 +63,17 @@ impl ViewerAnalytics {
         // - SDK boot, show()
         // - SDK book, spawn()
 
+        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+        if let Some(analytics) = &mut self.analytics {
+            // Sends:
+            // * `re_analytics` crate version
+            // * rust version
+            // * target triplet (os and cpu architecture)
+            // * git hash
+            // * opt-in email for Rerun developers (registered with `rerun analytics email`)
+            analytics.send_metadata();
+        }
+
         self.record(Event::append("viewer_started".into()));
     }
 
