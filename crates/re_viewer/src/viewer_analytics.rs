@@ -39,7 +39,7 @@ impl ViewerAnalytics {
         }
     }
 
-    /// Register a property that will be included in all [`Event::Append`].
+    /// Register a property that will be included in all append-events.
     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
     fn register(&mut self, name: &'static str, property: impl Into<Property>) {
         if let Some(analytics) = &mut self.analytics {
