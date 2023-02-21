@@ -447,7 +447,7 @@ impl ViewBuilder {
                 let draw_data = draw_data
                     .downcast_ref::<D>()
                     .expect("passed wrong type of draw data");
-                renderer.draw(&ctx.gpu_resources, pass, &draw_data)
+                renderer.draw(&ctx.gpu_resources, pass, draw_data)
             }),
             draw_data: Box::new(draw_data.clone()),
             sorting_index: D::Renderer::draw_order(),
@@ -512,7 +512,7 @@ impl ViewBuilder {
             self.queued_draws
                 .sort_by(|a, b| a.sorting_index.cmp(&b.sorting_index));
             for queued_draw in &self.queued_draws {
-                (queued_draw.draw_func)(ctx, &mut pass, &queued_draw.draw_data)
+                (queued_draw.draw_func)(ctx, &mut pass, queued_draw.draw_data.as_ref())
                     .context("drawing a view")?;
             }
         }

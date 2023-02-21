@@ -7,7 +7,6 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    view_builder::ViewBuilder,
     wgpu_resources::WgpuResourcePools,
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
