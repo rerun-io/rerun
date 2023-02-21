@@ -25,20 +25,4 @@ impl Event {
 
         event
     }
-
-    // TODO(cmc): start_method
-    //
-    // We want to know (I think..?):
-    // - Loading rrd (either URL or file, whatever)
-    // - Standalone boot, waiting for network data
-    // - Standalone boot, feeding from another server (??)
-    // - SDK boot, show()
-    // - SDK book, spawn()
-    pub fn viewer_started() -> Self {
-        Self::append("viewer_started".into())
-    }
-
-    pub fn data_source_opened() -> Self {
-        Self::append("data_source_opened".into())
-    }
 }

@@ -153,7 +153,7 @@ impl Analytics {
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
         if let Some(pipeline) = pipeline.as_ref() {
-            pipeline.record(Event::update_metadata(config.metadata.clone()));
+            pipeline.record(Event::update_metadata(config.opt_in_metadata.clone()));
         }
 
         Ok(Self {
@@ -168,14 +168,19 @@ impl Analytics {
         &self.config
     }
 
-    pub fn default_append_props_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Property> {
-        &mut self.default_append_props
+    /// Register a property that will be included in all [`Event::Append`].
+    pub fn register_append_property(&mut self, name: &'static str, prop: impl Into<Property>) {
+        self.default_append_props.insert(name.into(), prop.into());
     }
 
+    /// Record an event.
+    ///
+    /// It will be extended with an `event_id` and, if this is an [`Event::Append`],
+    /// any properties registered with [`Self::register_append_property`].
     pub fn record(&self, mut event: Event) {
         if let Some(pipeline) = self.pipeline.as_ref() {
-            // Insert default props
             if event.kind == EventKind::Append {
+                // Insert default props
                 event.props.extend(self.default_append_props.clone());
             }
 
