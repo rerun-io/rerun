@@ -1,6 +1,46 @@
 //! Rerun's analytics SDK.
 //!
-//! All the event we collect analytics about can be found in [`events`].
+//! We never collect any personal identifiable information, and you can always opt-out with `rerun analytics disable`.
+//!
+//! All the data we collect can be found in
+//! <https://github.com/rerun-io/rerun/blob/latest/crates/re_viewer/src/viewer_analytics.rs>.
+
+#[cfg(not(target_arch = "wasm32"))]
+mod config_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::config_native::{Config, ConfigError};
+
+#[cfg(target_arch = "wasm32")]
+mod config_web;
+#[cfg(target_arch = "wasm32")]
+use self::config_web::{Config, ConfigError};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod pipeline_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::pipeline_native::{Pipeline, PipelineError};
+
+// TODO(cmc): web pipeline
+#[cfg(target_arch = "wasm32")]
+mod pipeline_web;
+#[cfg(target_arch = "wasm32")]
+use self::pipeline_web::{Pipeline, PipelineError};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod sink_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::sink_native::{PostHogSink, SinkError};
+
+// TODO(cmc): web sink
+#[cfg(target_arch = "wasm32")]
+mod sink_web;
+#[cfg(target_arch = "wasm32")]
+use self::sink_web::{PostHogSink, SinkError};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod cli;
+
+// ----------------------------------------------------------------------------
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -10,7 +50,18 @@ use std::time::Duration;
 use re_log::trace;
 use time::OffsetDateTime;
 
-// ---
+// ----------------------------------------------------------------------------
+
+/// What target triplet (os, cpu) `re_analytics` was compiled for.
+pub const TARGET_TRIPLET: &str = env!("__RERUN_TARGET_TRIPLE");
+
+/// What git hash of the Rerun repository we were compiled in.
+///
+/// If we are not in the Rerun repository, this will be set
+/// to the `re_analytics` crate version (`CARGO_PKG_VERSION`) instead.
+pub const GIT_HASH: &str = env!("__RERUN_GIT_HASH");
+
+// ----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
@@ -152,15 +203,11 @@ impl Analytics {
         let sink = PostHogSink::default();
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
-        if let Some(pipeline) = pipeline.as_ref() {
-            pipeline.record(Event::update_metadata(config.metadata.clone()));
-        }
-
         Ok(Self {
             config,
             default_append_props: Default::default(),
             pipeline,
-            event_id: AtomicU64::new(1),
+            event_id: AtomicU64::new(1), // we skip 0 just to be explicit (zeroes can often be implicit)
         })
     }
 
@@ -168,63 +215,29 @@ impl Analytics {
         &self.config
     }
 
-    pub fn default_append_props_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Property> {
-        &mut self.default_append_props
+    /// Register a property that will be included in all [`EventKind::Append`].
+    pub fn register_append_property(&mut self, name: &'static str, prop: impl Into<Property>) {
+        self.default_append_props.insert(name.into(), prop.into());
     }
 
+    /// Record an event.
+    ///
+    /// It will be extended with an `event_id` and, if this is an [`EventKind::Append`],
+    /// any properties registered with [`Self::register_append_property`].
     pub fn record(&self, mut event: Event) {
         if let Some(pipeline) = self.pipeline.as_ref() {
-            // Insert default props
             if event.kind == EventKind::Append {
+                // Insert default props
                 event.props.extend(self.default_append_props.clone());
-            }
 
-            // Insert event ID
-            event.props.insert(
-                "event_id".into(),
-                (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
-            );
+                // Insert event ID
+                event.props.insert(
+                    "event_id".into(),
+                    (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
+                );
+            }
 
             pipeline.record(event);
         }
     }
 }
-
-// ---
-
-#[cfg(not(target_arch = "wasm32"))]
-mod config_native;
-#[cfg(not(target_arch = "wasm32"))]
-use self::config_native::{Config, ConfigError};
-
-#[cfg(target_arch = "wasm32")]
-mod config_web;
-#[cfg(target_arch = "wasm32")]
-use self::config_web::{Config, ConfigError};
-
-#[cfg(not(target_arch = "wasm32"))]
-mod pipeline_native;
-#[cfg(not(target_arch = "wasm32"))]
-use self::pipeline_native::{Pipeline, PipelineError};
-
-// TODO(cmc): web pipeline
-#[cfg(target_arch = "wasm32")]
-mod pipeline_web;
-#[cfg(target_arch = "wasm32")]
-use self::pipeline_web::{Pipeline, PipelineError};
-
-#[cfg(not(target_arch = "wasm32"))]
-mod sink_native;
-#[cfg(not(target_arch = "wasm32"))]
-use self::sink_native::{PostHogSink, SinkError};
-
-// TODO(cmc): web sink
-#[cfg(target_arch = "wasm32")]
-mod sink_web;
-#[cfg(target_arch = "wasm32")]
-use self::sink_web::{PostHogSink, SinkError};
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod cli;
-
-pub mod events;

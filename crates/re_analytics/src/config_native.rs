@@ -38,8 +38,12 @@ pub struct Config {
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
 
+    /// Opt-in meta-data you can set via `rerun analytics`.
+    ///
+    /// For instance Rerun employees are encouraged to set `rerun analytics email`.
+    /// For real users, this is always empty.
     #[serde(rename = "metadata", default)]
-    pub metadata: HashMap<String, Property>,
+    pub opt_in_metadata: HashMap<String, Property>,
 
     /// The path of the config file.
     #[serde(rename = "config_file_path")]
@@ -69,7 +73,7 @@ impl Config {
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config {
                 analytics_id: Uuid::new_v4().to_string(),
                 analytics_enabled: true,
-                metadata: Default::default(),
+                opt_in_metadata: Default::default(),
                 session_id: Uuid::new_v4(),
                 is_first_run: true,
                 config_file_path: config_path,
