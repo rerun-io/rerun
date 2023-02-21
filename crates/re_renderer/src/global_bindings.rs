@@ -138,7 +138,7 @@ impl GlobalBindings {
                 label: "global bind group".into(),
                 entries: smallvec![
                     BindGroupEntry::Buffer {
-                        handle: **frame_uniform_buffer,
+                        handle: frame_uniform_buffer.handle,
                         offset: 0,
                         size: None,
                     },

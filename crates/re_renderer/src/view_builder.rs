@@ -13,12 +13,17 @@ use crate::{
     DebugLabel, Rgba, Size,
 };
 
-type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>) -> anyhow::Result<()>
+type DrawFn = dyn for<'a, 'b> Fn(
+        &'b RenderContext,
+        &'a mut wgpu::RenderPass<'b>,
+        &'b dyn std::any::Any,
+    ) -> anyhow::Result<()>
     + Sync
     + Send;
 
 struct QueuedDraw {
     draw_func: Box<DrawFn>,
+    draw_data: Box<dyn std::any::Any + std::marker::Send>,
     sorting_index: u32,
 }
 
@@ -388,10 +393,7 @@ impl ViewBuilder {
         let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
 
         ctx.queue.write_buffer(
-            ctx.gpu_resources
-                .buffers
-                .get_resource(&frame_uniform_buffer)
-                .unwrap(),
+            &frame_uniform_buffer,
             0,
             bytemuck::bytes_of(&FrameUniformBuffer {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
@@ -436,16 +438,18 @@ impl ViewBuilder {
     ) -> &mut Self {
         crate::profile_function!();
 
-        let draw_data = draw_data.clone();
-
         self.queued_draws.push(QueuedDraw {
-            draw_func: Box::new(move |ctx, pass| {
+            draw_func: Box::new(move |ctx, pass, draw_data| {
                 let renderer = ctx
                     .renderers
                     .get::<D::Renderer>()
                     .context("failed to retrieve renderer")?;
+                let draw_data = draw_data
+                    .downcast_ref::<D>()
+                    .expect("passed wrong type of draw data");
                 renderer.draw(&ctx.gpu_resources, pass, &draw_data)
             }),
+            draw_data: Box::new(draw_data.clone()),
             sorting_index: D::Renderer::draw_order(),
         });
 
@@ -465,22 +469,6 @@ impl ViewBuilder {
             .as_ref()
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
-        let color_msaa = ctx
-            .gpu_resources
-            .textures
-            .get_resource(&setup.main_target_msaa)
-            .context("hdr render target msaa")?;
-        let color_resolved = ctx
-            .gpu_resources
-            .textures
-            .get_resource(&setup.main_target_resolved)
-            .context("hdr render target resolved")?;
-        let depth = ctx
-            .gpu_resources
-            .textures
-            .get_resource(&setup.depth_buffer)
-            .context("depth buffer")?;
-
         let mut encoder = ctx
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -493,8 +481,8 @@ impl ViewBuilder {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{:?} - main pass", setup.name)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &color_msaa.default_view,
-                    resolve_target: Some(&color_resolved.default_view),
+                    view: &setup.main_target_msaa.default_view,
+                    resolve_target: Some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: clear_color.r() as f64,
@@ -508,7 +496,7 @@ impl ViewBuilder {
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &depth.default_view,
+                    view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
                         // Don't care about depth results afterwards.
@@ -519,19 +507,13 @@ impl ViewBuilder {
                 }),
             });
 
-            pass.set_bind_group(
-                0,
-                ctx.gpu_resources
-                    .bind_groups
-                    .get_resource(&setup.bind_group_0)
-                    .context("get global bind group")?,
-                &[],
-            );
+            pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
             self.queued_draws
                 .sort_by(|a, b| a.sorting_index.cmp(&b.sorting_index));
             for queued_draw in &self.queued_draws {
-                (queued_draw.draw_func)(ctx, &mut pass).context("drawing a view")?;
+                (queued_draw.draw_func)(ctx, &mut pass, &queued_draw.draw_data)
+                    .context("drawing a view")?;
             }
         }
 
@@ -543,7 +525,7 @@ impl ViewBuilder {
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     /// `screen_position` specifies where on the output pass the view is placed.
     pub fn composite<'a>(
-        self,
+        &'a self,
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
@@ -552,6 +534,7 @@ impl ViewBuilder {
 
         let setup = self
             .setup
+            .as_ref()
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
         pass.set_viewport(
@@ -563,14 +546,7 @@ impl ViewBuilder {
             1.0,
         );
 
-        pass.set_bind_group(
-            0,
-            ctx.gpu_resources
-                .bind_groups
-                .get_resource(&setup.bind_group_0)
-                .context("get global bind group")?,
-            &[],
-        );
+        pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
         let tonemapper = ctx
             .renderers

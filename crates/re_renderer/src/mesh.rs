@@ -171,10 +171,7 @@ impl GpuMesh {
             );
             let mut staging_buffer = queue
                 .write_buffer_with(
-                    pools
-                        .buffers
-                        .get_resource(&vertex_buffer_combined)
-                        .map_err(ResourceManagerError::ResourcePoolError)?,
+                    &vertex_buffer_combined,
                     0,
                     vertex_buffer_combined_size.try_into().unwrap(),
                 )
@@ -184,6 +181,7 @@ impl GpuMesh {
             staging_buffer
                 [vertex_buffer_positions_size as usize..vertex_buffer_combined_size as usize]
                 .copy_from_slice(bytemuck::cast_slice(&data.vertex_data));
+            drop(staging_buffer);
             vertex_buffer_combined
         };
 
@@ -198,17 +196,11 @@ impl GpuMesh {
                 },
             );
             let mut staging_buffer = queue
-                .write_buffer_with(
-                    pools
-                        .buffers
-                        .get_resource(&index_buffer)
-                        .map_err(ResourceManagerError::ResourcePoolError)?,
-                    0,
-                    index_buffer_size.try_into().unwrap(),
-                )
+                .write_buffer_with(&index_buffer, 0, index_buffer_size.try_into().unwrap())
                 .unwrap(); // Fails only if mapping is bigger than buffer size.
             staging_buffer[..index_buffer_size as usize]
                 .copy_from_slice(bytemuck::cast_slice(&data.indices));
+            drop(staging_buffer);
             index_buffer
         };
 
@@ -229,10 +221,7 @@ impl GpuMesh {
 
             let mut materials_staging_buffer = queue
                 .write_buffer_with(
-                    pools
-                        .buffers
-                        .get_resource(&material_uniform_buffers)
-                        .unwrap(),
+                    &material_uniform_buffers,
                     0,
                     NonZeroU64::new(combined_buffers_size).unwrap(),
                 )
@@ -256,9 +245,9 @@ impl GpuMesh {
                     &BindGroupDesc {
                         label: material.label.clone(),
                         entries: smallvec![
-                            BindGroupEntry::DefaultTextureView(**texture),
+                            BindGroupEntry::DefaultTextureView(texture.handle),
                             BindGroupEntry::Buffer {
-                                handle: *material_uniform_buffers,
+                                handle: material_uniform_buffers.handle,
                                 offset: material_buffer_range_start as _,
                                 size: NonZeroU64::new(std::mem::size_of::<
                                     gpu_data::MaterialUniformBuffer,

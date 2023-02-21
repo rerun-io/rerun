@@ -434,11 +434,7 @@ impl LineDrawData {
         // Upload data from staging buffers to gpu.
         ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
-                texture: &ctx
-                    .gpu_resources
-                    .textures
-                    .get_resource(&position_data_texture)?
-                    .texture,
+                texture: &position_data_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -459,11 +455,7 @@ impl LineDrawData {
         );
         ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
-                texture: &ctx
-                    .gpu_resources
-                    .textures
-                    .get_resource(&line_strip_texture)?
-                    .texture,
+                texture: &line_strip_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -488,8 +480,8 @@ impl LineDrawData {
             &BindGroupDesc {
                 label: "line draw data".into(),
                 entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(*position_data_texture),
-                    BindGroupEntry::DefaultTextureView(*line_strip_texture),
+                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                    BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
                 ],
                 layout: line_renderer.bind_group_layout_all_lines,
             },
@@ -505,7 +497,7 @@ impl LineDrawData {
             let allocation_size_per_uniform_buffer =
                 uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
             let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
-            let uniform_buffers_handle = ctx.gpu_resources.buffers.alloc(
+            let uniform_buffers = ctx.gpu_resources.buffers.alloc(
                 &ctx.device,
                 &BufferDesc {
                     label: "lines batch uniform buffers".into(),
@@ -517,10 +509,7 @@ impl LineDrawData {
             let mut staging_buffer = ctx
                 .queue
                 .write_buffer_with(
-                    ctx.gpu_resources
-                        .buffers
-                        .get_resource(&uniform_buffers_handle)
-                        .unwrap(),
+                    &uniform_buffers,
                     0,
                     NonZeroU64::new(combined_buffers_size).unwrap(),
                 )
@@ -544,7 +533,7 @@ impl LineDrawData {
                     &BindGroupDesc {
                         label: batch_info.label.clone(),
                         entries: smallvec![BindGroupEntry::Buffer {
-                            handle: *uniform_buffers_handle,
+                            handle: uniform_buffers.handle,
                             offset: offset as _,
                             size: NonZeroU64::new(
                                 std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
@@ -704,19 +693,19 @@ impl Renderer for LineRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         let Some(bind_group_all_lines) = &draw_data.bind_group_all_lines else {
             return Ok(()); // No lines submitted.
         };
-        let bind_group_line_data = pools.bind_groups.get_resource(bind_group_all_lines)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group_line_data, &[]);
+
+        pass.set_bind_group(1, bind_group_all_lines, &[]);
 
         for batch in &draw_data.batches {
-            pass.set_bind_group(2, pools.bind_groups.get_resource(&batch.bind_group)?, &[]);
+            pass.set_bind_group(2, &batch.bind_group, &[]);
             pass.draw(batch.vertex_range.clone(), 0..1);
         }
 

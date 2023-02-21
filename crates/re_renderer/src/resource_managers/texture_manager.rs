@@ -13,11 +13,11 @@ use super::ResourceManagerError;
 /// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
 /// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
-pub struct GpuTexture2DHandle(GpuTextureHandleStrong);
+pub struct GpuTexture2DHandle(Option<GpuTextureHandleStrong>);
 
 impl GpuTexture2DHandle {
     pub fn invalid() -> Self {
-        Self(Arc::new(crate::wgpu_resources::GpuTextureHandle::default()))
+        Self(None)
     }
 }
 
@@ -133,7 +133,7 @@ impl TextureManager2D {
             height: creation_desc.height,
             depth_or_array_layers: 1,
         };
-        let texture_handle = texture_pool.alloc(
+        let texture = texture_pool.alloc(
             device,
             &TextureDesc {
                 label: creation_desc.label.clone(),
@@ -145,7 +145,6 @@ impl TextureManager2D {
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
         );
-        let texture = texture_pool.get_resource(&texture_handle).unwrap();
 
         let format_info = creation_desc.format.describe();
         let width_blocks = creation_desc.width / format_info.block_dimensions.0 as u32;
@@ -178,18 +177,20 @@ impl TextureManager2D {
 
         // TODO(andreas): mipmap generation
 
-        GpuTexture2DHandle(texture_handle)
+        GpuTexture2DHandle(Some(texture))
     }
 
     /// Retrieves gpu handle.
-    ///
-    /// TODO(andreas): Lifetime dependency from incoming and returned handle will likely be removed in the future.
-    #[allow(clippy::unnecessary_wraps, clippy::unused_self)]
-    pub(crate) fn get<'a>(
+    #[allow(clippy::unused_self)]
+    pub(crate) fn get(
         &self,
-        handle: &'a GpuTexture2DHandle,
-    ) -> Result<&'a GpuTextureHandleStrong, ResourceManagerError> {
-        Ok(&handle.0)
+        handle: &GpuTexture2DHandle,
+    ) -> Result<GpuTextureHandleStrong, ResourceManagerError> {
+        handle
+            .0
+            .as_ref()
+            .ok_or(ResourceManagerError::NullHandle)
+            .map(|h| h.clone())
     }
 
     #[allow(clippy::unused_self)]

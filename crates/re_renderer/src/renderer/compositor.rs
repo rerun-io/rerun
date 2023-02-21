@@ -42,7 +42,7 @@ impl CompositorDrawData {
                 &ctx.device,
                 &BindGroupDesc {
                     label: "compositor".into(),
-                    entries: smallvec![BindGroupEntry::DefaultTextureView(**target)],
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(target.handle)],
                     layout: compositor.bind_group_layout,
                 },
                 &pools.bind_group_layouts,
@@ -130,13 +130,12 @@ impl Renderer for Compositor {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &CompositorDrawData,
+        draw_data: &'a CompositorDrawData,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group, &[]);
+        pass.set_bind_group(1, &draw_data.bind_group, &[]);
         pass.draw(0..3, 0..1);
 
         Ok(())

@@ -153,10 +153,7 @@ impl MeshDrawData {
             let mut instance_buffer_staging = ctx
                 .queue
                 .write_buffer_with(
-                    ctx.gpu_resources
-                        .buffers
-                        .get_resource(&instance_buffer)
-                        .unwrap(),
+                    &instance_buffer,
                     0,
                     instance_buffer_size.try_into().unwrap(),
                 )
@@ -325,7 +322,7 @@ impl Renderer for MeshRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 
@@ -336,15 +333,12 @@ impl Renderer for MeshRenderer {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         pass.set_pipeline(pipeline);
 
-        let instance_buffer = pools.buffers.get_resource(instance_buffer)?;
         pass.set_vertex_buffer(0, instance_buffer.slice(..));
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
-            let vertex_buffer_combined = pools
-                .buffers
-                .get_resource(&mesh_batch.mesh.vertex_buffer_combined)?;
-            let index_buffer = pools.buffers.get_resource(&mesh_batch.mesh.index_buffer)?;
+            let vertex_buffer_combined = &mesh_batch.mesh.vertex_buffer_combined;
+            let index_buffer = &mesh_batch.mesh.index_buffer;
 
             pass.set_vertex_buffer(
                 1,
@@ -364,8 +358,7 @@ impl Renderer for MeshRenderer {
             for material in &mesh_batch.mesh.materials {
                 debug_assert!(mesh_batch.count > 0);
 
-                let bind_group = pools.bind_groups.get_resource(&material.bind_group)?;
-                pass.set_bind_group(1, bind_group, &[]);
+                pass.set_bind_group(1, &material.bind_group, &[]);
 
                 pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }

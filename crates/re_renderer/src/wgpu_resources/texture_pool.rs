@@ -3,7 +3,7 @@ use std::hash::Hash;
 use crate::debug_label::DebugLabel;
 
 use super::{
-    dynamic_resource_pool::{DynamicResourcePool, SizedResourceDesc},
+    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, SizedResourceDesc},
     resource::PoolError,
 };
 
@@ -11,7 +11,8 @@ slotmap::new_key_type! { pub struct GpuTextureHandle; }
 
 /// A reference counter baked texture handle.
 /// Once all strong handles are dropped, the texture will be marked for reclamation in the following frame.
-pub type GpuTextureHandleStrong = std::sync::Arc<GpuTextureHandle>;
+pub type GpuTextureHandleStrong =
+    std::sync::Arc<DynamicResource<GpuTextureHandle, TextureDesc, GpuTexture>>;
 
 pub struct GpuTexture {
     pub texture: wgpu::Texture,
@@ -103,22 +104,11 @@ impl GpuTexturePool {
             .begin_frame(frame_index, |res| res.texture.destroy());
     }
 
-    /// Takes strong texture handle to ensure the user is still holding on to the texture.
-    pub fn get_resource(&self, handle: &GpuTextureHandleStrong) -> Result<&GpuTexture, PoolError> {
-        self.pool.get_resource(**handle)
-    }
-
     /// Internal method to retrieve a resource with a weak handle (used by [`super::GpuBindGroupPool`]).
-    pub(super) fn get_resource_weak(
+    pub(super) fn get_strong_handle(
         &self,
         handle: GpuTextureHandle,
-    ) -> Result<&GpuTexture, PoolError> {
-        self.pool.get_resource(handle)
-    }
-
-    /// Internal method to retrieve a strong handle from a weak handle (used by [`super::GpuBindGroupPool`])
-    /// without inrementing the ref-count (note the returned reference!).
-    pub(super) fn get_strong_handle(&self, handle: GpuTextureHandle) -> &GpuTextureHandleStrong {
+    ) -> Result<GpuTextureHandleStrong, PoolError> {
         self.pool.get_strong_handle(handle)
     }
 

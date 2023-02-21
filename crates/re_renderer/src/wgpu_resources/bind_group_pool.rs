@@ -7,8 +7,7 @@ use crate::debug_label::DebugLabel;
 use super::{
     bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
     buffer_pool::{GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool},
-    dynamic_resource_pool::{DynamicResourcePool, SizedResourceDesc},
-    resource::PoolError,
+    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, SizedResourceDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
     texture_pool::{GpuTextureHandle, GpuTextureHandleStrong, GpuTexturePool},
 };
@@ -21,16 +20,16 @@ slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 /// Tracks use of dependent resources as well.
 #[derive(Clone)]
 pub struct GpuBindGroupHandleStrong {
-    handle: Arc<GpuBindGroupHandle>,
+    resource: Arc<DynamicResource<GpuBindGroupHandle, BindGroupDesc, wgpu::BindGroup>>,
     _owned_buffers: SmallVec<[GpuBufferHandleStrong; 4]>,
     _owned_textures: SmallVec<[GpuTextureHandleStrong; 4]>,
 }
 
 impl std::ops::Deref for GpuBindGroupHandleStrong {
-    type Target = GpuBindGroupHandle;
+    type Target = wgpu::BindGroup;
 
     fn deref(&self) -> &Self::Target {
-        &self.handle
+        &self.resource.inner
     }
 }
 
@@ -111,7 +110,46 @@ impl GpuBindGroupPool {
         buffers: &GpuBufferPool,
         samplers: &GpuSamplerPool,
     ) -> GpuBindGroupHandleStrong {
-        let handle = self.pool.alloc(desc, |desc| {
+        // Retrieve strong handles to buffers and textures.
+        // This way, an owner of a bind group handle keeps buffers & textures alive!.
+        let owned_buffers: SmallVec<[GpuBufferHandleStrong; 4]> = desc
+            .entries
+            .iter()
+            .filter_map(|e| {
+                if let BindGroupEntry::Buffer { handle, .. } = e {
+                    Some(
+                        buffers
+                            .get_strong_handle(*handle)
+                            .expect("BindGroupDesc had an invalid buffer handle")
+                            .clone(),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let owned_textures: SmallVec<[GpuTextureHandleStrong; 4]> = desc
+            .entries
+            .iter()
+            .filter_map(|e| {
+                if let BindGroupEntry::DefaultTextureView(handle) = e {
+                    Some(
+                        textures
+                            .get_strong_handle(*handle)
+                            .expect("BindGroupDesc had an invalid texture handle")
+                            .clone(),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let resource = self.pool.alloc(desc, |desc| {
+            let mut buffer_index = 0;
+            let mut texture_index = 0;
+
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: desc.label.get(),
                 entries: &desc
@@ -121,22 +159,30 @@ impl GpuBindGroupPool {
                     .map(|(index, entry)| wgpu::BindGroupEntry {
                         binding: index as _,
                         resource: match entry {
-                            BindGroupEntry::DefaultTextureView(handle) => {
-                                wgpu::BindingResource::TextureView(
-                                    &textures.get_resource_weak(*handle).unwrap().default_view,
-                                )
+                            BindGroupEntry::DefaultTextureView(_) => {
+                                let res = wgpu::BindingResource::TextureView(
+                                    &owned_textures[texture_index].default_view,
+                                );
+                                texture_index += 1;
+                                res
                             }
                             BindGroupEntry::Buffer {
-                                handle,
+                                handle: _,
                                 offset,
                                 size,
-                            } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                                buffer: buffers.get_resource_weak(*handle).unwrap(),
-                                offset: *offset,
-                                size: *size,
-                            }),
+                            } => {
+                                let res = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                                    buffer: &owned_buffers[buffer_index],
+                                    offset: *offset,
+                                    size: *size,
+                                });
+                                buffer_index += 1;
+                                res
+                            }
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                samplers.get_resource(*handle).unwrap(),
+                                samplers
+                                    .get_resource(*handle)
+                                    .expect("BindGroupDesc had an sampler handle"),
                             ),
                         },
                     })
@@ -145,34 +191,8 @@ impl GpuBindGroupPool {
             })
         });
 
-        // Retrieve strong handles to buffers and textures.
-        // This way, an owner of a bind group handle keeps buffers & textures alive!.
-        let owned_buffers = desc
-            .entries
-            .iter()
-            .filter_map(|e| {
-                if let BindGroupEntry::Buffer { handle, .. } = e {
-                    Some(buffers.get_strong_handle(*handle).clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let owned_textures = desc
-            .entries
-            .iter()
-            .filter_map(|e| {
-                if let BindGroupEntry::DefaultTextureView(handle) = e {
-                    Some(textures.get_strong_handle(*handle).clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
         GpuBindGroupHandleStrong {
-            handle,
+            resource,
             _owned_buffers: owned_buffers,
             _owned_textures: owned_textures,
         }
@@ -187,14 +207,6 @@ impl GpuBindGroupPool {
     ) {
         self.pool.begin_frame(frame_index, |_res| {});
         // TODO(andreas): Update usage counter on dependent resources.
-    }
-
-    /// Takes a strong handle to ensure the user is still holding on to the bind group (and thus dependent resources).
-    pub fn get_resource(
-        &self,
-        handle: &GpuBindGroupHandleStrong,
-    ) -> Result<&wgpu::BindGroup, PoolError> {
-        self.pool.get_resource(*handle.handle)
     }
 
     pub fn num_resources(&self) -> usize {
