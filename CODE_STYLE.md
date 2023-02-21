@@ -44,6 +44,10 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * Never ignore an error: either pass it on, or log it.
 * Handle each error exactly once. If you log it, don't pass it on. If you pass it on, don't log it.
 
+Strive to encode code invariants and contracts in the type system as much as possible. So if a vector cannot be empty, consider using [`vec1`](https://crates.io/crates/vec1). [Parse, don’t validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
+
+Some contracts cannot be enforced using the type system. In those cases you should explicitly enforce them using `assert` (self-documenting code) and in documentation (if it is part of a public API).
+
 ### Log levels
 
 The log is for several distinct users:
