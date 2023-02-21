@@ -9,6 +9,9 @@
 
 ## Rust code
 
+### Avoid `unsafe`
+`unsafe` code should be only used when necessary, and should be carefully scrutinized during PR reviews.
+
 ### Error handling and logging
 We log problems using our own `re_log` crate (which is currently a wrapper around [`tracing`](https://crates.io/crates/tracing/)).
 
