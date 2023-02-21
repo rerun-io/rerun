@@ -229,13 +229,13 @@ impl Analytics {
             if event.kind == EventKind::Append {
                 // Insert default props
                 event.props.extend(self.default_append_props.clone());
-            }
 
-            // Insert event ID
-            event.props.insert(
-                "event_id".into(),
-                (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
-            );
+                // Insert event ID
+                event.props.insert(
+                    "event_id".into(),
+                    (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
+                );
+            }
 
             pipeline.record(event);
         }
