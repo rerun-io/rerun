@@ -101,7 +101,7 @@ usually at the expense of lower image quality.
     parser.add_argument(
         "--num_inference_steps",
         type=int,
-        default=50,
+        default=10,
         help="""
 The number of denoising steps. More denoising steps usually lead to a higher quality image at the
 expense of slower inference. This parameter will be modulated by `strength`.
