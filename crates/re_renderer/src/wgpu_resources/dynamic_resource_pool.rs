@@ -31,6 +31,10 @@ impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res> {
     }
 }
 
+// Resources are held as Option so its easier to move them out.
+type AliveResourceMap<Handle, Desc, Res> =
+    SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
+
 struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
     /// Handles to all alive resources.
     /// We story any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
@@ -38,7 +42,7 @@ struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
     /// and if so mark it as deallocated.
     /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
     /// something required by [`super::GpuBindGroupPool`]
-    alive_resources: SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>,
+    alive_resources: AliveResourceMap<Handle, Desc, Res>,
 
     /// Any resource that has been deallocated last frame.
     /// We keep them around for a bit longer to allow reclamation

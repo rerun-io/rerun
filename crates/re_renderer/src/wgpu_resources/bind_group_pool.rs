@@ -120,8 +120,7 @@ impl GpuBindGroupPool {
                     Some(
                         buffers
                             .get_strong_handle(*handle)
-                            .expect("BindGroupDesc had an invalid buffer handle")
-                            .clone(),
+                            .expect("BindGroupDesc had an invalid buffer handle"),
                     )
                 } else {
                     None
@@ -137,8 +136,7 @@ impl GpuBindGroupPool {
                     Some(
                         textures
                             .get_strong_handle(*handle)
-                            .expect("BindGroupDesc had an invalid texture handle")
-                            .clone(),
+                            .expect("BindGroupDesc had an invalid texture handle"),
                     )
                 } else {
                     None

@@ -87,7 +87,7 @@ fn renderer_paint_callback(
     let composition_view_builder_map = render_ctx
         .per_frame_data_helper
         .entry::<ViewBuilderMap>()
-        .or_insert_with(|| Default::default());
+        .or_insert_with(Default::default);
     let view_builder_handle = composition_view_builder_map.insert(view_builder);
 
     let screen_position = (clip_rect.min.to_vec2() * pixels_from_point).round();
@@ -112,7 +112,8 @@ fn renderer_paint_callback(
 
                     let ctx = paint_callback_resources.get::<RenderContext>().unwrap();
                     ctx.per_frame_data_helper.get::<ViewBuilderMap>().unwrap()[view_builder_handle]
-                        .composite(ctx, render_pass, screen_position);
+                        .composite(ctx, render_pass, screen_position)
+                        .expect("Failed compositing view builder with main target.");
                 }),
         ),
     }
