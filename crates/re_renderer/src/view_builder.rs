@@ -23,7 +23,7 @@ type DrawFn = dyn for<'a, 'b> Fn(
 
 struct QueuedDraw {
     draw_func: Box<DrawFn>,
-    draw_data: Box<dyn std::any::Any + std::marker::Send>,
+    draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
     sorting_index: u32,
 }
 
@@ -39,7 +39,7 @@ pub struct ViewBuilder {
 struct ViewTargetSetup {
     name: DebugLabel,
 
-    tonemapping_draw_data: CompositorDrawData,
+    compositor_draw_data: CompositorDrawData,
 
     bind_group_0: GpuBindGroupHandleStrong,
     main_target_msaa: GpuTextureHandleStrong,
@@ -421,7 +421,7 @@ impl ViewBuilder {
 
         self.setup = Some(ViewTargetSetup {
             name: config.name,
-            tonemapping_draw_data,
+            compositor_draw_data: tonemapping_draw_data,
             bind_group_0,
             main_target_msaa: hdr_render_target_msaa,
             main_target_resolved,
@@ -553,7 +553,7 @@ impl ViewBuilder {
             .get::<Compositor>()
             .context("get compositor")?;
         tonemapper
-            .draw(&ctx.gpu_resources, pass, &setup.tonemapping_draw_data)
+            .draw(&ctx.gpu_resources, pass, &setup.compositor_draw_data)
             .context("composite into main view")
     }
 }

@@ -7,11 +7,10 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
+    view_builder::ViewBuilder,
     wgpu_resources::WgpuResourcePools,
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
-
-// ---
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -24,6 +23,9 @@ pub struct RenderContext {
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
+
+    /// Utility type map that will be cleared every frame.
+    pub per_frame_data_helper: TypeMap,
 
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
@@ -144,6 +146,9 @@ impl RenderContext {
             shared_renderer_data,
 
             renderers,
+
+            per_frame_data_helper: TypeMap::new(),
+
             gpu_resources,
 
             mesh_manager,
@@ -163,6 +168,7 @@ impl RenderContext {
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
         self.frame_index += 1;
+        self.per_frame_data_helper.clear();
 
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on begin_frame rather than raw frames, which

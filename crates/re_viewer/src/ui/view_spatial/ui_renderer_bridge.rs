@@ -1,3 +1,4 @@
+use egui::mutex::Mutex;
 use re_renderer::{
     renderer::{GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
@@ -24,6 +25,7 @@ pub fn create_scene_paint_callback(
     let (command_buffer, view_builder) =
         create_and_fill_view_builder(render_ctx, target_config, primitives, background)?;
     Ok(renderer_paint_callback(
+        render_ctx,
         command_buffer,
         view_builder,
         clip_rect,
@@ -69,15 +71,24 @@ fn create_and_fill_view_builder(
     Ok((command_buffer, view_builder))
 }
 
+slotmap::new_key_type! { pub struct ViewBuilderHandle; }
+type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
+
 fn renderer_paint_callback(
+    render_ctx: &mut RenderContext,
     command_buffer: wgpu::CommandBuffer,
     view_builder: ViewBuilder,
     clip_rect: egui::Rect,
     pixels_from_point: f32,
 ) -> egui::PaintCallback {
     // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
-    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
-    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
+    let command_buffer = std::sync::Arc::new(Mutex::new(Some(command_buffer)));
+
+    let composition_view_builder_map = render_ctx
+        .per_frame_data_helper
+        .entry::<ViewBuilderMap>()
+        .or_insert_with(|| Default::default());
+    let view_builder_handle = composition_view_builder_map.insert(view_builder);
 
     let screen_position = (clip_rect.min.to_vec2() * pixels_from_point).round();
     let screen_position = glam::vec2(screen_position.x, screen_position.y);
@@ -99,12 +110,9 @@ fn renderer_paint_callback(
                     //                  Looks like a bug in egui, but unclear what's going on.
                     //let clip_rect = info.clip_rect_in_pixels();
 
-                    let ctx = paint_callback_resources.get().unwrap();
-                    let mut view_builder = view_builder.lock();
-                    std::mem::replace(&mut *view_builder, None)
-                        .expect("egui_wgpu paint callback called more than once")
-                        .composite(ctx, render_pass, screen_position)
-                        .unwrap();
+                    let ctx = paint_callback_resources.get::<RenderContext>().unwrap();
+                    ctx.per_frame_data_helper.get::<ViewBuilderMap>().unwrap()[view_builder_handle]
+                        .composite(ctx, render_pass, screen_position);
                 }),
         ),
     }
