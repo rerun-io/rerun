@@ -1,6 +1,9 @@
 //! Rerun's analytics SDK.
 //!
-//! All the event we collect analytics about can be found in [`events`].
+//! We never collect any personal identifiable information, and you can always opt-out with `rerun analytics disable`.
+//!
+//! All the data we collect can be found in
+//! <https://github.com/rerun-io/rerun/blob/latest/crates/re_viewer/src/viewer_analytics.rs>.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod config_native;
@@ -212,14 +215,14 @@ impl Analytics {
         &self.config
     }
 
-    /// Register a property that will be included in all [`Event::Append`].
+    /// Register a property that will be included in all [`EventKind::Append`].
     pub fn register_append_property(&mut self, name: &'static str, prop: impl Into<Property>) {
         self.default_append_props.insert(name.into(), prop.into());
     }
 
     /// Record an event.
     ///
-    /// It will be extended with an `event_id` and, if this is an [`Event::Append`],
+    /// It will be extended with an `event_id` and, if this is an [`EventKind::Append`],
     /// any properties registered with [`Self::register_append_property`].
     pub fn record(&self, mut event: Event) {
         if let Some(pipeline) = self.pipeline.as_ref() {
