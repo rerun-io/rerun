@@ -24,7 +24,7 @@ static_assertions = "1.1"
 [dev-dependencies]
 criterion = "0.4"
 insta = "1.23"
-mimalloc = "0.1"
+mimalloc.workspace = true
 
 
 [lib]

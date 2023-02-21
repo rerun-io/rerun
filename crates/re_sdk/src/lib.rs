@@ -64,6 +64,9 @@ pub mod external {
     pub use re_sdk_comms;
 
     #[cfg(feature = "glam")]
+    pub use re_viewer;
+
+    #[cfg(feature = "glam")]
     pub use re_log_types::external::glam;
 
     #[cfg(feature = "image")]
