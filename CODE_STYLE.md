@@ -12,6 +12,24 @@
 ### Avoid `unsafe`
 `unsafe` code should be only used when necessary, and should be carefully scrutinized during PR reviews.
 
+### Avoid `unwrap`, `expect` etc.
+The code should never panic or crash, which means that any instance of `unwrap` or `expect` is a potential time-bomb. Even if you structured your code to make them impossible, any reader will have to read the code very carefully to prove to themselves that an `unwrap` won't panic. Often you can instead rewrite your code so as to avoid it. The same goes for indexing into a slice (which will panic on out-of-bounds) - it is often preferable to use `.get()`.
+
+For instance:
+
+``` rust
+let first = if vec.is_empty() {
+    return;
+} else {
+    vec[0]
+};
+```
+can be better written as:
+
+``` rust
+let Some(first) = vec.get(0) else { return; };
+```
+
 ### Error handling and logging
 We log problems using our own `re_log` crate (which is currently a wrapper around [`tracing`](https://crates.io/crates/tracing/)).
 
