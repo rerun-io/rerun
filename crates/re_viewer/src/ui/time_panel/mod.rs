@@ -644,8 +644,8 @@ fn show_data_over_time(
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
-    let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f32::INFINITY);
-    let max_stretch_length_in_time = 1.0 / points_per_time as f64; // TODO(emilk)
+    let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f64::INFINITY);
+    let max_stretch_length_in_time = 1.0 / points_per_time; // TODO(emilk)
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
@@ -677,7 +677,7 @@ fn show_data_over_time(
 
     let mut paint_stretch = |stretch: &Stretch| {
         let stop_x = time_ranges_ui
-            .x_from_time(stretch.stop_time.into())
+            .x_from_time_f32(stretch.stop_time.into())
             .unwrap_or(stretch.start_x);
 
         let num_messages: usize = stretch.time_points.iter().map(|(_time, count)| count).sum();
@@ -722,7 +722,7 @@ fn show_data_over_time(
     if num_timeless_messages > 0 {
         let time_int = TimeInt::BEGINNING;
         let time_real = TimeReal::from(time_int);
-        if let Some(x) = time_ranges_ui.x_from_time(time_real) {
+        if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
             let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
             paint_stretch(&Stretch {
                 start_x: x,
@@ -739,11 +739,11 @@ fn show_data_over_time(
     let margin = 5.0;
     let visible_time_range = TimeRange {
         min: time_ranges_ui
-            .time_from_x(time_area_painter.clip_rect().left() - margin)
+            .time_from_x_f32(time_area_painter.clip_rect().left() - margin)
             .map_or(TimeInt::MIN, |tf| tf.floor()),
 
         max: time_ranges_ui
-            .time_from_x(time_area_painter.clip_rect().right() + margin)
+            .time_from_x_f32(time_area_painter.clip_rect().right() + margin)
             .map_or(TimeInt::MAX, |tf| tf.ceil()),
     };
 
@@ -775,7 +775,7 @@ fn show_data_over_time(
         }
 
         if stretch.is_none() {
-            if let Some(x) = time_ranges_ui.x_from_time(time_real) {
+            if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
                 stretch = Some(Stretch {
                     start_x: x,
                     start_time: time,
@@ -889,7 +889,7 @@ fn initialize_time_ranges_ui(
 
 /// Find a nice view of everything.
 fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) -> TimeView {
-    let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges);
+    let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
     let width_sans_gaps = width - num_gaps as f32 * gap_width;
@@ -1011,7 +1011,7 @@ fn paint_time_ranges_gaps(
     let zig_zag_first_and_last_edges = true;
 
     if let Some(segment) = time_ranges_ui.segments.first() {
-        let gap_edge = *segment.x.start();
+        let gap_edge = *segment.x.start() as f32;
 
         if zig_zag_first_and_last_edges {
             // Left side of first segment - paint as a very wide gap that we only see the right side of
@@ -1027,11 +1027,11 @@ fn paint_time_ranges_gaps(
     }
 
     for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-        paint_time_gap(*a.x.end(), *b.x.start());
+        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
     }
 
     if let Some(segment) = time_ranges_ui.segments.last() {
-        let gap_edge = *segment.x.end();
+        let gap_edge = *segment.x.end() as f32;
         if zig_zag_first_and_last_edges {
             // Right side of last segment - paint as a very wide gap that we only see the left side of
             paint_time_gap(gap_edge, gap_edge + 100_000.0);
@@ -1136,7 +1136,7 @@ fn time_marker_ui(
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
-        if let Some(x) = time_ranges_ui.x_from_time(time) {
+        if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
             let line_rect =
                 Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
                     .expand(interact_radius);
@@ -1149,7 +1149,7 @@ fn time_marker_ui(
 
             if response.dragged() {
                 if let Some(pointer_pos) = pointer_pos {
-                    if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+                    if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
                         let time = time_ranges_ui.clamp_time(time);
                         time_ctrl.set_time(time);
                         time_ctrl.pause();
@@ -1197,7 +1197,7 @@ fn time_marker_ui(
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection
         {
-            if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+            if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
                 let time = time_ranges_ui.clamp_time(time);
                 time_ctrl.set_time(time);
                 time_ctrl.pause();

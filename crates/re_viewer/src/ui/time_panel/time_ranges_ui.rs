@@ -1,3 +1,9 @@
+//! egui uses `f32` precision for all screen-space ui coordinates,
+//! which makes sense, because that is plenty of precision for things on screen.
+//!
+//! In this file we need to use `f64` precision because when zoomed in, the screen-space
+//! time-ranges of are way outside the screen, leading to precision issues with `f32`.
+
 use std::ops::RangeInclusive;
 
 use egui::{lerp, remap, NumExt};
@@ -10,15 +16,15 @@ use crate::{misc::time_control::PlayState, TimeView, ViewerContext};
 /// The ideal gap between time segments.
 ///
 /// This is later shrunk via [`GAP_EXPANSION_FRACTION`].
-const MAX_GAP: f32 = 40.0;
+const MAX_GAP: f64 = 40.0;
 
 /// How much of the gap use up to expand segments visually to either side?
 ///
 /// Should be strictly less than half, or we will get overlapping segments.
-const GAP_EXPANSION_FRACTION: f32 = 1.0 / 4.0;
+const GAP_EXPANSION_FRACTION: f64 = 1.0 / 4.0;
 
 /// Sze of the gap between time segments.
-pub fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
+pub fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f64 {
     let num_gaps = segments.len().saturating_sub(1);
     if num_gaps == 0 {
         // gap width doesn't matter when there are no gaps
@@ -26,7 +32,7 @@ pub fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
     } else {
         // shrink gaps if there are a lot of them
         let width = *x_range.end() - *x_range.start();
-        (width / (num_gaps as f32)).at_most(MAX_GAP)
+        (width as f64 / (num_gaps as f64)).at_most(MAX_GAP)
     }
 }
 
@@ -35,7 +41,10 @@ pub struct Segment {
     /// The range on the x-axis in the ui, in screen coordinates.
     ///
     /// Matches [`Self::time`] (linear transform).
-    pub x: RangeInclusive<f32>,
+    ///
+    /// Uses `f64` because the ends of this range can be way outside the screen
+    /// when we are very zoomed in.
+    pub x: RangeInclusive<f64>,
 
     /// Matches [`Self::x`] (linear transform).
     pub time: TimeRangeF,
@@ -52,7 +61,7 @@ pub struct Segment {
 #[derive(Debug)]
 pub struct TimeRangesUi {
     /// The total UI x-range we are viewing.
-    x_range: RangeInclusive<f32>,
+    x_range: RangeInclusive<f64>,
 
     /// The range of time we are viewing.
     time_view: TimeView,
@@ -66,7 +75,7 @@ pub struct TimeRangesUi {
     /// x distance per time unit inside the segments,
     /// and before/after the last segment.
     /// Between segments time moves faster.
-    points_per_time: f32,
+    points_per_time: f64,
 }
 
 impl Default for TimeRangesUi {
@@ -99,8 +108,9 @@ impl TimeRangesUi {
         //             ^ gap
 
         let gap_width_in_ui = gap_width(&x_range, time_ranges);
+        let x_range = (*x_range.start() as f64)..=(*x_range.end() as f64);
         let width_in_ui = *x_range.end() - *x_range.start();
-        let points_per_time = width_in_ui / time_view.time_spanned as f32;
+        let points_per_time = width_in_ui / time_view.time_spanned;
         let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
             points_per_time
         } else {
@@ -115,23 +125,23 @@ impl TimeRangesUi {
             time_ranges
                 .iter()
                 .tuple_windows()
-                .fold(f32::INFINITY, |shortest, (a, b)| {
+                .fold(f64::INFINITY, |shortest, (a, b)| {
                     debug_assert!(a.max < b.min, "Overlapping time ranges: {a:?}, {b:?}");
                     let time_gap = b.min - a.max;
-                    time_gap.as_f32().min(shortest)
+                    time_gap.as_f64().min(shortest)
                 });
 
         let expansion_in_time = TimeReal::from(
             (GAP_EXPANSION_FRACTION * gap_width_in_ui / points_per_time)
                 .at_most(shortest_time_gap * GAP_EXPANSION_FRACTION),
         );
-        let expansion_in_ui = points_per_time * expansion_in_time.as_f32();
+        let expansion_in_ui = points_per_time * expansion_in_time.as_f64();
 
         let mut left = 0.0; // we will translate things left/right later to align x_range with time_view
         let segments = time_ranges
             .iter()
             .map(|&tight_time_range| {
-                let range_width = tight_time_range.length().as_f32() * points_per_time;
+                let range_width = tight_time_range.length().as_f64() * points_per_time;
                 let right = left + range_width;
                 let x_range = left..=right;
                 left = right + gap_width_in_ui;
@@ -262,14 +272,18 @@ impl TimeRangesUi {
         }
     }
 
-    pub fn x_from_time(&self, needle_time: TimeReal) -> Option<f32> {
+    pub fn x_from_time_f32(&self, needle_time: TimeReal) -> Option<f32> {
+        self.x_from_time(needle_time).map(|x| x as f32)
+    }
+
+    pub fn x_from_time(&self, needle_time: TimeReal) -> Option<f64> {
         let first_segment = self.segments.first()?;
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
 
         if needle_time < last_time {
             // extrapolate:
-            return Some(last_x - self.points_per_time * (last_time - needle_time).as_f32());
+            return Some(last_x - self.points_per_time * (last_time - needle_time).as_f64());
         }
 
         for segment in &self.segments {
@@ -286,10 +300,14 @@ impl TimeRangesUi {
         }
 
         // extrapolate:
-        Some(last_x + self.points_per_time * (needle_time - last_time).as_f32())
+        Some(last_x + self.points_per_time * (needle_time - last_time).as_f64())
     }
 
-    pub fn time_from_x(&self, needle_x: f32) -> Option<TimeReal> {
+    pub fn time_from_x_f32(&self, needle_x: f32) -> Option<TimeReal> {
+        self.time_from_x_f64(needle_x as f64)
+    }
+
+    pub fn time_from_x_f64(&self, needle_x: f64) -> Option<TimeReal> {
         let first_segment = self.segments.first()?;
         let mut last_x = *first_segment.x.start();
         let mut last_time = first_segment.time.min;
@@ -319,13 +337,16 @@ impl TimeRangesUi {
     /// Pan the view, returning the new view.
     pub fn pan(&self, delta_x: f32) -> Option<TimeView> {
         Some(TimeView {
-            min: self.time_from_x(*self.x_range.start() + delta_x)?,
+            min: self.time_from_x_f64(*self.x_range.start() + delta_x as f64)?,
             time_spanned: self.time_view.time_spanned,
         })
     }
 
     /// Zoom the view around the given x, returning the new view.
     pub fn zoom_at(&self, x: f32, zoom_factor: f32) -> Option<TimeView> {
+        let x = x as f64;
+        let zoom_factor = zoom_factor as f64;
+
         let mut min_x = *self.x_range.start();
         let max_x = *self.x_range.end();
         let t = remap(x, min_x..=max_x, 0.0..=1.0);
@@ -338,16 +359,16 @@ impl TimeRangesUi {
         min_x -= t * width_delta;
 
         Some(TimeView {
-            min: self.time_from_x(min_x)?,
-            time_spanned: self.time_view.time_spanned / zoom_factor as f64,
+            min: self.time_from_x_f64(min_x)?,
+            time_spanned: self.time_view.time_spanned / zoom_factor,
         })
     }
 
     /// How many egui points for each time unit?
-    pub fn points_per_time(&self) -> Option<f32> {
+    pub fn points_per_time(&self) -> Option<f64> {
         for segment in &self.segments {
             let dx = *segment.x.end() - *segment.x.start();
-            let dt = segment.time.length().as_f32();
+            let dt = segment.time.length().as_f64();
             if dx > 0.0 && dt > 0.0 {
                 return Some(dx / dt);
             }
@@ -378,11 +399,11 @@ fn test_time_ranges_ui() {
     // Sanity check round-tripping:
     for segment in &time_range_ui.segments {
         assert_eq!(
-            time_range_ui.time_from_x(*segment.x.start()).unwrap(),
+            time_range_ui.time_from_x_f64(*segment.x.start()).unwrap(),
             segment.time.min
         );
         assert_eq!(
-            time_range_ui.time_from_x(*segment.x.end()).unwrap(),
+            time_range_ui.time_from_x_f64(*segment.x.end()).unwrap(),
             segment.time.max
         );
 
@@ -417,8 +438,8 @@ fn test_time_ranges_ui_2() {
     let pixel_precision = 0.5;
 
     for x_in in 0..=500 {
-        let x_in = x_in as f32;
-        let time = time_range_ui.time_from_x(x_in).unwrap();
+        let x_in = x_in as f64;
+        let time = time_range_ui.time_from_x_f64(x_in).unwrap();
         let x_out = time_range_ui.x_from_time(time).unwrap();
 
         assert!(
@@ -430,7 +451,7 @@ fn test_time_ranges_ui_2() {
     for time_in in 0..=50 {
         let time_in = TimeReal::from(time_in as f64);
         let x = time_range_ui.x_from_time(time_in).unwrap();
-        let time_out = time_range_ui.time_from_x(x).unwrap();
+        let time_out = time_range_ui.time_from_x_f64(x).unwrap();
 
         assert!(
             (time_in - time_out).abs().as_f64() < 0.1,
