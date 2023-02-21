@@ -269,7 +269,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
     // let normal = normalize((volume_info.world_from_model * Vec4(res.normal, 0.0)).xyz);
     // let light_dir = -ray_dir_in_model;
-    let light_dir = Vec3(0.0, 0.0, -1.0);
+    let light_dir = normalize(Vec3(0.0, -1.0, -2.0));
     let normal = normalize(res.normal);
     let shading = clamp(dot(normal, -light_dir), 0.0, 1.0) + 0.2;
 

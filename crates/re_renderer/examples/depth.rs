@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use ecolor::Hsva;
 use glam::{UVec3, Vec2, Vec3, Vec3Swizzles};
 use image::{DynamicImage, GenericImageView};
@@ -33,27 +35,25 @@ struct RenderVolumetric {
     camera_position: glam::Vec3,
 }
 
-impl framework::Example for RenderVolumetric {
-    fn title() -> &'static str {
-        "Volumetric Rendering"
-    }
+#[derive(Debug, Clone, Copy)]
+enum DepthKind {
+    /// The depth represents the distance between the fragment and the camera plane.
+    CameraPlane,
+    /// The depth represents the distance between the fragment and the camera itself.
+    CameraPosition,
+}
+struct DepthTexture {
+    dimensions: glam::UVec2,
+    // TODO: it doesn't matter how Z started, at this point we need it to be:
+    // - linear
+    // - 0.0 = near, 1.0 = far
+    // - distance from camera
+    d32: Vec<f32>,
 
-    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
-        re_log::info!("Stop camera movement by pressing 'Space'");
-
-        let img = image::open("/tmp/teardown_depth2.png").unwrap();
-        let img = img.resize(640, 640, image::imageops::Nearest);
-        let albedo = image::open("/tmp/teardown_albedo.png").unwrap();
-        let albedo = albedo.resize(640, 640, image::imageops::Nearest);
-        dbg!(img.width(), img.height());
-
-        let img = image::open("/tmp/nyud_depth.pgm").unwrap();
-        dbg!(img.width(), img.height());
-        // let img = img.resize_exact(640, 480, image::imageops::Nearest);
-        // TODO: does the albedo texture need any flipping on X and/or Y?
-        let albedo = image::open("/tmp/nyud_albedo.ppm").unwrap();
-        // let albedo = albedo.resize_exact(640, 480, image::imageops::Nearest);
-
+    kind: DepthKind,
+}
+impl DepthTexture {
+    pub fn from_file(path: impl Into<PathBuf>, dimensions: Option<glam::UVec2>) -> Self {
         fn get_norm_pixel(img: &DynamicImage, x: u32, y: u32) -> f32 {
             match &img {
                 DynamicImage::ImageLuma8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
@@ -70,80 +70,165 @@ impl framework::Example for RenderVolumetric {
             }
         }
 
-        let img_size = Vec2::new(img.width() as f32, img.height() as f32);
+        let path = path.into();
+
+        let mut img = image::open(&path).unwrap();
+        // TODO: to sample or not to sample is still very much the question
+        if let Some(dimensions) = dimensions {
+            img = img.resize(dimensions.x, dimensions.y, image::imageops::Triangle);
+        }
+
+        // TODO: is the depth texture..:
+        // - linear?
+        // - inversed?
+        // - distance from camera plane or distance from camera?
+        let mut kind = DepthKind::CameraPlane;
+        let mut is_linear = false;
+        let mut is_reversed = false;
+
+        if path.to_string_lossy().contains("teardown") {
+            kind = DepthKind::CameraPosition;
+            is_linear = false;
+            is_reversed = false;
+        }
+
+        if path.to_string_lossy().contains("nyud") {
+            kind = DepthKind::CameraPosition;
+            is_linear = true;
+            is_reversed = false;
+        }
+
+        // TODO: how does one do that with an infinite plane tho?
+        fn linearize_depth(z: f32) -> f32 {
+            let n = 0.1; // camera z near
+            let f = 1.0; // camera z far
+            n * f / (f + z * (n - f))
+        }
+
+        let dimensions = glam::UVec2::new(img.width(), img.height());
+        let data = img
+            .pixels()
+            .map(|(x, y, _)| {
+                let mut d = get_norm_pixel(&img, x, y);
+
+                if is_reversed {
+                    d = 1.0 - d;
+                }
+                if !is_linear {
+                    d = linearize_depth(d);
+                }
+
+                d
+            })
+            .collect();
+
+        Self {
+            dimensions,
+            d32: data,
+            kind,
+        }
+    }
+
+    pub fn get(&self, x: u32, y: u32) -> f32 {
+        self.d32[(x + y * self.dimensions.x) as usize]
+    }
+}
+
+struct AlbedoTexture {
+    dimensions: glam::UVec2,
+    rgba8: Vec<u8>,
+}
+impl AlbedoTexture {
+    pub fn from_file(path: impl Into<PathBuf>, dimensions: Option<glam::UVec2>) -> Self {
+        let mut img = image::open(path.into()).unwrap();
+        if let Some(dimensions) = dimensions {
+            img = img.resize(dimensions.x, dimensions.y, image::imageops::Triangle);
+        }
+
+        let dimensions = glam::UVec2::new(img.width(), img.height());
+        let rgba8 = img.pixels().flat_map(|(_, _, p)| p.0).collect();
+
+        Self { dimensions, rgba8 }
+    }
+
+    pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
+        let p = &self.rgba8[(x + y * self.dimensions.x) as usize * 4..];
+        [p[0], p[1], p[2], p[3]]
+    }
+}
+
+impl framework::Example for RenderVolumetric {
+    fn title() -> &'static str {
+        "Volumetric Rendering"
+    }
+
+    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+        re_log::info!("Stop camera movement by pressing 'Space'");
+
+        // let depth = DepthTexture::from_file("/tmp/teardown_depthfull.png", Some((640, 640).into()));
+        // let albedo = AlbedoTexture::from_file("/tmp/teardown_albedo.png", depth.dimensions.into());
+        let depth = DepthTexture::from_file("/tmp/nyud_depth.pgm", None);
+        let albedo = AlbedoTexture::from_file("/tmp/nyud_albedo.ppm", depth.dimensions.into());
+
+        let depth_size = depth.dimensions.as_vec2();
 
         // TODO: Z is arbitrary I guess?
-        let vol_size = Vec3::new(
-            img.width() as f32,
-            img.height() as f32,
-            img.width() as f32 * 0.7,
-        ) * 0.20;
+        // TODO: what about the volume size in world space? is this actually arbitrary? I guess it
+        //       can be computed in a way that makes sense, somehow..?
+        let volume_size = depth_size.extend(depth_size.x * 0.7) * 0.2;
         // TODO: shouldnt have to be cubic
-        let vol_dimensions = UVec3::new(640, 640, 640) / 4;
+        let volume_dimensions = UVec3::new(640, 640, 640) / 4;
         // let vol_dimensions =
         //     UVec3::new(img.width(), img.height(), (img.width() as f32 * 0.7) as u32) / 4;
 
-        dbg!(img_size);
-        dbg!(vol_size);
-        dbg!(vol_dimensions);
+        dbg!(depth_size);
+        dbg!(volume_size);
+        dbg!(volume_dimensions);
 
-        // TODO: I'd like to try going to world space and then just lerp'ing that into a cube
-        // basically?
+        let mut faked = vec![
+            0u8;
+            (volume_dimensions.x * volume_dimensions.y * volume_dimensions.z * 4)
+                as usize
+        ];
 
-        let mut faked =
-            vec![0u8; (vol_dimensions.x * vol_dimensions.y * vol_dimensions.z * 4) as usize];
-
-        // TODO: somehow this needs to happen in a pre-pass then?
-        let mut pixels_set = 0;
-        let (mut zmin, mut zmax) = (f32::MAX, f32::MIN);
-        for (x, y, _) in img.pixels() {
-            // TODO: is the depth texture..:
-            // - linear?
-            // - inversed?
-            // - distance from camera plane or distance from camera?
-            let z = get_norm_pixel(&img, x, y);
-            zmin = f32::min(zmin, z);
-            zmax = f32::max(zmax, z);
-
-            // TODO: it doesn't matter how Z started, at this point we need it to be:
-            // - linear
-            // - 0.0 = near, 1.0 = far
-            // - distance from camera
+        for (x, y) in
+            (0..depth.dimensions.y).flat_map(|y| (0..depth.dimensions.x).map(move |x| (x, y)))
+        {
+            let z = depth.get(x, y); // linear, near=0.0
 
             // Compute texture coordinates in the depth image's space.
-            let texcoords = Vec2::new(x as f32, y as f32) / img_size;
+            let texcoords = Vec2::new(x as f32, y as f32) / depth_size;
 
             // Compute texture coordinates in the volume's back panel space (z=1.0).
             // let texcoords_in_volume = texcoords.extend(1.0);
             let texcoords_in_volume = Vec3::new(texcoords.x, 1.0 - texcoords.y, 0.0);
 
-            // Assume a virtual camera sitting at the center of the volume's front panel (z=0.0).
-            // let cam_npos_in_volume = Vec3::new(0.5, 0.5, 1.0);
-            let cam_npos_in_volume = Vec3::new(texcoords.x, 1.0 - texcoords.y, 1.0);
-            // let cam_npos_in_volume = Vec3::new(0.0, 0.0, 1.0);
+            let cam_npos_in_volume = match depth.kind {
+                DepthKind::CameraPlane => Vec3::new(texcoords.x, 1.0 - texcoords.y, 1.0),
+                DepthKind::CameraPosition => Vec3::new(0.5, 0.5, 1.0),
+            };
 
             let npos_in_volume =
                 cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * z;
-            let pos_in_volume = npos_in_volume * (vol_dimensions.as_vec3() - 1.0);
+            let pos_in_volume = npos_in_volume * (volume_dimensions.as_vec3() - 1.0);
 
             let pos = pos_in_volume.as_uvec3();
 
             let idx = (pos.x
-                + pos.y * vol_dimensions.x
-                + pos.z * vol_dimensions.x * vol_dimensions.y) as usize;
+                + pos.y * volume_dimensions.x
+                + pos.z * volume_dimensions.x * volume_dimensions.y) as usize;
             let idx = idx * 4;
 
-            faked[idx..idx + 4].copy_from_slice(&albedo.get_pixel(x, y).0);
-            pixels_set += 1;
-        }
+            faked[idx..idx + 4].copy_from_slice(&albedo.get(x, y));
 
-        dbg!((zmin, zmax));
-        dbg!(pixels_set);
+            // let d = (z * 255.0) as u8;
+            // faked[idx..idx + 4].copy_from_slice(&[d, d, d, 255]);
+        }
 
         RenderVolumetric {
             checkerboard: faked,
-            checkerboard_size: vol_size,
-            checkerboard_dimensions: vol_dimensions,
+            checkerboard_size: volume_size,
+            checkerboard_dimensions: volume_dimensions,
 
             camera_control: CameraControl::RotateAroundCenter,
             camera_position: glam::Vec3::ZERO,
