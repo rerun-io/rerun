@@ -54,9 +54,9 @@ def run_stable_diffusion(
     pipe(
         prompt=prompt,
         strength=strength,
-        guidance_scale=11,
+        guidance_scale=guidance_scale,
         negative_prompt=n_prompt,
-        num_inference_steps=70,
+        num_inference_steps=num_inference_steps,
         image=image,
     )
 
@@ -118,7 +118,7 @@ be maximum and the denoising process will run for the full number of iterations 
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=8,
+        default=11,
         help="""
 Guidance scale as defined in [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598).
 `guidance_scale` is defined as `w` of equation 2. of [Imagen
