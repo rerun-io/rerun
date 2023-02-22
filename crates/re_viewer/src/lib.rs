@@ -9,6 +9,7 @@ pub mod math;
 mod misc;
 mod remote_viewer_app;
 mod ui;
+mod viewer_analytics;
 
 pub use self::misc::color_map;
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};

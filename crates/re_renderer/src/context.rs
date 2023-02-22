@@ -13,8 +13,6 @@ use crate::{
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
 
-// ---
-
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
@@ -26,6 +24,9 @@ pub struct RenderContext {
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
+
+    /// Utility type map that will be cleared every frame.
+    pub per_frame_data_helper: TypeMap,
 
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
@@ -146,6 +147,9 @@ impl RenderContext {
             shared_renderer_data,
 
             renderers,
+
+            per_frame_data_helper: TypeMap::new(),
+
             gpu_resources,
 
             mesh_manager,
@@ -167,6 +171,7 @@ impl RenderContext {
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
         crate::profile_function!();
+        self.per_frame_data_helper.clear();
 
         self.active_frame = ActiveFrameContext {
             frame_global_command_encoder: None,
@@ -231,9 +236,7 @@ impl RenderContext {
         }
 
         // Retrieve unused staging buffer.
-        self.cpu_write_gpu_read_belt
-            .lock()
-            .after_queue_submit(&self.gpu_resources.buffers);
+        self.cpu_write_gpu_read_belt.lock().after_queue_submit();
     }
 
     /// Call this at the end of a frame but before submitting command buffers from [`crate::view_builder::ViewBuilder`]
@@ -241,9 +244,7 @@ impl RenderContext {
         crate::profile_function!();
 
         // Unmap all staging buffers.
-        self.cpu_write_gpu_read_belt
-            .lock()
-            .before_queue_submit(&self.gpu_resources.buffers);
+        self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self.active_frame.frame_global_command_encoder.take() {
             let command_buffer = command_encoder.finish();

@@ -20,6 +20,7 @@ use crate::{
     app_icon::setup_app_icon,
     misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
+    viewer_analytics::ViewerAnalytics,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -86,10 +87,7 @@ pub struct App {
     pending_commands: Vec<Command>,
     cmd_palette: re_ui::CommandPalette,
 
-    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled while at
-    // the same time opting out of analytics at run-time.
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-    analytics: Option<re_analytics::Analytics>,
+    analytics: ViewerAnalytics,
 
     icon_status: AppIconStatus,
 }
@@ -140,17 +138,8 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
-        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-        let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
-            Ok(analytics) => {
-                analytics.record(re_analytics::Event::viewer_started());
-                Some(analytics)
-            }
-            Err(err) => {
-                re_log::error!(%err, "failed to initialize analytics SDK");
-                None
-            }
-        };
+        let analytics = ViewerAnalytics::new();
+        analytics.on_viewer_started();
 
         Self {
             startup_options,
@@ -174,7 +163,6 @@ impl App {
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
 
-            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
             analytics,
 
             icon_status: AppIconStatus::NotSetTryAgain,
@@ -627,38 +615,7 @@ impl App {
                 re_log::debug!("Beginning a new recording: {:?}", msg.info);
                 self.state.selected_rec_id = msg.info.recording_id;
 
-                #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-                if let Some(analytics) = self.analytics.as_mut() {
-                    use re_analytics::Property;
-                    analytics.default_append_props_mut().extend([
-                        ("application_id".into(), {
-                            let prop: Property = msg.info.application_id.0.clone().into();
-                            if msg.info.is_official_example {
-                                prop
-                            } else {
-                                prop.hashed()
-                            }
-                        }),
-                        ("recording_id".into(), {
-                            let prop: Property = msg.info.recording_id.to_string().into();
-                            if msg.info.is_official_example {
-                                prop
-                            } else {
-                                prop.hashed()
-                            }
-                        }),
-                        (
-                            "recording_source".into(),
-                            msg.info.recording_source.to_string().into(),
-                        ),
-                        (
-                            "is_official_example".into(),
-                            msg.info.is_official_example.into(),
-                        ),
-                    ]);
-
-                    analytics.record(re_analytics::Event::data_source_opened());
-                }
+                self.analytics.on_new_recording(msg);
             }
 
             let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();

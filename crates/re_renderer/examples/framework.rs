@@ -237,7 +237,7 @@ impl<E: Example + 'static> Application<E> {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let view_builders = self.example.draw(
+                    let draw_results = self.example.draw(
                         &mut self.re_ctx,
                         [self.surface_config.width, self.surface_config.height],
                         &self.time,
@@ -250,7 +250,7 @@ impl<E: Example + 'static> Application<E> {
                         },
                     );
 
-                    let view_cmd_buffers = {
+                    {
                         let mut composite_pass =
                             composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: None,
@@ -265,23 +265,23 @@ impl<E: Example + 'static> Application<E> {
                                 depth_stencil_attachment: None,
                             });
 
-                        view_builders
-                            .into_iter()
-                            .map(|r| {
-                                r.view_builder
-                                    .composite(&self.re_ctx, &mut composite_pass, r.target_location)
-                                    .expect("Failed to composite view main surface");
-                                r.command_buffer
-                            })
-                            .collect::<Vec<_>>() // So we don't hold a reference to the render pass!
-
-                        // drop the pass so we can finish() the main encoder!
+                        for draw_result in &draw_results {
+                            draw_result
+                                .view_builder
+                                .composite(
+                                    &self.re_ctx,
+                                    &mut composite_pass,
+                                    draw_result.target_location,
+                                )
+                                .expect("Failed to composite view main surface");
+                        }
                     };
 
                     self.re_ctx.before_submit();
                     self.re_ctx.queue.submit(
-                        view_cmd_buffers
+                        draw_results
                             .into_iter()
+                            .map(|d| d.command_buffer)
                             .chain(std::iter::once(composite_cmd_encoder.finish())),
                     );
                     frame.present();

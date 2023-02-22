@@ -20,7 +20,7 @@ use crate::{
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         SamplerDesc, ShaderModuleDesc,
     },
@@ -102,7 +102,7 @@ impl Default for TexturedRect {
 
 #[derive(Clone)]
 pub struct RectangleDrawData {
-    bind_groups: Vec<GpuBindGroupHandleStrong>,
+    bind_groups: Vec<GpuBindGroup>,
 }
 
 impl DrawData for RectangleDrawData {
@@ -151,10 +151,7 @@ impl RectangleDrawData {
             let mut staging_buffer = ctx
                 .queue
                 .write_buffer_with(
-                    ctx.gpu_resources
-                        .buffers
-                        .get_resource(&uniform_buffer)
-                        .unwrap(),
+                    &uniform_buffer,
                     0,
                     NonZeroU64::new(combined_buffers_size).unwrap(),
                 )
@@ -215,13 +212,13 @@ impl RectangleDrawData {
                     label: "rectangle".into(),
                     entries: smallvec![
                         BindGroupEntry::Buffer {
-                            handle: *uniform_buffer,
+                            handle: uniform_buffer.handle,
                             offset: i as u64 * allocation_size_per_uniform_buffer,
                             size: NonZeroU64::new(
                                 std::mem::size_of::<gpu_data::UniformBuffer>() as u64
                             ),
                         },
-                        BindGroupEntry::DefaultTextureView(**texture),
+                        BindGroupEntry::DefaultTextureView(texture.handle),
                         BindGroupEntry::Sampler(sampler)
                     ],
                     layout: rectangle_renderer.bind_group_layout,
@@ -349,7 +346,7 @@ impl Renderer for RectangleRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
         if draw_data.bind_groups.is_empty() {
@@ -360,7 +357,6 @@ impl Renderer for RectangleRenderer {
         pass.set_pipeline(pipeline);
 
         for bind_group in &draw_data.bind_groups {
-            let bind_group = pools.bind_groups.get_resource(bind_group)?;
             pass.set_bind_group(1, bind_group, &[]);
             pass.draw(0..4, 0..1);
         }
