@@ -41,32 +41,15 @@ target-version = ["py38"]
 
 [tool.ruff]
 extend-exclude = [
-    "venv/",
-    "target/",
-    "examples/python/objectron/proto/objectron/proto.py",
-    "examples/python/stable_diffusion/huggingface_pipeline.py",
-    "examples/python/colmap/read_write_model.py",
+  "venv/",
+  "target/",
+  "examples/python/objectron/proto/objectron/proto.py",
+  "examples/python/stable_diffusion/huggingface_pipeline.py",
+  "examples/python/colmap/read_write_model.py",
 ]
-ignore = [
-    "D1",
-    "D107",
-    "D202",
-    "D203",
-    "D212",
-    "D401",
-    "D402",
-    "D415",
-    "D416",
-]
+ignore = ["D1", "D107", "D202", "D203", "D212", "D401", "D402", "D415", "D416"]
 line-length = 120
-select = [
-    "D",
-    "E",
-    "F",
-    "I",
-    "TID",
-    "W",
-]
+select = ["D", "E", "F", "I", "TID", "W"]
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
