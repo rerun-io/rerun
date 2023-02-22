@@ -25,7 +25,6 @@ pub struct RenderContext {
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
-    pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
@@ -37,6 +36,8 @@ pub struct RenderContext {
     inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
 
     pub active_frame: ActiveFrameContext,
+
+    pub gpu_resources: WgpuResourcePools, // Last due to drop order.
 }
 
 /// Immutable data that is shared between all [`Renderer`]

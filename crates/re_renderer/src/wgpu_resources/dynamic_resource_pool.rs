@@ -20,13 +20,16 @@ pub trait DynamicResourcesDesc {
     fn allow_reuse(&self) -> bool;
 }
 
-pub struct DynamicResource<Handle, Desc, Res> {
+pub struct DynamicResource<Handle, Desc: Debug, Res> {
     pub inner: Res,
     pub creation_desc: Desc,
     pub handle: Handle,
 }
 
-impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res> {
+impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res>
+where
+    Desc: Debug,
+{
     type Target = Res;
 
     #[inline]
@@ -39,7 +42,7 @@ impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res> {
 type AliveResourceMap<Handle, Desc, Res> =
     SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
 
-struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
+struct DynamicResourcePoolProtectedState<Handle: Key, Desc: Debug, Res> {
     /// All currently alive resources.
     /// We store any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
@@ -55,7 +58,7 @@ struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
 ///
 /// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource can not be uniquely
 /// identified by its description, as the same description can apply to several different resources.
-pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
+pub(super) struct DynamicResourcePool<Handle: Key, Desc: Debug, Res> {
     state: RwLock<DynamicResourcePoolProtectedState<Handle, Desc, Res>>,
 
     current_frame_index: u64,
@@ -63,7 +66,10 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
 }
 
 /// We cannot #derive(Default) as that would require Handle/Desc/Res to implement Default too.
-impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> {
+impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res>
+where
+    Desc: Debug,
+{
     fn default() -> Self {
         Self {
             state: RwLock::new(DynamicResourcePoolProtectedState {
@@ -200,6 +206,25 @@ where
     pub fn total_resource_size_in_bytes(&self) -> u64 {
         self.total_resource_size_in_bytes
             .load(std::sync::atomic::Ordering::Relaxed)
+    }
+}
+impl<Handle, Desc, Res> Drop for DynamicResourcePool<Handle, Desc, Res>
+where
+    Handle: Key,
+    Desc: Debug,
+{
+    fn drop(&mut self) {
+        for (_, alive_resource) in self.state.read().alive_resources.iter() {
+            let alive_resource = alive_resource
+                .as_ref()
+                .expect("Alive resources should never be None");
+            let ref_count = Arc::strong_count(alive_resource);
+
+            assert!(ref_count == 1,
+                    "Resource has still {} owners at the time of pool destruction. Description desc was {:?}",
+                    ref_count - 1,
+                    &alive_resource.creation_desc);
+        }
     }
 }
 

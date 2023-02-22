@@ -17,14 +17,14 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + 'static> {
     /// Write view into the relevant buffer portion.
     ///
     /// UNSAFE: The lifetime is transmuted to be `'static`.
-    /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk.chunk_buffer)!
+    /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk_buffer)!
     write_view: wgpu::BufferViewMut<'static>,
 
-    /// How many elements of T were already pushed into this buffer.
-    write_counter: usize,
+    /// Range in T elements in write_view that haven't been written yet.
+    unwritten_element_range: std::ops::Range<usize>,
 
     chunk_buffer: GpuBuffer,
-    offset_in_chunk_buffer: wgpu::BufferAddress,
+    byte_offset_in_chunk_buffer: wgpu::BufferAddress,
 
     /// Marker for the type whose alignment and size requirements are honored by `write_view`.
     _type: std::marker::PhantomData<T>,
@@ -39,7 +39,7 @@ where
     /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
     fn as_slice(&mut self) -> &mut [T] {
-        &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.write_counter..]
+        &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.unwritten_element_range.clone()]
     }
 
     /// Pushes a slice of elements into the buffer.
@@ -48,7 +48,7 @@ where
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) {
         self.as_slice().copy_from_slice(elements);
-        self.write_counter += elements.len();
+        self.unwritten_element_range.start += elements.len();
     }
 
     /// Pushes several elements into the buffer.
@@ -61,7 +61,7 @@ where
             *target = source;
             num_elements += 1;
         }
-        self.write_counter += num_elements;
+        self.unwritten_element_range.start += num_elements;
     }
 
     /// Pushes a single element into the buffer and advances the write pointer.
@@ -69,16 +69,17 @@ where
     /// Panics if the data no longer fits into the buffer.
     #[inline]
     pub fn push(&mut self, element: &T) {
-        *self.as_slice().first_mut().unwrap() = *element;
-        self.write_counter += 1;
+        self.as_slice()[0] = *element;
+        self.unwritten_element_range.start += 1;
     }
 
     /// The number of elements pushed into the buffer so far.
     #[inline]
     pub fn num_written(&self) -> usize {
-        self.write_counter
+        self.unwritten_element_range.start
     }
 
+    /// Copies the entire buffer to a texture and drops it.
     pub fn copy_to_texture(
         self,
         encoder: &mut wgpu::CommandEncoder,
@@ -91,7 +92,7 @@ where
             wgpu::ImageCopyBuffer {
                 buffer: &self.chunk_buffer,
                 layout: wgpu::ImageDataLayout {
-                    offset: self.offset_in_chunk_buffer,
+                    offset: self.byte_offset_in_chunk_buffer,
                     bytes_per_row,
                     rows_per_image,
                 },
@@ -101,7 +102,7 @@ where
         );
     }
 
-    /// Consume this data view and copy it to another gpu buffer.
+    /// Copies the entire buffer to another buffer and drops it.
     pub fn copy_to_buffer(
         mut self,
         encoder: &mut wgpu::CommandEncoder,
@@ -110,7 +111,7 @@ where
     ) {
         encoder.copy_buffer_to_buffer(
             &self.chunk_buffer,
-            self.offset_in_chunk_buffer,
+            self.byte_offset_in_chunk_buffer,
             destination,
             destination_offset,
             self.write_view.deref_mut().len() as u64,
@@ -140,9 +141,12 @@ impl Chunk {
     /// Caller needs to make sure that there is enough space plus potential padding.
     fn allocate_aligned<T: bytemuck::Pod>(
         &mut self,
+        num_elements: usize,
         size_in_bytes: u64,
         alignment: u64,
     ) -> CpuWriteGpuReadBuffer<T> {
+        debug_assert!(num_elements * std::mem::size_of::<T>() <= size_in_bytes as usize);
+
         // Optimistic first mapping attempt.
         let mut start_offset = self.unused_offset;
         let mut end_offset = start_offset + size_in_bytes;
@@ -173,19 +177,25 @@ impl Chunk {
 
         #[allow(unsafe_code)]
         // SAFETY:
-        // write_view has a lifetime dependency on the chunk's buffer.
+        // write_view has a lifetime dependency on the chunk's buffer - internally it holds a pointer to it!
+        //
         // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
-        // However, this also implies that the buffer pool is still alive! The renderer context needs to make sure of this.
-        // TODO: some more doc why this is here
+        // Additionally, the buffer pool needs to ensure:
+        // * it can't drop buffers if there's still users
+        //      -> We assert on on that
+        // * buffers are never moved in memory
+        //      -> buffers are always owned by the pool and are always Arc.
+        //          This means it not allowed to move the buffer out.
+        //          (We could make them Pin<Arc<>> but this complicates things inside the BufferPool)
         let write_view = unsafe {
             std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
         };
 
         CpuWriteGpuReadBuffer {
             chunk_buffer: self.buffer.clone(),
-            offset_in_chunk_buffer: start_offset,
+            byte_offset_in_chunk_buffer: start_offset,
             write_view,
-            write_counter: 0,
+            unwritten_element_range: 0..num_elements,
             _type: std::marker::PhantomData,
         }
     }
@@ -339,7 +349,7 @@ impl CpuWriteGpuReadBelt {
             }
         };
 
-        let cpu_buffer_view = chunk.allocate_aligned(size, alignment);
+        let cpu_buffer_view = chunk.allocate_aligned(num_elements, size, alignment);
         self.active_chunks.push(chunk);
         cpu_buffer_view
     }
