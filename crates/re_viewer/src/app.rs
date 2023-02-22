@@ -100,16 +100,6 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
-        Self::new(startup_options, re_ui, storage, rx, Default::default())
-    }
-
-    fn new(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        rx: Receiver<LogMsg>,
-        log_db: LogDb,
-    ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
@@ -128,15 +118,9 @@ impl App {
             .expect("Error setting Ctrl-C handler");
         }
 
-        let mut state: AppState = storage
+        let state: AppState = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
-
-        let mut log_dbs = IntMap::default();
-        if !log_db.is_empty() {
-            state.selected_rec_id = log_db.recording_id();
-            log_dbs.insert(log_db.recording_id(), log_db);
-        }
 
         let analytics = ViewerAnalytics::new();
         analytics.on_viewer_started();
@@ -147,7 +131,7 @@ impl App {
             re_ui,
             component_ui_registry: Default::default(),
             rx,
-            log_dbs,
+            log_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
