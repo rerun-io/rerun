@@ -19,6 +19,9 @@ all-features = true
 [features]
 default = ["demo", "glam", "image", "re_viewer"]
 
+## Enable telemetry using our analytics SDK.
+analytics = ["re_web_server?/analytics", "re_viewer?/analytics"]
+
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
 
