@@ -3981,6 +3981,7 @@ dependencies = [
  "re_arrow_store",
  "re_log",
  "re_log_types",
+ "re_smart_channel",
  "re_string_interner",
  "serde",
  "thiserror",

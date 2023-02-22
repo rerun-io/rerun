@@ -79,12 +79,25 @@ impl ThreadInfo {
 
 // ----------------------------------------------------------------------------
 
+fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+    let py_version = py.version_info();
+    re_log_types::PythonVersion {
+        major: py_version.major,
+        minor: py_version.minor,
+        patch: py_version.patch,
+        suffix: py_version.suffix.map(|s| s.to_owned()).unwrap_or_default(),
+    }
+}
+
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     re_log::setup_native_logging();
+
+    global_session()
+        .set_recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)));
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
@@ -201,13 +214,15 @@ fn time(timeless: bool) -> TimePoint {
 }
 
 // ----------------------------------------------------------------------------
+
 #[pyfunction]
-fn main(argv: Vec<String>) -> PyResult<u8> {
+fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+    let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(rerun::CallSource::Python, argv))
+        .block_on(rerun::run(call_src, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 

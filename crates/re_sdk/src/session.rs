@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, Time,
-    TimePoint,
+    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
+    RecordingSource, Time, TimePoint,
 };
 
 /// This is the main object you need to create to use the Rerun SDK.
@@ -13,6 +13,8 @@ pub struct Session {
     /// Is this session enabled?
     /// If not, all calls into it are ignored!
     enabled: bool,
+
+    recording_source: RecordingSource,
 
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
@@ -101,6 +103,8 @@ impl Session {
         Self {
             enabled,
 
+            recording_source: RecordingSource::RustSdk,
+
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
@@ -155,6 +159,12 @@ impl Session {
             self.recording_id = Some(recording_id);
             self.has_sent_begin_recording_msg = false;
         }
+    }
+
+    /// Set where the recording is coming from.
+    /// The default is [`RecordingSource::RustSdk`].
+    pub fn set_recording_source(&mut self, recording_source: RecordingSource) {
+        self.recording_source = recording_source;
     }
 
     /// Send log data to a remote server.
@@ -317,7 +327,7 @@ impl Session {
                             recording_id,
                             is_official_example: self.is_official_example.unwrap_or_default(),
                             started: Time::now(),
-                            recording_source: re_log_types::RecordingSource::PythonSdk,
+                            recording_source: self.recording_source.clone(),
                         },
                     }
                     .into(),
@@ -384,6 +394,17 @@ impl Session {
 
 #[cfg(feature = "re_viewer")]
 impl Session {
+    fn app_env(&self) -> re_viewer::AppEnvironment {
+        match &self.recording_source {
+            RecordingSource::PythonSdk(python_version) => {
+                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
+            }
+            RecordingSource::Unknown | RecordingSource::RustSdk | RecordingSource::Other(_) => {
+                re_viewer::AppEnvironment::RustSdk
+            }
+        }
+    }
+
     /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
     /// been logged so far.
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
@@ -394,7 +415,7 @@ impl Session {
 
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
+        re_viewer::run_native_viewer_with_messages(self.app_env(), startup_options, log_messages)
     }
 
     /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
@@ -426,6 +447,7 @@ impl Session {
         }
 
         self.sender = Sender::NativeViewer(tx);
+        let app_env = self.app_env();
 
         // NOTE: Forget the handle on purpose, leave that thread be.
         _ = std::thread::spawn(move || run(self));
@@ -437,6 +459,7 @@ impl Session {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let startup_options = re_viewer::StartupOptions::default();
             Box::new(re_viewer::App::from_receiver(
+                app_env,
                 startup_options,
                 re_ui,
                 cc.storage,
