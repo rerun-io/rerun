@@ -40,16 +40,48 @@ line-length = 120
 target-version = ["py38"]
 
 [tool.ruff]
+# https://beta.ruff.rs/docs/configuration/
+
 extend-exclude = [
+  # Automatically generated test artifacts
   "venv/",
   "target/",
+
+  # generated
   "examples/python/objectron/proto/objectron/proto.py",
+
+  # Copied from https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
   "examples/python/stable_diffusion/huggingface_pipeline.py",
+
+  # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
   "examples/python/colmap/read_write_model.py",
 ]
-ignore = ["D1", "D107", "D202", "D203", "D212", "D401", "D402", "D415", "D416"]
+ignore = [
+  # Missing docstring in public function - TODO(emilk): enable for SDK but not for examples
+  "D1",
+
+  # No blank lines allowed after function docstring.
+  "D202",
+
+  # npydocstyle: http://www.pydocstyle.org/en/stable/error_codes.html
+  # numpy convention with a few additional lints
+  "D107",
+  "D203",
+  "D212",
+  "D401",
+  "D402",
+  "D415",
+  "D416",
+]
 line-length = 120
-select = ["D", "E", "F", "I", "TID", "W"]
+select = [
+  "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "F",   # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
+  "I",   # Isort
+  "TID", # flake8-tidy-imports
+  "W",   # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+]
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
