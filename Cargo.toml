@@ -54,8 +54,8 @@ rerun = { path = "crates/rerun", version = "=0.6.0-alpha.0", default-features = 
 
 ahash = "0.8"
 anyhow = "1.0"
-arrow2 = "0.16"
-arrow2_convert = "0.4.2"
+arrow2 = "0.17"
+arrow2_convert = "0.5.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cfg-if = "1.0"
 clap = "4.0"
@@ -82,9 +82,9 @@ mimalloc = "0.1.29"
 ndarray = "0.15"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
-polars-core = "0.27.1"
-polars-lazy = "0.27.1"
-polars-ops = "0.27.1"
+polars-core = "0.29"
+polars-lazy = "0.29"
+polars-ops = "0.29"
 puffin = "0.14"
 rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",

@@ -303,7 +303,7 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
             estimated_bytes_size(
                 array
                     .values()
-                    .slice(values_start, values_end - values_start)
+                    .sliced(values_start, values_end - values_start)
                     .as_ref(),
             ) + std::mem::size_of_val(array.offsets().as_slice())
                 + validity_size(array.validity())
@@ -372,7 +372,7 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                         let values_end = offsets[idx_end] as usize;
                         fields.get(cur_ty as usize).map_or(0, |x| {
                             estimated_bytes_size(
-                                x.slice(values_start, values_end - values_start).as_ref(),
+                                x.sliced(values_start, values_end - values_start).as_ref(),
                             )
                         })
                     })
@@ -394,7 +394,7 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 array
                     .fields()
                     .iter()
-                    .map(|x| estimated_bytes_size(x.slice(0, array.len()).as_ref()))
+                    .map(|x| estimated_bytes_size(x.sliced(0, array.len()).as_ref()))
                     .sum::<usize>()
             };
 

@@ -7,8 +7,6 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 use crate::Component;
 use crate::{TensorDataType, TensorElement};
 
-use super::arrow_convert_shims::BinaryBuffer;
-
 // ----------------------------------------------------------------------------
 
 /// A unique id per [`Tensor`].
@@ -145,7 +143,7 @@ impl ArrowDeserialize for TensorId {
 #[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
-    U8(BinaryBuffer),
+    U8(Buffer<u8>),
     U16(Buffer<u16>),
     U32(Buffer<u32>),
     U64(Buffer<u64>),
@@ -159,7 +157,7 @@ pub enum TensorData {
     //F16(Vec<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
-    JPEG(BinaryBuffer),
+    JPEG(Buffer<u8>),
 }
 
 impl TensorData {
@@ -180,7 +178,7 @@ impl TensorData {
 
     pub fn size_in_bytes(&self) -> usize {
         match self {
-            Self::U8(buf) | Self::JPEG(buf) => buf.0.len(),
+            Self::U8(buf) | Self::JPEG(buf) => buf.len(),
             Self::U16(buf) => buf.len(),
             Self::U32(buf) => buf.len(),
             Self::U64(buf) => buf.len(),
@@ -232,7 +230,6 @@ impl std::fmt::Debug for TensorData {
         }
     }
 }
-
 /// Flattened `Tensor` data payload
 ///
 /// ## Examples
@@ -979,7 +976,7 @@ impl DecodedTensor {
 
             TensorData::JPEG(buf) => {
                 use image::io::Reader as ImageReader;
-                let mut reader = ImageReader::new(std::io::Cursor::new(buf.0.as_slice()));
+                let mut reader = ImageReader::new(std::io::Cursor::new(buf.as_slice()));
                 reader.set_format(image::ImageFormat::Jpeg);
                 let img = {
                     crate::profile_scope!("decode_jpeg");

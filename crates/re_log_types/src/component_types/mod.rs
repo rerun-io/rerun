@@ -17,7 +17,6 @@ use lazy_static::lazy_static;
 use crate::Component;
 
 mod arrow;
-mod arrow_convert_shims;
 mod bbox;
 mod class_id;
 mod color;

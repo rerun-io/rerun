@@ -1165,7 +1165,7 @@ fn data_table_sizes_basics() {
         2_690_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow("some_bools".into(), cell.to_arrow().slice(1, 1)),
+        DataCell::from_arrow("some_bools".into(), cell.to_arrow().sliced(1, 1)),
         10_000,    // num_rows
         2_690_064, // expected_num_bytes
     );
@@ -1182,7 +1182,7 @@ fn data_table_sizes_basics() {
         2_840_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow("some_u64s".into(), cell.to_arrow().slice(1, 1)),
+        DataCell::from_arrow("some_u64s".into(), cell.to_arrow().sliced(1, 1)),
         10_000,    // num_rows
         2_680_064, // expected_num_bytes
     );
@@ -1205,7 +1205,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Label::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         2_950_064, // expected_num_bytes
@@ -1229,7 +1229,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Point2D::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         5_100_064, // expected_num_bytes
@@ -1253,7 +1253,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Point2D::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         3_920_064, // expected_num_bytes
@@ -1289,7 +1289,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Point2D::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         5_560_064, // expected_num_bytes
