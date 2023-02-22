@@ -97,28 +97,28 @@ impl ViewerAnalytics {
     }
 
     /// When we have loaded the start of a new recording.
-    pub fn on_open_recording(&mut self, msg: &re_log_types::BeginRecordingMsg) {
+    pub fn on_open_recording(&mut self, rec_info: &re_log_types::RecordingInfo) {
         // We hash the application_id and recording_id unless this is an official example.
         // That's because we want to be able to track which are the popular examples,
         // but we don't want to collect actual application ids.
         self.register("application_id", {
-            let prop = Property::from(msg.info.application_id.0.clone());
-            if msg.info.is_official_example {
+            let prop = Property::from(rec_info.application_id.0.clone());
+            if rec_info.is_official_example {
                 prop
             } else {
                 prop.hashed()
             }
         });
         self.register("recording_id", {
-            let prop = Property::from(msg.info.recording_id.to_string());
-            if msg.info.is_official_example {
+            let prop = Property::from(rec_info.recording_id.to_string());
+            if rec_info.is_official_example {
                 prop
             } else {
                 prop.hashed()
             }
         });
-        self.register("recording_source", msg.info.recording_source.to_string());
-        self.register("is_official_example", msg.info.is_official_example);
+        self.register("recording_source", rec_info.recording_source.to_string());
+        self.register("is_official_example", rec_info.is_official_example);
         self.record(Event::append("open_recording".into()));
     }
 }

@@ -597,8 +597,7 @@ impl App {
             if let LogMsg::BeginRecordingMsg(msg) = &msg {
                 re_log::debug!("Opening a new recording: {:?}", msg.info);
                 self.state.selected_rec_id = msg.info.recording_id;
-
-                self.analytics.on_open_recording(msg);
+                self.analytics.on_open_recording(&msg.info);
             }
 
             let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -732,6 +731,9 @@ impl App {
 
     fn show_log_db(&mut self, source: &re_smart_channel::Source, log_db: LogDb) {
         self.analytics.on_new_data_source(source);
+        if let Some(recording_info) = log_db.recording_info() {
+            self.analytics.on_open_recording(recording_info);
+        }
         self.state.selected_rec_id = log_db.recording_id();
         self.log_dbs.insert(log_db.recording_id(), log_db);
     }
