@@ -91,16 +91,16 @@ impl TimeRangeF {
     /// Where in the range is this value? Returns 0-1 if within the range.
     ///
     /// Returns <0 if before and >1 if after.
-    pub fn inverse_lerp(&self, value: TimeReal) -> f32 {
+    pub fn inverse_lerp(&self, value: TimeReal) -> f64 {
         if self.min == self.max {
             0.5
         } else {
-            (value - self.min).as_f32() / (self.max - self.min).as_f32()
+            (value - self.min).as_f64() / (self.max - self.min).as_f64()
         }
     }
 
-    pub fn lerp(&self, t: f32) -> TimeReal {
-        self.min + (self.max - self.min) * t as f64
+    pub fn lerp(&self, t: f64) -> TimeReal {
+        self.min + (self.max - self.min) * t
     }
 
     #[inline]
