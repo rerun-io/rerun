@@ -82,43 +82,42 @@ impl ViewerAnalytics {
         self.record(Event::append("viewer_started".into()));
     }
 
-    /// Called when rerun is first started, or when you open a new file.
-    pub fn on_new_data_source(&self, data_source: &re_smart_channel::Source) {
-        let data_source = match data_source {
-            re_smart_channel::Source::File { .. } => "file", // .rrd
-            re_smart_channel::Source::Sdk => "sdk",          // show()
-            re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
-            re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
-        };
-        self.record(
-            Event::append("new_data_source".into())
-                .with_prop("data_source".into(), data_source.to_owned()),
-        );
-    }
-
     /// When we have loaded the start of a new recording.
-    pub fn on_open_recording(&mut self, rec_info: &re_log_types::RecordingInfo) {
-        // We hash the application_id and recording_id unless this is an official example.
-        // That's because we want to be able to track which are the popular examples,
-        // but we don't want to collect actual application ids.
-        self.register("application_id", {
-            let prop = Property::from(rec_info.application_id.0.clone());
-            if rec_info.is_official_example {
-                prop
-            } else {
-                prop.hashed()
-            }
-        });
-        self.register("recording_id", {
-            let prop = Property::from(rec_info.recording_id.to_string());
-            if rec_info.is_official_example {
-                prop
-            } else {
-                prop.hashed()
-            }
-        });
-        self.register("recording_source", rec_info.recording_source.to_string());
-        self.register("is_official_example", rec_info.is_official_example);
+    pub fn on_open_recording(&mut self, log_db: &re_data_store::LogDb) {
+        if let Some(rec_info) = log_db.recording_info() {
+            // We hash the application_id and recording_id unless this is an official example.
+            // That's because we want to be able to track which are the popular examples,
+            // but we don't want to collect actual application ids.
+            self.register("application_id", {
+                let prop = Property::from(rec_info.application_id.0.clone());
+                if rec_info.is_official_example {
+                    prop
+                } else {
+                    prop.hashed()
+                }
+            });
+            self.register("recording_id", {
+                let prop = Property::from(rec_info.recording_id.to_string());
+                if rec_info.is_official_example {
+                    prop
+                } else {
+                    prop.hashed()
+                }
+            });
+            self.register("recording_source", rec_info.recording_source.to_string());
+            self.register("is_official_example", rec_info.is_official_example);
+        }
+
+        if let Some(data_source) = &log_db.data_source {
+            let data_source = match data_source {
+                re_smart_channel::Source::File { .. } => "file", // .rrd
+                re_smart_channel::Source::Sdk => "sdk",          // show()
+                re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
+                re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
+            };
+            self.register("data_source", data_source.to_owned());
+        }
+
         self.record(Event::append("open_recording".into()));
     }
 }
