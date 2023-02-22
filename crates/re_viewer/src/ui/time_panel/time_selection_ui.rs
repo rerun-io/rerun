@@ -53,7 +53,8 @@ pub fn loop_selection_ui(
 
         if let (Some(min_x), Some(max_x)) = (min_x, max_x) {
             // The top part only
-            let mut rect = Rect::from_x_y_ranges(min_x..=max_x, timeline_rect.y_range());
+            let mut rect =
+                Rect::from_x_y_ranges((min_x as f32)..=(max_x as f32), timeline_rect.y_range());
 
             // Make sure it is visible:
             if rect.width() < 2.0 {
@@ -151,7 +152,7 @@ pub fn loop_selection_ui(
             && !is_anything_being_dragged
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
         {
-            if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+            if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
                 time_ctrl.set_looping(Looping::Selection);
                 ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
@@ -214,8 +215,8 @@ fn drag_right_loop_selection_edge(
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
     let aim_radius = ui.input(|i| i.aim_radius());
 
-    let time_low = time_ranges_ui.time_from_x(pointer_pos.x - aim_radius)?;
-    let time_high = time_ranges_ui.time_from_x(pointer_pos.x + aim_radius)?;
+    let time_low = time_ranges_ui.time_from_x_f32(pointer_pos.x - aim_radius)?;
+    let time_high = time_ranges_ui.time_from_x_f32(pointer_pos.x + aim_radius)?;
 
     // TODO(emilk): snap to absolute time too
     let low_length = selected_range.max - time_low;
@@ -242,8 +243,8 @@ fn drag_left_loop_selection_edge(
     let pointer_pos = ui.input(|i| i.pointer.hover_pos())?;
     let aim_radius = ui.input(|i| i.aim_radius());
 
-    let time_low = time_ranges_ui.time_from_x(pointer_pos.x - aim_radius)?;
-    let time_high = time_ranges_ui.time_from_x(pointer_pos.x + aim_radius)?;
+    let time_low = time_ranges_ui.time_from_x_f32(pointer_pos.x - aim_radius)?;
+    let time_high = time_ranges_ui.time_from_x_f32(pointer_pos.x + aim_radius)?;
 
     // TODO(emilk): snap to absolute time too
     let low_length = time_low - selected_range.min;
@@ -267,11 +268,11 @@ fn on_drag_loop_selection(
 ) -> Option<()> {
     let pointer_delta = ui.input(|i| i.pointer.delta());
 
-    let min_x = time_ranges_ui.x_from_time(selected_range.min)? + pointer_delta.x;
-    let max_x = time_ranges_ui.x_from_time(selected_range.max)? + pointer_delta.x;
+    let min_x = time_ranges_ui.x_from_time_f32(selected_range.min)? + pointer_delta.x;
+    let max_x = time_ranges_ui.x_from_time_f32(selected_range.max)? + pointer_delta.x;
 
-    let min_time = time_ranges_ui.time_from_x(min_x)?;
-    let max_time = time_ranges_ui.time_from_x(max_x)?;
+    let min_time = time_ranges_ui.time_from_x_f32(min_x)?;
+    let max_time = time_ranges_ui.time_from_x_f32(max_x)?;
 
     let mut new_range = TimeRangeF::new(min_time, max_time);
 
