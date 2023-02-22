@@ -13,7 +13,7 @@ use crate::{
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         SamplerDesc, ShaderModuleDesc, TextureDesc,
     },
@@ -70,7 +70,7 @@ impl Default for Volume {
 
 #[derive(Clone)]
 pub struct VolumeDrawData {
-    bind_groups: Vec<GpuBindGroupHandleStrong>,
+    bind_groups: Vec<GpuBindGroup>,
 }
 
 impl DrawData for VolumeDrawData {
@@ -115,10 +115,7 @@ impl VolumeDrawData {
             let mut staging_buffer = ctx
                 .queue
                 .write_buffer_with(
-                    ctx.gpu_resources
-                        .buffers
-                        .get_resource(&volume_info_ubo)
-                        .unwrap(),
+                    &volume_info_ubo.inner,
                     0,
                     NonZeroU64::new(combined_buffers_size).unwrap(),
                 )
@@ -174,12 +171,7 @@ impl VolumeDrawData {
                 crate::profile_scope!("write_texture");
                 ctx.queue.write_texture(
                     wgpu::ImageCopyTexture {
-                        texture: &ctx
-                            .gpu_resources
-                            .textures
-                            .get_resource(&texture)
-                            .unwrap()
-                            .texture,
+                        texture: &texture.inner.texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
                         aspect: wgpu::TextureAspect::All,
@@ -203,13 +195,13 @@ impl VolumeDrawData {
                     label: "volume".into(),
                     entries: smallvec![
                         BindGroupEntry::Buffer {
-                            handle: *volume_info_ubo,
+                            handle: volume_info_ubo.handle,
                             offset: i as u64 * allocation_size_per_uniform_buffer,
                             size: NonZeroU64::new(
                                 std::mem::size_of::<gpu_data::VolumeInfoUBO>() as u64
                             ),
                         },
-                        BindGroupEntry::DefaultTextureView(*texture),
+                        BindGroupEntry::DefaultTextureView(texture.handle),
                     ],
                     layout: volume_renderer.bind_group_layout,
                 },
@@ -332,7 +324,7 @@ impl Renderer for VolumeRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
         if draw_data.bind_groups.is_empty() {
@@ -343,8 +335,7 @@ impl Renderer for VolumeRenderer {
         pass.set_pipeline(pipeline);
 
         for bind_group in &draw_data.bind_groups {
-            let bind_group = pools.bind_groups.get_resource(bind_group)?;
-            pass.set_bind_group(1, bind_group, &[]);
+            pass.set_bind_group(1, &*bind_group, &[]);
             pass.draw(0..36, 0..1);
         }
 
