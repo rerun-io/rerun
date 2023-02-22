@@ -46,7 +46,7 @@ puffin.workspace = true
 
 [dev-dependencies]
 criterion = "0.4"
-mimalloc = "0.1"
+mimalloc.workspace = true
 rand = "0.8"
 
 [lib]

@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "examples/rust/*", "rerun_py", "run_wasm"]
+members = [
+  "crates/*",
+  "examples/rust/*",
+  "rerun_py",
+  "run_wasm",
+  "tests/rust/*",
+]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
@@ -56,6 +62,7 @@ half = "2.0"
 image = "0.24"
 lazy_static = "1.4"
 macaw = "0.18"
+mimalloc = "0.1.29"
 ndarray = "0.15"
 polars-core = "0.27.1"
 polars-lazy = "0.27.1"

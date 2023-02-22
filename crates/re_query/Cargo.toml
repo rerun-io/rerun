@@ -55,7 +55,7 @@ polars-core = { workspace = true, optional = true, features = [
 [dev-dependencies]
 criterion = "0.4"
 itertools = "0.10"
-mimalloc = "0.1"
+mimalloc.workspace = true
 polars-core = { workspace = true, features = [
   "dtype-date",
   "dtype-time",

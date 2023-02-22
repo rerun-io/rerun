@@ -5162,6 +5162,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_image_memory"
+version = "0.2.0"
+dependencies = [
+ "mimalloc",
+ "re_format",
+ "rerun",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
