@@ -63,6 +63,10 @@ impl Time {
     }
 
     pub fn is_exactly_midnight(&self) -> bool {
+        // This is correct despite leap seconds because
+        // during positive leap seconds, UTC actually has a discontinuity
+        // (the same integer is reused for two different times).
+        // See https://en.wikipedia.org/wiki/Unix_time#Leap_seconds
         self.nanos_since_epoch() % (24 * 60 * 60 * 1_000_000_000) == 0
     }
 
