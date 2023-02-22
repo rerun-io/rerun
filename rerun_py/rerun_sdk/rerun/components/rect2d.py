@@ -5,6 +5,7 @@ from enum import Enum
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
 from rerun.components import (
     REGISTERED_COMPONENT_NAMES,
     ComponentTypeFactory,

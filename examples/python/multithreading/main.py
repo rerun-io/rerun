@@ -8,9 +8,8 @@ import threading
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log.rects import RectFormat
-
 import rerun as rr
+from rerun.log.rects import RectFormat
 
 
 def rect_logger(path: str, color: npt.NDArray[np.float32]) -> None:

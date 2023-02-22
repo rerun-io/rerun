@@ -11,7 +11,6 @@ import math
 from typing import Final, Tuple
 
 import numpy as np
-
 import rerun as rr
 
 LENGTH_S: Final = 20.0
