@@ -357,11 +357,16 @@ impl MemoryPanel {
 
 fn summarize_callstack(callstack: &str) -> String {
     let patterns = [
+        ("MsgSender", "MsgSender"),
+        ("App::receive_messages", "App::receive_messages"),
+        ("w_store::store::ComponentBucket>::archive", "archive"),
+        ("DataStore>::insert", "DataStore"),
         ("LogDb", "LogDb"),
         ("EntityDb", "EntityDb"),
         ("EntityTree", "EntityTree"),
         ("::LogMsg>::deserialize", "LogMsg"),
         ("::TimePoint>::deserialize", "TimePoint"),
+        ("ImageCache", "ImageCache"),
         ("gltf", "gltf"),
         ("image::image", "image"),
         // -----
