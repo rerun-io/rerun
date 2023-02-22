@@ -63,7 +63,7 @@ pub mod external {
     pub use re_memory;
     pub use re_sdk_comms;
 
-    #[cfg(feature = "viewer")]
+    #[cfg(feature = "re_viewer")]
     pub use re_viewer;
 
     #[cfg(feature = "glam")]
