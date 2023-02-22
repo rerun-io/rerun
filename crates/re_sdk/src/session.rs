@@ -394,6 +394,15 @@ impl Session {
 
 #[cfg(feature = "re_viewer")]
 impl Session {
+    fn app_env(&self) -> re_viewer::AppEnvironment {
+        match self.recording_source {
+            RecordingSource::PythonSdk => re_viewer::AppEnvironment::PythonSdk,
+            RecordingSource::Unknown | RecordingSource::RustSdk | RecordingSource::Other(_) => {
+                re_viewer::AppEnvironment::RustSdk
+            }
+        }
+    }
+
     /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
     /// been logged so far.
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
@@ -404,7 +413,7 @@ impl Session {
 
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(startup_options, log_messages)
+        re_viewer::run_native_viewer_with_messages(self.app_env(), startup_options, log_messages)
     }
 
     /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
@@ -436,6 +445,7 @@ impl Session {
         }
 
         self.sender = Sender::NativeViewer(tx);
+        let app_env = self.app_env();
 
         // NOTE: Forget the handle on purpose, leave that thread be.
         _ = std::thread::spawn(move || run(self));
@@ -447,6 +457,7 @@ impl Session {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let startup_options = re_viewer::StartupOptions::default();
             Box::new(re_viewer::App::from_receiver(
+                app_env,
                 startup_options,
                 re_ui,
                 cc.storage,

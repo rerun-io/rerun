@@ -68,6 +68,21 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
+/// Where is this App running in?
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AppEnvironment {
+    /// Created from the Rerun Python SDK.
+    PythonSdk,
+
+    /// Created from the Rerun Rust SDK.
+    RustSdk,
+
+    /// Running the Rust `rerun` binary from the CLI.
+    RerunCli,
+}
+
+// ---------------------------------------------------------------------------
+
 #[allow(dead_code)]
 const APPLICATION_NAME: &str = "Rerun Viewer";
 

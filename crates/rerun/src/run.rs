@@ -113,6 +113,15 @@ pub enum CallSource {
     Python,
 }
 
+impl CallSource {
+    fn app_env(&self) -> re_viewer::AppEnvironment {
+        match self {
+            CallSource::Cli => re_viewer::AppEnvironment::RerunCli,
+            CallSource::Python => re_viewer::AppEnvironment::PythonSdk,
+        }
+    }
+}
+
 /// Run the Rerun application and return an exit code.
 ///
 /// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args...]`.
@@ -199,7 +208,14 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
             // We are connecting to a server at a websocket address:
-            return connect_to_ws_url(&args, startup_options, profiler, url_or_path.clone()).await;
+            return connect_to_ws_url(
+                &args,
+                call_source.app_env(),
+                startup_options,
+                profiler,
+                url_or_path.clone(),
+            )
+            .await;
         }
     } else {
         #[cfg(feature = "server")]
@@ -245,7 +261,13 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
     } else {
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app = re_viewer::App::from_receiver(startup_options, re_ui, cc.storage, rx);
+            let mut app = re_viewer::App::from_receiver(
+                call_source.app_env(),
+                startup_options,
+                re_ui,
+                cc.storage,
+                rx,
+            );
             app.set_profiler(profiler);
             Box::new(app)
         }))?;
@@ -255,6 +277,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
 
 async fn connect_to_ws_url(
     args: &Args,
+    app_env: re_viewer::AppEnvironment,
     startup_options: re_viewer::StartupOptions,
     profiler: re_viewer::Profiler,
     mut rerun_server_ws_url: String,
@@ -269,6 +292,7 @@ async fn connect_to_ws_url(
         // By using RemoteViewerApp we let the user change the server they are connected to.
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let mut app = re_viewer::RemoteViewerApp::new(
+                app_env,
                 startup_options,
                 re_ui,
                 cc.storage,

@@ -6,6 +6,8 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
 
+use crate::AppEnvironment;
+
 pub struct ViewerAnalytics {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
@@ -54,7 +56,14 @@ impl ViewerAnalytics {
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
     /// When the viewer is first started
-    pub fn on_viewer_started(&self) {
+    pub fn on_viewer_started(&mut self, app_env: crate::AppEnvironment) {
+        let app_env = match app_env {
+            AppEnvironment::PythonSdk => "python_sdk",
+            AppEnvironment::RustSdk => "rust_sdk",
+            AppEnvironment::RerunCli => "rust_cli",
+        };
+        self.register("app_env", app_env.to_owned());
+
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
             let rerun_version = env!("CARGO_PKG_VERSION");
