@@ -63,4 +63,8 @@
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],
+    "ruff.args": [
+        "--config",
+        "rerun_py/pyproject.toml"
+    ],
 }

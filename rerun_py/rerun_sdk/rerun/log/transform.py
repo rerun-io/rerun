@@ -6,10 +6,10 @@ Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/s
 from typing import Optional, Tuple
 
 import numpy.typing as npt
-from rerun.log import _to_sequence
-from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
+from rerun.log import _to_sequence
+from rerun.log.error_utils import _send_warning
 
 __all__ = [
     "log_view_coordinates",

@@ -15,10 +15,9 @@ from pathlib import Path
 from typing import Optional, cast
 
 import numpy as np
+import rerun as rr
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
-
-import rerun as rr
 
 
 def load_scene(path: Path) -> trimesh.Scene:

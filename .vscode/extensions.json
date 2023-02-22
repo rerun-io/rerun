@@ -2,6 +2,7 @@
     // See https://go.microsoft.com/fwlink/?LinkId=827846
     // for the documentation about the extensions.json format
     "recommendations": [
+        "charliermarsh.ruff", // Ruff for linting
         "ms-python.python",
         "ms-vsliveshare.vsliveshare", // Live Share
         "polymeilex.wgsl",
