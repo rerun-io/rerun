@@ -61,28 +61,39 @@ impl ViewerAnalytics {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
-            AppEnvironment::RustSdk => "rust_sdk",
+            AppEnvironment::RustSdk(_) => "rust_sdk",
             AppEnvironment::RerunCli => "rerun_cli",
             AppEnvironment::Web => "web",
         };
         self.register("app_env", app_env_str.to_owned());
 
-        if let AppEnvironment::PythonSdk(version) = app_env {
-            self.register("python_version", version.to_string());
-        }
-
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
             let rerun_version = env!("CARGO_PKG_VERSION");
-            let rust_version = env!("CARGO_PKG_RUST_VERSION");
             let target = re_analytics::TARGET_TRIPLET;
             let git_hash = re_analytics::GIT_HASH;
 
             let mut event = Event::update("update_metadata".into())
                 .with_prop("rerun_version".into(), rerun_version.to_owned())
-                .with_prop("rust_version".into(), rust_version.to_owned())
                 .with_prop("target".into(), target.to_owned())
                 .with_prop("git_hash".into(), git_hash.to_owned());
+
+            // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
+            // machine running the viewer, then add it to the permanent user profile.
+            //
+            // The Python/Rust versions appearing in user profiles always apply to the host
+            // environment, _not_ the environment in which the data logging is taking place!
+            if let AppEnvironment::RustSdk(version) = &app_env {
+                event = event.with_prop("rust_version".into(), version.clone());
+            } else {
+                event = event.with_prop(
+                    "rust_version".into(),
+                    env!("CARGO_PKG_RUST_VERSION").to_owned(),
+                );
+            }
+            if let AppEnvironment::PythonSdk(version) = app_env {
+                event = event.with_prop("python_version".into(), version.to_string());
+            }
 
             // Append opt-in metadata.
             // In practice this is the email of Rerun employees
@@ -124,16 +135,19 @@ impl ViewerAnalytics {
             let recording_source = match &rec_info.recording_source {
                 RecordingSource::Unknown => "unknown".to_owned(),
                 RecordingSource::PythonSdk(_version) => "python_sdk".to_owned(),
-                RecordingSource::RustSdk => "rust_sdk".to_owned(),
+                RecordingSource::RustSdk(_version) => "rust_sdk".to_owned(),
                 RecordingSource::Other(other) => other.clone(),
             };
 
+            // If we happen to know the Python or Rust version used on the _recording machine_,
+            // then append it to all future events.
+            //
+            // The Python/Rust versions appearing in events always apply to the recording
+            // environment, _not_ the environment in which the viewer is running!
+            if let RecordingSource::RustSdk(version) = &rec_info.recording_source {
+                self.register("rust_version", version.to_string());
+            }
             if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {
-                // This will over-write what is set by `AppEnvironment`, if any.
-                // Usually these would be the same, but if you are using one python version to look
-                // at a recording from an older python version, then they will differ.
-                // For simplicity's sake we ignore this. We just want a rough idea of
-                // what python version our users use.
                 self.register("python_version", version.to_string());
             }
 

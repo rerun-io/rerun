@@ -240,7 +240,7 @@ impl std::fmt::Display for PythonVersion {
             patch,
             suffix,
         } = self;
-        write!(f, "{}.{}.{}{}", major, minor, patch, suffix)
+        write!(f, "{major}.{minor}.{patch}{suffix}")
     }
 }
 
@@ -253,7 +253,7 @@ pub enum RecordingSource {
     PythonSdk(PythonVersion),
 
     /// The official Rerun Rust Logging SDK
-    RustSdk,
+    RustSdk(String),
 
     /// Perhaps from some manual data ingestion?
     Other(String),
@@ -264,7 +264,7 @@ impl std::fmt::Display for RecordingSource {
         match self {
             Self::Unknown => "Unknown".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk => "Rust SDK".fmt(f),
+            Self::RustSdk(version) => write!(f, "Rust {version} SDK"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }

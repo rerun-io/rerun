@@ -76,7 +76,7 @@ pub enum AppEnvironment {
     PythonSdk(PythonVersion),
 
     /// Created from the Rerun Rust SDK.
-    RustSdk,
+    RustSdk(String),
 
     /// Running the Rust `rerun` binary from the CLI.
     RerunCli,
