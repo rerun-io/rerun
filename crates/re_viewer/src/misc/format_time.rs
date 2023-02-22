@@ -1,7 +1,7 @@
 /// Useful when showing dates/times on a timeline
 /// and you want it compact.
 ///
-/// Shows data when zoomed out, shows times when zoomed in,
+/// Shows dates when zoomed out, shows times when zoomed in,
 /// shows relative millisecond when really zoomed in.
 pub fn format_time_compact(time: re_log_types::Time) -> String {
     let ns = time.nanos_since_epoch();
