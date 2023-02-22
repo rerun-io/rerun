@@ -31,6 +31,9 @@ all-features = true
 ## will crash if you rey to run it!
 __ci = []
 
+## Enable telemetry using our analytics SDK.
+analytics = ["dep:re_analytics"]
+
 
 [dependencies]
 re_log.workspace = true
@@ -43,6 +46,10 @@ tokio = { workspace = true, default-features = false, features = [
   "macros",
   "rt-multi-thread",
 ] }
+
+# Optional dependencies:
+re_analytics = { workspace = true, optional = true }
+
 
 [build-dependencies]
 glob = "0.3.0"

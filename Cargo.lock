@@ -4338,6 +4338,7 @@ dependencies = [
  "futures-util",
  "glob",
  "hyper",
+ "re_analytics",
  "re_log",
  "tokio",
 ]
