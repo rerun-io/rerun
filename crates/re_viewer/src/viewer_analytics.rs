@@ -97,7 +97,7 @@ impl ViewerAnalytics {
     }
 
     /// When we have loaded the start of a new recording.
-    pub fn on_new_recording(&mut self, msg: &re_log_types::BeginRecordingMsg) {
+    pub fn on_open_recording(&mut self, msg: &re_log_types::BeginRecordingMsg) {
         // We hash the application_id and recording_id unless this is an official example.
         // That's because we want to be able to track which are the popular examples,
         // but we don't want to collect actual application ids.
@@ -119,7 +119,7 @@ impl ViewerAnalytics {
         });
         self.register("recording_source", msg.info.recording_source.to_string());
         self.register("is_official_example", msg.info.is_official_example);
-        self.record(Event::append("new_recording".into()));
+        self.record(Event::append("open_recording".into()));
     }
 }
 

@@ -595,10 +595,10 @@ impl App {
 
         while let Ok(msg) = self.rx.try_recv() {
             if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                re_log::debug!("Beginning a new recording: {:?}", msg.info);
+                re_log::debug!("Opening a new recording: {:?}", msg.info);
                 self.state.selected_rec_id = msg.info.recording_id;
 
-                self.analytics.on_new_recording(msg);
+                self.analytics.on_open_recording(msg);
             }
 
             let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
