@@ -6,6 +6,7 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_log_types::RecordingSource;
 
 use crate::AppEnvironment;
@@ -161,6 +162,5 @@ impl ViewerAnalytics {
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
 impl ViewerAnalytics {
     pub fn on_viewer_started(&self) {}
-    pub fn on_new_recording(&self, _msg: &re_log_types::BeginRecordingMsg) {}
-    pub fn on_new_data_source(&self, _data_source: &re_smart_channel::Source) {}
+    pub fn on_open_recording(&mut self, _log_db: &re_data_store::LogDb) {}
 }
