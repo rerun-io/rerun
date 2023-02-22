@@ -220,6 +220,11 @@ impl Analytics {
         self.default_append_props.insert(name.into(), prop.into());
     }
 
+    /// Deregister a property.
+    pub fn deregister_append_property(&mut self, name: &'static str) {
+        self.default_append_props.remove(name);
+    }
+
     /// Record an event.
     ///
     /// It will be extended with an `event_id` and, if this is an [`EventKind::Append`],

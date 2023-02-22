@@ -49,6 +49,14 @@ impl ViewerAnalytics {
             analytics.register_append_property(name, property);
         }
     }
+
+    /// Deregister a property.
+    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
+    fn deregister(&mut self, name: &'static str) {
+        if let Some(analytics) = &mut self.analytics {
+            analytics.deregister_append_property(name);
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -146,9 +154,11 @@ impl ViewerAnalytics {
             // environment, _not_ the environment in which the viewer is running!
             if let RecordingSource::RustSdk(version) = &rec_info.recording_source {
                 self.register("rust_version", version.to_string());
+                self.deregister("python_version"); // can't be both!
             }
             if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {
                 self.register("python_version", version.to_string());
+                self.deregister("rust_version"); // can't be both!
             }
 
             self.register("recording_source", recording_source);
