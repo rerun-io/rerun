@@ -57,6 +57,10 @@ impl Service<Request<Body>> for Svc {
 
     #[cfg(feature = "__ci")]
     fn call(&mut self, _req: Request<Body>) -> Self::Future {
+        if false {
+            self.on_serve_wasm(); // to silence warning about the function being unused
+        }
+
         panic!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
     }
 
