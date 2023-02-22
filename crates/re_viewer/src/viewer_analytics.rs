@@ -6,6 +6,8 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
 
+use re_log_types::RecordingSource;
+
 use crate::AppEnvironment;
 
 pub struct ViewerAnalytics {
@@ -118,7 +120,24 @@ impl ViewerAnalytics {
                     prop.hashed()
                 }
             });
-            self.register("recording_source", rec_info.recording_source.to_string());
+
+            let recording_source = match &rec_info.recording_source {
+                RecordingSource::Unknown => "unknown".to_owned(),
+                RecordingSource::PythonSdk(_version) => "python_sdk".to_owned(),
+                RecordingSource::RustSdk => "rust_sdk".to_owned(),
+                RecordingSource::Other(other) => other.clone(),
+            };
+
+            if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {
+                // This will over-write what is set by `AppEnvironment`, if any.
+                // Usually these would be the same, but if you are using one python version to look
+                // at a recording from an older python version, then they will differ.
+                // For simplicity's sake we ignore this. We just want a rough idea of
+                // what python version our users use.
+                self.register("python_version", version.to_string());
+            }
+
+            self.register("recording_source", recording_source);
             self.register("is_official_example", rec_info.is_official_example);
         }
 
