@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, ops::DerefMut, sync::mpsc};
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, PoolError};
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 
 /// A sub-allocated staging buffer that can be written to.
 ///
@@ -86,7 +86,7 @@ where
         bytes_per_row: Option<NonZeroU32>,
         rows_per_image: Option<NonZeroU32>,
         copy_size: wgpu::Extent3d,
-    ) -> Result<(), PoolError> {
+    ) {
         encoder.copy_buffer_to_texture(
             wgpu::ImageCopyBuffer {
                 buffer: &self.chunk_buffer,
@@ -99,8 +99,6 @@ where
             destination,
             copy_size,
         );
-
-        Ok(())
     }
 
     /// Consume this data view and copy it to another gpu buffer.
@@ -109,7 +107,7 @@ where
         encoder: &mut wgpu::CommandEncoder,
         destination: &GpuBuffer,
         destination_offset: wgpu::BufferAddress,
-    ) -> Result<(), PoolError> {
+    ) {
         encoder.copy_buffer_to_buffer(
             &self.chunk_buffer,
             self.offset_in_chunk_buffer,
@@ -117,18 +115,80 @@ where
             destination_offset,
             self.write_view.deref_mut().len() as u64,
         );
-
-        Ok(())
     }
 }
 
 /// Internal chunk of the staging belt.
 struct Chunk {
     buffer: GpuBuffer,
-    size: wgpu::BufferAddress,
 
-    /// At what offset is [`write_view`](#structfield.write_view) unused.
+    /// Starting at this offset the buffer is unused.
     unused_offset: wgpu::BufferAddress,
+}
+
+impl Chunk {
+    fn remaining_capacity(&self) -> u64 {
+        self.buffer.size() - self.unused_offset
+    }
+
+    fn required_padding(write_view: &mut wgpu::BufferViewMut<'_>, alignment: u64) -> u64 {
+        // Use deref_mut explicitly because wgpu warns otherwise that read access is slow.
+        let ptr = write_view.deref_mut().as_ptr() as u64;
+        wgpu::util::align_to(ptr, alignment) - ptr
+    }
+
+    /// Caller needs to make sure that there is enough space plus potential padding.
+    fn allocate_aligned<T: bytemuck::Pod>(
+        &mut self,
+        size_in_bytes: u64,
+        alignment: u64,
+    ) -> CpuWriteGpuReadBuffer<T> {
+        // Optimistic first mapping attempt.
+        let mut start_offset = self.unused_offset;
+        let mut end_offset = start_offset + size_in_bytes;
+        let mut buffer_slice = self.buffer.slice(start_offset..end_offset);
+        let mut write_view = buffer_slice.get_mapped_range_mut();
+
+        // Check if it fullfills the requested alignment.
+        let required_padding = Self::required_padding(&mut write_view, alignment);
+        if required_padding != 0 {
+            // Undo mapping and try again with padding!
+            re_log::trace!(
+                "CpuWriteGpuReadBuffer::allocate alignment requirement not fulfilled. Need to add {required_padding} for alignment of {alignment}"
+            );
+
+            drop(write_view);
+
+            start_offset = self.unused_offset + required_padding;
+            end_offset = start_offset + size_in_bytes;
+            buffer_slice = self.buffer.slice(start_offset..end_offset);
+            write_view = buffer_slice.get_mapped_range_mut();
+
+            let required_padding = Self::required_padding(&mut write_view, alignment);
+            debug_assert_eq!(required_padding, 0);
+        }
+
+        debug_assert!(end_offset <= self.buffer.size());
+        self.unused_offset = end_offset;
+
+        #[allow(unsafe_code)]
+        // SAFETY:
+        // write_view has a lifetime dependency on the chunk's buffer.
+        // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
+        // However, this also implies that the buffer pool is still alive! The renderer context needs to make sure of this.
+        // TODO: some more doc why this is here
+        let write_view = unsafe {
+            std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
+        };
+
+        CpuWriteGpuReadBuffer {
+            chunk_buffer: self.buffer.clone(),
+            offset_in_chunk_buffer: start_offset,
+            write_view,
+            write_counter: 0,
+            _type: std::marker::PhantomData,
+        }
+    }
 }
 
 /// Efficiently performs many buffer writes by sharing and reusing temporary buffers.
@@ -144,7 +204,7 @@ struct Chunk {
 ///  (see this as of writing open wgpu issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508))
 pub struct CpuWriteGpuReadBelt {
     /// Minimum size for new buffers.
-    chunk_size: wgpu::BufferSize,
+    chunk_size: u64,
 
     /// Chunks which are CPU write at the moment.
     active_chunks: Vec<Chunk>,
@@ -176,10 +236,11 @@ impl CpuWriteGpuReadBelt {
     ///
     /// Requiring a minimum alignment means we need to pad less often.
     /// Also, it has the potential of making memcpy operations faster.
-    /// Align to 4xf32. Should be enough for most usecases and is
+    ///
+    /// Align to 4xf32. Should be enough for most usecases!
     pub const MIN_ALIGNMENT: u64 = 16;
 
-    /// Create a new staging belt.
+    /// Create a cpu-write & gpu-read staging belt.
     ///
     /// The `chunk_size` is the unit of internal buffer allocation; writes will be
     /// sub-allocated within each chunk. Therefore, for optimal use of memory, the
@@ -197,7 +258,7 @@ impl CpuWriteGpuReadBelt {
 
         let (sender, receiver) = mpsc::channel();
         CpuWriteGpuReadBelt {
-            chunk_size,
+            chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),
             active_chunks: Vec::new(),
             closed_chunks: Vec::new(),
             free_chunks: Vec::new(),
@@ -206,10 +267,10 @@ impl CpuWriteGpuReadBelt {
         }
     }
 
-    /// Allocates a cpu writable buffer for `num_elements` instances of T.
+    /// Allocates a cpu writable buffer for `num_elements` instances of type `T`.
     ///
-    /// Handles alignment requirements automatically, allowing arbitrarily aligned types and fast memcpy.
-    pub fn allocate<T: bytemuck::Pod + 'static>(
+    /// Handles alignment requirements automatically, allowing arbitrarily aligned types without issues.
+    pub fn allocate<T: bytemuck::Pod>(
         &mut self,
         device: &wgpu::Device,
         buffer_pool: &mut GpuBufferPool,
@@ -217,30 +278,30 @@ impl CpuWriteGpuReadBelt {
     ) -> CpuWriteGpuReadBuffer<T> {
         // Potentially overestimate alignment with Self::MIN_ALIGNMENT, see Self::MIN_ALIGNMENT doc string.
         let alignment = (std::mem::align_of::<T>() as wgpu::BufferAddress).max(Self::MIN_ALIGNMENT);
-        // Padd out the size of the used buffer, so that within active chunk we'll always hit at least Self::MIN_ALIGNMENT
+        // Pad out the size of the used buffer to a multiple of Self::MIN_ALIGNMENT.
+        // This increases our chance of having back to back allocations within a chunk.
         let size = wgpu::util::align_to(
             (std::mem::size_of::<T>() * num_elements) as wgpu::BufferAddress,
             Self::MIN_ALIGNMENT,
         );
 
         // We need to be super careful with alignment since today wgpu
-        // has NO guarantees on how pointers to mapped memory are aligned!
+        // has no guarantees on how pointers to mapped memory are aligned!
         // For all we know, pointers might be 1 aligned, causing even a u32 write to crash the process!
         //
-        // See https://github.com/gfx-rs/wgpu/issues/3508
+        // For details and (as of writing) ongoing discussion see https://github.com/gfx-rs/wgpu/issues/3508
         //
         // To work around this, we ask for a bigger size, so we can safely pad out
-        // *if* the returned pointer is not correctly aligned.
-        // (i.e. we will use _up to_ `required_size` bytes, but at least `size`)
-        let required_size = size + alignment - 1;
-
-        // We explicitly use `deref_mut` on write_view everywhere, since wgpu warns if we accidentally use `deref`.
+        // if the returned pointer is not correctly aligned.
+        // (i.e. we will use _up to_ `required_size` bytes, but at least `size`)]
+        let maximum_padding = alignment - 1;
+        let max_required_size = size + maximum_padding;
 
         // Try to find space in any of the active chunks first.
         let mut chunk = if let Some(index) = self
             .active_chunks
             .iter_mut()
-            .position(|chunk| chunk.size - chunk.unused_offset >= required_size)
+            .position(|chunk| chunk.remaining_capacity() >= max_required_size)
         {
             self.active_chunks.swap_remove(index)
         } else {
@@ -250,25 +311,22 @@ impl CpuWriteGpuReadBelt {
             if let Some(index) = self
                 .free_chunks
                 .iter()
-                .position(|chunk| chunk.size >= required_size)
+                .position(|chunk| chunk.remaining_capacity() >= max_required_size)
             {
                 self.free_chunks.swap_remove(index)
             } else {
-                // (happens relatively rarely, this is a noteworthy event!)
-                re_log::debug!(
-                    "Allocating new CpuWriteGpuReadBuffer chunk of size {required_size}"
+                // Allocation might be bigger than a chunk!
+                let buffer_size = wgpu::util::align_to(
+                    self.chunk_size.max(max_required_size),
+                    Self::MIN_ALIGNMENT,
                 );
-
-                // Allocation might be bigger than a chunk.
-                let size = wgpu::util::align_to(
-                    self.chunk_size.get().max(required_size),
-                    wgpu::MAP_ALIGNMENT,
-                );
+                // Happens relatively rarely, this is a noteworthy event!
+                re_log::debug!("Allocating new CpuWriteGpuReadBelt chunk of size {buffer_size}");
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {
                         label: "CpuWriteGpuReadBelt buffer".into(),
-                        size,
+                        size: buffer_size,
                         usage: wgpu::BufferUsages::MAP_WRITE | wgpu::BufferUsages::COPY_SRC,
                         mapped_at_creation: true,
                     },
@@ -276,82 +334,13 @@ impl CpuWriteGpuReadBelt {
 
                 Chunk {
                     buffer,
-                    size,
                     unused_offset: 0,
                 }
             }
         };
 
-        // Allocate mapping from a chunk.
-        fn allocate_mapping<'a>(chunk: &'a mut Chunk, size: u64) -> (u64, wgpu::BufferViewMut<'a>) {
-            let start_offset = chunk.unused_offset;
-            let end_offset = start_offset + size;
-
-            debug_assert!(end_offset <= chunk.size);
-            chunk.unused_offset = end_offset;
-
-            let buffer_slice = chunk.buffer.slice(start_offset..end_offset);
-            (start_offset, buffer_slice.get_mapped_range_mut())
-        }
-
-        // Allocate mapping from a chunk with alignment requirements.
-        //
-        // Depending on how https://github.com/gfx-rs/wgpu/issues/3508 will be solved, we can early out for certain alignments.
-        // TODO(andreas): Or just hardcode alignment for everything to `MIN_ALIGNMENT`?
-        fn allocate_chunk_mapping_with_alignment<'a>(
-            chunk: &'a mut Chunk,
-            size: u64,
-            alignment: u64,
-        ) -> (u64, wgpu::BufferViewMut<'a>) {
-            // First optimistically try without explicit padding.
-            let (start_offset, mut write_view) = allocate_mapping(chunk, size);
-
-            // use deref_mut explicitly because wgpu warns otherwise that read access is slow.
-            let ptr = write_view.deref_mut().as_ptr() as u64;
-            let required_padding = wgpu::util::align_to(ptr, alignment) - ptr;
-
-            //            if required_padding == 0 {
-            (start_offset, write_view)
-            // } else {
-            //     re_log::trace!(
-            //         "CpuWriteGpuReadBuffer::allocate alignment requirement not fulfilled. Need to add {required_padding} for alignment of {alignment}"
-            //     );
-
-            //     // Undo mapping and try again with padding.
-            //     // We made sure earlier that the chunk has enough space for this case!
-            //     drop(write_view);
-            //     chunk.unused_offset = start_offset + required_padding;
-
-            //     let (start_offset, mut write_view) = allocate_mapping(chunk, size);
-            //     let required_padding = write_view.deref_mut().as_ptr() as u64 % alignment; // use deref_mut because wgpu warns otherwise that read access is slow.
-            //     debug_assert_eq!(required_padding, 0);
-
-            //     (start_offset, write_view)
-            // }
-        }
-
-        let (start_offset, write_view) =
-            allocate_chunk_mapping_with_alignment(&mut chunk, size, alignment);
-
-        #[allow(unsafe_code)]
-        // SAFETY:
-        // write_view has a lifetime dependency on the chunk's buffer.
-        // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
-        // However, this also implies that the buffer pool is still alive! The renderer context needs to make sure of this.
-        let write_view = unsafe {
-            std::mem::transmute::<wgpu::BufferViewMut<'_>, wgpu::BufferViewMut<'static>>(write_view)
-        };
-
-        let cpu_buffer_view = CpuWriteGpuReadBuffer {
-            chunk_buffer: chunk.buffer.clone(),
-            offset_in_chunk_buffer: start_offset,
-            write_view,
-            write_counter: 0,
-            _type: std::marker::PhantomData,
-        };
-
+        let cpu_buffer_view = chunk.allocate_aligned(size, alignment);
         self.active_chunks.push(chunk);
-
         cpu_buffer_view
     }
 

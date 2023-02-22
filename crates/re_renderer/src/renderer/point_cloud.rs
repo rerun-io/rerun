@@ -284,24 +284,18 @@ impl PointCloudDrawData {
             );
         }
 
-        {
-            crate::profile_scope!("write_color_texture");
-            builder
-                .color_buffer
-                .copy_to_texture(
-                    ctx.active_frame.frame_global_command_encoder(&ctx.device),
-                    wgpu::ImageCopyTexture {
-                        texture: &color_texture.texture,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    NonZeroU32::new(DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
-                    None,
-                    size,
-                )
-                .expect("invalid color cpu->gpu buffer");
-        }
+        builder.color_buffer.copy_to_texture(
+            ctx.active_frame.frame_global_command_encoder(&ctx.device),
+            wgpu::ImageCopyTexture {
+                texture: &color_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            NonZeroU32::new(DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
+            None,
+            size,
+        );
 
         let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
