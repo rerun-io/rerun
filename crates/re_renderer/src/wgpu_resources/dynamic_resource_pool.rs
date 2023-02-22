@@ -8,7 +8,7 @@ use std::{
 use parking_lot::RwLock;
 use slotmap::{Key, SlotMap};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use super::resource::PoolError;
 
@@ -123,7 +123,12 @@ where
             .read()
             .alive_resources
             .get(handle)
-            .map(|resource| resource.as_ref().unwrap().clone())
+            .map(|resource| {
+                resource
+                    .as_ref()
+                    .expect("Alive handles should never be None")
+                    .clone()
+            })
             .ok_or_else(|| {
                 if handle.is_null() {
                     PoolError::NullHandle
@@ -165,14 +170,11 @@ where
 
             match Arc::try_unwrap(resolved) {
                 Ok(r) => {
-                    match state.last_frame_deallocated.entry(r.creation_desc) {
-                        Entry::Occupied(mut e) => {
-                            e.get_mut().push(r.inner);
-                        }
-                        Entry::Vacant(e) => {
-                            e.insert(smallvec![r.inner]);
-                        }
-                    }
+                    state
+                        .last_frame_deallocated
+                        .entry(r.creation_desc)
+                        .or_default()
+                        .push(r.inner);
                     false
                 }
                 Err(r) => {
