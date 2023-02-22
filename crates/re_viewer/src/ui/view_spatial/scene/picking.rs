@@ -166,6 +166,7 @@ pub fn picking(
         line_strips,
         points,
         meshes,
+        volumes,
     } = primitives;
 
     picking_points(&context, &mut state, points);
@@ -178,6 +179,7 @@ pub fn picking(
         textured_rectangles_ids,
     );
     picking_ui_rects(&context, &mut state, ui_data);
+    // TODO: volumes
 
     state.sort_and_remove_hidden_transparent();
 

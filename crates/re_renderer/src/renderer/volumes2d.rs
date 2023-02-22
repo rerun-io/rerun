@@ -2,6 +2,7 @@
 //!
 //! TODO
 
+use itertools::Itertools;
 use smallvec::smallvec;
 use std::num::{NonZeroU32, NonZeroU64};
 use wgpu::Face;
@@ -55,7 +56,7 @@ pub struct Volume {
     pub depth_data: Vec<f32>,
 
     pub albedo_dimensions: glam::UVec2,
-    pub albedo_data: Vec<u8>,
+    pub albedo_data: Option<Vec<u8>>,
 }
 
 impl Default for Volume {
@@ -67,7 +68,7 @@ impl Default for Volume {
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: Vec::new(),
             albedo_dimensions: glam::UVec2::ZERO,
-            albedo_data: Vec::new(),
+            albedo_data: None,
         }
     }
 }
@@ -228,7 +229,7 @@ impl VolumeDrawData {
                     volume.albedo_dimensions.x / format_info.block_dimensions.0 as u32;
                 let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
 
-                {
+                if let Some(data) = volume.albedo_data.as_ref() {
                     crate::profile_scope!("write albedo texture");
                     ctx.queue.write_texture(
                         wgpu::ImageCopyTexture {
@@ -237,7 +238,35 @@ impl VolumeDrawData {
                             origin: wgpu::Origin3d::ZERO,
                             aspect: wgpu::TextureAspect::All,
                         },
-                        bytemuck::cast_slice(volume.albedo_data.as_slice()),
+                        bytemuck::cast_slice(data.as_slice()),
+                        wgpu::ImageDataLayout {
+                            offset: 0,
+                            bytes_per_row: Some(
+                                NonZeroU32::new(bytes_per_row_unaligned)
+                                    .expect("invalid bytes per row"),
+                            ),
+                            rows_per_image: None,
+                        },
+                        albedo_texture_size,
+                    );
+                } else {
+                    crate::profile_scope!("write fake albedo texture");
+                    let dimensions = volume.depth_dimensions; // TODO
+                    let data = volume
+                        .depth_data
+                        .iter()
+                        .copied()
+                        .map(|d| (d * 255.0) as u8)
+                        .map(|c| [c, c, c, 255])
+                        .collect_vec();
+                    ctx.queue.write_texture(
+                        wgpu::ImageCopyTexture {
+                            texture: &albedo_texture.inner.texture,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                            aspect: wgpu::TextureAspect::All,
+                        },
+                        bytemuck::cast_slice(data.as_slice()),
                         wgpu::ImageDataLayout {
                             offset: 0,
                             bytes_per_row: Some(

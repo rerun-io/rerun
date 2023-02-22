@@ -188,7 +188,7 @@ impl framework::Example for RenderVolumetric {
                 depth_dimensions: self.depth_dimensions,
                 depth_data: self.depth.clone(),
                 albedo_dimensions: self.albedo_dimensions,
-                albedo_data: self.albedo.clone(),
+                albedo_data: self.albedo.clone().into(),
             }
         }];
 

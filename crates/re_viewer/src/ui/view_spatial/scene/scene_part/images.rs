@@ -6,11 +6,14 @@ use itertools::Itertools;
 
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Tensor, TensorTrait},
+    component_types::{ColorRGBA, InstanceKey, Tensor, TensorDataMeaning, TensorTrait},
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{
+    renderer::{Volume2D as Volume, Volume2DDrawData as VolumeDrawData},
+    LineStripSeriesBuilder, Size,
+};
 
 use crate::{
     misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
@@ -144,6 +147,84 @@ impl ImagesPart {
             if let Some(tensor) = tensor {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());
+                }
+
+                if tensor.meaning == TensorDataMeaning::Depth {
+                    let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
+                    eprintln!("rendering volumetric thing! {w}x{h}");
+
+                    let depth_dimensions = glam::UVec2::new(w as _, h as _);
+                    let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 20.0;
+                    let volume_dimensions = glam::UVec3::new(640, 640, 640) / 4;
+
+                    // tensor.get(&[0, 0]);
+                    // tensor.get(&[h - 1, 0]);
+                    // tensor.get(&[h - 1, w - 1]);
+                    // tensor.get(&[h - 1, w - 1]);
+
+                    // TODO: what a mess, why is this in this weird order??
+                    let mut data = vec![0f32; (w * h) as usize];
+                    for x in 0..w {
+                        for y in 0..h {
+                            data[(x + y * w) as usize] = match tensor.get(&[y, x]).unwrap() {
+                                re_log_types::TensorElement::U16(d) => d as f32 / u16::MAX as f32,
+                                re_log_types::TensorElement::F32(d) => d,
+                                _ => todo!(),
+                            }
+                        }
+                    }
+                    // let data = match &tensor.data {
+                    //     re_log_types::component_types::TensorData::U16(data) => data
+                    //         .as_slice()
+                    //         .iter()
+                    //         .map(|d| *d as f32 / u16::MAX as f32)
+                    //         .collect_vec(),
+                    //     re_log_types::component_types::TensorData::F32(data) => {
+                    //         data.as_slice().to_vec()
+                    //     }
+                    //     _ => todo!(),
+                    // };
+
+                    let volume_instances = vec![{
+                        let scale = glam::Mat4::from_scale(volume_size);
+
+                        let rotation = glam::Mat4::IDENTITY;
+
+                        let translation_center =
+                            glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * volume_size);
+
+                        let world_from_model = rotation * translation_center * scale;
+                        let model_from_world = world_from_model.inverse();
+
+                        let world_from_obj = world_from_obj * world_from_model;
+
+                        let mut line_batch = scene
+                            .primitives
+                            .line_strips
+                            .batch("bbox")
+                            .world_from_obj(world_from_obj);
+                        line_batch.add_box_outline(
+                            glam::Affine3A::from_scale_rotation_translation(
+                                glam::Vec3::ONE,
+                                Default::default(),
+                                glam::Vec3::ONE * 0.5,
+                            ),
+                        );
+
+                        Volume {
+                            world_from_model: world_from_obj,
+                            model_from_world,
+                            dimensions: volume_dimensions,
+                            depth_dimensions,
+                            depth_data: data,
+                            albedo_dimensions: depth_dimensions,
+                            albedo_data: None,
+                        }
+                    }];
+
+                    scene.primitives.volumes.extend(volume_instances);
+
+                    break;
                 }
 
                 let entity_highlight = highlights.entity_highlight(ent_path.hash());
