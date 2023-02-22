@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Sequence
 
 import pyarrow as pa
+
 from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [

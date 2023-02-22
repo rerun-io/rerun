@@ -1,6 +1,5 @@
-from rerun.log.text import LogLevel
-
 import rerun as rr
+from rerun.log.text import LogLevel
 
 
 def test_text() -> None:

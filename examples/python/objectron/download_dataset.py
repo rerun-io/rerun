@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Final, Optional
 
 import cv2
 import requests

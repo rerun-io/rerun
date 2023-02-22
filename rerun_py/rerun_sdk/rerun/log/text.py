@@ -4,12 +4,11 @@ from typing import Any, Dict, Final, Optional, Sequence
 
 # Fully qualified to avoid circular import
 import rerun.log.extension_components
+from rerun import bindings
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import _normalize_colors
-
-from rerun import bindings
 
 __all__ = [
     "LogLevel",

@@ -4,6 +4,7 @@ import atexit
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
+
 from rerun.log import log_cleared
 from rerun.log.annotation import log_annotation_context
 from rerun.log.arrow import log_arrow

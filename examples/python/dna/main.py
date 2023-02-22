@@ -9,11 +9,10 @@ The example from our Getting Started page.
 from math import tau
 
 import numpy as np
+import rerun as rr
 from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
 from scipy.spatial.transform import Rotation
-
-import rerun as rr
 
 rr.init("DNA Abacus")
 

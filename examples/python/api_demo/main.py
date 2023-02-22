@@ -14,12 +14,11 @@ import logging
 import math
 
 import numpy as np
+import rerun as rr
 from rerun.log.annotation import AnnotationInfo
 from rerun.log.rects import RectFormat
 from rerun.log.text import LoggingHandler, LogLevel
 from scipy.spatial.transform import Rotation
-
-import rerun as rr
 
 
 def run_segmentation() -> None:

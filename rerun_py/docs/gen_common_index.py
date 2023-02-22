@@ -148,7 +148,6 @@ def make_slug(s: str) -> str:
 
 
 with mkdocs_gen_files.open(index_path, "w") as index_file:
-
     # TODO(#1161): add links to our high-level docs!
 
     # Hide the TOC for the index since it's identical to the left nav-bar
@@ -175,7 +174,6 @@ overview of what's possible and how.
     )
 
     for section in SECTION_TABLE:
-
         # Turn the heading into a slug and add it to the nav
         md_name = make_slug(section.title)
         md_file = md_name + ".md"

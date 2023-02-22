@@ -14,11 +14,10 @@ if platform.system() == "Darwin":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 import requests
+import rerun as rr
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 from PIL import Image
-
-import rerun as rr
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"

@@ -2,10 +2,10 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log.error_utils import _send_warning
-from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
 from rerun import bindings
+from rerun.log.error_utils import _send_warning
+from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
 __all__ = [
     "log_image",
