@@ -40,6 +40,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
 }
 
 pub fn run_native_viewer_with_messages(
+    app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
 ) -> eframe::Result<()> {
@@ -49,6 +50,7 @@ pub fn run_native_viewer_with_messages(
     }
     run_native_app(Box::new(move |cc, re_ui| {
         Box::new(crate::App::from_receiver(
+            app_env,
             startup_options,
             re_ui,
             cc.storage,

@@ -163,6 +163,10 @@ pub struct LogDb {
     /// that are created after they were logged.
     timeless_message_ids: Vec<MsgId>,
 
+    /// Set by whomever created this [`LogDb`].
+    pub data_source: Option<re_smart_channel::Source>,
+
+    /// Comes in a special message, [`LogMsg::BeginRecordingMsg`].
     recording_info: Option<RecordingInfo>,
 
     /// Where we store the entities.
@@ -266,6 +270,7 @@ impl LogDb {
             chronological_message_ids,
             log_messages,
             timeless_message_ids,
+            data_source: _,
             recording_info: _,
             entity_db,
         } = self;
