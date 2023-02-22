@@ -9,8 +9,6 @@ use re_analytics::{Analytics, Event, Property};
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_log_types::RecordingSource;
 
-use crate::AppEnvironment;
-
 pub struct ViewerAnalytics {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
@@ -60,6 +58,7 @@ impl ViewerAnalytics {
 impl ViewerAnalytics {
     /// When the viewer is first started
     pub fn on_viewer_started(&mut self, app_env: crate::AppEnvironment) {
+        use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
             AppEnvironment::RustSdk => "rust_sdk",
@@ -161,6 +160,6 @@ impl ViewerAnalytics {
 // When analytics are disabled:
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
 impl ViewerAnalytics {
-    pub fn on_viewer_started(&self) {}
+    pub fn on_viewer_started(&mut self, _app_env: crate::AppEnvironment) {}
     pub fn on_open_recording(&mut self, _log_db: &re_data_store::LogDb) {}
 }
