@@ -160,7 +160,7 @@ where
             );
         }
 
-        if self.0.user_data.len() < self.0.user_data.len() {
+        if self.0.user_data.len() < self.0.vertices.len() {
             self.0.user_data.extend(
                 std::iter::repeat(PerPointUserData::default())
                     .take(self.0.vertices.len() - self.0.user_data.len()),
@@ -220,6 +220,8 @@ where
 
     #[inline]
     pub fn add_point(&mut self, position: glam::Vec3) -> PointBuilder<'_, PerPointUserData> {
+        self.extend_defaults();
+
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
@@ -227,6 +229,7 @@ where
             position,
             radius: Size::AUTO,
         });
+        self.0.user_data.push(Default::default());
         self.batch_mut().point_count += 1;
 
         PointBuilder {
