@@ -39,7 +39,7 @@ def ensure_downloaded(src_url: str, dst_path: Path) -> None:
 
 def find_path_if_downloaded(recording_name: str, local_dataset_dir: Path) -> Optional[Path]:
     local_recording_dir = local_dataset_dir / recording_name
-    paths = list(local_recording_dir.glob(f"**/{ANNOTATIONS_FILENAME}"))  # type: List[Path]
+    paths = list(local_recording_dir.glob(f"**/{ANNOTATIONS_FILENAME}"))
     if paths:
         return paths[0].parent
     return None
