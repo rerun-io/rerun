@@ -57,13 +57,17 @@ impl ViewerAnalytics {
 impl ViewerAnalytics {
     /// When the viewer is first started
     pub fn on_viewer_started(&mut self, app_env: crate::AppEnvironment) {
-        let app_env = match app_env {
-            AppEnvironment::PythonSdk => "python_sdk",
+        let app_env_str = match app_env {
+            AppEnvironment::PythonSdk(_) => "python_sdk",
             AppEnvironment::RustSdk => "rust_sdk",
             AppEnvironment::RerunCli => "rust_cli",
             AppEnvironment::Web => "web",
         };
-        self.register("app_env", app_env.to_owned());
+        self.register("app_env", app_env_str.to_owned());
+
+        if let AppEnvironment::PythonSdk(version) = app_env {
+            self.register("python_version", version.to_string());
+        }
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {

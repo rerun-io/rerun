@@ -218,11 +218,39 @@ pub struct RecordingInfo {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct PythonVersion {
+    /// e.g. 3
+    pub major: u8,
+
+    /// e.g. 11
+    pub minor: u8,
+
+    /// e.g. 0
+    pub patch: u8,
+
+    /// e.g. `a0` for alpha releases.
+    pub suffix: String,
+}
+
+impl std::fmt::Display for PythonVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            major,
+            minor,
+            patch,
+            suffix,
+        } = self;
+        write!(f, "{}.{}.{}{}", major, minor, patch, suffix)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum RecordingSource {
     Unknown,
 
     /// The official Rerun Python Logging SDK
-    PythonSdk,
+    PythonSdk(PythonVersion),
 
     /// The official Rerun Rust Logging SDK
     RustSdk,
@@ -235,7 +263,7 @@ impl std::fmt::Display for RecordingSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unknown => "Unknown".fmt(f),
-            Self::PythonSdk => "Python SDK".fmt(f),
+            Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
             Self::RustSdk => "Rust SDK".fmt(f),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }

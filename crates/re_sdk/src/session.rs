@@ -395,8 +395,10 @@ impl Session {
 #[cfg(feature = "re_viewer")]
 impl Session {
     fn app_env(&self) -> re_viewer::AppEnvironment {
-        match self.recording_source {
-            RecordingSource::PythonSdk => re_viewer::AppEnvironment::PythonSdk,
+        match &self.recording_source {
+            RecordingSource::PythonSdk(python_version) => {
+                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
+            }
             RecordingSource::Unknown | RecordingSource::RustSdk | RecordingSource::Other(_) => {
                 re_viewer::AppEnvironment::RustSdk
             }

@@ -1,5 +1,5 @@
 use re_format::parse_duration;
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::Receiver;
 
 use anyhow::Context as _;
@@ -104,20 +104,26 @@ enum AnalyticsCommands {
 }
 
 /// Where are we calling [`run`] from?
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallSource {
     /// Called from a command-line-input (the terminal).
     Cli,
 
     /// Called from the Rerun Python SDK.
-    Python,
+    Python(PythonVersion),
 }
 
 impl CallSource {
+    fn is_python(&self) -> bool {
+        matches!(self, Self::Python(_))
+    }
+
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match self {
             CallSource::Cli => re_viewer::AppEnvironment::RerunCli,
-            CallSource::Python => re_viewer::AppEnvironment::PythonSdk,
+            CallSource::Python(python_version) => {
+                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
+            }
         }
     }
 }
@@ -224,7 +230,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
 
                 // `rerun.spawn()` doesn't ned to log that a connection has been made
-                quiet: call_source == CallSource::Python,
+                quiet: call_source.is_python(),
             };
             re_sdk_comms::serve(args.port, server_options)?
         }

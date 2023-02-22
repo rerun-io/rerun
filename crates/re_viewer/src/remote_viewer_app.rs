@@ -60,7 +60,7 @@ impl RemoteViewerApp {
             .unwrap(); // TODO(emilk): handle error
 
         let app = crate::App::from_receiver(
-            self.app_env,
+            self.app_env.clone(),
             self.startup_options,
             self.re_ui.clone(),
             storage,
