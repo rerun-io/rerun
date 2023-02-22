@@ -11,11 +11,40 @@
 use std::task::{Context, Poll};
 
 use futures_util::future;
-use hyper::{server::conn::AddrIncoming, service::Service};
-use hyper::{Body, Request, Response};
+use hyper::{server::conn::AddrIncoming, service::Service, Body, Request, Response};
 
-#[derive(Debug)]
-struct Svc;
+struct Svc {
+    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
+    // while at the same time opting-out of analytics at run-time.
+    #[cfg(feature = "analytics")]
+    analytics: Option<re_analytics::Analytics>,
+}
+
+impl Svc {
+    #[cfg(feature = "analytics")]
+    fn new() -> Self {
+        let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
+            Ok(analytics) => Some(analytics),
+            Err(err) => {
+                re_log::error!(%err, "failed to initialize analytics SDK");
+                None
+            }
+        };
+        Self { analytics }
+    }
+
+    #[cfg(not(feature = "analytics"))]
+    fn new() -> Self {
+        Self {}
+    }
+
+    #[cfg(feature = "analytics")]
+    fn on_serve_wasm(&self) {
+        if let Some(analytics) = &self.analytics {
+            analytics.record(re_analytics::Event::append("serve_wasm".into()));
+        }
+    }
+}
 
 impl Service<Request<Body>> for Svc {
     type Response = Response<Body>;
@@ -39,8 +68,12 @@ impl Service<Request<Body>> for Svc {
             "/" | "/index.html" => &include_bytes!("../web_viewer/index.html")[..],
             "/favicon.ico" => &include_bytes!("../web_viewer/favicon.ico")[..],
             "/sw.js" => &include_bytes!("../web_viewer/sw.js")[..],
-            "/re_viewer_bg.wasm" => &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..],
             "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer.js")[..],
+            "/re_viewer_bg.wasm" => {
+                #[cfg(feature = "analytics")]
+                self.on_serve_wasm();
+                &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+            }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());
                 let body = Body::from(Vec::new());
@@ -67,7 +100,7 @@ impl<T> Service<T> for MakeSvc {
     }
 
     fn call(&mut self, _: T) -> Self::Future {
-        future::ok(Svc)
+        future::ok(Svc::new())
     }
 }
 
