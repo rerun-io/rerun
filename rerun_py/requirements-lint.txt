@@ -1,5 +1,6 @@
 black==23.1.0
 blackdoc==0.3.6
+mypy==1.0.1
 numpy==1.23 # For mypy plugin
 pip-check-reqs==2.4.3 # Checks for missing deps in requirements.txt files
 pyupgrade==2.37.3

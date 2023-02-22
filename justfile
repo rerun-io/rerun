@@ -61,6 +61,7 @@ py-lint:
     black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
     blackdoc --check {{py_folders}}
     ruff check --config rerun_py/pyproject.toml  {{py_folders}}
+    mypy --no-warn-unused-ignore
 
 # Run fast unittests
 py-test:
