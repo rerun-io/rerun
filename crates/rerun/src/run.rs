@@ -5,6 +5,8 @@ use re_smart_channel::Receiver;
 use anyhow::Context as _;
 use clap::Subcommand;
 
+// Note the extra blank lines between the point-lists below: it is required by `clap`.
+
 /// The Rerun Viewer and Server
 ///
 /// Features:
