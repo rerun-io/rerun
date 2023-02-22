@@ -9,7 +9,7 @@ use super::{
 
 slotmap::new_key_type! { pub struct GpuBufferHandle; }
 
-/// A reference counter baked buffer.
+/// A reference-counter baked buffer.
 /// Once all instances are dropped, the buffer will be marked for reclamation in the following frame.
 pub type GpuBuffer = std::sync::Arc<DynamicResource<GpuBufferHandle, BufferDesc, wgpu::Buffer>>;
 
@@ -38,7 +38,7 @@ pub struct GpuBufferPool {
 }
 
 impl GpuBufferPool {
-    /// Returns a ref gpu buffer that is currently unused.
+    /// Returns a reference-counted gpu buffer that is currently unused.
     /// Once ownership is given up, the buffer may be reclaimed in future frames.
     ///
     /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible

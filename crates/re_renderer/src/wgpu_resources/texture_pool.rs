@@ -9,7 +9,7 @@ use super::{
 
 slotmap::new_key_type! { pub struct GpuTextureHandle; }
 
-/// A reference counter baked texture.
+/// A reference-counter baked texture.
 /// Once all instances are dropped, the texture will be marked for reclamation in the following frame.
 pub type GpuTexture =
     std::sync::Arc<DynamicResource<GpuTextureHandle, TextureDesc, GpuTextureInternal>>;
@@ -75,7 +75,7 @@ pub struct GpuTexturePool {
 }
 
 impl GpuTexturePool {
-    /// Returns a ref counted handle to a currently unused texture.
+    /// Returns a reference-counted handle to a currently unused texture.
     /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
     pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTexture {
         crate::profile_function!();

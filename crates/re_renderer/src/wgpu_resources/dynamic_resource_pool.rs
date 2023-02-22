@@ -37,7 +37,7 @@ type AliveResourceMap<Handle, Desc, Res> =
 
 struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
     /// All currently alive resources.
-    /// We story any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
+    /// We store any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
     alive_resources: AliveResourceMap<Handle, Desc, Res>,
@@ -49,7 +49,8 @@ struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
 ///
-/// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource is not uniquely identified by its description.
+/// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource can not be uniquely
+/// identified by its description, as the same description can apply to several different resources.
 pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     state: RwLock<DynamicResourcePoolProtectedState<Handle, Desc, Res>>,
 

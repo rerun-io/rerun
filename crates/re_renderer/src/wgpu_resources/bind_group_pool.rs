@@ -14,10 +14,10 @@ use super::{
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 
-/// A reference counter baked bind group.
+/// A reference-counter baked bind group.
 ///
 /// Once instances handles are dropped, the bind group will be marked for reclamation in the following frame.
-/// Tracks use of dependent resources as well.
+/// Tracks use of dependent resources as well!
 #[derive(Clone)]
 pub struct GpuBindGroup {
     resource: Arc<DynamicResource<GpuBindGroupHandle, BindGroupDesc, wgpu::BindGroup>>,
@@ -32,11 +32,6 @@ impl std::ops::Deref for GpuBindGroup {
         &self.resource.inner
     }
 }
-
-// TODO(andreas): Can we force the user to provide strong handles here without too much effort?
-//                Ideally it would be only a reference to a strong handle in order to avoid bumping ref counts all the time.
-//                This way we can also remove the dubious get_strong_handle methods from buffer/texture pool and allows us to hide any non-ref counted handles!
-//                Seems though this requires us to have duplicate versions of BindGroupDesc/Entry structs
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum BindGroupEntry {
@@ -98,7 +93,7 @@ pub struct GpuBindGroupPool {
 }
 
 impl GpuBindGroupPool {
-    /// Returns a ref counted handle to a currently unused bind-group.
+    /// Returns a reference-counted, currently unused bind-group.
     /// Once ownership to the handle is given up, the bind group may be reclaimed in future frames.
     /// The handle also keeps alive any dependent resources.
     pub fn alloc(
