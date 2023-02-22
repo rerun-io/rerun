@@ -178,7 +178,7 @@ def log_segmentation_image(
         return
 
     image = np.array(image, copy=False)
-    if image.dtype not in (np.uint8, np.uint16):
+    if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
         image = np.require(image, np.uint16)
     non_empty_dims = [d for d in image.shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
