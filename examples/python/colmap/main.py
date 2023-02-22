@@ -12,10 +12,9 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
+import rerun as rr
 from read_write_model import Camera, read_model
 from tqdm import tqdm
-
-import rerun as rr
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
@@ -55,7 +54,6 @@ def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
 
 
 def get_downloaded_dataset_path(dataset_name: str) -> Path:
-
     dataset_url = f"{DATASET_URL_BASE}/{dataset_name}.zip"
 
     recording_dir = DATASET_DIR / dataset_name

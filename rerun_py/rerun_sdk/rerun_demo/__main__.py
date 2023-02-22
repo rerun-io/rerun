@@ -9,7 +9,6 @@ def run_cube():
     import math
 
     import numpy as np
-
     import rerun as rr
 
     rr.init("Cube", spawn=True, default_enabled=True)
@@ -38,7 +37,6 @@ def run_colmap():
 
 
 def main() -> None:
-
     parser = argparse.ArgumentParser(description="Run rerun example programs")
 
     group = parser.add_mutually_exclusive_group()

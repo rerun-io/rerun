@@ -2,6 +2,8 @@ from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+
+from rerun import bindings
 from rerun.components.annotation import ClassIdArray
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
@@ -17,8 +19,6 @@ from rerun.log import (
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
-
-from rerun import bindings
 
 __all__ = [
     "RectFormat",

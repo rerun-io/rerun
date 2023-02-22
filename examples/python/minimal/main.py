@@ -3,7 +3,6 @@
 """Demonstrates the most barebone usage of the Rerun SDK."""
 
 import numpy as np
-
 import rerun as rr
 
 rr.spawn()
