@@ -70,18 +70,19 @@ impl SizedResourceDesc for BindGroupDesc {
 
 /// Resource pool for bind groups.
 ///
+/// Implementation notes:
 /// Requirements regarding ownership & resource lifetime:
 /// * owned [`wgpu::BindGroup`] should keep buffer/texture alive
-///   (user should not need to hold strong buffer/texture handles manually)
+///   (user should not need to hold buffer/texture manually)
 /// * [`GpuBindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
 /// * musn't prevent buffer/texture re-use on next frame
 ///   i.e. a internally cached [`GpuBindGroupPool`]s without owner shouldn't keep textures/buffers alive
 ///
-/// We satisfy these by retrieving the strong buffer/texture handles and make them part of the [`GpuBindGroupHandleStrong`].
-/// Internally, the [`GpuBindGroupPool`] does *not* hold any strong reference of any resource,
-/// i.e. it does not interfere with the buffer/texture pools at all.
+/// We satisfy these by retrieving the "weak" buffer/texture handles and make them part of the [`GpuBindGroup`].
+/// Internally, the [`GpuBindGroupPool`] does *not* hold any strong reference to any resource,
+/// i.e. it does not interfere with the ownership tracking of buffer/texture pools.
 /// The question whether a bind groups happen to be re-usable becomes again a simple question of matching
-/// bind group descs which itself does not contain any strong references either.
+/// bind group descs which itself does not contain any ref counted objects!
 #[derive(Default)]
 pub struct GpuBindGroupPool {
     // Use a DynamicResourcePool because it gives out reference counted handles
