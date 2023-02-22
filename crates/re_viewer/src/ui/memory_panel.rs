@@ -359,6 +359,7 @@ fn summarize_callstack(callstack: &str) -> String {
     let patterns = [
         ("MsgSender", "MsgSender"),
         ("App::receive_messages", "App::receive_messages"),
+        ("w_store::store::ComponentBucket>::archive", "archive"),
         ("DataStore>::insert", "DataStore"),
         ("LogDb", "LogDb"),
         ("EntityDb", "EntityDb"),
