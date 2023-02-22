@@ -205,10 +205,19 @@ impl RenderContext {
         crate::profile_function!();
 
         // Ensure not too many queue submissions are in flight.
-        while self.inflight_queue_submissions.len() > Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS {
-            let submission_index = self.inflight_queue_submissions.remove(0); // Remove oldest
-            self.device
-                .poll(wgpu::Maintain::WaitForSubmissionIndex(submission_index));
+        let num_submissions_to_wait_for = self
+            .inflight_queue_submissions
+            .len()
+            .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
+
+        if let Some(newest_submission_to_wait_for) = self
+            .inflight_queue_submissions
+            .drain(0..num_submissions_to_wait_for)
+            .last()
+        {
+            self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
+                newest_submission_to_wait_for,
+            ));
         }
     }
 
