@@ -20,7 +20,6 @@ import numpy as np
 import numpy.typing as npt
 import pydicom as dicom
 import requests
-
 import rerun as rr
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"

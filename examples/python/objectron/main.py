@@ -18,6 +18,7 @@ from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
+import rerun as rr
 from download_dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,
@@ -37,8 +38,6 @@ from proto.objectron.proto import (
 )
 from rerun.log.file import ImageFormat
 from scipy.spatial.transform import Rotation as R
-
-import rerun as rr
 
 
 @dataclass
@@ -213,7 +212,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             if len(keypoint_pos2s) == 9:
                 log_projected_bbox(f"world/camera/video/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
             else:
-                for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
+                for id, pos2 in zip(keypoint_ids, keypoint_pos2s):
                     rr.log_point(
                         f"world/camera/video/estimates/box-{obj_ann.object_id}/{id}",
                         pos2,

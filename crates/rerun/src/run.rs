@@ -1,9 +1,11 @@
 use re_format::parse_duration;
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::Receiver;
 
 use anyhow::Context as _;
 use clap::Subcommand;
+
+// Note the extra blank lines between the point-lists below: it is required by `clap`.
 
 /// The Rerun Viewer and Server
 ///
@@ -104,13 +106,28 @@ enum AnalyticsCommands {
 }
 
 /// Where are we calling [`run`] from?
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallSource {
     /// Called from a command-line-input (the terminal).
     Cli,
 
     /// Called from the Rerun Python SDK.
-    Python,
+    Python(PythonVersion),
+}
+
+impl CallSource {
+    fn is_python(&self) -> bool {
+        matches!(self, Self::Python(_))
+    }
+
+    fn app_env(&self) -> re_viewer::AppEnvironment {
+        match self {
+            CallSource::Cli => re_viewer::AppEnvironment::RerunCli,
+            CallSource::Python(python_version) => {
+                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
+            }
+        }
+    }
 }
 
 /// Run the Rerun application and return an exit code.
@@ -199,7 +216,14 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
             // We are connecting to a server at a websocket address:
-            return connect_to_ws_url(&args, startup_options, profiler, url_or_path.clone()).await;
+            return connect_to_ws_url(
+                &args,
+                call_source.app_env(),
+                startup_options,
+                profiler,
+                url_or_path.clone(),
+            )
+            .await;
         }
     } else {
         #[cfg(feature = "server")]
@@ -208,7 +232,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
 
                 // `rerun.spawn()` doesn't ned to log that a connection has been made
-                quiet: call_source == CallSource::Python,
+                quiet: call_source.is_python(),
             };
             re_sdk_comms::serve(args.port, server_options)?
         }
@@ -245,7 +269,13 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
     } else {
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app = re_viewer::App::from_receiver(startup_options, re_ui, cc.storage, rx);
+            let mut app = re_viewer::App::from_receiver(
+                call_source.app_env(),
+                startup_options,
+                re_ui,
+                cc.storage,
+                rx,
+            );
             app.set_profiler(profiler);
             Box::new(app)
         }))?;
@@ -255,6 +285,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
 
 async fn connect_to_ws_url(
     args: &Args,
+    app_env: re_viewer::AppEnvironment,
     startup_options: re_viewer::StartupOptions,
     profiler: re_viewer::Profiler,
     mut rerun_server_ws_url: String,
@@ -269,6 +300,7 @@ async fn connect_to_ws_url(
         // By using RemoteViewerApp we let the user change the server they are connected to.
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let mut app = re_viewer::RemoteViewerApp::new(
+                app_env,
                 startup_options,
                 re_ui,
                 cc.storage,

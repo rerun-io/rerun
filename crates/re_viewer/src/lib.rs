@@ -13,6 +13,7 @@ mod viewer_analytics;
 
 pub use self::misc::color_map;
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
+use re_log_types::PythonVersion;
 pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, UiVerbosity};
 
 pub use app::{App, StartupOptions};
@@ -64,6 +65,24 @@ macro_rules! profile_scope {
         #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_scope!($($arg)*);
     };
+}
+
+// ---------------------------------------------------------------------------
+
+/// Where is this App running in?
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AppEnvironment {
+    /// Created from the Rerun Python SDK.
+    PythonSdk(PythonVersion),
+
+    /// Created from the Rerun Rust SDK.
+    RustSdk,
+
+    /// Running the Rust `rerun` binary from the CLI.
+    RerunCli,
+
+    /// We are a web-viewer running in a browser as Wasm.
+    Web,
 }
 
 // ---------------------------------------------------------------------------

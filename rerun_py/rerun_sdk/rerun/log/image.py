@@ -2,10 +2,10 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log.error_utils import _send_warning
-from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
 from rerun import bindings
+from rerun.log.error_utils import _send_warning
+from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
 __all__ = [
     "log_image",
@@ -177,7 +177,9 @@ def log_segmentation_image(
     if not bindings.is_enabled():
         return
 
-    image = np.array(image, dtype=np.uint16, copy=False)
+    image = np.array(image, copy=False)
+    if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
+        image = np.require(image, np.uint16)
     non_empty_dims = [d for d in image.shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 

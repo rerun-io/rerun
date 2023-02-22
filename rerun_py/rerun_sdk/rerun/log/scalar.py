@@ -1,6 +1,8 @@
 from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
+
+from rerun import bindings
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
@@ -8,8 +10,6 @@ from rerun.components.radius import RadiusArray
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
 from rerun.log import _normalize_colors
 from rerun.log.extension_components import _add_extension_components
-
-from rerun import bindings
 
 __all__ = [
     "log_scalar",

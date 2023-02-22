@@ -6,9 +6,8 @@ import pyarrow as pa
 
 # Fully qualified to avoid circular import
 import rerun.log.error_utils
-from rerun.components.instance import InstanceArray
-
 from rerun import bindings
+from rerun.components.instance import InstanceArray
 
 __all__ = [
     "_add_extension_components",
@@ -27,7 +26,6 @@ def _add_extension_components(
     identifiers: Optional[npt.NDArray[np.uint64]],
 ) -> None:
     for name, value in ext.items():
-
         # Don't log empty components
         if value is None:
             continue

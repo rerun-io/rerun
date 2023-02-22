@@ -1,3 +1,9 @@
+#![allow(
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    clippy::unused_self
+)]
+
 use std::time::Duration;
 
 use crate::{Config, Event, PostHogSink};

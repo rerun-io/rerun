@@ -27,6 +27,7 @@ serde = ["dep:serde", "re_log_types/serde"]
 re_arrow_store.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_smart_channel.workspace = true
 re_string_interner.workspace = true
 
 ahash = "0.8"
@@ -46,7 +47,7 @@ puffin.workspace = true
 
 [dev-dependencies]
 criterion = "0.4"
-mimalloc = "0.1"
+mimalloc.workspace = true
 rand = "0.8"
 
 [lib]

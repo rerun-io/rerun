@@ -6,6 +6,7 @@ from typing import Iterable
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
 from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [

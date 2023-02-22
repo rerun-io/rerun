@@ -95,20 +95,11 @@ pub struct App {
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
+        app_env: crate::AppEnvironment,
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
-    ) -> Self {
-        Self::new(startup_options, re_ui, storage, rx, Default::default())
-    }
-
-    fn new(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        rx: Receiver<LogMsg>,
-        log_db: LogDb,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -128,25 +119,19 @@ impl App {
             .expect("Error setting Ctrl-C handler");
         }
 
-        let mut state: AppState = storage
+        let state: AppState = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
 
-        let mut log_dbs = IntMap::default();
-        if !log_db.is_empty() {
-            state.selected_rec_id = log_db.recording_id();
-            log_dbs.insert(log_db.recording_id(), log_db);
-        }
-
-        let analytics = ViewerAnalytics::new();
-        analytics.on_viewer_started();
+        let mut analytics = ViewerAnalytics::new();
+        analytics.on_viewer_started(app_env);
 
         Self {
             startup_options,
             re_ui,
             component_ui_registry: Default::default(),
             rx,
-            log_dbs,
+            log_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -611,18 +596,31 @@ impl App {
         let start = instant::Instant::now();
 
         while let Ok(msg) = self.rx.try_recv() {
-            if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                re_log::debug!("Beginning a new recording: {:?}", msg.info);
+            let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                re_log::debug!("Opening a new recording: {:?}", msg.info);
                 self.state.selected_rec_id = msg.info.recording_id;
-
-                self.analytics.on_new_recording(msg);
-            }
+                true
+            } else {
+                false
+            };
 
             let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+
+            if log_db.data_source.is_none() {
+                log_db.data_source = Some(self.rx.source().clone());
+            }
 
             if let Err(err) = log_db.add(msg) {
                 re_log::error!("Failed to add incoming msg: {err}");
             };
+
+            if is_new_recording {
+                // Do analytics after ingesting the new message,
+                // because thats when the `log_db.recording_info` is set,
+                // which we use in the analytics call.
+                self.analytics.on_open_recording(log_db);
+            }
+
             if start.elapsed() > instant::Duration::from_millis(10) {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                 break; // don't block the main thread for too long
@@ -748,6 +746,7 @@ impl App {
     }
 
     fn show_log_db(&mut self, log_db: LogDb) {
+        self.analytics.on_open_recording(&log_db);
         self.state.selected_rec_id = log_db.recording_id();
         self.log_dbs.insert(log_db.recording_id(), log_db);
     }
@@ -1624,8 +1623,9 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     re_log::info!("Loading {path:?}…");
 
     match load_file_path_impl(path) {
-        Ok(new_log_db) => {
+        Ok(mut new_log_db) => {
             re_log::info!("Loaded {path:?}");
+            new_log_db.data_source = Some(re_smart_channel::Source::File { path: path.into() });
             Some(new_log_db)
         }
         Err(err) => {
@@ -1643,8 +1643,9 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
 #[must_use]
 fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
     match load_rrd_to_log_db(read) {
-        Ok(log_db) => {
+        Ok(mut log_db) => {
             re_log::info!("Loaded {name:?}");
+            log_db.data_source = Some(re_smart_channel::Source::File { path: name.into() });
             Some(log_db)
         }
         Err(err) => {

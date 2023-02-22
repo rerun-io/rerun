@@ -44,6 +44,32 @@ impl Time {
         20 <= years_since_epoch && years_since_epoch <= 150
     }
 
+    /// Returns the absolute datetime, if this is a valid, unambiguous, absolute time.
+    pub fn to_chrono(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        let ns_since_epoch = self.nanos_since_epoch();
+        if self.is_abolute_date() {
+            use chrono::TimeZone as _;
+            if let chrono::LocalResult::Single(datetime) = chrono::Utc.timestamp_opt(
+                ns_since_epoch / 1_000_000_000,
+                (ns_since_epoch % 1_000_000_000) as _,
+            ) {
+                Some(datetime)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn is_exactly_midnight(&self) -> bool {
+        // This is correct despite leap seconds because
+        // during positive leap seconds, UTC actually has a discontinuity
+        // (the same integer is reused for two different times).
+        // See https://en.wikipedia.org/wiki/Unix_time#Leap_seconds
+        self.nanos_since_epoch() % (24 * 60 * 60 * 1_000_000_000) == 0
+    }
+
     /// Human-readable formatting
     pub fn format(&self) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();

@@ -8,7 +8,6 @@ from typing import Iterator, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-
 import rerun as rr
 
 

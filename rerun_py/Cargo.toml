@@ -59,7 +59,7 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 itertools = "0.10"
 macaw.workspace = true
-mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
+mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy = { version = "0.18.0", features = ["half"] }
 pyo3 = { version = "0.18.0", features = ["abi3-py38"] }
 rand = { version = "0.8", features = ["std_rng"] }
