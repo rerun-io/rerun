@@ -77,6 +77,17 @@ impl Renderers {
 }
 
 impl RenderContext {
+    /// Chunk size for our cpu->gpu buffer manager.
+    ///
+    /// For native: 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
+    /// For web (memory constraint!): 8MiB
+    #[cfg(not(target_arch = "wasm32"))]
+    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
+        wgpu::BufferSize::new(1024 * 1024 * 32);
+    #[cfg(target_arch = "wasm32")]
+    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
+        wgpu::BufferSize::new(1024 * 1024 * 8);
+
     /// Limit maximum number of in flight submissions to this number.
     ///
     /// By limiting the number of submissions we have on the queue we ensure that GPU stalls do not
@@ -177,8 +188,7 @@ impl RenderContext {
 
             mesh_manager,
             texture_manager_2d,
-            // 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
-            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(wgpu::BufferSize::new(1024 * 1024 * 32).unwrap())),
+            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
 
             resolver,
 
