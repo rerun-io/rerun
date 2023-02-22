@@ -1,3 +1,5 @@
+#![allow(clippy::todo, clippy::unused_self)]
+
 use std::collections::HashMap;
 
 use uuid::Uuid;
