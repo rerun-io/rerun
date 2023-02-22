@@ -33,6 +33,12 @@ pub struct RenderContext {
     pub texture_manager_2d: TextureManager2D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
 
+    /// List of unfinished queue submission via this context.
+    ///
+    /// This is currently only about submissions we do via the global encoder in [`ActiveFrameContext`]
+    /// TODO(andreas): We rely on egui to to the "primary" submissions in re_viewer. It would be nice to take full control over all submissions.
+    pub inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
+
     pub(crate) active_frame: ActiveFrameContext,
 }
 
@@ -71,6 +77,23 @@ impl Renderers {
 }
 
 impl RenderContext {
+    /// Limit maximum number of in flight submissions to this number.
+    ///
+    /// By limiting the number of submissions we have on the queue we ensure that GPU stalls do not
+    /// cause us to request more and more memory to prepare more and more submissions.
+    ///
+    /// Note that this is only indirectly related to number of buffered frames,
+    /// since buffered frames/blit strategy are all about the display<->gpu interface,
+    /// whereas this is about a *particular aspect* of the cpu<->gpu interface.
+    ///
+    /// Should be somewhere between 1-4, too high and we use up more memory and introduce latency,
+    /// too low and we may starve the GPU.
+    /// On the web we want to go lower because a lot more memory constraint.
+    #[cfg(not(target_arch = "wasm32"))]
+    const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 4;
+    #[cfg(target_arch = "wasm32")]
+    const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 2;
+
     pub fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
@@ -162,7 +185,20 @@ impl RenderContext {
             #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
             err_tracker,
 
+            inflight_queue_submissions: Vec::new(),
+
             active_frame: ActiveFrameContext { frame_global_command_encoder: None, frame_index: 0 }
+        }
+    }
+
+    fn poll_device(&mut self) {
+        crate::profile_function!();
+
+        // Ensure not too many queue submissions are in flight.
+        while self.inflight_queue_submissions.len() > Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS {
+            let submission_index = self.inflight_queue_submissions.remove(0); // Remove oldest
+            self.device
+                .poll(wgpu::Maintain::WaitForSubmissionIndex(submission_index));
         }
     }
 
@@ -235,6 +271,10 @@ impl RenderContext {
             samplers.begin_frame(frame_index);
         }
 
+        // Poll device *after* resource pool `begin_frame` since resource pools may each decide drop resources.
+        // Wgpu internally may then internally decide to let go of these buffers.
+        self.poll_device();
+
         // Retrieve unused staging buffer.
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
     }
@@ -251,7 +291,8 @@ impl RenderContext {
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
             //                  How do we hook in there and make sure this buffer is submitted first?
-            self.queue.submit([command_buffer]);
+            self.inflight_queue_submissions
+                .push(self.queue.submit([command_buffer]));
         }
     }
 }
