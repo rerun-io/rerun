@@ -27,10 +27,11 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
         canvas_id,
         web_options,
         Box::new(move |cc| {
+            let app_env = crate::AppEnvironment::Web;
             let startup_options = crate::StartupOptions::default();
             let re_ui = crate::customize_eframe(cc);
             let url = get_url(&cc.integration_info);
-            let app = crate::RemoteViewerApp::new(startup_options, re_ui, cc.storage, url);
+            let app = crate::RemoteViewerApp::new(app_env, startup_options, re_ui, cc.storage, url);
             Box::new(app)
         }),
     )

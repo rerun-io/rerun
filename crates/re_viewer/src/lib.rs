@@ -79,6 +79,9 @@ pub enum AppEnvironment {
 
     /// Running the Rust `rerun` binary from the CLI.
     RerunCli,
+
+    /// We are a web-viewer running in a browser as Wasm.
+    Web,
 }
 
 // ---------------------------------------------------------------------------
