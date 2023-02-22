@@ -2,12 +2,13 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     fmt::Debug,
     hash::Hash,
-    sync::Arc,
+    sync::{atomic::AtomicU64, Arc},
 };
 
-use slotmap::{Key, SecondaryMap, SlotMap};
+use parking_lot::RwLock;
+use slotmap::{Key, SlotMap};
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use super::resource::PoolError;
 
@@ -15,38 +16,58 @@ pub trait SizedResourceDesc {
     fn resource_size_in_bytes(&self) -> u64;
 }
 
-/// Generic resource pool for all resources that have varying contents beyond their description.
-///
-/// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource is not uniquely identified by its description.
-pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
-    /// All known resources of this type.
-    resources: SlotMap<Handle, (Desc, Res)>,
+pub struct DynamicResource<Handle, Desc, Res> {
+    pub inner: Res,
+    pub creation_desc: Desc,
+    pub handle: Handle,
+}
 
-    /// Handles to all alive resources.
-    /// We story any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
+impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res> {
+    type Target = Res;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+// Resources are held as Option so its easier to move them out.
+type AliveResourceMap<Handle, Desc, Res> =
+    SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
+
+struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
+    /// All currently alive resources.
+    /// We store any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
-    /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
-    /// something required by [`super::GpuBindGroupPool`]
-    alive_handles: SecondaryMap<Handle, Arc<Handle>>,
+    alive_resources: AliveResourceMap<Handle, Desc, Res>,
 
     /// Any resource that has been deallocated last frame.
     /// We keep them around for a bit longer to allow reclamation
-    last_frame_deallocated: HashMap<Desc, SmallVec<[Arc<Handle>; 4]>>,
+    last_frame_deallocated: HashMap<Desc, SmallVec<[Res; 4]>>,
+}
+
+/// Generic resource pool for all resources that have varying contents beyond their description.
+///
+/// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource can not be uniquely
+/// identified by its description, as the same description can apply to several different resources.
+pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
+    state: RwLock<DynamicResourcePoolProtectedState<Handle, Desc, Res>>,
 
     current_frame_index: u64,
-    total_resource_size_in_bytes: u64,
+    total_resource_size_in_bytes: AtomicU64,
 }
 
 /// We cannot #derive(Default) as that would require Handle/Desc/Res to implement Default too.
 impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> {
     fn default() -> Self {
         Self {
-            resources: Default::default(),
-            alive_handles: Default::default(),
-            last_frame_deallocated: Default::default(),
+            state: RwLock::new(DynamicResourcePoolProtectedState {
+                alive_resources: Default::default(),
+                last_frame_deallocated: Default::default(),
+            }),
             current_frame_index: Default::default(),
-            total_resource_size_in_bytes: 0,
+            total_resource_size_in_bytes: AtomicU64::new(0),
         }
     }
 }
@@ -56,10 +77,16 @@ where
     Handle: Key,
     Desc: Clone + Eq + Hash + Debug + SizedResourceDesc,
 {
-    pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
+    pub fn alloc<F: FnOnce(&Desc) -> Res>(
+        &self,
+        desc: &Desc,
+        creation_func: F,
+    ) -> Arc<DynamicResource<Handle, Desc, Res>> {
+        let mut state = self.state.write();
+
         // First check if we can reclaim a resource we have around from a previous frame.
-        let handle =
-            if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
+        let inner_resource =
+            if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone()) {
                 re_log::trace!(?desc, "Reclaimed previously discarded resource",);
 
                 let handle = entry.get_mut().pop().unwrap();
@@ -70,18 +97,38 @@ where
             // Otherwise create a new resource
             } else {
                 let resource = creation_func(desc);
-                self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
-                Arc::new(self.resources.insert((desc.clone(), resource)))
+                self.total_resource_size_in_bytes.fetch_add(
+                    desc.resource_size_in_bytes(),
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+                resource
             };
 
-        self.alive_handles.insert(*handle, Arc::clone(&handle));
-        handle
+        let handle = state.alive_resources.insert_with_key(|handle| {
+            Some(Arc::new(DynamicResource {
+                inner: inner_resource,
+                creation_desc: desc.clone(),
+                handle,
+            }))
+        });
+
+        state.alive_resources[handle].as_ref().unwrap().clone()
     }
 
-    pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
-        self.resources
+    pub fn get_from_handle(
+        &self,
+        handle: Handle,
+    ) -> Result<Arc<DynamicResource<Handle, Desc, Res>>, PoolError> {
+        self.state
+            .read()
+            .alive_resources
             .get(handle)
-            .map(|(_, resource)| resource)
+            .map(|resource| {
+                resource
+                    .as_ref()
+                    .expect("Alive handles should never be None")
+                    .clone()
+            })
             .ok_or_else(|| {
                 if handle.is_null() {
                     PoolError::NullHandle
@@ -93,19 +140,21 @@ where
 
     pub fn begin_frame(&mut self, frame_index: u64, mut on_destroy_resource: impl FnMut(&Res)) {
         self.current_frame_index = frame_index;
+        let state = self.state.get_mut();
 
         // Throw out any resources that we haven't reclaimed last frame.
-        for (desc, handles) in self.last_frame_deallocated.drain() {
+        for (desc, resources) in state.last_frame_deallocated.drain() {
             re_log::trace!(
-                count = handles.len(),
+                count = resources.len(),
                 ?desc,
                 "Drained dangling resources from last frame",
             );
-            for handle in handles {
-                if let Some((_, res)) = self.resources.remove(*handle) {
-                    on_destroy_resource(&res);
-                }
-                self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
+            for resource in resources {
+                on_destroy_resource(&resource);
+                self.total_resource_size_in_bytes.fetch_sub(
+                    desc.resource_size_in_bytes(),
+                    std::sync::atomic::Ordering::Relaxed,
+                );
             }
         }
 
@@ -114,36 +163,36 @@ where
         // thread safety:
         // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
-        self.alive_handles.retain(|handle, strong_handle| {
-            if Arc::strong_count(strong_handle) == 1 {
-                let desc = &self.resources[handle].0;
-                match self.last_frame_deallocated.entry(desc.clone()) {
-                    Entry::Occupied(mut e) => {
-                        e.get_mut().push(Arc::clone(strong_handle));
-                    }
-                    Entry::Vacant(e) => {
-                        e.insert(smallvec![Arc::clone(strong_handle)]);
-                    }
+        state.alive_resources.retain(|_, resource| {
+            let resolved = resource
+                .take()
+                .expect("Alive resources should never be None");
+
+            match Arc::try_unwrap(resolved) {
+                Ok(r) => {
+                    state
+                        .last_frame_deallocated
+                        .entry(r.creation_desc)
+                        .or_default()
+                        .push(r.inner);
+                    false
                 }
-                false
-            } else {
-                true
+                Err(r) => {
+                    *resource = Some(r);
+                    true
+                }
             }
         });
     }
 
-    /// Upgrades a "weak" handle to a reference counted handle by looking it up.
-    /// Returns a reference in order to avoid needlessly increasing the ref-count.
-    pub(super) fn get_strong_handle(&self, handle: Handle) -> &Arc<Handle> {
-        &self.alive_handles[handle]
-    }
-
     pub fn num_resources(&self) -> usize {
-        self.resources.len()
+        let state = self.state.read();
+        state.alive_resources.len() + state.last_frame_deallocated.values().flatten().count()
     }
 
     pub fn total_resource_size_in_bytes(&self) -> u64 {
         self.total_resource_size_in_bytes
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -157,10 +206,7 @@ mod tests {
         },
     };
 
-    use slotmap::Key;
-
     use super::{DynamicResourcePool, SizedResourceDesc};
-    use crate::wgpu_resources::resource::PoolError;
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
@@ -175,7 +221,6 @@ mod tests {
 
     #[derive(Debug)]
     pub struct ConcreteResource {
-        id: u32,
         drop_counter: Arc<AtomicUsize>,
     }
 
@@ -232,15 +277,13 @@ mod tests {
         // Holding on to a handle avoids both re-use and dropping.
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            let handle0 = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource {
-                id: d.0,
+            let handle0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource {
                 drop_counter: drop_counter.clone(),
             });
-            let handle1 = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource {
-                id: d.0,
+            let handle1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource {
                 drop_counter: drop_counter.clone(),
             });
-            assert_ne!(handle0, handle1);
+            assert_ne!(handle0.handle, handle1.handle);
             drop(handle1);
 
             let mut called_destroy = false;
@@ -269,10 +312,9 @@ mod tests {
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire));
 
             let new_resource_created = Cell::new(false);
-            let handle = pool.alloc(&ConcreteResourceDesc(desc), |d| {
+            let handle = pool.alloc(&ConcreteResourceDesc(desc), |_| {
                 new_resource_created.set(true);
                 ConcreteResource {
-                    id: d.0,
                     drop_counter: drop_counter.clone(),
                 }
             });
@@ -294,41 +336,5 @@ mod tests {
         } else {
             assert_eq!(byte_count_before, pool.total_resource_size_in_bytes());
         }
-    }
-
-    #[test]
-    fn get_resource() {
-        let mut pool = Pool::default();
-        let drop_counter = Arc::new(AtomicUsize::new(0));
-
-        // Query with valid handle
-        let handle = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource {
-            id: d.0,
-            drop_counter: drop_counter.clone(),
-        });
-        assert!(pool.get_resource(*handle).is_ok());
-        assert!(matches!(
-            *pool.get_resource(*handle).unwrap(),
-            ConcreteResource {
-                id: 0,
-                drop_counter: _
-            }
-        ));
-
-        // Query with null handle
-        assert!(matches!(
-            pool.get_resource(ConcreteHandle::null()),
-            Err(PoolError::NullHandle)
-        ));
-
-        // Query with invalid handle
-        let inner_handle = *handle;
-        drop(handle);
-        pool.begin_frame(0, |_| {});
-        pool.begin_frame(1, |_| {});
-        assert!(matches!(
-            pool.get_resource(inner_handle),
-            Err(PoolError::ResourceNotAvailable)
-        ));
     }
 }

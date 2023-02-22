@@ -13,11 +13,11 @@ pub use bind_group_layout_pool::{
 
 mod bind_group_pool;
 pub use bind_group_pool::{
-    BindGroupDesc, BindGroupEntry, GpuBindGroupHandle, GpuBindGroupHandleStrong, GpuBindGroupPool,
+    BindGroupDesc, BindGroupEntry, GpuBindGroup, GpuBindGroupHandle, GpuBindGroupPool,
 };
 
 mod buffer_pool;
-pub use buffer_pool::{BufferDesc, GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool};
+pub use buffer_pool::{BufferDesc, GpuBuffer, GpuBufferHandle, GpuBufferPool};
 
 mod pipeline_layout_pool;
 pub use pipeline_layout_pool::{
@@ -37,7 +37,7 @@ pub use shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool, ShaderM
 
 mod texture_pool;
 pub use texture_pool::{
-    GpuTexture, GpuTextureHandle, GpuTextureHandleStrong, GpuTexturePool, TextureDesc,
+    GpuTexture, GpuTextureHandle, GpuTextureInternal, GpuTexturePool, TextureDesc,
 };
 
 mod resource;

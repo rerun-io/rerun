@@ -30,9 +30,9 @@ use crate::{
     include_file,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-        ShaderModuleDesc, TextureDesc,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        TextureDesc,
     },
     Size,
 };
@@ -80,7 +80,7 @@ mod gpu_data {
 /// Internal, ready to draw representation of [`PointCloudBatchInfo`]
 #[derive(Clone)]
 struct PointCloudBatch {
-    bind_group: GpuBindGroupHandleStrong,
+    bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
 }
 
@@ -88,7 +88,7 @@ struct PointCloudBatch {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawData {
-    bind_group_all_points: Option<GpuBindGroupHandleStrong>,
+    bind_group_all_points: Option<GpuBindGroup>,
     batches: Vec<PointCloudBatch>,
 }
 
@@ -281,12 +281,7 @@ impl PointCloudDrawData {
             crate::profile_scope!("write_pos_size_texture");
             ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: &ctx
-                        .gpu_resources
-                        .textures
-                        .get_resource(&position_data_texture)
-                        .unwrap()
-                        .texture,
+                    texture: &position_data_texture.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -307,12 +302,7 @@ impl PointCloudDrawData {
             crate::profile_scope!("write_color_texture");
             ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
-                    texture: &ctx
-                        .gpu_resources
-                        .textures
-                        .get_resource(&color_texture)
-                        .unwrap()
-                        .texture,
+                    texture: &color_texture.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -334,8 +324,8 @@ impl PointCloudDrawData {
             &BindGroupDesc {
                 label: "line drawdata".into(),
                 entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(*position_data_texture),
-                    BindGroupEntry::DefaultTextureView(*color_texture),
+                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                    BindGroupEntry::DefaultTextureView(color_texture.handle),
                 ],
                 layout: point_renderer.bind_group_layout_all_points,
             },
@@ -351,7 +341,7 @@ impl PointCloudDrawData {
             let allocation_size_per_uniform_buffer =
                 uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
             let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
-            let uniform_buffers_handle = ctx.gpu_resources.buffers.alloc(
+            let uniform_buffers = ctx.gpu_resources.buffers.alloc(
                 &ctx.device,
                 &BufferDesc {
                     label: "point batch uniform buffers".into(),
@@ -363,10 +353,7 @@ impl PointCloudDrawData {
             let mut staging_buffer = ctx
                 .queue
                 .write_buffer_with(
-                    ctx.gpu_resources
-                        .buffers
-                        .get_resource(&uniform_buffers_handle)
-                        .unwrap(),
+                    &uniform_buffers,
                     0,
                     NonZeroU64::new(combined_buffers_size).unwrap(),
                 )
@@ -389,7 +376,7 @@ impl PointCloudDrawData {
                     &BindGroupDesc {
                         label: batch_info.label.clone(),
                         entries: smallvec![BindGroupEntry::Buffer {
-                            handle: *uniform_buffers_handle,
+                            handle: uniform_buffers.handle,
                             offset: offset as _,
                             size: NonZeroU64::new(
                                 std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
@@ -552,19 +539,18 @@ impl Renderer for PointCloudRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         let Some(bind_group_all_points) = &draw_data.bind_group_all_points else {
             return Ok(()); // No points submitted.
         };
-        let bind_group_line_data = pools.bind_groups.get_resource(bind_group_all_points)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group_line_data, &[]);
+        pass.set_bind_group(1, bind_group_all_points, &[]);
 
         for batch in &draw_data.batches {
-            pass.set_bind_group(2, pools.bind_groups.get_resource(&batch.bind_group)?, &[]);
+            pass.set_bind_group(2, &batch.bind_group, &[]);
             pass.draw(batch.vertex_range.clone(), 0..1);
         }
 

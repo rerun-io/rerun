@@ -58,7 +58,7 @@ pub trait Renderer {
     //     &self,
     //     pools: &'a WgpuResourcePools,
     //     pass: &mut wgpu::CommandEncoder,
-    //     draw_data: &Self::DrawData,
+    //     draw_data: &'a Self::DrawData,
     // ) -> anyhow::Result<()> {
     // }
 
@@ -66,7 +66,7 @@ pub trait Renderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()>;
 
     /// Relative location in the rendering process when this renderer should be executed.
