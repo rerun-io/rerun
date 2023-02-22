@@ -149,7 +149,7 @@ impl Chunk {
         let mut buffer_slice = self.buffer.slice(start_offset..end_offset);
         let mut write_view = buffer_slice.get_mapped_range_mut();
 
-        // Check if it fullfills the requested alignment.
+        // Check if it fulfills the requested alignment.
         let required_padding = Self::required_padding(&mut write_view, alignment);
         if required_padding != 0 {
             // Undo mapping and try again with padding!

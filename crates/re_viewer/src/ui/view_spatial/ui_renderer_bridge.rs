@@ -85,6 +85,7 @@ fn renderer_paint_callback(
     let command_buffer = std::sync::Arc::new(Mutex::new(Some(command_buffer)));
 
     let composition_view_builder_map = render_ctx
+        .active_frame
         .per_frame_data_helper
         .entry::<ViewBuilderMap>()
         .or_insert_with(Default::default);
@@ -111,7 +112,10 @@ fn renderer_paint_callback(
                     //let clip_rect = info.clip_rect_in_pixels();
 
                     let ctx = paint_callback_resources.get::<RenderContext>().unwrap();
-                    ctx.per_frame_data_helper.get::<ViewBuilderMap>().unwrap()[view_builder_handle]
+                    ctx.active_frame
+                        .per_frame_data_helper
+                        .get::<ViewBuilderMap>()
+                        .unwrap()[view_builder_handle]
                         .composite(ctx, render_pass, screen_position)
                         .expect("Failed compositing view builder with main target.");
                 }),

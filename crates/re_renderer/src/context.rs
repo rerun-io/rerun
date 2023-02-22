@@ -25,9 +25,6 @@ pub struct RenderContext {
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
-    /// Utility type map that will be cleared every frame.
-    pub per_frame_data_helper: TypeMap,
-
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
@@ -37,9 +34,9 @@ pub struct RenderContext {
     ///
     /// This is currently only about submissions we do via the global encoder in [`ActiveFrameContext`]
     /// TODO(andreas): We rely on egui to to the "primary" submissions in re_viewer. It would be nice to take full control over all submissions.
-    pub inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
+    inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
 
-    pub(crate) active_frame: ActiveFrameContext,
+    pub active_frame: ActiveFrameContext,
 }
 
 /// Immutable data that is shared between all [`Renderer`]
@@ -182,8 +179,6 @@ impl RenderContext {
 
             renderers,
 
-            per_frame_data_helper: TypeMap::new(),
-
             gpu_resources,
 
             mesh_manager,
@@ -197,7 +192,8 @@ impl RenderContext {
 
             inflight_queue_submissions: Vec::new(),
 
-            active_frame: ActiveFrameContext { frame_global_command_encoder: None, frame_index: 0 }
+            active_frame: ActiveFrameContext { frame_global_command_encoder: None,             per_frame_data_helper: TypeMap::new(),
+                 frame_index: 0 }
         }
     }
 
@@ -226,11 +222,15 @@ impl RenderContext {
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
         crate::profile_function!();
-        self.per_frame_data_helper.clear();
+
+        // Request used staging buffer back.
+        // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
+        self.cpu_write_gpu_read_belt.lock().after_queue_submit();
 
         self.active_frame = ActiveFrameContext {
             frame_global_command_encoder: None,
             frame_index: self.active_frame.frame_index + 1,
+            per_frame_data_helper: TypeMap::new(),
         };
         let frame_index = self.active_frame.frame_index;
 
@@ -293,12 +293,9 @@ impl RenderContext {
         // Poll device *after* resource pool `begin_frame` since resource pools may each decide drop resources.
         // Wgpu internally may then internally decide to let go of these buffers.
         self.poll_device();
-
-        // Retrieve unused staging buffer.
-        self.cpu_write_gpu_read_belt.lock().after_queue_submit();
     }
 
-    /// Call this at the end of a frame but before submitting command buffers from [`crate::view_builder::ViewBuilder`]
+    /// Call this at the end of a frame but before submitting command buffers (e.g. from [`crate::view_builder::ViewBuilder`])
     pub fn before_submit(&mut self) {
         crate::profile_function!();
 
@@ -333,7 +330,10 @@ pub struct ActiveFrameContext {
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     frame_global_command_encoder: Option<wgpu::CommandEncoder>,
 
-    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
+    /// Utility type map that will be cleared every frame.
+    pub per_frame_data_helper: TypeMap,
+
+    /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
 }
 
