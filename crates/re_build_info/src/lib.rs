@@ -9,10 +9,14 @@ pub struct BuildInfo {
     /// `CARGO_PKG_VERSION`
     pub version: &'static str,
 
-    /// Git commit hash, or latest tag if not available.
-    ///
-    /// May have a `-dirty` suffix.
+    /// Git commit hash, or empty string.
     pub git_hash: &'static str,
+
+    /// Current git branch, or empty string.
+    pub git_branch: &'static str,
+
+    /// Is the git clean? If false (dirty), it means there are uncommited changes.
+    pub git_is_clean: bool,
 
     /// Target architecture and OS
     ///
@@ -32,22 +36,30 @@ impl std::fmt::Display for BuildInfo {
             crate_name,
             version,
             git_hash,
+            git_branch,
+            git_is_clean,
             target_triple,
             datetime,
         } = self;
 
-        if git_hash.is_empty() || version == git_hash {
-            // This happens when you don't build in a git repository, i.e. on users machines.
-            write!(
-                f,
-                "{crate_name} {version} {target_triple}, built {datetime}"
-            )
-        } else {
-            write!(
-                f,
-                "{crate_name} {version} {git_hash} {target_triple}, built {datetime}"
-            )
+        write!(f, "{crate_name} {version}")?;
+
+        write!(f, " {target_triple}")?;
+
+        if !git_branch.is_empty() {
+            write!(f, " {git_branch}")?;
         }
+        if !git_hash.is_empty() {
+            let git_hash: String = git_hash.chars().take(7).collect(); // shorten
+            write!(f, " {git_hash}")?;
+            if !git_is_clean {
+                write!(f, "-dirty")?;
+            }
+        }
+
+        write!(f, ", built {datetime}")?;
+
+        Ok(())
     }
 }
 
@@ -60,6 +72,8 @@ macro_rules! build_info {
             crate_name: env!("CARGO_PKG_NAME"),
             version: env!("CARGO_PKG_VERSION"),
             git_hash: env!("RE_BUILD_GIT_HASH"),
+            git_branch: env!("RE_BUILD_GIT_BRANCH"),
+            git_is_clean: env!("RE_BUILD_GIT_IS_CLEAN") == "true",
             target_triple: env!("RE_BUILD_TARGET_TRIPLE"),
             datetime: env!("RE_BUILD_DATETIME"),
         }

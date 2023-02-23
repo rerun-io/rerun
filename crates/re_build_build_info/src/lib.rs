@@ -2,6 +2,8 @@
 //!
 //! Use this crate together with the `re_build_info` crate.
 
+use anyhow::Context as _;
+
 use std::process::Command;
 
 // Situations to consider
@@ -35,29 +37,27 @@ pub fn export_env_vars() {
         std::env::var("TARGET").unwrap()
     );
 
-    match git_hash() {
-        Ok(git_hash) => {
-            println!("cargo:rustc-env=RE_BUILD_GIT_HASH={git_hash}");
-            for path in glob::glob("../../.git/refs/heads/**").unwrap() {
-                println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
-            }
+    if let Ok(git_hash) = git_hash() {
+        println!("cargo:rustc-env=RE_BUILD_GIT_HASH={git_hash}");
+        for path in glob::glob("../../.git/refs/heads/**").unwrap() {
+            println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
         }
+    } else {
         // NOTE: In 99% of cases, if `git_hash` failed it's because we're not in a git repository
         // to begin with, which happens because we've imported the published crate from crates.io.
-        //
-        // When that happens, we want the commit hash to be the git tag that corresponds to the
-        // published version, so that one can always easily checkout the `git_hash` field in the
-        // analytics.
         //
         // Example of unlikely cases where the above does not hold:
         // - `git` is not installed
         // - the user downloaded rerun as a tarball and then imported via a `path = ...` import
         // - others?
-        Err(_) => println!(
-            "cargo:rustc-env=RE_BUILD_GIT_HASH=v{}",
-            env!("CARGO_PKG_VERSION")
-        ),
+        println!("cargo:rustc-env=RE_BUILD_GIT_HASH=");
     }
+
+    let git_branch = git_branch().unwrap_or_default();
+    println!("cargo:rustc-env=RE_BUILD_GIT_BRANCH={git_branch}");
+
+    let is_git_clean = is_git_clean().unwrap_or_default();
+    println!("cargo:rustc-env=RE_BUILD_GIT_IS_CLEAN={is_git_clean}");
 
     let time_format =
         time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
@@ -67,20 +67,31 @@ pub fn export_env_vars() {
     println!("cargo:rustc-env=RE_BUILD_DATETIME={date_time}");
 }
 
-fn git_hash() -> anyhow::Result<String> {
-    let output = Command::new("git").args(["rev-parse", "HEAD"]).output()?;
+fn run_command(cmd: &'static str, args: &[&str]) -> anyhow::Result<String> {
+    let output = Command::new(cmd)
+        .args(args)
+        .output()
+        .with_context(|| format!("running '{cmd}'"))?;
+    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
+}
 
-    let git_hash = String::from_utf8(output.stdout)?;
-    let git_hash = git_hash.trim();
+fn git_hash() -> anyhow::Result<String> {
+    let git_hash = run_command("git", &["rev-parse", "HEAD"])?;
     if git_hash.is_empty() {
         anyhow::bail!("empty commit hash");
     }
+    let clean = is_git_clean()?;
+    Ok(format!("{}{}", git_hash, if clean { "" } else { "-dirty" }))
+}
 
-    let clean = Command::new("git")
+fn is_git_clean() -> anyhow::Result<bool> {
+    Ok(Command::new("git")
         .args(["diff-files", "--quiet"])
         .output()?
         .status
-        .success();
+        .success())
+}
 
-    Ok(format!("{}{}", git_hash, if clean { "" } else { "-dirty" }))
+fn git_branch() -> anyhow::Result<String> {
+    run_command("git", &["symbolic-ref", "--short", "HEAD"])
 }

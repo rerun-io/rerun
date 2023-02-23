@@ -81,10 +81,29 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
+            let git_hash = if build_info.git_hash.is_empty() {
+                // Not built in a git repository. Probably we are a rust-crate
+                // compiled on the users machine.
+                // Let's set the git_hash  to be the git tag that corresponds to the
+                // published version, so that one can always easily checkout the `git_hash` field in the
+                // analytics.
+                format!("v{}", build_info.version)
+            } else {
+                format!(
+                    "{}{}",
+                    build_info.git_hash,
+                    if build_info.git_is_clean {
+                        ""
+                    } else {
+                        "-dirty"
+                    }
+                )
+            };
+
             let mut event = Event::update("update_metadata".into())
                 .with_prop("rerun_version".into(), build_info.version.to_owned())
                 .with_prop("target".into(), build_info.target_triple.to_owned())
-                .with_prop("git_hash".into(), build_info.git_hash.to_owned());
+                .with_prop("git_hash".into(), git_hash);
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
             // machine running the viewer, then add it to the permanent user profile.
