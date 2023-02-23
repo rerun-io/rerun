@@ -117,6 +117,8 @@ const DETAILS: &str = "
 
 pub fn print_details() {
     let build_info = re_build_info::build_info!();
-    let git_hash = build_info.git_hash.replace("-dirty", "");
-    eprintln!("{}", DETAILS.replace("GIT_HASH", &git_hash));
+    eprintln!(
+        "{}",
+        DETAILS.replace("GIT_HASH", &build_info.git_hash_or_tag())
+    );
 }

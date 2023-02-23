@@ -29,6 +29,16 @@ pub struct BuildInfo {
     pub datetime: &'static str,
 }
 
+impl BuildInfo {
+    pub fn git_hash_or_tag(&self) -> String {
+        if self.git_hash.is_empty() {
+            format!("v{}", self.version)
+        } else {
+            self.git_hash.to_owned()
+        }
+    }
+}
+
 /// For use with e.g. `--version`
 impl std::fmt::Display for BuildInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
