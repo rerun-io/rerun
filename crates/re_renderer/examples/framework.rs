@@ -82,10 +82,11 @@ struct Application<E> {
     window: Window,
     surface: wgpu::Surface,
     surface_config: wgpu::SurfaceConfiguration,
-    re_ctx: RenderContext,
     time: Time,
 
     example: E,
+
+    re_ctx: RenderContext,
 }
 
 impl<E: Example + 'static> Application<E> {
@@ -277,6 +278,7 @@ impl<E: Example + 'static> Application<E> {
                         }
                     };
 
+                    self.re_ctx.before_submit();
                     self.re_ctx.queue.submit(
                         draw_results
                             .into_iter()
