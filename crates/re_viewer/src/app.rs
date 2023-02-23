@@ -51,6 +51,7 @@ pub struct StartupOptions {
 
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
+    build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
 
@@ -128,6 +129,7 @@ impl App {
         analytics.on_viewer_started(&build_info, app_env);
 
         Self {
+            build_info,
             startup_options,
             re_ui,
             component_ui_registry: Default::default(),
@@ -1012,6 +1014,8 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
         ui.set_min_width(220.0);
         let spacing = 12.0;
 
+        ui.menu_button("About", |ui| about_rerun_ui(ui, &app.build_info));
+
         main_view_selector_ui(ui, app);
 
         ui.add_space(spacing);
@@ -1062,6 +1066,27 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
         }
     });
+}
+
+fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
+    let re_build_info::BuildInfo {
+        crate_name,
+        version,
+        git_hash: _,
+        git_branch: _,
+        git_is_clean: _,
+        target_triple,
+        datetime,
+    } = *build_info;
+
+    ui.style_mut().wrap = Some(false);
+
+    ui.label(format!("{crate_name} {version}"));
+    ui.label(target_triple);
+    ui.label(format!("Built {datetime}"));
+
+    ui.add_space(12.0);
+    ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
 }
 
 fn top_bar_ui(
