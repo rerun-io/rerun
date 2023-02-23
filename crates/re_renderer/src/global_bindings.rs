@@ -2,7 +2,7 @@ use crate::{
     wgpu_buffer_types,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuBuffer, GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
+        GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
     },
 };
 
@@ -128,7 +128,7 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: &GpuBuffer,
+        frame_uniform_buffer_binding: BindGroupEntry,
     ) -> GpuBindGroup {
         pools.bind_groups.alloc(
             device,
@@ -136,11 +136,7 @@ impl GlobalBindings {
             &BindGroupDesc {
                 label: "global bind group".into(),
                 entries: smallvec![
-                    BindGroupEntry::Buffer {
-                        handle: frame_uniform_buffer.handle,
-                        offset: 0,
-                        size: None,
-                    },
+                    frame_uniform_buffer_binding,
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
                     BindGroupEntry::Sampler(self.trilinear_sampler),
                 ],
