@@ -1060,6 +1060,12 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             debug_menu(&mut app.state.app_options, ui);
         });
 
+        ui.add_space(spacing);
+        ui.hyperlink_to(
+            "Help",
+            "https://www.rerun.io/docs/getting-started/viewer-walkthrough",
+        );
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             ui.add_space(spacing);
@@ -1081,9 +1087,11 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
 
     ui.style_mut().wrap = Some(false);
 
-    ui.label(format!("{crate_name} {version}"));
-    ui.label(target_triple);
-    ui.label(format!("Built {datetime}"));
+    ui.label(format!(
+        "{crate_name} {version}\n\
+        {target_triple}\n\
+        Built {datetime}"
+    ));
 
     ui.add_space(12.0);
     ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
