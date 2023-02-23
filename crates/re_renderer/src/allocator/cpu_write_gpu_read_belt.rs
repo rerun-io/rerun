@@ -208,7 +208,7 @@ impl Chunk {
 /// Based on to [`wgpu::util::StagingBelt`](https://github.com/gfx-rs/wgpu/blob/a420e453c3d9c93dfb1a8526bf11c000d895c916/wgpu/src/util/belt.rs)
 /// However, there are some important differences:
 /// * can create buffers without yet knowing the target copy location
-/// * lifetime of returned buffers is independent of the [`StagingWriteBelt`] (allows working with several in parallel!)
+/// * lifetime of returned buffers is independent of the [`CpuWriteGpuReadBelt`] (allows working with several in parallel!)
 /// * use of `re_renderer`'s resource pool
 /// * handles alignment in a defined manner
 ///  (see this as of writing open wgpu issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508))
@@ -256,9 +256,9 @@ impl CpuWriteGpuReadBelt {
     /// sub-allocated within each chunk. Therefore, for optimal use of memory, the
     /// chunk size should be:
     ///
-    /// * larger than the largest single [`StagingBelt::write_buffer()`] operation;
+    /// * larger than the largest single [`CpuWriteGpuReadBelt::allocate`] operation;
     /// * 1-4 times less than the total amount of data uploaded per submission
-    ///   (per [`StagingBelt::finish()`]); and
+    ///   (per [`CpuWriteGpuReadBelt::before_queue_submit()`]); and
     /// * bigger is better, within these bounds.
     ///
     /// TODO(andreas): Adaptive chunk sizes
@@ -356,10 +356,10 @@ impl CpuWriteGpuReadBelt {
 
     /// Prepare currently mapped buffers for use in a submission.
     ///
-    /// This must be called before the command encoder(s) used in [`StagingBuffer`] copy operations are submitted.
+    /// This must be called before the command encoder(s) used in [`CpuWriteGpuReadBuffer`] copy operations are submitted.
     ///
     /// At this point, all the partially used staging buffers are closed (cannot be used for
-    /// further writes) until after [`StagingBelt::recall()`] is called *and* the GPU is done
+    /// further writes) until after [`CpuWriteGpuReadBelt::after_queue_submit`] is called *and* the GPU is done
     /// copying the data from them.
     pub fn before_queue_submit(&mut self) {
         // This would be a great usecase for persistent memory mapping, i.e. mapping without the need to unmap
@@ -374,7 +374,7 @@ impl CpuWriteGpuReadBelt {
 
     /// Recall all of the closed buffers back to be reused.
     ///
-    /// This must only be called after the command encoder(s) used in [`StagingBuffer`]
+    /// This must only be called after the command encoder(s) used in [`CpuWriteGpuReadBuffer`]
     /// copy operations are submitted. Additional calls are harmless.
     /// Not calling this as soon as possible may result in increased buffer memory usage.
     pub fn after_queue_submit(&mut self) {

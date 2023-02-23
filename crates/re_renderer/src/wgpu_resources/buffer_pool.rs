@@ -26,11 +26,11 @@ pub struct BufferDesc {
     /// will panic.
     pub usage: wgpu::BufferUsages,
 
-    /// Allows a buffer to be mapped immediately after they are made. It does not have to be [`BufferUsages::MAP_READ`] or
-    /// [`BufferUsages::MAP_WRITE`], all buffers are allowed to be mapped at creation.
+    /// Allows a buffer to be mapped immediately after they are made. It does not have to be [`wgpu::BufferUsages::MAP_READ`] or
+    /// [`wgpu::BufferUsages::MAP_WRITE`], all buffers are allowed to be mapped at creation.
     ///
     /// *WARNING*: If this is `true`, the pool won't be able to reclaim the buffer later!
-    /// Furthermore, [`size`](#structfield.size) must be a multiple of [`COPY_BUFFER_ALIGNMENT`].
+    /// Furthermore, [`size`](#structfield.size) must be a multiple of [`wgpu::COPY_BUFFER_ALIGNMENT`].
     pub mapped_at_creation: bool,
 }
 
