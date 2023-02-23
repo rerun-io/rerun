@@ -19,3 +19,4 @@ all-features = true
 [dependencies]
 anyhow.workspace = true
 glob = "0.3"
+time = { workspace = true, features = ["formatting"] }

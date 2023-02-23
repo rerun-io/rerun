@@ -71,6 +71,7 @@ polars-ops = "0.27.1"
 puffin = "0.14"
 reqwest = { version = "0.11", default-features = false }
 thiserror = "1.0"
+time = "0.3"
 tokio = "1.24"
 wgpu = { version = "0.15", default-features = false }
 wgpu-core = { version = "0.15", default-features = false }

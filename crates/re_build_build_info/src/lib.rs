@@ -58,6 +58,13 @@ pub fn export_env_vars() {
             env!("CARGO_PKG_VERSION")
         ),
     }
+
+    let time_format =
+        time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
+    let date_time = time::OffsetDateTime::now_utc()
+        .format(&time_format)
+        .unwrap();
+    println!("cargo:rustc-env=RE_BUILD_DATETIME={date_time}");
 }
 
 fn git_hash() -> anyhow::Result<String> {

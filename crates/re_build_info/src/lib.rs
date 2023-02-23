@@ -18,6 +18,37 @@ pub struct BuildInfo {
     ///
     /// Example: `xaarch64-apple-darwin`
     pub target_triple: &'static str,
+
+    /// ISO 8601 / RFC 3339 build time.
+    ///
+    /// Example: `"2023-02-23T19:33:26Z"`
+    pub datetime: &'static str,
+}
+
+/// For use with e.g. `--version`
+impl std::fmt::Display for BuildInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            crate_name,
+            version,
+            git_hash,
+            target_triple,
+            datetime,
+        } = self;
+
+        if git_hash.is_empty() || version == git_hash {
+            // This happens when you don't build in a git repository, i.e. on users machines.
+            write!(
+                f,
+                "{crate_name} {version} {target_triple}, built {datetime}"
+            )
+        } else {
+            write!(
+                f,
+                "{crate_name} {version} {git_hash} {target_triple}, built {datetime}"
+            )
+        }
+    }
 }
 
 /// Create a [`BuildInfo`] at compile-time using environment variables exported by
@@ -30,6 +61,7 @@ macro_rules! build_info {
             version: env!("CARGO_PKG_VERSION"),
             git_hash: env!("RE_BUILD_GIT_HASH"),
             target_triple: env!("RE_BUILD_TARGET_TRIPLE"),
+            datetime: env!("RE_BUILD_DATETIME"),
         }
     };
 }
