@@ -56,17 +56,20 @@ python3 examples/python/car/main.py --connect
 
 # From Source
 
-Checkout the [GitHub repository](https://github.com/rerun-io/rerun):
-```sh
-git clone git@github.com:rerun-io/rerun.git
-```
+Setup:
+
+* Install the Rust toolchain: <https://rustup.rs/>
+* `git clone git@github.com:rerun-io/rerun.git && cd rerun`
+* Run `./scripts/setup_dev.sh`.
+* Make sure `cargo --version` prints `1.67.0` once you are done
 
 ## Building
 To build from source and install Rerun into your *current* Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
-pip3 install maturin "./rerun_py"
+pip3 install -r rerun_py/requirements-build.txt
+pip3 install "./rerun_py"
 ```
 
 ℹ️ Note:
