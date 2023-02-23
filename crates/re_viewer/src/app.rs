@@ -97,7 +97,7 @@ impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         build_info: re_build_info::BuildInfo,
-        app_env: crate::AppEnvironment,
+        app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,

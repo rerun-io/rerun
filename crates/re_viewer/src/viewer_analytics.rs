@@ -70,7 +70,7 @@ impl ViewerAnalytics {
     pub fn on_viewer_started(
         &mut self,
         build_info: &re_build_info::BuildInfo,
-        app_env: crate::AppEnvironment,
+        app_env: &crate::AppEnvironment,
     ) {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
@@ -204,6 +204,13 @@ impl ViewerAnalytics {
 // When analytics are disabled:
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
 impl ViewerAnalytics {
-    pub fn on_viewer_started(&mut self, _app_env: crate::AppEnvironment) {}
+    #[allow(clippy::unused_self)]
+    pub fn on_viewer_started(
+        &mut self,
+        _build_info: &re_build_info::BuildInfo,
+        _app_env: &crate::AppEnvironment,
+    ) {
+    }
+    #[allow(clippy::unused_self)]
     pub fn on_open_recording(&mut self, _log_db: &re_data_store::LogDb) {}
 }

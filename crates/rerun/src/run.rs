@@ -291,7 +291,7 @@ async fn run_impl(
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
                 build_info,
-                call_source.app_env(),
+                &call_source.app_env(),
                 startup_options,
                 re_ui,
                 cc.storage,

@@ -472,7 +472,7 @@ impl Session {
             let startup_options = re_viewer::StartupOptions::default();
             Box::new(re_viewer::App::from_receiver(
                 re_build_info::build_info!(),
-                app_env,
+                &app_env,
                 startup_options,
                 re_ui,
                 cc.storage,
