@@ -2,6 +2,8 @@
 //!
 //! Analytics can be disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
+//!
+//! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
