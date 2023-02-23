@@ -134,52 +134,39 @@ fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
 
     let MAX_ITER = 10000u;
     for (var i = 0u; i < MAX_ITER; i = i + 1u) {
-        // TODO: we need to do some magic so that we check if the corresponding texcoord in the
-        // depth texture contains a Z value that is between the min and max Z values of this voxel.
-
-        // TODO: should there be sampling?????????????
+        // TODO: handle (proj_kind, depth_kind) match
 
         let cam_npos_in_volume = Vec3(0.5, 0.5, 1.0); // cam at center of front panel
+        // let cam_npos_in_volume = Vec3(hit_in_model.xy, 1.0); // cam at center of front panel
 
         // TODO: should i floor?
         // let pos_in_model = trunc(pos) / dimensions;
         let pos_in_model = pos / dimensions;
         let v = pos_in_model - cam_npos_in_volume;
-        let pos_in_model_backpanel = cam_npos_in_volume + v * distance(cam_npos_in_volume, Vec3(0.1, 0.1, 0.0));
+
+        let xxx = (cam_npos_in_volume + v * 1.0);
+        let texcoords = Vec2(xxx.x, 1.0 - xxx.y);
+        let depth = textureSample(depth_texture, nearest_sampler, texcoords.xy).x;
+
+        let pos_in_model_backpanel = cam_npos_in_volume + normalize(v) / normalize(v).z;
 
 
         // TODO: this is wrong! not the correct depth used
         let texcoords_in_volume = Vec3(pos_in_model_backpanel.xy, 0.0); // back panel
 
-        let texcoords = Vec2(pos_in_model_backpanel.x, 1.0 - pos_in_model.y);
-        let depth = textureSample(depth_texture, nearest_sampler, texcoords).x;
-        let albedo = textureSample(albedo_texture, nearest_sampler, texcoords);
+        // let depth = textureSample(depth_texture, nearest_sampler, texcoords).x;
+        let albedo = textureSample(albedo_texture, nearest_sampler, texcoords.xy);
 
         let npos_in_volume = cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * depth; //
 
         // let pos_next = Vec3(pos.x, pos.y, pos.z + 1.0);
         // let pos_in_model_next = pos_next / dimensions;
 
-        let pos_int = IVec3((pos));
+        let pos_int = IVec3(floor(pos) + 0.5);
         let pos_int_guessed = IVec3(npos_in_volume * (dimensions - 1.0));
 
-//        if pos_in_model_backpanel.x < 0.0 || pos_in_model_backpanel.x > 1.0 {
-//            break;
-//        }
-//        if pos_in_model_backpanel.y < 0.0 || pos_in_model_backpanel.y > 1.0 {
-//            break;
-//        }
-//        if pos_in_model_backpanel.z < 0.0 || pos_in_model_backpanel.z > 1.0 {
-//            break;
-//        }
-
-        // if pos_in_model.x > 1.0 || pos_in_model.y > 1.0 || pos_in_model.x < 0.0 || pos_in_model.y < 0.0 {
-        //     break;
-        // }
-
-        if pos_int.z == pos_int_guessed.z {
-        // if true {
-        // if abs(pos_int.z - pos_int_guessed.z) < 2 {
+        if abs(pos_int.z - pos_int_guessed.z) < 1 {
+        // if abs(pos_int.z - pos_int_guessed.z) < 2 && abs(pos_int.x - pos_int_guessed.x) < 20 {
         // if pos_int.x == pos_int_guessed.x && pos_int.y == pos_int_guessed.y {
         // if pos_in_model.z <= depth && depth <= pos_in_model_next.z {
         // if pos_in_volume.x == pos.x {

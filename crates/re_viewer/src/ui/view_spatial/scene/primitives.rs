@@ -2,7 +2,7 @@ use egui::Color32;
 use re_data_store::InstancePathHash;
 use re_renderer::{
     renderer::{
-        MeshInstance, {Volume2D as Volume, Volume2DDrawData as VolumeDrawData},
+        MeshInstance, {Volume2D, Volume2DDrawData},
     },
     LineStripSeriesBuilder, PointCloudBuilder,
 };

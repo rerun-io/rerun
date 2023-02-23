@@ -1,8 +1,6 @@
 use egui::mutex::Mutex;
 use re_renderer::{
-    renderer::{
-        GenericSkyboxDrawData, MeshDrawData, RectangleDrawData, Volume2DDrawData as VolumeDrawData,
-    },
+    renderer::{GenericSkyboxDrawData, MeshDrawData, RectangleDrawData, Volume2DDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
     RenderContext,
 };

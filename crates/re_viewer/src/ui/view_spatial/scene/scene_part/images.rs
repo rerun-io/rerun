@@ -11,7 +11,7 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{Volume2D as Volume, Volume2DDrawData as VolumeDrawData},
+    renderer::{Volume2D, Volume2DDrawData},
     LineStripSeriesBuilder, Size,
 };
 
@@ -150,11 +150,24 @@ impl ImagesPart {
                 }
 
                 if tensor.meaning == TensorDataMeaning::Depth {
+                    let mut world_from_obj = world_from_obj;
+                    world_from_obj.y_axis *= -1.0; // TODO
+                    world_from_obj.z_axis *= -1.0; // TODO
+
                     let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
                     eprintln!("rendering volumetric thing! {w}x{h}");
 
                     let depth_dimensions = glam::UVec2::new(w as _, h as _);
-                    let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 20.0;
+
+                    let plane_distance = -world_from_obj.w_axis.z;
+                    let volume_size_in_world = glam::Vec3::new(
+                        world_from_obj.transform_vector3(glam::Vec3::X * w as f32).x,
+                        world_from_obj.transform_vector3(glam::Vec3::Y * h as f32).y,
+                        plane_distance,
+                    );
+                    dbg!(volume_size_in_world);
+
+                    // let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 10.0;
                     let volume_dimensions = glam::UVec3::new(640, 640, 640) / 4;
 
                     // tensor.get(&[0, 0]);
@@ -163,57 +176,59 @@ impl ImagesPart {
                     // tensor.get(&[h - 1, w - 1]);
 
                     // TODO: what a mess, why is this in this weird order??
-                    let mut data = vec![0f32; (w * h) as usize];
-                    for x in 0..w {
-                        for y in 0..h {
-                            data[(x + y * w) as usize] = match tensor.get(&[y, x]).unwrap() {
-                                re_log_types::TensorElement::U16(d) => d as f32 / u16::MAX as f32,
-                                re_log_types::TensorElement::F32(d) => d,
-                                _ => todo!(),
-                            }
-                        }
-                    }
-                    // let data = match &tensor.data {
-                    //     re_log_types::component_types::TensorData::U16(data) => data
-                    //         .as_slice()
-                    //         .iter()
-                    //         .map(|d| *d as f32 / u16::MAX as f32)
-                    //         .collect_vec(),
-                    //     re_log_types::component_types::TensorData::F32(data) => {
-                    //         data.as_slice().to_vec()
+                    // let mut data = vec![0f32; (w * h) as usize];
+                    // for x in 0..w {
+                    //     for y in 0..h {
+                    //         data[(x + y * w) as usize] = match tensor.get(&[y, x]).unwrap() {
+                    //             re_log_types::TensorElement::U16(d) => d as f32 / u16::MAX as f32,
+                    //             re_log_types::TensorElement::F32(d) => d,
+                    //             _ => todo!(),
+                    //         }
                     //     }
-                    //     _ => todo!(),
-                    // };
+                    // }
+                    let data = match &tensor.data {
+                        re_log_types::component_types::TensorData::U16(data) => data
+                            .as_slice()
+                            .iter()
+                            .map(|d| *d as f32 / u16::MAX as f32)
+                            .collect_vec(),
+                        re_log_types::component_types::TensorData::F32(data) => {
+                            data.as_slice().to_vec()
+                        }
+                        _ => todo!(),
+                    };
+
+                    {
+                        let mut line_batch = scene.primitives.line_strips.batch("bbox");
+                        let plane_distance = world_from_obj.w_axis.z;
+                        line_batch.add_box_outline(
+                            glam::Affine3A::from_scale_rotation_translation(
+                                volume_size_in_world,
+                                Default::default(),
+                                glam::Vec3::new(0.0, 0.0, plane_distance * 0.5),
+                                // glam::Vec3::ZERO,
+                                // world_from_obj.transform_point3(glam::Vec3::ZERO),
+                                // glam::Vec3::new(w as f32, h as f32, -plane_distance * 2.0) * 0.5,
+                            ),
+                        );
+                    }
 
                     // TODO: go through the new staging belt.
+                    // TODO: how tf am i supposed to handle the viewcoords flipped?
                     let volume_instances = vec![{
-                        let scale = glam::Mat4::from_scale(volume_size);
+                        let scale = glam::Mat4::from_scale(volume_size_in_world);
 
                         let rotation = glam::Mat4::IDENTITY;
 
-                        let translation_center =
-                            glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * volume_size);
-
-                        let world_from_model = rotation * translation_center * scale;
-                        let model_from_world = world_from_model.inverse();
-
-                        let world_from_obj = world_from_obj * world_from_model;
-
-                        let mut line_batch = scene
-                            .primitives
-                            .line_strips
-                            .batch("bbox")
-                            .world_from_obj(world_from_obj);
-                        line_batch.add_box_outline(
-                            glam::Affine3A::from_scale_rotation_translation(
-                                glam::Vec3::ONE,
-                                Default::default(),
-                                glam::Vec3::ONE * 0.5,
-                            ),
+                        let translation_center = glam::Mat4::from_translation(
+                            -glam::Vec3::new(0.5, 0.5, 1.0) * volume_size_in_world,
                         );
 
+                        let mut world_from_model = rotation * translation_center * scale;
+                        let model_from_world = world_from_model.inverse();
+
                         Volume2D {
-                            world_from_model: world_from_obj,
+                            world_from_model,
                             model_from_world,
                             dimensions: volume_dimensions,
                             depth_dimensions,
