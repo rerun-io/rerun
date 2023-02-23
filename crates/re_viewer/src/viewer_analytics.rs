@@ -70,7 +70,7 @@ impl ViewerAnalytics {
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
             AppEnvironment::RustSdk { rust_version: _ } => "rust_sdk",
-            AppEnvironment::RerunCli => "rerun_cli",
+            AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
             AppEnvironment::Web => "web",
         };
         self.register("app_env", app_env_str.to_owned());
@@ -91,13 +91,12 @@ impl ViewerAnalytics {
             //
             // The Python/Rust versions appearing in user profiles always apply to the host
             // environment, _not_ the environment in which the data logging is taking place!
-            if let AppEnvironment::RustSdk { rust_version } = &app_env {
-                event = event.with_prop("rust_version".into(), rust_version.clone());
-            } else {
-                event = event.with_prop(
-                    "rust_version".into(),
-                    env!("CARGO_PKG_RUST_VERSION").to_owned(),
-                );
+            match &app_env {
+                AppEnvironment::RustSdk { rust_version }
+                | AppEnvironment::RerunCli { rust_version } => {
+                    event = event.with_prop("rust_version".into(), rust_version.clone());
+                }
+                _ => {}
             }
             if let AppEnvironment::PythonSdk(version) = app_env {
                 event = event.with_prop("python_version".into(), version.to_string());
