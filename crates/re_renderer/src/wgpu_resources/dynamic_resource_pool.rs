@@ -12,17 +12,24 @@ use smallvec::SmallVec;
 
 use super::resource::PoolError;
 
-pub trait SizedResourceDesc {
+pub trait DynamicResourcesDesc {
     fn resource_size_in_bytes(&self) -> u64;
+
+    /// If true, a unused resources will be kept around for while and then re-used in following frames.
+    /// If false, it will be destroyed on [`DynamicResourcePool::begin_frame`].
+    fn allow_reuse(&self) -> bool;
 }
 
-pub struct DynamicResource<Handle, Desc, Res> {
+pub struct DynamicResource<Handle, Desc: Debug, Res> {
     pub inner: Res,
     pub creation_desc: Desc,
     pub handle: Handle,
 }
 
-impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res> {
+impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res>
+where
+    Desc: Debug,
+{
     type Target = Res;
 
     #[inline]
@@ -35,7 +42,7 @@ impl<Handle, Desc, Res> std::ops::Deref for DynamicResource<Handle, Desc, Res> {
 type AliveResourceMap<Handle, Desc, Res> =
     SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
 
-struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
+struct DynamicResourcePoolProtectedState<Handle: Key, Desc: Debug, Res> {
     /// All currently alive resources.
     /// We store any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
@@ -51,7 +58,7 @@ struct DynamicResourcePoolProtectedState<Handle: Key, Desc, Res> {
 ///
 /// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource can not be uniquely
 /// identified by its description, as the same description can apply to several different resources.
-pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
+pub(super) struct DynamicResourcePool<Handle: Key, Desc: Debug, Res> {
     state: RwLock<DynamicResourcePoolProtectedState<Handle, Desc, Res>>,
 
     current_frame_index: u64,
@@ -59,7 +66,10 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
 }
 
 /// We cannot #derive(Default) as that would require Handle/Desc/Res to implement Default too.
-impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> {
+impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res>
+where
+    Desc: Debug,
+{
     fn default() -> Self {
         Self {
             state: RwLock::new(DynamicResourcePoolProtectedState {
@@ -75,7 +85,7 @@ impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> 
 impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
-    Desc: Clone + Eq + Hash + Debug + SizedResourceDesc,
+    Desc: Clone + Eq + Hash + Debug + DynamicResourcesDesc,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(
         &self,
@@ -85,24 +95,27 @@ where
         let mut state = self.state.write();
 
         // First check if we can reclaim a resource we have around from a previous frame.
-        let inner_resource =
-            if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone()) {
-                re_log::trace!(?desc, "Reclaimed previously discarded resource",);
-
-                let handle = entry.get_mut().pop().unwrap();
-                if entry.get().is_empty() {
-                    entry.remove();
+        let inner_resource = (|| {
+            if desc.allow_reuse() {
+                if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone())
+                {
+                    re_log::trace!(?desc, "Reclaimed previously discarded resource");
+                    let inner_resource = entry.get_mut().pop().unwrap();
+                    if entry.get().is_empty() {
+                        entry.remove();
+                    }
+                    return inner_resource;
                 }
-                handle
+            }
             // Otherwise create a new resource
-            } else {
-                let resource = creation_func(desc);
-                self.total_resource_size_in_bytes.fetch_add(
-                    desc.resource_size_in_bytes(),
-                    std::sync::atomic::Ordering::Relaxed,
-                );
-                resource
-            };
+            re_log::debug!(?desc, "Allocated new resource");
+            let inner_resource = creation_func(desc);
+            self.total_resource_size_in_bytes.fetch_add(
+                desc.resource_size_in_bytes(),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            inner_resource
+        })();
 
         let handle = state.alive_resources.insert_with_key(|handle| {
             Some(Arc::new(DynamicResource {
@@ -195,6 +208,30 @@ where
             .load(std::sync::atomic::Ordering::Relaxed)
     }
 }
+impl<Handle, Desc, Res> Drop for DynamicResourcePool<Handle, Desc, Res>
+where
+    Handle: Key,
+    Desc: Debug,
+{
+    fn drop(&mut self) {
+        // TODO(andreas): We're failing this check currently on re_viewer's shutdown.
+        // This is primarily the case due to the way we store the render ctx itself and other things on egui-wgpu's paint callback resources
+        // We shouldn't do this as it makes a whole lot of other things cumbersome. Instead, we should store it directly on the `App`
+        // where we control the drop order.
+
+        // for (_, alive_resource) in self.state.read().alive_resources.iter() {
+        //     let alive_resource = alive_resource
+        //         .as_ref()
+        //         .expect("Alive resources should never be None");
+        //     let ref_count = Arc::strong_count(alive_resource);
+
+        //     assert!(ref_count == 1,
+        //             "Resource has still {} owner(s) at the time of pool destruction. Description desc was {:?}",
+        //             ref_count - 1,
+        //             &alive_resource.creation_desc);
+        // }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -206,16 +243,20 @@ mod tests {
         },
     };
 
-    use super::{DynamicResourcePool, SizedResourceDesc};
+    use super::{DynamicResourcePool, DynamicResourcesDesc};
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
     #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     pub struct ConcreteResourceDesc(u32);
 
-    impl SizedResourceDesc for ConcreteResourceDesc {
+    impl DynamicResourcesDesc for ConcreteResourceDesc {
         fn resource_size_in_bytes(&self) -> u64 {
             1
+        }
+
+        fn allow_reuse(&self) -> bool {
+            true
         }
     }
 

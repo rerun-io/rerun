@@ -3,7 +3,7 @@ use std::hash::Hash;
 use crate::debug_label::DebugLabel;
 
 use super::{
-    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, SizedResourceDesc},
+    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
     resource::PoolError,
 };
 
@@ -46,7 +46,7 @@ pub struct TextureDesc {
     pub usage: wgpu::TextureUsages,
 }
 
-impl SizedResourceDesc for TextureDesc {
+impl DynamicResourcesDesc for TextureDesc {
     /// Number of bytes this texture is expected to take.
     ///
     /// The actual number might be both bigger (padding) and lower (gpu sided compression).
@@ -67,6 +67,10 @@ impl SizedResourceDesc for TextureDesc {
         }
 
         size_in_bytes
+    }
+
+    fn allow_reuse(&self) -> bool {
+        true
     }
 }
 #[derive(Default)]

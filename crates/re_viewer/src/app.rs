@@ -491,6 +491,8 @@ impl eframe::App for App {
                             self.rx.source(),
                         );
                     }
+
+                    render_ctx.before_submit();
                 }
             });
 

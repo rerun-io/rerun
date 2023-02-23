@@ -8,7 +8,11 @@ use re_data_store::EntityPath;
 use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
-use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
+use super::{
+    eye::Eye,
+    scene::{AdditionalPickingInfo, SceneSpatialUiData},
+    ViewSpatialState,
+};
 use crate::{
     misc::{HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights},
     ui::{
@@ -301,43 +305,13 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    // Draw a re_renderer driven view.
-    // Camera & projection are configured to ingest space coordinates directly.
-    {
-        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
-
-        let Ok(target_config) = setup_target_config(
-            &painter,
-            space_from_ui,
-            space_from_pixel,
-            &space.to_string(),
-            state.auto_size_config(response.rect.size()),
-        ) else {
-            return response;
-        };
-
-        let Ok(callback) = create_scene_paint_callback(
-            ctx.render_ctx,
-            target_config, painter.clip_rect(),
-            &scene.primitives,
-            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
-        ) else {
-            return response;
-        };
-
-        painter.add(callback);
-    }
-
-    // ------------------------------------------------------------------------
-
-    // Add egui driven labels on top of re_renderer content.
-    painter.extend(create_labels(
-        &mut scene,
+    let label_shapes = create_labels(
+        &mut scene.ui,
         ui_from_space,
         space_from_ui,
         parent_ui,
         highlights,
-    ));
+    );
 
     // ------------------------------------------------------------------------
 
@@ -452,6 +426,33 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    // Draw a re_renderer driven view.
+    // Camera & projection are configured to ingest space coordinates directly.
+    {
+        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
+
+        let Ok(target_config) = setup_target_config(
+            &painter,
+            space_from_ui,
+            space_from_pixel,
+            &space.to_string(),
+            state.auto_size_config(response.rect.size()),
+        ) else {
+            return response;
+        };
+
+        let Ok(callback) = create_scene_paint_callback(
+            ctx.render_ctx,
+            target_config, painter.clip_rect(),
+            scene.primitives,
+            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
+        ) else {
+            return response;
+        };
+
+        painter.add(callback);
+    }
+
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
     painter.extend(show_projections_from_3d_space(
         ctx,
@@ -460,11 +461,14 @@ fn view_2d_scrollable(
         &ui_from_space,
     ));
 
+    // Add egui driven labels on top of re_renderer content.
+    painter.extend(label_shapes);
+
     response
 }
 
 fn create_labels(
-    scene: &mut SceneSpatial,
+    scene_ui: &mut SceneSpatialUiData,
     ui_from_space: RectTransform,
     space_from_ui: RectTransform,
     parent_ui: &mut egui::Ui,
@@ -472,9 +476,9 @@ fn create_labels(
 ) -> Vec<Shape> {
     crate::profile_function!();
 
-    let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
+    let mut label_shapes = Vec::with_capacity(scene_ui.labels_2d.len() * 2);
 
-    for label in &scene.ui.labels_2d {
+    for label in &scene_ui.labels_2d {
         let (wrap_width, text_anchor_pos) = match label.target {
             Label2DTarget::Rect(rect) => {
                 let rect_in_ui = ui_from_space.transform_rect(rect);
@@ -534,8 +538,7 @@ fn create_labels(
         label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));
         label_shapes.push(Shape::galley(text_rect.center_top(), galley));
 
-        scene
-            .ui
+        scene_ui
             .pickable_ui_rects
             .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
     }

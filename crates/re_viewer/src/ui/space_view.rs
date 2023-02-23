@@ -176,7 +176,7 @@ impl SpaceView {
                     &self.space_path,
                     self.data_blueprint.data_blueprints_projected(),
                 );
-                let mut scene = view_spatial::SceneSpatial::default();
+                let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
                 scene.load(ctx, &query, &transforms, highlights);
                 self.view_state
                     .ui_spatial(ctx, ui, &self.space_path, scene, self.id, highlights);

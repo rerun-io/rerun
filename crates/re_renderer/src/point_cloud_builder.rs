@@ -1,42 +1,45 @@
 use crate::{
+    allocator::CpuWriteGpuReadBuffer,
     renderer::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
         PointCloudVertex,
     },
-    Color32, DebugLabel, Size,
+    Color32, DebugLabel, RenderContext, Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
-///
-/// TODO(andreas): We could make significant optimizations here by making this builder capable
-/// of writing to a GPU readable memory location.
-/// This will require some ahead of time size limit, but should be feasible.
-/// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
 pub struct PointCloudBuilder<PerPointUserData> {
     // Size of `point`/color`/`per_point_user_data` must be equal.
     pub vertices: Vec<PointCloudVertex>,
-    pub colors: Vec<Color32>,
+
+    pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
     pub user_data: Vec<PerPointUserData>,
 
-    batches: Vec<PointCloudBatchInfo>,
-}
-
-impl<PerPointUserData> Default for PointCloudBuilder<PerPointUserData> {
-    fn default() -> Self {
-        const RESERVE_SIZE: usize = 512;
-        Self {
-            vertices: Vec::with_capacity(RESERVE_SIZE),
-            colors: Vec::with_capacity(RESERVE_SIZE),
-            user_data: Vec::with_capacity(RESERVE_SIZE),
-            batches: Vec::with_capacity(16),
-        }
-    }
+    pub(crate) batches: Vec<PointCloudBatchInfo>,
 }
 
 impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
 where
     PerPointUserData: Default + Copy,
 {
+    pub fn new(ctx: &mut RenderContext) -> Self {
+        const RESERVE_SIZE: usize = 512;
+
+        // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
+        let color_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<Color32>(
+            &ctx.device,
+            &mut ctx.gpu_resources.buffers,
+            PointCloudDrawData::MAX_NUM_POINTS,
+        );
+
+        Self {
+            vertices: Vec::with_capacity(RESERVE_SIZE),
+            color_buffer,
+            user_data: Vec::with_capacity(RESERVE_SIZE),
+            batches: Vec::with_capacity(16),
+        }
+    }
+
     /// Start of a new batch.
     #[inline]
     pub fn batch(
@@ -102,10 +105,10 @@ where
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
     pub fn to_draw_data(
-        &self,
+        self,
         ctx: &mut crate::context::RenderContext,
     ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
-        PointCloudDrawData::new(ctx, &self.vertices, &self.colors, &self.batches)
+        PointCloudDrawData::new(ctx, self)
     }
 }
 
@@ -150,13 +153,14 @@ where
     /// Each time we `add_points`, or upon builder drop, make sure that we
     /// fill in any additional colors and user-data to have matched vectors.
     fn extend_defaults(&mut self) {
-        if self.0.colors.len() < self.0.vertices.len() {
-            self.0.colors.extend(
-                std::iter::repeat(Color32::WHITE).take(self.0.vertices.len() - self.0.colors.len()),
+        if self.0.color_buffer.num_written() < self.0.vertices.len() {
+            self.0.color_buffer.extend(
+                std::iter::repeat(Color32::WHITE)
+                    .take(self.0.vertices.len() - self.0.color_buffer.num_written()),
             );
         }
 
-        if self.0.user_data.len() < self.0.user_data.len() {
+        if self.0.user_data.len() < self.0.vertices.len() {
             self.0.user_data.extend(
                 std::iter::repeat(PerPointUserData::default())
                     .take(self.0.vertices.len() - self.0.user_data.len()),
@@ -186,7 +190,7 @@ where
 
         self.extend_defaults();
 
-        debug_assert_eq!(self.0.vertices.len(), self.0.colors.len());
+        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
         let old_size = self.0.vertices.len();
@@ -200,7 +204,6 @@ where
         let num_points = self.0.vertices.len() - old_size;
         self.batch_mut().point_count += num_points as u32;
 
-        self.0.colors.reserve(num_points);
         self.0.user_data.reserve(num_points);
 
         let new_range = old_size..self.0.vertices.len();
@@ -210,27 +213,28 @@ where
         PointsBuilder {
             vertices: &mut self.0.vertices[new_range],
             max_points,
-            colors: &mut self.0.colors,
+            colors: &mut self.0.color_buffer,
             user_data: &mut self.0.user_data,
         }
     }
 
     #[inline]
     pub fn add_point(&mut self, position: glam::Vec3) -> PointBuilder<'_, PerPointUserData> {
-        debug_assert_eq!(self.0.vertices.len(), self.0.colors.len());
+        self.extend_defaults();
+
+        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
         self.0.vertices.push(PointCloudVertex {
             position,
             radius: Size::AUTO,
         });
-        self.0.colors.push(Color32::WHITE);
-        self.0.user_data.push(PerPointUserData::default());
+        self.0.user_data.push(Default::default());
         self.batch_mut().point_count += 1;
 
         PointBuilder {
             vertex: self.0.vertices.last_mut().unwrap(),
-            color: self.0.colors.last_mut().unwrap(),
+            color: &mut self.0.color_buffer,
             user_data: self.0.user_data.last_mut().unwrap(),
         }
     }
@@ -265,7 +269,7 @@ where
 
 pub struct PointBuilder<'a, PerPointUserData> {
     vertex: &'a mut PointCloudVertex,
-    color: &'a mut Color32,
+    color: &'a mut CpuWriteGpuReadBuffer<Color32>,
     user_data: &'a mut PerPointUserData,
 }
 
@@ -279,9 +283,10 @@ where
         self
     }
 
+    /// This mustn't call this more than once.
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        *self.color = color;
+        self.color.push(&color);
         self
     }
 
@@ -298,7 +303,7 @@ pub struct PointsBuilder<'a, PerPointUserData> {
     // Colors and user-data are the Vec we append
     // the data to if provided.
     max_points: usize,
-    colors: &'a mut Vec<Color32>,
+    colors: &'a mut CpuWriteGpuReadBuffer<Color32>,
     user_data: &'a mut Vec<PerPointUserData>,
 }
 
@@ -307,6 +312,8 @@ where
     PerPointUserData: Clone,
 {
     /// Assigns radii to all points.
+    ///
+    /// This mustn't call this more than once.
     ///
     /// If the iterator doesn't cover all points, some will not be assigned.
     /// If the iterator provides more values than there are points, the extra values will be ignored.
@@ -323,17 +330,21 @@ where
 
     /// Assigns colors to all points.
     ///
+    /// This mustn't call this more than once.
+    ///
     /// If the iterator doesn't cover all points, some will not be assigned.
     /// If the iterator provides more values than there are points, the extra values will be ignored.
     #[inline]
     pub fn colors(self, colors: impl Iterator<Item = Color32>) -> Self {
         crate::profile_function!();
         self.colors
-            .extend(colors.take(self.max_points - self.colors.len()));
+            .extend(colors.take(self.max_points - self.colors.num_written()));
         self
     }
 
     /// Assigns user data for all points in this builder.
+    ///
+    /// This mustn't call this more than once.
     ///
     /// User data is currently not available on the GPU.
     #[inline]

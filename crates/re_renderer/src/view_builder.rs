@@ -275,6 +275,7 @@ impl ViewBuilder {
                 label: format!("{:?} - frame uniform buffer", config.name).into(),
                 size: std::mem::size_of::<FrameUniformBuffer>() as _,
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
             },
         );
 
@@ -392,10 +393,12 @@ impl ViewBuilder {
         // Factor applied to depth offsets.
         let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
 
-        ctx.queue.write_buffer(
-            &frame_uniform_buffer,
-            0,
-            bytemuck::bytes_of(&FrameUniformBuffer {
+        {
+            let mut frame_uniform_buffer_cpu = ctx
+                .cpu_write_gpu_read_belt
+                .lock()
+                .allocate::<FrameUniformBuffer>(&ctx.device, &mut ctx.gpu_resources.buffers, 1);
+            frame_uniform_buffer_cpu.push(&FrameUniformBuffer {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
@@ -410,8 +413,13 @@ impl ViewBuilder {
 
                 depth_offset_factor,
                 _padding: glam::Vec3::ZERO,
-            }),
-        );
+            });
+            frame_uniform_buffer_cpu.copy_to_buffer(
+                ctx.active_frame.frame_global_command_encoder(&ctx.device),
+                &frame_uniform_buffer,
+                0,
+            );
+        }
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.gpu_resources,
