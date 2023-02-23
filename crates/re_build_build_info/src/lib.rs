@@ -80,8 +80,7 @@ fn git_hash() -> anyhow::Result<String> {
     if git_hash.is_empty() {
         anyhow::bail!("empty commit hash");
     }
-    let clean = is_git_clean()?;
-    Ok(format!("{}{}", git_hash, if clean { "" } else { "-dirty" }))
+    Ok(git_hash)
 }
 
 fn is_git_clean() -> anyhow::Result<bool> {
