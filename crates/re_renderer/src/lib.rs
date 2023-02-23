@@ -14,6 +14,7 @@ pub mod renderer;
 pub mod resource_managers;
 pub mod view_builder;
 
+mod allocator;
 mod context;
 mod debug_label;
 mod depth_offset;

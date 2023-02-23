@@ -115,7 +115,6 @@ pub struct SceneSpatialUiData {
     pub images: Vec<Image>,
 }
 
-#[derive(Default)]
 pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
@@ -146,6 +145,17 @@ fn instance_path_hash_if_interactive(
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 impl SceneSpatial {
+    pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+        Self {
+            annotation_map: Default::default(),
+            primitives: SceneSpatialPrimitives::new(re_ctx),
+            ui: Default::default(),
+            num_logged_2d_objects: Default::default(),
+            num_logged_3d_objects: Default::default(),
+            space_cameras: Default::default(),
+        }
+    }
+
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load(
         &mut self,

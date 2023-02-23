@@ -7,7 +7,7 @@ use crate::debug_label::DebugLabel;
 use super::{
     bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
     buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
-    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, SizedResourceDesc},
+    dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
     texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
 };
@@ -60,11 +60,15 @@ pub struct BindGroupDesc {
     pub layout: GpuBindGroupLayoutHandle,
 }
 
-impl SizedResourceDesc for BindGroupDesc {
+impl DynamicResourcesDesc for BindGroupDesc {
     fn resource_size_in_bytes(&self) -> u64 {
         // Size depends on gpu/driver (like with all resources).
         // We could guess something like a pointer per descriptor, but let's not pretend we know!
         0
+    }
+
+    fn allow_reuse(&self) -> bool {
+        true
     }
 }
 

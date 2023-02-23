@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use parking_lot::Mutex;
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
+    allocator::CpuWriteGpuReadBelt,
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -23,15 +25,19 @@ pub struct RenderContext {
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
-    /// Utility type map that will be cleared every frame.
-    pub per_frame_data_helper: TypeMap,
-
-    pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
+    pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
 
-    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
-    frame_index: u64,
+    /// List of unfinished queue submission via this context.
+    ///
+    /// This is currently only about submissions we do via the global encoder in [`ActiveFrameContext`]
+    /// TODO(andreas): We rely on egui to to the "primary" submissions in re_viewer. It would be nice to take full control over all submissions.
+    inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
+
+    pub active_frame: ActiveFrameContext,
+
+    pub gpu_resources: WgpuResourcePools, // Last due to drop order.
 }
 
 /// Immutable data that is shared between all [`Renderer`]
@@ -69,6 +75,34 @@ impl Renderers {
 }
 
 impl RenderContext {
+    /// Chunk size for our cpu->gpu buffer manager.
+    ///
+    /// For native: 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
+    /// For web (memory constraint!): 8MiB
+    #[cfg(not(target_arch = "wasm32"))]
+    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
+        wgpu::BufferSize::new(1024 * 1024 * 32);
+    #[cfg(target_arch = "wasm32")]
+    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
+        wgpu::BufferSize::new(1024 * 1024 * 8);
+
+    /// Limit maximum number of in flight submissions to this number.
+    ///
+    /// By limiting the number of submissions we have on the queue we ensure that GPU stalls do not
+    /// cause us to request more and more memory to prepare more and more submissions.
+    ///
+    /// Note that this is only indirectly related to number of buffered frames,
+    /// since buffered frames/blit strategy are all about the display<->gpu interface,
+    /// whereas this is about a *particular aspect* of the cpu<->gpu interface.
+    ///
+    /// Should be somewhere between 1-4, too high and we use up more memory and introduce latency,
+    /// too low and we may starve the GPU.
+    /// On the web we want to go lower because a lot more memory constraint.
+    #[cfg(not(target_arch = "wasm32"))]
+    const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 4;
+    #[cfg(target_arch = "wasm32")]
+    const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 2;
+
     pub fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
@@ -146,19 +180,41 @@ impl RenderContext {
 
             renderers,
 
-            per_frame_data_helper: TypeMap::new(),
-
             gpu_resources,
 
             mesh_manager,
             texture_manager_2d,
+            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
 
             resolver,
 
             #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
             err_tracker,
 
-            frame_index: 0,
+            inflight_queue_submissions: Vec::new(),
+
+            active_frame: ActiveFrameContext { frame_global_command_encoder: None,             per_frame_data_helper: TypeMap::new(),
+                 frame_index: 0 }
+        }
+    }
+
+    fn poll_device(&mut self) {
+        crate::profile_function!();
+
+        // Ensure not too many queue submissions are in flight.
+        let num_submissions_to_wait_for = self
+            .inflight_queue_submissions
+            .len()
+            .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
+
+        if let Some(newest_submission_to_wait_for) = self
+            .inflight_queue_submissions
+            .drain(0..num_submissions_to_wait_for)
+            .last()
+        {
+            self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
+                newest_submission_to_wait_for,
+            ));
         }
     }
 
@@ -166,8 +222,18 @@ impl RenderContext {
     ///
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
-        self.frame_index += 1;
-        self.per_frame_data_helper.clear();
+        crate::profile_function!();
+
+        // Request used staging buffer back.
+        // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
+        self.cpu_write_gpu_read_belt.lock().after_queue_submit();
+
+        self.active_frame = ActiveFrameContext {
+            frame_global_command_encoder: None,
+            frame_index: self.active_frame.frame_index + 1,
+            per_frame_data_helper: TypeMap::new(),
+        };
+        let frame_index = self.active_frame.frame_index;
 
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on begin_frame rather than raw frames, which
@@ -183,8 +249,8 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.mesh_manager.begin_frame(self.frame_index);
-        self.texture_manager_2d.begin_frame(self.frame_index);
+        self.mesh_manager.begin_frame(frame_index);
+        self.texture_manager_2d.begin_frame(frame_index);
 
         {
             let WgpuResourcePools {
@@ -203,27 +269,87 @@ impl RenderContext {
             shader_modules.begin_frame(
                 &self.device,
                 &mut self.resolver,
-                self.frame_index,
+                frame_index,
                 &modified_paths,
             );
             render_pipelines.begin_frame(
                 &self.device,
-                self.frame_index,
+                frame_index,
                 shader_modules,
                 pipeline_layouts,
             );
 
             // Bind group maintenance must come before texture/buffer maintenance since it
             // registers texture/buffer use
-            bind_groups.begin_frame(self.frame_index, textures, buffers, samplers);
+            bind_groups.begin_frame(frame_index, textures, buffers, samplers);
 
-            textures.begin_frame(self.frame_index);
-            buffers.begin_frame(self.frame_index);
+            textures.begin_frame(frame_index);
+            buffers.begin_frame(frame_index);
 
-            pipeline_layouts.begin_frame(self.frame_index);
-            bind_group_layouts.begin_frame(self.frame_index);
-            samplers.begin_frame(self.frame_index);
+            pipeline_layouts.begin_frame(frame_index);
+            bind_group_layouts.begin_frame(frame_index);
+            samplers.begin_frame(frame_index);
         }
+
+        // Poll device *after* resource pool `begin_frame` since resource pools may each decide drop resources.
+        // Wgpu internally may then internally decide to let go of these buffers.
+        self.poll_device();
+    }
+
+    /// Call this at the end of a frame but before submitting command buffers (e.g. from [`crate::view_builder::ViewBuilder`])
+    pub fn before_submit(&mut self) {
+        crate::profile_function!();
+
+        // Unmap all staging buffers.
+        self.cpu_write_gpu_read_belt.lock().before_queue_submit();
+
+        if let Some(command_encoder) = self.active_frame.frame_global_command_encoder.take() {
+            let command_buffer = command_encoder.finish();
+
+            // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
+            //                  How do we hook in there and make sure this buffer is submitted first?
+            self.inflight_queue_submissions
+                .push(self.queue.submit([command_buffer]));
+        }
+    }
+}
+
+impl Drop for RenderContext {
+    fn drop(&mut self) {
+        // Close global command encoder if there is any pending.
+        // Not doing so before shutdown causes errors.
+        if let Some(encoder) = self.active_frame.frame_global_command_encoder.take() {
+            encoder.finish();
+        }
+    }
+}
+
+pub struct ActiveFrameContext {
+    /// Command encoder for all commands that should go in before view builder are submitted.
+    ///
+    /// This should be used for any gpu copy operation outside of a renderer or view builder.
+    /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
+    frame_global_command_encoder: Option<wgpu::CommandEncoder>,
+
+    /// Utility type map that will be cleared every frame.
+    pub per_frame_data_helper: TypeMap,
+
+    /// Index of this frame. Is incremented for every render frame.
+    frame_index: u64,
+}
+
+impl ActiveFrameContext {
+    /// Gets or creates a command encoder that runs before all view builder encoder.
+    pub fn frame_global_command_encoder(
+        &mut self,
+        device: &wgpu::Device,
+    ) -> &mut wgpu::CommandEncoder {
+        self.frame_global_command_encoder.get_or_insert_with(|| {
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
+                    .get(),
+            })
+        })
     }
 }
 
