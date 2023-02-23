@@ -421,27 +421,6 @@ impl ViewBuilder {
             );
         }
 
-        ctx.queue.write_buffer(
-            &frame_uniform_buffer,
-            0,
-            bytemuck::bytes_of(&FrameUniformBuffer {
-                view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
-                projection_from_view: projection_from_view.into(),
-                projection_from_world: projection_from_world.into(),
-                camera_position,
-                camera_forward,
-                tan_half_fov: tan_half_fov.into(),
-                pixel_world_size_from_camera_distance,
-                pixels_from_point: config.pixels_from_point,
-
-                auto_size_points: auto_size_points.0,
-                auto_size_lines: auto_size_lines.0,
-
-                depth_offset_factor,
-                _padding: glam::Vec3::ZERO,
-            }),
-        );
-
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.gpu_resources,
             &ctx.device,
