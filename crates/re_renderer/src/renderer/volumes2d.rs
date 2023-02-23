@@ -38,14 +38,14 @@ mod gpu_data {
     // - See `Volume` for documentation.
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct VolumeInfoUBO {
+    pub struct Volume2DInfoUBO {
         pub world_from_model: glam::Mat4,
         pub model_from_world: glam::Mat4,
         pub dimensions: wgpu_buffer_types::UVec3,
     }
 }
 
-pub struct Volume {
+pub struct Volume2D {
     pub world_from_model: glam::Mat4,
     pub model_from_world: glam::Mat4,
 
@@ -59,7 +59,7 @@ pub struct Volume {
     pub albedo_data: Option<Vec<u8>>,
 }
 
-impl Default for Volume {
+impl Default for Volume2D {
     fn default() -> Self {
         Self {
             world_from_model: glam::Mat4::IDENTITY,
@@ -74,19 +74,22 @@ impl Default for Volume {
 }
 
 #[derive(Clone)]
-pub struct VolumeDrawData {
+pub struct Volume2DDrawData {
     bind_groups: Vec<GpuBindGroup>,
 }
 
-impl DrawData for VolumeDrawData {
-    type Renderer = VolumeRenderer;
+impl DrawData for Volume2DDrawData {
+    type Renderer = Volume2DRenderer;
 }
 
-impl VolumeDrawData {
-    pub fn new(ctx: &mut RenderContext, volumes: &[Volume]) -> Result<Self, ResourceManagerError> {
+impl Volume2DDrawData {
+    pub fn new(
+        ctx: &mut RenderContext,
+        volumes: &[Volume2D],
+    ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
 
-        let volume_renderer = ctx.renderers.get_or_create::<_, VolumeRenderer>(
+        let volume_renderer = ctx.renderers.get_or_create::<_, Volume2DRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
@@ -94,15 +97,16 @@ impl VolumeDrawData {
         );
 
         if volumes.is_empty() {
-            return Ok(VolumeDrawData {
+            return Ok(Volume2DDrawData {
                 bind_groups: Vec::new(),
             });
         }
 
         let allocation_size_per_uniform_buffer =
-            uniform_buffer_allocation_size::<gpu_data::VolumeInfoUBO>(&ctx.device);
+            uniform_buffer_allocation_size::<gpu_data::Volume2DInfoUBO>(&ctx.device);
         let combined_buffers_size = allocation_size_per_uniform_buffer * volumes.len() as u64;
 
+        // TODO: belt
         // Allocate all constant buffers at once.
         // TODO(andreas): This should come from a per-frame allocator!
         let volume_info_ubo = ctx.gpu_resources.buffers.alloc(
@@ -111,6 +115,7 @@ impl VolumeDrawData {
                 label: "volume_info".into(),
                 size: combined_buffers_size,
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+                mapped_at_creation: false,
             },
         );
 
@@ -139,8 +144,8 @@ impl VolumeDrawData {
                 //
                 // TODO(andreas): with our own staging buffers we could fix this very easily
 
-                staging_buffer[offset..(offset + std::mem::size_of::<gpu_data::VolumeInfoUBO>())]
-                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::VolumeInfoUBO {
+                staging_buffer[offset..(offset + std::mem::size_of::<gpu_data::Volume2DInfoUBO>())]
+                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::Volume2DInfoUBO {
                         world_from_model: volume.world_from_model,
                         model_from_world: volume.model_from_world,
                         dimensions: volume.dimensions.into(),
@@ -291,7 +296,7 @@ impl VolumeDrawData {
                             handle: volume_info_ubo.handle,
                             offset: i as u64 * allocation_size_per_uniform_buffer,
                             size: NonZeroU64::new(
-                                std::mem::size_of::<gpu_data::VolumeInfoUBO>() as u64
+                                std::mem::size_of::<gpu_data::Volume2DInfoUBO>() as u64
                             ),
                         },
                         BindGroupEntry::DefaultTextureView(depth_texture.handle),
@@ -306,17 +311,17 @@ impl VolumeDrawData {
             ));
         }
 
-        Ok(VolumeDrawData { bind_groups })
+        Ok(Volume2DDrawData { bind_groups })
     }
 }
 
-pub struct VolumeRenderer {
+pub struct Volume2DRenderer {
     render_pipeline: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
-impl Renderer for VolumeRenderer {
-    type RendererDrawData = VolumeDrawData;
+impl Renderer for Volume2DRenderer {
+    type RendererDrawData = Volume2DDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -340,7 +345,7 @@ impl Renderer for VolumeRenderer {
                             // But we have to set a new texture anyways and its doubtful that
                             // splitting the bind group is of any use.
                             has_dynamic_offset: false,
-                            min_binding_size: (std::mem::size_of::<gpu_data::VolumeInfoUBO>()
+                            min_binding_size: (std::mem::size_of::<gpu_data::Volume2DInfoUBO>()
                                 as u64)
                                 .try_into()
                                 .ok(),
@@ -419,7 +424,7 @@ impl Renderer for VolumeRenderer {
             &pools.shader_modules,
         );
 
-        VolumeRenderer {
+        Volume2DRenderer {
             render_pipeline,
             bind_group_layout,
         }

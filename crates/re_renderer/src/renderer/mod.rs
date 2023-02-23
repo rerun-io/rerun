@@ -17,12 +17,10 @@ mod rectangles;
 pub use rectangles::{RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect};
 
 mod volumes;
-pub use self::volumes::{Volume, VolumeDrawData, VolumeRenderer};
+pub use self::volumes::{Volume3D, Volume3DDrawData, Volume3DRenderer};
 
 mod volumes2d;
-pub use self::volumes2d::{
-    Volume as Volume2D, VolumeDrawData as Volume2DDrawData, VolumeRenderer as Volume2DRenderer,
-};
+pub use self::volumes2d::{Volume2D, Volume2DDrawData, Volume2DRenderer};
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;

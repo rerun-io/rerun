@@ -185,6 +185,7 @@ impl ImagesPart {
                     //     _ => todo!(),
                     // };
 
+                    // TODO: go through the new staging belt.
                     let volume_instances = vec![{
                         let scale = glam::Mat4::from_scale(volume_size);
 
@@ -211,7 +212,7 @@ impl ImagesPart {
                             ),
                         );
 
-                        Volume {
+                        Volume2D {
                             world_from_model: world_from_obj,
                             model_from_world,
                             dimensions: volume_dimensions,

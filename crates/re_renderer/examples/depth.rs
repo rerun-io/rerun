@@ -9,7 +9,7 @@ use rand::Rng;
 use re_renderer::{
     renderer::{
         GenericSkyboxDrawData, LineStripFlags, RectangleDrawData, TextureFilterMag,
-        TextureFilterMin, TexturedRect, Volume, VolumeDrawData,
+        TextureFilterMin, TexturedRect, Volume2D, Volume2DDrawData, Volume3D, Volume3DDrawData,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
@@ -108,12 +108,12 @@ impl DepthTexture {
         }
         fn view_depth_to_capped_linear(n: f32, f: f32, vz: f32) -> f32 {
             let vz = f32::min(vz, f);
-            ((vz - n) / (f - n))
+            (vz - n) / (f - n)
         }
 
         fn linearize_depth(n: f32, f: f32, z: f32) -> f32 {
             let vd = n * f / (f - z * (f - n));
-            ((vd - n) / (f - n))
+            (vd - n) / (f - n)
         }
 
         let dimensions = glam::UVec2::new(img.width(), img.height());
@@ -237,7 +237,7 @@ impl framework::Example for RenderVolumetric {
         // let vol_dimensions =
         //     UVec3::new(img.width(), img.height(), (img.width() as f32 * 0.7) as u32) / 4;
 
-        let mut volume_rgba8 = vec![
+        let mut volume3d_rgba8 = vec![
             0u8;
             (volume_dimensions.x * volume_dimensions.y * volume_dimensions.z * 4)
                 as usize
@@ -284,7 +284,7 @@ impl framework::Example for RenderVolumetric {
                 + pos.z * volume_dimensions.x * volume_dimensions.y) as usize;
             let idx = idx * 4;
 
-            volume_rgba8[idx..idx + 4].copy_from_slice(&albedo.get(x, y));
+            volume3d_rgba8[idx..idx + 4].copy_from_slice(&albedo.get(x, y));
 
             // let d = (z * 255.0) as u8;
             // faked[idx..idx + 4].copy_from_slice(&[d, d, d, 255]);
@@ -300,37 +300,49 @@ impl framework::Example for RenderVolumetric {
             ) * volume_size.max_element();
         }
 
-        let splits = framework::split_resolution(resolution, 1, 1).collect::<Vec<_>>();
+        let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
+
+        let scale = glam::Mat4::from_scale(volume_size);
+        let rotation = glam::Mat4::IDENTITY;
+        let translation_center =
+            glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * volume_size);
+        let world_from_model = rotation * translation_center * scale;
+        let model_from_world = world_from_model.inverse();
 
         let mut bbox_builder = LineStripSeriesBuilder::<()>::default();
-        let volume_instances = vec![{
-            let scale = glam::Mat4::from_scale(volume_size);
-
-            let rotation = glam::Mat4::IDENTITY;
-
-            let translation_center =
-                glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * volume_size);
-
-            let world_from_model = rotation * translation_center * scale;
-            let model_from_world = world_from_model.inverse();
-
+        {
             let mut line_batch = bbox_builder.batch("bbox").world_from_obj(world_from_model);
             line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(
                 glam::Vec3::ONE,
                 Default::default(),
                 glam::Vec3::ONE * 0.5,
             ));
+        }
+        let bbox_draw_data = bbox_builder.to_draw_data(re_ctx);
 
-            Volume {
+        let volume3d_instances = vec![{
+            Volume3D {
                 world_from_model,
                 model_from_world,
                 size: volume_size,
                 dimensions: volume_dimensions,
-                data: volume_rgba8,
+                data: volume3d_rgba8,
+            }
+        }];
+        let volume2d_instances = vec![{
+            Volume2D {
+                world_from_model,
+                model_from_world,
+                dimensions: volume_dimensions,
+                depth_dimensions: depth.dimensions,
+                depth_data: depth.d32.clone(),
+                albedo_dimensions: albedo.dimensions,
+                albedo_data: albedo.rgba8.clone().into(),
             }
         }];
 
-        let volume_draw_data = VolumeDrawData::new(re_ctx, &volume_instances).unwrap();
+        let volume3d_draw_data = Volume3DDrawData::new(re_ctx, &volume3d_instances).unwrap();
+        let volume2d_draw_data = Volume2DDrawData::new(re_ctx, &volume2d_instances).unwrap();
 
         vec![
             {
@@ -339,7 +351,7 @@ impl framework::Example for RenderVolumetric {
                     .setup_view(
                         re_ctx,
                         view_builder::TargetConfiguration {
-                            name: "3D".into(),
+                            name: "Volume 3D".into(),
                             resolution_in_pixel: splits[0].resolution_in_pixel,
                             view_from_world: IsoTransform::look_at_rh(
                                 self.camera_position,
@@ -358,14 +370,49 @@ impl framework::Example for RenderVolumetric {
                     .unwrap();
                 let command_buffer = view_builder
                     .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
-                    .queue_draw(&volume_draw_data)
-                    .queue_draw(&bbox_builder.to_draw_data(re_ctx))
+                    .queue_draw(&volume3d_draw_data)
+                    .queue_draw(&bbox_draw_data)
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,
                     target_location: splits[0].target_location,
+                }
+            }, //
+            {
+                let mut view_builder = ViewBuilder::default();
+                view_builder
+                    .setup_view(
+                        re_ctx,
+                        view_builder::TargetConfiguration {
+                            name: "3D".into(),
+                            resolution_in_pixel: splits[1].resolution_in_pixel,
+                            view_from_world: IsoTransform::look_at_rh(
+                                self.camera_position,
+                                Vec3::ZERO, // TODO
+                                Vec3::Y,
+                            )
+                            .unwrap(),
+                            projection_from_view: Projection::Perspective {
+                                vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                                near_plane_distance: 0.01,
+                            },
+                            pixels_from_point,
+                            ..Default::default()
+                        },
+                    )
+                    .unwrap();
+                let command_buffer = view_builder
+                    .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
+                    .queue_draw(&volume2d_draw_data)
+                    .queue_draw(&bbox_draw_data)
+                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+                    .unwrap();
+                framework::ViewDrawResult {
+                    view_builder,
+                    command_buffer,
+                    target_location: splits[1].target_location,
                 }
             }, //
         ]

@@ -28,7 +28,7 @@ pub struct SceneSpatialPrimitives {
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
-    pub volumes: Vec<Volume>,
+    pub volumes: Vec<Volume2D>,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -44,6 +44,7 @@ impl SceneSpatialPrimitives {
             line_strips: Default::default(),
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
+            volumes: Default::default(),
         }
     }
 

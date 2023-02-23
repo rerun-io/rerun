@@ -49,7 +49,7 @@ fn create_and_fill_view_builder(
     let mut view_builder = ViewBuilder::default();
     view_builder.setup_view(render_ctx, target_config)?;
 
-    let volume_draw_data = VolumeDrawData::new(render_ctx, &primitives.volumes).unwrap();
+    let volume_draw_data = Volume2DDrawData::new(render_ctx, &primitives.volumes).unwrap();
     view_builder
         .queue_draw(&MeshDrawData::new(render_ctx, &primitives.mesh_instances()).unwrap())
         .queue_draw(&primitives.line_strips.to_draw_data(render_ctx))
