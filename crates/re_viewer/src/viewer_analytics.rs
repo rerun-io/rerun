@@ -86,7 +86,7 @@ impl ViewerAnalytics {
                 .with_prop("target".into(), target.to_owned())
                 .with_prop("git_hash".into(), git_hash.to_owned())
                 .with_prop("debug".into(), cfg!(debug_assertions).to_owned()) // debug-build?
-                .with_prop("workspace".into(), std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
+                .with_prop("rerun_workspace".into(), std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
                 ;
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
