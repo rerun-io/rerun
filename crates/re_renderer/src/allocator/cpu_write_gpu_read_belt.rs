@@ -68,8 +68,8 @@ where
     ///
     /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn push(&mut self, element: &T) {
-        self.as_slice()[0] = *element;
+    pub fn push(&mut self, element: T) {
+        self.as_slice()[0] = element;
         self.unwritten_element_range.start += 1;
     }
 

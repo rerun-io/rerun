@@ -286,7 +286,7 @@ where
     /// This mustn't call this more than once.
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        self.color.push(&color);
+        self.color.push(color);
         self
     }
 

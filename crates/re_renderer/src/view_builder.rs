@@ -3,13 +3,14 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
+    allocator::create_and_fill_uniform_buffer,
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
     renderer::{
         compositor::{Compositor, CompositorDrawData},
         DrawData, Renderer,
     },
-    wgpu_resources::{BufferDesc, GpuBindGroup, GpuTexture, TextureDesc},
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,
 };
 
@@ -268,17 +269,6 @@ impl ViewBuilder {
 
         let tonemapping_draw_data = CompositorDrawData::new(ctx, &main_target_resolved);
 
-        // Setup frame uniform buffer
-        let frame_uniform_buffer = ctx.gpu_resources.buffers.alloc(
-            &ctx.device,
-            &BufferDesc {
-                label: format!("{:?} - frame uniform buffer", config.name).into(),
-                size: std::mem::size_of::<FrameUniformBuffer>() as _,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            },
-        );
-
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
 
@@ -393,12 +383,11 @@ impl ViewBuilder {
         // Factor applied to depth offsets.
         let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
 
-        {
-            let mut frame_uniform_buffer_cpu = ctx
-                .cpu_write_gpu_read_belt
-                .lock()
-                .allocate::<FrameUniformBuffer>(&ctx.device, &mut ctx.gpu_resources.buffers, 1);
-            frame_uniform_buffer_cpu.push(&FrameUniformBuffer {
+        // Setup frame uniform buffer
+        let frame_uniform_buffer = create_and_fill_uniform_buffer(
+            ctx,
+            format!("{:?} - frame uniform buffer", config.name).into(),
+            FrameUniformBuffer {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
@@ -413,13 +402,8 @@ impl ViewBuilder {
 
                 depth_offset_factor,
                 _padding: glam::Vec3::ZERO,
-            });
-            frame_uniform_buffer_cpu.copy_to_buffer(
-                ctx.active_frame.frame_global_command_encoder(&ctx.device),
-                &frame_uniform_buffer,
-                0,
-            );
-        }
+            },
+        );
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.gpu_resources,
