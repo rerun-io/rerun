@@ -1,6 +1,10 @@
+//! Information about the build of a Rust crate.
+//!
+//! To use this you also need to call `re_build_build_info::export_env_vars()` from your build.rs.
+
 /// Information about the build of a Rust crate.
 ///
-/// To use this you also need to call `re_build_build_info::export_env_vars()` from your build.rs.
+/// Create this with [`build_info`].
 #[derive(Copy, Clone, Debug)]
 pub struct BuildInfo {
     /// `CARGO_PKG_NAME`
