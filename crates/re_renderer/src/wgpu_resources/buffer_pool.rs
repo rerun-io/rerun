@@ -75,8 +75,8 @@ impl GpuBufferPool {
         self.pool.begin_frame(frame_index, |res| res.destroy());
     }
 
-    /// Internal method to retrieve a resource from a weak handle (used by [`super::GpuBindGroupPool`])
-    pub(super) fn get_from_handle(&self, handle: GpuBufferHandle) -> Result<GpuBuffer, PoolError> {
+    /// Method to retrieve a resource from a weak handle (used by [`super::GpuBindGroupPool`])
+    pub fn get_from_handle(&self, handle: GpuBufferHandle) -> Result<GpuBuffer, PoolError> {
         self.pool.get_from_handle(handle)
     }
 

@@ -38,20 +38,17 @@ where
     }
 }
 
-// Resources are held as Option so its easier to move them out.
-type AliveResourceMap<Handle, Desc, Res> =
-    SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
-
 struct DynamicResourcePoolProtectedState<Handle: Key, Desc: Debug, Res> {
-    /// All currently alive resources.
+    /// All resources, including both resources that are in use and those that are marked as dead via [`Self::last_frame_deallocated`]
+    ///
     /// We store any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
-    alive_resources: AliveResourceMap<Handle, Desc, Res>,
+    all_resources: SlotMap<Handle, Arc<DynamicResource<Handle, Desc, Res>>>,
 
     /// Any resource that has been deallocated last frame.
     /// We keep them around for a bit longer to allow reclamation
-    last_frame_deallocated: HashMap<Desc, SmallVec<[Res; 4]>>,
+    last_frame_deallocated: HashMap<Desc, SmallVec<[Handle; 4]>>,
 }
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
@@ -73,7 +70,7 @@ where
     fn default() -> Self {
         Self {
             state: RwLock::new(DynamicResourcePoolProtectedState {
-                alive_resources: Default::default(),
+                all_resources: Default::default(),
                 last_frame_deallocated: Default::default(),
             }),
             current_frame_index: Default::default(),
@@ -95,37 +92,36 @@ where
         let mut state = self.state.write();
 
         // First check if we can reclaim a resource we have around from a previous frame.
-        let inner_resource = (|| {
-            if desc.allow_reuse() {
-                if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone())
-                {
-                    re_log::trace!(?desc, "Reclaimed previously discarded resource");
-                    let inner_resource = entry.get_mut().pop().unwrap();
-                    if entry.get().is_empty() {
-                        entry.remove();
-                    }
-                    return inner_resource;
-                }
-            }
-            // Otherwise create a new resource
-            re_log::debug!(?desc, "Allocated new resource");
-            let inner_resource = creation_func(desc);
-            self.total_resource_size_in_bytes.fetch_add(
-                desc.resource_size_in_bytes(),
-                std::sync::atomic::Ordering::Relaxed,
-            );
-            inner_resource
-        })();
+        if desc.allow_reuse() {
+            if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone()) {
+                re_log::trace!(?desc, "Reclaimed previously discarded resource");
 
-        let handle = state.alive_resources.insert_with_key(|handle| {
-            Some(Arc::new(DynamicResource {
+                let handle = entry.get_mut().pop().unwrap();
+                if entry.get().is_empty() {
+                    entry.remove();
+                }
+
+                return state.all_resources[handle].clone();
+            }
+        }
+
+        // Otherwise create a new resource
+        re_log::debug!(?desc, "Allocated new resource");
+        let inner_resource = creation_func(desc);
+        self.total_resource_size_in_bytes.fetch_add(
+            desc.resource_size_in_bytes(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+
+        let handle = state.all_resources.insert_with_key(|handle| {
+            Arc::new(DynamicResource {
                 inner: inner_resource,
                 creation_desc: desc.clone(),
                 handle,
-            }))
+            })
         });
 
-        state.alive_resources[handle].as_ref().unwrap().clone()
+        state.all_resources[handle].clone()
     }
 
     pub fn get_from_handle(
@@ -134,14 +130,9 @@ where
     ) -> Result<Arc<DynamicResource<Handle, Desc, Res>>, PoolError> {
         self.state
             .read()
-            .alive_resources
+            .all_resources
             .get(handle)
-            .map(|resource| {
-                resource
-                    .as_ref()
-                    .expect("Alive handles should never be None")
-                    .clone()
-            })
+            .cloned()
             .ok_or_else(|| {
                 if handle.is_null() {
                     PoolError::NullHandle
@@ -160,10 +151,13 @@ where
             re_log::trace!(
                 count = resources.len(),
                 ?desc,
-                "Drained dangling resources from last frame",
+                "Drained dangling resources from last frame:",
             );
             for resource in resources {
-                on_destroy_resource(&resource);
+                let removed_resource = state.all_resources.remove(resource).expect(
+                    "a resource was marked as destroyed last frame that we no longer kept track of",
+                );
+                on_destroy_resource(&removed_resource);
                 self.total_resource_size_in_bytes.fetch_sub(
                     desc.resource_size_in_bytes(),
                     std::sync::atomic::Ordering::Relaxed,
@@ -172,35 +166,33 @@ where
         }
 
         // If the strong count went down to 1, we must be the only ones holding on to handle.
+        // If that's the case, push it to the re-use-next-frame list or discard.
         //
         // thread safety:
         // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
-        state.alive_resources.retain(|_, resource| {
-            let resolved = resource
-                .take()
-                .expect("Alive resources should never be None");
-
-            match Arc::try_unwrap(resolved) {
-                Ok(r) => {
+        state.all_resources.retain(|_, resource| {
+            if Arc::strong_count(resource) == 1 {
+                if resource.creation_desc.allow_reuse() {
                     state
                         .last_frame_deallocated
-                        .entry(r.creation_desc)
+                        .entry(resource.creation_desc.clone())
                         .or_default()
-                        .push(r.inner);
+                        .push(resource.handle);
+                    true
+                } else {
+                    on_destroy_resource(&resource.inner);
                     false
                 }
-                Err(r) => {
-                    *resource = Some(r);
-                    true
-                }
+            } else {
+                true
             }
         });
     }
 
     pub fn num_resources(&self) -> usize {
         let state = self.state.read();
-        state.alive_resources.len() + state.last_frame_deallocated.values().flatten().count()
+        state.all_resources.len() + state.last_frame_deallocated.values().flatten().count()
     }
 
     pub fn total_resource_size_in_bytes(&self) -> u64 {

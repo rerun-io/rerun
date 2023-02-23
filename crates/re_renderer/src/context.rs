@@ -279,8 +279,6 @@ impl RenderContext {
                 pipeline_layouts,
             );
 
-            // Bind group maintenance must come before texture/buffer maintenance since it
-            // registers texture/buffer use
             bind_groups.begin_frame(frame_index, textures, buffers, samplers);
 
             textures.begin_frame(frame_index);
