@@ -103,7 +103,9 @@ impl Session {
         Self {
             enabled,
 
-            recording_source: RecordingSource::RustSdk(env!("CARGO_PKG_RUST_VERSION").into()),
+            recording_source: RecordingSource::RustSdk {
+                rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
+            },
 
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
@@ -399,11 +401,13 @@ impl Session {
             RecordingSource::PythonSdk(python_version) => {
                 re_viewer::AppEnvironment::PythonSdk(python_version.clone())
             }
-            RecordingSource::RustSdk(rust_version) => {
-                re_viewer::AppEnvironment::RustSdk(rust_version.clone())
-            }
+            RecordingSource::RustSdk { rust_version } => re_viewer::AppEnvironment::RustSdk {
+                rust_version: rust_version.clone(),
+            },
             RecordingSource::Unknown | RecordingSource::Other(_) => {
-                re_viewer::AppEnvironment::RustSdk("unknown".into())
+                re_viewer::AppEnvironment::RustSdk {
+                    rust_version: "unknown".into(),
+                }
             }
         }
     }

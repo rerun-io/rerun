@@ -69,7 +69,7 @@ impl ViewerAnalytics {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
-            AppEnvironment::RustSdk(_) => "rust_sdk",
+            AppEnvironment::RustSdk { rust_version: _ } => "rust_sdk",
             AppEnvironment::RerunCli => "rerun_cli",
             AppEnvironment::Web => "web",
         };
@@ -91,8 +91,8 @@ impl ViewerAnalytics {
             //
             // The Python/Rust versions appearing in user profiles always apply to the host
             // environment, _not_ the environment in which the data logging is taking place!
-            if let AppEnvironment::RustSdk(version) = &app_env {
-                event = event.with_prop("rust_version".into(), version.clone());
+            if let AppEnvironment::RustSdk { rust_version } = &app_env {
+                event = event.with_prop("rust_version".into(), rust_version.clone());
             } else {
                 event = event.with_prop(
                     "rust_version".into(),
@@ -143,7 +143,7 @@ impl ViewerAnalytics {
             let recording_source = match &rec_info.recording_source {
                 RecordingSource::Unknown => "unknown".to_owned(),
                 RecordingSource::PythonSdk(_version) => "python_sdk".to_owned(),
-                RecordingSource::RustSdk(_version) => "rust_sdk".to_owned(),
+                RecordingSource::RustSdk { rust_version: _ } => "rust_sdk".to_owned(),
                 RecordingSource::Other(other) => other.clone(),
             };
 
@@ -152,8 +152,8 @@ impl ViewerAnalytics {
             //
             // The Python/Rust versions appearing in events always apply to the recording
             // environment, _not_ the environment in which the viewer is running!
-            if let RecordingSource::RustSdk(version) = &rec_info.recording_source {
-                self.register("rust_version", version.to_string());
+            if let RecordingSource::RustSdk { rust_version } = &rec_info.recording_source {
+                self.register("rust_version", rust_version.to_string());
                 self.deregister("python_version"); // can't be both!
             }
             if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {

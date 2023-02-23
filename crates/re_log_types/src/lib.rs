@@ -253,7 +253,9 @@ pub enum RecordingSource {
     PythonSdk(PythonVersion),
 
     /// The official Rerun Rust Logging SDK
-    RustSdk(String),
+    RustSdk {
+        rust_version: String,
+    },
 
     /// Perhaps from some manual data ingestion?
     Other(String),
@@ -264,7 +266,7 @@ impl std::fmt::Display for RecordingSource {
         match self {
             Self::Unknown => "Unknown".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk(version) => write!(f, "Rust {version} SDK"),
+            Self::RustSdk { rust_version } => write!(f, "Rust {rust_version} SDK"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
