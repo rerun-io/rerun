@@ -138,7 +138,11 @@ impl CallSource {
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
-pub async fn run<I, T>(call_source: CallSource, args: I) -> anyhow::Result<u8>
+pub async fn run<I, T>(
+    build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    args: I,
+) -> anyhow::Result<u8>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
@@ -158,7 +162,7 @@ where
             _ => Ok(()),
         }
     } else {
-        run_impl(call_source, args).await
+        run_impl(build_info, call_source, args).await
     };
 
     match res {
@@ -195,7 +199,11 @@ fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliEr
     }
 }
 
-async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
+async fn run_impl(
+    build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    args: Args,
+) -> anyhow::Result<()> {
     crate::crash_handler::install_crash_handlers();
 
     let mut profiler = re_viewer::Profiler::default();
@@ -219,6 +227,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
         } else {
             // We are connecting to a server at a websocket address:
             return connect_to_ws_url(
+                build_info,
                 &args,
                 call_source.app_env(),
                 startup_options,
@@ -272,6 +281,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
+                build_info,
                 call_source.app_env(),
                 startup_options,
                 re_ui,
@@ -286,6 +296,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
 }
 
 async fn connect_to_ws_url(
+    build_info: re_build_info::BuildInfo,
     args: &Args,
     app_env: re_viewer::AppEnvironment,
     startup_options: re_viewer::StartupOptions,
@@ -302,6 +313,7 @@ async fn connect_to_ws_url(
         // By using RemoteViewerApp we let the user change the server they are connected to.
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let mut app = re_viewer::RemoteViewerApp::new(
+                build_info,
                 app_env,
                 startup_options,
                 re_ui,

@@ -52,6 +52,7 @@ web = [
 ]
 
 [dependencies]
+re_build_info.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
@@ -86,3 +87,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
 backtrace = "0.3"
 libc = "0.2"
+
+
+[build-dependencies]
+re_build_build_info.workspace = true

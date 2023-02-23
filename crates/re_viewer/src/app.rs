@@ -95,6 +95,7 @@ pub struct App {
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
+        build_info: re_build_info::BuildInfo,
         app_env: crate::AppEnvironment,
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
@@ -124,7 +125,7 @@ impl App {
             .unwrap_or_default();
 
         let mut analytics = ViewerAnalytics::new();
-        analytics.on_viewer_started(app_env);
+        analytics.on_viewer_started(&build_info, app_env);
 
         Self {
             startup_options,

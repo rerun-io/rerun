@@ -18,6 +18,7 @@ all-features = true
 
 [dependencies]
 # Internal dependencies:
+re_build_info.workspace = true
 re_log.workspace = true
 
 # External dependencies:
@@ -45,5 +46,4 @@ tracing-subscriber = "0.3"
 
 
 [build-dependencies]
-anyhow.workspace = true
-glob = "0.3"
+re_build_build_info.workspace = true

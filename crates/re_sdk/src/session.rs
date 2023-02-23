@@ -422,7 +422,12 @@ impl Session {
 
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(self.app_env(), startup_options, log_messages)
+        re_viewer::run_native_viewer_with_messages(
+            re_build_info::build_info!(),
+            self.app_env(),
+            startup_options,
+            log_messages,
+        )
     }
 
     /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
@@ -466,6 +471,7 @@ impl Session {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let startup_options = re_viewer::StartupOptions::default();
             Box::new(re_viewer::App::from_receiver(
+                re_build_info::build_info!(),
                 app_env,
                 startup_options,
                 re_ui,

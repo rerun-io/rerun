@@ -33,7 +33,9 @@ extension-module = ["pyo3/extension-module"]
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web = ["rerun/web"]
 
+
 [dependencies]
+re_build_info.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
@@ -66,8 +68,11 @@ rand = { version = "0.8", features = ["std_rng"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 uuid = "1.1"
 
+
 [build-dependencies]
+re_build_build_info.workspace = true
 pyo3-build-config = "0.18.0"
+
 
 [package.metadata.maturin]
 name = "rerun_bindings"

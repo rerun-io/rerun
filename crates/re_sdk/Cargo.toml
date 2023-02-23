@@ -45,6 +45,7 @@ web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
+re_build_info.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
@@ -75,8 +76,13 @@ webbrowser = { version = "0.8", optional = true }
 clap = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
+
 [dev-dependencies]
 arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
+
+
+[build-dependencies]
+re_build_build_info.workspace = true

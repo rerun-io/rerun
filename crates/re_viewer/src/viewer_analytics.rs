@@ -65,7 +65,11 @@ impl ViewerAnalytics {
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
     /// When the viewer is first started
-    pub fn on_viewer_started(&mut self, app_env: crate::AppEnvironment) {
+    pub fn on_viewer_started(
+        &mut self,
+        build_info: &re_build_info::BuildInfo,
+        app_env: crate::AppEnvironment,
+    ) {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
@@ -77,14 +81,10 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
-            let rerun_version = env!("CARGO_PKG_VERSION");
-            let target = re_analytics::TARGET_TRIPLET;
-            let git_hash = re_analytics::GIT_HASH;
-
             let mut event = Event::update("update_metadata".into())
-                .with_prop("rerun_version".into(), rerun_version.to_owned())
-                .with_prop("target".into(), target.to_owned())
-                .with_prop("git_hash".into(), git_hash.to_owned());
+                .with_prop("rerun_version".into(), build_info.version.to_owned())
+                .with_prop("target".into(), build_info.target_triple.to_owned())
+                .with_prop("git_hash".into(), build_info.git_hash.to_owned());
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
             // machine running the viewer, then add it to the permanent user profile.

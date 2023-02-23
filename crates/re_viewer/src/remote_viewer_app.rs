@@ -2,6 +2,7 @@ use crate::App;
 
 /// Connects to a server over `WebSockets`.
 pub struct RemoteViewerApp {
+    build_info: re_build_info::BuildInfo,
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     re_ui: re_ui::ReUi,
@@ -13,6 +14,7 @@ pub struct RemoteViewerApp {
 impl RemoteViewerApp {
     /// url to rerun server
     pub fn new(
+        build_info: re_build_info::BuildInfo,
         app_env: crate::AppEnvironment,
         startup_options: crate::StartupOptions,
         re_ui: re_ui::ReUi,
@@ -20,6 +22,7 @@ impl RemoteViewerApp {
         url: String,
     ) -> Self {
         let mut slf = Self {
+            build_info,
             app_env,
             startup_options,
             re_ui,
@@ -60,6 +63,7 @@ impl RemoteViewerApp {
             .unwrap(); // TODO(emilk): handle error
 
         let app = crate::App::from_receiver(
+            self.build_info,
             self.app_env.clone(),
             self.startup_options,
             self.re_ui.clone(),

@@ -52,17 +52,6 @@ use time::OffsetDateTime;
 
 // ----------------------------------------------------------------------------
 
-/// What target triplet (os, cpu) `re_analytics` was compiled for.
-pub const TARGET_TRIPLET: &str = env!("__RERUN_TARGET_TRIPLE");
-
-/// What git hash of the Rerun repository we were compiled in.
-///
-/// If we are not in the Rerun repository, this will be set
-/// to the `re_analytics` crate version (`CARGO_PKG_VERSION`) instead.
-pub const GIT_HASH: &str = env!("__RERUN_GIT_HASH");
-
-// ----------------------------------------------------------------------------
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
     /// Append a new event to the time series associated with this analytics ID.
