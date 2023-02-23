@@ -139,7 +139,8 @@ impl<E: Example + 'static> Application<E> {
             // Not the best setting in general, but nice for quick & easy performance checking.
             // TODO(andreas): It seems at least on Metal M1 this still does not discard command buffers that come in too fast (even when using `Immediate` explicitly).
             //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
-            present_mode: wgpu::PresentMode::AutoNoVsync,
+            // present_mode: wgpu::PresentMode::AutoNoVsync,
+            present_mode: wgpu::PresentMode::AutoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: [swapchain_format].to_vec(),
         };

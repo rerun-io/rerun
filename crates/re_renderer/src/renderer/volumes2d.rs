@@ -169,7 +169,8 @@ impl Volume2DDrawData {
                     mip_level_count: 1,
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::R32Float, // TODO
+                    // TODO: r16float so we can filter sample?
+                    format: wgpu::TextureFormat::R32Float,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 };
                 let depth_texture = ctx

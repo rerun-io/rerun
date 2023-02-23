@@ -92,6 +92,7 @@ fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
     let delta = abs(ray_in_model.dir_inv.xyz);
 
     let dimensions = Vec3(volume_info.dimensions);
+    let dimensions_inv = 1.0 / dimensions;
 
     var hit_in_voxel = hit_in_model * dimensions;
     hit_in_voxel = clamp(hit_in_voxel, ZERO.xyz, dimensions);
@@ -132,74 +133,65 @@ fn raymarch_volume(ray_in_model: Ray, hit_in_model: Vec3) -> Collision {
 
     let tmax_init = tmax;
 
+    // TODO: handle (proj_kind, depth_kind) match
+    let eye_in_model = Vec3(0.5, 0.5, 1.0); // cam at center of front panel
+    // let eye_in_model = Vec3(hit_in_model.xy, 1.0); // cam at center of front panel
+
     let MAX_ITER = 10000u;
     for (var i = 0u; i < MAX_ITER; i = i + 1u) {
-        // TODO: handle (proj_kind, depth_kind) match
 
-        let cam_npos_in_volume = Vec3(0.5, 0.5, 1.0); // cam at center of front panel
-        // let cam_npos_in_volume = Vec3(hit_in_model.xy, 1.0); // cam at center of front panel
+        var positions = array(
+            floor(pos) + Vec3(0.5, 0.5, 0.0),
+            floor(pos) + Vec3(0.0, 0.0, 0.0),
+            floor(pos) + Vec3(1.0, 0.0, 0.0),
+            floor(pos) + Vec3(0.0, 1.0, 0.0),
+            floor(pos) + Vec3(0.5, 0.5, 1.0),
+            floor(pos) + Vec3(0.0, 0.0, 1.0),
+            floor(pos) + Vec3(1.0, 0.0, 1.0),
+            floor(pos) + Vec3(0.0, 1.0, 1.0),
+//            floor(pos) + Vec3(1.0, 1.0, 0.0),
+//            floor(pos) + Vec3(0.25, 0.25, 0.0),
+//            floor(pos) + Vec3(0.75, 0.0, 0.0),
+//            floor(pos) + Vec3(0.0, 0.75, 0.0),
+//            floor(pos) + Vec3(0.75, 0.75, 0.0),
+        );
 
-        // TODO: should i floor?
-        // let pos_in_model = trunc(pos) / dimensions;
-        let pos_in_model = pos / dimensions;
-        let v = pos_in_model - cam_npos_in_volume;
+        for (var i = 0u; i < 5u; i = i + 1u) {
+            let pos = positions[i];
 
-        let xxx = (cam_npos_in_volume + v * 1.0);
-        let texcoords = Vec2(xxx.x, 1.0 - xxx.y);
-        let depth = textureSample(depth_texture, nearest_sampler, texcoords.xy).x;
+            let pos_in_model = pos * dimensions_inv;
+            let dir_in_model = normalize(pos_in_model - eye_in_model);
 
-        let pos_in_model_backpanel = cam_npos_in_volume + normalize(v) / normalize(v).z;
+            // let sample_in_model = eye_in_model + dir_in_model / dir_in_model.z;
+            // let texcoords = Vec2(1.0 - sample_in_model.x, sample_in_model.y);
+            let sample_in_model = eye_in_model + dir_in_model / abs(dir_in_model.z);
+            let texcoords = Vec2(sample_in_model.x, 1.0 - sample_in_model.y);
 
+            // TODO: a mipmap wouldnt hurt here :/
+            let depth = textureSample(depth_texture, nearest_sampler, texcoords.xy).x;
+            // TODO: why can't I move this :|
+            let albedo = textureSample(albedo_texture, trilinear_sampler, texcoords.xy);
 
-        // TODO: this is wrong! not the correct depth used
-        let texcoords_in_volume = Vec3(pos_in_model_backpanel.xy, 0.0); // back panel
+            let col_in_model = eye_in_model + dir_in_model * depth; //
 
-        // let depth = textureSample(depth_texture, nearest_sampler, texcoords).x;
-        let albedo = textureSample(albedo_texture, nearest_sampler, texcoords.xy);
+            let pos_int = IVec3(pos);
+            let pos_int_guessed = IVec3(col_in_model * (dimensions - 1.0));
 
-        let npos_in_volume = cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * depth; //
-
-        // let pos_next = Vec3(pos.x, pos.y, pos.z + 1.0);
-        // let pos_in_model_next = pos_next / dimensions;
-
-        let pos_int = IVec3(floor(pos) + 0.5);
-        let pos_int_guessed = IVec3(npos_in_volume * (dimensions - 1.0));
-
-        if abs(pos_int.z - pos_int_guessed.z) < 1 {
-        // if abs(pos_int.z - pos_int_guessed.z) < 2 && abs(pos_int.x - pos_int_guessed.x) < 20 {
+        // if true {
+        //    if abs(pos_int.z - pos_int_guessed.z) < 1 {
+            if abs(pos_int.z - pos_int_guessed.z) < 1 && abs(pos_int.x - pos_int_guessed.x) < 2 && abs(pos_int.y - pos_int_guessed.y) < 2 {
         // if pos_int.x == pos_int_guessed.x && pos_int.y == pos_int_guessed.y {
         // if pos_in_model.z <= depth && depth <= pos_in_model_next.z {
         // if pos_in_volume.x == pos.x {
-            let tmax_diff = tmax - tmax_init;
-            let t = tmax_diff.x + tmax_diff.y + tmax_diff.z;
-            var normal = ZERO.xyz;
-            if i > 0u {
-                normal = normalize(pos_prv - pos);
-            }
-
-            if false {
-                return Collision(normal, t, Vec4(Vec3(min(ONE.xyz, pos_in_model_backpanel)), 1.0));
-            }
-            if false {
-                if pos_in_model_backpanel.x > 1.0 {
-                    return Collision(normal, t, Vec4(Vec3(0.0), 1.0));
+                let tmax_diff = tmax - tmax_init;
+                let t = tmax_diff.x + tmax_diff.y + tmax_diff.z;
+                var normal = ZERO.xyz;
+                if i > 0u {
+                    normal = normalize(pos_prv - pos);
                 }
-                if pos_in_model_backpanel.y > 1.0 {
-                    return Collision(normal, t, Vec4(Vec3(0.0), 1.0));
-                }
-                return Collision(normal, t, Vec4(Vec3(pos_in_model_backpanel), 1.0));
-            }
-            if false {
-                return Collision(normal, t, Vec4(Vec3(depth), 1.0));
-            }
-            if false {
-                //return Collision(normal, t, Vec4(Vec3(pos_in_model.z), 1.0));
-                // return Collision(normal, t, Vec4(Vec3(pos_in_model_backpanel.xyz), 1.0));
-                // return Collision(normal, t, Vec4(Vec3(pos_in_model.z), 1.0));
-                // return Collision(normal, t, Vec4(Vec3(abs(pos_int - pos_int_guessed)), 1.0));
-            }
 
-            return Collision(normal, t, albedo);
+                return Collision(normal, t, albedo);
+            }
         }
 
         pos_prv = pos;

@@ -284,7 +284,15 @@ impl framework::Example for RenderVolumetric {
                 + pos.z * volume_dimensions.x * volume_dimensions.y) as usize;
             let idx = idx * 4;
 
-            volume3d_rgba8[idx..idx + 4].copy_from_slice(&albedo.get(x, y));
+            let current = &volume3d_rgba8[idx..idx + 4];
+            let color = albedo.get(x, y);
+            let color = [
+                ((color[0] as f32 + current[0] as f32) * 0.5) as u8,
+                ((color[1] as f32 + current[1] as f32) * 0.5) as u8,
+                ((color[2] as f32 + current[2] as f32) * 0.5) as u8,
+                255,
+            ];
+            volume3d_rgba8[idx..idx + 4].copy_from_slice(&color);
 
             // let d = (z * 255.0) as u8;
             // faked[idx..idx + 4].copy_from_slice(&[d, d, d, 255]);
