@@ -170,7 +170,9 @@ fn test_encode_decode() {
             recording_id: crate::RecordingId::random(),
             is_official_example: true,
             started: Time::now(),
-            recording_source: crate::RecordingSource::RustSdk,
+            recording_source: crate::RecordingSource::RustSdk {
+                rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
+            },
         },
     })];
 
