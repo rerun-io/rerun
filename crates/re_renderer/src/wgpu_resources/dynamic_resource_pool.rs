@@ -340,8 +340,6 @@ mod tests {
         }
     }
 
-    // TODO: Add test for resources without re-use
-
     fn allocate_resources(
         descs: &[u32],
         pool: &mut DynamicResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>,
