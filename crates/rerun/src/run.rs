@@ -122,7 +122,7 @@ impl CallSource {
 
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match self {
-            CallSource::Cli => re_viewer::AppEnvironment::RerunCli{
+            CallSource::Cli => re_viewer::AppEnvironment::RerunCli {
                 rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
             },
             CallSource::Python(python_version) => {
