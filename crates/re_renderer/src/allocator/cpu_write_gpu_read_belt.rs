@@ -232,7 +232,6 @@ pub struct CpuWriteGpuReadBelt {
 
     /// When closed chunks are mapped again, the map callback sends them here.
     ///
-    /// Behind a mutex, so that our StagingBelt becomes Sync.
     /// Note that we shouldn't use SyncSender since this can block the Sender if a buffer is full,
     /// which means that in a single threaded situation (Web!) we might deadlock.
     sender: mpsc::Sender<Chunk>,
@@ -248,6 +247,9 @@ impl CpuWriteGpuReadBelt {
     /// Also, it has the potential of making memcpy operations faster.
     ///
     /// Align to 4xf32. Should be enough for most usecases!
+    /// Needs to be larger or equal than [`wgpu::MAP_ALIGNMENT`].
+    /// For alignment requirements in `WebGPU` in general, refer to
+    /// [the specification on alignment-class limitations](https://www.w3.org/TR/webgpu/#limit-class-alignment)
     pub const MIN_ALIGNMENT: u64 = 16;
 
     /// Create a cpu-write & gpu-read staging belt.
