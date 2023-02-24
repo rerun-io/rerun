@@ -238,14 +238,12 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
                 return host_web_viewer(rerun_server_ws_url).await;
             } else {
                 #[cfg(feature = "native_viewer")]
-                return connect_to_ws_url(
-                    &args,
+                return native_viewer_connect_to_ws_url(
                     call_source.app_env(),
                     startup_options,
                     profiler,
                     url_or_path.clone(),
-                )
-                .await;
+                );
 
                 #[cfg(not(feature = "native_viewer"))]
                 {
@@ -270,15 +268,8 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
         anyhow::bail!("No url or .rrd path given");
     };
 
-    handle_receiver(call_source, args, rx).await
-}
+    // Now what do we do with the data?
 
-/// What do we do with the data?
-async fn handle_receiver(
-    call_source: CallSource,
-    args: Args,
-    rx: Receiver<LogMsg>,
-) -> anyhow::Result<()> {
     if args.web_viewer {
         #[cfg(feature = "web")]
         {
@@ -320,7 +311,7 @@ async fn handle_receiver(
             app.set_profiler(profiler);
             Box::new(app)
         }))
-        .map_err(Into::info);
+        .map_err(|e| e.into());
 
         #[cfg(not(feature = "native_viewer"))]
         {
@@ -331,12 +322,11 @@ async fn handle_receiver(
 }
 
 #[cfg(feature = "native_viewer")]
-async fn connect_to_ws_url(
-    args: &Args,
+fn native_viewer_connect_to_ws_url(
     app_env: re_viewer::AppEnvironment,
     startup_options: re_viewer::StartupOptions,
     profiler: re_viewer::Profiler,
-    mut rerun_server_ws_url: String,
+    rerun_server_ws_url: String,
 ) -> anyhow::Result<()> {
     // By using RemoteViewerApp we let the user change the server they are connected to.
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {

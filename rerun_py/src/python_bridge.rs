@@ -118,7 +118,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
 
-    #[cfg(feature = "re_viewer")]
+    #[cfg(feature = "native_viewer")]
     {
         m.add_function(wrap_pyfunction!(disconnect, m)?)?;
         m.add_function(wrap_pyfunction!(show, m)?)?;
@@ -329,7 +329,7 @@ fn set_enabled(enabled: bool) {
 ///
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
-#[cfg(feature = "re_viewer")]
+#[cfg(feature = "native_viewer")]
 #[pyfunction]
 fn disconnect() {
     global_session().disconnect();
@@ -341,7 +341,7 @@ fn disconnect() {
 /// Calling this function more than once is undefined behavior.
 /// We will try to fix this in the future.
 /// Blocked on <https://github.com/emilk/egui/issues/1918>.
-#[cfg(feature = "re_viewer")]
+#[cfg(feature = "native_viewer")]
 #[pyfunction]
 fn show() -> PyResult<()> {
     let mut session = global_session();
