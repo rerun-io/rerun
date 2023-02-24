@@ -1,5 +1,11 @@
-use re_data_store::{query_transform, EntityPath, EntityProperties};
-use re_log_types::TimeType;
+use re_arrow_store::LatestAtQuery;
+use re_data_store::{log_db::EntityDb, query_transform, EntityPath, EntityProperties};
+use re_log_types::{
+    component_types::{Tensor, TensorDataMeaning, TensorTrait},
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
+    msg_bundle::Component,
+    TimeType,
+};
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
@@ -427,6 +433,91 @@ fn entity_props_ui(
                         {
                             entity_props.set_pinhole_image_plane_distance(distance);
                         }
+                        ui.end_row();
+                    }
+                }
+            }
+
+            pub fn query_tensor(
+                entity_db: &EntityDb,
+                entity_path: &EntityPath,
+                query: &LatestAtQuery,
+            ) -> Option<Tensor> {
+                crate::profile_function!();
+
+                let data_store = &entity_db.data_store;
+
+                let components = [Tensor::name()];
+
+                let row_indices =
+                    data_store.latest_at(query, entity_path, Tensor::name(), &components)?;
+
+                let results = data_store.get(&components, &row_indices);
+                let arr = results.get(0)?.as_ref()?.as_ref();
+
+                let mut iter = arrow_array_deserialize_iterator::<Tensor>(arr).ok()?;
+
+                let transform = iter.next();
+
+                if iter.next().is_some() {
+                    re_log::warn_once!("Unexpected batch for Tensor at: {}", entity_path);
+                }
+
+                transform
+            }
+
+            if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
+                if let Some(entity_path) = entity_path {
+                    let query = ctx.current_query();
+                    let tensor = query_tensor(&ctx.log_db.entity_db, entity_path, &query);
+                    if tensor.map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
+                        if ui
+                            .checkbox(&mut entity_props.depth_orthographic, "Depth orthographic")
+                            .clicked()
+                        {
+                            eprintln!("hello {}", entity_props.depth_orthographic);
+                        }
+                        ui.end_row();
+
+                        ui.checkbox(&mut entity_props.depth_plane, "Depth from camera plane");
+                        ui.end_row();
+
+                        ui.label("Albedo texture");
+
+                        let current = entity_props.depth_albedo_texture();
+                        let mut combo = egui::ComboBox::from_id_source("depth_albedo_tex");
+                        if let Some(current) = current.as_ref() {
+                            combo = combo.selected_text(current.to_string());
+                        } else {
+                            combo = combo.selected_text("huh".to_string());
+                        }
+                        combo.show_ui(ui, |ui| {
+                            ui.style_mut().wrap = Some(false);
+                            ui.set_min_width(64.0);
+
+                            ctx.log_db
+                                .entity_db
+                                .tree
+                                .visit_children_recursively(&mut |ent_path| {
+                                    let Some(tensor) =
+                                    query_tensor(&ctx.log_db.entity_db, entity_path, &query) else {
+                                    return;
+                                };
+                                    if tensor.is_shaped_like_an_image() {
+                                        if ui
+                                            .selectable_label(
+                                                current.as_ref() == Some(ent_path),
+                                                ent_path.to_string(),
+                                            )
+                                            .clicked()
+                                        {
+                                            entity_props.set_depth_albedo_texture(ent_path.clone());
+                                        }
+                                    }
+                                });
+                        });
+                        // ctx.entity_path_button(ui, space_view_id, entity_path)
+                        // TODO
                         ui.end_row();
                     }
                 }

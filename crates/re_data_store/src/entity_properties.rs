@@ -39,6 +39,9 @@ pub struct EntityProperties {
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
     pinhole_image_plane_distance: Option<ordered_float::NotNan<f32>>,
+    depth_albedo_texture: Option<EntityPath>,
+    pub depth_orthographic: bool,
+    pub depth_plane: bool,
 }
 
 impl EntityProperties {
@@ -64,6 +67,16 @@ impl EntityProperties {
         self.pinhole_image_plane_distance = ordered_float::NotNan::new(distance).ok();
     }
 
+    // TODO
+    pub fn depth_albedo_texture(&self) -> Option<EntityPath> {
+        self.depth_albedo_texture.clone()
+    }
+
+    /// see `depth_albedo_texture()`
+    pub fn set_depth_albedo_texture(&mut self, entity_path: EntityPath) {
+        self.depth_albedo_texture = entity_path.into();
+    }
+
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
@@ -73,6 +86,13 @@ impl EntityProperties {
             pinhole_image_plane_distance: child
                 .pinhole_image_plane_distance
                 .or(self.pinhole_image_plane_distance),
+            depth_albedo_texture: child
+                .depth_albedo_texture
+                .as_ref()
+                .cloned()
+                .or(self.depth_albedo_texture.as_ref().cloned()),
+            depth_orthographic: self.depth_orthographic || child.depth_orthographic,
+            depth_plane: self.depth_plane || child.depth_plane,
         }
     }
 }
@@ -84,6 +104,9 @@ impl Default for EntityProperties {
             visible_history: ExtraQueryHistory::default(),
             interactive: true,
             pinhole_image_plane_distance: None,
+            depth_albedo_texture: None,
+            depth_orthographic: false,
+            depth_plane: false,
         }
     }
 }

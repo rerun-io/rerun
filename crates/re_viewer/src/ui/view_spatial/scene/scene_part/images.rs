@@ -4,9 +4,11 @@ use egui::NumExt;
 use glam::{Vec3, Vec3Swizzles};
 use itertools::Itertools;
 
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_arrow_store::LatestAtQuery;
+use re_data_store::{log_db::EntityDb, EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorDataMeaning, TensorTrait},
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     msg_bundle::Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
@@ -188,6 +190,40 @@ impl<'a> DepthTexture<'a> {
     }
 }
 
+struct AlbedoTexture<'a> {
+    dimensions: glam::UVec2,
+    tensor: &'a Tensor,
+}
+impl<'a> AlbedoTexture<'a> {
+    pub fn from_tensor(tensor: &'a Tensor) -> Self {
+        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
+        let dimensions = glam::UVec2::new(w as _, h as _);
+
+        Self { dimensions, tensor }
+    }
+
+    pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
+        let idx = (x + y * self.dimensions.x) as usize * 3;
+        // TODO: rgb? rgba? check shape
+        match &self.tensor.data {
+            re_log_types::component_types::TensorData::U8(data) => {
+                let slice = data.as_slice();
+                [slice[idx], slice[idx + 1], slice[idx + 2], 255]
+            }
+            re_log_types::component_types::TensorData::F32(data) => {
+                let slice = data.as_slice();
+                [
+                    (slice[idx] * 255.0) as u8,
+                    (slice[idx + 1] * 255.0) as u8,
+                    (slice[idx + 2] * 255.0) as u8,
+                    255,
+                ]
+            }
+            _ => todo!(),
+        }
+    }
+}
+
 impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
@@ -211,6 +247,8 @@ impl ImagesPart {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());
                 }
+
+                // TODO: we actually can build perfect picking for this.
 
                 let use_2d = false;
 
@@ -291,6 +329,37 @@ impl ImagesPart {
                 if !use_2d && tensor.meaning == TensorDataMeaning::Depth {
                     let depth = DepthTexture::from_tensor(&tensor);
 
+                    pub fn query_tensor(
+                        entity_db: &EntityDb,
+                        entity_path: &EntityPath,
+                        query: &LatestAtQuery,
+                    ) -> Option<Tensor> {
+                        crate::profile_function!();
+                        let data_store = &entity_db.data_store;
+                        let components = [Tensor::name()];
+                        let row_indices = data_store.latest_at(
+                            query,
+                            entity_path,
+                            Tensor::name(),
+                            &components,
+                        )?;
+                        let results = data_store.get(&components, &row_indices);
+                        let arr = results.get(0)?.as_ref()?.as_ref();
+                        let mut iter = arrow_array_deserialize_iterator::<Tensor>(arr).ok()?;
+                        let transform = iter.next();
+                        if iter.next().is_some() {
+                            re_log::warn_once!("Unexpected batch for Tensor at: {}", entity_path);
+                        }
+                        transform
+                    }
+
+                    let albedo = properties.depth_albedo_texture().and_then(|ent_path| {
+                        query_tensor(&ctx.log_db.entity_db, &ent_path, &ctx.current_query())
+                    });
+                    let albedo = albedo
+                        .as_ref()
+                        .map(|tensor| AlbedoTexture::from_tensor(tensor));
+
                     let mut world_from_obj = world_from_obj;
                     world_from_obj.y_axis *= -1.0; // TODO
                     world_from_obj.z_axis *= -1.0; // TODO
@@ -304,10 +373,9 @@ impl ImagesPart {
                         world_from_obj.transform_vector3(glam::Vec3::Y * h).y,
                         plane_distance,
                     );
-                    dbg!(volume_size_in_world);
 
                     // let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 10.0;
-                    let volume_dimensions = glam::UVec3::new(640, 640, 640) / 4;
+                    let volume_dimensions = glam::UVec3::new(640, 640, 640) / 3;
 
                     #[derive(Debug, Clone, Copy)]
                     enum ProjectionKind {
@@ -322,8 +390,16 @@ impl ImagesPart {
                         CameraPosition,
                     }
 
-                    let depth_kind = DepthKind::CameraPlane;
-                    let projection_kind = ProjectionKind::Perspective;
+                    let depth_kind = if properties.depth_plane {
+                        DepthKind::CameraPlane
+                    } else {
+                        DepthKind::CameraPosition
+                    };
+                    let projection_kind = if properties.depth_orthographic {
+                        ProjectionKind::Orthographic
+                    } else {
+                        ProjectionKind::Perspective
+                    };
 
                     let mut volume3d_rgba8 = vec![
                         0u8;
@@ -375,17 +451,24 @@ impl ImagesPart {
                         let idx = idx * 4;
 
                         let current = &volume3d_rgba8[idx..idx + 4];
-                        // let color = albedo.get(x, y);
-                        let color = [(z * 255.0) as u8; 4];
-                        let color = [
-                            ((color[0] as f32 + current[0] as f32) * 0.5) as u8,
-                            ((color[1] as f32 + current[1] as f32) * 0.5) as u8,
-                            ((color[2] as f32 + current[2] as f32) * 0.5) as u8,
-                            255,
-                        ];
+                        let color = if let Some(albedo) = albedo.as_ref() {
+                            albedo.get(x, y)
+                        } else {
+                            [(z * 255.0) as u8; 4]
+                        };
+                        let color = if current[0] == 0 && current[1] == 0 && current[2] == 0 {
+                            color
+                        } else {
+                            [
+                                ((color[0] as f32 + current[0] as f32) * 0.5) as u8,
+                                ((color[1] as f32 + current[1] as f32) * 0.5) as u8,
+                                ((color[2] as f32 + current[2] as f32) * 0.5) as u8,
+                                255,
+                            ]
+                        };
                         volume3d_rgba8[idx..idx + 4].copy_from_slice(&color);
                     }
-                    eprintln!("cpu time = {:?}", now.elapsed());
+                    // eprintln!("cpu time = {:?}", now.elapsed());
 
                     {
                         let mut line_batch = scene.primitives.line_strips.batch("bbox");
