@@ -344,23 +344,9 @@ fn disconnect() {
 #[cfg(feature = "native_viewer")]
 #[pyfunction]
 fn show() -> PyResult<()> {
-    let mut session = global_session();
-    if session.is_connected() {
-        return Err(PyRuntimeError::new_err(
-            "Can't show the log messages: Rerun was configured to send the data to a server!",
-        ));
-    }
-
-    let log_messages = session.drain_log_messages_buffer();
-    drop(session);
-
-    if log_messages.is_empty() {
-        re_log::info!("Nothing logged, so nothing to show");
-        Ok(())
-    } else {
-        rerun_sdk::viewer::show(log_messages)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
-    }
+    global_session()
+        .show()
+        .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
 }
 
 #[pyfunction]
