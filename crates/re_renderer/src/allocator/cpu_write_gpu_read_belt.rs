@@ -285,7 +285,7 @@ impl CpuWriteGpuReadBelt {
     pub fn allocate<T: bytemuck::Pod>(
         &mut self,
         device: &wgpu::Device,
-        buffer_pool: &mut GpuBufferPool,
+        buffer_pool: &GpuBufferPool,
         num_elements: usize,
     ) -> CpuWriteGpuReadBuffer<T> {
         // Potentially overestimate alignment with Self::MIN_ALIGNMENT, see Self::MIN_ALIGNMENT doc string.
