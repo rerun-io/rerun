@@ -9,6 +9,16 @@ pub use cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};
 
 use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
 
+struct UniformBufferAlignmentCheck<T> {
+    pub _marker: std::marker::PhantomData<T>,
+}
+impl<T> UniformBufferAlignmentCheck<T> {
+    // TODO: document why
+    const CHECK: () = assert!(
+        std::mem::align_of::<T>() >= 256,
+        "Uniform buffers need to be aligned to 256 bytes. Use `#[repr(C, align(256))]`"
+    );
+}
 /// Utility for fast & efficient creation of uniform buffers from a series of structs.
 ///
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).
@@ -19,6 +29,9 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     label: DebugLabel,
     content: impl ExactSizeIterator<Item = T>,
 ) -> Vec<BindGroupEntry> {
+    #[allow(clippy::let_unit_value)]
+    let _ = UniformBufferAlignmentCheck::<T>::CHECK;
+
     let num_buffers = content.len() as u64;
     let element_size = std::mem::size_of::<T>() as u64;
 
@@ -26,10 +39,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
         element_size > 0,
         "Uniform buffer need to have a non-zero size"
     );
-    assert!(
-        std::mem::align_of::<T>() % 16 == 0,
-        "Uniform buffer size needs to be aligned to 4xf32, i.e. 16 bytes"
-    );
+    assert!(std::mem::align_of::<T>() % 256 == 0);
 
     let buffer = ctx.gpu_resources.buffers.alloc(
         &ctx.device,

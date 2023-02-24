@@ -13,7 +13,7 @@ use smallvec::smallvec;
 ///
 /// Contains information that is constant for a single frame like camera.
 /// (does not contain information that is special to a particular renderer)
-#[repr(C)]
+#[repr(C, align(256))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub(crate) struct FrameUniformBuffer {
     pub view_from_world: wgpu_buffer_types::Mat4x3,
@@ -46,8 +46,7 @@ pub(crate) struct FrameUniformBuffer {
     pub auto_size_lines: f32,
 
     /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    pub depth_offset_factor: f32,
-    pub _padding: glam::Vec3,
+    pub depth_offset_factor: wgpu_buffer_types::F32RowPadded,
 }
 
 pub(crate) struct GlobalBindings {

@@ -400,8 +400,7 @@ impl ViewBuilder {
                 auto_size_points: auto_size_points.0,
                 auto_size_lines: auto_size_lines.0,
 
-                depth_offset_factor,
-                _padding: glam::Vec3::ZERO,
+                depth_offset_factor: depth_offset_factor.into(),
             },
         );
 
