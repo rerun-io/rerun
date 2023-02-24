@@ -756,10 +756,12 @@ impl App {
 
         // Collect dropped files:
         if egui_ctx.input(|i| i.raw.dropped_files.len()) > 2 {
+            /*
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description("Can only load one file at a time")
                 .show();
+            */
         }
         if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
             if let Some(bytes) = &file.bytes {
@@ -1631,10 +1633,12 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
         Err(err) => {
             let msg = format!("Failed loading {path:?}: {}", re_error::format(&err));
             re_log::error!("{msg}");
+            /*
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
                 .show();
+            */
             None
         }
     }
@@ -1651,10 +1655,12 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
         Err(err) => {
             let msg = format!("Failed loading {name:?}: {}", re_error::format(&err));
             re_log::error!("{msg}");
+            /*
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description(&msg)
                 .show();
+            */
             None
         }
     }
