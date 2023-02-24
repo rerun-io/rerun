@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::NumExt;
-use glam::Vec3;
+use glam::{Vec3, Vec3Swizzles};
 use itertools::Itertools;
 
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
@@ -11,7 +11,7 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{Volume2D, Volume2DDrawData},
+    renderer::{Volume2D, Volume2DDrawData, Volume3D},
     LineStripSeriesBuilder, Size,
 };
 
@@ -212,7 +212,7 @@ impl ImagesPart {
                     return Ok(());
                 }
 
-                let use_2d = true;
+                let use_2d = false;
 
                 if use_2d && tensor.meaning == TensorDataMeaning::Depth {
                     let depth = DepthTexture::from_tensor(&tensor);
@@ -283,97 +283,148 @@ impl ImagesPart {
                         }
                     }];
 
-                    scene.primitives.volumes.extend(volume_instances);
+                    scene.primitives.volumes2d.extend(volume_instances);
 
                     break;
                 }
 
-                // if !use_2d && tensor.meaning == TensorDataMeaning::Depth {
-                //     let mut world_from_obj = world_from_obj;
-                //     world_from_obj.y_axis *= -1.0; // TODO
-                //     world_from_obj.z_axis *= -1.0; // TODO
+                if !use_2d && tensor.meaning == TensorDataMeaning::Depth {
+                    let depth = DepthTexture::from_tensor(&tensor);
 
-                //     let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
-                //     eprintln!("rendering volumetric thing! {w}x{h}");
+                    let mut world_from_obj = world_from_obj;
+                    world_from_obj.y_axis *= -1.0; // TODO
+                    world_from_obj.z_axis *= -1.0; // TODO
 
-                //     let depth_dimensions = glam::UVec2::new(w as _, h as _);
-                //     let depth_size = depth_dimensions.as_vec2();
+                    let depth_size = depth.dimensions.as_vec2();
+                    let (w, h) = (depth_size.x, depth_size.y);
 
-                //     let plane_distance = -world_from_obj.w_axis.z;
-                //     let volume_size_in_world = glam::Vec3::new(
-                //         world_from_obj.transform_vector3(glam::Vec3::X * w as f32).x,
-                //         world_from_obj.transform_vector3(glam::Vec3::Y * h as f32).y,
-                //         plane_distance,
-                //     );
-                //     dbg!(volume_size_in_world);
+                    let plane_distance = -world_from_obj.w_axis.z;
+                    let volume_size_in_world = glam::Vec3::new(
+                        world_from_obj.transform_vector3(glam::Vec3::X * w).x,
+                        world_from_obj.transform_vector3(glam::Vec3::Y * h).y,
+                        plane_distance,
+                    );
+                    dbg!(volume_size_in_world);
 
-                //     // let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 10.0;
-                //     let volume_dimensions = glam::UVec3::new(640, 640, 640) / 4;
+                    // let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 10.0;
+                    let volume_dimensions = glam::UVec3::new(640, 640, 640) / 4;
 
-                //     let mut volume3d_rgba8 = vec![
-                //         0u8;
-                //         (volume_dimensions.x * volume_dimensions.y * volume_dimensions.z * 4)
-                //             as usize
-                //     ];
+                    #[derive(Debug, Clone, Copy)]
+                    enum ProjectionKind {
+                        Orthographic,
+                        Perspective,
+                    }
+                    #[derive(Debug, Clone, Copy)]
+                    enum DepthKind {
+                        /// The depth represents the distance between the fragment and the camera plane.
+                        CameraPlane,
+                        /// The depth represents the distance between the fragment and the camera itself.
+                        CameraPosition,
+                    }
 
-                //     let now = std::time::Instant::now();
-                //     for (x, y) in (0..depth_dimensions.y)
-                //         .flat_map(|y| (0..depth_dimensions.x).map(move |x| (x, y)))
-                //     {
-                //         let z = depth.get(x, y); // linear, near=0.0
+                    let depth_kind = DepthKind::CameraPlane;
+                    let projection_kind = ProjectionKind::Perspective;
 
-                //         // Compute texture coordinates in the depth image's space.
-                //         let texcoords = Vec2::new(x as f32, y as f32) / depth_size;
+                    let mut volume3d_rgba8 = vec![
+                        0u8;
+                        (volume_dimensions.x * volume_dimensions.y * volume_dimensions.z * 4)
+                            as usize
+                    ];
 
-                //         // Compute texture coordinates in the volume's back panel space (z=1.0).
-                //         // let texcoords_in_volume = texcoords.extend(1.0);
-                //         let texcoords_in_volume = Vec3::new(texcoords.x, 1.0 - texcoords.y, 0.0);
+                    let now = std::time::Instant::now();
+                    for (x, y) in (0..depth.dimensions.y)
+                        .flat_map(|y| (0..depth.dimensions.x).map(move |x| (x, y)))
+                    {
+                        let z = depth.get(x, y); // linear, near=0.0
 
-                //         let cam_npos_in_volume = match *projection_kind {
-                //             ProjectionKind::Orthographic => texcoords_in_volume.xy().extend(1.0),
-                //             ProjectionKind::Perspective => Vec3::new(0.5, 0.5, 1.0),
-                //         };
+                        // Compute texture coordinates in the depth image's space.
+                        let texcoords = glam::Vec2::new(x as f32, y as f32) / depth_size;
 
-                //         let z = match (*projection_kind, *depth_kind) {
-                //             (ProjectionKind::Orthographic, DepthKind::CameraPlane) => z,
-                //             (ProjectionKind::Orthographic, DepthKind::CameraPosition) => {
-                //                 // TODO: compute planar-based
-                //                 z
-                //             }
-                //             (ProjectionKind::Perspective, DepthKind::CameraPlane) => {
-                //                 // TODO: compute position-based
-                //                 z
-                //             }
-                //             (ProjectionKind::Perspective, DepthKind::CameraPosition) => z,
-                //         };
+                        // Compute texture coordinates in the volume's back panel space (z=1.0).
+                        // let texcoords_in_volume = texcoords.extend(1.0);
+                        let texcoords_in_volume = Vec3::new(texcoords.x, 1.0 - texcoords.y, 0.0);
 
-                //         let npos_in_volume =
-                //             cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * z;
-                //         let pos_in_volume = npos_in_volume * (volume_dimensions.as_vec3() - 1.0);
+                        let cam_npos_in_volume = match projection_kind {
+                            ProjectionKind::Orthographic => texcoords_in_volume.xy().extend(1.0),
+                            ProjectionKind::Perspective => Vec3::new(0.5, 0.5, 1.0),
+                        };
 
-                //         let pos = pos_in_volume.as_uvec3();
+                        let z = match (projection_kind, depth_kind) {
+                            (ProjectionKind::Orthographic, DepthKind::CameraPlane) => z,
+                            (ProjectionKind::Orthographic, DepthKind::CameraPosition) => {
+                                // TODO: compute planar-based
+                                z
+                            }
+                            (ProjectionKind::Perspective, DepthKind::CameraPlane) => {
+                                // TODO: compute position-based
+                                z
+                            }
+                            (ProjectionKind::Perspective, DepthKind::CameraPosition) => z,
+                        };
 
-                //         let idx = (pos.x
-                //             + pos.y * volume_dimensions.x
-                //             + pos.z * volume_dimensions.x * volume_dimensions.y)
-                //             as usize;
-                //         let idx = idx * 4;
+                        let npos_in_volume =
+                            cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * z;
+                        let pos_in_volume = npos_in_volume * (volume_dimensions.as_vec3() - 1.0);
 
-                //         let current = &volume3d_rgba8[idx..idx + 4];
-                //         let color = albedo.get(x, y);
-                //         let color = [
-                //             ((color[0] as f32 + current[0] as f32) * 0.5) as u8,
-                //             ((color[1] as f32 + current[1] as f32) * 0.5) as u8,
-                //             ((color[2] as f32 + current[2] as f32) * 0.5) as u8,
-                //             255,
-                //         ];
-                //         volume3d_rgba8[idx..idx + 4].copy_from_slice(&color);
+                        let pos = pos_in_volume.as_uvec3();
 
-                //         // let d = (z * 255.0) as u8;
-                //         // faked[idx..idx + 4].copy_from_slice(&[d, d, d, 255]);
-                //     }
-                //     eprintln!("cpu time = {:?}", now.elapsed());
-                // }
+                        let idx = (pos.x
+                            + pos.y * volume_dimensions.x
+                            + pos.z * volume_dimensions.x * volume_dimensions.y)
+                            as usize;
+                        let idx = idx * 4;
+
+                        let current = &volume3d_rgba8[idx..idx + 4];
+                        // let color = albedo.get(x, y);
+                        let color = [(z * 255.0) as u8; 4];
+                        let color = [
+                            ((color[0] as f32 + current[0] as f32) * 0.5) as u8,
+                            ((color[1] as f32 + current[1] as f32) * 0.5) as u8,
+                            ((color[2] as f32 + current[2] as f32) * 0.5) as u8,
+                            255,
+                        ];
+                        volume3d_rgba8[idx..idx + 4].copy_from_slice(&color);
+                    }
+                    eprintln!("cpu time = {:?}", now.elapsed());
+
+                    {
+                        let mut line_batch = scene.primitives.line_strips.batch("bbox");
+                        let plane_distance = world_from_obj.w_axis.z;
+                        line_batch.add_box_outline(
+                            glam::Affine3A::from_scale_rotation_translation(
+                                volume_size_in_world,
+                                Default::default(),
+                                glam::Vec3::new(0.0, 0.0, plane_distance * 0.5),
+                            ),
+                        );
+                    }
+
+                    // TODO: go through the new staging belt.
+                    let volume_instances = vec![{
+                        let scale = glam::Mat4::from_scale(volume_size_in_world);
+
+                        let rotation = glam::Mat4::IDENTITY;
+
+                        let translation_center = glam::Mat4::from_translation(
+                            -glam::Vec3::new(0.5, 0.5, 1.0) * volume_size_in_world,
+                        );
+
+                        let world_from_model = rotation * translation_center * scale;
+                        let model_from_world = world_from_model.inverse();
+
+                        Volume3D {
+                            world_from_model,
+                            model_from_world,
+                            size: volume_size_in_world,
+                            dimensions: volume_dimensions,
+                            data: volume3d_rgba8,
+                        }
+                    }];
+
+                    scene.primitives.volumes3d.extend(volume_instances);
+
+                    break;
+                }
 
                 let entity_highlight = highlights.entity_highlight(ent_path.hash());
 

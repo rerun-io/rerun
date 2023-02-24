@@ -2,7 +2,7 @@ use egui::Color32;
 use re_data_store::InstancePathHash;
 use re_renderer::{
     renderer::{
-        MeshInstance, {Volume2D, Volume2DDrawData},
+        MeshInstance, Volume3D, {Volume2D, Volume2DDrawData},
     },
     LineStripSeriesBuilder, PointCloudBuilder,
 };
@@ -28,7 +28,8 @@ pub struct SceneSpatialPrimitives {
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
-    pub volumes: Vec<Volume2D>,
+    pub volumes2d: Vec<Volume2D>,
+    pub volumes3d: Vec<Volume3D>,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -44,7 +45,8 @@ impl SceneSpatialPrimitives {
             line_strips: Default::default(),
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
-            volumes: Default::default(),
+            volumes2d: Default::default(),
+            volumes3d: Default::default(),
         }
     }
 
@@ -62,20 +64,22 @@ impl SceneSpatialPrimitives {
             line_strips,
             points,
             meshes,
-            volumes,
+            volumes2d,
+            volumes3d,
         } = &self;
 
         textured_rectangles.len()
             + line_strips.vertices.len()
             + points.vertices.len()
             + meshes.len()
-            + volumes.len()
+            + volumes2d.len()
+            + volumes3d.len()
     }
 
     pub fn recalculate_bounding_box(&mut self) {
         crate::profile_function!();
 
-        // TODO: volumes
+        // TODO: volumes 2d & 3d
         // TODO: this DEFINITELY should unpack self
 
         self.bounding_box = macaw::BoundingBox::nothing();

@@ -166,7 +166,8 @@ pub fn picking(
         line_strips,
         points,
         meshes,
-        volumes,
+        volumes2d,
+        volumes3d,
     } = primitives;
 
     picking_points(&context, &mut state, points);
