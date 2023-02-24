@@ -114,14 +114,14 @@ use bytemuck::Zeroable;
 use smallvec::smallvec;
 
 use crate::{
-    context::uniform_buffer_allocation_size,
+    allocator::create_and_fill_uniform_buffer_batch,
     include_file,
     size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, ShaderModuleDesc, TextureDesc,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
     },
     Color32, DebugLabel,
 };
@@ -160,10 +160,12 @@ pub mod gpu_data {
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 
     /// Uniform buffer that changes for every batch of line strips.
-    #[repr(C)]
+    #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4],
     }
 }
 
@@ -495,52 +497,29 @@ impl LineDrawData {
         // Process batches
         let mut batches_internal = Vec::with_capacity(batches.len());
         {
-            let allocation_size_per_uniform_buffer =
-                uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
-            let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
-            let uniform_buffers = ctx.gpu_resources.buffers.alloc(
-                &ctx.device,
-                &BufferDesc {
-                    label: "lines batch uniform buffers".into(),
-                    size: combined_buffers_size,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                },
+            let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+                ctx,
+                "lines batch uniform buffers".into(),
+                batches
+                    .iter()
+                    .map(|batch_info| gpu_data::BatchUniformBuffer {
+                        world_from_obj: batch_info.world_from_obj.into(),
+                        end_padding: Default::default(),
+                    }),
             );
 
-            let mut staging_buffer = ctx
-                .queue
-                .write_buffer_with(
-                    &uniform_buffers,
-                    0,
-                    NonZeroU64::new(combined_buffers_size).unwrap(),
-                )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-
             let mut start_vertex_for_next_batch = 0;
-            for (i, batch_info) in batches.iter().enumerate() {
-                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
-                let offset = i * allocation_size_per_uniform_buffer as usize;
+            for (batch_info, uniform_buffer_binding) in
+                batches.iter().zip(uniform_buffer_bindings.into_iter())
+            {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)
                     .min(Self::MAX_NUM_VERTICES as u32);
-                staging_buffer
-                    [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
-                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
-                    }));
-
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &BindGroupDesc {
                         label: batch_info.label.clone(),
-                        entries: smallvec![BindGroupEntry::Buffer {
-                            handle: uniform_buffers.handle,
-                            offset: offset as _,
-                            size: NonZeroU64::new(
-                                std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
-                            ),
-                        }],
+                        entries: smallvec![uniform_buffer_binding],
                         layout: line_renderer.bind_group_layout_batch,
                     },
                     &ctx.gpu_resources.bind_group_layouts,
