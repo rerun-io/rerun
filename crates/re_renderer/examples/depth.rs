@@ -181,7 +181,8 @@ impl framework::Example for RenderVolumetric {
 
         // let depth = DepthTexture::from_file("/tmp/teardown_depthfull.png", Some((640, 640).into()));
         // let albedo = AlbedoTexture::from_file("/tmp/teardown_albedo.png", depth.dimensions.into());
-        let depth = DepthTexture::from_file("/tmp/nyud_depth.pgm", None);
+        let depth =
+            DepthTexture::from_file("/tmp/nyud_depth.pgm", Some(glam::UVec2::new(640, 480)));
         let albedo = AlbedoTexture::from_file("/tmp/nyud_albedo.ppm", depth.dimensions.into());
 
         let depth_kind = DepthKind::CameraPlane;
@@ -231,7 +232,7 @@ impl framework::Example for RenderVolumetric {
         // TODO: Z is arbitrary I guess?
         // TODO: what about the volume size in world space? is this actually arbitrary? I guess it
         //       can be computed in a way that makes sense, somehow..?
-        let volume_size = depth_size.extend(650.0) * 0.2;
+        let volume_size = depth_size.extend(depth_size.x * 0.7) * 0.2;
         // TODO: shouldnt have to be cubic
         let volume_dimensions = UVec3::new(640, 640, 640) / 4;
         // let vol_dimensions =
@@ -243,6 +244,7 @@ impl framework::Example for RenderVolumetric {
                 as usize
         ];
 
+        let now = std::time::Instant::now();
         for (x, y) in
             (0..depth.dimensions.y).flat_map(|y| (0..depth.dimensions.x).map(move |x| (x, y)))
         {
@@ -297,6 +299,7 @@ impl framework::Example for RenderVolumetric {
             // let d = (z * 255.0) as u8;
             // faked[idx..idx + 4].copy_from_slice(&[d, d, d, 255]);
         }
+        eprintln!("cpu time = {:?}", now.elapsed());
 
         // let seconds_since_startup = 0f32;
         let seconds_since_startup = time.seconds_since_startup();
