@@ -1361,7 +1361,7 @@ dependencies = [
  "egui_glow",
  "js-sys",
  "percent-encoding",
- "pollster 0.3.0",
+ "pollster",
  "puffin",
  "raw-window-handle",
  "ron",
@@ -3580,12 +3580,6 @@ dependencies = [
 
 [[package]]
 name = "pollster"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
-
-[[package]]
-name = "pollster"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
@@ -4132,7 +4126,7 @@ dependencies = [
  "ordered-float",
  "parking_lot 0.12.1",
  "pathdiff",
- "pollster 0.3.0",
+ "pollster",
  "puffin",
  "rand",
  "re_error",
@@ -4529,9 +4523,8 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc2583255eadc4e0d816cb7648371cc91e49cbac85b0748b6ab417093bff4040"
+version = "0.11.1"
+source = "git+https://github.com/rerun-io/rfd.git?rev=0eca3c36243bc4f#0eca3c36243bc4f816bb7e074fd7d6fdaaa5b4b7"
 dependencies = [
  "ashpd",
  "block",
@@ -4541,7 +4534,7 @@ dependencies = [
  "objc",
  "objc-foundation",
  "objc_id",
- "pollster 0.2.5",
+ "pollster",
  "raw-window-handle",
  "urlencoding",
  "wasm-bindgen",

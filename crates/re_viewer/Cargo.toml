@@ -95,7 +95,11 @@ nohash-hasher = "0.2"
 ordered-float = { version = "3.2", features = ["serde"] }
 poll-promise = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
-rfd = { version = "0.11", default_features = false, features = ["xdg-portal"] }
+# TODO(jleibs): Update after next release of rfd
+#rfd = { version = "0.11", default_features = false, features = ["xdg-portal"] }
+rfd = { git = "https://github.com/rerun-io/rfd.git", rev = "0eca3c36243bc4f", default_features = false, features = [
+  "xdg-portal",
+] }
 serde = { version = "1", features = ["derive"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.10", features = ["serde"] }
