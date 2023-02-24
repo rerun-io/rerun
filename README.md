@@ -68,9 +68,11 @@ Some shortcomings:
 
 
 ## Business model
-Rerun uses an open core model. Everything in this repository will stay open source and free (as in beer), forever. In the future, Rerun will offer a commercial product that builds on top of the core free project.
+Rerun uses an open-core model. Everything in this repository will stay open source and free (both as in beer and as in freedom).
+In the future, Rerun will offer a commercial product that builds on top of the core free project.
 
-The Rerun open source project targets the needs of individual developers. The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
+The Rerun open source project targets the needs of individual developers.
+The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
 
 
 # Development
