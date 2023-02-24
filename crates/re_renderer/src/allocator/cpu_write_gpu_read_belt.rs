@@ -39,6 +39,7 @@ where
     /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
     fn as_slice(&mut self) -> &mut [T] {
+        // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
         &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.unwritten_element_range.clone()]
     }
 
@@ -47,13 +48,13 @@ where
     /// Panics if the data no longer fits into the buffer.
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) {
-        self.as_slice().copy_from_slice(elements);
+        self.as_slice()[..elements.len()].copy_from_slice(elements);
         self.unwritten_element_range.start += elements.len();
     }
 
     /// Pushes several elements into the buffer.
     ///
-    /// Panics if the data no longer fits into the buffer.
+    /// Extends until either running out of space or elements.
     #[inline]
     pub fn extend(&mut self, elements: impl Iterator<Item = T>) {
         let mut num_elements = 0;

@@ -67,7 +67,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
         &ctx.device,
         &ctx.gpu_resources.buffers,
-        1,
+        num_buffers as _,
     );
     staging_buffer.extend(content);
     staging_buffer.copy_to_buffer(
