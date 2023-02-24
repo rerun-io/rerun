@@ -26,6 +26,27 @@ impl From<f32> for F32RowPadded {
     }
 }
 
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Zeroable, Pod)]
+pub struct U32RowPadded {
+    pub v: u32,
+    pub padding0: u32,
+    pub padding1: u32,
+    pub padding2: u32,
+}
+
+impl From<u32> for U32RowPadded {
+    #[inline]
+    fn from(v: u32) -> Self {
+        U32RowPadded {
+            v,
+            padding0: 0,
+            padding1: 0,
+            padding2: 0,
+        }
+    }
+}
+
 #[repr(C, align(8))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Vec2 {

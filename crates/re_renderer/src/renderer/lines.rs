@@ -299,7 +299,8 @@ impl LineDrawData {
         strips: &[LineStripInfo],
         batches: &[LineBatchInfo],
     ) -> Result<Self, LineDrawDataError> {
-        let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
+        let mut renderers = ctx.renderers.write();
+        let line_renderer = renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,

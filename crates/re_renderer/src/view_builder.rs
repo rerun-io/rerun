@@ -431,8 +431,8 @@ impl ViewBuilder {
 
         self.queued_draws.push(QueuedDraw {
             draw_func: Box::new(move |ctx, pass, draw_data| {
-                let renderer = ctx
-                    .renderers
+                let renderers = ctx.renderers.read();
+                let renderer = renderers
                     .get::<D::Renderer>()
                     .context("failed to retrieve renderer")?;
                 let draw_data = draw_data
@@ -539,10 +539,8 @@ impl ViewBuilder {
 
         pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
-        let tonemapper = ctx
-            .renderers
-            .get::<Compositor>()
-            .context("get compositor")?;
+        let renderers = ctx.renderers.read();
+        let tonemapper = renderers.get::<Compositor>().context("get compositor")?;
         tonemapper
             .draw(&ctx.gpu_resources, pass, &setup.compositor_draw_data)
             .context("composite into main view")

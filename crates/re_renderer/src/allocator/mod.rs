@@ -25,7 +25,7 @@ impl<T> UniformBufferAlignmentCheck<T> {
 ///
 /// TODO(#1383): We could do this on a more complex stack allocator.
 pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
-    ctx: &mut RenderContext,
+    ctx: &RenderContext,
     label: DebugLabel,
     content: impl ExactSizeIterator<Item = T>,
 ) -> Vec<BindGroupEntry> {
@@ -39,7 +39,6 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
         element_size > 0,
         "Uniform buffer need to have a non-zero size"
     );
-    assert!(std::mem::align_of::<T>() % 256 == 0);
 
     let buffer = ctx.gpu_resources.buffers.alloc(
         &ctx.device,
@@ -53,12 +52,15 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
 
     let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
         &ctx.device,
-        &mut ctx.gpu_resources.buffers,
+        &ctx.gpu_resources.buffers,
         1,
     );
     staging_buffer.extend(content);
     staging_buffer.copy_to_buffer(
-        ctx.active_frame.frame_global_command_encoder(&ctx.device),
+        ctx.active_frame
+            .frame_global_command_encoder
+            .lock()
+            .get_or_create(&ctx.device),
         &buffer,
         0,
     );

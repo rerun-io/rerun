@@ -117,6 +117,14 @@ impl RectangleDrawData {
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
 
+        let mut renderers = ctx.renderers.write();
+        let rectangle_renderer = renderers.get_or_create::<_, RectangleRenderer>(
+            &ctx.shared_renderer_data,
+            &mut ctx.gpu_resources,
+            &ctx.device,
+            &mut ctx.resolver,
+        );
+
         if rectangles.is_empty() {
             return Ok(RectangleDrawData {
                 bind_groups: Vec::new(),
@@ -134,13 +142,6 @@ impl RectangleDrawData {
                 multiplicative_tint: rectangle.multiplicative_tint,
                 end_padding: Default::default(),
             }),
-        );
-
-        let rectangle_renderer = ctx.renderers.get_or_create::<_, RectangleRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
         );
 
         let mut bind_groups = Vec::with_capacity(rectangles.len());
