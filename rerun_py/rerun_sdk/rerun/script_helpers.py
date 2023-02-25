@@ -76,7 +76,9 @@ def script_setup(
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
-    elif args.save is None and not args.headless:
+    elif args.save is not None:
+        rr.save(args.save)
+    elif not args.headless:
         rr.spawn()
 
 
@@ -94,5 +96,3 @@ def script_teardown(args: Namespace) -> None:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
         with contextlib.suppress(Exception):
             sleep(100_000)
-    elif args.save is not None:
-        rr.save(args.save)
