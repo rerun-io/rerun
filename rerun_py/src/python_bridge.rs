@@ -118,7 +118,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
 
-    #[cfg(feature = "re_viewer")]
+    #[cfg(feature = "native_viewer")]
     {
         m.add_function(wrap_pyfunction!(disconnect, m)?)?;
         m.add_function(wrap_pyfunction!(show, m)?)?;
@@ -283,13 +283,13 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 fn serve(open_browser: bool) -> PyResult<()> {
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     {
         global_session().serve(open_browser);
         Ok(())
     }
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(not(feature = "web_viewer"))]
     {
         _ = open_browser;
         Err(PyRuntimeError::new_err(
@@ -330,7 +330,7 @@ fn set_enabled(enabled: bool) {
 ///
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
-#[cfg(feature = "re_viewer")]
+#[cfg(feature = "native_viewer")]
 #[pyfunction]
 fn disconnect() {
     global_session().disconnect();
@@ -342,26 +342,12 @@ fn disconnect() {
 /// Calling this function more than once is undefined behavior.
 /// We will try to fix this in the future.
 /// Blocked on <https://github.com/emilk/egui/issues/1918>.
-#[cfg(feature = "re_viewer")]
+#[cfg(feature = "native_viewer")]
 #[pyfunction]
 fn show() -> PyResult<()> {
-    let mut session = global_session();
-    if session.is_connected() {
-        return Err(PyRuntimeError::new_err(
-            "Can't show the log messages: Rerun was configured to send the data to a server!",
-        ));
-    }
-
-    let log_messages = session.drain_log_messages_buffer();
-    drop(session);
-
-    if log_messages.is_empty() {
-        re_log::info!("Nothing logged, so nothing to show");
-        Ok(())
-    } else {
-        rerun_sdk::viewer::show(log_messages)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
-    }
+    global_session()
+        .show()
+        .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
 }
 
 #[pyfunction]

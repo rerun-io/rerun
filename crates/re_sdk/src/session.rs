@@ -16,7 +16,7 @@ pub struct Session {
 
     recording_source: RecordingSource,
 
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     tokio_rt: tokio::runtime::Runtime,
 
     sender: Sender,
@@ -107,7 +107,7 @@ impl Session {
                 rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
             },
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
             sender: Default::default(),
@@ -194,10 +194,10 @@ impl Session {
                 self.sender = Sender::Remote(client);
             }
 
-            #[cfg(feature = "re_viewer")]
+            #[cfg(feature = "native_viewer")]
             Sender::NativeViewer(_) => {}
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             Sender::WebViewer(web_server, _) => {
                 re_log::info!("Shutting down web server.");
                 web_server.abort();
@@ -210,7 +210,7 @@ impl Session {
     ///
     /// If the `open_browser` argument is set, your default browser
     /// will be opened to show the viewer.
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     pub fn serve(&mut self, open_browser: bool) {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to serve() ignored");
@@ -249,7 +249,7 @@ impl Session {
     }
 
     /// Disconnect the streaming TCP connection, if any.
-    #[cfg(feature = "re_viewer")]
+    #[cfg(feature = "native_viewer")]
     #[allow(unused)] // only used with "re_viewer" feature
     pub fn disconnect(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
@@ -291,10 +291,10 @@ impl Session {
 
             Sender::Buffered(log_messages) => std::mem::take(log_messages),
 
-            #[cfg(feature = "re_viewer")]
+            #[cfg(feature = "native_viewer")]
             Sender::NativeViewer(_) => vec![],
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             Sender::WebViewer(_, _) => vec![],
         }
     }
@@ -394,7 +394,7 @@ impl Session {
     }
 }
 
-#[cfg(feature = "re_viewer")]
+#[cfg(feature = "native_viewer")]
 impl Session {
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match &self.recording_source {
@@ -485,14 +485,14 @@ impl Session {
 enum Sender {
     Remote(re_sdk_comms::Client),
 
-    #[allow(unused)] // only used with `#[cfg(feature = "re_viewer")]`
+    #[allow(unused)] // only used with `#[cfg(feature = "native_viewer")]`
     Buffered(Vec<LogMsg>),
 
-    #[cfg(feature = "re_viewer")]
+    #[cfg(feature = "native_viewer")]
     NativeViewer(re_smart_channel::Sender<LogMsg>),
 
     /// Send it to the web viewer over WebSockets
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     WebViewer(
         tokio::task::JoinHandle<()>,
         re_smart_channel::Sender<LogMsg>,
@@ -511,14 +511,14 @@ impl Sender {
             Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
 
-            #[cfg(feature = "re_viewer")]
+            #[cfg(feature = "native_viewer")]
             Self::NativeViewer(sender) => {
                 if let Err(err) = sender.send(msg) {
                     re_log::error_once!("Failed to send log message to viewer: {err}");
                 }
             }
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             Self::WebViewer(_, sender) => {
                 if let Err(err) = sender.send(msg) {
                     re_log::error_once!("Failed to send log message to web server: {err}");

@@ -17,7 +17,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "glam", "image", "re_viewer"]
+default = ["demo", "glam", "image", "native_viewer"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["re_web_server?/analytics", "re_viewer?/analytics"]
@@ -31,8 +31,8 @@ glam = ["re_log_types/glam"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
 
-## Support for the viewer.
-re_viewer = ["image", "dep:re_viewer"]
+## Support for the native viewer.
+native_viewer = ["image", "dep:re_viewer"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -41,7 +41,7 @@ re_viewer = ["image", "dep:re_viewer"]
 ##
 ## You also need to install some additional tools, which you can do by running
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
+web_viewer = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]

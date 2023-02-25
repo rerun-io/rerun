@@ -19,10 +19,10 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["analytics", "glam", "image", "server", "sdk"]
+default = ["analytics", "glam", "image", "native_viewer", "server", "sdk"]
 
 ## Enable telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "re_viewer/analytics", "re_sdk?/analytics"]
+analytics = ["dep:re_analytics", "re_sdk?/analytics"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 ## Only relevant if feature `sdk` is enabled.
@@ -31,22 +31,26 @@ glam = ["re_sdk?/glam"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
 
-## Embed the Rerun SDK and re-export all of its public symbols.
-sdk = ["dep:re_sdk", "re_sdk?/re_viewer"]
+## Support a native viewer
+native_viewer = ["re_sdk?/native_viewer"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
 
+## Embed the Rerun SDK and re-export all of its public symbols.
+sdk = ["dep:re_sdk"]
+
 ## Support serving a web viewer over HTTP.
 ##
-## Enabling this adds quite a bit to the compile time and binary size,
-## since it requires compiling and bundling the viewer as wasm.
-##
-## You also need to install some additional tools, which you can do by running
-## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web = [
+## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
+# When building from source (in the repository), this feature adds quite a bit
+# to the compile time since it requires compiling and bundling the viewer as wasm.
+#
+# You also need to install some additional tools, which you can do by running
+# [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
+web_viewer = [
   "re_ws_comms/server",
-  "re_sdk?/web",
+  "re_sdk?/web_viewer",
   "dep:re_web_server",
   "dep:webbrowser",
 ]
@@ -55,11 +59,10 @@ web = [
 re_build_info.workspace = true
 re_error.workspace = true
 re_format.workspace = true
-re_log_types.workspace = true
+re_log_types = { workspace = true, features = ["load"] }
 re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
-re_viewer = { workspace = true, default-features = false }
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true

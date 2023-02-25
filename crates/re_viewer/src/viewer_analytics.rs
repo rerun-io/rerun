@@ -77,7 +77,7 @@ impl ViewerAnalytics {
             AppEnvironment::PythonSdk(_) => "python_sdk",
             AppEnvironment::RustSdk { rust_version: _ } => "rust_sdk",
             AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
-            AppEnvironment::Web => "web",
+            AppEnvironment::Web => "web_viewer",
         };
         self.register("app_env", app_env_str.to_owned());
 

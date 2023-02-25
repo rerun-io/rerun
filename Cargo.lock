@@ -4476,7 +4476,6 @@ dependencies = [
  "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
- "re_viewer",
  "re_web_server",
  "re_ws_comms",
  "tokio",

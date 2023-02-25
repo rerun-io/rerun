@@ -12,10 +12,10 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module"]
+default = ["extension-module", "native_viewer"]
 
 ## The features we turn on when building the PyPi package.
-pypi = ["extension-module", "web"]
+pypi = ["extension-module", "native_viewer", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -24,6 +24,9 @@ pypi = ["extension-module", "web"]
 ## * <https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
 
+## Support a native viewer
+native_viewer = ["rerun/native_viewer"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
@@ -31,7 +34,7 @@ extension-module = ["pyo3/extension-module"]
 ##
 ## You also need to install some additional tools, which you can do by running
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web = ["rerun/web"]
+web_viewer = ["rerun/web_viewer"]
 
 
 [dependencies]
