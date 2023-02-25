@@ -34,6 +34,7 @@ deny = [
   { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
   { name = "openssl" },     # We prefer rustls
+  { name = "reqwest" },     # We prefer ureq - less dependencies
 ]
 
 skip = [

@@ -25,9 +25,8 @@ pub enum PipelineError {
 
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    Http(#[from] reqwest::Error),
+    // #[error(transparent)]
+    // Http(#[from] ureq::Error),
 }
 
 /// An eventual, at-least-once(-ish) event pipeline, backed by a write-ahead log on the local disk.
