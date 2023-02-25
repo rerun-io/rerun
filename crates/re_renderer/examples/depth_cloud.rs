@@ -84,10 +84,6 @@ impl framework::Example for RenderDepthClouds {
         time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
-        // volume_rgba8: Vec<u8>,
-        // volume_size: Vec3,
-        // volume_dimensions: UVec3,
-
         // TODO: comparison!
 
         let Self {
@@ -106,6 +102,14 @@ impl framework::Example for RenderDepthClouds {
                 seconds_since_startup.cos(),
             ) * 100.0;
         }
+
+        let focal_length = depth.dimensions.x as f32 * 0.7;
+        let uv_center = depth.dimensions.as_vec2() * 0.5;
+        let pinhole = glam::Mat3::from_cols(
+            Vec3::new(focal_length, 0.0, uv_center.x),
+            Vec3::new(0.0, focal_length, uv_center.y),
+            Vec3::new(0.0, 0.0, 1.0),
+        );
 
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
@@ -147,8 +151,7 @@ impl framework::Example for RenderDepthClouds {
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &[DepthCloud {
-                world_from_model,
-                model_from_world,
+                intrinsics: pinhole,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
             }],

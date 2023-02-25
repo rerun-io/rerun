@@ -34,8 +34,7 @@ mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
-        pub world_from_model: glam::Mat4,
-        pub model_from_world: glam::Mat4,
+        pub intrinsics: glam::Mat3,
     }
 }
 
@@ -57,8 +56,7 @@ impl DepthCloudDepthData {
 }
 
 pub struct DepthCloud {
-    pub world_from_model: glam::Mat4,
-    pub model_from_world: glam::Mat4,
+    pub intrinsics: glam::Mat3,
 
     pub depth_dimensions: glam::UVec2,
     pub depth_data: DepthCloudDepthData,
@@ -67,8 +65,7 @@ pub struct DepthCloud {
 impl Default for DepthCloud {
     fn default() -> Self {
         Self {
-            world_from_model: glam::Mat4::IDENTITY,
-            model_from_world: glam::Mat4::IDENTITY,
+            intrinsics: glam::Mat3::IDENTITY,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::F32(Vec::new()),
         }
@@ -150,8 +147,7 @@ impl DepthCloudDrawData {
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::DepthCloudInfoUBO>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::DepthCloudInfoUBO {
-                        world_from_model: depth_cloud.world_from_model,
-                        model_from_world: depth_cloud.model_from_world,
+                        intrinsics: depth_cloud.intrinsics,
                     }));
             }
         }

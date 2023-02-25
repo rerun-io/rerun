@@ -13,7 +13,9 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{Volume2D, Volume2DDrawData, Volume3D},
+    renderer::{
+        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, Volume2D, Volume2DDrawData, Volume3D,
+    },
     LineStripSeriesBuilder, Size,
 };
 
@@ -127,103 +129,6 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
 
 pub(crate) struct ImagesPart;
 
-struct DepthTexture<'a> {
-    dimensions: glam::UVec2,
-    tensor: &'a Tensor,
-}
-impl<'a> DepthTexture<'a> {
-    pub fn from_tensor(tensor: &'a Tensor) -> Self {
-        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
-        let dimensions = glam::UVec2::new(w as _, h as _);
-
-        Self { dimensions, tensor }
-    }
-
-    pub fn get(&self, x: u32, y: u32) -> f32 {
-        // TODO: is the depth texture..:
-        // - linear?
-        // - inversed?
-        // - distance from camera plane or distance from camera?
-
-        // TODO: that kind of normalization should be done in first pass
-
-        // teardown
-        // let (is_linear, n, f) = (false, 0.2, 500.0);
-        // let is_reversed = false;
-
-        // nyud
-        let (is_linear, n, f) = (true, 0.2, 500.0);
-        let is_reversed = false;
-
-        // TODO: how does one do that with an infinite plane tho?
-        fn depth_to_view_depth(n: f32, f: f32, z: f32) -> f32 {
-            n * f / (f - z * (f - n))
-        }
-        fn view_depth_to_capped_linear(n: f32, f: f32, vz: f32) -> f32 {
-            let vz = f32::min(vz, f);
-            (vz - n) / (f - n)
-        }
-        fn linearize_depth(n: f32, f: f32, z: f32) -> f32 {
-            view_depth_to_capped_linear(n, f, depth_to_view_depth(n, f, z))
-        }
-
-        let mut d = match &self.tensor.data {
-            re_log_types::component_types::TensorData::U16(data) => {
-                data.as_slice()[(x + y * self.dimensions.x) as usize] as f32 / u16::MAX as f32
-            }
-            re_log_types::component_types::TensorData::F32(data) => {
-                data.as_slice()[(x + y * self.dimensions.x) as usize]
-            }
-            _ => todo!(),
-        };
-
-        if is_reversed {
-            d = 1.0 - d;
-        }
-        if !is_linear {
-            // d = linearize_depth(n, f, d);
-            d = depth_to_view_depth(n, f, d);
-            d = view_depth_to_capped_linear(n, f * 0.05, d);
-        }
-
-        d
-    }
-}
-
-struct AlbedoTexture<'a> {
-    dimensions: glam::UVec2,
-    tensor: &'a Tensor,
-}
-impl<'a> AlbedoTexture<'a> {
-    pub fn from_tensor(tensor: &'a Tensor) -> Self {
-        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
-        let dimensions = glam::UVec2::new(w as _, h as _);
-
-        Self { dimensions, tensor }
-    }
-
-    pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
-        let idx = (x + y * self.dimensions.x) as usize * 3;
-        // TODO: rgb? rgba? check shape
-        match &self.tensor.data {
-            re_log_types::component_types::TensorData::U8(data) => {
-                let slice = data.as_slice();
-                [slice[idx], slice[idx + 1], slice[idx + 2], 255]
-            }
-            re_log_types::component_types::TensorData::F32(data) => {
-                let slice = data.as_slice();
-                [
-                    (slice[idx] * 255.0) as u8,
-                    (slice[idx + 1] * 255.0) as u8,
-                    (slice[idx + 2] * 255.0) as u8,
-                    255,
-                ]
-            }
-            _ => todo!(),
-        }
-    }
-}
-
 impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
@@ -248,263 +153,29 @@ impl ImagesPart {
                     return Ok(());
                 }
 
-                // TODO: we actually can build perfect picking for this.
-
-                let use_2d = false;
-
-                if use_2d && tensor.meaning == TensorDataMeaning::Depth {
-                    let depth = DepthTexture::from_tensor(&tensor);
-
+                // TODO: smoother integration?
+                if tensor.meaning == TensorDataMeaning::Depth {
                     let mut world_from_obj = world_from_obj;
                     world_from_obj.y_axis *= -1.0; // TODO
                     world_from_obj.z_axis *= -1.0; // TODO
 
-                    let depth_size = depth.dimensions.as_vec2();
-                    let (w, h) = (depth_size.x, depth_size.y);
+                    let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
 
-                    let plane_distance = -world_from_obj.w_axis.z;
-                    let volume_size_in_world = glam::Vec3::new(
-                        world_from_obj.transform_vector3(glam::Vec3::X * w).x,
-                        world_from_obj.transform_vector3(glam::Vec3::Y * h).y,
-                        plane_distance,
-                    );
-                    dbg!(volume_size_in_world);
-
-                    // let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 10.0;
-                    let volume_dimensions = glam::UVec3::new(640, 640, 640) / 4;
-
-                    let data = match &depth.tensor.data {
-                        re_log_types::component_types::TensorData::U16(data) => data
-                            .as_slice()
-                            .iter()
-                            .map(|d| *d as f32 / u16::MAX as f32)
-                            .collect_vec(),
+                    let data = match &tensor.data {
+                        re_log_types::component_types::TensorData::U16(data) => {
+                            DepthCloudDepthData::U16(data.as_slice().to_vec())
+                        }
                         re_log_types::component_types::TensorData::F32(data) => {
-                            data.as_slice().to_vec()
+                            DepthCloudDepthData::F32(data.as_slice().to_vec())
                         }
                         _ => todo!(),
                     };
 
-                    {
-                        let mut line_batch = scene.primitives.line_strips.batch("bbox");
-                        let plane_distance = world_from_obj.w_axis.z;
-                        line_batch.add_box_outline(
-                            glam::Affine3A::from_scale_rotation_translation(
-                                volume_size_in_world,
-                                Default::default(),
-                                glam::Vec3::new(0.0, 0.0, plane_distance * 0.5),
-                            ),
-                        );
-                    }
-
-                    // TODO: go through the new staging belt.
-                    let volume_instances = vec![{
-                        let scale = glam::Mat4::from_scale(volume_size_in_world);
-
-                        let rotation = glam::Mat4::IDENTITY;
-
-                        let translation_center = glam::Mat4::from_translation(
-                            -glam::Vec3::new(0.5, 0.5, 1.0) * volume_size_in_world,
-                        );
-
-                        let world_from_model = rotation * translation_center * scale;
-                        let model_from_world = world_from_model.inverse();
-
-                        Volume2D {
-                            world_from_model,
-                            model_from_world,
-                            dimensions: volume_dimensions,
-                            depth_dimensions: depth.dimensions,
-                            depth_data: data,
-                            albedo_dimensions: depth.dimensions,
-                            albedo_data: None,
-                        }
-                    }];
-
-                    scene.primitives.volumes2d.extend(volume_instances);
-
-                    break;
-                }
-
-                if !use_2d && tensor.meaning == TensorDataMeaning::Depth {
-                    let depth = DepthTexture::from_tensor(&tensor);
-
-                    pub fn query_tensor(
-                        entity_db: &EntityDb,
-                        entity_path: &EntityPath,
-                        query: &LatestAtQuery,
-                    ) -> Option<Tensor> {
-                        crate::profile_function!();
-                        let data_store = &entity_db.data_store;
-                        let components = [Tensor::name()];
-                        let row_indices = data_store.latest_at(
-                            query,
-                            entity_path,
-                            Tensor::name(),
-                            &components,
-                        )?;
-                        let results = data_store.get(&components, &row_indices);
-                        let arr = results.get(0)?.as_ref()?.as_ref();
-                        let mut iter = arrow_array_deserialize_iterator::<Tensor>(arr).ok()?;
-                        let transform = iter.next();
-                        if iter.next().is_some() {
-                            re_log::warn_once!("Unexpected batch for Tensor at: {}", entity_path);
-                        }
-                        transform
-                    }
-
-                    let albedo = properties.depth_albedo_texture().and_then(|ent_path| {
-                        query_tensor(&ctx.log_db.entity_db, &ent_path, &ctx.current_query())
+                    scene.primitives.depth_clouds.push(DepthCloud {
+                        intrinsics: glam::Mat4::IDENTITY, // TODO
+                        depth_dimensions: glam::UVec2::new(w as _, h as _),
+                        depth_data: data,
                     });
-                    let albedo = albedo
-                        .as_ref()
-                        .map(|tensor| AlbedoTexture::from_tensor(tensor));
-
-                    let mut world_from_obj = world_from_obj;
-                    world_from_obj.y_axis *= -1.0; // TODO
-                    world_from_obj.z_axis *= -1.0; // TODO
-
-                    let depth_size = depth.dimensions.as_vec2();
-                    let (w, h) = (depth_size.x, depth_size.y);
-
-                    let plane_distance = -world_from_obj.w_axis.z;
-                    let volume_size_in_world = glam::Vec3::new(
-                        world_from_obj.transform_vector3(glam::Vec3::X * w).x,
-                        world_from_obj.transform_vector3(glam::Vec3::Y * h).y,
-                        plane_distance,
-                    );
-
-                    // let volume_size = glam::Vec3::new(w as f32, h as f32, w as f32 * 0.7) * 10.0;
-                    let volume_dimensions = glam::UVec3::new(640, 640, 640) / 3;
-
-                    #[derive(Debug, Clone, Copy)]
-                    enum ProjectionKind {
-                        Orthographic,
-                        Perspective,
-                    }
-                    #[derive(Debug, Clone, Copy)]
-                    enum DepthKind {
-                        /// The depth represents the distance between the fragment and the camera plane.
-                        CameraPlane,
-                        /// The depth represents the distance between the fragment and the camera itself.
-                        CameraPosition,
-                    }
-
-                    let depth_kind = if properties.depth_plane {
-                        DepthKind::CameraPlane
-                    } else {
-                        DepthKind::CameraPosition
-                    };
-                    let projection_kind = if properties.depth_orthographic {
-                        ProjectionKind::Orthographic
-                    } else {
-                        ProjectionKind::Perspective
-                    };
-
-                    let mut volume3d_rgba8 = vec![
-                        0u8;
-                        (volume_dimensions.x * volume_dimensions.y * volume_dimensions.z * 4)
-                            as usize
-                    ];
-
-                    let now = std::time::Instant::now();
-                    for (x, y) in (0..depth.dimensions.y)
-                        .flat_map(|y| (0..depth.dimensions.x).map(move |x| (x, y)))
-                    {
-                        let z = depth.get(x, y); // linear, near=0.0
-
-                        // Compute texture coordinates in the depth image's space.
-                        let texcoords = glam::Vec2::new(x as f32, y as f32) / depth_size;
-
-                        // Compute texture coordinates in the volume's back panel space (z=1.0).
-                        // let texcoords_in_volume = texcoords.extend(1.0);
-                        let texcoords_in_volume = Vec3::new(texcoords.x, 1.0 - texcoords.y, 0.0);
-
-                        let cam_npos_in_volume = match projection_kind {
-                            ProjectionKind::Orthographic => texcoords_in_volume.xy().extend(1.0),
-                            ProjectionKind::Perspective => Vec3::new(0.5, 0.5, 1.0),
-                        };
-
-                        let z = match (projection_kind, depth_kind) {
-                            (ProjectionKind::Orthographic, DepthKind::CameraPlane) => z,
-                            (ProjectionKind::Orthographic, DepthKind::CameraPosition) => {
-                                // TODO: compute planar-based
-                                z
-                            }
-                            (ProjectionKind::Perspective, DepthKind::CameraPlane) => {
-                                // TODO: compute position-based
-                                z
-                            }
-                            (ProjectionKind::Perspective, DepthKind::CameraPosition) => z,
-                        };
-
-                        let npos_in_volume =
-                            cam_npos_in_volume + (texcoords_in_volume - cam_npos_in_volume) * z;
-                        let pos_in_volume = npos_in_volume * (volume_dimensions.as_vec3() - 1.0);
-
-                        let pos = pos_in_volume.as_uvec3();
-
-                        let idx = (pos.x
-                            + pos.y * volume_dimensions.x
-                            + pos.z * volume_dimensions.x * volume_dimensions.y)
-                            as usize;
-                        let idx = idx * 4;
-
-                        let current = &volume3d_rgba8[idx..idx + 4];
-                        let color = if let Some(albedo) = albedo.as_ref() {
-                            albedo.get(x, y)
-                        } else {
-                            [(z * 255.0) as u8; 4]
-                        };
-                        let color = if current[0] == 0 && current[1] == 0 && current[2] == 0 {
-                            color
-                        } else {
-                            [
-                                ((color[0] as f32 + current[0] as f32) * 0.5) as u8,
-                                ((color[1] as f32 + current[1] as f32) * 0.5) as u8,
-                                ((color[2] as f32 + current[2] as f32) * 0.5) as u8,
-                                255,
-                            ]
-                        };
-                        volume3d_rgba8[idx..idx + 4].copy_from_slice(&color);
-                    }
-                    // eprintln!("cpu time = {:?}", now.elapsed());
-
-                    {
-                        let mut line_batch = scene.primitives.line_strips.batch("bbox");
-                        let plane_distance = world_from_obj.w_axis.z;
-                        line_batch.add_box_outline(
-                            glam::Affine3A::from_scale_rotation_translation(
-                                volume_size_in_world,
-                                Default::default(),
-                                glam::Vec3::new(0.0, 0.0, plane_distance * 0.5),
-                            ),
-                        );
-                    }
-
-                    // TODO: go through the new staging belt.
-                    let volume_instances = vec![{
-                        let scale = glam::Mat4::from_scale(volume_size_in_world);
-
-                        let rotation = glam::Mat4::IDENTITY;
-
-                        let translation_center = glam::Mat4::from_translation(
-                            -glam::Vec3::new(0.5, 0.5, 1.0) * volume_size_in_world,
-                        );
-
-                        let world_from_model = rotation * translation_center * scale;
-                        let model_from_world = world_from_model.inverse();
-
-                        Volume3D {
-                            world_from_model,
-                            model_from_world,
-                            size: volume_size_in_world,
-                            dimensions: volume_dimensions,
-                            data: volume3d_rgba8,
-                        }
-                    }];
-
-                    scene.primitives.volumes3d.extend(volume_instances);
 
                     break;
                 }

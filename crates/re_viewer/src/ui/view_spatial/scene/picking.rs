@@ -166,10 +166,10 @@ pub fn picking(
         line_strips,
         points,
         meshes,
-        volumes2d,
-        volumes3d,
+        depth_clouds,
     } = primitives;
 
+    // TODO(cmc): depth clouds should support picking at some point.
     picking_points(&context, &mut state, points);
     picking_lines(&context, &mut state, line_strips);
     picking_meshes(&context, &mut state, meshes);
@@ -180,7 +180,6 @@ pub fn picking(
         textured_rectangles_ids,
     );
     picking_ui_rects(&context, &mut state, ui_data);
-    // TODO: volumes
 
     state.sort_and_remove_hidden_transparent();
 

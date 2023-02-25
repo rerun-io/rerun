@@ -1,7 +1,8 @@
 use egui::mutex::Mutex;
 use re_renderer::{
     renderer::{
-        GenericSkyboxDrawData, MeshDrawData, RectangleDrawData, Volume2DDrawData, Volume3DDrawData,
+        DepthCloudDrawData, GenericSkyboxDrawData, MeshDrawData, RectangleDrawData,
+        Volume2DDrawData, Volume3DDrawData,
     },
     view_builder::{TargetConfiguration, ViewBuilder},
     RenderContext,
@@ -49,14 +50,13 @@ fn create_and_fill_view_builder(
     let mut view_builder = ViewBuilder::default();
     view_builder.setup_view(render_ctx, target_config)?;
 
-    let volume2d_draw_data = Volume2DDrawData::new(render_ctx, &primitives.volumes2d).unwrap();
-    let volume3d_draw_data = Volume3DDrawData::new(render_ctx, &primitives.volumes3d).unwrap();
+    let depth_clouds_draw_data =
+        DepthCloudDrawData::new(render_ctx, &primitives.depth_clouds).unwrap();
     view_builder
         .queue_draw(&MeshDrawData::new(render_ctx, &primitives.mesh_instances()).unwrap())
         .queue_draw(&primitives.line_strips.to_draw_data(render_ctx))
         .queue_draw(&primitives.points.to_draw_data(render_ctx)?)
-        .queue_draw(&volume2d_draw_data)
-        .queue_draw(&volume3d_draw_data)
+        .queue_draw(&depth_clouds_draw_data)
         .queue_draw(&RectangleDrawData::new(
             render_ctx,
             &primitives.textured_rectangles,

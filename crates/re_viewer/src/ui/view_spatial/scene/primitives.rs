@@ -1,9 +1,7 @@
 use egui::Color32;
 use re_data_store::InstancePathHash;
 use re_renderer::{
-    renderer::{
-        MeshInstance, Volume3D, {Volume2D, Volume2DDrawData},
-    },
+    renderer::{DepthCloud, MeshInstance},
     LineStripSeriesBuilder, PointCloudBuilder,
 };
 
@@ -28,8 +26,7 @@ pub struct SceneSpatialPrimitives {
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
-    pub volumes2d: Vec<Volume2D>,
-    pub volumes3d: Vec<Volume3D>,
+    pub depth_clouds: Vec<DepthCloud>,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -45,8 +42,7 @@ impl SceneSpatialPrimitives {
             line_strips: Default::default(),
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
-            volumes2d: Default::default(),
-            volumes3d: Default::default(),
+            depth_clouds: Default::default(),
         }
     }
 
@@ -64,16 +60,14 @@ impl SceneSpatialPrimitives {
             line_strips,
             points,
             meshes,
-            volumes2d,
-            volumes3d,
+            depth_clouds,
         } = &self;
 
         textured_rectangles.len()
             + line_strips.vertices.len()
             + points.vertices.len()
             + meshes.len()
-            + volumes2d.len()
-            + volumes3d.len()
+            + depth_clouds.len()
     }
 
     pub fn recalculate_bounding_box(&mut self) {
