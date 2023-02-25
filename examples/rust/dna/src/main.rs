@@ -4,13 +4,13 @@ use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
 
-use rerun::components::{
-    ColorRGBA, LineStrip3D, Point3D, Quaternion, Radius, Rigid3, Transform, Vec3D,
+use rerun::{
+    components::{ColorRGBA, LineStrip3D, Point3D, Quaternion, Radius, Rigid3, Transform, Vec3D},
+    demo_util::{bounce_lerp, color_spiral},
+    external::glam,
+    time::{Time, TimeType, Timeline},
+    MsgSender, MsgSenderError, Session,
 };
-use rerun::demo_util::{bounce_lerp, color_spiral};
-use rerun::external::glam;
-use rerun::time::{Time, TimeType, Timeline};
-use rerun::{MsgSender, MsgSenderError, Session};
 
 const NUM_POINTS: usize = 100;
 

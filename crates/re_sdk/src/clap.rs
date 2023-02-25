@@ -8,7 +8,7 @@ use std::{net::SocketAddr, path::PathBuf};
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RerunBehavior {
     Save(PathBuf),
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     Serve,
     Connect(SocketAddr),
     Spawn,
@@ -51,7 +51,7 @@ pub struct RerunArgs {
     connect: Option<Option<SocketAddr>>,
 
     /// Connects and sends the logged data to a web-based Rerun viewer.
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     #[clap(long)]
     serve: bool,
 }
@@ -62,7 +62,7 @@ impl RerunArgs {
         match self.to_behavior() {
             RerunBehavior::Connect(addr) => session.connect(addr),
             RerunBehavior::Spawn => return true,
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => session.serve(true),
             RerunBehavior::Save(_) => {}
         }
@@ -74,7 +74,7 @@ impl RerunArgs {
     pub fn on_teardown(&self, session: &mut Session) -> anyhow::Result<()> {
         let behavior = self.to_behavior();
 
-        #[cfg(feature = "web")]
+        #[cfg(feature = "web_viewer")]
         if behavior == RerunBehavior::Serve {
             eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
             std::thread::sleep(std::time::Duration::from_secs(1_000_000));
@@ -92,7 +92,7 @@ impl RerunArgs {
             return RerunBehavior::Save(path.clone());
         }
 
-        #[cfg(feature = "web")]
+        #[cfg(feature = "web_viewer")]
         if self.serve {
             return RerunBehavior::Serve;
         }
