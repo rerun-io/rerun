@@ -20,6 +20,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/depth_cloud.wgsl");
+        let content = include_str!("../shader/depth_cloud.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/generic_skybox.wgsl");
         let content = include_str!("../shader/generic_skybox.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

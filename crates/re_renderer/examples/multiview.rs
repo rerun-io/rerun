@@ -287,7 +287,7 @@ impl Example for Multiview {
             seconds_since_startup,
         );
 
-        let splits = framework::split_resolution(resolution, 2, 2).collect::<Vec<_>>();
+        let splits = framework::split_resolution(resolution, 2, 3).collect::<Vec<_>>();
 
         let projection_from_view = if self.perspective_projection {
             Projection::Perspective {
