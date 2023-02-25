@@ -39,12 +39,30 @@ mod gpu_data {
     }
 }
 
+// TODO: doc
+// TODO: explain we don't expose u16 because lack of support
+// TODO(cmc): support more depth data types.
+#[derive(Debug, Clone)]
+pub enum DepthCloudDepthData {
+    U16(Vec<u16>),
+    F32(Vec<f32>),
+}
+
+impl DepthCloudDepthData {
+    fn as_bytes(&self) -> &[u8] {
+        match self {
+            DepthCloudDepthData::U16(data) => bytemuck::cast_slice(data),
+            DepthCloudDepthData::F32(data) => bytemuck::cast_slice(data),
+        }
+    }
+}
+
 pub struct DepthCloud {
     pub world_from_model: glam::Mat4,
     pub model_from_world: glam::Mat4,
 
     pub depth_dimensions: glam::UVec2,
-    pub depth_data: Vec<f32>,
+    pub depth_data: DepthCloudDepthData,
 }
 
 impl Default for DepthCloud {
@@ -53,14 +71,14 @@ impl Default for DepthCloud {
             world_from_model: glam::Mat4::IDENTITY,
             model_from_world: glam::Mat4::IDENTITY,
             depth_dimensions: glam::UVec2::ZERO,
-            depth_data: Vec::new(),
+            depth_data: DepthCloudDepthData::F32(Vec::new()),
         }
     }
 }
 
 #[derive(Clone)]
 pub struct DepthCloudDrawData {
-    // Every single point cloud, its total number of points.
+    // Every single point clouds and their respective total number of points.
     bind_groups: Vec<(u32, GpuBindGroup)>,
 }
 
@@ -149,13 +167,17 @@ impl DepthCloudDrawData {
                     height: depth_cloud.depth_dimensions.y,
                     depth_or_array_layers: 1,
                 };
+                let depth_format = match depth_cloud.depth_data {
+                    DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
+                    DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
+                };
                 let depth_texture_desc = TextureDesc {
                     label: "depth texture".into(),
                     size: depth_texture_size,
                     mip_level_count: 1,
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::R32Float,
+                    format: depth_format,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 };
                 let depth_texture = ctx
@@ -177,7 +199,7 @@ impl DepthCloudDrawData {
                             origin: wgpu::Origin3d::ZERO,
                             aspect: wgpu::TextureAspect::All,
                         },
-                        bytemuck::cast_slice(depth_cloud.depth_data.as_slice()),
+                        depth_cloud.depth_data.as_bytes(),
                         wgpu::ImageDataLayout {
                             offset: 0,
                             bytes_per_row: Some(

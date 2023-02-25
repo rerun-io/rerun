@@ -8,8 +8,8 @@ use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
     renderer::{
-        DepthCloud, DepthCloudDrawData, GenericSkyboxDrawData, LineStripFlags, RectangleDrawData,
-        TextureFilterMag, TextureFilterMin, TexturedRect,
+        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, GenericSkyboxDrawData, LineStripFlags,
+        RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
@@ -57,26 +57,10 @@ struct DepthTexture {
     // - linear
     // - 0.0 = near, 1.0 = far
     // - distance from camera
-    d32: Vec<f32>,
+    data: DepthCloudDepthData,
 }
 impl DepthTexture {
     pub fn from_file(path: impl Into<PathBuf>, dimensions: Option<glam::UVec2>) -> Self {
-        fn get_norm_pixel(img: &DynamicImage, x: u32, y: u32) -> f32 {
-            match &img {
-                DynamicImage::ImageLuma8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
-                DynamicImage::ImageLumaA8(_) => todo!(),
-                DynamicImage::ImageRgb8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
-                DynamicImage::ImageRgba8(img) => img.get_pixel(x, y).0[0] as f32 / u8::MAX as f32,
-                DynamicImage::ImageLuma16(img) => img.get_pixel(x, y).0[0] as f32 / u16::MAX as f32,
-                DynamicImage::ImageLumaA16(_) => todo!(),
-                DynamicImage::ImageRgb16(_) => todo!(),
-                DynamicImage::ImageRgba16(_) => todo!(),
-                DynamicImage::ImageRgb32F(_) => todo!(),
-                DynamicImage::ImageRgba32F(_) => todo!(),
-                _ => todo!(),
-            }
-        }
-
         let path = path.into();
 
         let mut img = image::open(&path).unwrap();
@@ -85,65 +69,13 @@ impl DepthTexture {
             img = img.resize(dimensions.x, dimensions.y, image::imageops::Triangle);
         }
 
-        // TODO: is the depth texture..:
-        // - linear?
-        // - inversed?
-        // - distance from camera plane or distance from camera?
-        let (mut is_linear, mut n, mut f) = (true, 0.0, 0.0);
-        let mut is_reversed = false;
-
-        if path.to_string_lossy().contains("teardown") {
-            (is_linear, n, f) = (false, 0.2, 500.0);
-            is_reversed = false;
-        }
-
-        if path.to_string_lossy().contains("nyud") {
-            (is_linear, n, f) = (true, 0.2, 500.0);
-            is_reversed = false;
-        }
-
-        // TODO: how does one do that with an infinite plane tho?
-
-        fn depth_to_view_depth(n: f32, f: f32, z: f32) -> f32 {
-            n * f / (f - z * (f - n))
-        }
-        fn view_depth_to_capped_linear(n: f32, f: f32, vz: f32) -> f32 {
-            let vz = f32::min(vz, f);
-            (vz - n) / (f - n)
-        }
-
-        fn linearize_depth(n: f32, f: f32, z: f32) -> f32 {
-            let vd = n * f / (f - z * (f - n));
-            (vd - n) / (f - n)
-        }
-
         let dimensions = glam::UVec2::new(img.width(), img.height());
-        let data = img
-            .pixels()
-            .map(|(x, y, _)| {
-                let mut d = get_norm_pixel(&img, x, y);
+        let data = match img {
+            DynamicImage::ImageLuma16(img) => DepthCloudDepthData::U16(img.to_vec()),
+            _ => unimplemented!(),
+        };
 
-                if is_reversed {
-                    d = 1.0 - d;
-                }
-                if !is_linear {
-                    // d = linearize_depth(n, f, d);
-                    d = depth_to_view_depth(n, f, d);
-                    d = view_depth_to_capped_linear(n, f * 0.05, d);
-                }
-
-                d
-            })
-            .collect();
-
-        Self {
-            dimensions,
-            d32: data,
-        }
-    }
-
-    pub fn get(&self, x: u32, y: u32) -> f32 {
-        self.d32[(x + y * self.dimensions.x) as usize]
+        Self { dimensions, data }
     }
 }
 
@@ -290,7 +222,7 @@ impl framework::Example for RenderDepthClouds {
                 model_from_world,
                 // dimensions: volume_dimensions,
                 depth_dimensions: depth.dimensions,
-                depth_data: depth.d32.clone(),
+                depth_data: depth.data.clone(),
                 // albedo_dimensions: albedo.dimensions,
                 // albedo_data: albedo.rgba8.clone().into(),
             }
