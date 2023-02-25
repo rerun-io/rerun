@@ -9,6 +9,7 @@
 // Send data to a rerun session
 mod global;
 mod msg_sender;
+mod remote_viewer_server;
 mod session;
 
 pub use self::global::{global_session, global_session_with_default_enabled};

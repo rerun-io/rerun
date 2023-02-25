@@ -5,6 +5,8 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
+use crate::remote_viewer_server::RemoteViewerServer;
+
 /// This is the main object you need to create to use the Rerun SDK.
 ///
 /// You should ideally create one session object and reuse it.
@@ -199,9 +201,7 @@ impl Session {
             Sender::NativeViewer(_) => {}
 
             #[cfg(feature = "web_viewer")]
-            Sender::WebViewer(web_server, _) => {
-                re_log::info!("Shutting down web server.");
-                web_server.abort();
+            Sender::WebViewer(_) => {
                 self.sender = Sender::Remote(re_sdk_comms::Client::new(addr));
             }
         }
@@ -218,35 +218,7 @@ impl Session {
             return;
         }
 
-        let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-
-        let web_server_join_handle = self.tokio_rt.spawn(async move {
-            // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
-                .await
-                .unwrap();
-            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx));
-
-            // This is the server that serves the Wasm+HTML:
-            let web_port = 9090;
-            let web_server = re_web_server::WebServer::new(web_port);
-            let web_server_handle = tokio::spawn(async move {
-                web_server.serve().await.unwrap();
-            });
-
-            let ws_server_url = re_ws_comms::default_server_url();
-            let viewer_url = format!("http://127.0.0.1:{web_port}?url={ws_server_url}");
-            if open_browser {
-                webbrowser::open(&viewer_url).ok();
-            } else {
-                re_log::info!("Web server is running - view it at {viewer_url}");
-            }
-
-            ws_server_handle.await.unwrap().unwrap();
-            web_server_handle.await.unwrap();
-        });
-
-        self.sender = Sender::WebViewer(web_server_join_handle, rerun_tx);
+        self.sender = Sender::WebViewer(RemoteViewerServer::new(&self.tokio_rt, open_browser));
     }
 
     /// Disconnect the streaming TCP connection, if any.
@@ -477,12 +449,9 @@ enum Sender {
     #[cfg(feature = "native_viewer")]
     NativeViewer(re_smart_channel::Sender<LogMsg>),
 
-    /// Send it to the web viewer over WebSockets
+    /// Serve it to the web viewer over WebSockets
     #[cfg(feature = "web_viewer")]
-    WebViewer(
-        tokio::task::JoinHandle<()>,
-        re_smart_channel::Sender<LogMsg>,
-    ),
+    WebViewer(RemoteViewerServer),
 }
 
 impl Default for Sender {
@@ -505,10 +474,8 @@ impl Sender {
             }
 
             #[cfg(feature = "web_viewer")]
-            Self::WebViewer(_, sender) => {
-                if let Err(err) = sender.send(msg) {
-                    re_log::error_once!("Failed to send log message to web server: {err}");
-                }
+            Self::WebViewer(remote) => {
+                remote.send(msg);
             }
         }
     }
