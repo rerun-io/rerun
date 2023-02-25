@@ -7,8 +7,11 @@
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 // Send data to a rerun session
+#[cfg(not(target_arch = "wasm32"))]
+mod file_writer;
 mod global;
 mod msg_sender;
+#[cfg(feature = "web")]
 mod remote_viewer_server;
 mod session;
 

@@ -5,6 +5,9 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
+use crate::file_writer::FileWriter;
+
+#[cfg(feature = "web")]
 use crate::remote_viewer_server::RemoteViewerServer;
 
 /// This is the main object you need to create to use the Rerun SDK.
@@ -220,7 +223,7 @@ impl Session {
         self.sender = Sender::WebViewer(RemoteViewerServer::new(&self.tokio_rt, open_browser));
     }
 
-    /// Disconnect the streaming TCP connection, if any.
+    /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
             re_log::debug!("Switching to buffered.");
@@ -232,7 +235,7 @@ impl Session {
     ///
     /// Returns true after a call to [`Self::connect`].
     ///
-    /// Returns `false` if we are streaming the messages to a web viewer,
+    /// Returns `false` if we are serving the messages to a web viewer,
     /// or if we are buffering the messages (to save them to file later).
     ///
     /// This can return true even before the connection is yet to be established.
@@ -324,37 +327,13 @@ impl Session {
             return Ok(());
         }
 
-        let path = path.into();
-
-        re_log::debug!("Saving file to {path:?}…");
-
-        if self.is_streaming_over_tcp() {
-            anyhow::bail!(
-                "Can't show the log messages: Rerun was configured to send the data to a server!",
-            );
+        let file_writer = FileWriter::new(path)?;
+        let backlog = self.drain_log_messages_buffer();
+        for log_msg in backlog {
+            file_writer.write(log_msg);
         }
-
-        let log_messages = self.drain_log_messages_buffer();
-
-        if log_messages.is_empty() {
-            re_log::info!("Nothing logged, so nothing to save");
-        }
-
-        if path.extension().and_then(|ext| ext.to_str()) != Some("rrd") {
-            re_log::warn!("Expected path to end with .rrd, got {path:?}");
-        }
-
-        match std::fs::File::create(&path) {
-            Ok(file) => {
-                if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
-                    anyhow::bail!("Failed to write to file at {path:?}: {err}")
-                } else {
-                    re_log::info!("Rerun data file saved to {path:?}");
-                    Ok(())
-                }
-            }
-            Err(err) => anyhow::bail!("Failed to create file at {path:?}: {err}",),
-        }
+        self.sender = Sender::File(file_writer);
+        Ok(())
     }
 }
 
@@ -443,6 +422,8 @@ impl Session {
 enum Sender {
     Buffered(Vec<LogMsg>),
 
+    File(FileWriter),
+
     Remote(re_sdk_comms::Client),
 
     #[cfg(feature = "native_viewer")]
@@ -463,6 +444,9 @@ impl Sender {
     pub fn send(&mut self, msg: LogMsg) {
         match self {
             Self::Buffered(buffer) => buffer.push(msg),
+
+            Self::File(file) => file.write(msg),
+
             Self::Remote(client) => client.send(msg),
 
             #[cfg(feature = "native_viewer")]
