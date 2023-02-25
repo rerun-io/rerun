@@ -37,21 +37,8 @@ pub fn export_env_vars() {
         std::env::var("TARGET").unwrap()
     );
 
-    if let Ok(git_hash) = git_hash() {
-        println!("cargo:rustc-env=RE_BUILD_GIT_HASH={git_hash}");
-        for path in glob::glob("../../.git/refs/heads/**").unwrap() {
-            println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
-        }
-    } else {
-        // NOTE: In 99% of cases, if `git_hash` failed it's because we're not in a git repository
-        // to begin with, which happens because we've imported the published crate from crates.io.
-        //
-        // Example of unlikely cases where the above does not hold:
-        // - `git` is not installed
-        // - the user downloaded rerun as a tarball and then imported via a `path = ...` import
-        // - others?
-        println!("cargo:rustc-env=RE_BUILD_GIT_HASH=");
-    }
+    let git_hash = git_hash().unwrap_or_default();
+    println!("cargo:rustc-env=RE_BUILD_GIT_HASH={git_hash}");
 
     let git_branch = git_branch().unwrap_or_default();
     println!("cargo:rustc-env=RE_BUILD_GIT_BRANCH={git_branch}");
@@ -65,6 +52,18 @@ pub fn export_env_vars() {
         .format(&time_format)
         .unwrap();
     println!("cargo:rustc-env=RE_BUILD_DATETIME={date_time}");
+
+    // Make sure we re-run the build script if the branch or commit changes:
+    if let Ok(head_path) = git_path("HEAD") {
+        eprintln!("cargo:rerun-if-changed={head_path}"); // Track changes to branch
+        if let Ok(head) = std::fs::read_to_string(&head_path) {
+            if let Some(git_file) = head.strip_prefix("ref: ") {
+                if let Ok(path) = git_path(git_file) {
+                    eprintln!("cargo:rerun-if-changed={path}"); // Track changes to commit hash
+                }
+            }
+        }
+    }
 }
 
 fn run_command(cmd: &'static str, args: &[&str]) -> anyhow::Result<String> {
@@ -93,4 +92,12 @@ fn is_git_clean() -> anyhow::Result<bool> {
 
 fn git_branch() -> anyhow::Result<String> {
     run_command("git", &["symbolic-ref", "--short", "HEAD"])
+}
+
+/// From <https://git-scm.com/docs/git-rev-parse>:
+///
+/// Resolve `$GIT_DIR/<path>` and takes other path relocation variables such as `$GIT_OBJECT_DIRECTORY`, `$GIT_INDEX_FILE…​` into account.
+/// For example, if `$GIT_OBJECT_DIRECTORY` is set to /foo/bar then `git rev-parse --git-path objects/abc` returns `/foo/bar/abc`.
+fn git_path(path: &str) -> anyhow::Result<String> {
+    run_command("git", &["rev-parse", "--git-path", path])
 }

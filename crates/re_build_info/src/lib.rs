@@ -5,6 +5,14 @@
 /// Information about the build of a Rust crate.
 ///
 /// Create this with [`build_info`].
+///
+/// The `git_` fields are all empty on failure. Most likely git fails because we're not in a git repository
+/// to begin with, which happens because we've imported the published crate from crates.io.
+///
+/// There are a few other cases though, like
+/// - `git` is not installed
+/// - the user downloaded rerun as a tarball and then imported via a `path = ...` import
+/// - others?
 #[derive(Copy, Clone, Debug)]
 pub struct BuildInfo {
     /// `CARGO_PKG_NAME`
