@@ -182,9 +182,6 @@ impl Session {
         }
 
         match &mut self.sender {
-            Sender::Remote(remote) => {
-                remote.set_addr(addr);
-            }
             Sender::Buffered(messages) => {
                 re_log::debug!("Connecting to remote…");
                 let mut client = re_sdk_comms::Client::new(addr);
@@ -192,6 +189,10 @@ impl Session {
                     client.send(msg);
                 }
                 self.sender = Sender::Remote(client);
+            }
+
+            Sender::Remote(remote) => {
+                remote.set_addr(addr);
             }
 
             #[cfg(feature = "native_viewer")]
@@ -249,8 +250,6 @@ impl Session {
     }
 
     /// Disconnect the streaming TCP connection, if any.
-    #[cfg(feature = "native_viewer")]
-    #[allow(unused)] // only used with "re_viewer" feature
     pub fn disconnect(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
             re_log::debug!("Switching to buffered.");
@@ -286,16 +285,10 @@ impl Session {
 
     /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
-        match &mut self.sender {
-            Sender::Remote(_) => vec![],
-
-            Sender::Buffered(log_messages) => std::mem::take(log_messages),
-
-            #[cfg(feature = "native_viewer")]
-            Sender::NativeViewer(_) => vec![],
-
-            #[cfg(feature = "web_viewer")]
-            Sender::WebViewer(_, _) => vec![],
+        if let Sender::Buffered(log_messages) = &mut self.sender {
+            std::mem::take(log_messages)
+        } else {
+            vec![]
         }
     }
 
@@ -477,10 +470,9 @@ impl Session {
 }
 
 enum Sender {
-    Remote(re_sdk_comms::Client),
-
-    #[allow(unused)] // only used with `#[cfg(feature = "native_viewer")]`
     Buffered(Vec<LogMsg>),
+
+    Remote(re_sdk_comms::Client),
 
     #[cfg(feature = "native_viewer")]
     NativeViewer(re_smart_channel::Sender<LogMsg>),
@@ -502,8 +494,8 @@ impl Default for Sender {
 impl Sender {
     pub fn send(&mut self, msg: LogMsg) {
         match self {
-            Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
+            Self::Remote(client) => client.send(msg),
 
             #[cfg(feature = "native_viewer")]
             Self::NativeViewer(sender) => {
