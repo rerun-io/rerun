@@ -40,7 +40,6 @@ mod gpu_data {
 }
 
 // TODO: doc
-// TODO: explain we don't expose u16 because lack of support
 // TODO(cmc): support more depth data types.
 #[derive(Debug, Clone)]
 pub enum DepthCloudDepthData {

@@ -207,7 +207,7 @@ impl Example for Multiview {
             .collect_vec();
 
         let model_mesh_instances = {
-            let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
+            let reader = std::io::Cursor::new(include_bytes!("assets/rerun.obj.zip"));
             let mut zip = zip::ZipArchive::new(reader).unwrap();
             let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
             let mut obj_data = Vec::new();
