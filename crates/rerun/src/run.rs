@@ -271,7 +271,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
     // Now what do we do with the data?
 
     if args.web_viewer {
-        #[cfg(feature = "web")]
+        #[cfg(feature = "web_viewer")]
         {
             #[cfg(feature = "server")]
             if args.url_or_path.is_none() && args.port == re_ws_comms::DEFAULT_WS_SERVER_PORT {
@@ -292,7 +292,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
             return server_handle.await?;
         }
 
-        #[cfg(not(feature = "web"))]
+        #[cfg(not(feature = "web_viewer"))]
         {
             _ = (call_source, rx);
             anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
@@ -366,7 +366,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     Ok(rx)
 }
 
-#[cfg(feature = "web")]
+#[cfg(feature = "web_viewer")]
 async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
     let web_port = 9090;
     let viewer_url = format!("http://127.0.0.1:{web_port}?url={rerun_ws_server_url}");
@@ -384,7 +384,7 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
     web_server_handle.await?
 }
 
-#[cfg(not(feature = "web"))]
+#[cfg(not(feature = "web_viewer"))]
 async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
 }

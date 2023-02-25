@@ -48,9 +48,9 @@ sdk = ["dep:re_sdk"]
 #
 # You also need to install some additional tools, which you can do by running
 # [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web = [
+web_viewer = [
   "re_ws_comms/server",
-  "re_sdk?/web",
+  "re_sdk?/web_viewer",
   "dep:re_web_server",
   "dep:webbrowser",
 ]

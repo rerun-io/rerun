@@ -16,7 +16,7 @@ pub struct Session {
 
     recording_source: RecordingSource,
 
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     tokio_rt: tokio::runtime::Runtime,
 
     sender: Sender,
@@ -107,7 +107,7 @@ impl Session {
                 rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
             },
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
             sender: Default::default(),
@@ -197,7 +197,7 @@ impl Session {
             #[cfg(feature = "native_viewer")]
             Sender::NativeViewer(_) => {}
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             Sender::WebViewer(web_server, _) => {
                 re_log::info!("Shutting down web server.");
                 web_server.abort();
@@ -210,7 +210,7 @@ impl Session {
     ///
     /// If the `open_browser` argument is set, your default browser
     /// will be opened to show the viewer.
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     pub fn serve(&mut self, open_browser: bool) {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to serve() ignored");
@@ -294,7 +294,7 @@ impl Session {
             #[cfg(feature = "native_viewer")]
             Sender::NativeViewer(_) => vec![],
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             Sender::WebViewer(_, _) => vec![],
         }
     }
@@ -486,7 +486,7 @@ enum Sender {
     NativeViewer(re_smart_channel::Sender<LogMsg>),
 
     /// Send it to the web viewer over WebSockets
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     WebViewer(
         tokio::task::JoinHandle<()>,
         re_smart_channel::Sender<LogMsg>,
@@ -512,7 +512,7 @@ impl Sender {
                 }
             }
 
-            #[cfg(feature = "web")]
+            #[cfg(feature = "web_viewer")]
             Self::WebViewer(_, sender) => {
                 if let Err(err) = sender.send(msg) {
                     re_log::error_once!("Failed to send log message to web server: {err}");

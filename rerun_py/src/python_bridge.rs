@@ -282,13 +282,13 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 fn serve(open_browser: bool) -> PyResult<()> {
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     {
         global_session().serve(open_browser);
         Ok(())
     }
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(not(feature = "web_viewer"))]
     {
         _ = open_browser;
         Err(PyRuntimeError::new_err(
