@@ -227,7 +227,6 @@ async fn run_impl(
     args: Args,
 ) -> anyhow::Result<()> {
     crate::crash_handler::install_crash_handlers();
-    crate::crash_handler::install_crash_handlers();
 
     #[cfg(feature = "native_viewer")]
     let profiler = profiler(&args);
