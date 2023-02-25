@@ -248,7 +248,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
                 #[cfg(not(feature = "native_viewer"))]
                 {
                     _ = call_source;
-                    anyhow::bail!("rerun compiled without the 'native_viewer' feature");
+                    anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
                 }
             }
         }
@@ -316,7 +316,9 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
         #[cfg(not(feature = "native_viewer"))]
         {
             _ = (call_source, rx);
-            anyhow::bail!("rerun compiled without the 'native_viewer' feature");
+            anyhow::bail!(
+                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+            );
         }
     }
 }
