@@ -11,7 +11,7 @@
 mod file_writer;
 mod global;
 mod msg_sender;
-#[cfg(feature = "web")]
+#[cfg(feature = "web_viewer")]
 mod remote_viewer_server;
 mod session;
 

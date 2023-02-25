@@ -7,7 +7,7 @@ use re_log_types::{
 
 use crate::file_writer::FileWriter;
 
-#[cfg(feature = "web")]
+#[cfg(feature = "web_viewer")]
 use crate::remote_viewer_server::RemoteViewerServer;
 
 /// This is the main object you need to create to use the Rerun SDK.
