@@ -54,11 +54,12 @@ def back_project(depth_image: npt.NDArray[np.float32]) -> npt.NDArray[np.float32
 
     # Apply inverse of the intrinsics matrix:
     z = depth_image.reshape(-1)
+    print(max(z))
     x = (u_coords.reshape(-1).astype(float) - u_center) * z / focal_length
     y = (v_coords.reshape(-1).astype(float) - v_center) * z / focal_length
 
     back_projected = np.vstack((x, y, z)).T
-    print(back_projected)
+    # print(back_projected)
     return back_projected
 
 

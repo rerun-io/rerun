@@ -13,7 +13,7 @@ use re_renderer::{
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
+    Color32, LineStripSeriesBuilder, PointCloudBuilder, Rgba, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -32,9 +32,10 @@ enum ProjectionKind {
     Perspective,
 }
 
-struct RenderVolumetric {
+struct RenderDepthClouds {
     depth: DepthTexture,
     albedo: AlbedoTexture,
+    albedo_handle: GpuTexture2DHandle,
 
     camera_control: CameraControl,
     camera_position: glam::Vec3,
@@ -169,7 +170,7 @@ impl AlbedoTexture {
     }
 }
 
-impl framework::Example for RenderVolumetric {
+impl framework::Example for RenderDepthClouds {
     fn title() -> &'static str {
         "Depth clouds"
     }
@@ -185,14 +186,26 @@ impl framework::Example for RenderVolumetric {
             DepthTexture::from_file("/tmp/nyud_depth.pgm", Some(glam::UVec2::new(640, 480)));
         let albedo = AlbedoTexture::from_file("/tmp/nyud_albedo.ppm", depth.dimensions.into());
 
+        let albedo_handle = re_ctx.texture_manager_2d.create(
+            &mut re_ctx.gpu_resources.textures,
+            &Texture2DCreationDesc {
+                label: "albedo".into(),
+                data: bytemuck::cast_slice(&albedo.rgba8),
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: albedo.dimensions.x,
+                height: albedo.dimensions.y,
+            },
+        );
+
         let depth_kind = DepthKind::CameraPlane;
         let projection_kind = ProjectionKind::Orthographic;
 
         re_log::info!(?depth_kind, ?projection_kind, "current settings");
 
-        RenderVolumetric {
+        RenderDepthClouds {
             depth,
             albedo,
+            albedo_handle,
 
             camera_control: CameraControl::RotateAroundCenter,
             camera_position: glam::Vec3::ZERO,
@@ -216,45 +229,31 @@ impl framework::Example for RenderVolumetric {
         let Self {
             depth,
             albedo,
+            albedo_handle,
             camera_control,
             camera_position,
             depth_kind,
             projection_kind,
         } = self;
 
-        let depth_size = depth.dimensions.as_vec2();
-
-        // TODO: we can pretend that the current texture is the image plane, thus we need to
-        // compute the dimensions of the far plane such that
-
-        // TODO: the only thing that should ever change, then, is the size
-
-        // TODO: Z is arbitrary I guess?
-        // TODO: what about the volume size in world space? is this actually arbitrary? I guess it
-        //       can be computed in a way that makes sense, somehow..?
-        let volume_size = depth_size.extend(depth_size.x * 0.7) * 0.2;
-        // TODO: shouldnt have to be cubic
-        let volume_dimensions = UVec3::new(640, 640, 640) / 4;
-        // let vol_dimensions =
-        //     UVec3::new(img.width(), img.height(), (img.width() as f32 * 0.7) as u32) / 4;
-
-        // let seconds_since_startup = 0f32;
         let seconds_since_startup = time.seconds_since_startup();
         if matches!(camera_control, CameraControl::RotateAroundCenter) {
             *camera_position = Vec3::new(
                 seconds_since_startup.sin(),
                 0.5,
                 seconds_since_startup.cos(),
-            ) * volume_size.max_element();
+            ) * 100.0;
         }
 
         let splits = framework::split_resolution(resolution, 1, 1).collect::<Vec<_>>();
 
+        let volume_size = albedo.dimensions.as_vec2().extend(0.0) / 10.0;
         let scale = glam::Mat4::from_scale(volume_size);
         let rotation = glam::Mat4::IDENTITY;
         let translation_center =
             glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * volume_size);
-        let world_from_model = rotation * translation_center * scale;
+        let translation_offset = glam::Mat4::from_translation(glam::Vec3::Z * 60.0);
+        let world_from_model = rotation * translation_offset * translation_center * scale;
         let model_from_world = world_from_model.inverse();
 
         let mut bbox_builder = LineStripSeriesBuilder::<()>::default();
@@ -268,7 +267,24 @@ impl framework::Example for RenderVolumetric {
         }
         let bbox_draw_data = bbox_builder.to_draw_data(re_ctx);
 
-        let volume2d_instances = vec![{
+        let rect_draw_data = RectangleDrawData::new(
+            re_ctx,
+            &[TexturedRect {
+                top_left_corner_position: world_from_model
+                    .transform_point3(glam::Vec3::new(0.0, 1.0, 0.0)),
+                extent_u: world_from_model.transform_vector3(glam::Vec3::X),
+                extent_v: world_from_model.transform_vector3(-glam::Vec3::Y),
+                texture: albedo_handle.clone(),
+                texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+                texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                multiplicative_tint: Rgba::WHITE,
+                // Push to background. Mostly important for mouse picking order!
+                depth_offset: -1,
+            }],
+        )
+        .unwrap();
+
+        let depth_cloud_instances = vec![{
             DepthCloud {
                 world_from_model,
                 model_from_world,
@@ -280,7 +296,8 @@ impl framework::Example for RenderVolumetric {
             }
         }];
 
-        let volume2d_draw_data = DepthCloudDrawData::new(re_ctx, &volume2d_instances).unwrap();
+        let depth_cloud_draw_data =
+            DepthCloudDrawData::new(re_ctx, &depth_cloud_instances).unwrap();
 
         vec![
             {
@@ -308,7 +325,8 @@ impl framework::Example for RenderVolumetric {
                     .unwrap();
                 let command_buffer = view_builder
                     .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
-                    .queue_draw(&volume2d_draw_data)
+                    .queue_draw(&rect_draw_data)
+                    .queue_draw(&depth_cloud_draw_data)
                     .queue_draw(&bbox_draw_data)
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
@@ -352,5 +370,5 @@ impl framework::Example for RenderVolumetric {
 }
 
 fn main() {
-    framework::start::<RenderVolumetric>();
+    framework::start::<RenderDepthClouds>();
 }

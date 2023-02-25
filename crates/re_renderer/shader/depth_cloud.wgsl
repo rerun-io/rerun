@@ -80,7 +80,7 @@ struct PointData {
 fn compute_point_data(quad_idx: i32) -> PointData {
     let texcoords = IVec2(
         quad_idx % textureDimensions(depth_texture).x,
-        quad_idx / textureDimensions(depth_texture).x,
+        textureDimensions(depth_texture).y - quad_idx / textureDimensions(depth_texture).x,
     );
 
     // TODO: deal with..:
@@ -90,13 +90,27 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let linear_depth = textureLoad(depth_texture, texcoords, 0).x;
 
     // TODO: support color maps & albedo textures
-    let color = Vec4(linear_depth, linear_depth, linear_depth, 1.0);
+    let d = pow(linear_depth, 2.2);
+    let color = Vec4(d, d, d, 1.0);
 
-    let pos_in_model = Vec3(linear_depth); // TODO: compute from linear depth... somehow
+    // let pos_in_model = Vec3(linear_depth); // TODO: compute from linear depth... somehow
+
+    // TODO: get all of this from the camera intrinsics I guess?
+
+    let uv_center = Vec2(textureDimensions(depth_texture)) * 0.5;
+    let focal_length = 0.7 * f32(textureDimensions(depth_texture).x);
+
+    let plane_distance = 50.0; // TODO
+    let pos_in_model = Vec3(
+        (f32(texcoords.x) - uv_center.x) * linear_depth / focal_length,
+        (f32(texcoords.y) - uv_center.y) * linear_depth / focal_length,
+        linear_depth,
+    ) * 50.0;
 
     // TODO: all of this is prob a mess
     var data: PointData;
-    data.pos_in_world = (depth_cloud_info.world_from_model * Vec4(pos_in_model, 1.0)).xyz;
+    // data.pos_in_world = (depth_cloud_info.world_from_model * Vec4(pos_in_model.xyz, 1.0)).xyz;
+    data.pos_in_world = pos_in_model.xyz;
     data.color = color;
 
     return data;
@@ -144,7 +158,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
     let to_camera = frame.camera_position - point_data.pos_in_world;
     let camera_distance = length(to_camera);
     // TODO: no clue what I'm doing.
-    let radius = unresolved_size_to_world(1.0, camera_distance, frame.auto_size_points);
+    let radius = unresolved_size_to_world(-1.0, camera_distance, frame.auto_size_points);
 
     // Span quad
     var pos_in_world: Vec3;
@@ -172,6 +186,8 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // position along the way.
     let ray_in_world = camera_ray_to_world_pos(in.pos_in_world);
 
+    // TODO: spheres and shading optional
+
     // Sphere intersection with anti-aliasing as described by Iq here
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labled to it's easier to understand!)
@@ -190,6 +206,6 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // // TODO(andreas): Proper shading
     // // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
     var shading = 1.0;
-    // shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.point_radius)); // quick and dirty coloring
+    shading = max(0.4, sqrt(1.2 - distance(in.point_pos_in_world, in.pos_in_world) / in.point_radius)); // quick and dirty coloring
     return vec4(in.point_color.rgb * shading, coverage);
 }

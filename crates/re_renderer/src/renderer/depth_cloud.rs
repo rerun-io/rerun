@@ -194,7 +194,7 @@ impl DepthCloudDrawData {
             };
 
             bind_groups.push((
-                depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
+                depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y * 6,
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &BindGroupDesc {
