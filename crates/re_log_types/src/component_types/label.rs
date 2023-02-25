@@ -11,17 +11,7 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(Label::data_type(), DataType::Utf8);
 /// ```
-#[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    derive_more::From,
-    derive_more::Into,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct Label(pub String);
@@ -30,5 +20,18 @@ impl Component for Label {
     #[inline]
     fn name() -> crate::ComponentName {
         "rerun.label".into()
+    }
+}
+
+impl From<String> for Label {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Label> for String {
+    fn from(value: Label) -> Self {
+        value.0
     }
 }

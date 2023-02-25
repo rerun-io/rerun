@@ -11,18 +11,7 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    derive_more::From,
-    derive_more::Into,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct ColorRGBA(pub u32);
