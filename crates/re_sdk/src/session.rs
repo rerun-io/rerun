@@ -183,26 +183,25 @@ impl Session {
             return;
         }
 
-        match &mut self.sender {
-            Sender::Buffered(messages) => {
-                re_log::debug!("Connecting to remote…");
-                let mut client = re_sdk_comms::Client::new(addr);
-                for msg in messages.drain(..) {
-                    client.send(msg);
-                }
-                self.sender = Sender::Remote(client);
-            }
+        let backlog = self.drain_log_messages_buffer();
 
+        match &mut self.sender {
             Sender::Remote(remote) => {
                 remote.set_addr(addr);
             }
 
-            #[cfg(feature = "native_viewer")]
-            Sender::NativeViewer(_) => {}
+            #[cfg(feature = "re_viewer")]
+            Sender::NativeViewer(_) => {
+                re_log::error!("Cannot connect from within a spawn() call");
+            }
 
-            #[cfg(feature = "web_viewer")]
-            Sender::WebViewer(_) => {
-                self.sender = Sender::Remote(re_sdk_comms::Client::new(addr));
+            _ => {
+                re_log::debug!("Connecting to remote…");
+                let mut client = re_sdk_comms::Client::new(addr);
+                for msg in backlog {
+                    client.send(msg);
+                }
+                self.sender = Sender::Remote(client);
             }
         }
     }
