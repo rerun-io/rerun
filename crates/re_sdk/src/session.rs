@@ -462,7 +462,9 @@ impl Session {
         let app_env = self.app_env();
 
         // NOTE: Forget the handle on purpose, leave that thread be.
-        _ = std::thread::spawn(move || run(self));
+        _ = std::thread::Builder::new()
+            .name("spawned".into())
+            .spawn(move || run(self));
 
         // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
         // to spawn the viewer in place and migrate the user callback to a new thread.
