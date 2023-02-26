@@ -24,11 +24,11 @@ fn install_panic_hook() {
             if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
             {
                 let callstack = callstack_from("panicking::panic_fmt\n");
-                let mut event = re_analytics::Event::append("panic".into())
-                    .with_prop("callstack".into(), callstack);
+                let mut event =
+                    re_analytics::Event::append("panic").with_prop("callstack", callstack);
                 if let Some(location) = panic_info.location() {
                     event = event.with_prop(
-                        "location".into(),
+                        "location",
                         format!("{}:{}", location.file(), location.line()),
                     );
                 }
@@ -134,9 +134,9 @@ fn install_signal_handler() {
     fn send_signal_analytics(signal_name: &str, callstack: String) {
         if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
             analytics.record(
-                re_analytics::Event::append("signal".into())
-                    .with_prop("signal".into(), signal_name.to_owned())
-                    .with_prop("callstack".into(), callstack),
+                re_analytics::Event::append("signal")
+                    .with_prop("signal", signal_name)
+                    .with_prop("callstack", callstack),
             );
 
             std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
