@@ -3,7 +3,7 @@ use std::time::Duration;
 use re_analytics::{Analytics, Event};
 
 fn input_filled_event(body: String) -> Event {
-    Event::append("input_filled".into()).with_prop("body", body)
+    Event::append("input_filled").with_prop("body", body)
 }
 
 fn main() {

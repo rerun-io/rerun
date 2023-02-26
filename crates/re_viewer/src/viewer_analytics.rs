@@ -94,7 +94,7 @@ impl ViewerAnalytics {
                 build_info.git_hash.to_owned()
             };
 
-            let mut event = Event::update("update_metadata".into())
+            let mut event = Event::update("update_metadata")
                 .with_prop("rerun_version", build_info.version)
                 .with_prop("target", build_info.target_triple)
                 .with_prop("git_hash", git_hash)
@@ -129,7 +129,7 @@ impl ViewerAnalytics {
             analytics.record(event);
         }
 
-        self.record(Event::append("viewer_started".into()));
+        self.record(Event::append("viewer_started"));
     }
 
     /// When we have loaded the start of a new recording.
@@ -190,7 +190,7 @@ impl ViewerAnalytics {
             self.register("data_source", data_source.to_owned());
         }
 
-        self.record(Event::append("open_recording".into()));
+        self.record(Event::append("open_recording"));
     }
 }
 

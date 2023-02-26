@@ -77,20 +77,20 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn append(name: Cow<'static, str>) -> Self {
+    pub fn append(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Append,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn update(name: Cow<'static, str>) -> Self {
+    pub fn update(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Update,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
