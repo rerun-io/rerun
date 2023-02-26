@@ -79,7 +79,7 @@ impl ViewerAnalytics {
             AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
             AppEnvironment::Web => "web_viewer",
         };
-        self.register("app_env", app_env_str.to_owned());
+        self.register("app_env", app_env_str);
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
@@ -187,7 +187,7 @@ impl ViewerAnalytics {
                 re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
                 re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
             };
-            self.register("data_source", data_source.to_owned());
+            self.register("data_source", data_source);
         }
 
         self.record(Event::append("open_recording"));
