@@ -3,7 +3,7 @@ use anyhow::Context as _;
 use re_log_types::LogMsg;
 
 pub struct FileWriter {
-    // None = quite
+    // None = quit
     tx: std::sync::mpsc::Sender<Option<LogMsg>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
 }
