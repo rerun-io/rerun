@@ -1,0 +1,16 @@
+[package]
+name = "re_build_info"
+authors.workspace = true
+description = "Information about the build. Use together with re_build_build_info"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true

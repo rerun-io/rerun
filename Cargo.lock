@@ -3903,8 +3903,9 @@ dependencies = [
  "anyhow",
  "crossbeam",
  "directories-next",
- "glob",
  "once_cell",
+ "re_build_build_info",
+ "re_build_info",
  "re_log",
  "reqwest",
  "serde",
@@ -3942,6 +3943,19 @@ dependencies = [
  "static_assertions",
  "thiserror",
 ]
+
+[[package]]
+name = "re_build_build_info"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "glob",
+ "time 0.3.17",
+]
+
+[[package]]
+name = "re_build_info"
+version = "0.2.0"
 
 [[package]]
 name = "re_data_store"
@@ -4153,6 +4167,8 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "rand",
+ "re_build_build_info",
+ "re_build_info",
  "re_error",
  "re_log",
  "re_log_types",
@@ -4281,6 +4297,8 @@ dependencies = [
  "rand",
  "re_analytics",
  "re_arrow_store",
+ "re_build_build_info",
+ "re_build_info",
  "re_data_store",
  "re_error",
  "re_format",
@@ -4464,6 +4482,8 @@ dependencies = [
  "puffin",
  "puffin_http",
  "re_analytics",
+ "re_build_build_info",
+ "re_build_info",
  "re_error",
  "re_format",
  "re_log",
@@ -4497,6 +4517,8 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
+ "re_build_build_info",
+ "re_build_info",
  "re_error",
  "re_log",
  "re_log_types",
