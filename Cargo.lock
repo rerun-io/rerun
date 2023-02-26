@@ -851,12 +851,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "convert_case"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
-
-[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1161,19 +1155,6 @@ checksum = "7618812407e9402654622dd402b0a89dff9ba93badd6540781526117b92aab7e"
 dependencies = [
  "darling_core",
  "quote",
- "syn",
-]
-
-[[package]]
-name = "derive_more"
-version = "0.99.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
-dependencies = [
- "convert_case",
- "proc-macro2",
- "quote",
- "rustc_version",
  "syn",
 ]
 
@@ -3883,7 +3864,6 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "crossbeam",
- "derive_more",
  "directories-next",
  "glob",
  "once_cell",
@@ -3962,7 +3942,6 @@ version = "0.2.0"
 dependencies = [
  "arrow2",
  "comfy-table 6.1.4",
- "derive_more",
 ]
 
 [[package]]
@@ -3998,7 +3977,6 @@ dependencies = [
  "bytemuck",
  "chrono",
  "criterion",
- "derive_more",
  "document-features",
  "ecolor",
  "fixed",

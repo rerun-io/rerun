@@ -112,12 +112,12 @@ impl Event {
     }
 }
 
-#[derive(Debug, Clone, derive_more::From, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum Property {
+    Bool(bool),
     Integer(i64),
     Float(f64),
     String(String),
-    Bool(bool),
 }
 
 impl Property {
@@ -131,12 +131,40 @@ impl Property {
         let mut hasher = sha2::Sha256::default();
         hasher.update(SALT);
         match self {
+            Property::Bool(data) => hasher.update([*data as u8]),
             Property::Integer(data) => hasher.update(data.to_le_bytes()),
             Property::Float(data) => hasher.update(data.to_le_bytes()),
             Property::String(data) => hasher.update(data),
-            Property::Bool(data) => hasher.update([*data as u8]),
         }
-        format!("{:x}", hasher.finalize()).into()
+        Self::String(format!("{:x}", hasher.finalize()))
+    }
+}
+
+impl From<bool> for Property {
+    #[inline]
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<i64> for Property {
+    #[inline]
+    fn from(value: i64) -> Self {
+        Self::Integer(value)
+    }
+}
+
+impl From<f64> for Property {
+    #[inline]
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl From<String> for Property {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self::String(value)
     }
 }
 
