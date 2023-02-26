@@ -23,7 +23,6 @@ fn sphere_distance(ray: Ray, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
 
 struct PointData {
     pos_in_world: Vec3,
-    linear_depth: f32,
     color: Vec4
 }
 
@@ -55,7 +54,6 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 
     var data: PointData;
     data.pos_in_world = pos_in_world.xyz;
-    data.linear_depth = linear_depth;
     data.color = color;
 
     return data;
@@ -100,8 +98,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
     // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
     let to_camera = frame.camera_position - point_data.pos_in_world;
     let camera_distance = length(to_camera);
-    // TODO: no clue what I'm doing.
-    let radius = unresolved_size_to_world(-point_data.linear_depth * 4.0, camera_distance, frame.auto_size_points);
+    let radius = unresolved_size_to_world(point_data.pos_in_world.z * 0.01, camera_distance, frame.auto_size_points);
 
     // Span quad
     var pos_in_world: Vec3;

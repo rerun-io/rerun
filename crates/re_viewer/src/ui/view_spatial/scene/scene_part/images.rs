@@ -171,8 +171,18 @@ impl ImagesPart {
                         _ => todo!(),
                     };
 
+                    // TODO: grab this info from the transform cache
+                    let z_scale = 6.5;
+                    let focal_length = w as f32 * 0.7;
+                    let intrinsics = glam::Mat3::from_cols(
+                        Vec3::new(focal_length, 0.0, w as f32 * 0.5),
+                        Vec3::new(0.0, focal_length, h as f32 * 0.5),
+                        Vec3::new(0.0, 0.0, 1.0),
+                    );
+
                     scene.primitives.depth_clouds.push(DepthCloud {
-                        intrinsics: glam::Mat4::IDENTITY, // TODO
+                        intrinsics,
+                        z_scale,
                         depth_dimensions: glam::UVec2::new(w as _, h as _),
                         depth_data: data,
                     });
