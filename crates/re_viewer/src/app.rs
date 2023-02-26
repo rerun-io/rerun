@@ -1080,7 +1080,6 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
         version,
         git_hash: _,
         git_branch: _,
-        git_is_clean: _,
         target_triple,
         datetime,
     } = *build_info;

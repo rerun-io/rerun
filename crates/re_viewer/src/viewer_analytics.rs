@@ -91,15 +91,7 @@ impl ViewerAnalytics {
                 // analytics.
                 format!("v{}", build_info.version)
             } else {
-                format!(
-                    "{}{}",
-                    build_info.git_hash,
-                    if build_info.git_is_clean {
-                        ""
-                    } else {
-                        "-dirty"
-                    }
-                )
+                build_info.git_hash.to_owned()
             };
 
             let mut event = Event::update("update_metadata".into())

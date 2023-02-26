@@ -43,9 +43,6 @@ pub fn export_env_vars() {
     let git_branch = git_branch().unwrap_or_default();
     println!("cargo:rustc-env=RE_BUILD_GIT_BRANCH={git_branch}");
 
-    let is_git_clean = is_git_clean().unwrap_or_default();
-    println!("cargo:rustc-env=RE_BUILD_GIT_IS_CLEAN={is_git_clean}");
-
     let time_format =
         time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
     let date_time = time::OffsetDateTime::now_utc()
@@ -80,14 +77,6 @@ fn git_hash() -> anyhow::Result<String> {
         anyhow::bail!("empty commit hash");
     }
     Ok(git_hash)
-}
-
-fn is_git_clean() -> anyhow::Result<bool> {
-    Ok(Command::new("git")
-        .args(["diff-files", "--quiet"])
-        .output()?
-        .status
-        .success())
 }
 
 fn git_branch() -> anyhow::Result<String> {

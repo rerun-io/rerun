@@ -27,9 +27,6 @@ pub struct BuildInfo {
     /// Current git branch, or empty string.
     pub git_branch: &'static str,
 
-    /// Is the git clean? If false (dirty), it means there are uncommited changes.
-    pub git_is_clean: bool,
-
     /// Target architecture and OS
     ///
     /// Example: `xaarch64-apple-darwin`
@@ -59,7 +56,6 @@ impl std::fmt::Display for BuildInfo {
             version,
             git_hash,
             git_branch,
-            git_is_clean,
             target_triple,
             datetime,
         } = self;
@@ -74,9 +70,6 @@ impl std::fmt::Display for BuildInfo {
         if !git_hash.is_empty() {
             let git_hash: String = git_hash.chars().take(7).collect(); // shorten
             write!(f, " {git_hash}")?;
-            if !git_is_clean {
-                write!(f, "-dirty")?;
-            }
         }
 
         write!(f, ", built {datetime}")?;
@@ -95,7 +88,6 @@ macro_rules! build_info {
             version: env!("CARGO_PKG_VERSION"),
             git_hash: env!("RE_BUILD_GIT_HASH"),
             git_branch: env!("RE_BUILD_GIT_BRANCH"),
-            git_is_clean: env!("RE_BUILD_GIT_IS_CLEAN") == "true",
             target_triple: env!("RE_BUILD_TARGET_TRIPLE"),
             datetime: env!("RE_BUILD_DATETIME"),
         }
