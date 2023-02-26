@@ -22,7 +22,7 @@ pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 fn set_default_rust_log_env() {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
 
-    const LOUD_CRATES: [&str; 6] = [
+    const LOUD_CRATES: [&str; 7] = [
         // wgpu crates spam a lot on info level, which is really annoying
         // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
         "naga",
@@ -32,6 +32,7 @@ fn set_default_rust_log_env() {
         "h2",
         "hyper",
         "rustls",
+        "ureq",
     ];
     for loud_crate in LOUD_CRATES {
         if !rust_log.contains(&format!("{loud_crate}=")) {
