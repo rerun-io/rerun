@@ -1,6 +1,5 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
-use once_cell::sync::OnceCell;
 use time::OffsetDateTime;
 
 use crate::{Event, Property};
@@ -48,16 +47,22 @@ impl From<ureq::Error> for SinkError {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct PostHogSink {
-    // NOTE: We need to lazily build the underlying HTTP client, so that we can guarantee that it
-    // is initialized from a thread that is free of a Tokio runtime.
-    // This is necessary because `reqwest` will crash if we try and initialize a blocking HTTP
-    // client from within a thread that has a Tokio runtime instantiated.
-    //
-    // We also use this opportunity to upgrade our public HTTP endpoint into the final HTTP2/TLS
-    // URL by following all 301 redirects.
-    agent: OnceCell<(Url, ureq::Agent)>,
+    agent: ureq::Agent,
+    // Lazily resolve the url so that we don't do blocking requests in `PostHogSink::default`
+    resolved_url: once_cell::sync::OnceCell<String>,
+}
+
+impl Default for PostHogSink {
+    fn default() -> Self {
+        Self {
+            agent: ureq::AgentBuilder::new()
+                .timeout(std::time::Duration::from_secs(5))
+                .build(),
+            resolved_url: Default::default(),
+        }
+    }
 }
 
 impl PostHogSink {
@@ -71,7 +76,7 @@ impl PostHogSink {
         session_id: &str,
         events: &[Event],
     ) -> Result<(), SinkError> {
-        let (resolved_url, agent) = self.init()?;
+        let resolved_url = self.init()?;
 
         let events = events
             .iter()
@@ -80,18 +85,14 @@ impl PostHogSink {
         let batch = PostHogBatch::from_events(&events);
 
         re_log::debug!("{}", serde_json::to_string_pretty(&batch)?);
-        agent.post(&resolved_url.0).send_json(&batch)?;
+        self.agent.post(resolved_url).send_json(&batch)?;
         Ok(())
     }
 
-    fn init(&self) -> Result<&(Url, ureq::Agent), SinkError> {
-        self.agent.get_or_try_init(|| {
-            let agent = ureq::AgentBuilder::new()
-                .timeout(Duration::from_secs(5))
-                .build();
-
+    fn init(&self) -> Result<&String, SinkError> {
+        self.resolved_url.get_or_try_init(|| {
             // Make a dummy-request to resolve our final URL.
-            let resolved_url = match agent.get(Self::URL).call() {
+            let resolved_url = match self.agent.get(Self::URL).call() {
                 Ok(response) => response.get_url().to_owned(),
                 Err(ureq::Error::Status(status, response)) => {
                     // We actually expect to get here, because we make a bad request (GET to and end-point that expects a POST).
@@ -107,7 +108,7 @@ impl PostHogSink {
 
             // 2023-02-26 the resolved URL was https://eu.posthog.com/capture (in Europe)
 
-            Ok((Url(resolved_url), agent))
+            Ok(resolved_url)
         })
     }
 }
