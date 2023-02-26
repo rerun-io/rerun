@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use ecolor::Hsva;
+use ecolor::{linear_u8_from_linear_f32, Hsva};
 use glam::{UVec3, Vec2, Vec3, Vec3Swizzles};
 use image::{DynamicImage, GenericImageView};
-use itertools::Itertools;
+use itertools::{multiunzip, Itertools};
 use macaw::IsoTransform;
 use rand::Rng;
 use re_renderer::{
@@ -84,8 +84,6 @@ impl framework::Example for RenderDepthClouds {
         time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
-        // TODO: comparison!
-
         let Self {
             depth,
             albedo,
@@ -102,6 +100,8 @@ impl framework::Example for RenderDepthClouds {
                 seconds_since_startup.cos(),
             ) * 100.0;
         }
+
+        let z_scale = 50.0;
 
         let focal_length = depth.dimensions.x as f32 * 0.7;
         let offset = depth.dimensions.as_vec2() * 0.5;
@@ -146,11 +146,39 @@ impl framework::Example for RenderDepthClouds {
         )
         .unwrap();
 
+        let point_cloud_draw_data = {
+            let num_points = depth.dimensions.x * depth.dimensions.y;
+            let (points, colors, radii): (Vec<_>, Vec<_>, Vec<_>) = (0..depth.dimensions.y)
+                .flat_map(|y| (0..depth.dimensions.x).map(move |x| glam::UVec2::new(x, y)))
+                .map(|texcoords| {
+                    let linear_depth = depth.get_linear(texcoords.x, texcoords.y);
+                    let pos_in_world = ((texcoords.as_vec2() - offset) * linear_depth
+                        / focal_length)
+                        .extend(linear_depth);
+
+                    (
+                        pos_in_world * z_scale,
+                        Color32::from_gray((linear_depth * 255.0) as u8),
+                        Size(-linear_depth * 4.0),
+                    )
+                })
+                .multiunzip();
+
+            let mut builder = PointCloudBuilder::<()>::new(re_ctx);
+            builder
+                .batch("backprojected point cloud")
+                .add_points(num_points as _, points.into_iter())
+                .colors(colors.into_iter())
+                .radii(radii.into_iter());
+
+            builder.to_draw_data(re_ctx).unwrap()
+        };
+
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &[DepthCloud {
                 intrinsics,
-                z_scale: 20.0, // TODO
+                z_scale,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
             }],
@@ -183,7 +211,7 @@ impl framework::Example for RenderDepthClouds {
                     .unwrap();
                 let command_buffer = view_builder
                     .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
-                    .queue_draw(&depth_cloud_draw_data)
+                    .queue_draw(&point_cloud_draw_data)
                     .queue_draw(&bbox_draw_data)
                     .queue_draw(&rect_draw_data)
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
@@ -281,6 +309,15 @@ impl DepthTexture {
         };
 
         Self { dimensions, data }
+    }
+
+    pub fn get_linear(&self, x: u32, y: u32) -> f32 {
+        match &self.data {
+            DepthCloudDepthData::U16(data) => {
+                data[(x + y * self.dimensions.x) as usize] as f32 / u16::MAX as f32
+            }
+            DepthCloudDepthData::F32(data) => data[(x + y * self.dimensions.x) as usize],
+        }
     }
 }
 
