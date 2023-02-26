@@ -8,7 +8,7 @@ publish = false
 
 
 [dependencies]
-rerun = { workspace = true, features = ["web"] }
+rerun = { workspace = true, features = ["web_viewer"] }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }

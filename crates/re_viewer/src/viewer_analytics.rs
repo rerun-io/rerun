@@ -71,7 +71,7 @@ impl ViewerAnalytics {
             AppEnvironment::PythonSdk(_) => "python_sdk",
             AppEnvironment::RustSdk { rust_version: _ } => "rust_sdk",
             AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
-            AppEnvironment::Web => "web",
+            AppEnvironment::Web => "web_viewer",
         };
         self.register("app_env", app_env_str.to_owned());
 
@@ -84,7 +84,10 @@ impl ViewerAnalytics {
             let mut event = Event::update("update_metadata".into())
                 .with_prop("rerun_version".into(), rerun_version.to_owned())
                 .with_prop("target".into(), target.to_owned())
-                .with_prop("git_hash".into(), git_hash.to_owned());
+                .with_prop("git_hash".into(), git_hash.to_owned())
+                .with_prop("debug".into(), cfg!(debug_assertions).to_owned()) // debug-build?
+                .with_prop("rerun_workspace".into(), std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
+                ;
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
             // machine running the viewer, then add it to the permanent user profile.
