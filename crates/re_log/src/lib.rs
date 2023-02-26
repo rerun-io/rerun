@@ -31,8 +31,8 @@ fn set_default_rust_log_env() {
         // These are quite spammy on debug, drowning out what we care about:
         "h2",
         "hyper",
-        "reqwest",
         "rustls",
+        "ureq",
     ];
     for loud_crate in LOUD_CRATES {
         if !rust_log.contains(&format!("{loud_crate}=")) {
