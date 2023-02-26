@@ -95,8 +95,12 @@ impl Event {
         }
     }
 
-    pub fn with_prop(mut self, name: Cow<'static, str>, value: impl Into<Property>) -> Self {
-        self.props.insert(name, value.into());
+    pub fn with_prop(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Property>,
+    ) -> Self {
+        self.props.insert(name.into(), value.into());
         self
     }
 }
@@ -154,6 +158,13 @@ impl From<String> for Property {
     #[inline]
     fn from(value: String) -> Self {
         Self::String(value)
+    }
+}
+
+impl From<&str> for Property {
+    #[inline]
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
     }
 }
 
