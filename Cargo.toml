@@ -63,9 +63,9 @@ lazy_static = "1.4"
 macaw = "0.18"
 mimalloc = "0.1.29"
 ndarray = "0.15"
-polars-core = "0.27.1"
-polars-lazy = "0.27.1"
-polars-ops = "0.27.1"
+polars-core = "0.27.2"
+polars-lazy = "0.27.2"
+polars-ops = "0.27.2"
 puffin = "0.14"
 reqwest = { version = "0.11", default-features = false }
 thiserror = "1.0"
@@ -94,3 +94,4 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+polars-core = { git = 'https://github.com/pola-rs/polars.git' }
