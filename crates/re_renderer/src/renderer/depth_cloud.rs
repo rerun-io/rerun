@@ -34,7 +34,9 @@ mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
-        pub intrinsics: glam::Mat3,
+        pub intrinsics: crate::wgpu_buffer_types::Mat3,
+        pub z_scale: f32,
+        pub pad: [f32; 3],
     }
 }
 
@@ -57,6 +59,7 @@ impl DepthCloudDepthData {
 
 pub struct DepthCloud {
     pub intrinsics: glam::Mat3,
+    pub z_scale: f32,
 
     pub depth_dimensions: glam::UVec2,
     pub depth_data: DepthCloudDepthData,
@@ -66,6 +69,7 @@ impl Default for DepthCloud {
     fn default() -> Self {
         Self {
             intrinsics: glam::Mat3::IDENTITY,
+            z_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::F32(Vec::new()),
         }
@@ -147,7 +151,9 @@ impl DepthCloudDrawData {
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::DepthCloudInfoUBO>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::DepthCloudInfoUBO {
-                        intrinsics: depth_cloud.intrinsics,
+                        intrinsics: depth_cloud.intrinsics.into(),
+                        z_scale: depth_cloud.z_scale,
+                        pad: [0f32; 3],
                     }));
             }
         }
@@ -211,7 +217,7 @@ impl DepthCloudDrawData {
             };
 
             bind_groups.push((
-                depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y * 6,
+                depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &BindGroupDesc {
@@ -331,7 +337,6 @@ impl Renderer for DepthCloudRenderer {
                     // cull_mode: Some(Face::Back),
                     ..Default::default()
                 },
-                // TODO
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
@@ -361,7 +366,7 @@ impl Renderer for DepthCloudRenderer {
 
         for (num_points, bind_group) in &draw_data.bind_groups {
             pass.set_bind_group(1, bind_group, &[]);
-            pass.draw(0..*num_points, 0..1);
+            pass.draw(0..*num_points * 6, 0..1);
         }
 
         Ok(())

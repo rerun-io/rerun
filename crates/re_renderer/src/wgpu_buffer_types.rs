@@ -184,6 +184,27 @@ impl From<glam::UVec3> for UVec3Unpadded {
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]
+pub struct Mat3 {
+    c0: Vec3,
+    c1: Vec3,
+    c2: Vec3,
+    pad: Vec3,
+}
+
+impl From<glam::Mat3> for Mat3 {
+    #[inline]
+    fn from(m: glam::Mat3) -> Self {
+        Self {
+            c0: m.x_axis.into(),
+            c1: m.y_axis.into(),
+            c2: m.z_axis.into(),
+            pad: Vec3::from(glam::Vec3::default()),
+        }
+    }
+}
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Mat4 {
     c0: Vec4,
     c1: Vec4,

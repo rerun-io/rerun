@@ -104,22 +104,20 @@ impl framework::Example for RenderDepthClouds {
         }
 
         let focal_length = depth.dimensions.x as f32 * 0.7;
-        let uv_center = depth.dimensions.as_vec2() * 0.5;
-        let pinhole = glam::Mat3::from_cols(
-            Vec3::new(focal_length, 0.0, uv_center.x),
-            Vec3::new(0.0, focal_length, uv_center.y),
+        let offset = depth.dimensions.as_vec2() * 0.5;
+        let intrinsics = glam::Mat3::from_cols(
+            Vec3::new(focal_length, 0.0, offset.x),
+            Vec3::new(0.0, focal_length, offset.y),
             Vec3::new(0.0, 0.0, 1.0),
         );
 
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
-        let volume_size = albedo.dimensions.as_vec2().extend(0.0) / 10.0;
-        let scale = glam::Mat4::from_scale(volume_size);
+        let frame_size = albedo.dimensions.as_vec2().extend(0.0) / 10.0;
+        let scale = glam::Mat4::from_scale(frame_size);
         let rotation = glam::Mat4::IDENTITY;
-        let translation_center =
-            glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * volume_size);
+        let translation_center = glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * frame_size);
         let world_from_model = rotation * translation_center * scale;
-        let model_from_world = world_from_model.inverse();
 
         let mut bbox_builder = LineStripSeriesBuilder::<()>::default();
         {
@@ -151,7 +149,8 @@ impl framework::Example for RenderDepthClouds {
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &[DepthCloud {
-                intrinsics: pinhole,
+                intrinsics,
+                z_scale: 20.0, // TODO
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
             }],

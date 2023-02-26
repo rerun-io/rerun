@@ -34,10 +34,9 @@ fn compute_point_data(quad_idx: i32) -> PointData {
         textureDimensions(depth_texture).y - quad_idx / textureDimensions(depth_texture).x,
     );
 
-    // TODO: deal with..:
-    // - non-linear depths
-    // - reversed depths
-    // - depth to plane vs. depth to cam
+    // TODO(cmc): provide a way to remap non-linear depths to linear.
+    // TODO(cmc): provide a way to remap reversed depths to normal.
+    // TODO(cmc): provide a way to toggle between depth to plane <> depth to cam.
     let linear_depth = textureLoad(depth_texture, texcoords, 0).x;
 
     // TODO(cmc): support color maps & albedo textures
@@ -45,19 +44,17 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let color = Vec4(d, d, d, 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
+    let intrinsics = transpose(depth_cloud_info.intrinsics);
+    let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
+    let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
-    let uv_center = Vec2(textureDimensions(depth_texture)) * 0.5;
-    let focal_length = 0.7 * f32(textureDimensions(depth_texture).x);
-
-    let plane_distance = 7.0; // TODO
-    let pos_in_model = Vec3(
-        (f32(texcoords.x) - uv_center.x) * linear_depth / focal_length,
-        (f32(texcoords.y) - uv_center.y) * linear_depth / focal_length,
+    let pos_in_world = Vec3(
+        (Vec2(texcoords) - offset) * linear_depth / focal_length,
         linear_depth,
-    ) * plane_distance;
+    ) * depth_cloud_info.z_scale;
 
     var data: PointData;
-    data.pos_in_world = pos_in_model.xyz;
+    data.pos_in_world = pos_in_world.xyz;
     data.linear_depth = linear_depth;
     data.color = color;
 
@@ -68,6 +65,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 
 struct DepthCloudInfo {
     intrinsics: Mat3,
+    z_scale: f32,
 };
 @group(1) @binding(0)
 var<uniform> depth_cloud_info: DepthCloudInfo;
