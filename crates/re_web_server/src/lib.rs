@@ -41,7 +41,7 @@ impl Svc {
     #[cfg(feature = "analytics")]
     fn on_serve_wasm(&self) {
         if let Some(analytics) = &self.analytics {
-            analytics.record(re_analytics::Event::append("serve_wasm".into()));
+            analytics.record(re_analytics::Event::append("serve_wasm"));
         }
     }
 }
