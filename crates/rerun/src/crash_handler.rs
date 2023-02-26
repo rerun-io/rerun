@@ -154,11 +154,22 @@ fn callstack_from(start_pattern: &str) -> String {
 
     // Trim it a bit:
     let mut stack = stack.as_str();
+
+    // Trim the top (closest to the panic handler) to cut out some noise:
     if let Some(start_offset) = stack.find(start_pattern) {
         stack = &stack[start_offset + start_pattern.len()..];
     }
+
+    // Trim the bottom to cut out code that sets up the callstack:
     if let Some(end_offset) = stack.find("std::sys_common::backtrace::__rust_begin_short_backtrace")
     {
+        stack = &stack[..end_offset];
+    }
+
+    // Trim the bottom even more to exclude any user code that potentially used `rerun`
+    // as a library to show a viewer. In these cases there may be sensitive user code
+    // that called `rerun::run`, and we do not want to include it:
+    if let Some(end_offset) = stack.find("run_native_app") {
         stack = &stack[..end_offset];
     }
 

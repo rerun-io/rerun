@@ -143,8 +143,11 @@ impl CallSource {
 /// These crash reports includes a stacktrace. We make sure the file paths in the stacktrace
 /// don't include and sensitive parts of the path (like user names), but the function names
 /// are all included, which means you should ONLY call `run` from a function with
-/// a non-sensitive name, and make sure that any callbacks you've installed (plugins etc)
-/// also don't include any sensitive names.
+/// a non-sensitive name.
+///
+/// In the future we plan to support installing user plugins (that act like callbacks),
+/// and when we do we must make sure to give users an easy way to opt-out of the
+/// crash callstacks, as those could include the file and function names of user code.
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
