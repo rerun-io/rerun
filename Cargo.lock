@@ -4443,6 +4443,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "egui",
+ "itertools",
  "libc",
  "mimalloc",
  "puffin",

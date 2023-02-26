@@ -68,6 +68,7 @@ anyhow.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
 egui = { workspace = true, default-features = false }
+itertools = "0.10"
 puffin.workspace = true
 
 # Optional dependencies:

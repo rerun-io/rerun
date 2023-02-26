@@ -1,6 +1,10 @@
 //! All telemetry analytics collected by the Rerun Viewer are defined in this file for easy auditing.
 //!
-//! Analytics can be disabled with `rerun analytics disable`,
+//! There are two exceptions:
+//! * `crates/rerun/src/crash_handler.rs` sends anonymized callstacks on crashes
+//! * `crates/re_web_server/src/lib.rs` sends an anonymous event when a `.wasm` web-viewer is served.
+//!
+//! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]

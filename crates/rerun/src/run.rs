@@ -138,6 +138,13 @@ impl CallSource {
 /// Run the Rerun application and return an exit code.
 ///
 /// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args...]`.
+///
+/// This installs crash panic and signal handlers that sends analytics on panics and signals.
+/// These crash reports includes a stacktrace. We make sure the file paths in the stacktrace
+/// don't include and sensitive parts of the path (like user names), but the function names
+/// are all included, which means you should ONLY call `run` from a function with
+/// a non-sensitive name, and make sure that any callbacks you've installed (plugins etc)
+/// also don't include any sensitive names.
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
@@ -150,6 +157,8 @@ where
     re_memory::accounting_allocator::turn_on_tracking_if_env_var(
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
+
+    crate::crash_handler::install_crash_handlers();
 
     use clap::Parser as _;
     let args = Args::parse_from(args);
@@ -209,8 +218,6 @@ fn profiler(args: &Args) -> re_viewer::Profiler {
 }
 
 async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
-    crate::crash_handler::install_crash_handlers();
-
     #[cfg(feature = "native_viewer")]
     let profiler = profiler(&args);
 
