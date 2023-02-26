@@ -33,6 +33,7 @@ impl From<f64> for Scalar {
 }
 
 impl From<Scalar> for f64 {
+    #[inline]
     fn from(value: Scalar) -> Self {
         value.0
     }

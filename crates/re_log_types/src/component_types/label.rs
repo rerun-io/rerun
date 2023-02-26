@@ -31,6 +31,7 @@ impl From<String> for Label {
 }
 
 impl From<Label> for String {
+    #[inline]
     fn from(value: Label) -> Self {
         value.0
     }
