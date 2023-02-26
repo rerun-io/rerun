@@ -77,26 +77,30 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn append(name: Cow<'static, str>) -> Self {
+    pub fn append(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Append,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn update(name: Cow<'static, str>) -> Self {
+    pub fn update(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Update,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn with_prop(mut self, name: Cow<'static, str>, value: impl Into<Property>) -> Self {
-        self.props.insert(name, value.into());
+    pub fn with_prop(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Property>,
+    ) -> Self {
+        self.props.insert(name.into(), value.into());
         self
     }
 }
@@ -154,6 +158,13 @@ impl From<String> for Property {
     #[inline]
     fn from(value: String) -> Self {
         Self::String(value)
+    }
+}
+
+impl From<&str> for Property {
+    #[inline]
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
     }
 }
 
