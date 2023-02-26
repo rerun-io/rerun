@@ -75,7 +75,7 @@ impl Pipeline {
         // The eventual part comes from the fact that this only runs as part of the Rerun viewer,
         // and as such there's no guarantee it will ever run again, even if there's pending data.
 
-        std::thread::Builder::new()
+        if let Err(err) = std::thread::Builder::new()
             .name("pipeline_catchup".into())
             .spawn({
                 let config = config.clone();
@@ -89,24 +89,25 @@ impl Pipeline {
                     trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
                 }
             })
-            .expect("Failed to spawn analytics thread");
+        {
+            re_log::warn!("Failed to spawn analytics thread: {err}");
+        }
 
-        std::thread::Builder::new()
-            .name("pipeline".into())
-            .spawn({
-                let config = config.clone();
-                let event_tx = event_tx.clone();
-                move || {
-                    let analytics_id = &config.analytics_id;
-                    let session_id = &config.session_id.to_string();
+        if let Err(err) = std::thread::Builder::new().name("pipeline".into()).spawn({
+            let config = config.clone();
+            let event_tx = event_tx.clone();
+            move || {
+                let analytics_id = &config.analytics_id;
+                let session_id = &config.session_id.to_string();
 
-                    trace!(%analytics_id, %session_id, "pipeline thread started");
-                    let res =
-                        realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
-                    trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
-                }
-            })
-            .expect("Failed to spawn analytics thread");
+                trace!(%analytics_id, %session_id, "pipeline thread started");
+                let res =
+                    realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
+                trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
+            }
+        }) {
+            re_log::warn!("Failed to spawn analytics thread: {err}");
+        }
 
         Ok(Some(Self { event_tx }))
     }
