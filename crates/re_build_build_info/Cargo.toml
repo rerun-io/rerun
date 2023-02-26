@@ -1,0 +1,22 @@
+[package]
+name = "re_build_build_info"
+authors.workspace = true
+description = "build.rs helpers for generating build info"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+anyhow.workspace = true
+glob = "0.3"
+time = { workspace = true, features = ["formatting"] }
