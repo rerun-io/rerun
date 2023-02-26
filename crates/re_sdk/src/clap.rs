@@ -7,10 +7,10 @@ use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RerunBehavior {
+    Connect(SocketAddr),
     Save(PathBuf),
     #[cfg(feature = "web_viewer")]
     Serve,
-    Connect(SocketAddr),
     Spawn,
 }
 
@@ -58,33 +58,27 @@ pub struct RerunArgs {
 
 impl RerunArgs {
     /// Run common Rerun script setup actions. Connect to the viewer if necessary.
-    pub fn on_startup(&self, session: &mut Session) -> bool {
+    ///
+    /// Returns `true` if you should call `session.spawn`.
+    pub fn on_startup(&self, session: &mut Session) -> anyhow::Result<bool> {
         match self.to_behavior() {
             RerunBehavior::Connect(addr) => session.connect(addr),
-            RerunBehavior::Spawn => return true,
+            RerunBehavior::Save(path) => session.save(path)?,
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => session.serve(true),
-            RerunBehavior::Save(_) => {}
+            RerunBehavior::Spawn => return Ok(true),
         }
 
-        false
+        Ok(false)
     }
 
     /// Run common post-actions. Sleep if serving the web viewer.
-    pub fn on_teardown(&self, session: &mut Session) -> anyhow::Result<()> {
-        let behavior = self.to_behavior();
-
+    pub fn on_teardown(&self) {
         #[cfg(feature = "web_viewer")]
-        if behavior == RerunBehavior::Serve {
-            eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
+        if self.to_behavior() == RerunBehavior::Serve {
+            eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C"); // TODO(emilk): sleep in `drop` instead?
             std::thread::sleep(std::time::Duration::from_secs(1_000_000));
         }
-
-        if let RerunBehavior::Save(path) = behavior {
-            session.save(path)?;
-        }
-
-        Ok(())
     }
 
     fn to_behavior(&self) -> RerunBehavior {

@@ -196,7 +196,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut session = Session::init("raw_mesh_rs", true);
 
-    let should_spawn = args.rerun.on_startup(&mut session);
+    let should_spawn = args.rerun.on_startup(&mut session)?;
     if should_spawn {
         return session
             .spawn(move |mut session| run(&mut session, &args))
@@ -205,7 +205,7 @@ fn main() -> anyhow::Result<()> {
 
     run(&mut session, &args)?;
 
-    args.rerun.on_teardown(&mut session)?;
+    args.rerun.on_teardown();
 
     Ok(())
 }
