@@ -121,7 +121,7 @@ impl std::str::FromStr for RecordingId {
 /// The user-chosen name of the application doing the logging.
 ///
 /// Used to categorize recordings.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::Display)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ApplicationId(pub String);
 
@@ -143,6 +143,13 @@ impl ApplicationId {
     /// Currently: `"unknown_app_id"`.
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
+    }
+}
+
+impl std::fmt::Display for ApplicationId {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
