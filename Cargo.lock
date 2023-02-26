@@ -851,12 +851,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "convert_case"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
-
-[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1161,19 +1155,6 @@ checksum = "7618812407e9402654622dd402b0a89dff9ba93badd6540781526117b92aab7e"
 dependencies = [
  "darling_core",
  "quote",
- "syn",
-]
-
-[[package]]
-name = "derive_more"
-version = "0.99.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
-dependencies = [
- "convert_case",
- "proc-macro2",
- "quote",
- "rustc_version",
  "syn",
 ]
 
@@ -3883,10 +3864,10 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "crossbeam",
- "derive_more",
  "directories-next",
- "glob",
  "once_cell",
+ "re_build_build_info",
+ "re_build_info",
  "re_log",
  "reqwest",
  "serde",
@@ -3926,6 +3907,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_build_build_info"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "glob",
+ "time 0.3.17",
+]
+
+[[package]]
+name = "re_build_info"
+version = "0.2.0"
+
+[[package]]
 name = "re_data_store"
 version = "0.2.0"
 dependencies = [
@@ -3962,7 +3956,6 @@ version = "0.2.0"
 dependencies = [
  "arrow2",
  "comfy-table 6.1.4",
- "derive_more",
 ]
 
 [[package]]
@@ -3998,7 +3991,6 @@ dependencies = [
  "bytemuck",
  "chrono",
  "criterion",
- "derive_more",
  "document-features",
  "ecolor",
  "fixed",
@@ -4137,6 +4129,8 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "rand",
+ "re_build_build_info",
+ "re_build_info",
  "re_error",
  "re_log",
  "re_log_types",
@@ -4265,6 +4259,8 @@ dependencies = [
  "rand",
  "re_analytics",
  "re_arrow_store",
+ "re_build_build_info",
+ "re_build_info",
  "re_data_store",
  "re_error",
  "re_format",
@@ -4449,6 +4445,8 @@ dependencies = [
  "puffin",
  "puffin_http",
  "re_analytics",
+ "re_build_build_info",
+ "re_build_info",
  "re_error",
  "re_format",
  "re_log",
@@ -4482,6 +4480,8 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
+ "re_build_build_info",
+ "re_build_info",
  "re_error",
  "re_log",
  "re_log_types",

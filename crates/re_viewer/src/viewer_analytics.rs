@@ -6,6 +6,8 @@
 //!
 //! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
+//!
+//! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
@@ -69,7 +71,11 @@ impl ViewerAnalytics {
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
     /// When the viewer is first started
-    pub fn on_viewer_started(&mut self, app_env: crate::AppEnvironment) {
+    pub fn on_viewer_started(
+        &mut self,
+        build_info: &re_build_info::BuildInfo,
+        app_env: &crate::AppEnvironment,
+    ) {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
@@ -81,14 +87,21 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
-            let rerun_version = env!("CARGO_PKG_VERSION");
-            let target = re_analytics::TARGET_TRIPLET;
-            let git_hash = re_analytics::GIT_HASH;
+            let git_hash = if build_info.git_hash.is_empty() {
+                // Not built in a git repository. Probably we are a rust-crate
+                // compiled on the users machine.
+                // Let's set the git_hash  to be the git tag that corresponds to the
+                // published version, so that one can always easily checkout the `git_hash` field in the
+                // analytics.
+                format!("v{}", build_info.version)
+            } else {
+                build_info.git_hash.to_owned()
+            };
 
             let mut event = Event::update("update_metadata".into())
-                .with_prop("rerun_version".into(), rerun_version.to_owned())
-                .with_prop("target".into(), target.to_owned())
-                .with_prop("git_hash".into(), git_hash.to_owned())
+                .with_prop("rerun_version".into(), build_info.version.to_owned())
+                .with_prop("target".into(), build_info.target_triple.to_owned())
+                .with_prop("git_hash".into(), git_hash)
                 .with_prop("debug".into(), cfg!(debug_assertions).to_owned()) // debug-build?
                 .with_prop("rerun_workspace".into(), std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
                 ;
@@ -190,6 +203,13 @@ impl ViewerAnalytics {
 // When analytics are disabled:
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
 impl ViewerAnalytics {
-    pub fn on_viewer_started(&mut self, _app_env: crate::AppEnvironment) {}
+    #[allow(clippy::unused_self)]
+    pub fn on_viewer_started(
+        &mut self,
+        _build_info: &re_build_info::BuildInfo,
+        _app_env: &crate::AppEnvironment,
+    ) {
+    }
+    #[allow(clippy::unused_self)]
     pub fn on_open_recording(&mut self, _log_db: &re_data_store::LogDb) {}
 }
