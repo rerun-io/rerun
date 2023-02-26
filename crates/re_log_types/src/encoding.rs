@@ -1,40 +1,79 @@
-//! Saving/loading [`LogMsg`]:es to/from a file.
+//! Encoding/decoding [`LogMsg`]:es as `.rrd` files.
+
 use crate::LogMsg;
+
+// ----------------------------------------------------------------------------
+// native encode:
 
 #[cfg(feature = "save")]
 #[cfg(not(target_arch = "wasm32"))]
-pub fn encode<'a>(
-    messages: impl Iterator<Item = &'a LogMsg>,
-    mut write: impl std::io::Write,
-) -> anyhow::Result<()> {
-    crate::profile_function!();
+mod encoder {
     use anyhow::Context as _;
     use std::io::Write as _;
 
-    write.write_all(b"RRF0").context("header")?;
-    write.write_all(&[0, 0, 0, 0]).context("header")?; // reserved for future use
+    use crate::LogMsg;
 
-    let level = 3;
-    let mut encoder = zstd::stream::Encoder::new(write, level).context("zstd start")?;
-
-    let mut buffer = vec![];
-
-    for message in messages {
-        buffer.clear();
-        rmp_serde::encode::write_named(&mut buffer, message).context("MessagePack encoding")?;
-        encoder
-            .write_all(&(buffer.len() as u64).to_le_bytes())
-            .context("zstd write")?;
-        encoder.write_all(&buffer).context("zstd write")?;
+    /// Encode a stream of [`LogMsg`] into an `.rrd` file.
+    pub struct Encoder<W: std::io::Write> {
+        zstd_encoder: zstd::stream::Encoder<'static, W>,
+        buffer: Vec<u8>,
     }
 
-    encoder.finish().context("zstd finish")?;
+    impl<W: std::io::Write> Encoder<W> {
+        pub fn new(mut write: W) -> anyhow::Result<Self> {
+            write.write_all(b"RRF0").context("header")?;
+            write.write_all(&[0, 0, 0, 0]).context("header")?; // reserved for future use
 
-    Ok(())
+            let level = 3;
+            let zstd_encoder = zstd::stream::Encoder::new(write, level).context("zstd start")?;
+
+            Ok(Self {
+                zstd_encoder,
+                buffer: vec![],
+            })
+        }
+
+        pub fn append(&mut self, message: &LogMsg) -> anyhow::Result<()> {
+            let Self {
+                zstd_encoder,
+                buffer,
+            } = self;
+
+            buffer.clear();
+            rmp_serde::encode::write_named(buffer, message).context("MessagePack encoding")?;
+
+            zstd_encoder
+                .write_all(&(buffer.len() as u64).to_le_bytes())
+                .context("zstd write")?;
+            zstd_encoder.write_all(buffer).context("zstd write")?;
+
+            Ok(())
+        }
+
+        pub fn finish(self) -> anyhow::Result<()> {
+            self.zstd_encoder.finish().context("zstd finish")?;
+            Ok(())
+        }
+    }
+
+    pub fn encode<'a>(
+        messages: impl Iterator<Item = &'a LogMsg>,
+        write: impl std::io::Write,
+    ) -> anyhow::Result<()> {
+        let mut encoder = Encoder::new(write)?;
+        for message in messages {
+            encoder.append(message)?;
+        }
+        encoder.finish()
+    }
 }
 
+#[cfg(feature = "save")]
+#[cfg(not(target_arch = "wasm32"))]
+pub use encoder::*;
+
 // ----------------------------------------------------------------------------
-// native
+// native decode:
 
 #[cfg(feature = "load")]
 #[cfg(not(target_arch = "wasm32"))]
@@ -95,7 +134,7 @@ impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
 }
 
 // ----------------------------------------------------------------------------
-// wasm:
+// wasm decode:
 
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]

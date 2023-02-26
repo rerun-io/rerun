@@ -83,7 +83,7 @@ impl ViewerAnalytics {
             AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
             AppEnvironment::Web => "web_viewer",
         };
-        self.register("app_env", app_env_str.to_owned());
+        self.register("app_env", app_env_str);
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
@@ -98,12 +98,12 @@ impl ViewerAnalytics {
                 build_info.git_hash.to_owned()
             };
 
-            let mut event = Event::update("update_metadata".into())
-                .with_prop("rerun_version".into(), build_info.version.to_owned())
-                .with_prop("target".into(), build_info.target_triple.to_owned())
-                .with_prop("git_hash".into(), git_hash)
-                .with_prop("debug".into(), cfg!(debug_assertions).to_owned()) // debug-build?
-                .with_prop("rerun_workspace".into(), std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
+            let mut event = Event::update("update_metadata")
+                .with_prop("rerun_version", build_info.version)
+                .with_prop("target", build_info.target_triple)
+                .with_prop("git_hash", git_hash)
+                .with_prop("debug", cfg!(debug_assertions)) // debug-build?
+                .with_prop("rerun_workspace", std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
                 ;
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
@@ -114,12 +114,12 @@ impl ViewerAnalytics {
             match &app_env {
                 AppEnvironment::RustSdk { rust_version }
                 | AppEnvironment::RerunCli { rust_version } => {
-                    event = event.with_prop("rust_version".into(), rust_version.clone());
+                    event = event.with_prop("rust_version", rust_version.clone());
                 }
                 _ => {}
             }
             if let AppEnvironment::PythonSdk(version) = app_env {
-                event = event.with_prop("python_version".into(), version.to_string());
+                event = event.with_prop("python_version", version.to_string());
             }
 
             // Append opt-in metadata.
@@ -127,13 +127,13 @@ impl ViewerAnalytics {
             // who register their emails with `rerun analytics email`.
             // This is how we filter out employees from actual users!
             for (name, value) in analytics.config().opt_in_metadata.clone() {
-                event = event.with_prop(name.into(), value);
+                event = event.with_prop(name, value);
             }
 
             analytics.record(event);
         }
 
-        self.record(Event::append("viewer_started".into()));
+        self.record(Event::append("viewer_started"));
     }
 
     /// When we have loaded the start of a new recording.
@@ -191,10 +191,10 @@ impl ViewerAnalytics {
                 re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
                 re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
             };
-            self.register("data_source", data_source.to_owned());
+            self.register("data_source", data_source);
         }
 
-        self.record(Event::append("open_recording".into()));
+        self.record(Event::append("open_recording"));
     }
 }
 
