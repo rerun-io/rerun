@@ -323,28 +323,22 @@ mod tests {
 
         // Two resources have two different handles.
         {
-            let handle0 = pool
-                .alloc(&ConcreteResourceDesc(0), |_| ConcreteResource)
-                .handle;
-            let handle1 = pool
-                .alloc(&ConcreteResourceDesc(0), |_| ConcreteResource)
-                .handle;
-            assert_ne!(handle0, handle1);
-            pool.begin_frame(5, |_| {});
+            let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+            let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+            assert_ne!(res0.handle, res1.handle);
+            pool.begin_frame(1234, |_| {});
         }
 
         // A resource gets the same handle when re-used.
         // (important for BindGroup re-use!)
         {
-            let handle0 = pool
-                .alloc(&ConcreteResourceDesc(0), |_| ConcreteResource)
-                .handle;
-            pool.begin_frame(7, |_| {});
-            let handle1 = pool
-                .alloc(&ConcreteResourceDesc(0), |_| ConcreteResource)
-                .handle;
-            assert_eq!(handle0, handle1);
-            pool.begin_frame(5, |_| {});
+            let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+            let handle0 = res0.handle;
+            drop(res0);
+            pool.begin_frame(1234, |_| {});
+            let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+            assert_eq!(handle0, res1.handle);
+            pool.begin_frame(1235, |_| {});
         }
     }
 
