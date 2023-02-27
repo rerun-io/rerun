@@ -1,6 +1,6 @@
 /// Information about the build of a Rust crate.
 ///
-/// Create this with [`build_info`].
+/// Create this with [`crate::build_info`].
 ///
 /// The `git_` fields are all empty on failure. Most likely git fails because we're not in a git repository
 /// to begin with, which happens because we've imported the published crate from crates.io.
