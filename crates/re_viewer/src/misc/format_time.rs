@@ -8,22 +8,17 @@ pub fn format_time_compact(time: re_log_types::Time) -> String {
     let relative_ns = ns % 1_000_000_000;
     let is_whole_second = relative_ns == 0;
     if is_whole_second {
-        if let Some(datetime) = time.to_chrono() {
-            return if time.is_exactly_midnight() {
-                // Show just the date:
-                datetime.format("%Y-%m-%dZ").to_string()
+        if let Some(datetime) = time.to_datetime() {
+            let is_whole_minute = ns % 60_000_000_000 == 0;
+            let time_format = if time.is_exactly_midnight() {
+                "[year]-[month]-[day]Z"
+            } else if is_whole_minute {
+                "[hour]:[minute]Z"
             } else {
-                // Show just the time:
-                let is_whole_minute = ns % 60_000_000_000 == 0;
-                let is_whole_second = ns % 1_000_000_000 == 0;
-                if is_whole_minute {
-                    datetime.time().format("%H:%MZ").to_string()
-                } else if is_whole_second {
-                    datetime.time().format("%H:%M:%SZ").to_string()
-                } else {
-                    datetime.time().format("%H:%M:%S%.3fZ").to_string()
-                }
+                "[hour]:[minute]:[second]Z"
             };
+            let parsed_format = time::format_description::parse(time_format).unwrap();
+            return datetime.format(&parsed_format).unwrap();
         }
 
         re_log_types::Duration::from_nanos(ns).to_string()
