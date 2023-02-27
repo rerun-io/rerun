@@ -27,6 +27,9 @@ pub use mesh_renderer::{MeshDrawData, MeshInstance};
 
 pub mod compositor;
 
+mod outlines;
+pub use outlines::{OutlinesDrawData, OutlinesRenderer};
+
 use crate::{
     context::{RenderContext, SharedRendererData},
     wgpu_resources::WgpuResourcePools,
@@ -77,6 +80,7 @@ pub trait Renderer {
 ///
 /// Currently we do not support sorting *within* a rendering phase!
 /// See [#702](https://github.com/rerun-io/rerun/issues/702)
+/// Within a phase `DrawData` are drawn in the order they are submitted in.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum DrawPhase {
     /// Opaque objects, performing reads/writes to the depth buffer.
@@ -86,6 +90,9 @@ pub enum DrawPhase {
 
     /// Background, rendering where depth wasn't written.
     Background,
+
+    /// Render mask for things that should get outlines.
+    OutlineMask,
 
     /// Drawn when compositing with the main target.
     Compositing,
