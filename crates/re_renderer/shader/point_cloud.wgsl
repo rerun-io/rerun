@@ -2,6 +2,7 @@
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
 #import <./utils/flags.wgsl>
+#import <./utils/quad.wgsl>
 #import <./utils/size.wgsl>
 #import <./utils/sphere_quad.wgsl>
 
@@ -90,7 +91,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     if smallest_distance_to_sphere > pixel_world_size {
         discard;
     }
-    let coverage = 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
+    let coverage = 1.0;
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
 
