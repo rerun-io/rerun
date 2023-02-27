@@ -27,7 +27,7 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawOrder, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -280,6 +280,7 @@ impl Renderer for RectangleRenderer {
                 vertex_buffers: smallvec![],
                 render_targets: smallvec![Some(wgpu::ColorTargetState {
                     format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                    // TODO(andreas): have two render pipelines, an opaque one and a transparent one. Transparent shouldn't write depth!
                     blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -288,7 +289,6 @@ impl Renderer for RectangleRenderer {
                     cull_mode: None,
                     ..Default::default()
                 },
-                // We're rendering with transparency, so disable depth write.
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
@@ -305,6 +305,7 @@ impl Renderer for RectangleRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
@@ -324,7 +325,8 @@ impl Renderer for RectangleRenderer {
         Ok(())
     }
 
-    fn draw_order() -> u32 {
-        DrawOrder::Transparent as u32
+    fn participated_phases() -> &'static [DrawPhase] {
+        // TODO(andreas): This a hack. We have both opaque and transparent.
+        &[DrawPhase::Opaque]
     }
 }
