@@ -137,8 +137,9 @@ pub(crate) mod gpu_data {
 }
 
 impl GpuMesh {
+    // TODO(andreas): Take read-only context here and make uploads happen on staging belt.
     pub fn new(
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         texture_manager: &TextureManager2D,
         mesh_bound_group_layout: GpuBindGroupLayoutHandle,
         device: &wgpu::Device,
