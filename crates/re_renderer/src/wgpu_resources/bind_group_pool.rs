@@ -102,7 +102,7 @@ impl GpuBindGroupPool {
     /// Once ownership to the handle is given up, the bind group may be reclaimed in future frames.
     /// The handle also keeps alive any dependent resources.
     pub fn alloc(
-        &mut self,
+        &self,
         device: &wgpu::Device,
         desc: &BindGroupDesc,
         bind_group_layouts: &GpuBindGroupLayoutPool,

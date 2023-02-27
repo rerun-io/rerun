@@ -29,7 +29,7 @@ impl DrawData for GenericSkyboxDrawData {
 
 impl GenericSkyboxDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.get_or_create::<_, GenericSkybox>(
+        ctx.renderers.write().get_or_create::<_, GenericSkybox>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,

@@ -18,10 +18,7 @@ use std::{
     ops::Range,
 };
 
-use crate::{
-    context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, DebugLabel,
-    PointCloudBuilder,
-};
+use crate::{allocator::create_and_fill_uniform_buffer_batch, DebugLabel, PointCloudBuilder};
 use bitflags::bitflags;
 use bytemuck::Zeroable;
 use itertools::Itertools;
@@ -56,7 +53,6 @@ bitflags! {
 }
 
 mod gpu_data {
-    use super::PointCloudBatchFlags;
     use crate::{wgpu_buffer_types, Size};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
@@ -69,12 +65,14 @@ mod gpu_data {
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 
     /// Uniform buffer that changes for every batch of line strips.
-    #[repr(C)]
+    #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-        pub flags: PointCloudBatchFlags,
-        pub _padding: glam::Vec3,
+
+        pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
 }
 
@@ -155,7 +153,8 @@ impl PointCloudDrawData {
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
-        let point_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
+        let mut renderers = ctx.renderers.write();
+        let point_renderer = renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
@@ -285,7 +284,10 @@ impl PointCloudDrawData {
         }
 
         builder.color_buffer.copy_to_texture(
-            ctx.active_frame.frame_global_command_encoder(&ctx.device),
+            ctx.active_frame
+                .frame_global_command_encoder
+                .lock()
+                .get_or_create(&ctx.device),
             wgpu::ImageCopyTexture {
                 texture: &color_texture.texture,
                 mip_level: 0,
@@ -316,51 +318,27 @@ impl PointCloudDrawData {
         // Process batches
         let mut batches_internal = Vec::with_capacity(batches.len());
         {
-            let allocation_size_per_uniform_buffer =
-                uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
-            let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
-            let uniform_buffers = ctx.gpu_resources.buffers.alloc(
-                &ctx.device,
-                &BufferDesc {
-                    label: "point batch uniform buffers".into(),
-                    size: combined_buffers_size,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                },
+            let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+                ctx,
+                "point batch uniform buffers".into(),
+                batches
+                    .iter()
+                    .map(|batch_info| gpu_data::BatchUniformBuffer {
+                        world_from_obj: batch_info.world_from_obj.into(),
+                        flags: batch_info.flags.bits.into(),
+                        end_padding: Default::default(),
+                    }),
             );
 
-            let mut staging_buffer = ctx
-                .queue
-                .write_buffer_with(
-                    &uniform_buffers,
-                    0,
-                    NonZeroU64::new(combined_buffers_size).unwrap(),
-                )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-
             let mut start_point_for_next_batch = 0;
-            for (i, batch_info) in batches.iter().enumerate() {
-                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
-                let offset = i * allocation_size_per_uniform_buffer as usize;
-                staging_buffer
-                    [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
-                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
-                        flags: batch_info.flags,
-                        _padding: glam::Vec3::ZERO,
-                    }));
-
+            for (batch_info, uniform_buffer_binding) in
+                batches.iter().zip(uniform_buffer_bindings.into_iter())
+            {
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &BindGroupDesc {
                         label: batch_info.label.clone(),
-                        entries: smallvec![BindGroupEntry::Buffer {
-                            handle: uniform_buffers.handle,
-                            offset: offset as _,
-                            size: NonZeroU64::new(
-                                std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
-                            ),
-                        }],
+                        entries: smallvec![uniform_buffer_binding],
                         layout: point_renderer.bind_group_layout_batch,
                     },
                     &ctx.gpu_resources.bind_group_layouts,

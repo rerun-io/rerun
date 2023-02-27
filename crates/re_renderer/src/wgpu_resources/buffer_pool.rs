@@ -59,7 +59,7 @@ impl GpuBufferPool {
     ///
     /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible
     /// either manually or using a higher level allocator.
-    pub fn alloc(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBuffer {
+    pub fn alloc(&self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBuffer {
         self.pool.alloc(desc, |desc| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
