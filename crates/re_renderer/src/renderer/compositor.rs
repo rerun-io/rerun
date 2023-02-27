@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer};
 
 use smallvec::smallvec;
 
@@ -130,6 +130,7 @@ impl Renderer for Compositor {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a CompositorDrawData,
     ) -> anyhow::Result<()> {
@@ -140,5 +141,9 @@ impl Renderer for Compositor {
         pass.draw(0..3, 0..1);
 
         Ok(())
+    }
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::Compositing]
     }
 }
