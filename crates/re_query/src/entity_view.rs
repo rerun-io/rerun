@@ -6,11 +6,9 @@ use re_format::arrow;
 use re_log_types::{
     component_types::InstanceKey,
     external::arrow2_convert::{
-        deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
-        field::ArrowField,
-        serialize::ArrowSerialize,
+        deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    msg_bundle::Component,
+    msg_bundle::{Component, DeserializableComponent},
     ComponentName,
 };
 
@@ -58,10 +56,10 @@ impl ComponentWithInstances {
     }
 
     /// Iterate over the values and convert them to a native `Component`
-    pub fn iter_values<C: Component>(&self) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
+    pub fn iter_values<C: DeserializableComponent>(
+        &self,
+    ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
-        C: ArrowDeserialize + ArrowField<Type = C> + 'static,
-        C::ArrayType: ArrowArray,
         for<'a> &'a C::ArrayType: IntoIterator,
     {
         if C::name() != self.name {
@@ -77,10 +75,8 @@ impl ComponentWithInstances {
     }
 
     /// Look up the value that corresponds to a given `InstanceKey` and convert to `Component`
-    pub fn lookup<C: Component>(&self, instance_key: &InstanceKey) -> crate::Result<C>
+    pub fn lookup<C: DeserializableComponent>(&self, instance_key: &InstanceKey) -> crate::Result<C>
     where
-        C: ArrowDeserialize + ArrowField<Type = C> + 'static,
-        C::ArrayType: ArrowArray,
         for<'a> &'a C::ArrayType: IntoIterator,
     {
         if C::name() != self.name {
@@ -296,10 +292,8 @@ where
     }
 }
 
-impl<Primary> EntityView<Primary>
+impl<Primary: DeserializableComponent + ArrowSerialize> EntityView<Primary>
 where
-    Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
-    Primary::ArrayType: ArrowArray,
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     /// Iterate over the instance keys
@@ -332,12 +326,10 @@ where
     /// Iterate over the values of a `Component`.
     ///
     /// Always produces an iterator of length `self.primary.len()`
-    pub fn iter_component<C: Component>(
+    pub fn iter_component<C: DeserializableComponent + Clone>(
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
-        C: Clone + ArrowDeserialize + ArrowField<Type = C> + 'static,
-        C::ArrayType: ArrowArray,
         for<'b> &'b C::ArrayType: IntoIterator,
     {
         let component = self.components.get(&C::name());

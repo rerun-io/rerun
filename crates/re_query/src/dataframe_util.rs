@@ -8,11 +8,9 @@ use re_arrow_store::ArrayExt;
 use re_log_types::{
     component_types::InstanceKey,
     external::arrow2_convert::{
-        deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
-        field::ArrowField,
-        serialize::ArrowSerialize,
+        deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    msg_bundle::Component,
+    msg_bundle::{Component, DeserializableComponent},
 };
 
 use crate::{
@@ -55,10 +53,10 @@ fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
 }
 
 /// Iterator for a single column in a dataframe as the rust-native Component type
-pub fn iter_column<'a, C: Component>(df: &'a DataFrame) -> impl Iterator<Item = Option<C>> + 'a
+pub fn iter_column<'a, C: DeserializableComponent>(
+    df: &'a DataFrame,
+) -> impl Iterator<Item = Option<C>> + 'a
 where
-    C: ArrowDeserialize + ArrowField<Type = C> + 'static,
-    C::ArrayType: ArrowArray,
     for<'b> &'b C::ArrayType: IntoIterator,
 {
     let res = match df.column(C::name().as_str()) {
@@ -146,8 +144,7 @@ impl ComponentWithInstances {
     where
         C0: Component,
         Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-        C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
-        C0::ArrayType: ArrowArray,
+        C0: DeserializableComponent,
         for<'a> &'a C0::ArrayType: IntoIterator,
     {
         if C0::name() != self.name {
@@ -167,10 +164,8 @@ impl ComponentWithInstances {
     }
 }
 
-impl<Primary> EntityView<Primary>
+impl<Primary: DeserializableComponent + ArrowSerialize> EntityView<Primary>
 where
-    Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
-    Primary::ArrayType: ArrowArray,
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     pub fn as_df1(&self) -> crate::Result<DataFrame> {
@@ -186,8 +181,7 @@ where
     where
         C1: Clone + Component,
         Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
-        C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
-        C1::ArrayType: ArrowArray,
+        C1: DeserializableComponent,
         for<'a> &'a C1::ArrayType: IntoIterator,
     {
         let instance_keys = self.primary.iter_instance_keys()?.map(Some).collect_vec();
