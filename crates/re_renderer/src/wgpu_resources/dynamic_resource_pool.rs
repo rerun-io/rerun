@@ -154,9 +154,10 @@ where
                 "Drained dangling resources from last frame:",
             );
             for resource in resources {
-                let removed_resource = state.all_resources.remove(resource).expect(
-                    "a resource was marked as destroyed last frame that we no longer kept track of",
-                );
+                let Some(removed_resource) = state.all_resources.remove(resource) else {
+                    debug_assert!(false, "a resource was marked as destroyed last frame that we no longer kept track of");
+                    continue;
+                };
                 on_destroy_resource(&removed_resource);
                 self.total_resource_size_in_bytes.fetch_sub(
                     desc.resource_size_in_bytes(),
