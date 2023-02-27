@@ -427,7 +427,7 @@ impl ViewBuilder {
         for queued_draw in &self.queued_draws {
             if queued_draw.participated_phases.contains(&phase) {
                 (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
-                    .context("drawing a view")?;
+                    .with_context(|| format!("Draw call during phase {phase:?}"))?;
             }
         }
         Ok(())
