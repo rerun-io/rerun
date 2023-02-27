@@ -6,9 +6,8 @@
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
 #import <./utils/flags.wgsl>
+#import <./utils/quad.wgsl>
 #import <./utils/size.wgsl>
-#import <./utils/sphere_quad.wgsl>
-#import <./utils/srgb.wgsl>
 
 // ---
 
@@ -27,10 +26,11 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let norm_linear_depth = textureLoad(depth_texture, texcoords, 0).x;
 
     // TODO(cmc): support color maps & albedo textures
-    let color = Vec4(linear_from_srgb(Vec3(norm_linear_depth)), 1.0);
+    let d = pow(norm_linear_depth, 2.2);
+    let color = Vec4(d, d, d, 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
-    let intrinsics = transpose(depth_cloud_info.depth_camera_intrinsics);
+    let intrinsics = transpose(depth_cloud_info.intrinsics);
     let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
     let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
@@ -57,7 +57,7 @@ struct DepthCloudInfo {
     /// The intrinsics of the camera used for the projection.
     ///
     /// Only supports pinhole cameras at the moment.
-    depth_camera_intrinsics: Mat3,
+    intrinsics: Mat3,
 
     /// The scale to apply to the radii of the backprojected points.
     radius_scale: f32,
@@ -77,21 +77,34 @@ struct VertexOut {
 };
 
 @vertex
-fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
-    let quad_idx = sphere_quad_index(vertex_idx);
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
+    // Basic properties of the vertex we're at.
+    let quad_idx = i32(vertex_index) / 6;
+    let local_idx = vertex_index % 6u;
+    let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
+    let left_right = f32(vertex_index % 2u) * 2.0 - 1.0; // 1 for a right vertex, -1 for a left vertex.
 
     // Compute point data (valid for the entire quad).
     let point_data = compute_point_data(quad_idx);
+    // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
+    let to_camera = frame.camera_position - point_data.pos_in_world;
+    let camera_distance = length(to_camera);
+    let radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, frame.auto_size_points);
 
     // Span quad
-    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius);
+    var pos_in_world: Vec3;
+    if is_camera_perspective() {
+        pos_in_world = span_quad_perspective(point_data.pos_in_world, radius, top_bottom, left_right, to_camera, camera_distance);
+    } else {
+        pos_in_world = span_quad_orthographic(point_data.pos_in_world, radius, top_bottom, left_right);
+    }
 
     var out: VertexOut;
-    out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
-    out.pos_in_world = quad.pos_in_world;
+    out.pos_in_clip = frame.projection_from_world * Vec4(pos_in_world, 1.0);
+    out.pos_in_world = pos_in_world;
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
-    out.point_radius = quad.point_resolved_radius;
+    out.point_radius = radius;
 
     return out;
 }
@@ -114,7 +127,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     if smallest_distance_to_sphere > pixel_world_size {
         discard;
     }
-    let coverage = 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
 
-    return vec4(in.point_color.rgb, coverage);
+    // NOTE: We only want clipping, alpha coverage and shading don't look great for this use case.
+
+    // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
+
+    return vec4(in.point_color.rgb, 1.0);
 }
