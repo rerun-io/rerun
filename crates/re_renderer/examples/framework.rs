@@ -89,6 +89,19 @@ struct Application<E> {
     re_ctx: RenderContext,
 }
 
+// Same as egui_wgpu::preferred_framebuffer_format
+fn preferred_framebuffer_format(formats: &[wgpu::TextureFormat]) -> wgpu::TextureFormat {
+    for &format in formats {
+        if matches!(
+            format,
+            wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Bgra8Unorm
+        ) {
+            return format;
+        }
+    }
+    formats[0] // take the first
+}
+
 impl<E: Example + 'static> Application<E> {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
         let size = window.inner_size();
@@ -124,18 +137,8 @@ impl<E: Example + 'static> Application<E> {
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
-        // We prefer a target that doesn't apply the gamma curve, as we do this ourselves (for egui compat)
-        let formats = surface.get_capabilities(&adapter).formats;
-        let mut swapchain_format = formats[0]; // Default to first format.
-        for format in formats {
-            if matches!(
-                format,
-                wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Bgra8Unorm
-            ) {
-                swapchain_format = format;
-            }
-        }
-
+        let swapchain_format =
+            preferred_framebuffer_format(&surface.get_capabilities(&adapter).formats);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: swapchain_format,
