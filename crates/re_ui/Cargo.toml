@@ -32,7 +32,7 @@ egui_dock = ["dep:egui_dock"]
 [dependencies]
 egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { workspace = true, features = ["tracing"] }
-image = { version = "0.24", default-features = false, features = ["png"] }
+image = { workspace = true, default-features = false, features = ["png"] }
 parking_lot = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -58,8 +58,7 @@ crossbeam = "0.8"
 document-features = "0.2"
 glam.workspace = true
 half.workspace = true
-image = { version = "0.24", default-features = false, features = [
-  "jpeg",
+image = { workspace = true, default-features = false, features = [
   "jpeg_rayon",
 ] }
 itertools = "0.10"
