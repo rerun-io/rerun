@@ -8,7 +8,7 @@ use re_log_types::{
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    msg_bundle::{Component, DeserializableComponent},
+    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
     ComponentName,
 };
 
@@ -128,14 +128,10 @@ impl ComponentWithInstances {
     }
 
     /// Produce a `ComponentWithInstances` from native component types
-    pub fn from_native<C>(
+    pub fn from_native<C: SerializableComponent>(
         instance_keys: Option<&Vec<InstanceKey>>,
         values: &Vec<C>,
-    ) -> crate::Result<ComponentWithInstances>
-    where
-        C: Component + 'static,
-        C: ArrowSerialize + ArrowField<Type = C>,
-    {
+    ) -> crate::Result<ComponentWithInstances> {
         use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
         let instance_keys = if let Some(keys) = instance_keys {
@@ -292,7 +288,7 @@ where
     }
 }
 
-impl<Primary: DeserializableComponent + ArrowSerialize> EntityView<Primary>
+impl<Primary: SerializableComponent + DeserializableComponent> EntityView<Primary>
 where
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {

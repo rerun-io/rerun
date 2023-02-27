@@ -44,8 +44,7 @@
 
 use re_log_types::{
     component_types::InstanceKey,
-    external::arrow2_convert::serialize::ArrowSerialize,
-    msg_bundle::{Component, DeserializableComponent},
+    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
 };
 
 use crate::EntityView;
@@ -93,7 +92,7 @@ macro_rules! create_visitor {
     );
 }
 
-impl<Primary: DeserializableComponent + ArrowSerialize> EntityView<Primary>
+impl<Primary: SerializableComponent + DeserializableComponent> EntityView<Primary>
 where
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {

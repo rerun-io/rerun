@@ -7,10 +7,8 @@ use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_log_types::{
     component_types::InstanceKey,
-    external::arrow2_convert::{
-        deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
-    },
-    msg_bundle::{Component, DeserializableComponent},
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
+    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
 };
 
 use crate::{
@@ -72,11 +70,7 @@ where
     res.into_iter()
 }
 
-pub fn df_builder1<C0>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame>
-where
-    C0: Component + 'static,
-    Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-{
+pub fn df_builder1<C0: SerializableComponent>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame> {
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
@@ -90,10 +84,8 @@ where
 
 pub fn df_builder2<C0, C1>(c0: &Vec<Option<C0>>, c1: &Vec<Option<C1>>) -> crate::Result<DataFrame>
 where
-    C0: Component + 'static,
-    Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-    C1: Component + 'static,
-    Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
+    C0: SerializableComponent,
+    C1: SerializableComponent,
 {
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
@@ -115,12 +107,9 @@ pub fn df_builder3<C0, C1, C2>(
     c2: &Vec<Option<C2>>,
 ) -> crate::Result<DataFrame>
 where
-    C0: Component + 'static,
-    Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-    C1: Component + 'static,
-    Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
-    C2: Component + 'static,
-    Option<C2>: ArrowSerialize + ArrowField<Type = Option<C2>>,
+    C0: SerializableComponent,
+    C1: SerializableComponent,
+    C2: SerializableComponent,
 {
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
@@ -140,11 +129,10 @@ where
 }
 
 impl ComponentWithInstances {
-    pub fn as_df<C0>(&self) -> crate::Result<DataFrame>
+    pub fn as_df<C0: SerializableComponent + DeserializableComponent>(
+        &self,
+    ) -> crate::Result<DataFrame>
     where
-        C0: Component,
-        Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-        C0: DeserializableComponent,
         for<'a> &'a C0::ArrayType: IntoIterator,
     {
         if C0::name() != self.name {
@@ -164,8 +152,9 @@ impl ComponentWithInstances {
     }
 }
 
-impl<Primary: DeserializableComponent + ArrowSerialize> EntityView<Primary>
+impl<Primary> EntityView<Primary>
 where
+    Primary: SerializableComponent + DeserializableComponent,
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     pub fn as_df1(&self) -> crate::Result<DataFrame> {
@@ -179,9 +168,7 @@ where
 
     pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
     where
-        C1: Clone + Component,
-        Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
-        C1: DeserializableComponent,
+        C1: SerializableComponent + DeserializableComponent + Clone,
         for<'a> &'a C1::ArrayType: IntoIterator,
     {
         let instance_keys = self.primary.iter_instance_keys()?.map(Some).collect_vec();
