@@ -192,8 +192,7 @@ where
     }
 
     pub fn num_resources(&self) -> usize {
-        let state = self.state.read();
-        state.all_resources.len() + state.last_frame_deallocated.values().flatten().count()
+        self.state.read().all_resources.len()
     }
 
     pub fn total_resource_size_in_bytes(&self) -> u64 {
