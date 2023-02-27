@@ -31,7 +31,8 @@ impl DrawData for CompositorDrawData {
 impl CompositorDrawData {
     pub fn new(ctx: &mut RenderContext, target: &GpuTexture) -> Self {
         let pools = &mut ctx.gpu_resources;
-        let compositor = ctx.renderers.get_or_create::<_, Compositor>(
+        let mut renderers = ctx.renderers.write();
+        let compositor = renderers.get_or_create::<_, Compositor>(
             &ctx.shared_renderer_data,
             pools,
             &ctx.device,
