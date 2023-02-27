@@ -87,21 +87,12 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
-            let git_hash = if build_info.git_hash.is_empty() {
-                // Not built in a git repository. Probably we are a rust-crate
-                // compiled on the users machine.
-                // Let's set the git_hash  to be the git tag that corresponds to the
-                // published version, so that one can always easily checkout the `git_hash` field in the
-                // analytics.
-                format!("v{}", build_info.version)
-            } else {
-                build_info.git_hash.to_owned()
-            };
-
             let mut event = Event::update("update_metadata")
                 .with_prop("rerun_version", build_info.version)
                 .with_prop("target", build_info.target_triple)
-                .with_prop("git_hash", git_hash)
+                .with_prop("git_hash", build_info.git_hash_or_tag())
+                .with_prop("git_branch", build_info.git_branch)
+                .with_prop("build_date", build_info.datetime)
                 .with_prop("debug", cfg!(debug_assertions)) // debug-build?
                 .with_prop("rerun_workspace", std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
                 ;
