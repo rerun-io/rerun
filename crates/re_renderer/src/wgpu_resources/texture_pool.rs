@@ -81,7 +81,7 @@ pub struct GpuTexturePool {
 impl GpuTexturePool {
     /// Returns a reference-counted handle to a currently unused texture.
     /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
-    pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTexture {
+    pub fn alloc(&self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTexture {
         crate::profile_function!();
         self.pool.alloc(desc, |desc| {
             let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -108,11 +108,8 @@ impl GpuTexturePool {
             .begin_frame(frame_index, |res| res.texture.destroy());
     }
 
-    /// Internal method to retrieve a resource from a weak handle (used by [`super::GpuBindGroupPool`])
-    pub(super) fn get_from_handle(
-        &self,
-        handle: GpuTextureHandle,
-    ) -> Result<GpuTexture, PoolError> {
+    /// Method to retrieve a resource from a weak handle (used by [`super::GpuBindGroupPool`])
+    pub fn get_from_handle(&self, handle: GpuTextureHandle) -> Result<GpuTexture, PoolError> {
         self.pool.get_from_handle(handle)
     }
 

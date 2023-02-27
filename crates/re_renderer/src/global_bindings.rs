@@ -2,7 +2,7 @@ use crate::{
     wgpu_buffer_types,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuBuffer, GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
+        GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
     },
 };
 
@@ -13,7 +13,7 @@ use smallvec::smallvec;
 ///
 /// Contains information that is constant for a single frame like camera.
 /// (does not contain information that is special to a particular renderer)
-#[repr(C)]
+#[repr(C, align(256))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub(crate) struct FrameUniformBuffer {
     pub view_from_world: wgpu_buffer_types::Mat4x3,
@@ -46,8 +46,7 @@ pub(crate) struct FrameUniformBuffer {
     pub auto_size_lines: f32,
 
     /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    pub depth_offset_factor: f32,
-    pub _padding: glam::Vec3,
+    pub depth_offset_factor: wgpu_buffer_types::F32RowPadded,
 }
 
 pub(crate) struct GlobalBindings {
@@ -128,7 +127,7 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: &GpuBuffer,
+        frame_uniform_buffer_binding: BindGroupEntry,
     ) -> GpuBindGroup {
         pools.bind_groups.alloc(
             device,
@@ -136,11 +135,7 @@ impl GlobalBindings {
             &BindGroupDesc {
                 label: "global bind group".into(),
                 entries: smallvec![
-                    BindGroupEntry::Buffer {
-                        handle: frame_uniform_buffer.handle,
-                        offset: 0,
-                        size: None,
-                    },
+                    frame_uniform_buffer_binding,
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
                     BindGroupEntry::Sampler(self.trilinear_sampler),
                 ],

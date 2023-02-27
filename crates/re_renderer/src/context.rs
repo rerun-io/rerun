@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -20,7 +20,7 @@ pub struct RenderContext {
     pub queue: Arc<wgpu::Queue>,
 
     pub(crate) shared_renderer_data: SharedRendererData,
-    pub(crate) renderers: Renderers,
+    pub(crate) renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
@@ -155,14 +155,14 @@ impl RenderContext {
         };
 
         let mut resolver = crate::new_recommended_file_resolver();
-        let mut renderers = Renderers {
+        let mut renderers = RwLock::new(Renderers {
             renderers: TypeMap::new(),
-        };
+        });
 
         let mesh_manager = MeshManager::new(
             device.clone(),
             queue.clone(),
-            renderers.get_or_create(
+            renderers.get_mut().get_or_create(
                 &shared_renderer_data,
                 &mut gpu_resources,
                 &device,
@@ -193,8 +193,11 @@ impl RenderContext {
 
             inflight_queue_submissions: Vec::new(),
 
-            active_frame: ActiveFrameContext { frame_global_command_encoder: None,             per_frame_data_helper: TypeMap::new(),
-                 frame_index: 0 }
+            active_frame: ActiveFrameContext {
+                frame_global_command_encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
+                per_frame_data_helper: TypeMap::new(),
+                frame_index: 0
+            }
         }
     }
 
@@ -229,7 +232,7 @@ impl RenderContext {
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
 
         self.active_frame = ActiveFrameContext {
-            frame_global_command_encoder: None,
+            frame_global_command_encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
             frame_index: self.active_frame.frame_index + 1,
             per_frame_data_helper: TypeMap::new(),
         };
@@ -279,8 +282,6 @@ impl RenderContext {
                 pipeline_layouts,
             );
 
-            // Bind group maintenance must come before texture/buffer maintenance since it
-            // registers texture/buffer use
             bind_groups.begin_frame(frame_index, textures, buffers, samplers);
 
             textures.begin_frame(frame_index);
@@ -303,7 +304,13 @@ impl RenderContext {
         // Unmap all staging buffers.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
-        if let Some(command_encoder) = self.active_frame.frame_global_command_encoder.take() {
+        if let Some(command_encoder) = self
+            .active_frame
+            .frame_global_command_encoder
+            .lock()
+            .0
+            .take()
+        {
             let command_buffer = command_encoder.finish();
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
@@ -318,9 +325,29 @@ impl Drop for RenderContext {
     fn drop(&mut self) {
         // Close global command encoder if there is any pending.
         // Not doing so before shutdown causes errors.
-        if let Some(encoder) = self.active_frame.frame_global_command_encoder.take() {
+        if let Some(encoder) = self
+            .active_frame
+            .frame_global_command_encoder
+            .lock()
+            .0
+            .take()
+        {
             encoder.finish();
         }
+    }
+}
+
+pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
+
+impl FrameGlobalCommandEncoder {
+    /// Gets or creates a command encoder that runs before all view builder encoder.
+    pub fn get_or_create(&mut self, device: &wgpu::Device) -> &mut wgpu::CommandEncoder {
+        self.0.get_or_insert_with(|| {
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
+                    .get(),
+            })
+        })
     }
 }
 
@@ -329,28 +356,13 @@ pub struct ActiveFrameContext {
     ///
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
-    frame_global_command_encoder: Option<wgpu::CommandEncoder>,
+    pub frame_global_command_encoder: Mutex<FrameGlobalCommandEncoder>,
 
     /// Utility type map that will be cleared every frame.
     pub per_frame_data_helper: TypeMap,
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
-}
-
-impl ActiveFrameContext {
-    /// Gets or creates a command encoder that runs before all view builder encoder.
-    pub fn frame_global_command_encoder(
-        &mut self,
-        device: &wgpu::Device,
-    ) -> &mut wgpu::CommandEncoder {
-        self.frame_global_command_encoder.get_or_insert_with(|| {
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
-                    .get(),
-            })
-        })
-    }
 }
 
 /// Gets allocation size for a uniform buffer padded in a way that multiple can be put in a single wgpu buffer.

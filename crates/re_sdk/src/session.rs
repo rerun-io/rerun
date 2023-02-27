@@ -5,6 +5,11 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
+use crate::file_writer::FileWriter;
+
+#[cfg(feature = "web_viewer")]
+use crate::remote_viewer_server::RemoteViewerServer;
+
 /// This is the main object you need to create to use the Rerun SDK.
 ///
 /// You should ideally create one session object and reuse it.
@@ -181,27 +186,25 @@ impl Session {
             return;
         }
 
+        let backlog = self.drain_log_messages_buffer();
+
         match &mut self.sender {
             Sender::Remote(remote) => {
                 remote.set_addr(addr);
             }
-            Sender::Buffered(messages) => {
+
+            #[cfg(feature = "re_viewer")]
+            Sender::NativeViewer(_) => {
+                re_log::error!("Cannot connect from within a spawn() call");
+            }
+
+            _ => {
                 re_log::debug!("Connecting to remote…");
                 let mut client = re_sdk_comms::Client::new(addr);
-                for msg in messages.drain(..) {
+                for msg in backlog {
                     client.send(msg);
                 }
                 self.sender = Sender::Remote(client);
-            }
-
-            #[cfg(feature = "native_viewer")]
-            Sender::NativeViewer(_) => {}
-
-            #[cfg(feature = "web_viewer")]
-            Sender::WebViewer(web_server, _) => {
-                re_log::info!("Shutting down web server.");
-                web_server.abort();
-                self.sender = Sender::Remote(re_sdk_comms::Client::new(addr));
             }
         }
     }
@@ -217,40 +220,10 @@ impl Session {
             return;
         }
 
-        let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-
-        let web_server_join_handle = self.tokio_rt.spawn(async move {
-            // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
-                .await
-                .unwrap();
-            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx));
-
-            // This is the server that serves the Wasm+HTML:
-            let web_port = 9090;
-            let web_server = re_web_server::WebServer::new(web_port);
-            let web_server_handle = tokio::spawn(async move {
-                web_server.serve().await.unwrap();
-            });
-
-            let ws_server_url = re_ws_comms::default_server_url();
-            let viewer_url = format!("http://127.0.0.1:{web_port}?url={ws_server_url}");
-            if open_browser {
-                webbrowser::open(&viewer_url).ok();
-            } else {
-                re_log::info!("Web server is running - view it at {viewer_url}");
-            }
-
-            ws_server_handle.await.unwrap().unwrap();
-            web_server_handle.await.unwrap();
-        });
-
-        self.sender = Sender::WebViewer(web_server_join_handle, rerun_tx);
+        self.sender = Sender::WebViewer(RemoteViewerServer::new(&self.tokio_rt, open_browser));
     }
 
-    /// Disconnect the streaming TCP connection, if any.
-    #[cfg(feature = "native_viewer")]
-    #[allow(unused)] // only used with "re_viewer" feature
+    /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
         if !matches!(&self.sender, &Sender::Buffered(_)) {
             re_log::debug!("Switching to buffered.");
@@ -262,7 +235,7 @@ impl Session {
     ///
     /// Returns true after a call to [`Self::connect`].
     ///
-    /// Returns `false` if we are streaming the messages to a web viewer,
+    /// Returns `false` if we are serving the messages to a web viewer,
     /// or if we are buffering the messages (to save them to file later).
     ///
     /// This can return true even before the connection is yet to be established.
@@ -286,16 +259,10 @@ impl Session {
 
     /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
-        match &mut self.sender {
-            Sender::Remote(_) => vec![],
-
-            Sender::Buffered(log_messages) => std::mem::take(log_messages),
-
-            #[cfg(feature = "native_viewer")]
-            Sender::NativeViewer(_) => vec![],
-
-            #[cfg(feature = "web_viewer")]
-            Sender::WebViewer(_, _) => vec![],
+        if let Sender::Buffered(log_messages) = &mut self.sender {
+            std::mem::take(log_messages)
+        } else {
+            vec![]
         }
     }
 
@@ -360,37 +327,13 @@ impl Session {
             return Ok(());
         }
 
-        let path = path.into();
-
-        re_log::debug!("Saving file to {path:?}…");
-
-        if self.is_streaming_over_tcp() {
-            anyhow::bail!(
-                "Can't show the log messages: Rerun was configured to send the data to a server!",
-            );
+        let file_writer = FileWriter::new(path)?;
+        let backlog = self.drain_log_messages_buffer();
+        for log_msg in backlog {
+            file_writer.write(log_msg);
         }
-
-        let log_messages = self.drain_log_messages_buffer();
-
-        if log_messages.is_empty() {
-            re_log::info!("Nothing logged, so nothing to save");
-        }
-
-        if path.extension().and_then(|ext| ext.to_str()) != Some("rrd") {
-            re_log::warn!("Expected path to end with .rrd, got {path:?}");
-        }
-
-        match std::fs::File::create(&path) {
-            Ok(file) => {
-                if let Err(err) = re_log_types::encoding::encode(log_messages.iter(), file) {
-                    anyhow::bail!("Failed to write to file at {path:?}: {err}")
-                } else {
-                    re_log::info!("Rerun data file saved to {path:?}");
-                    Ok(())
-                }
-            }
-            Err(err) => anyhow::bail!("Failed to create file at {path:?}: {err}",),
-        }
+        self.sender = Sender::File(file_writer);
+        Ok(())
     }
 }
 
@@ -422,7 +365,12 @@ impl Session {
 
         let log_messages = self.drain_log_messages_buffer();
         let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(self.app_env(), startup_options, log_messages)
+        re_viewer::run_native_viewer_with_messages(
+            re_build_info::build_info!(),
+            self.app_env(),
+            startup_options,
+            log_messages,
+        )
     }
 
     /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
@@ -466,7 +414,8 @@ impl Session {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let startup_options = re_viewer::StartupOptions::default();
             Box::new(re_viewer::App::from_receiver(
-                app_env,
+                re_build_info::build_info!(),
+                &app_env,
                 startup_options,
                 re_ui,
                 cc.storage,
@@ -477,20 +426,18 @@ impl Session {
 }
 
 enum Sender {
-    Remote(re_sdk_comms::Client),
-
-    #[allow(unused)] // only used with `#[cfg(feature = "native_viewer")]`
     Buffered(Vec<LogMsg>),
+
+    File(FileWriter),
+
+    Remote(re_sdk_comms::Client),
 
     #[cfg(feature = "native_viewer")]
     NativeViewer(re_smart_channel::Sender<LogMsg>),
 
-    /// Send it to the web viewer over WebSockets
+    /// Serve it to the web viewer over WebSockets
     #[cfg(feature = "web_viewer")]
-    WebViewer(
-        tokio::task::JoinHandle<()>,
-        re_smart_channel::Sender<LogMsg>,
-    ),
+    WebViewer(RemoteViewerServer),
 }
 
 impl Default for Sender {
@@ -502,8 +449,11 @@ impl Default for Sender {
 impl Sender {
     pub fn send(&mut self, msg: LogMsg) {
         match self {
-            Self::Remote(client) => client.send(msg),
             Self::Buffered(buffer) => buffer.push(msg),
+
+            Self::File(file) => file.write(msg),
+
+            Self::Remote(client) => client.send(msg),
 
             #[cfg(feature = "native_viewer")]
             Self::NativeViewer(sender) => {
@@ -513,10 +463,8 @@ impl Sender {
             }
 
             #[cfg(feature = "web_viewer")]
-            Self::WebViewer(_, sender) => {
-                if let Err(err) = sender.send(msg) {
-                    re_log::error_once!("Failed to send log message to web server: {err}");
-                }
+            Self::WebViewer(remote) => {
+                remote.send(msg);
             }
         }
     }

@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-use super::{DrawData, DrawOrder, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer};
 
 /// Renders a generated skybox from a color gradient
 ///
@@ -29,7 +29,7 @@ impl DrawData for GenericSkyboxDrawData {
 
 impl GenericSkyboxDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.get_or_create::<_, GenericSkybox>(
+        ctx.renderers.write().get_or_create::<_, GenericSkybox>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
@@ -105,6 +105,7 @@ impl Renderer for GenericSkybox {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawData,
     ) -> anyhow::Result<()> {
@@ -118,7 +119,7 @@ impl Renderer for GenericSkybox {
         Ok(())
     }
 
-    fn draw_order() -> u32 {
-        DrawOrder::Background as u32
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::Background]
     }
 }

@@ -217,12 +217,13 @@ fn time(timeless: bool) -> TimePoint {
 
 #[pyfunction]
 fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+    let build_info = re_build_info::build_info!();
     let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(call_src, argv))
+        .block_on(rerun::run(build_info, call_src, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 

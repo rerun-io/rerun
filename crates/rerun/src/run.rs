@@ -32,8 +32,12 @@ use clap::Subcommand;
 ///
 /// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 #[derive(Debug, clap::Parser)]
-#[clap(author, version, about)]
+#[clap(author, about)]
 struct Args {
+    /// Print version and quit
+    #[clap(long)]
+    version: bool,
+
     /// Either a path to a `.rrd` file to load, or a websocket url to a Rerun Server from which to read data
     ///
     /// If none is given, a server will be hosted which the Rerun SDK can connect to.
@@ -141,7 +145,11 @@ impl CallSource {
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
-pub async fn run<I, T>(call_source: CallSource, args: I) -> anyhow::Result<u8>
+pub async fn run<I, T>(
+    build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    args: I,
+) -> anyhow::Result<u8>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
@@ -154,6 +162,11 @@ where
     use clap::Parser as _;
     let args = Args::parse_from(args);
 
+    if args.version {
+        println!("{build_info}");
+        return Ok(0);
+    }
+
     let res = if let Some(commands) = &args.commands {
         match commands {
             #[cfg(all(feature = "analytics"))]
@@ -162,7 +175,7 @@ where
             _ => Ok(()),
         }
     } else {
-        run_impl(call_source, args).await
+        run_impl(build_info, call_source, args).await
     };
 
     match res {
@@ -208,7 +221,11 @@ fn profiler(args: &Args) -> re_viewer::Profiler {
     profiler
 }
 
-async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
+async fn run_impl(
+    build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    args: Args,
+) -> anyhow::Result<()> {
     crate::crash_handler::install_crash_handlers();
 
     #[cfg(feature = "native_viewer")]
@@ -239,6 +256,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
             } else {
                 #[cfg(feature = "native_viewer")]
                 return native_viewer_connect_to_ws_url(
+                    build_info,
                     call_source.app_env(),
                     startup_options,
                     profiler,
@@ -302,7 +320,8 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
-                call_source.app_env(),
+                build_info,
+                &call_source.app_env(),
                 startup_options,
                 re_ui,
                 cc.storage,
@@ -325,6 +344,7 @@ async fn run_impl(call_source: CallSource, args: Args) -> anyhow::Result<()> {
 
 #[cfg(feature = "native_viewer")]
 fn native_viewer_connect_to_ws_url(
+    build_info: re_build_info::BuildInfo,
     app_env: re_viewer::AppEnvironment,
     startup_options: re_viewer::StartupOptions,
     profiler: re_viewer::Profiler,
@@ -333,6 +353,7 @@ fn native_viewer_connect_to_ws_url(
     // By using RemoteViewerApp we let the user change the server they are connected to.
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {
         let mut app = re_viewer::RemoteViewerApp::new(
+            build_info,
             app_env,
             startup_options,
             re_ui,

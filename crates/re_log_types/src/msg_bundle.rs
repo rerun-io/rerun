@@ -27,6 +27,7 @@ use arrow2::{
     offset::Offsets,
 };
 use arrow2_convert::{
+    deserialize::{ArrowArray, ArrowDeserialize},
     field::ArrowField,
     serialize::{ArrowSerialize, TryIntoArrow},
 };
@@ -88,9 +89,8 @@ pub trait Component: ArrowField {
     }
 }
 
-/// A trait to identify any [`Component`] that is ready to be collected and subsequently serialized
-/// into an Arrow payload.
-pub trait SerializableComponent
+/// A [`Component`] that fulfils all the conditions required to be serialized as an Arrow payload.
+pub trait SerializableComponent<ArrowFieldType = Self>
 where
     Self: Component + ArrowSerialize + ArrowField<Type = Self> + 'static,
 {
@@ -98,6 +98,34 @@ where
 
 impl<C> SerializableComponent for C where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static
+{
+}
+
+/// A [`Component`] that fulfils all the conditions required to be deserialized from an Arrow
+/// payload.
+///
+/// Note that due to the use of HRTBs in `arrow2_convert` traits, you will still need an extra HRTB
+/// clause when marking a type as `DeserializableComponent`:
+/// ```ignore
+/// where
+///     T: SerializableComponent,
+///     for<'a> &'a T::ArrayType: IntoIterator,
+/// ```
+pub trait DeserializableComponent<ArrowFieldType = Self>
+where
+    Self: Component,
+    Self: ArrowDeserialize + ArrowField<Type = ArrowFieldType> + 'static,
+    Self::ArrayType: ArrowArray,
+    for<'b> &'b Self::ArrayType: IntoIterator,
+{
+}
+
+impl<C> DeserializableComponent for C
+where
+    C: Component,
+    C: ArrowDeserialize + ArrowField<Type = C> + 'static,
+    C::ArrayType: ArrowArray,
+    for<'b> &'b C::ArrayType: IntoIterator,
 {
 }
 

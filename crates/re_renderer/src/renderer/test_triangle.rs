@@ -24,7 +24,7 @@ impl DrawData for TestTriangleDrawData {
 
 impl TestTriangleDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.get_or_create::<_, TestTriangle>(
+        ctx.renderers.write().get_or_create::<_, TestTriangle>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
@@ -96,6 +96,7 @@ impl Renderer for TestTriangle {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &TestTriangleDrawData,
     ) -> anyhow::Result<()> {
