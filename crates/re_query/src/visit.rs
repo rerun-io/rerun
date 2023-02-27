@@ -44,12 +44,7 @@
 
 use re_log_types::{
     component_types::InstanceKey,
-    external::arrow2_convert::{
-        deserialize::{ArrowArray, ArrowDeserialize},
-        field::ArrowField,
-        serialize::ArrowSerialize,
-    },
-    msg_bundle::Component,
+    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
 };
 
 use crate::EntityView;
@@ -72,8 +67,7 @@ macro_rules! create_visitor {
 
         ) -> crate::Result<()>
         where $(
-            $CC: Clone + ArrowDeserialize + ArrowField<Type = $CC> + 'static,
-            $CC::ArrayType: ArrowArray,
+            $CC: Clone + DeserializableComponent,
             for<'a> &'a $CC::ArrayType: IntoIterator,
         )*
         {
@@ -98,10 +92,8 @@ macro_rules! create_visitor {
     );
 }
 
-impl<Primary> EntityView<Primary>
+impl<Primary: SerializableComponent + DeserializableComponent> EntityView<Primary>
 where
-    Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
-    Primary::ArrayType: ArrowArray,
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     create_visitor! {visit1; ;}
