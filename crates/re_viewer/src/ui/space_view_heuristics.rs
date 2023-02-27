@@ -4,7 +4,7 @@ use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
-use re_data_store::{log_db::EntityDb, query_latest, ComponentName, EntityPath};
+use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath};
 use re_log_types::{
     component_types::{Tensor, TensorTrait},
     msg_bundle::Component,
@@ -100,7 +100,7 @@ fn is_interesting_space_view_not_at_root(
     //       .. an unknown transform, the children can't be shown otherwise
     //       .. an pinhole transform, we'd like to see the world from this camera's pov as well!
     if candidate.category == ViewCategory::Spatial {
-        if let Some(transform) = query_latest(entity_db, &candidate.space_path, query) {
+        if let Some(transform) = query_latest_single(entity_db, &candidate.space_path, query) {
             match transform {
                 re_log_types::Transform::Rigid3(_) => {}
                 re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {

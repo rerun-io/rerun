@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{log_db::EntityDb, query_latest, EntityPath, EntityTree};
+use re_data_store::{log_db::EntityDb, query_latest_single, EntityPath, EntityTree};
 use re_log_types::{Transform, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
@@ -112,7 +112,8 @@ impl SpaceInfoCollection {
             tree: &EntityTree,
             query: &LatestAtQuery,
         ) {
-            if let Some(transform) = query_latest::<Transform>(entity_db, &tree.path, query) {
+            if let Some(transform) = query_latest_single::<Transform>(entity_db, &tree.path, query)
+            {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -156,7 +157,7 @@ impl SpaceInfoCollection {
         let mut spaces_info = Self::default();
 
         // Start at the root. The root is always part of the collection!
-        if query_latest::<Transform>(entity_db, &EntityPath::root(), &query).is_some() {
+        if query_latest_single::<Transform>(entity_db, &EntityPath::root(), &query).is_some() {
             re_log::warn_once!("The root entity has a 'transform' component! This will have no effect. Did you mean to apply the transform elsewhere?");
         }
         let mut root_space_info = SpaceInfo::new(EntityPath::root());

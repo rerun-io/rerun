@@ -1,4 +1,4 @@
-use re_data_store::{query_latest, EntityPath, EntityProperties};
+use re_data_store::{query_latest_single, EntityPath, EntityProperties};
 use re_log_types::{TimeType, Transform};
 
 use crate::{
@@ -412,7 +412,7 @@ fn entity_props_ui(
                 if let Some(entity_path) = entity_path {
                     let query = ctx.current_query();
                     if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                        query_latest::<Transform>(&ctx.log_db.entity_db, entity_path, &query)
+                        query_latest_single::<Transform>(&ctx.log_db.entity_db, entity_path, &query)
                     {
                         ui.label("Image plane distance");
                         let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
