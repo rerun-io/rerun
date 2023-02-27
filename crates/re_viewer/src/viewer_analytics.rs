@@ -95,7 +95,7 @@ impl ViewerAnalytics {
             };
 
             let mut event = Event::update("update_metadata")
-                .with_prop("rerun_version", build_info.version)
+                .with_prop("rerun_version", build_info.version.to_string())
                 .with_prop("target", build_info.target_triple)
                 .with_prop("git_hash", git_hash)
                 .with_prop("debug", cfg!(debug_assertions)) // debug-build?
