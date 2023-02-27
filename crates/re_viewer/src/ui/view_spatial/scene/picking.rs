@@ -166,6 +166,7 @@ pub fn picking(
         line_strips,
         points,
         meshes,
+        depth_clouds: _, // no picking for depth clouds yet
     } = primitives;
 
     picking_points(&context, &mut state, points);

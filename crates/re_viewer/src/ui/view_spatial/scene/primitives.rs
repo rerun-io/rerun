@@ -1,6 +1,9 @@
 use egui::Color32;
 use re_data_store::InstancePathHash;
-use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
+use re_renderer::{
+    renderer::{DepthCloud, MeshInstance},
+    LineStripSeriesBuilder, PointCloudBuilder,
+};
 
 use super::MeshSource;
 
@@ -23,6 +26,7 @@ pub struct SceneSpatialPrimitives {
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
+    pub depth_clouds: Vec<DepthCloud>,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -38,6 +42,7 @@ impl SceneSpatialPrimitives {
             line_strips: Default::default(),
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
+            depth_clouds: Default::default(),
         }
     }
 
@@ -55,60 +60,64 @@ impl SceneSpatialPrimitives {
             line_strips,
             points,
             meshes,
+            depth_clouds,
         } = &self;
 
         textured_rectangles.len()
             + line_strips.vertices.len()
             + points.vertices.len()
             + meshes.len()
+            + depth_clouds.len()
     }
 
     pub fn recalculate_bounding_box(&mut self) {
         crate::profile_function!();
 
-        self.bounding_box = macaw::BoundingBox::nothing();
+        let Self {
+            bounding_box,
+            textured_rectangles_ids: _,
+            textured_rectangles,
+            line_strips,
+            points,
+            meshes,
+            depth_clouds: _, // no bbox for depth clouds
+        } = self;
 
-        for rect in &self.textured_rectangles {
-            self.bounding_box.extend(rect.top_left_corner_position);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_u);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_v);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
+        *bounding_box = macaw::BoundingBox::nothing();
+
+        for rect in textured_rectangles {
+            bounding_box.extend(rect.top_left_corner_position);
+            bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
+            bounding_box.extend(rect.top_left_corner_position + rect.extent_v);
+            bounding_box.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
         }
 
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
         // TODO(andreas): We should keep these around to speed up picking!
-        for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
+        for (batch, vertex_iter) in points.iter_vertices_by_batch() {
             // Only use points which are an IsoTransform to update the bounding box
             // This prevents crazy bounds-increases when projecting 3d to 2d
             // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
                 let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-                self.bounding_box = self
-                    .bounding_box
-                    .union(batch_bb.transform_affine3(&transform.into()));
+                *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
             }
         }
-        for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
+        for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {
             // Only use points which are an IsoTransform to update the bounding box
             // This prevents crazy bounds-increases when projecting 3d to 2d
             // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
                 let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-                self.bounding_box = self
-                    .bounding_box
-                    .union(batch_bb.transform_affine3(&transform.into()));
+                *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
             }
         }
 
-        for mesh in &self.meshes {
+        for mesh in meshes {
             // TODO(jleibs): is this safe for meshes or should we be doing the equivalent of the above?
-            self.bounding_box = self
-                .bounding_box
-                .union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
+            *bounding_box =
+                bounding_box.union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
         }
     }
 
