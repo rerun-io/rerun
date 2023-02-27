@@ -91,7 +91,7 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
     let local_version = RustVersion::parse(env!("CARGO_PKG_VERSION"));
 
     if !encoded_version.is_semver_compatible_with(local_version) {
-        re_log::warn!("Loading stream with incompatible Rerun version {encoded_version}. Local Rerun version is {local_version}. Will try to load it anyways, but it might fail in interesting ways.");
+        re_log::warn!("Found log stream with Rerun version {encoded_version}, which is incompatible with the local Rerun version {local_version}. Loading will try to continue, but might fail in subtle ways.");
     }
 }
 
