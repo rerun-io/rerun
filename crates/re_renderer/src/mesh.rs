@@ -181,7 +181,7 @@ impl GpuMesh {
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions));
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_data));
             staging_buffer.copy_to_buffer(
-                ctx.active_frame.encoder.lock().get(&ctx.device),
+                ctx.active_frame.encoder.lock().get(),
                 &vertex_buffer_combined,
                 0,
             );
@@ -206,11 +206,7 @@ impl GpuMesh {
                 data.indices.len(),
             );
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.indices));
-            staging_buffer.copy_to_buffer(
-                ctx.active_frame.encoder.lock().get(&ctx.device),
-                &index_buffer,
-                0,
-            );
+            staging_buffer.copy_to_buffer(ctx.active_frame.encoder.lock().get(), &index_buffer, 0);
             index_buffer
         };
 

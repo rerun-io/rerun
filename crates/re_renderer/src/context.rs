@@ -168,6 +168,12 @@ impl RenderContext {
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
+        let active_frame = ActiveFrameContext {
+            encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
+            per_frame_data_helper: TypeMap::new(),
+            frame_index: 0,
+        };
+
         RenderContext {
             device,
             queue,
@@ -189,11 +195,7 @@ impl RenderContext {
 
             inflight_queue_submissions: Vec::new(),
 
-            active_frame: ActiveFrameContext {
-                encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
-                per_frame_data_helper: TypeMap::new(),
-                frame_index: 0
-            }
+            active_frame,
         }
     }
 
@@ -224,13 +226,9 @@ impl RenderContext {
         crate::profile_function!();
 
         // If the currently active frame still has an encoder, we need to finish it and queue it.
+        // This should only ever happen for the first frame where we created an encoder for preparatory work. Every other frame we take the encoder at submit!
         if self.active_frame.encoder.lock().0.is_some() {
-            // For preparation before rendering this is fine, but if happens during regular rendering there might be a user bug.
-            if self.active_frame.frame_index != 0 {
-                re_log::warn_once!("Rendering work (likely resource copy operations) was submitted to the frame-global encoder outside of frames.
-Any such work should happen between RenderContext::begin_frame and RenderContext::before_submit");
-            }
-
+            assert!(self.active_frame.frame_index == 0, "There was still a command encoder from the previous frame at the beginning of the current. Did you forget to call RenderContext::before_submit?");
             self.before_submit();
         }
 
@@ -239,7 +237,7 @@ Any such work should happen between RenderContext::begin_frame and RenderContext
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
 
         self.active_frame = ActiveFrameContext {
-            encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
+            encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
             per_frame_data_helper: TypeMap::new(),
         };
@@ -324,27 +322,33 @@ Any such work should happen between RenderContext::begin_frame and RenderContext
     }
 }
 
-impl Drop for RenderContext {
-    fn drop(&mut self) {
-        // Close global command encoder if there is any pending.
-        // Not doing so before shutdown causes errors.
-        if let Some(encoder) = self.active_frame.encoder.lock().0.take() {
-            encoder.finish();
-        }
-    }
-}
-
 pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
 
 impl FrameGlobalCommandEncoder {
-    /// Gets or creates a command encoder that runs before all view builder encoder.
-    pub fn get(&mut self, device: &wgpu::Device) -> &mut wgpu::CommandEncoder {
-        self.0.get_or_insert_with(|| {
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
-                    .get(),
-            })
-        })
+    fn new(device: &wgpu::Device) -> Self {
+        Self(Some(device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label:
+                    crate::DebugLabel::from("global \"before viewbuilder\" command encoder").get(),
+            },
+        )))
+    }
+
+    /// Gets the global encoder for a frame. Only valid within a frame.
+    pub fn get(&mut self) -> &mut wgpu::CommandEncoder {
+        self.0
+            .as_mut()
+            .expect("Frame global encoder can't be accessed outside of a frame!")
+    }
+}
+
+impl Drop for FrameGlobalCommandEncoder {
+    fn drop(&mut self) {
+        // Close global command encoder if there is any pending.
+        // Not doing so before shutdown causes errors!
+        if let Some(encoder) = self.0.take() {
+            encoder.finish();
+        }
     }
 }
 

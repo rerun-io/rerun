@@ -284,7 +284,7 @@ impl PointCloudDrawData {
         }
 
         builder.color_buffer.copy_to_texture(
-            ctx.active_frame.encoder.lock().get(&ctx.device),
+            ctx.active_frame.encoder.lock().get(),
             wgpu::ImageCopyTexture {
                 texture: &color_texture.texture,
                 mip_level: 0,
