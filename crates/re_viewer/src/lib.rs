@@ -129,18 +129,11 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
 
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
-        // TODO(andreas): Query used surface format from eframe/renderer.
-        let output_format_color = if cfg!(target_arch = "wasm32") {
-            wgpu::TextureFormat::Rgba8Unorm
-        } else {
-            wgpu::TextureFormat::Bgra8Unorm
-        };
-
         paint_callback_resources.insert(RenderContext::new(
             render_state.device.clone(),
             render_state.queue.clone(),
             RenderContextConfig {
-                output_format_color,
+                output_format_color: render_state.target_format,
                 hardware_tier: crate::hardware_tier(),
             },
         ));

@@ -24,6 +24,7 @@
     "cSpell.words": [
         "andreas",
         "bbox",
+        "framebuffer",
         "hoverable",
         "Keypoint",
         "memoffset",
@@ -31,6 +32,7 @@
         "objectron",
         "Skybox",
         "smallvec",
+        "swapchain",
         "texcoords",
         "Tonemapper",
         "tonemapping",
