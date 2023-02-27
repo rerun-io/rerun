@@ -38,20 +38,17 @@ where
     }
 }
 
-// Resources are held as Option so its easier to move them out.
-type AliveResourceMap<Handle, Desc, Res> =
-    SlotMap<Handle, Option<Arc<DynamicResource<Handle, Desc, Res>>>>;
-
 struct DynamicResourcePoolProtectedState<Handle: Key, Desc: Debug, Res> {
-    /// All currently alive resources.
+    /// All resources, including both resources that are in use and those that are marked as dead via [`Self::last_frame_deallocated`]
+    ///
     /// We store any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
     /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
-    alive_resources: AliveResourceMap<Handle, Desc, Res>,
+    all_resources: SlotMap<Handle, Arc<DynamicResource<Handle, Desc, Res>>>,
 
     /// Any resource that has been deallocated last frame.
     /// We keep them around for a bit longer to allow reclamation
-    last_frame_deallocated: HashMap<Desc, SmallVec<[Res; 4]>>,
+    last_frame_deallocated: HashMap<Desc, SmallVec<[Handle; 4]>>,
 }
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
@@ -73,7 +70,7 @@ where
     fn default() -> Self {
         Self {
             state: RwLock::new(DynamicResourcePoolProtectedState {
-                alive_resources: Default::default(),
+                all_resources: Default::default(),
                 last_frame_deallocated: Default::default(),
             }),
             current_frame_index: Default::default(),
@@ -95,37 +92,36 @@ where
         let mut state = self.state.write();
 
         // First check if we can reclaim a resource we have around from a previous frame.
-        let inner_resource = (|| {
-            if desc.allow_reuse() {
-                if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone())
-                {
-                    re_log::trace!(?desc, "Reclaimed previously discarded resource");
-                    let inner_resource = entry.get_mut().pop().unwrap();
-                    if entry.get().is_empty() {
-                        entry.remove();
-                    }
-                    return inner_resource;
-                }
-            }
-            // Otherwise create a new resource
-            re_log::debug!(?desc, "Allocated new resource");
-            let inner_resource = creation_func(desc);
-            self.total_resource_size_in_bytes.fetch_add(
-                desc.resource_size_in_bytes(),
-                std::sync::atomic::Ordering::Relaxed,
-            );
-            inner_resource
-        })();
+        if desc.allow_reuse() {
+            if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone()) {
+                re_log::trace!(?desc, "Reclaimed previously discarded resource");
 
-        let handle = state.alive_resources.insert_with_key(|handle| {
-            Some(Arc::new(DynamicResource {
+                let handle = entry.get_mut().pop().unwrap();
+                if entry.get().is_empty() {
+                    entry.remove();
+                }
+
+                return state.all_resources[handle].clone();
+            }
+        }
+
+        // Otherwise create a new resource
+        re_log::debug!(?desc, "Allocated new resource");
+        let inner_resource = creation_func(desc);
+        self.total_resource_size_in_bytes.fetch_add(
+            desc.resource_size_in_bytes(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+
+        let handle = state.all_resources.insert_with_key(|handle| {
+            Arc::new(DynamicResource {
                 inner: inner_resource,
                 creation_desc: desc.clone(),
                 handle,
-            }))
+            })
         });
 
-        state.alive_resources[handle].as_ref().unwrap().clone()
+        state.all_resources[handle].clone()
     }
 
     pub fn get_from_handle(
@@ -134,14 +130,9 @@ where
     ) -> Result<Arc<DynamicResource<Handle, Desc, Res>>, PoolError> {
         self.state
             .read()
-            .alive_resources
+            .all_resources
             .get(handle)
-            .map(|resource| {
-                resource
-                    .as_ref()
-                    .expect("Alive handles should never be None")
-                    .clone()
-            })
+            .cloned()
             .ok_or_else(|| {
                 if handle.is_null() {
                     PoolError::NullHandle
@@ -160,10 +151,14 @@ where
             re_log::trace!(
                 count = resources.len(),
                 ?desc,
-                "Drained dangling resources from last frame",
+                "Drained dangling resources from last frame:",
             );
             for resource in resources {
-                on_destroy_resource(&resource);
+                let Some(removed_resource) = state.all_resources.remove(resource) else {
+                    debug_assert!(false, "a resource was marked as destroyed last frame that we no longer kept track of");
+                    continue;
+                };
+                on_destroy_resource(&removed_resource);
                 self.total_resource_size_in_bytes.fetch_sub(
                     desc.resource_size_in_bytes(),
                     std::sync::atomic::Ordering::Relaxed,
@@ -172,35 +167,32 @@ where
         }
 
         // If the strong count went down to 1, we must be the only ones holding on to handle.
+        // If that's the case, push it to the re-use-next-frame list or discard.
         //
         // thread safety:
         // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
-        state.alive_resources.retain(|_, resource| {
-            let resolved = resource
-                .take()
-                .expect("Alive resources should never be None");
-
-            match Arc::try_unwrap(resolved) {
-                Ok(r) => {
+        state.all_resources.retain(|_, resource| {
+            if Arc::strong_count(resource) == 1 {
+                if resource.creation_desc.allow_reuse() {
                     state
                         .last_frame_deallocated
-                        .entry(r.creation_desc)
+                        .entry(resource.creation_desc.clone())
                         .or_default()
-                        .push(r.inner);
+                        .push(resource.handle);
+                    true
+                } else {
+                    on_destroy_resource(&resource.inner);
                     false
                 }
-                Err(r) => {
-                    *resource = Some(r);
-                    true
-                }
+            } else {
+                true
             }
         });
     }
 
     pub fn num_resources(&self) -> usize {
-        let state = self.state.read();
-        state.alive_resources.len() + state.last_frame_deallocated.values().flatten().count()
+        self.state.read().all_resources.len()
     }
 
     pub fn total_resource_size_in_bytes(&self) -> u64 {
@@ -235,13 +227,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        cell::Cell,
-        sync::{
-            atomic::{AtomicUsize, Ordering},
-            Arc,
-        },
-    };
+    use std::{cell::Cell, sync::Arc};
 
     use super::{DynamicResourcePool, DynamicResourcesDesc};
 
@@ -260,14 +246,18 @@ mod tests {
         }
     }
 
-    #[derive(Debug)]
-    pub struct ConcreteResource {
-        drop_counter: Arc<AtomicUsize>,
+    thread_local! {
+        static DROP_COUNTER: Cell<usize> = Cell::new(0);
     }
+
+    #[derive(Debug)]
+    pub struct ConcreteResource;
 
     impl Drop for ConcreteResource {
         fn drop(&mut self) {
-            self.drop_counter.fetch_add(1, Ordering::Release);
+            DROP_COUNTER.with(|c| {
+                c.set(c.get() + 1);
+            });
         }
     }
 
@@ -276,38 +266,37 @@ mod tests {
     #[test]
     fn resource_alloc_and_reuse() {
         let mut pool = Pool::default();
-        let drop_counter = Arc::new(AtomicUsize::new(0));
 
         let initial_resource_descs = [0, 0, 1, 2, 2, 3];
 
         // Alloc on a new pool always returns a new resource.
-        allocate_resources(&initial_resource_descs, &mut pool, true, &drop_counter);
+        allocate_resources(&initial_resource_descs, &mut pool, true);
 
         // After frame maintenance we get used resources.
         // Still, no resources were dropped.
         {
-            let drop_counter_before = drop_counter.load(Ordering::Acquire);
+            let drop_counter_before = DROP_COUNTER.with(|c| c.get());
             let mut called_destroy = false;
             pool.begin_frame(1, |_| called_destroy = true);
 
             assert!(!called_destroy);
-            assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
+            assert_eq!(drop_counter_before, DROP_COUNTER.with(|c| c.get()),);
         }
 
         // Allocate the same resources again, this should *not* create any new resources.
-        allocate_resources(&initial_resource_descs, &mut pool, false, &drop_counter);
+        allocate_resources(&initial_resource_descs, &mut pool, false);
         // Doing it again, it will again create resources.
-        allocate_resources(&initial_resource_descs, &mut pool, true, &drop_counter);
+        allocate_resources(&initial_resource_descs, &mut pool, true);
 
         // Doing frame maintenance twice will drop all resources
         {
-            let drop_counter_before = drop_counter.load(Ordering::Acquire);
+            let drop_counter_before = DROP_COUNTER.with(|c| c.get());
             let mut called_destroy = false;
             pool.begin_frame(2, |_| called_destroy = true);
             assert!(!called_destroy);
             pool.begin_frame(3, |_| called_destroy = true);
             assert!(called_destroy);
-            let drop_counter_now = drop_counter.load(Ordering::Acquire);
+            let drop_counter_now = DROP_COUNTER.with(|c| c.get());
             assert_eq!(
                 drop_counter_before + initial_resource_descs.len() * 2,
                 drop_counter_now
@@ -315,54 +304,69 @@ mod tests {
             assert_eq!(pool.total_resource_size_in_bytes(), 0);
         }
 
-        // Holding on to a handle avoids both re-use and dropping.
+        // Holding on to the resource avoids both re-use and dropping.
         {
-            let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            let handle0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource {
-                drop_counter: drop_counter.clone(),
-            });
-            let handle1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource {
-                drop_counter: drop_counter.clone(),
-            });
-            assert_ne!(handle0.handle, handle1.handle);
-            drop(handle1);
+            let drop_counter_before = DROP_COUNTER.with(|c| c.get());
+            let resource0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+            let resource1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+            assert_ne!(resource0.handle, resource1.handle);
+            drop(resource1);
 
             let mut called_destroy = false;
             pool.begin_frame(4, |_| called_destroy = true);
             assert!(!called_destroy);
-            assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
+            assert_eq!(drop_counter_before, DROP_COUNTER.with(|c| c.get()),);
             pool.begin_frame(5, |_| called_destroy = true);
             assert!(called_destroy);
-            assert_eq!(
-                drop_counter_before + 1,
-                drop_counter.load(Ordering::Acquire),
-            );
+            assert_eq!(drop_counter_before + 1, DROP_COUNTER.with(|c| c.get()),);
         }
+    }
+
+    // Two resources have two different handles.
+    #[test]
+    fn individual_handles() {
+        let mut pool = Pool::default();
+        let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+        let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+        assert_ne!(res0.handle, res1.handle);
+        pool.begin_frame(1234, |_| {});
+    }
+
+    // A resource gets the same handle when re-used.
+    // (important for BindGroup re-use!)
+    #[test]
+    fn handle_unchanged_on_reuse() {
+        let mut pool = Pool::default();
+        let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+        let handle0 = res0.handle;
+        drop(res0);
+        pool.begin_frame(1234, |_| {});
+        let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+
+        assert_eq!(handle0, res1.handle);
+        pool.begin_frame(1235, |_| {});
     }
 
     fn allocate_resources(
         descs: &[u32],
         pool: &mut DynamicResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>,
         expect_allocation: bool,
-        drop_counter: &Arc<AtomicUsize>,
     ) {
-        let drop_counter_before = drop_counter.load(Ordering::Acquire);
+        let drop_counter_before = DROP_COUNTER.with(|c| c.get());
         let byte_count_before = pool.total_resource_size_in_bytes();
         for &desc in descs {
             // Previous loop iteration didn't drop Resources despite dropping a handle.
-            assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire));
+            assert_eq!(drop_counter_before, DROP_COUNTER.with(|c| c.get()));
 
             let new_resource_created = Cell::new(false);
-            let handle = pool.alloc(&ConcreteResourceDesc(desc), |_| {
+            let resource = pool.alloc(&ConcreteResourceDesc(desc), |_| {
                 new_resource_created.set(true);
-                ConcreteResource {
-                    drop_counter: drop_counter.clone(),
-                }
+                ConcreteResource
             });
             assert_eq!(new_resource_created.get(), expect_allocation);
 
             // Resource pool keeps the handle alive, but otherwise we're the only owners.
-            assert_eq!(Arc::strong_count(&handle), 2);
+            assert_eq!(Arc::strong_count(&resource), 2);
         }
 
         if expect_allocation {
