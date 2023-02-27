@@ -320,26 +320,31 @@ mod tests {
             assert!(called_destroy);
             assert_eq!(drop_counter_before + 1, DROP_COUNTER.with(|c| c.get()),);
         }
+    }
 
-        // Two resources have two different handles.
-        {
-            let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
-            let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
-            assert_ne!(res0.handle, res1.handle);
-            pool.begin_frame(1234, |_| {});
-        }
+    // Two resources have two different handles.
+    #[test]
+    fn individual_handles() {
+        let mut pool = Pool::default();
+        let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+        let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+        assert_ne!(res0.handle, res1.handle);
+        pool.begin_frame(1234, |_| {});
+    }
 
-        // A resource gets the same handle when re-used.
-        // (important for BindGroup re-use!)
-        {
-            let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
-            let handle0 = res0.handle;
-            drop(res0);
-            pool.begin_frame(1234, |_| {});
-            let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
-            assert_eq!(handle0, res1.handle);
-            pool.begin_frame(1235, |_| {});
-        }
+    // A resource gets the same handle when re-used.
+    // (important for BindGroup re-use!)
+    #[test]
+    fn handle_unchanged_on_reuse() {
+        let mut pool = Pool::default();
+        let res0 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+        let handle0 = res0.handle;
+        drop(res0);
+        pool.begin_frame(1234, |_| {});
+        let res1 = pool.alloc(&ConcreteResourceDesc(0), |_| ConcreteResource);
+
+        assert_eq!(handle0, res1.handle);
+        pool.begin_frame(1235, |_| {});
     }
 
     fn allocate_resources(
