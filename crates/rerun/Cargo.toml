@@ -70,6 +70,7 @@ crossbeam = "0.8"
 document-features = "0.2"
 egui = { workspace = true, default-features = false }
 itertools = "0.10"
+parking_lot.workspace = true
 puffin.workspace = true
 
 # Optional dependencies:

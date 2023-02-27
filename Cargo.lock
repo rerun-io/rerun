@@ -4362,6 +4362,7 @@ dependencies = [
  "itertools",
  "libc",
  "mimalloc",
+ "parking_lot 0.12.1",
  "puffin",
  "puffin_http",
  "re_analytics",

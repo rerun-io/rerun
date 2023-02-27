@@ -1,18 +1,40 @@
+use re_build_info::BuildInfo;
+
+use parking_lot::Mutex;
+
+// The easiest way to pass this to our signal handler.
+static BUILD_INFO: Mutex<Option<BuildInfo>> = Mutex::new(None);
+
 /// Install handlers for panics and signals (crashes)
 /// that prints helpful messages and sends anonymous analytics.
 ///
 /// NOTE: only install these in binaries!
 /// * First of all, we don't want to compete with other panic/signal handlers.
 /// * Second of all, we don't ever want to include user callstacks in our analytics.
-pub fn install_crash_handlers() {
-    install_panic_hook();
+pub fn install_crash_handlers(build_info: BuildInfo) {
+    install_panic_hook(build_info);
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg(not(target_os = "windows"))]
-    install_signal_handler();
+    install_signal_handler(build_info);
 }
 
-fn install_panic_hook() {
+#[cfg(feature = "analytics")]
+fn add_build_info(build_info: &BuildInfo, event: re_analytics::Event) -> re_analytics::Event {
+    event
+        .with_prop("rerun_version", build_info.version)
+        .with_prop("target", build_info.target_triple)
+        .with_prop("git_hash", build_info.git_hash_or_tag())
+        .with_prop("git_branch", build_info.git_branch)
+        .with_prop("build_date", build_info.datetime)
+        .with_prop("debug", cfg!(debug_assertions)) // debug-build?
+        .with_prop(
+            "rerun_workspace",
+            std::env::var("IS_IN_RERUN_WORKSPACE").is_ok(),
+        ) // proxy for "user checked out the project and built it from source"
+}
+
+fn install_panic_hook(build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
     std::panic::set_hook(Box::new(move |panic_info: &std::panic::PanicInfo<'_>| {
@@ -37,6 +59,7 @@ fn install_panic_hook() {
                         format!("{}:{}", location.file(), location.line()),
                     );
                 }
+                let event = add_build_info(&build_info, event);
                 analytics.record(event);
 
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
@@ -49,7 +72,9 @@ fn install_panic_hook() {
 #[cfg(not(target_os = "windows"))]
 #[allow(unsafe_code)]
 #[allow(clippy::fn_to_numeric_cast_any)]
-fn install_signal_handler() {
+fn install_signal_handler(build_info: BuildInfo) {
+    *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
+
     // SAFETY: we're installing a signal handler.
     unsafe {
         for signum in [
@@ -86,10 +111,10 @@ fn install_signal_handler() {
         // then we do the unsafe things, like logging the stack trace.
         // We take care not to allocate any memory along the way.
 
-        write_to_stderr("\n");
+        write_to_stderr("\n\n");
         write_to_stderr("Rerun caught a signal: ");
         write_to_stderr(signal_name);
-        write_to_stderr("\n");
+        write_to_stderr("\n\n");
         write_to_stderr(
             "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n\n",
         );
@@ -103,7 +128,12 @@ fn install_signal_handler() {
         write_to_stderr(&callstack);
 
         #[cfg(feature = "analytics")]
-        send_signal_analytics(signal_name, callstack);
+        {
+            let build_info = BUILD_INFO
+                .lock()
+                .unwrap_or_else(|| re_build_info::build_info!());
+            send_signal_analytics(build_info, signal_name, callstack);
+        }
 
         // Let's print the important stuff _again_ so it is visible at the bottom of the users terminal:
         write_to_stderr("\n");
@@ -131,13 +161,13 @@ fn install_signal_handler() {
     }
 
     #[cfg(feature = "analytics")]
-    fn send_signal_analytics(signal_name: &str, callstack: String) {
+    fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
         if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
-            analytics.record(
-                re_analytics::Event::append("signal")
-                    .with_prop("signal", signal_name)
-                    .with_prop("callstack", callstack),
-            );
+            let event = re_analytics::Event::append("signal")
+                .with_prop("signal", signal_name)
+                .with_prop("callstack", callstack);
+            let event = add_build_info(&build_info, event);
+            analytics.record(event);
 
             std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
         }

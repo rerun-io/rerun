@@ -169,7 +169,7 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    crate::crash_handler::install_crash_handlers();
+    crate::crash_handler::install_crash_handlers(build_info);
 
     use clap::Parser as _;
     let args = Args::parse_from(args);
