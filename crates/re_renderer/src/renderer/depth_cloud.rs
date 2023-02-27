@@ -308,18 +308,18 @@ impl Renderer for DepthCloudRenderer {
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(wgpu::ColorTargetState {
-                    format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
-                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: None,
                     ..Default::default()
                 },
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+                multisample: wgpu::MultisampleState {
+                    // We discard pixels to do the round cutout, therefore we need to
+                    // calculate our own sampling mask.
+                    alpha_to_coverage_enabled: true,
+                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+                },
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
