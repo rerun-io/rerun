@@ -155,8 +155,9 @@ impl GpuMesh {
 
         // TODO(andreas): Have a variant that gets this from a stack allocator.
         let vertex_buffer_positions_size =
-            std::mem::size_of_val(data.vertex_positions.as_slice()) as u64;
-        let vertex_buffer_data_size = std::mem::size_of_val(data.vertex_data.as_slice()) as u64;
+            (data.vertex_positions.len() * std::mem::size_of::<glam::Vec3>()) as u64;
+        let vertex_buffer_data_size =
+            (data.vertex_data.len() * std::mem::size_of::<mesh_vertices::MeshVertexData>()) as u64;
         let vertex_buffer_combined_size = vertex_buffer_positions_size + vertex_buffer_data_size;
 
         let pools = &ctx.gpu_resources;
