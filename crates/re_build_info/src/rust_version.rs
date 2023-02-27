@@ -33,6 +33,46 @@ impl RustVersion {
         }
     }
 
+    /// From a compact 32-bit representation crated with [`Self::to_bytes`].
+    pub fn from_bytes([major, minor, patch, alpha]: [u8; 4]) -> Self {
+        Self {
+            major,
+            minor,
+            patch,
+            alpha,
+        }
+    }
+
+    /// A compact 32-bit representation. See also [`Self::from_bytes`].
+    pub fn to_bytes(self) -> [u8; 4] {
+        let Self {
+            major,
+            minor,
+            patch,
+            alpha,
+        } = self;
+        [major, minor, patch, alpha]
+    }
+
+    /// Is this an alpha-release?
+    pub fn alpha(self) -> Option<u8> {
+        (self.alpha != NO_ALPHA).then_some(self.alpha)
+    }
+
+    pub fn is_semver_compatible_with(self, other: RustVersion) -> bool {
+        if self.alpha != other.alpha {
+            return false; // Alphas can contain breaking changes
+        }
+
+        if self.major == 0 {
+            // before 1.0.0 we break compatibility using the minor:
+            (self.major, self.minor) == (other.major, other.minor)
+        } else {
+            // major version is the only breaking change:
+            self.major == other.major
+        }
+    }
+
     pub const fn parse(s: &str) -> Self {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
@@ -140,4 +180,22 @@ fn test_format_parse_roundtrip() {
     for version in ["0.2.0", "1.2.3", "123.45.67", "123.45.67-alpha.89"] {
         assert_eq!(parse(version).to_string(), version);
     }
+}
+
+#[test]
+fn test_compatibility() {
+    fn are_compatible(a: &str, b: &str) -> bool {
+        RustVersion::parse(a).is_semver_compatible_with(RustVersion::parse(b))
+    }
+
+    assert!(are_compatible("0.2.0", "0.2.0"));
+    assert!(are_compatible("0.2.0", "0.2.1"));
+    assert!(are_compatible("1.2.0", "1.3.0"));
+    assert!(!are_compatible("0.2.0", "1.2.0"));
+    assert!(!are_compatible("0.2.0", "0.3.0"));
+    assert!(are_compatible("0.2.0-alpha.0", "0.2.0-alpha.0"));
+    assert!(
+        !are_compatible("0.2.0-alpha.0", "0.2.0-alpha.1"),
+        "Alphas are always incompatible"
+    );
 }
