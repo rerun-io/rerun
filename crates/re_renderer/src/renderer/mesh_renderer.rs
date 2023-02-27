@@ -207,10 +207,13 @@ impl MeshDrawData {
         let batches: Result<Vec<_>, _> = mesh_runs
             .into_iter()
             .map(|(mesh_handle, count)| {
-                ctx.mesh_manager.get(mesh_handle).map(|mesh| MeshBatch {
-                    mesh: mesh.clone(),
-                    count,
-                })
+                ctx.mesh_manager
+                    .read()
+                    .get(mesh_handle)
+                    .map(|mesh| MeshBatch {
+                        mesh: mesh.clone(),
+                        count,
+                    })
             })
             .collect();
 

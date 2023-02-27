@@ -25,7 +25,7 @@ pub struct RenderContext {
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
-    pub mesh_manager: MeshManager,
+    pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
 
@@ -159,16 +159,12 @@ impl RenderContext {
             renderers: TypeMap::new(),
         });
 
-        let mesh_manager = MeshManager::new(
-            device.clone(),
-            queue.clone(),
-            renderers.get_mut().get_or_create(
-                &shared_renderer_data,
-                &mut gpu_resources,
-                &device,
-                &mut resolver,
-            ),
-        );
+        let mesh_manager = RwLock::new(MeshManager::new(renderers.get_mut().get_or_create(
+            &shared_renderer_data,
+            &mut gpu_resources,
+            &device,
+            &mut resolver,
+        )));
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
@@ -252,7 +248,7 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.mesh_manager.begin_frame(frame_index);
+        self.mesh_manager.get_mut().begin_frame(frame_index);
         self.texture_manager_2d.begin_frame(frame_index);
 
         {

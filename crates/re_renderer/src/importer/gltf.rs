@@ -86,12 +86,7 @@ pub fn load_gltf_from_buffer(
         meshes.insert(
             mesh.index(),
             (
-                ctx.mesh_manager.create(
-                    &mut ctx.gpu_resources,
-                    &ctx.texture_manager_2d,
-                    &re_mesh,
-                    lifetime,
-                )?,
+                ctx.mesh_manager.write().create(ctx, &re_mesh, lifetime)?,
                 Arc::new(re_mesh),
             ),
         );

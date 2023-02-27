@@ -6,11 +6,12 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     context::uniform_buffer_allocation_size,
     debug_label::DebugLabel,
-    resource_managers::{GpuTexture2DHandle, ResourceManagerError, TextureManager2D},
+    resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuBuffer, WgpuResourcePools,
+        GpuBuffer,
     },
+    RenderContext,
 };
 
 /// Defines how mesh vertices are built.
@@ -139,11 +140,8 @@ pub(crate) mod gpu_data {
 impl GpuMesh {
     // TODO(andreas): Take read-only context here and make uploads happen on staging belt.
     pub fn new(
-        pools: &WgpuResourcePools,
-        texture_manager: &TextureManager2D,
-        mesh_bound_group_layout: GpuBindGroupLayoutHandle,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        ctx: &RenderContext,
+        mesh_bind_group_layout: GpuBindGroupLayoutHandle,
         data: &Mesh,
     ) -> Result<Self, ResourceManagerError> {
         assert!(data.vertex_positions.len() == data.vertex_data.len());
@@ -160,6 +158,10 @@ impl GpuMesh {
             std::mem::size_of_val(data.vertex_positions.as_slice()) as u64;
         let vertex_buffer_data_size = std::mem::size_of_val(data.vertex_data.as_slice()) as u64;
         let vertex_buffer_combined_size = vertex_buffer_positions_size + vertex_buffer_data_size;
+
+        let pools = &ctx.gpu_resources;
+        let queue = ctx.queue.clone();
+        let device = &ctx.device;
 
         let vertex_buffer_combined = {
             let vertex_buffer_combined = pools.buffers.alloc(
@@ -243,7 +245,7 @@ impl GpuMesh {
                         albedo_multiplier: material.albedo_multiplier.into(),
                     }));
 
-                let texture = texture_manager.get(&material.albedo)?;
+                let texture = ctx.texture_manager_2d.get(&material.albedo)?;
                 let bind_group = pools.bind_groups.alloc(
                     device,
                     &BindGroupDesc {
@@ -258,7 +260,7 @@ impl GpuMesh {
                                 >() as u64)
                             }
                         ],
-                        layout: mesh_bound_group_layout,
+                        layout: mesh_bind_group_layout,
                     },
                     &pools.bind_group_layouts,
                     &pools.textures,
