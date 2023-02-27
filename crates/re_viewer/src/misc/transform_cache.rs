@@ -1,6 +1,8 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{log_db::EntityDb, query_transform, EntityPath, EntityPropertyMap, EntityTree};
+use re_data_store::{
+    log_db::EntityDb, query_latest_single, EntityPath, EntityPropertyMap, EntityTree,
+};
 
 use crate::misc::TimeControl;
 
@@ -222,7 +224,7 @@ fn transform_at(
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(transform) = query_transform(entity_db, entity_path, query) {
+    if let Some(transform) = query_latest_single(entity_db, entity_path, query) {
         match transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().to_mat4())),
             // If we're connected via 'unknown' it's not reachable
@@ -269,7 +271,7 @@ fn inverse_transform_at(
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(parent_transform) = query_transform(entity_db, entity_path, query) {
+    if let Some(parent_transform) = query_latest_single(entity_db, entity_path, query) {
         match parent_transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.child_from_parent().to_mat4())),
             // If we're connected via 'unknown', everything except whats under `parent_tree` is unreachable
