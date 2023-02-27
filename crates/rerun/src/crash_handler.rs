@@ -19,6 +19,11 @@ fn install_panic_hook() {
         // This prints the callstack etc
         (*previous_panic_hook)(panic_info);
 
+        eprintln!(
+            "\n\
+            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting"
+        );
+
         #[cfg(feature = "analytics")]
         {
             if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
@@ -37,11 +42,6 @@ fn install_panic_hook() {
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
             }
         }
-
-        eprintln!(
-            "\n\
-            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting"
-        );
     }));
 }
 
