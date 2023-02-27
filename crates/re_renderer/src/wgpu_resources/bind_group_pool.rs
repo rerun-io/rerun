@@ -204,7 +204,6 @@ impl GpuBindGroupPool {
         _samplers: &mut GpuSamplerPool,
     ) {
         self.pool.begin_frame(frame_index, |_res| {});
-        // TODO(andreas): Update usage counter on dependent resources.
     }
 
     pub fn num_resources(&self) -> usize {
