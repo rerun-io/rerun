@@ -180,6 +180,27 @@ impl From<crate::Rgba> for Vec4 {
 
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]
+pub struct Mat3 {
+    c0: Vec3RowPadded,
+    c1: Vec3RowPadded,
+    c2: Vec3RowPadded,
+    c3: Vec3RowPadded,
+}
+
+impl From<glam::Mat3> for Mat3 {
+    #[inline]
+    fn from(m: glam::Mat3) -> Self {
+        Self {
+            c0: m.x_axis.into(),
+            c1: m.y_axis.into(),
+            c2: m.z_axis.into(),
+            c3: Vec3RowPadded::zeroed(),
+        }
+    }
+}
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Mat4 {
     c0: Vec4,
     c1: Vec4,

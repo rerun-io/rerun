@@ -1,0 +1,359 @@
+//! Renderer that makes it easy to draw point clouds straight out of depth textures.
+//!
+//! Textures are uploaded just-in-time, no caching.
+//!
+//! ## Implementation details
+//!
+//! Since there's no widespread support for bindless textures, this requires one bind group and one
+//! draw call per texture.
+//! This is a pretty heavy shader though, so the overhead is minimal.
+//!
+//! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
+//! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
+
+use smallvec::smallvec;
+use std::num::NonZeroU32;
+
+use crate::{
+    allocator::create_and_fill_uniform_buffer_batch,
+    include_file,
+    resource_managers::ResourceManagerError,
+    view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        TextureDesc,
+    },
+};
+
+use super::{
+    DrawData, DrawOrder, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
+};
+
+// ---
+
+mod gpu_data {
+    // - Keep in sync with mirror in depth_cloud.wgsl.
+    // - See `DepthCloud` for documentation.
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DepthCloudInfoUBO {
+        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
+        pub intrinsics: crate::wgpu_buffer_types::Mat3,
+        pub radius_scale: crate::wgpu_buffer_types::F32RowPadded,
+
+        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 9],
+    }
+}
+
+/// The raw data from a depth texture.
+///
+/// This is either `u16` or `f32` values; in both cases the data will be uploaded to the shader
+/// as-is.
+/// For `u16`s, this results in a `Depth16Unorm` texture, otherwise an `R32Float`.
+///
+/// The shader assumes that this is normalized, linear, non-flipped depth using the camera
+/// position as reference point (not the camera plane!).
+//
+// TODO(cmc): support more depth data types.
+// TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
+#[derive(Debug, Clone)]
+pub enum DepthCloudDepthData {
+    U16(Vec<u16>),
+    F32(Vec<f32>),
+}
+
+impl DepthCloudDepthData {
+    fn as_bytes(&self) -> &[u8] {
+        match self {
+            DepthCloudDepthData::U16(data) => bytemuck::cast_slice(data),
+            DepthCloudDepthData::F32(data) => bytemuck::cast_slice(data),
+        }
+    }
+}
+
+pub struct DepthCloud {
+    pub world_from_obj: glam::Mat4,
+
+    /// The intrinsics of the camera used for the projection.
+    ///
+    /// Only supports pinhole cameras at the moment.
+    pub intrinsics: glam::Mat3,
+
+    /// The scale to apply to the radii of the backprojected points.
+    pub radius_scale: f32,
+
+    /// The dimensions of the depth texture in pixels.
+    pub depth_dimensions: glam::UVec2,
+
+    /// The actual data from the depth texture.
+    ///
+    /// See [`DepthCloudDepthData`] for more information.
+    pub depth_data: DepthCloudDepthData,
+}
+
+impl Default for DepthCloud {
+    fn default() -> Self {
+        Self {
+            world_from_obj: glam::Mat4::IDENTITY,
+            intrinsics: glam::Mat3::IDENTITY,
+            radius_scale: 1.0,
+            depth_dimensions: glam::UVec2::ZERO,
+            depth_data: DepthCloudDepthData::F32(Vec::new()),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct DepthCloudDrawData {
+    // Every single point clouds and their respective total number of points.
+    bind_groups: Vec<(u32, GpuBindGroup)>,
+}
+
+impl DrawData for DepthCloudDrawData {
+    type Renderer = DepthCloudRenderer;
+}
+
+impl DepthCloudDrawData {
+    pub fn new(
+        ctx: &mut RenderContext,
+        depth_clouds: &[DepthCloud],
+    ) -> Result<Self, ResourceManagerError> {
+        crate::profile_function!();
+
+        let mut renderers = ctx.renderers.write();
+        let depth_cloud_renderer = renderers.get_or_create::<_, DepthCloudRenderer>(
+            &ctx.shared_renderer_data,
+            &mut ctx.gpu_resources,
+            &ctx.device,
+            &mut ctx.resolver,
+        );
+
+        if depth_clouds.is_empty() {
+            return Ok(DepthCloudDrawData {
+                bind_groups: Vec::new(),
+            });
+        }
+
+        let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "depth_cloud_ubos".into(),
+            depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
+                world_from_obj: info.world_from_obj.into(),
+                intrinsics: info.intrinsics.into(),
+                radius_scale: info.radius_scale.into(),
+                end_padding: Default::default(),
+            }),
+        );
+
+        let mut bind_groups = Vec::with_capacity(depth_clouds.len());
+        for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
+            let depth_texture = {
+                crate::profile_scope!("depth");
+
+                let depth_texture_size = wgpu::Extent3d {
+                    width: depth_cloud.depth_dimensions.x,
+                    height: depth_cloud.depth_dimensions.y,
+                    depth_or_array_layers: 1,
+                };
+                let depth_format = match depth_cloud.depth_data {
+                    DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
+                    DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
+                };
+                let depth_texture_desc = TextureDesc {
+                    label: "depth_texture".into(),
+                    size: depth_texture_size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: depth_format,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                };
+                let depth_texture = ctx
+                    .gpu_resources
+                    .textures
+                    .alloc(&ctx.device, &depth_texture_desc);
+
+                let format_info = depth_texture_desc.format.describe();
+                let width_blocks =
+                    depth_cloud.depth_dimensions.x / format_info.block_dimensions.0 as u32;
+                let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+
+                {
+                    crate::profile_scope!("write depth texture");
+                    ctx.queue.write_texture(
+                        wgpu::ImageCopyTexture {
+                            texture: &depth_texture.inner.texture,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                            aspect: wgpu::TextureAspect::All,
+                        },
+                        depth_cloud.depth_data.as_bytes(),
+                        wgpu::ImageDataLayout {
+                            offset: 0,
+                            bytes_per_row: Some(
+                                NonZeroU32::new(bytes_per_row_unaligned)
+                                    .expect("invalid bytes per row"),
+                            ),
+                            rows_per_image: None,
+                        },
+                        depth_texture_size,
+                    );
+                }
+
+                depth_texture
+            };
+
+            bind_groups.push((
+                depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
+                ctx.gpu_resources.bind_groups.alloc(
+                    &ctx.device,
+                    &BindGroupDesc {
+                        label: "depth_cloud_bg".into(),
+                        entries: smallvec![
+                            ubo,
+                            BindGroupEntry::DefaultTextureView(depth_texture.handle),
+                        ],
+                        layout: depth_cloud_renderer.bind_group_layout,
+                    },
+                    &ctx.gpu_resources.bind_group_layouts,
+                    &ctx.gpu_resources.textures,
+                    &ctx.gpu_resources.buffers,
+                    &ctx.gpu_resources.samplers,
+                ),
+            ));
+        }
+
+        Ok(DepthCloudDrawData { bind_groups })
+    }
+}
+
+pub struct DepthCloudRenderer {
+    render_pipeline: GpuRenderPipelineHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
+}
+
+impl Renderer for DepthCloudRenderer {
+    type RendererDrawData = DepthCloudDrawData;
+
+    fn create_renderer<Fs: FileSystem>(
+        shared_data: &SharedRendererData,
+        pools: &mut WgpuResourcePools,
+        device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
+    ) -> Self {
+        crate::profile_function!();
+
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
+            device,
+            &BindGroupLayoutDesc {
+                label: "depth_cloud_bg_layout".into(),
+                entries: vec![
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            // We could use dynamic offset here into a single large buffer.
+                            // But we have to set a new texture anyways and its doubtful that
+                            // splitting the bind group is of any use.
+                            has_dynamic_offset: false,
+                            min_binding_size: (std::mem::size_of::<gpu_data::DepthCloudInfoUBO>()
+                                as u64)
+                                .try_into()
+                                .ok(),
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
+
+        let pipeline_layout = pools.pipeline_layouts.get_or_create(
+            device,
+            &PipelineLayoutDesc {
+                label: "depth_cloud_rp_layout".into(),
+                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+            },
+            &pools.bind_group_layouts,
+        );
+
+        let shader_module = pools.shader_modules.get_or_create(
+            device,
+            resolver,
+            &ShaderModuleDesc {
+                label: "depth_cloud".into(),
+                source: include_file!("../../shader/depth_cloud.wgsl"),
+            },
+        );
+
+        let render_pipeline = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "depth_cloud_rp".into(),
+                pipeline_layout,
+                vertex_entrypoint: "vs_main".into(),
+                vertex_handle: shader_module,
+                fragment_entrypoint: "fs_main".into(),
+                fragment_handle: shader_module,
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(wgpu::ColorTargetState {
+                    format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    cull_mode: None,
+                    ..Default::default()
+                },
+                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
+        DepthCloudRenderer {
+            render_pipeline,
+            bind_group_layout,
+        }
+    }
+
+    fn draw<'a>(
+        &self,
+        pools: &'a WgpuResourcePools,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw_data: &'a Self::RendererDrawData,
+    ) -> anyhow::Result<()> {
+        crate::profile_function!();
+        if draw_data.bind_groups.is_empty() {
+            return Ok(());
+        }
+
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        pass.set_pipeline(pipeline);
+
+        for (num_points, bind_group) in &draw_data.bind_groups {
+            pass.set_bind_group(1, bind_group, &[]);
+            pass.draw(0..*num_points * 6, 0..1);
+        }
+
+        Ok(())
+    }
+
+    fn draw_order() -> u32 {
+        DrawOrder::Transparent as u32
+    }
+}

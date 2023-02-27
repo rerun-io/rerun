@@ -10,6 +10,11 @@ pub use point_cloud::{
     PointCloudVertex,
 };
 
+mod depth_cloud;
+pub use self::depth_cloud::{
+    DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthCloudRenderer,
+};
+
 mod test_triangle;
 pub use test_triangle::TestTriangleDrawData;
 
