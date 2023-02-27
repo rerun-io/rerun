@@ -1,3 +1,18 @@
+//! Demonstrates our DepthCloud renderer, which will efficiently draw a point cloud using a depth
+//! texture and a set of intrinsics.
+//!
+//! ## Usage
+//!
+//! Native:
+//! ```sh
+//! cargo r -p re_renderer --example depth_cloud
+//! ```
+//!
+//! Web:
+//! ```sh
+//! cargo run-wasm --example depth_cloud
+//! ```
+
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -31,7 +46,8 @@ struct RenderDepthClouds {
     albedo: AlbedoTexture,
     albedo_handle: GpuTexture2DHandle,
 
-    z_scale: f32,
+    scale: f32,
+    radius_scale: f32,
     intrinsics: glam::Mat3,
 
     camera_control: CameraControl,
@@ -39,6 +55,7 @@ struct RenderDepthClouds {
 }
 
 impl RenderDepthClouds {
+    /// Manually backproject the depth texture into a point cloud and render it.
     fn draw_backprojected_point_cloud<FD, ID>(
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
@@ -54,12 +71,12 @@ impl RenderDepthClouds {
     {
         let Self {
             depth,
-            z_scale,
+            scale,
+            radius_scale,
             intrinsics,
             ..
         } = self;
 
-        let intrinsics = *intrinsics;
         let focal_length = glam::Vec2::new(intrinsics.x_axis.x, intrinsics.y_axis.y);
         let offset = glam::Vec2::new(intrinsics.x_axis.z, intrinsics.y_axis.z);
 
@@ -68,15 +85,18 @@ impl RenderDepthClouds {
             let (points, colors, radii): (Vec<_>, Vec<_>, Vec<_>) = (0..depth.dimensions.y)
                 .flat_map(|y| (0..depth.dimensions.x).map(move |x| glam::UVec2::new(x, y)))
                 .map(|texcoords| {
-                    let linear_depth = depth.get_linear(texcoords.x, texcoords.y);
+                    let linear_depth = depth.get_linear(
+                        depth.dimensions.x - texcoords.x - 1,
+                        depth.dimensions.y - texcoords.y - 1,
+                    );
                     let pos_in_world = ((texcoords.as_vec2() - offset) * linear_depth
                         / focal_length)
                         .extend(linear_depth);
 
                     (
-                        pos_in_world * *z_scale,
+                        pos_in_world * *scale,
                         Color32::from_gray((linear_depth * 255.0) as u8),
-                        Size(-linear_depth * 4.0),
+                        Size(linear_depth * *radius_scale),
                     )
                 })
                 .multiunzip();
@@ -96,7 +116,7 @@ impl RenderDepthClouds {
             .setup_view(
                 re_ctx,
                 view_builder::TargetConfiguration {
-                    name: "3D".into(),
+                    name: "Point Cloud".into(),
                     resolution_in_pixel,
                     view_from_world: IsoTransform::look_at_rh(
                         self.camera_position,
@@ -129,6 +149,7 @@ impl RenderDepthClouds {
         }
     }
 
+    /// Pass the depth texture to our native depth cloud renderer.
     fn draw_depth_cloud<FD, ID>(
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
@@ -144,19 +165,25 @@ impl RenderDepthClouds {
     {
         let Self {
             depth,
-            z_scale,
+            scale,
+            radius_scale,
             intrinsics,
             ..
         } = self;
 
-        let intrinsics = *intrinsics;
-        let z_scale = *z_scale;
+        let world_from_obj = glam::Mat4::from_cols(
+            glam::Vec4::NEG_X * *scale,
+            glam::Vec4::NEG_Y * *scale,
+            glam::Vec4::Z * *scale,
+            glam::Vec4::W,
+        );
 
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &[DepthCloud {
-                intrinsics,
-                z_scale,
+                world_from_obj,
+                intrinsics: *intrinsics,
+                radius_scale: *radius_scale,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
             }],
@@ -168,7 +195,7 @@ impl RenderDepthClouds {
             .setup_view(
                 re_ctx,
                 view_builder::TargetConfiguration {
-                    name: "3D".into(),
+                    name: "Depth Cloud".into(),
                     resolution_in_pixel,
                     view_from_world: IsoTransform::look_at_rh(
                         self.camera_position,
@@ -227,7 +254,10 @@ impl framework::Example for RenderDepthClouds {
             },
         );
 
-        let z_scale = 50.0;
+        let scale = 50.0;
+        let radius_scale = 0.1;
+
+        // hardcoded intrinsics for nyud dataset
         let focal_length = depth.dimensions.x as f32 * 0.7;
         let offset = depth.dimensions.as_vec2() * 0.5;
         let intrinsics = glam::Mat3::from_cols(
@@ -241,7 +271,8 @@ impl framework::Example for RenderDepthClouds {
             albedo,
             albedo_handle,
 
-            z_scale,
+            scale,
+            radius_scale,
             intrinsics,
 
             camera_control: CameraControl::RotateAroundCenter,
@@ -275,7 +306,7 @@ impl framework::Example for RenderDepthClouds {
 
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
-        let frame_size = albedo.dimensions.as_vec2().extend(0.0) / 10.0;
+        let frame_size = albedo.dimensions.as_vec2().extend(0.0) / 15.0;
         let scale = glam::Mat4::from_scale(frame_size);
         let rotation = glam::Mat4::IDENTITY;
         let translation_center = glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * frame_size);

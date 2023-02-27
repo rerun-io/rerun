@@ -1,24 +1,27 @@
-//! Renderer that makes it easy to draw ray-traced 3D depth_clouds from depth textures.
+//! Renderer that makes it easy to draw point_clouds straight out of depth textures.
 //!
-//! TODO (probably gonna look like the docs for Rectangles)
+//! ## Implementation details
+//!
+//! Since there's no widespread support for bindless textures, this requires one bind group and one
+//! draw call per texture.
+//! This is a pretty heavy shader though, so the overhead is minimal.
+//!
+//! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
+//! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
-use itertools::Itertools;
 use smallvec::smallvec;
 use std::num::{NonZeroU32, NonZeroU64};
-use wgpu::Face;
 
 use crate::{
     context::uniform_buffer_allocation_size,
-    depth_offset::DepthOffset,
     include_file,
-    resource_managers::{GpuTexture2DHandle, ResourceManagerError},
+    resource_managers::ResourceManagerError,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-        SamplerDesc, ShaderModuleDesc, TextureDesc,
+        ShaderModuleDesc, TextureDesc,
     },
-    Rgba,
 };
 
 use super::{
@@ -34,14 +37,23 @@ mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
+        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
         pub intrinsics: crate::wgpu_buffer_types::Mat3,
-        pub z_scale: f32,
+        pub radius_scale: f32,
         pub pad: [f32; 3],
     }
 }
 
-// TODO: doc
+/// The raw data from a depth texture.
+///
+/// This is either `u16` or `f32` values; in both cases the data will be uploaded to the shader
+/// as-is.
+///
+/// The shader assumes that this is normalized, linear, non-flipped depth using the camera
+/// position as reference point (not the camera plane!).
+//
 // TODO(cmc): support more depth data types.
+// TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
 #[derive(Debug, Clone)]
 pub enum DepthCloudDepthData {
     U16(Vec<u16>),
@@ -58,18 +70,31 @@ impl DepthCloudDepthData {
 }
 
 pub struct DepthCloud {
-    pub intrinsics: glam::Mat3,
-    pub z_scale: f32,
+    pub world_from_obj: glam::Mat4,
 
+    /// The intrinsics of the camera used for the projection.
+    ///
+    /// Only supports pinhole cameras at the moment.
+    pub intrinsics: glam::Mat3,
+
+    /// The scale to apply to the radii of the backprojected points.
+    pub radius_scale: f32,
+
+    /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
+
+    /// The actual data from the depth texture.
+    ///
+    /// See [`DepthCloudDepthData`] for more information.
     pub depth_data: DepthCloudDepthData,
 }
 
 impl Default for DepthCloud {
     fn default() -> Self {
         Self {
+            world_from_obj: glam::Mat4::IDENTITY,
             intrinsics: glam::Mat3::IDENTITY,
-            z_scale: 1.0,
+            radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::F32(Vec::new()),
         }
@@ -151,8 +176,9 @@ impl DepthCloudDrawData {
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::DepthCloudInfoUBO>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::DepthCloudInfoUBO {
+                        world_from_obj: depth_cloud.world_from_obj.into(),
                         intrinsics: depth_cloud.intrinsics.into(),
-                        z_scale: depth_cloud.z_scale,
+                        radius_scale: depth_cloud.radius_scale,
                         pad: [0f32; 3],
                     }));
             }
@@ -173,7 +199,7 @@ impl DepthCloudDrawData {
                     DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
                 };
                 let depth_texture_desc = TextureDesc {
-                    label: "depth texture".into(),
+                    label: "depth_texture".into(),
                     size: depth_texture_size,
                     mip_level_count: 1,
                     sample_count: 1,
@@ -221,7 +247,7 @@ impl DepthCloudDrawData {
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &BindGroupDesc {
-                        label: "depth_cloud".into(),
+                        label: "depth_cloud_bg".into(),
                         entries: smallvec![
                             BindGroupEntry::Buffer {
                                 handle: depth_cloud_info_ubo.handle,
@@ -318,7 +344,7 @@ impl Renderer for DepthCloudRenderer {
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "depth_cloud".into(),
+                label: "depth_cloud_rp".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,
@@ -332,9 +358,7 @@ impl Renderer for DepthCloudRenderer {
                 })],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
-                    // polygon_mode: wgpu::PolygonMode::Line,
                     cull_mode: None,
-                    // cull_mode: Some(Face::Back),
                     ..Default::default()
                 },
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,

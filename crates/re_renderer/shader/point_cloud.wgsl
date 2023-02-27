@@ -87,20 +87,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
-
-// Returns distance to sphere surface (x) and distance to of closest ray hit (y)
-// Via https://iquilezles.org/articles/spherefunctions/ but with more verbose names.
-fn sphere_distance(ray: Ray, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
-    let sphere_radius_sq = sphere_radius * sphere_radius;
-    let sphere_to_origin = ray.origin - sphere_origin;
-    let b = dot(sphere_to_origin, ray.direction);
-    let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
-    let h = b * b - c;
-    let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
-    return Vec2(d, -b - sqrt(max(h, 0.0)));
-}
-
-
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // There's easier ways to compute anti-aliasing for when we are in ortho mode since it's just circles.
@@ -110,7 +96,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sphere intersection with anti-aliasing as described by Iq here
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labled to it's easier to understand!)
-    let d = sphere_distance(ray, in.point_center, in.radius);
+    let d = ray_sphere_distance(ray, in.point_center, in.radius);
     let smallest_distance_to_sphere = d.x;
     let closest_ray_dist = d.y;
     let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);

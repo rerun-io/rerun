@@ -182,7 +182,7 @@ impl ImagesPart {
 
                     scene.primitives.depth_clouds.push(DepthCloud {
                         intrinsics,
-                        z_scale,
+                        scale: z_scale,
                         depth_dimensions: glam::UVec2::new(w as _, h as _),
                         depth_data: data,
                     });
