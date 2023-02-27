@@ -52,7 +52,7 @@ fn install_panic_hook(build_info: BuildInfo) {
             {
                 let callstack = callstack_from("panicking::panic_fmt\n");
                 let mut event =
-                    re_analytics::Event::append("panic").with_prop("callstack", callstack);
+                    re_analytics::Event::append("crash-panic").with_prop("callstack", callstack);
                 if let Some(location) = panic_info.location() {
                     event = event.with_prop(
                         "location",
@@ -163,7 +163,7 @@ fn install_signal_handler(build_info: BuildInfo) {
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
         if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
-            let event = re_analytics::Event::append("signal")
+            let event = re_analytics::Event::append("crash-signal")
                 .with_prop("signal", signal_name)
                 .with_prop("callstack", callstack);
             let event = add_build_info(&build_info, event);
