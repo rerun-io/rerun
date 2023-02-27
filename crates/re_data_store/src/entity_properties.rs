@@ -107,6 +107,59 @@ impl ExtraQueryHistory {
 
 // ----------------------------------------------------------------------------
 
+// TODO: Very likely _not_ the right place for this... but what is?
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum ColorMap {
+    Turbo,
+    Viridis,
+    Plasma,
+    Magma,
+    Inferno,
+}
+
+impl std::fmt::Display for ColorMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ColorMap::Turbo => "Turbo",
+            ColorMap::Viridis => "Viridis",
+            ColorMap::Plasma => "Plasma",
+            ColorMap::Magma => "Magma",
+            ColorMap::Inferno => "Inferno",
+        })
+    }
+}
+
+// TODO(cmc): support textures.
+// TODO(cmc): support custom transfer functions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum ColorMapper {
+    /// No color mapping.
+    None,
+
+    /// Use a well-known color map, pre-implemented as a wgsl module.
+    ColorMap(ColorMap),
+}
+
+impl std::fmt::Display for ColorMapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorMapper::None => f.write_str("Off"),
+            ColorMapper::ColorMap(colormap) => colormap.fmt(f),
+        }
+    }
+}
+
+impl Default for ColorMapper {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Get the latest value for a given [`re_log_types::msg_bundle::Component`].
 ///
 /// This assumes that the row we get from the store only contains a single instance for this

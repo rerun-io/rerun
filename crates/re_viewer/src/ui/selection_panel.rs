@@ -405,6 +405,8 @@ fn entity_props_ui(
             }
             ui.end_row();
 
+            color_mapping_props_ui(ctx, ui, entity_props);
+
             if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
                 if let Some(entity_path) = entity_path {
                     let query = ctx.current_query();
@@ -431,6 +433,72 @@ fn entity_props_ui(
                 }
             }
         });
+}
+
+// TODO: filter
+fn color_mapping_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_props: &mut EntityProperties,
+) {
+    let current = entity_props.color_mapper;
+
+    fn selectable_label(
+        ui: &mut egui::Ui,
+        props: &mut EntityProperties,
+        current: ColorMapper,
+        proposed: ColorMapper,
+    ) {
+        if ui
+            .selectable_label(current == proposed, proposed.to_string())
+            .clicked()
+        {
+            props.color_mapper = proposed;
+        }
+    }
+
+    ui.label("Color mapping");
+    egui::ComboBox::from_id_source("color_mapper_kind")
+        .selected_text(current.to_string())
+        .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
+            ui.set_min_width(64.0);
+
+            // TODO: that sucks
+            selectable_label(ui, entity_props, current, ColorMapper::None);
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Turbo),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Viridis),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Plasma),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Magma),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Inferno),
+            );
+        });
+
+    ui.end_row();
 }
 
 fn pinhole_props_ui(
