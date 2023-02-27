@@ -197,7 +197,7 @@ fn format_backtrace(
     let mut print_path = |fmt: &mut std::fmt::Formatter<'_>,
                           path: backtrace::BytesOrWideString<'_>| {
         let path = path.into_path_buf();
-        let anoymized = anonymize_path(&path);
+        let anoymized = anonymize_source_file_path(&path);
         std::fmt::Display::fmt(&anoymized, fmt)
     };
 
@@ -215,12 +215,13 @@ fn format_backtrace(
     Ok(())
 }
 
-fn anonymize_path(path: &std::path::Path) -> String {
-    // Example input:
-    // * `/Users/emilk/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.24.1/src/runtime/runtime.rs`
-    // * `crates/rerun/src/main.rs`
-    // * `/rustc/d5a82bbd26e1ad8b7401f6a718a9c57c96905483/library/core/src/ops/function.rs`
-
+/// Anonymize a path to a Rust source file from a callstack.
+///
+/// Example input:
+/// * `/Users/emilk/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.24.1/src/runtime/runtime.rs`
+/// * `crates/rerun/src/main.rs`
+/// * `/rustc/d5a82bbd26e1ad8b7401f6a718a9c57c96905483/library/core/src/ops/function.rs`
+fn anonymize_source_file_path(path: &std::path::Path) -> String {
     // We must make sure we strip everything sensitive (especially user name).
     // The easiest way is to look for `src` and strip everything up to it.
 
@@ -254,6 +255,6 @@ fn test_anonymize_path() {
         {
         use std::str::FromStr as _;
         let before = std::path::PathBuf::from_str(before).unwrap();
-        assert_eq!(anonymize_path(&before), after);
+        assert_eq!(anonymize_source_file_path(&before), after);
     }
 }
