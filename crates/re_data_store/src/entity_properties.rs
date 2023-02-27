@@ -131,7 +131,7 @@ where
 
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
-    // transforms this is easy enough.
+    // single components this is easy enough.
     let data_store = &entity_db.data_store;
 
     let components = [C::name()];
@@ -143,11 +143,11 @@ where
 
     let mut iter = arrow_array_deserialize_iterator::<C>(arr).ok()?;
 
-    let transform = iter.next();
+    let component = iter.next();
 
     if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for Transform at: {}", entity_path);
+        re_log::warn_once!("Unexpected batch for {} at: {}", C::name(), entity_path);
     }
 
-    transform
+    component
 }

@@ -113,7 +113,8 @@ impl<C> SerializableComponent for C where
 /// ```
 pub trait DeserializableComponent<ArrowFieldType = Self>
 where
-    Self: Component + ArrowDeserialize + ArrowField<Type = ArrowFieldType> + 'static,
+    Self: Component,
+    Self: ArrowDeserialize + ArrowField<Type = ArrowFieldType> + 'static,
     Self::ArrayType: ArrowArray,
     for<'b> &'b Self::ArrayType: IntoIterator,
 {
