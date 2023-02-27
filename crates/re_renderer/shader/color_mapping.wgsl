@@ -1,5 +1,7 @@
 #import <./types.wgsl>
 
+// --- Matplotlib color maps ---
+
 // Polynomials fitted to matplotlib colormaps, taken from https://www.shadertoy.com/view/WlfXRN.
 //
 // License CC0 (public domain)
@@ -54,4 +56,36 @@ fn colormap_inferno(t: f32) -> Vec3 {
     let c5 = Vec3(-71.31942824499214, 32.62606426397723, 73.20951985803202);
     let c6 = Vec3(25.13112622477341, -12.24266895238567, -23.07032500287172);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
+}
+
+// --- Turbo color map ---
+
+// Copyright 2019 Google LLC.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Polynomial approximation in GLSL for the Turbo colormap.
+// Taken from https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7.
+// Original LUT: https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f.
+//
+// Authors:
+//   Colormap Design: Anton Mikhailov (mikhailov@google.com)
+//   GLSL Approximation: Ruofei Du (ruofei@google.com)
+
+fn colormap_turbo(t: f32) -> Vec3 {
+    let r4 = Vec4(0.13572138, 4.61539260, -42.66032258, 132.13108234);
+    let g4 = Vec4(0.09140261, 2.19418839, 4.84296658, -14.18503333);
+    let b4 = Vec4(0.10667330, 12.64194608, -60.58204836, 110.36276771);
+    let r2 = Vec2(-152.94239396, 59.28637943);
+    let g2 = Vec2(4.27729857, 2.82956604);
+    let b2 = Vec2(-89.90310912, 27.34824973);
+
+    let t = saturate(t);
+    let v4 = vec4(1.0, t, t * t, t * t * t);
+    let v2 = v4.zw * v4.z;
+
+    return vec3(
+        dot(v4, r4) + dot(v2, r2),
+        dot(v4, g4) + dot(v2, g2),
+        dot(v4, b4) + dot(v2, b2)
+    );
 }
