@@ -100,20 +100,6 @@ impl Time {
         }
     }
 
-    pub fn format_time(&self, format_str: &str) -> String {
-        let parsed_format = time::format_description::parse(format_str).unwrap();
-        let ns_since_epoch = self.nanos_since_epoch();
-        if let Some(datetime) =
-            OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
-        {
-            datetime
-                .format(&parsed_format)
-                .unwrap_or("Invalid format".to_owned())
-        } else {
-            "Invalid timestamp".to_owned()
-        }
-    }
-
     #[inline]
     pub fn lerp(range: RangeInclusive<Time>, t: f32) -> Time {
         let (min, max) = (range.start().0, range.end().0);
