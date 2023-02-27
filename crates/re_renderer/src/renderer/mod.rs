@@ -72,7 +72,7 @@ pub trait Renderer {
 ///
 /// Currently we do not support sorting *within* a rendering phase!
 /// See [#702](https://github.com/rerun-io/rerun/issues/702)
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum DrawPhase {
     /// Opaque objects, performing reads/writes to the depth buffer.
     ///
@@ -83,5 +83,5 @@ pub enum DrawPhase {
     Background,
 
     /// Drawn when compositing with the main target.
-    Composition,
+    Compositing,
 }

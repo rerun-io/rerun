@@ -544,6 +544,6 @@ impl ViewBuilder {
         );
 
         pass.set_bind_group(0, &setup.bind_group_0, &[]);
-        self.draw_phase(ctx, DrawPhase::Composition, pass)
+        self.draw_phase(ctx, DrawPhase::Compositing, pass)
     }
 }

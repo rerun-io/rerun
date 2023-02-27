@@ -144,6 +144,6 @@ impl Renderer for Compositor {
     }
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Composition]
+        &[DrawPhase::Compositing]
     }
 }
