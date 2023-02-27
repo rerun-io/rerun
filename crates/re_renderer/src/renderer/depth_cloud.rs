@@ -255,9 +255,6 @@ impl Renderer for DepthCloudRenderer {
                         visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
-                            // We could use dynamic offset here into a single large buffer.
-                            // But we have to set a new texture anyways and its doubtful that
-                            // splitting the bind group is of any use.
                             has_dynamic_offset: false,
                             min_binding_size: (std::mem::size_of::<gpu_data::DepthCloudInfoUBO>()
                                 as u64)
