@@ -124,12 +124,17 @@ impl<E: Example + 'static> Application<E> {
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
-        // re_renderer is doing its own srgb conversion for each ViewBuilder for better egui compatibility.
-        let swapchain_format = if cfg!(target_arch = "wasm32") {
-            wgpu::TextureFormat::Rgba8Unorm
-        } else {
-            wgpu::TextureFormat::Bgra8Unorm
-        };
+        // We prefer a target that doesn't apply the gamma curve, as we do this ourselves (for egui compat)
+        let formats = surface.get_capabilities(&adapter).formats;
+        let mut swapchain_format = formats[0]; // Default to first format.
+        for format in formats {
+            if matches!(
+                format,
+                wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Bgra8Unorm
+            ) {
+                swapchain_format = format;
+            }
+        }
 
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
