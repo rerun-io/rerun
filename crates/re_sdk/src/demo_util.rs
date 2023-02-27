@@ -67,10 +67,10 @@ pub fn grid(from: glam::Vec3, to: glam::Vec3, n: usize) -> impl Iterator<Item = 
 ///
 /// * `num_points`: Total number of points.
 /// * `radius`: The radius of the spiral.
-/// * `angular_step`: The factor applied between each step along the trigonemetric circle.
-/// * `angular_offset`: Offsets the starting position on the trigonemetric circle.
+/// * `angular_step`: The factor applied between each step along the trigonometric circle.
+/// * `angular_offset`: Offsets the starting position on the trigonometric circle.
 /// * `z_step`: The factor applied between between each step along the Z axis.
-#[cfg(all(feature = "glam", feature = "re_viewer"))]
+#[cfg(all(feature = "glam", feature = "native_viewer"))]
 pub fn color_spiral(
     num_points: usize,
     radius: f32,

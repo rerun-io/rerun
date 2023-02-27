@@ -52,17 +52,6 @@ use time::OffsetDateTime;
 
 // ----------------------------------------------------------------------------
 
-/// What target triplet (os, cpu) `re_analytics` was compiled for.
-pub const TARGET_TRIPLET: &str = env!("__RERUN_TARGET_TRIPLE");
-
-/// What git hash of the Rerun repository we were compiled in.
-///
-/// If we are not in the Rerun repository, this will be set
-/// to the `re_analytics` crate version (`CARGO_PKG_VERSION`) instead.
-pub const GIT_HASH: &str = env!("__RERUN_GIT_HASH");
-
-// ----------------------------------------------------------------------------
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
     /// Append a new event to the time series associated with this analytics ID.
@@ -88,36 +77,40 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn append(name: Cow<'static, str>) -> Self {
+    pub fn append(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Append,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn update(name: Cow<'static, str>) -> Self {
+    pub fn update(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Update,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn with_prop(mut self, name: Cow<'static, str>, value: impl Into<Property>) -> Self {
-        self.props.insert(name, value.into());
+    pub fn with_prop(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Property>,
+    ) -> Self {
+        self.props.insert(name.into(), value.into());
         self
     }
 }
 
-#[derive(Debug, Clone, derive_more::From, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum Property {
+    Bool(bool),
     Integer(i64),
     Float(f64),
     String(String),
-    Bool(bool),
 }
 
 impl Property {
@@ -131,12 +124,47 @@ impl Property {
         let mut hasher = sha2::Sha256::default();
         hasher.update(SALT);
         match self {
+            Property::Bool(data) => hasher.update([*data as u8]),
             Property::Integer(data) => hasher.update(data.to_le_bytes()),
             Property::Float(data) => hasher.update(data.to_le_bytes()),
             Property::String(data) => hasher.update(data),
-            Property::Bool(data) => hasher.update([*data as u8]),
         }
-        format!("{:x}", hasher.finalize()).into()
+        Self::String(format!("{:x}", hasher.finalize()))
+    }
+}
+
+impl From<bool> for Property {
+    #[inline]
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<i64> for Property {
+    #[inline]
+    fn from(value: i64) -> Self {
+        Self::Integer(value)
+    }
+}
+
+impl From<f64> for Property {
+    #[inline]
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl From<String> for Property {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&str> for Property {
+    #[inline]
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
     }
 }
 
@@ -218,6 +246,11 @@ impl Analytics {
     /// Register a property that will be included in all [`EventKind::Append`].
     pub fn register_append_property(&mut self, name: &'static str, prop: impl Into<Property>) {
         self.default_append_props.insert(name.into(), prop.into());
+    }
+
+    /// Deregister a property.
+    pub fn deregister_append_property(&mut self, name: &'static str) {
+        self.default_append_props.remove(name);
     }
 
     /// Record an event.

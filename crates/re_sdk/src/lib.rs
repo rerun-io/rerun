@@ -7,8 +7,12 @@
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 // Send data to a rerun session
+#[cfg(not(target_arch = "wasm32"))]
+mod file_writer;
 mod global;
 mod msg_sender;
+#[cfg(feature = "web_viewer")]
+mod remote_viewer_server;
 mod session;
 
 pub use self::global::{global_session, global_session_with_default_enabled};
@@ -63,7 +67,7 @@ pub mod external {
     pub use re_memory;
     pub use re_sdk_comms;
 
-    #[cfg(feature = "re_viewer")]
+    #[cfg(feature = "native_viewer")]
     pub use re_viewer;
 
     #[cfg(feature = "glam")]

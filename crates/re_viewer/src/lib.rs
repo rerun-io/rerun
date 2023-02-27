@@ -76,10 +76,10 @@ pub enum AppEnvironment {
     PythonSdk(PythonVersion),
 
     /// Created from the Rerun Rust SDK.
-    RustSdk,
+    RustSdk { rust_version: String },
 
     /// Running the Rust `rerun` binary from the CLI.
-    RerunCli,
+    RerunCli { rust_version: String },
 
     /// We are a web-viewer running in a browser as Wasm.
     Web,
@@ -152,7 +152,7 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
 // ---------------------------------------------------------------------------
 
 /// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(feature = "web"))]
+#[cfg(not(feature = "web_viewer"))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: re_smart_channel::Receiver<T>,

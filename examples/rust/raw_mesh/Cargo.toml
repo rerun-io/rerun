@@ -7,11 +7,10 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rerun = { workspace = true, features = ["web"] }
+rerun = { workspace = true, features = ["web_viewer"] }
 
 anyhow.workspace = true
 bytes = "1.3"
 clap = { workspace = true, features = ["derive"] }
 gltf.workspace = true
 mimalloc.workspace = true
-reqwest = { workspace = true, features = ["blocking", "rustls-tls"] }

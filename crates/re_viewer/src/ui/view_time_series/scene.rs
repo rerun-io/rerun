@@ -126,7 +126,7 @@ impl SceneTimeSeries {
                             attrs: PlotPointAttrs {
                                 label,
                                 color,
-                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.into()),
+                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
                                 scattered: props.map_or(false, |props| props.scattered),
                             },
                         });

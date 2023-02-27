@@ -1,22 +1,18 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
-use once_cell::sync::OnceCell;
-use reqwest::{blocking::Client as HttpClient, Url};
 use time::OffsetDateTime;
-
-use re_log::{debug, error};
 
 use crate::{Event, Property};
 
 // TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
 // support more than just PostHog.
 
-#[cfg(debug_assertions)]
-const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_XD1QbqTGdPJbzdVCbvbA9zGOG38wJFTl8RAwqMwBvTY";
-#[cfg(not(debug_assertions))]
 const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnfQKeMqlJfSXwqg";
 
 // ---
+
+#[derive(Debug, Clone)]
+struct Url(String);
 
 #[derive(thiserror::Error, Debug)]
 pub enum SinkError {
@@ -27,19 +23,46 @@ pub enum SinkError {
     Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
-    Http(#[from] reqwest::Error),
+    HttpTransport(Box<ureq::Transport>),
+
+    #[error("HTTP status {status_code} {status_text}: {body}")]
+    HttpStatus {
+        status_code: u16,
+        status_text: String,
+        body: String,
+    },
 }
 
-#[derive(Default, Debug, Clone)]
+impl From<ureq::Error> for SinkError {
+    fn from(err: ureq::Error) -> Self {
+        match err {
+            ureq::Error::Status(status_code, response) => Self::HttpStatus {
+                status_code,
+                status_text: response.status_text().to_owned(),
+                body: response.into_string().unwrap_or_default(),
+            },
+
+            ureq::Error::Transport(transport) => Self::HttpTransport(Box::new(transport)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct PostHogSink {
-    // NOTE: We need to lazily build the underlying HTTP client, so that we can guarantee that it
-    // is initialized from a thread that is free of a Tokio runtime.
-    // This is necessary because `reqwest` will crash if we try and initialize a blocking HTTP
-    // client from within a thread that has a Tokio runtime instantiated.
-    //
-    // We also use this opportunity to upgrade our public HTTP endpoint into the final HTTP2/TLS
-    // URL by following all 301 redirects.
-    client: OnceCell<(Url, HttpClient)>,
+    agent: ureq::Agent,
+    // Lazily resolve the url so that we don't do blocking requests in `PostHogSink::default`
+    resolved_url: once_cell::sync::OnceCell<String>,
+}
+
+impl Default for PostHogSink {
+    fn default() -> Self {
+        Self {
+            agent: ureq::AgentBuilder::new()
+                .timeout(std::time::Duration::from_secs(5))
+                .build(),
+            resolved_url: Default::default(),
+        }
+    }
 }
 
 impl PostHogSink {
@@ -53,7 +76,7 @@ impl PostHogSink {
         session_id: &str,
         events: &[Event],
     ) -> Result<(), SinkError> {
-        let (resolved_url, client) = self.init()?;
+        let resolved_url = self.init()?;
 
         let events = events
             .iter()
@@ -61,34 +84,31 @@ impl PostHogSink {
             .collect::<Vec<_>>();
         let batch = PostHogBatch::from_events(&events);
 
-        debug!("{}", serde_json::to_string_pretty(&batch)?);
-        let resp = client
-            .post(resolved_url.clone())
-            .body(serde_json::to_vec(&batch)?)
-            .send()?;
-
-        resp.error_for_status().map(|_| ()).map_err(Into::into)
+        re_log::debug!("{}", serde_json::to_string_pretty(&batch)?);
+        self.agent.post(resolved_url).send_json(&batch)?;
+        Ok(())
     }
 
-    fn init(&self) -> Result<&(Url, HttpClient), SinkError> {
-        self.client.get_or_try_init(|| {
-            use reqwest::header;
-            let mut headers = header::HeaderMap::new();
-            headers.insert(
-                header::CONTENT_TYPE,
-                header::HeaderValue::from_static("application/json"),
-            );
+    fn init(&self) -> Result<&String, SinkError> {
+        self.resolved_url.get_or_try_init(|| {
+            // Make a dummy-request to resolve our final URL.
+            let resolved_url = match self.agent.get(Self::URL).call() {
+                Ok(response) => response.get_url().to_owned(),
+                Err(ureq::Error::Status(status, response)) => {
+                    // We actually expect to get here, because we make a bad request (GET to and end-point that expects a POST).
+                    // We only do this requests to get redirected to the final URL.
+                    let resolved_url = response.get_url().to_owned();
+                    re_log::trace!("status: {status} {}", response.status_text().to_owned());
+                    resolved_url
+                }
+                Err(ureq::Error::Transport(transport)) => {
+                    return Err(SinkError::HttpTransport(Box::new(transport)))
+                }
+            };
 
-            let client = HttpClient::builder()
-                .timeout(Duration::from_secs(5))
-                .connect_timeout(Duration::from_secs(5))
-                .pool_idle_timeout(Duration::from_secs(120))
-                .default_headers(headers)
-                .build()?;
+            // 2023-02-26 the resolved URL was https://eu.posthog.com/capture (in Europe)
 
-            let resolved_url = client.get(Self::URL).send()?.url().clone();
-
-            Ok((resolved_url, client))
+            Ok(resolved_url)
         })
     }
 }

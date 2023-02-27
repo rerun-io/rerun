@@ -31,9 +31,11 @@ wildcards = "allow" # at least until https://github.com/EmbarkStudios/cargo-deny
 deny = [
   { name = "cgmath" },      # We use glam
   { name = "cmake" },       # Never again
+  { name = "derive_more" }, # Is very slow to compile; see https://github.com/rerun-io/rerun/issues/1316
   { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
   { name = "openssl" },     # We prefer rustls
+  { name = "reqwest" },     # We prefer ureq - less dependencies
 ]
 
 skip = [

@@ -81,7 +81,7 @@ pub struct GpuTexturePool {
 impl GpuTexturePool {
     /// Returns a reference-counted handle to a currently unused texture.
     /// Once ownership to the handle is given up, the texture may be reclaimed in future frames.
-    pub fn alloc(&mut self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTexture {
+    pub fn alloc(&self, device: &wgpu::Device, desc: &TextureDesc) -> GpuTexture {
         crate::profile_function!();
         self.pool.alloc(desc, |desc| {
             let texture = device.create_texture(&wgpu::TextureDescriptor {
