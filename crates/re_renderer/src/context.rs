@@ -190,7 +190,7 @@ impl RenderContext {
             inflight_queue_submissions: Vec::new(),
 
             active_frame: ActiveFrameContext {
-                frame_global_command_encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
+                encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
                 per_frame_data_helper: TypeMap::new(),
                 frame_index: 0
             }
@@ -223,12 +223,23 @@ impl RenderContext {
     pub fn begin_frame(&mut self) {
         crate::profile_function!();
 
+        // If the currently active frame still has an encoder, we need to finish it and queue it.
+        if self.active_frame.encoder.lock().0.is_some() {
+            // For preparation before rendering this is fine, but if happens during regular rendering there might be a user bug.
+            if self.active_frame.frame_index != 0 {
+                re_log::warn_once!("Rendering work (likely resource copy operations) was submitted to the frame-global encoder outside of frames.
+Any such work should happen between RenderContext::begin_frame and RenderContext::before_submit");
+            }
+
+            self.before_submit();
+        }
+
         // Request used staging buffer back.
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
 
         self.active_frame = ActiveFrameContext {
-            frame_global_command_encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
+            encoder: Mutex::new(FrameGlobalCommandEncoder(None)),
             frame_index: self.active_frame.frame_index + 1,
             per_frame_data_helper: TypeMap::new(),
         };
@@ -302,13 +313,7 @@ impl RenderContext {
         // Unmap all staging buffers.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
-        if let Some(command_encoder) = self
-            .active_frame
-            .frame_global_command_encoder
-            .lock()
-            .0
-            .take()
-        {
+        if let Some(command_encoder) = self.active_frame.encoder.lock().0.take() {
             let command_buffer = command_encoder.finish();
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
@@ -323,13 +328,7 @@ impl Drop for RenderContext {
     fn drop(&mut self) {
         // Close global command encoder if there is any pending.
         // Not doing so before shutdown causes errors.
-        if let Some(encoder) = self
-            .active_frame
-            .frame_global_command_encoder
-            .lock()
-            .0
-            .take()
-        {
+        if let Some(encoder) = self.active_frame.encoder.lock().0.take() {
             encoder.finish();
         }
     }
@@ -339,7 +338,7 @@ pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
 
 impl FrameGlobalCommandEncoder {
     /// Gets or creates a command encoder that runs before all view builder encoder.
-    pub fn get_or_create(&mut self, device: &wgpu::Device) -> &mut wgpu::CommandEncoder {
+    pub fn get(&mut self, device: &wgpu::Device) -> &mut wgpu::CommandEncoder {
         self.0.get_or_insert_with(|| {
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
@@ -354,22 +353,11 @@ pub struct ActiveFrameContext {
     ///
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
-    pub frame_global_command_encoder: Mutex<FrameGlobalCommandEncoder>,
+    pub encoder: Mutex<FrameGlobalCommandEncoder>,
 
     /// Utility type map that will be cleared every frame.
     pub per_frame_data_helper: TypeMap,
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
-}
-
-/// Gets allocation size for a uniform buffer padded in a way that multiple can be put in a single wgpu buffer.
-///
-/// TODO(andreas): Once we have higher level buffer allocators this should be handled there.
-pub(crate) fn uniform_buffer_allocation_size<Data>(device: &wgpu::Device) -> u64 {
-    let uniform_buffer_size = std::mem::size_of::<Data>();
-    wgpu::util::align_to(
-        uniform_buffer_size as u32,
-        device.limits().min_uniform_buffer_offset_alignment,
-    ) as u64
 }

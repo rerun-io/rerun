@@ -1,10 +1,10 @@
-use std::{num::NonZeroU64, ops::Range};
+use std::ops::Range;
 
 use ecolor::Rgba;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    context::uniform_buffer_allocation_size,
+    allocator::create_and_fill_uniform_buffer_batch,
     debug_label::DebugLabel,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     wgpu_resources::{
@@ -130,10 +130,11 @@ pub(crate) mod gpu_data {
     use crate::wgpu_buffer_types;
 
     /// Keep in sync with [`MaterialUniformBuffer`] in `instanced_mesh.wgsl`
-    #[repr(C)]
+    #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
         pub albedo_multiplier: wgpu_buffer_types::Vec4,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
 
@@ -152,15 +153,13 @@ impl GpuMesh {
             data.indices.len() / 3
         );
 
-        // TODO(andreas): Have a variant that gets this from a stack allocator.]
-        // TODO(andreas): Don't use a queue to upload
+        // TODO(andreas): Have a variant that gets this from a stack allocator.
         let vertex_buffer_positions_size =
             std::mem::size_of_val(data.vertex_positions.as_slice()) as u64;
         let vertex_buffer_data_size = std::mem::size_of_val(data.vertex_data.as_slice()) as u64;
         let vertex_buffer_combined_size = vertex_buffer_positions_size + vertex_buffer_data_size;
 
         let pools = &ctx.gpu_resources;
-        let queue = ctx.queue.clone();
         let device = &ctx.device;
 
         let vertex_buffer_combined = {
@@ -173,19 +172,19 @@ impl GpuMesh {
                     mapped_at_creation: false,
                 },
             );
-            let mut staging_buffer = queue
-                .write_buffer_with(
-                    &vertex_buffer_combined,
-                    0,
-                    vertex_buffer_combined_size.try_into().unwrap(),
-                )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-            staging_buffer[..vertex_buffer_positions_size as usize]
-                .copy_from_slice(bytemuck::cast_slice(&data.vertex_positions));
-            staging_buffer
-                [vertex_buffer_positions_size as usize..vertex_buffer_combined_size as usize]
-                .copy_from_slice(bytemuck::cast_slice(&data.vertex_data));
-            drop(staging_buffer);
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u8>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                vertex_buffer_combined_size as _,
+            );
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions));
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_data));
+            staging_buffer.copy_to_buffer(
+                ctx.active_frame.encoder.lock().get(&ctx.device),
+                &vertex_buffer_combined,
+                0,
+            );
             vertex_buffer_combined
         };
 
@@ -200,51 +199,39 @@ impl GpuMesh {
                     mapped_at_creation: false,
                 },
             );
-            let mut staging_buffer = queue
-                .write_buffer_with(&index_buffer, 0, index_buffer_size.try_into().unwrap())
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-            staging_buffer[..index_buffer_size as usize]
-                .copy_from_slice(bytemuck::cast_slice(&data.indices));
-            drop(staging_buffer);
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u32>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                data.indices.len(),
+            );
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.indices));
+            staging_buffer.copy_to_buffer(
+                ctx.active_frame.encoder.lock().get(&ctx.device),
+                &index_buffer,
+                0,
+            );
             index_buffer
         };
 
         let materials = {
-            // Buffer for *all* materials
-            let allocation_size_per_uniform_buffer =
-                uniform_buffer_allocation_size::<gpu_data::MaterialUniformBuffer>(device);
-            let combined_buffers_size =
-                allocation_size_per_uniform_buffer * data.materials.len() as u64;
-            let material_uniform_buffers = pools.buffers.alloc(
-                device,
-                &BufferDesc {
-                    label: data.label.clone().push_str(" - material uniforms"),
-                    size: combined_buffers_size,
-                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
-                    mapped_at_creation: false,
-                },
+            let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+                ctx,
+                data.label.clone().push_str(" - material uniforms"),
+                data.materials
+                    .iter()
+                    .map(|material| gpu_data::MaterialUniformBuffer {
+                        albedo_multiplier: material.albedo_multiplier.into(),
+                        end_padding: Default::default(),
+                    }),
             );
 
-            let mut materials_staging_buffer = queue
-                .write_buffer_with(
-                    &material_uniform_buffers,
-                    0,
-                    NonZeroU64::new(combined_buffers_size).unwrap(),
-                )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-
             let mut materials = SmallVec::with_capacity(data.materials.len());
-            for (i, material) in data.materials.iter().enumerate() {
-                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
-                let material_buffer_range_start = i * allocation_size_per_uniform_buffer as usize;
-                let material_buffer_range_end = material_buffer_range_start
-                    + std::mem::size_of::<gpu_data::MaterialUniformBuffer>();
-
-                materials_staging_buffer[material_buffer_range_start..material_buffer_range_end]
-                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::MaterialUniformBuffer {
-                        albedo_multiplier: material.albedo_multiplier.into(),
-                    }));
-
+            for (material, uniform_buffer_binding) in data
+                .materials
+                .iter()
+                .zip(uniform_buffer_bindings.into_iter())
+            {
                 let texture = ctx.texture_manager_2d.get(&material.albedo)?;
                 let bind_group = pools.bind_groups.alloc(
                     device,
@@ -252,13 +239,7 @@ impl GpuMesh {
                         label: material.label.clone(),
                         entries: smallvec![
                             BindGroupEntry::DefaultTextureView(texture.handle),
-                            BindGroupEntry::Buffer {
-                                handle: material_uniform_buffers.handle,
-                                offset: material_buffer_range_start as _,
-                                size: NonZeroU64::new(std::mem::size_of::<
-                                    gpu_data::MaterialUniformBuffer,
-                                >() as u64)
-                            }
+                            uniform_buffer_binding
                         ],
                         layout: mesh_bind_group_layout,
                     },

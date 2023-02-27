@@ -70,14 +70,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
         num_buffers as _,
     );
     staging_buffer.extend(content);
-    staging_buffer.copy_to_buffer(
-        ctx.active_frame
-            .frame_global_command_encoder
-            .lock()
-            .get_or_create(&ctx.device),
-        &buffer,
-        0,
-    );
+    staging_buffer.copy_to_buffer(ctx.active_frame.encoder.lock().get(&ctx.device), &buffer, 0);
 
     (0..num_buffers)
         .into_iter()
