@@ -51,13 +51,13 @@ set -x
 # that build.rs, which will change the built `.wasm` file while this publish script is running.
 # SUPER BAD! We need to fix this ASAP, but it is the night before our first release public
 # release and I'm tired. Will fix later, mkay?
-echo "MAKE SURE RUST ANALYZER, BACON, CARGO-WATCH etc are all OFF!"
+sudo pkill -9 rust-analyzer bacon cargo cargo-watch
+
 rm -rf target_wasm # force clean build
 rm -f web_viewer/re_viewer_bg.wasm
 rm -f web_viewer/re_viewer.js
 touch crates/re_viewer/src/lib.rs # force recompile of web server
-cargo build --release -p re_web_server
-# scripts/build_web.sh --release # alternative
+cargo r -p re_build_web_viewer -- --release
 
 
 # Some of build.rs scripts checks this env-var:

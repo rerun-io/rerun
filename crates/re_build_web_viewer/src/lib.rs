@@ -11,7 +11,7 @@ fn target_directory() -> Utf8PathBuf {
     metadata.target_directory
 }
 
-// Port of build_web.sh
+/// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `./web_viewer` folder.
 pub fn build(release: bool) {
     eprintln!("Building web viewer wasm…");
     eprintln!("We assume you've already run ./scripts/setup_web.sh");
@@ -131,7 +131,7 @@ pub fn build(release: bool) {
         let mut cmd = std::process::Command::new("wasm-opt");
         cmd.current_dir(root_dir);
 
-        // TODO(emilk): add `-g` to keep debug symbols
+        // TODO(emilk): add `-g` to keep debug symbols; useful for profiling release builds.
         cmd.args([
             wasm_path.as_str(),
             "-O2",
