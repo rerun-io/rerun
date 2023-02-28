@@ -179,6 +179,9 @@ impl SpaceView {
                 let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
                 scene.load(ctx, &query, &transforms, highlights);
                 self.view_state
+                    .state_spatial
+                    .update_object_property_heuristics(ctx, &mut self.data_blueprint);
+                self.view_state
                     .ui_spatial(ctx, ui, &self.space_path, scene, self.id, highlights);
             }
 

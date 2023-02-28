@@ -1,4 +1,4 @@
-use re_data_store::EntityPath;
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath};
 use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
@@ -145,6 +145,46 @@ impl ViewSpatialState {
             (median_extent / (self.scene_num_primitives.at_least(1) as f32).powf(1.0 / 1.7)) * 0.25;
 
         heuristic0.min(heuristic1)
+    }
+
+    pub fn update_object_property_heuristics(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+    ) {
+        crate::profile_function!();
+
+        let scene_size = self.scene_bbox_accum.size().length();
+        let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+            scene_size * 0.05
+        } else {
+            1.0
+        };
+
+        let query = ctx.current_query();
+
+        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
+        for entity_path in entity_paths {
+            if let Some(re_log_types::Transform::Pinhole(_)) =
+                query_latest_single::<re_log_types::Transform>(
+                    &ctx.log_db.entity_db,
+                    &entity_path,
+                    &query,
+                )
+            {
+                let mut properties = data_blueprint
+                    .data_blueprints_individual()
+                    .get(&entity_path);
+                if properties.pinhole_image_plane_distance.is_auto() {
+                    properties.pinhole_image_plane_distance = EditableAutoValue::Auto(
+                        ordered_float::NotNan::new(default_image_plane_distance).unwrap(),
+                    );
+                    data_blueprint
+                        .data_blueprints_individual()
+                        .set(entity_path, properties);
+                }
+            }
+        }
     }
 
     pub fn selection_ui(
