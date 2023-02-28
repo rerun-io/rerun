@@ -25,7 +25,7 @@ impl FileWriter {
 
         re_log::debug!("Saving file to {path:?}…");
 
-        let file = std::fs::File::create(&path).with_context(|| format!("Path: {path:?}"))?;
+        let file = std::fs::File::create(&path).with_context(|| format!("Path: {:?}", path))?;
         let mut encoder = re_log_types::encoding::Encoder::new(file)?;
 
         let join_handle = std::thread::Builder::new()
