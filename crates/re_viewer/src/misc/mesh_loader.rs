@@ -139,9 +139,8 @@ impl LoadedMesh {
         let bbox = macaw::BoundingBox::from_points(positions.iter().copied());
 
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
-            gpu_mesh: render_ctx.mesh_manager.create(
-                &mut render_ctx.gpu_resources,
-                &render_ctx.texture_manager_2d,
+            gpu_mesh: render_ctx.mesh_manager.write().create(
+                render_ctx,
                 &re_renderer::mesh::Mesh {
                     label: name.clone().into(),
                     indices,
