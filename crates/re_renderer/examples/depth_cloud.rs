@@ -184,7 +184,7 @@ impl RenderDepthClouds {
             re_ctx,
             &[DepthCloud {
                 world_from_obj,
-                intrinsics: *intrinsics,
+                depth_camera_intrinsics: *intrinsics,
                 radius_scale: *radius_scale,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),

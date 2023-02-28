@@ -11,7 +11,6 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
-use itertools::Itertools as _;
 use smallvec::smallvec;
 use std::num::NonZeroU32;
 
@@ -41,10 +40,10 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
         pub world_from_obj: crate::wgpu_buffer_types::Mat4,
-        pub intrinsics: crate::wgpu_buffer_types::Mat3,
+        pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
         pub radius_scale: crate::wgpu_buffer_types::F32RowPadded,
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 9],
+        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 8],
     }
 }
 
@@ -71,7 +70,7 @@ pub struct DepthCloud {
     /// The intrinsics of the camera used for the projection.
     ///
     /// Only supports pinhole cameras at the moment.
-    pub intrinsics: glam::Mat3,
+    pub depth_camera_intrinsics: glam::Mat3,
 
     /// The scale to apply to the radii of the backprojected points.
     pub radius_scale: f32,
@@ -89,7 +88,7 @@ impl Default for DepthCloud {
     fn default() -> Self {
         Self {
             world_from_obj: glam::Mat4::IDENTITY,
-            intrinsics: glam::Mat3::IDENTITY,
+            depth_camera_intrinsics: glam::Mat3::IDENTITY,
             radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::F32(Vec::new()),
@@ -125,7 +124,7 @@ impl DepthCloudDrawData {
             "depth_cloud_ubos".into(),
             depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
                 world_from_obj: info.world_from_obj.into(),
-                intrinsics: info.intrinsics.into(),
+                depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
                 radius_scale: info.radius_scale.into(),
                 end_padding: Default::default(),
             }),

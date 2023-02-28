@@ -184,7 +184,6 @@ pub struct Mat3 {
     c0: Vec3RowPadded,
     c1: Vec3RowPadded,
     c2: Vec3RowPadded,
-    c3: Vec3RowPadded,
 }
 
 impl From<glam::Mat3> for Mat3 {
@@ -194,7 +193,6 @@ impl From<glam::Mat3> for Mat3 {
             c0: m.x_axis.into(),
             c1: m.y_axis.into(),
             c2: m.z_axis.into(),
-            c3: Vec3RowPadded::zeroed(),
         }
     }
 }

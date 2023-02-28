@@ -8,6 +8,7 @@
 #import <./utils/flags.wgsl>
 #import <./utils/quad.wgsl>
 #import <./utils/size.wgsl>
+#import <./utils/srgb.wgsl>
 
 // ---
 
@@ -26,11 +27,10 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let norm_linear_depth = textureLoad(depth_texture, texcoords, 0).x;
 
     // TODO(cmc): support color maps & albedo textures
-    let d = pow(norm_linear_depth, 2.2);
-    let color = Vec4(d, d, d, 1.0);
+    let color = Vec4(linear_from_srgb(Vec3(norm_linear_depth)), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
-    let intrinsics = transpose(depth_cloud_info.intrinsics);
+    let intrinsics = transpose(depth_cloud_info.depth_camera_intrinsics);
     let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
     let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
@@ -57,7 +57,7 @@ struct DepthCloudInfo {
     /// The intrinsics of the camera used for the projection.
     ///
     /// Only supports pinhole cameras at the moment.
-    intrinsics: Mat3,
+    depth_camera_intrinsics: Mat3,
 
     /// The scale to apply to the radii of the backprojected points.
     radius_scale: f32,
