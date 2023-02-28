@@ -122,8 +122,7 @@ fn main() {
         // This saves a lot of CI time.
         eprintln!("__ci feature detected: Skipping building of web viewer wasm.");
     } else {
-        eprintln!("Build web viewer wasm…");
-
-        re_build_web_viewer::build();
+        let release = std::env::var("PROFILE").unwrap() == "release";
+        re_build_web_viewer::build(release);
     }
 }

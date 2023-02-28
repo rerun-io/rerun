@@ -1,7 +1,9 @@
 use std::{path::Path, process::Stdio};
 
 // Port of build_web.sh
-pub fn build() {
+pub fn build(release: bool) {
+    eprintln!("Building web viewer wasm…");
+
     let repository_root_dir = format!("{}/../..", std::env!("CARGO_MANIFEST_DIR"));
 
     let crate_name = "re_viewer";
@@ -27,7 +29,6 @@ pub fn build() {
         .unwrap();
 
     let target_wasm = format!("{}_wasm", metadata.target_directory);
-    let release = std::env::var("PROFILE").unwrap() == "release";
 
     let root_dir = metadata.target_directory.parent().unwrap();
 
@@ -134,4 +135,6 @@ pub fn build() {
 
         assert!(output.status.success());
     }
+
+    eprintln!("Finished {wasm_path:?}");
 }
