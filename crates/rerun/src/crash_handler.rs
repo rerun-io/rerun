@@ -19,21 +19,6 @@ pub fn install_crash_handlers(build_info: BuildInfo) {
     install_signal_handler(build_info);
 }
 
-#[cfg(feature = "analytics")]
-fn add_build_info(build_info: &BuildInfo, event: re_analytics::Event) -> re_analytics::Event {
-    event
-        .with_prop("rerun_version", build_info.version)
-        .with_prop("target", build_info.target_triple)
-        .with_prop("git_hash", build_info.git_hash_or_tag())
-        .with_prop("git_branch", build_info.git_branch)
-        .with_prop("build_date", build_info.datetime)
-        .with_prop("debug", cfg!(debug_assertions)) // debug-build?
-        .with_prop(
-            "rerun_workspace",
-            std::env::var("IS_IN_RERUN_WORKSPACE").is_ok(),
-        ) // proxy for "user checked out the project and built it from source"
-}
-
 fn install_panic_hook(build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
@@ -51,15 +36,15 @@ fn install_panic_hook(build_info: BuildInfo) {
             if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
             {
                 let callstack = callstack_from("panicking::panic_fmt\n");
-                let mut event =
-                    re_analytics::Event::append("crash-panic").with_prop("callstack", callstack);
+                let mut event = re_analytics::Event::append("crash-panic")
+                    .with_build_info(&build_info)
+                    .with_prop("callstack", callstack);
                 if let Some(location) = panic_info.location() {
                     event = event.with_prop(
                         "location",
                         format!("{}:{}", location.file(), location.line()),
                     );
                 }
-                let event = add_build_info(&build_info, event);
                 analytics.record(event);
 
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
@@ -164,9 +149,9 @@ fn install_signal_handler(build_info: BuildInfo) {
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
         if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
             let event = re_analytics::Event::append("crash-signal")
+                .with_build_info(&build_info)
                 .with_prop("signal", signal_name)
                 .with_prop("callstack", callstack);
-            let event = add_build_info(&build_info, event);
             analytics.record(event);
 
             std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event

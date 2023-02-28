@@ -87,15 +87,7 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
-            let mut event = Event::update("update_metadata")
-                .with_prop("rerun_version", build_info.version)
-                .with_prop("target", build_info.target_triple)
-                .with_prop("git_hash", build_info.git_hash_or_tag())
-                .with_prop("git_branch", build_info.git_branch)
-                .with_prop("build_date", build_info.datetime)
-                .with_prop("debug", cfg!(debug_assertions)) // debug-build?
-                .with_prop("rerun_workspace", std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
-                ;
+            let mut event = Event::update("update_metadata").with_build_info(build_info);
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
             // machine running the viewer, then add it to the permanent user profile.
