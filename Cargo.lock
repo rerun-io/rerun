@@ -4088,6 +4088,7 @@ dependencies = [
  "ndarray-rand",
  "nohash-hasher",
  "once_cell",
+ "parking_lot 0.12.1",
  "rand",
  "re_build_build_info",
  "re_build_info",
