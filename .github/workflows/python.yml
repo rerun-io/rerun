@@ -204,7 +204,6 @@ jobs:
           maturin-version: "0.14.10"
           manylinux: manylinux_2_31
           container: off
-          env: RERUN_BUILDING_WHEELS=yes # used by re_build_build_info
           command: build
           args: |
             --manifest-path rerun_py/Cargo.toml
