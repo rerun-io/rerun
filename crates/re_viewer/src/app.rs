@@ -49,6 +49,9 @@ pub struct StartupOptions {
 
 // ----------------------------------------------------------------------------
 
+const MIN_ZOOM_FACTOR: f32 = 0.2;
+const MAX_ZOOM_FACTOR: f32 = 4.0;
+
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -289,17 +292,15 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomIn => {
-                egui::gui_zoom::zoom_in(egui_ctx);
+                self.state.zoom_factor += 0.1;
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomOut => {
-                egui::gui_zoom::zoom_out(egui_ctx);
+                self.state.zoom_factor -= 0.1;
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomReset => {
-                if let Some(native_pixels_per_point) = _frame.info().native_pixels_per_point {
-                    egui_ctx.set_pixels_per_point(native_pixels_per_point);
-                }
+                self.state.zoom_factor = 1.0;
             }
 
             Command::SelectionPrevious => {
@@ -413,6 +414,17 @@ impl eframe::App for App {
             frame.close();
             return;
         }
+
+        // Ensure zoom factor is sane and in 10% steps at all times before applying it.
+        self.state.zoom_factor = self
+            .state
+            .zoom_factor
+            .clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+        self.state.zoom_factor = (self.state.zoom_factor * 10.).round() / 10.;
+        // Apply zoom factor on top of natively reported pixel per point.
+        let pixels_per_point =
+            frame.info().native_pixels_per_point.unwrap_or(1.0) * self.state.zoom_factor;
+        egui_ctx.set_pixels_per_point(pixels_per_point);
 
         let gpu_resource_stats = {
             // TODO(andreas): store the re_renderer somewhere else.
@@ -835,7 +847,7 @@ enum PanelSelection {
     EventLog,
 }
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 struct AppState {
     /// Global options for the whole viewer.
@@ -863,6 +875,32 @@ struct AppState {
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
     profiler: crate::Profiler,
+
+    /// Zoom factor, independent of OS points_per_pixel setting.
+    ///
+    /// At every frame we check the OS reported scaling (i.e. points_per_pixel)
+    /// and apply this zoom factor to determine the actual points_per_pixel.
+    /// This way, the zooming stays constant when switching between differently scaled screens.
+    /// (Since this is serialized, even between sessions!)
+    zoom_factor: f32,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            app_options: Default::default(),
+            cache: Default::default(),
+            selected_rec_id: Default::default(),
+            recording_configs: Default::default(),
+            blueprints: Default::default(),
+            panel_selection: Default::default(),
+            event_log_view: Default::default(),
+            selection_panel: Default::default(),
+            time_panel: Default::default(),
+            profiler: Default::default(),
+            zoom_factor: 1.0,
+        }
+    }
 }
 
 impl AppState {
@@ -889,6 +927,7 @@ impl AppState {
             time_panel,
             #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
+            zoom_factor: _,
         } = self;
 
         let rec_cfg =
@@ -1040,15 +1079,12 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             ui.add_space(spacing);
 
             // On the web the browser controls the zoom
-            let reset_zoom_enabled = _frame
-                .info()
-                .native_pixels_per_point
-                .map_or(false, |native_zoom| {
-                    native_zoom != ui.ctx().pixels_per_point()
-                });
+
+            ui.weak(format!("Zoom {:.0}%", app.state.zoom_factor * 100.0))
+                .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
             Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
             Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
-            ui.add_enabled_ui(reset_zoom_enabled, |ui| {
+            ui.add_enabled_ui(app.state.zoom_factor != 1.0, |ui| {
                 Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
             });
 
