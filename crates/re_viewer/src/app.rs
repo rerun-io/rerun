@@ -49,6 +49,11 @@ pub struct StartupOptions {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(not(target_arch = "wasm32"))]
+const MIN_ZOOM_FACTOR: f32 = 0.2;
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_ZOOM_FACTOR: f32 = 4.0;
+
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -215,16 +220,9 @@ impl App {
         self.pending_promises.contains_key(name.as_ref())
     }
 
-    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
             self.pending_commands.push(cmd);
-        }
-
-        if !frame.is_web() {
-            egui::gui_zoom::zoom_with_keyboard_shortcuts(
-                egui_ctx,
-                frame.info().native_pixels_per_point,
-            );
         }
     }
 
@@ -293,6 +291,18 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             Command::ToggleFullscreen => {
                 _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomIn => {
+                self.state.app_options.zoom_factor += 0.1;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomOut => {
+                self.state.app_options.zoom_factor -= 0.1;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomReset => {
+                self.state.app_options.zoom_factor = 1.0;
             }
 
             Command::SelectionPrevious => {
@@ -409,6 +419,22 @@ impl eframe::App for App {
             return;
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
+            {
+                let mut zoom_factor = self.state.app_options.zoom_factor;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                self.state.app_options.zoom_factor = zoom_factor;
+            }
+
+            // Apply zoom factor on top of natively reported pixel per point.
+            let pixels_per_point = frame.info().native_pixels_per_point.unwrap_or(1.0)
+                * self.state.app_options.zoom_factor;
+            egui_ctx.set_pixels_per_point(pixels_per_point);
+        }
+
         let gpu_resource_stats = {
             // TODO(andreas): store the re_renderer somewhere else.
             let egui_renderer = {
@@ -427,7 +453,7 @@ impl eframe::App for App {
 
         self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
 
-        self.check_keyboard_shortcuts(egui_ctx, frame);
+        self.check_keyboard_shortcuts(egui_ctx);
 
         self.purge_memory_if_needed();
 
@@ -1042,7 +1068,14 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             ui.add_space(spacing);
 
             // On the web the browser controls the zoom
-            egui::gui_zoom::zoom_menu_buttons(ui, _frame.info().native_pixels_per_point);
+            let zoom_factor = app.state.app_options.zoom_factor;
+            ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
+                .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
+            Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
+            ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
+                Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
+            });
 
             Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
 
