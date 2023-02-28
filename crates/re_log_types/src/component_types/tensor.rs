@@ -124,6 +124,11 @@ impl ArrowDeserialize for TensorId {
 ///                 false
 ///             ),
 ///             Field::new(
+///                 "F16",
+///                 DataType::List(Box::new(Field::new("item", DataType::Float16, false))),
+///                 false
+///             ),
+///             Field::new(
 ///                 "F32",
 ///                 DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
 ///                 false
@@ -153,8 +158,7 @@ pub enum TensorData {
     I32(Buffer<i32>),
     I64(Buffer<i64>),
     // ---
-    // TODO(#854): Native F16 support for arrow tensors
-    //F16(Vec<arrow2::types::f16>),
+    F16(Buffer<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
     JPEG(Buffer<u8>),
@@ -171,6 +175,7 @@ impl TensorData {
             Self::I16(_) => TensorDataType::I16,
             Self::I32(_) => TensorDataType::I32,
             Self::I64(_) => TensorDataType::I64,
+            Self::F16(_) => TensorDataType::F16,
             Self::F32(_) => TensorDataType::F32,
             Self::F64(_) => TensorDataType::F64,
         }
@@ -186,6 +191,7 @@ impl TensorData {
             Self::I16(buf) => buf.len(),
             Self::I32(buf) => buf.len(),
             Self::I64(buf) => buf.len(),
+            Self::F16(buf) => buf.len(),
             Self::F32(buf) => buf.len(),
             Self::F64(buf) => buf.len(),
         }
@@ -205,6 +211,7 @@ impl TensorData {
             | Self::I16(_)
             | Self::I32(_)
             | Self::I64(_)
+            | Self::F16(_)
             | Self::F32(_)
             | Self::F64(_) => false,
 
@@ -224,6 +231,7 @@ impl std::fmt::Debug for TensorData {
             Self::I16(_) => write!(f, "I16({} bytes)", self.size_in_bytes()),
             Self::I32(_) => write!(f, "I32({} bytes)", self.size_in_bytes()),
             Self::I64(_) => write!(f, "I64({} bytes)", self.size_in_bytes()),
+            Self::F16(_) => write!(f, "F16({} bytes)", self.size_in_bytes()),
             Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
             Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
             Self::JPEG(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
@@ -463,6 +471,7 @@ impl Tensor {
             TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
             TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
             TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+            TensorData::F16(buf) => Some(TensorElement::F16(buf[offset])),
             TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
             TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
             TensorData::JPEG(_) => None, // Too expensive to unpack here.
@@ -883,6 +892,7 @@ impl TryFrom<Tensor> for DecodedTensor {
             | TensorData::I16(_)
             | TensorData::I32(_)
             | TensorData::I64(_)
+            | TensorData::F16(_)
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(tensor)),
 
@@ -972,6 +982,7 @@ impl DecodedTensor {
             | TensorData::I16(_)
             | TensorData::I32(_)
             | TensorData::I64(_)
+            | TensorData::F16(_)
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(maybe_encoded_tensor)),
 
