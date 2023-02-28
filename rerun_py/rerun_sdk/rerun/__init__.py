@@ -306,7 +306,13 @@ def serve(open_browser: bool = True) -> None:
 
 
 def disconnect() -> None:
-    """Closes all TCP connections, servers, and files that have been opened with [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`]."""
+    """
+    Closes all TCP connections, servers, and files.
+
+    Closes all TCP connections, servers, and files that have been opened with
+    [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+    """
+
     bindings.disconnect()
 
 
