@@ -746,6 +746,7 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
+    /// Do we have an open `LogDb` that is non-empty?
     fn log_db_is_nonempty(&self) -> bool {
         self.log_dbs
             .get(&self.state.selected_rec_id)
