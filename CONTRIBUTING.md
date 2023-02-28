@@ -23,6 +23,21 @@ All PR:s are merged with [`Squash and Merge`](https://docs.github.com/en/pull-re
 
 Our CI will run benchmarks on each merged PR. The results can be found at <https://rerun-io.github.io/rerun/dev/bench/>.
 
+### Adding dependencies
+Be thoughtful when adding dependencies. Each new dependency is a liability which lead to increased compile times, a bigger binary, more code that can break, a larger attack surface, etc. Sometimes it is better to write a hundred lines of code than to add a new dependency.
+
+Whenever you add a new dependency in a PR, make sure you motivate it:
+* Why use the dependency instead of rolling our own?
+* Why this dependency instead of another?
+
+For Rust, make sure you use `default-features = false` if it makes sense, to minimize the amount of new code that is pulled in.
+
+When reviewing a PR, always check the diff of `Cargo.lock` (it is collapsed by default in GitHub 😤).
+
+For a guide on picking good dependencies, see <https://gist.github.com/repi/d98bf9c202ec567fd67ef9e31152f43f>.
+
+Any full `cargo update` should be its own stand-alone PR. Make sure you include the output of it in the commit message.
+
 
 ## Structure
 The main crates are found in the [`crates/`](crates) folder, with examples in the [`examples/`](examples) folder.
