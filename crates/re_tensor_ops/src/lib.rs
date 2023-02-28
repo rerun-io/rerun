@@ -4,7 +4,10 @@
 //! This is particularly helpful for performing slice-operations for
 //! dimensionality reduction.
 
-use re_log_types::{component_types, ClassicTensor, TensorDataStore, TensorDataTypeTrait};
+use re_log_types::{
+    component_types::{self, TensorTrait},
+    ClassicTensor, TensorDataStore, TensorDataTypeTrait,
+};
 
 pub mod dimension_mapping;
 
