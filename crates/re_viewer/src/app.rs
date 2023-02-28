@@ -897,6 +897,7 @@ impl Default for AppState {
             event_log_view: Default::default(),
             selection_panel: Default::default(),
             time_panel: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
             profiler: Default::default(),
             zoom_factor: 1.0,
         }
