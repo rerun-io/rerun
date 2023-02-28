@@ -6,13 +6,15 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-[dependencies]
-rerun = { workspace = true, features = ["web_viewer"] }
+[features]
+web_viewer = ["rerun/web_viewer"]
 
+[dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
 itertools = "0.10"
-ndarray.workspace = true
 ndarray-rand = "0.14"
+ndarray.workspace = true
 rand = "0.8"
+rerun.workspace = true

@@ -6,16 +6,17 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+web_viewer = ["rerun/web_viewer"]
 
 [dependencies]
-rerun = { workspace = true, features = ["web_viewer"] }
-
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["jpeg"] }
 itertools = "0.10"
 prost = "0.11"
+rerun.workspace = true
 
 
 [build-dependencies]
