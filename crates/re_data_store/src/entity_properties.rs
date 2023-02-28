@@ -52,8 +52,10 @@ impl EntityProperties {
             visible: self.visible && child.visible,
             visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
-            // TODO(andreas): Inheriting doesn't work properly since parents don't set this value usually
-            pinhole_image_plane_distance: child.pinhole_image_plane_distance.clone(),
+            pinhole_image_plane_distance: self
+                .pinhole_image_plane_distance
+                .or(&child.pinhole_image_plane_distance)
+                .clone(),
         }
     }
 }

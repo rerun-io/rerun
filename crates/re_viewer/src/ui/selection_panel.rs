@@ -416,7 +416,7 @@ fn entity_props_ui(
                     {
                         ui.label("Image plane distance");
                         let mut distance: f32 =
-                            (*entity_props.pinhole_image_plane_distance.get()).into();
+                            entity_props.pinhole_image_plane_distance.get().into_inner();
                         let speed = (distance * 0.05).at_least(0.01);
                         if ui
                             .add(

@@ -40,4 +40,13 @@ where
             EditableAutoValue::Auto(v) | EditableAutoValue::UserEdited(v) => v,
         }
     }
+
+    /// Returns other if self is auto, self otherwise.
+    pub fn or<'a>(&'a self, other: &'a EditableAutoValue<T>) -> &'a EditableAutoValue<T> {
+        if self.is_auto() {
+            other
+        } else {
+            self
+        }
+    }
 }
