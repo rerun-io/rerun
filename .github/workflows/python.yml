@@ -2,10 +2,6 @@ name: CI (Python)
 
 on:
   pull_request:
-    paths:
-      - "rerun_py/**"
-      - "examples/python/**"
-      - ".github/workflows/python.yml"
     types: [labeled, synchronize, opened]
   push:
     branches:
