@@ -15,6 +15,7 @@ pub mod resource_managers;
 pub mod view_builder;
 
 mod allocator;
+mod color_mapping;
 mod context;
 mod debug_label;
 mod depth_offset;
@@ -25,6 +26,7 @@ mod size;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
+pub use color_mapping::ColorMapping;
 pub use context::RenderContext;
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;

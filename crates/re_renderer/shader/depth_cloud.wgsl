@@ -2,6 +2,7 @@
 //!
 //! See `src/renderer/depth_cloud.rs` for more documentation.
 
+#import <./color_mapping.wgsl>
 #import <./global_bindings.wgsl>
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
@@ -61,6 +62,11 @@ struct DepthCloudInfo {
 
     /// The scale to apply to the radii of the backprojected points.
     radius_scale: f32,
+
+    /// Configures color mapping mode:
+    /// - `0` is off
+    /// - `1` to `5` included is for well known color maps
+    color_mapping: u32,
 };
 @group(1) @binding(0)
 var<uniform> depth_cloud_info: DepthCloudInfo;

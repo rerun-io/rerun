@@ -1,5 +1,28 @@
 #import <./types.wgsl>
 
+// NOTE: Keep in sync with `color_mapping.rs`!
+const COLORMAP_TURBO:   u32 = 1u;
+const COLORMAP_VIRIDIS: u32 = 2u;
+const COLORMAP_PLASMA:  u32 = 3u;
+const COLORMAP_MAGMA:   u32 = 4u;
+const COLORMAP_INFERNO: u32 = 5u;
+
+fn colormap(which: u32, t: f32) -> Vec3 {
+    if which == COLORMAP_TURBO {
+        return colormap_turbo(t);
+    } else if which == COLORMAP_VIRIDIS {
+        return colormap_viridis(t);
+    } else if which == COLORMAP_PLASMA {
+        return colormap_plasma(t);
+    } else if which == COLORMAP_MAGMA {
+        return colormap_magma(t);
+    } else if which == COLORMAP_INFERNO {
+        return colormap_inferno(t);
+    } else {
+        return Vec3(t);
+    }
+}
+
 // --- Matplotlib color maps ---
 
 // Polynomials fitted to matplotlib colormaps, taken from https://www.shadertoy.com/view/WlfXRN.

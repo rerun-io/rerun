@@ -13,7 +13,7 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthCloudDepthData},
-    Size,
+    ColorMapping, Size,
 };
 
 use crate::{
@@ -297,12 +297,24 @@ impl ImagesPart {
 
         let xxx: glam::Mat3 = pinhole.image_from_cam.into();
 
+        let color_mapping = match properties.color_mapper {
+            re_data_store::ColorMapper::None => ColorMapping::Off,
+            re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
+                re_data_store::ColorMap::Turbo => ColorMapping::ColorMapTurbo,
+                re_data_store::ColorMap::Viridis => ColorMapping::ColorMapViridis,
+                re_data_store::ColorMap::Plasma => ColorMapping::ColorMapPlasma,
+                re_data_store::ColorMap::Magma => ColorMapping::ColorMapMagma,
+                re_data_store::ColorMap::Inferno => ColorMapping::ColorMapInferno,
+            },
+        };
+
         scene.primitives.depth_clouds.push(DepthCloud {
             world_from_obj,
             intrinsics: xxx,
             radius_scale,
             depth_dimensions: dimensions,
             depth_data: data,
+            color_mapping,
         });
     }
 }

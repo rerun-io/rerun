@@ -186,6 +186,7 @@ impl RenderDepthClouds {
                 radius_scale: *radius_scale,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
+                color_mapping: re_renderer::ColorMapping::ColorMapTurbo,
             }],
         )
         .unwrap();
