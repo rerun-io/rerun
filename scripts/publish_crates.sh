@@ -51,6 +51,7 @@ set -x
 # that build.rs, which will change the built `.wasm` file while this publish script is running.
 # SUPER BAD! We need to fix this ASAP, but it is the night before our first release public
 # release and I'm tired. Will fix later, mkay?
+echo "MAKE SURE RUST ANALYZER, BACON, CARGO-WATCH etc are all OFF!"
 sudo pkill -9 rust-analyzer bacon cargo cargo-watch
 
 rm -rf target_wasm # force clean build
