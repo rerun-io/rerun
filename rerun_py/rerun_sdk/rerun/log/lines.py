@@ -44,7 +44,7 @@ def log_line_strip(
     timeless: bool = False,
 ) -> None:
     r"""
-    Log a line strip through 3D space.
+    Log a line strip through 2D or 3D space.
 
     A line strip is a list of points connected by line segments. It can be used to draw approximations of smooth curves.
 
@@ -61,7 +61,7 @@ def log_line_strip(
     entity_path:
         Path to the path in the space hierarchy
     positions:
-        A Nx3 array of points along the path.
+        An Nx2 or Nx3 array of points along the path.
     stroke_width:
         Optional width of the line.
     color:
@@ -83,7 +83,12 @@ def log_line_strip(
     splats: Dict[str, Any] = {}
 
     if positions is not None:
-        instanced["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays([positions])
+        if positions.shape[1] == 2:
+            instanced["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays([positions])
+        elif positions.shape[1] == 3:
+            instanced["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays([positions])
+        else:
+            raise TypeError("Positions should be either Nx2 or Nx3")
 
     if color:
         colors = _normalize_colors([color])
@@ -132,7 +137,7 @@ def log_line_segments(
     entity_path:
         Path to the line segments in the space hierarchy
     positions:
-        A Nx3 array of points along the path.
+        An Nx2 or Nx3 array of points. Even-odd pairs will be connected as segments.
     stroke_width:
         Optional width of the line.
     color:

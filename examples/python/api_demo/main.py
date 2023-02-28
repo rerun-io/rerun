@@ -75,7 +75,20 @@ def run_segmentation() -> None:
     rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
-def run_points_3d() -> None:
+def run_2d_lines() -> None:
+    import numpy as np
+
+    T = np.linspace(0, 5, 100)
+    for n in range(2, len(T)):
+        rr.set_time_seconds("sim_time", T[n])
+        t = T[:n]
+        x = np.cos(t * 5) * t
+        y = np.sin(t * 5) * t
+        pts = np.vstack([x, y]).T
+        rr.log_line_strip("2d_lines/spiral", positions=pts)
+
+
+def run_3d_points() -> None:
     import random
 
     rr.set_time_seconds("sim_time", 1)
@@ -261,7 +274,8 @@ def run_extension_component() -> None:
 
 def main() -> None:
     demos = {
-        "3d_points": run_points_3d,
+        "2d_lines": run_2d_lines,
+        "3d_points": run_3d_points,
         "log_cleared": run_log_cleared,
         "rects": run_rects,
         "segmentation": run_segmentation,
