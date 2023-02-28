@@ -4107,6 +4107,7 @@ dependencies = [
  "num-traits",
  "puffin",
  "rand",
+ "re_build_info",
  "re_format",
  "re_log",
  "re_string_interner",
