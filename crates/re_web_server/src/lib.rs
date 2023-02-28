@@ -85,7 +85,7 @@ impl Service<Request<Body>> for Svc {
                 #[cfg(debug_assertions)]
                 {
                     re_log::info_once!("Serving DEBUG web-viewer");
-                    &include_bytes!("../web_viewer/re_viewer_bg_debug.wasm")[..]
+                    &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..]
                 }
                 #[cfg(not(debug_assertions))]
                 {
