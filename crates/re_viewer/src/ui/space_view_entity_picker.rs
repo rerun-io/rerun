@@ -45,6 +45,8 @@ impl SpaceViewEntityPicker {
             // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken. Also, should reset every time
             .default_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
+            .default_height(640.0)
+            .resizable(true)
             .frame(egui::Frame {
                 fill: ui.visuals().panel_fill,
                 inner_margin: re_ui::ReUi::view_padding().into(),
@@ -55,7 +57,9 @@ impl SpaceViewEntityPicker {
             .title_bar(false)
             .show(ui.ctx(), |ui| {
                 title_bar(ctx.re_ui, ui, title, &mut open);
-                add_entities_ui(ctx, ui, space_view);
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    add_entities_ui(ctx, ui, space_view);
+                });
             });
 
         // Any click outside causes the window to close.
