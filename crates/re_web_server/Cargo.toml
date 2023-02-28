@@ -54,3 +54,4 @@ re_analytics = { workspace = true, optional = true }
 [build-dependencies]
 glob = "0.3.0"
 cargo_metadata = "0.15"
+re_build_web_viewer.workspace = true
