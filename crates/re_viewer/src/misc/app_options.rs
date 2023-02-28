@@ -8,7 +8,6 @@ pub struct AppOptions {
     pub warn_latency: f32,
 
     /// Show milliseconds, RAM usage, etc.
-    #[serde(skip)] // restore to the default for the current mode (dev vs debug)
     pub show_metrics: bool,
 }
 
@@ -20,7 +19,7 @@ impl Default for AppOptions {
             low_latency: 0.100,
             warn_latency: 0.200,
 
-            show_metrics: cfg!(debug_assertions),
+            show_metrics: false,
         }
     }
 }
