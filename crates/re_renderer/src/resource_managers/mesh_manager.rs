@@ -1,14 +1,12 @@
-use std::sync::Arc;
-
 use crate::{
     mesh::{GpuMesh, Mesh},
     renderer::MeshRenderer,
-    wgpu_resources::{GpuBindGroupLayoutHandle, WgpuResourcePools},
+    wgpu_resources::GpuBindGroupLayoutHandle,
+    RenderContext,
 };
 
 use super::{
     resource_manager::ResourceManager, ResourceHandle, ResourceLifeTime, ResourceManagerError,
-    TextureManager2D,
 };
 
 slotmap::new_key_type! { pub struct MeshHandleInner; }
@@ -17,44 +15,26 @@ pub type GpuMeshHandle = ResourceHandle<MeshHandleInner>;
 
 pub struct MeshManager {
     manager: ResourceManager<MeshHandleInner, GpuMesh>,
-    mesh_bound_group_layout: GpuBindGroupLayoutHandle,
-
-    // For convenience to reduce amount of times we need to pass them around
-    device: Arc<wgpu::Device>,
-    queue: Arc<wgpu::Queue>,
+    mesh_bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl MeshManager {
-    pub(crate) fn new(
-        device: Arc<wgpu::Device>,
-        queue: Arc<wgpu::Queue>,
-        mesh_renderer: &MeshRenderer,
-    ) -> Self {
+    pub(crate) fn new(mesh_renderer: &MeshRenderer) -> Self {
         MeshManager {
             manager: Default::default(),
-            mesh_bound_group_layout: mesh_renderer.bind_group_layout,
-            device,
-            queue,
+            mesh_bind_group_layout: mesh_renderer.bind_group_layout,
         }
     }
 
     /// Takes ownership of a mesh.
     pub fn create(
         &mut self,
-        gpu_resources: &mut WgpuResourcePools,
-        texture_manager_2d: &TextureManager2D,
+        ctx: &RenderContext,
         mesh: &Mesh,
         lifetime: ResourceLifeTime,
     ) -> Result<GpuMeshHandle, ResourceManagerError> {
         Ok(self.manager.store_resource(
-            GpuMesh::new(
-                gpu_resources,
-                texture_manager_2d,
-                self.mesh_bound_group_layout,
-                &self.device,
-                &self.queue,
-                mesh,
-            )?,
+            GpuMesh::new(ctx, self.mesh_bind_group_layout, mesh)?,
             lifetime,
         ))
     }
