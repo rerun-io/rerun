@@ -250,7 +250,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: deny
-          args: --log-level=error --all-features --target x86_64-pc-windows-msvc
+          args: --log-level=error --all-features --target x86_64-pc-windows-msvc check
 
       - name: cargo deny x86_64-unknown-linux-musl check
         uses: actions-rs/cargo@v1
