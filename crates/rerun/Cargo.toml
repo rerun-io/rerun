@@ -83,6 +83,7 @@ webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 mimalloc.workspace = true
 puffin_http = "0.11"
@@ -90,7 +91,6 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # Native unix dependencies:
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
-backtrace = "0.3"
 libc = "0.2"
 
 
