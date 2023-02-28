@@ -215,16 +215,9 @@ impl App {
         self.pending_promises.contains_key(name.as_ref())
     }
 
-    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
             self.pending_commands.push(cmd);
-        }
-
-        if !frame.is_web() {
-            egui::gui_zoom::zoom_with_keyboard_shortcuts(
-                egui_ctx,
-                frame.info().native_pixels_per_point,
-            );
         }
     }
 
@@ -293,6 +286,20 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             Command::ToggleFullscreen => {
                 _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomIn => {
+                egui::gui_zoom::zoom_in(egui_ctx);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomOut => {
+                egui::gui_zoom::zoom_out(egui_ctx);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomReset => {
+                if let Some(native_pixels_per_point) = _frame.info().native_pixels_per_point {
+                    egui_ctx.set_pixels_per_point(native_pixels_per_point);
+                }
             }
 
             Command::SelectionPrevious => {
@@ -425,7 +432,7 @@ impl eframe::App for App {
 
         self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
 
-        self.check_keyboard_shortcuts(egui_ctx, frame);
+        self.check_keyboard_shortcuts(egui_ctx);
 
         self.purge_memory_if_needed();
 
@@ -1033,7 +1040,17 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             ui.add_space(spacing);
 
             // On the web the browser controls the zoom
-            egui::gui_zoom::zoom_menu_buttons(ui, _frame.info().native_pixels_per_point);
+            let reset_zoom_enabled = _frame
+                .info()
+                .native_pixels_per_point
+                .map_or(false, |native_zoom| {
+                    native_zoom != ui.ctx().pixels_per_point()
+                });
+            Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
+            ui.add_enabled_ui(reset_zoom_enabled, |ui| {
+                Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
+            });
 
             Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
 
