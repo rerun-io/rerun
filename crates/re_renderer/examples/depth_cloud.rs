@@ -35,12 +35,14 @@ mod framework;
 
 // ---
 
+// TODO(#1426): unify camera logic between examples.
 enum CameraControl {
     RotateAroundCenter,
 
     // TODO(andreas): Only pauses rotation right now. Add camera controller.
     Manual,
 }
+
 struct RenderDepthClouds {
     depth: DepthTexture,
     albedo: AlbedoTexture,
