@@ -72,11 +72,25 @@ impl Service<Request<Body>> for Svc {
             "/" | "/index.html" => &include_bytes!("../web_viewer/index.html")[..],
             "/favicon.ico" => &include_bytes!("../web_viewer/favicon.ico")[..],
             "/sw.js" => &include_bytes!("../web_viewer/sw.js")[..],
+
+            #[cfg(debug_assertions)]
+            "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
+            #[cfg(not(debug_assertions))]
             "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer.js")[..],
+
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
                 self.on_serve_wasm();
-                &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+
+                #[cfg(debug_assertions)]
+                {
+                    re_log::info_once!("Serving DEBUG web-viewer");
+                    &include_bytes!("../web_viewer/re_viewer_bg_debug.wasm")[..]
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+                }
             }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());

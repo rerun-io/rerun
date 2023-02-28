@@ -34,9 +34,15 @@ pub fn build(release: bool) {
         std::env!("CARGO_MANIFEST_DIR")
     );
 
+    let target_name = if release {
+        crate_name.to_owned()
+    } else {
+        format!("{crate_name}_debug")
+    };
+
     // The two files we are building:
-    let wasm_path = build_dir.join([crate_name, "_bg.wasm"].concat());
-    let js_path = build_dir.join([crate_name, ".js"].concat());
+    let wasm_path = build_dir.join(format!("{target_name}_bg.wasm"));
+    let js_path = build_dir.join(format!("{target_name}.js"));
 
     // Clean old versions:
     std::fs::remove_file(wasm_path.clone()).ok();
@@ -84,26 +90,31 @@ pub fn build(release: bool) {
 
     let build = if release { "release" } else { "debug" };
 
-    let target_path = target_wasm_dir
+    let target_wasm_path = target_wasm_dir
         .join("wasm32-unknown-unknown")
         .join(build)
         .join(format!("{crate_name}.wasm"));
 
     let mut cmd = std::process::Command::new("wasm-bindgen");
     cmd.args([
-        target_path.as_str(),
+        target_wasm_path.as_str(),
         "--out-dir",
         build_dir.as_str(),
+        "--out-name",
+        target_name.as_str(),
         "--no-modules",
         "--no-typescript",
     ]);
+    if !release {
+        cmd.arg("--debug");
+    }
 
     eprintln!("> {cmd:?}");
     let status = cmd
         .current_dir(root_dir)
         .status()
-        .unwrap_or_else(|err| panic!("Failed to generate JS bindings: {err}. target_path: {target_path:?}, build_dir: {build_dir}"));
-    assert!(status.success());
+        .expect("Failed to run wasm-bindgen");
+    assert!(status.success(), "Failed to run wasm-bindgen");
 
     // --------------------------------------------------------------------------------
     // Optimize the wasm
