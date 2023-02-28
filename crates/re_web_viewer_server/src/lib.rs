@@ -125,11 +125,11 @@ impl<T> Service<T> for MakeSvc {
 // ----------------------------------------------------------------------------
 
 /// Hosts the Web Viewer Wasm+HTML
-pub struct WebServer {
+pub struct WebViewerServer {
     server: hyper::Server<AddrIncoming, MakeSvc>,
 }
 
-impl WebServer {
+impl WebViewerServer {
     pub fn new(port: u16) -> Self {
         let bind_addr = format!("0.0.0.0:{port}").parse().unwrap();
         let server = hyper::Server::bind(&bind_addr).serve(MakeSvc);

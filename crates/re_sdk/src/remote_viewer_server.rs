@@ -28,7 +28,7 @@ impl RemoteViewerServer {
 
             // This is the server that serves the Wasm+HTML:
             let web_port = 9090;
-            let web_server = re_web_viewer_server::WebServer::new(web_port);
+            let web_server = re_web_viewer_server::WebViewerServer::new(web_port);
             let web_server_handle = tokio::spawn(async move {
                 web_server.serve().await.unwrap();
             });
