@@ -1055,9 +1055,8 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             recordings_menu(ui, app);
         });
 
-        #[cfg(debug_assertions)]
-        ui.menu_button("Debug", |ui| {
-            debug_menu(&mut app.state.app_options, ui);
+        ui.menu_button("Options", |ui| {
+            options_menu_ui(ui, &mut app.state.app_options);
         });
 
         ui.add_space(spacing);
@@ -1454,20 +1453,27 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-#[cfg(debug_assertions)]
-fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
+fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
-        .checkbox(&mut options.show_metrics, "Show metrics")
+        .checkbox(&mut options.show_metrics, "Show performance metrics")
         .on_hover_text("Show status bar metrics for milliseconds, ram usage, etc")
         .clicked()
     {
         ui.close_menu();
     }
 
-    ui.separator();
+    #[cfg(debug_assertions)]
+    {
+        ui.separator();
+        ui.label("Debug:");
+        debug_menu_options_ui(ui);
+    }
+}
 
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
