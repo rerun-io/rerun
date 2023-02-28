@@ -72,7 +72,7 @@ impl Pipeline {
         // The eventual part comes from the fact that this only runs as part of the Rerun viewer,
         // and as such there's no guarantee it will ever run again, even if there's pending data.
 
-        _ = std::thread::Builder::new()
+        if let Err(err) = std::thread::Builder::new()
             .name("pipeline_catchup".into())
             .spawn({
                 let config = config.clone();
@@ -85,9 +85,12 @@ impl Pipeline {
                     let res = flush_pending_events(&config, &sink);
                     trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
                 }
-            });
+            })
+        {
+            re_log::warn!("Failed to spawn analytics thread: {err}");
+        }
 
-        _ = std::thread::Builder::new().name("pipeline".into()).spawn({
+        if let Err(err) = std::thread::Builder::new().name("pipeline".into()).spawn({
             let config = config.clone();
             let event_tx = event_tx.clone();
             move || {
@@ -99,7 +102,9 @@ impl Pipeline {
                     realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
                 trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
             }
-        });
+        }) {
+            re_log::warn!("Failed to spawn analytics thread: {err}");
+        }
 
         Ok(Some(Self { event_tx }))
     }
@@ -266,7 +271,7 @@ fn append_event(
         // corrupt row in the analytics file, that we'll simply discard later on.
         // We'll try to write a linefeed one more time, just in case, to avoid potentially
         // impacting other events.
-        _ = session_file.write_all(b"\n");
+        session_file.write_all(b"\n").ok();
         warn!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
         return Err(event);
     }
