@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
@@ -21,7 +21,7 @@ use crate::{
         scene::SceneQuery,
         view_spatial::{
             scene::{scene_part::instance_path_hash_for_picking, Keypoints},
-            Label3D, SceneSpatial,
+            SceneSpatial, UiLabel, UiLabelTarget,
         },
         Annotations, DefaultColor,
     },
@@ -117,24 +117,34 @@ impl Points3DPart {
 
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point3D>,
+        instance_path_hashes: &'a [InstancePathHash],
+        colors: &'a [egui::Color32],
         annotation_infos: &'a [ResolvedAnnotationInfo],
         world_from_obj: Mat4,
-    ) -> Result<impl Iterator<Item = Label3D> + 'a, QueryError> {
+    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
             entity_view.iter_primary()?,
-            entity_view.iter_component::<Label>()?
+            entity_view.iter_component::<Label>()?,
+            colors,
+            instance_path_hashes,
         )
-        .filter_map(move |(annotation_info, point, label)| {
-            let label = annotation_info.label(label.map(|l| l.0).as_ref());
-            match (point, label) {
-                (Some(point), Some(label)) => Some(Label3D {
-                    text: label,
-                    origin: world_from_obj.transform_point3(point.into()),
-                }),
-                _ => None,
-            }
-        });
+        .filter_map(
+            move |(annotation_info, point, label, color, labeled_instance)| {
+                let label = annotation_info.label(label.map(|l| l.0).as_ref());
+                match (point, label) {
+                    (Some(point), Some(label)) => Some(UiLabel {
+                        text: label,
+                        color: *color,
+                        target: UiLabelTarget::Position3D(
+                            world_from_obj.transform_point3(point.into()),
+                        ),
+                        labeled_instance: *labeled_instance,
+                    }),
+                    _ => None,
+                }
+            },
+        );
         Ok(labels)
     }
 
@@ -192,10 +202,20 @@ impl Points3DPart {
         let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
 
         let radii = Self::process_radii(entity_view, &highlights)?;
-        let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
         if show_labels && instance_path_hashes.len() <= self.max_labels {
-            scene.ui.labels_3d.extend(labels);
+            // Max labels is small enough that we can afford iterating on the colors again.
+            let colors =
+                Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?
+                    .collect::<Vec<_>>();
+
+            scene.ui.labels.extend(Self::process_labels(
+                entity_view,
+                &instance_path_hashes,
+                &colors,
+                &annotation_infos,
+                world_from_obj,
+            )?);
         }
 
         scene
