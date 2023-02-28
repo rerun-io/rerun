@@ -24,14 +24,14 @@ cargo doc --document-private-items --no-deps --all-features
 
 (cd crates/re_log_types && cargo check --no-default-features)
 (cd crates/re_viewer && cargo check --no-default-features)
-(cd crates/re_web_server && cargo check --no-default-features)
+(cd crates/re_web_viewer_server && cargo check --no-default-features)
 (cd crates/re_ws_comms && cargo check --no-default-features)
 (cd crates/rerun && cargo check --no-default-features)
 (cd examples/rust/objectron && cargo check --no-default-features)
 
 (cd crates/re_log_types && cargo check --all-features)
 (cd crates/re_viewer && cargo check --all-features)
-(cd crates/re_web_server && cargo check --all-features)
+(cd crates/re_web_viewer_server && cargo check --all-features)
 (cd crates/re_ws_comms && cargo check --all-features)
 (cd crates/rerun && cargo check --all-features)
 (cd examples/rust/objectron && cargo check --all-features)

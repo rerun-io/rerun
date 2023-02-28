@@ -4016,7 +4016,7 @@ dependencies = [
  "re_smart_channel",
  "re_string_interner",
  "re_viewer",
- "re_web_server",
+ "re_web_viewer_server",
  "re_ws_comms",
  "thiserror",
  "tokio",
@@ -4164,7 +4164,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_web_server"
+name = "re_web_viewer_server"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -4295,7 +4295,7 @@ dependencies = [
  "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
- "re_web_server",
+ "re_web_viewer_server",
  "re_ws_comms",
  "tokio",
  "webbrowser",

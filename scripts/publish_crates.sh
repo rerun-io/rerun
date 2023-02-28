@@ -45,13 +45,13 @@ echo $FLAGS
 
 set -x
 
-# IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish `re_web_server`.
-# Normally `re_web_server/build.rd` builds the wasm/js but during `cargo publish`
+# IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish `re_web_viewer_server`.
+# Normally `re_web_viewer_server/build.rd` builds the wasm/js but during `cargo publish`
 # we don't have normal access to the `re_viewer` crate, so the build-script fails,
 # (or would have if we didn't set `RERUN_IS_PUBLISHING`).
-# So we build the wasm/js pair here that gets bundled in `cargo publish -p re_web_server` later.
-# Between building the wasm and publishing `re_web_server` there is an opportunity
-# to mess things up by running the `re_web_server`` build-script and over-writing the wasm/js pair.
+# So we build the wasm/js pair here that gets bundled in `cargo publish -p re_web_viewer_server` later.
+# Between building the wasm and publishing `re_web_viewer_server` there is an opportunity
+# to mess things up by running the `re_web_viewer_server`` build-script and over-writing the wasm/js pair.
 # This can happen by a bunch of tools like rust-analyzer. We do use different artifact names in debug
 # though, so unless you have tools set up to run build scripts with the `--release` flag, we _should_ be fine,
 # but just in case:
@@ -87,7 +87,7 @@ cargo publish $FLAGS -p re_query
 cargo publish $FLAGS -p re_sdk_comms
 cargo publish $FLAGS -p re_ws_comms
 cargo publish $FLAGS -p re_renderer
-cargo publish $FLAGS -p re_web_server
+cargo publish $FLAGS -p re_web_viewer_server
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun

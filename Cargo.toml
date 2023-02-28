@@ -44,7 +44,7 @@ re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.2.0" }
 re_tuid = { path = "crates/re_tuid", version = "0.2.0" }
 re_ui = { path = "crates/re_ui", version = "0.2.0" }
 re_viewer = { path = "crates/re_viewer", version = "0.2.0" }
-re_web_server = { path = "crates/re_web_server", version = "0.2.0" }
+re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "0.2.0" }
 re_ws_comms = { path = "crates/re_ws_comms", version = "0.2.0" }
 rerun = { path = "crates/rerun", version = "0.2.0" }
 
