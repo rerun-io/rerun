@@ -1,5 +1,5 @@
-#import <./global_bindings.wgsl>
-#import <./types.wgsl>
+#import <../global_bindings.wgsl>
+#import <../types.wgsl>
 
 fn span_quad_perspective(
     point_pos: Vec3,

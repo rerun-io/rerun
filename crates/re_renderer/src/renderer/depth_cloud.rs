@@ -11,6 +11,7 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
+use itertools::Itertools as _;
 use smallvec::smallvec;
 use std::num::NonZeroU32;
 
@@ -144,11 +145,24 @@ impl DepthCloudDrawData {
         let mut bind_groups = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
             let depth_texture = match &depth_cloud.depth_data {
+                // On native, we can use D16 textures without issues.
+                #[cfg(not(target_arch = "wasm32"))]
                 DepthCloudDepthData::U16(data) => {
-                    create_and_upload_texture(ctx, depth_cloud, data.as_slice())
+                    create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
+                }
+                // On the web, OTOH, they are currently broken, see
+                // https://github.com/gfx-rs/wgpu/issues/3537.
+                #[cfg(target_arch = "wasm32")]
+                DepthCloudDepthData::U16(data) => {
+                    let dataf32 = data
+                        .as_slice()
+                        .iter()
+                        .map(|d| *d as f32 / u16::MAX as f32)
+                        .collect_vec();
+                    create_and_upload_texture(ctx, depth_cloud, dataf32.as_slice(), true)
                 }
                 DepthCloudDepthData::F32(data) => {
-                    create_and_upload_texture(ctx, depth_cloud, data.as_slice())
+                    create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
                 }
             };
 
@@ -180,6 +194,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     ctx: &mut RenderContext,
     depth_cloud: &DepthCloud,
     data: &[T],
+    force_32bit: bool,
 ) -> GpuTexture {
     crate::profile_function!();
 
@@ -188,9 +203,13 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
         height: depth_cloud.depth_dimensions.y,
         depth_or_array_layers: 1,
     };
-    let depth_format = match depth_cloud.depth_data {
-        DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
-        DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
+    let depth_format = if force_32bit {
+        wgpu::TextureFormat::R32Float
+    } else {
+        match depth_cloud.depth_data {
+            DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
+            DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
+        }
     };
     let depth_texture_desc = TextureDesc {
         label: "depth_texture".into(),
