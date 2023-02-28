@@ -4,7 +4,7 @@ use re_log_types::{
     msg_bundle::DeserializableComponent, EntityPath,
 };
 
-use crate::log_db::EntityDb;
+use crate::{log_db::EntityDb, EditableAutoValue};
 
 // ----------------------------------------------------------------------------
 
@@ -39,44 +39,23 @@ pub struct EntityProperties {
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
 
-    /// Distance of the projection plane.
+    /// Distance of the projection plane (frustum far plane).
     ///
     /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
-    pinhole_image_plane_distance: Option<ordered_float::NotNan<f32>>,
+    pub pinhole_image_plane_distance: EditableAutoValue<ordered_float::NotNan<f32>>,
 }
 
 impl EntityProperties {
-    /// If this has a pinhole camera transform, how far away is the image plane.
-    ///
-    /// Scale relative to the respective space the pinhole camera is in.
-    /// None indicates the user never edited this field (should use a meaningful default then).
-    ///
-    /// Method returns a pinhole camera specific default if the value hasn't been set yet.
-    pub fn pinhole_image_plane_distance(&self, pinhole: &re_log_types::Pinhole) -> f32 {
-        self.pinhole_image_plane_distance
-            .unwrap_or_else(|| {
-                let distance = pinhole
-                    .focal_length()
-                    .unwrap_or_else(|| pinhole.focal_length_in_pixels().y());
-                ordered_float::NotNan::new(distance).unwrap_or_default()
-            })
-            .into()
-    }
-
-    /// see `pinhole_image_plane_distance()`
-    pub fn set_pinhole_image_plane_distance(&mut self, distance: f32) {
-        self.pinhole_image_plane_distance = ordered_float::NotNan::new(distance).ok();
-    }
-
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
             visible: self.visible && child.visible,
             visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
-            pinhole_image_plane_distance: child
+            pinhole_image_plane_distance: self
                 .pinhole_image_plane_distance
-                .or(self.pinhole_image_plane_distance),
+                .or(&child.pinhole_image_plane_distance)
+                .clone(),
         }
     }
 }
@@ -87,7 +66,7 @@ impl Default for EntityProperties {
             visible: true,
             visible_history: ExtraQueryHistory::default(),
             interactive: true,
-            pinhole_image_plane_distance: None,
+            pinhole_image_plane_distance: EditableAutoValue::default(),
         }
     }
 }
