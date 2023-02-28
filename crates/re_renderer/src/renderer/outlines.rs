@@ -1,59 +1,234 @@
 //! Outlines
 //!
 //! TODO: How do they work, how are they configured. What's going on!
+//! * mask layer
+//! * MSAA handling
 
 use crate::{
-    context::SharedRendererData, wgpu_resources::WgpuResourcePools, FileResolver, FileSystem,
-    RenderContext,
+    context::SharedRendererData,
+    include_file,
+    view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, WgpuResourcePools,
+    },
+    DebugLabel, FileResolver, FileSystem, RenderContext,
 };
 
 use super::{DrawData, DrawPhase, Renderer};
 
-pub struct OutlinesRenderer {}
+use smallvec::smallvec;
 
-#[derive(Clone)]
-pub struct OutlinesDrawData {}
-
-impl DrawData for OutlinesDrawData {
-    type Renderer = OutlinesRenderer;
+#[derive(Clone, Debug)]
+pub struct OutlineConfig {
+    pub color_layer_0: crate::Rgba,
+    pub color_layer_1: crate::Rgba,
 }
 
-impl OutlinesDrawData {
-    pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.write().get_or_create::<_, OutlinesRenderer>(
+// TODO(andreas): Is this a sort of DrawPhase implementor? Need a system for this.
+pub struct OutlineMaskProcessor {
+    label: DebugLabel,
+
+    mask_texture: GpuTexture,
+
+    bindgroup_debug: GpuBindGroup,
+}
+
+impl OutlineMaskProcessor {
+    pub fn new(
+        ctx: &mut RenderContext,
+        config: OutlineConfig,
+        view_name: &DebugLabel,
+        resolution_in_pixel: [u32; 2],
+    ) -> Self {
+        let mut renderers = ctx.renderers.write();
+        let debug_compositor = renderers.get_or_create::<_, OutlineCompositorDebug>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
 
-        OutlinesDrawData {}
+        let label = view_name.clone().push_str(" - OutlineMaskProcessor");
+        let mask_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &crate::wgpu_resources::TextureDesc {
+                label: label.clone().push_str(" - mask_texture"),
+                size: wgpu::Extent3d {
+                    width: resolution_in_pixel[0],
+                    height: resolution_in_pixel[1],
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rg8Uint, // Two channels with each 256 object ids.
+                usage: wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            },
+        );
+
+        let bindgroup_debug = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &BindGroupDesc {
+                label: view_name.clone().push_str(" - debug"),
+                entries: smallvec![BindGroupEntry::DefaultTextureView(mask_texture.handle)],
+                layout: debug_compositor.bind_group_layout,
+            },
+            &ctx.gpu_resources.bind_group_layouts,
+            &ctx.gpu_resources.textures,
+            &ctx.gpu_resources.buffers,
+            &ctx.gpu_resources.samplers,
+        );
+
+        Self {
+            label,
+            mask_texture,
+            bindgroup_debug,
+        }
+    }
+
+    pub fn start_mask_render_pass<'a>(
+        &'a self,
+        depth_view: &'a wgpu::TextureView,
+        encoder: &'a mut wgpu::CommandEncoder,
+    ) -> wgpu::RenderPass<'a> {
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: self.label.clone().push_str(" - mask pass").get(),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.mask_texture.default_view,
+                resolve_target: None, // We're going to do a manual resolve.
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load, // We're using depth for depth-test only.
+                    store: false,             // -> Not expecting any writes in this pass.
+                }),
+                stencil_ops: None,
+            }),
+        })
+    }
+
+    pub fn create_composition_debug_draw_data(self) -> OutlineCompositingDebugDrawData {
+        OutlineCompositingDebugDrawData {
+            bind_group: self.bindgroup_debug,
+        }
     }
 }
 
-impl Renderer for OutlinesRenderer {
-    type RendererDrawData = OutlinesDrawData;
+pub struct OutlineCompositorDebug {
+    render_pipeline: GpuRenderPipelineHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
+}
+
+#[derive(Clone)]
+pub struct OutlineCompositingDebugDrawData {
+    bind_group: GpuBindGroup,
+}
+
+impl DrawData for OutlineCompositingDebugDrawData {
+    type Renderer = OutlineCompositorDebug;
+}
+
+impl Renderer for OutlineCompositorDebug {
+    type RendererDrawData = OutlineCompositingDebugDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
         &[DrawPhase::Compositing]
     }
 
     fn create_renderer<Fs: FileSystem>(
-        _shared_data: &SharedRendererData,
-        _pools: &mut WgpuResourcePools,
-        _device: &wgpu::Device,
-        _resolver: &mut FileResolver<Fs>,
+        shared_data: &SharedRendererData,
+        pools: &mut WgpuResourcePools,
+        device: &wgpu::Device,
+        resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        OutlinesRenderer {}
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
+            device,
+            &BindGroupLayoutDesc {
+                label: "OutlineCompositorDebug".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: true,
+                    },
+                    count: None,
+                }],
+            },
+        );
+
+        let render_pipeline = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "OutlineCompositorDebug".into(),
+                pipeline_layout: pools.pipeline_layouts.get_or_create(
+                    device,
+                    &PipelineLayoutDesc {
+                        label: "OutlineCompositorDebug".into(),
+                        entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                    },
+                    &pools.bind_group_layouts,
+                ),
+                vertex_entrypoint: "main".into(),
+                vertex_handle: pools.shader_modules.get_or_create(
+                    device,
+                    resolver,
+                    &ShaderModuleDesc {
+                        label: "screen_triangle (vertex)".into(),
+                        source: include_file!("../../shader/screen_triangle.wgsl"),
+                    },
+                ),
+                fragment_entrypoint: "main".into(),
+                fragment_handle: pools.shader_modules.get_or_create(
+                    device,
+                    resolver,
+                    &ShaderModuleDesc {
+                        label: "OutlineCompositorDebug".into(),
+                        source: include_file!("../../shader/outlines/debug.wgsl"),
+                    },
+                ),
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(wgpu::ColorTargetState {
+                    format: shared_data.config.output_format_color,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::all()
+                })],
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
+        OutlineCompositorDebug {
+            render_pipeline,
+            bind_group_layout,
+        }
     }
 
     fn draw<'a>(
         &self,
-        _pools: &'a WgpuResourcePools,
+        pools: &'a WgpuResourcePools,
         _phase: DrawPhase,
-        _pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &OutlinesDrawData,
+        pass: &mut wgpu::RenderPass<'a>,
+        draw_data: &'a OutlineCompositingDebugDrawData,
     ) -> anyhow::Result<()> {
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(1, &draw_data.bind_group, &[]);
+        pass.draw(0..3, 0..1);
+
         Ok(())
     }
 }

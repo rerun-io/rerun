@@ -6,7 +6,10 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
-    renderer::{compositor::CompositorDrawData, DrawData, DrawPhase, Renderer},
+    renderer::{
+        compositor::CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor,
+        Renderer,
+    },
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,
 };
@@ -34,6 +37,9 @@ pub struct ViewBuilder {
     /// Result of [`ViewBuilder::setup_view`] - needs to be `Option` sine some of the fields don't have a default.
     setup: Option<ViewTargetSetup>,
     queued_draws: Vec<QueuedDraw>,
+
+    // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
+    outline_mask_processor: Option<OutlineMaskProcessor>,
 }
 
 struct ViewTargetSetup {
@@ -141,6 +147,8 @@ pub struct TargetConfiguration {
 
     /// How [`Size::AUTO`] is interpreted.
     pub auto_size_config: AutoSizeConfig,
+
+    pub outline_config: Option<OutlineConfig>,
 }
 
 impl Default for TargetConfiguration {
@@ -155,6 +163,7 @@ impl Default for TargetConfiguration {
             },
             pixels_from_point: 1.0,
             auto_size_config: Default::default(),
+            outline_config: None,
         }
     }
 }
@@ -407,6 +416,15 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
+        self.outline_mask_processor = config.outline_config.map(|outline_config| {
+            OutlineMaskProcessor::new(
+                ctx,
+                outline_config,
+                &config.name,
+                config.resolution_in_pixel,
+            )
+        });
+
         self.setup = Some(ViewTargetSetup {
             name: config.name,
             bind_group_0,
@@ -481,10 +499,10 @@ impl ViewBuilder {
             });
 
         {
-            crate::profile_scope!("view builder main target pass");
+            crate::profile_scope!("main target pass");
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{:?} - main pass", setup.name)).get(),
+                label: setup.name.clone().push_str(" - main pass").get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     resolve_target: Some(&setup.main_target_resolved.default_view),
@@ -504,9 +522,7 @@ impl ViewBuilder {
                     view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
-                        // Don't care about depth results afterwards.
-                        // This can have be much better perf, especially on tiler gpus.
-                        store: false,
+                        store: true,                    // We need the depth buffer later!
                     }),
                     stencil_ops: None,
                 }),
@@ -517,6 +533,23 @@ impl ViewBuilder {
             for phase in [DrawPhase::Opaque, DrawPhase::Background] {
                 self.draw_phase(ctx, phase, &mut pass);
             }
+        }
+
+        if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
+            crate::profile_scope!("outlines");
+            {
+                crate::profile_scope!("outline mask pass");
+                let mut pass = outline_mask_processor
+                    .start_mask_render_pass(&setup.depth_buffer.default_view, &mut encoder);
+                pass.set_bind_group(0, &setup.bind_group_0, &[]);
+                self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass)?;
+            }
+            {
+                crate::profile_scope!("outline processing");
+                // TODO: Mask processing
+            }
+
+            self.queue_draw(&outline_mask_processor.create_composition_debug_draw_data());
         }
 
         Ok(encoder.finish())

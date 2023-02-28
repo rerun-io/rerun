@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_renderer::{
-    renderer::MeshInstance,
+    renderer::{MeshInstance, OutlineConfig},
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
 
@@ -43,6 +43,10 @@ impl framework::Example for Outlines {
                         near_plane_distance: 0.01,
                     },
                     pixels_from_point,
+                    outline_config: Some(OutlineConfig {
+                        color_layer_0: re_renderer::Rgba::RED,
+                        color_layer_1: re_renderer::Rgba::BLUE,
+                    }),
                     ..Default::default()
                 },
             )
@@ -63,7 +67,6 @@ impl framework::Example for Outlines {
         view_builder.queue_draw(&re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
         view_builder
             .queue_draw(&re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
-        view_builder.queue_draw(&re_renderer::renderer::OutlinesDrawData::new(re_ctx));
 
         let command_buffer = view_builder
             .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
