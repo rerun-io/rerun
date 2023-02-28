@@ -63,7 +63,7 @@ epaint = "0.21.0"
 glam = "0.22"
 gltf = "1.1"
 half = "2.0"
-image = "0.24"
+image = { version = "0.24", default-features = false }
 lazy_static = "1.4"
 macaw = "0.18"
 mimalloc = "0.1.29"

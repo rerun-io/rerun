@@ -234,8 +234,26 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: cargo deny
+      - name: cargo deny aarch64-apple-darwin check
         uses: actions-rs/cargo@v1
         with:
           command: deny
-          args: --log-level=error check
+          args: --log-level=error --all-features --target aarch64-apple-darwin check
+
+      - name: cargo deny wasm32-unknown-unknown check
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target wasm32-unknown-unknown check
+
+      - name: cargo deny x86_64-pc-windows-msvc
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target x86_64-pc-windows-msvc check
+
+      - name: cargo deny x86_64-unknown-linux-musl check
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target x86_64-unknown-linux-musl check
