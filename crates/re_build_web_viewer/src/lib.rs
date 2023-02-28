@@ -1,11 +1,9 @@
-use std::process::Stdio;
-
 use cargo_metadata::camino::Utf8PathBuf;
 
 fn target_directory() -> Utf8PathBuf {
     let metadata = cargo_metadata::MetadataCommand::new()
         .manifest_path("./Cargo.toml")
-        .features(cargo_metadata::CargoOpt::AllFeatures)
+        .features(cargo_metadata::CargoOpt::NoDefaultFeatures)
         .exec()
         .unwrap();
     metadata.target_directory
@@ -45,10 +43,9 @@ pub fn build(release: bool) {
     std::fs::remove_file(js_path).ok();
 
     // --------------------------------------------------------------------------------
-    eprintln!("Compiling rust to wasm in folder:{target_wasm_dir}…");
+    eprintln!("Compiling rust to wasm in {target_wasm_dir}…");
 
     let mut cmd = std::process::Command::new("cargo");
-    cmd.current_dir(root_dir);
     cmd.args([
         "build",
         "--target-dir",
@@ -75,13 +72,12 @@ pub fn build(release: bool) {
     // values that only make sense for the native target host, not for a wasm build.
     cmd.env("CARGO_ENCODED_RUSTFLAGS", "");
 
-    eprintln!("wasm build cmd: {cmd:?}");
-    let output = cmd
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
+    eprintln!("> {cmd:?}");
+    let status = cmd
+        .current_dir(root_dir)
+        .status()
         .expect("Failed to build Wasm");
-    assert!(output.status.success(), "Failed to build Wasm");
+    assert!(status.success(), "Failed to build Wasm");
 
     // --------------------------------------------------------------------------------
     eprintln!("Generating JS bindings for wasm…");
@@ -94,7 +90,6 @@ pub fn build(release: bool) {
         .join(format!("{crate_name}.wasm"));
 
     let mut cmd = std::process::Command::new("wasm-bindgen");
-    cmd.current_dir(root_dir);
     cmd.args([
         target_path.as_str(),
         "--out-dir",
@@ -103,23 +98,12 @@ pub fn build(release: bool) {
         "--no-typescript",
     ]);
 
-    eprintln!("wasm-bindgen cmd: {cmd:?}");
-
-    let output = cmd
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
+    eprintln!("> {cmd:?}");
+    let status = cmd
+        .current_dir(root_dir)
+        .status()
         .unwrap_or_else(|err| panic!("Failed to generate JS bindings: {err}. target_path: {target_path:?}, build_dir: {build_dir}"));
-
-    eprintln!("wasm-bindgen status: {}", output.status);
-    if !output.stderr.is_empty() {
-        eprintln!(
-            "wasm-bindgen stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    assert!(output.status.success());
+    assert!(status.success());
 
     // --------------------------------------------------------------------------------
     // Optimize the wasm
@@ -129,9 +113,8 @@ pub fn build(release: bool) {
 
         // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
-        cmd.current_dir(root_dir);
 
-        // TODO(emilk): add `-g` to keep debug symbols; useful for profiling release builds.
+        // TODO(emilk): add `-g` to keep debug symbols; useful for profiling release builds in the in-browser profiler.
         cmd.args([
             wasm_path.as_str(),
             "-O2",
@@ -140,15 +123,13 @@ pub fn build(release: bool) {
             wasm_path.as_str(),
         ]);
 
-        eprintln!("wasm-opt cmd: {cmd:?}");
-
-        let output = cmd
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
+        eprintln!("> {cmd:?}");
+        let status = cmd
+            .current_dir(root_dir)
+            .status()
             .expect("Failed to run wasm-opt");
-        assert!(output.status.success(), "Failed to run wasm-opt");
+        assert!(status.success(), "Failed to run wasm-opt");
     }
 
-    eprintln!("Finished {wasm_path:?}");
+    eprintln!("Finished {wasm_path}");
 }
