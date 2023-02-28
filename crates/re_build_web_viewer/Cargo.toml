@@ -1,0 +1,20 @@
+[package]
+name = "re_build_web_viewer"
+authors.workspace = true
+description = "Build the rerun web-viewer Wasm from source"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+cargo_metadata = "0.15"
