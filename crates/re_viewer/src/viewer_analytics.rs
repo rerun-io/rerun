@@ -1,6 +1,10 @@
 //! All telemetry analytics collected by the Rerun Viewer are defined in this file for easy auditing.
 //!
-//! Analytics can be disabled with `rerun analytics disable`,
+//! There are two exceptions:
+//! * `crates/rerun/src/crash_handler.rs` sends anonymized callstacks on crashes
+//! * `crates/re_web_server/src/lib.rs` sends an anonymous event when a `.wasm` web-viewer is served.
+//!
+//! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
 //!
 //! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
@@ -83,24 +87,7 @@ impl ViewerAnalytics {
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
-            let git_hash = if build_info.git_hash.is_empty() {
-                // Not built in a git repository. Probably we are a rust-crate
-                // compiled on the users machine.
-                // Let's set the git_hash  to be the git tag that corresponds to the
-                // published version, so that one can always easily checkout the `git_hash` field in the
-                // analytics.
-                format!("v{}", build_info.version)
-            } else {
-                build_info.git_hash.to_owned()
-            };
-
-            let mut event = Event::update("update_metadata")
-                .with_prop("rerun_version", build_info.version)
-                .with_prop("target", build_info.target_triple)
-                .with_prop("git_hash", git_hash)
-                .with_prop("debug", cfg!(debug_assertions)) // debug-build?
-                .with_prop("rerun_workspace", std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
-                ;
+            let mut event = Event::update("update_metadata").with_build_info(build_info);
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
             // machine running the viewer, then add it to the permanent user profile.

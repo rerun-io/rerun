@@ -1,5 +1,6 @@
 # https://github.com/ericseppanen/cargo-cranky
 # cargo install cargo-cranky && cargo cranky
+# See also clippy.toml
 
 deny = [
   "unsafe_code",
@@ -17,8 +18,11 @@ warn = [
   "clippy::dbg_macro",
   "clippy::debug_assert_with_mut_call",
   "clippy::derive_partial_eq_without_eq",
-  "clippy::disallowed_methods",
-  "clippy::disallowed_script_idents",
+  "clippy::disallowed_macros",                  # See clippy.toml
+  "clippy::disallowed_methods",                 # See clippy.toml
+  "clippy::disallowed_names",                   # See clippy.toml
+  "clippy::disallowed_script_idents",           # See clippy.toml
+  "clippy::disallowed_types",                   # See clippy.toml
   "clippy::doc_link_with_quotes",
   "clippy::doc_markdown",
   "clippy::empty_enum",
