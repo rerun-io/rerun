@@ -2,10 +2,12 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
-use half::f16;
 use ndarray::{Axis, Ix2};
 
-use re_log_types::{component_types, ClassicTensor, TensorDataType};
+use re_log_types::{
+    component_types::{self, Tensor, TensorTrait},
+    TensorDataType,
+};
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 use crate::ui::data_ui::image::tensor_dtype_and_shape_ui_grid_contents;
@@ -31,11 +33,11 @@ pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
     #[serde(skip)]
-    tensor: Option<ClassicTensor>,
+    tensor: Option<Tensor>,
 }
 
 impl ViewTensorState {
-    pub fn create(tensor: &ClassicTensor) -> ViewTensorState {
+    pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
             dimension_mapping: DimensionMapping::create(tensor.shape()),
@@ -86,7 +88,7 @@ pub(crate) fn view_tensor(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
-    tensor: &ClassicTensor,
+    tensor: &Tensor,
 ) {
     crate::profile_function!();
 
@@ -122,7 +124,7 @@ fn tensor_ui(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
-    tensor: &ClassicTensor,
+    tensor: &Tensor,
 ) {
     let tensor_shape = tensor.shape();
 
@@ -130,8 +132,8 @@ fn tensor_ui(
     let range = tensor_stats.range;
     let color_mapping = &state.color_mapping;
 
-    match tensor.dtype {
-        TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
+    match tensor.dtype() {
+        TensorDataType::U8 => match ndarray::ArrayViewD::<u8>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: u8| {
                     // We always use the full range for u8
@@ -146,7 +148,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
+        TensorDataType::U16 => match ndarray::ArrayViewD::<u16>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: u16| {
                     let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
@@ -165,7 +167,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::U32 => match re_tensor_ops::as_ndarray::<u32>(tensor) {
+        TensorDataType::U32 => match ndarray::ArrayViewD::<u32>::try_from(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = range.unwrap_or((0.0, u32::MAX as f64)); // the cache should provide the range
 
@@ -185,7 +187,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::U64 => match re_tensor_ops::as_ndarray::<u64>(tensor) {
+        TensorDataType::U64 => match ndarray::ArrayViewD::<u64>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: u64| {
                     let (tensor_min, tensor_max) = range.unwrap_or((0.0, u64::MAX as f64)); // the cache should provide the range
@@ -204,7 +206,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::I8 => match re_tensor_ops::as_ndarray::<i8>(tensor) {
+        TensorDataType::I8 => match ndarray::ArrayViewD::<i8>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: i8| {
                     // We always use the full range for i8:
@@ -224,7 +226,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::I16 => match re_tensor_ops::as_ndarray::<i16>(tensor) {
+        TensorDataType::I16 => match ndarray::ArrayViewD::<i16>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: i16| {
                     let (tensor_min, tensor_max) =
@@ -244,7 +246,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::I32 => match re_tensor_ops::as_ndarray::<i32>(tensor) {
+        TensorDataType::I32 => match ndarray::ArrayViewD::<i32>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: i32| {
                     let (tensor_min, tensor_max) =
@@ -264,7 +266,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::I64 => match re_tensor_ops::as_ndarray::<i64>(tensor) {
+        TensorDataType::I64 => match ndarray::ArrayViewD::<i64>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: i64| {
                     let (tensor_min, tensor_max) =
@@ -284,26 +286,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::F16 => match re_tensor_ops::as_ndarray::<f16>(tensor) {
-            Ok(tensor) => {
-                let color_from_value = |value: f16| {
-                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
-                    color_mapping.color_from_normalized(egui::remap(
-                        value.to_f32(),
-                        tensor_min as f32..=tensor_max as f32,
-                        0.0..=1.0,
-                    ))
-                };
-
-                let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
-            }
-            Err(err) => {
-                ui.label(ctx.re_ui.error_text(err.to_string()));
-            }
-        },
-
-        TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
+        TensorDataType::F32 => match ndarray::ArrayViewD::<f32>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: f32| {
                     let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
@@ -322,7 +305,7 @@ fn tensor_ui(
             }
         },
 
-        TensorDataType::F64 => match re_tensor_ops::as_ndarray::<f64>(tensor) {
+        TensorDataType::F64 => match ndarray::ArrayViewD::<f64>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: f64| {
                     let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
@@ -340,6 +323,13 @@ fn tensor_ui(
                 ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
+
+        dtype @ TensorDataType::F16 => {
+            ui.label(
+                ctx.re_ui
+                    .error_text(format!("Unsupported tensor type. {dtype}")),
+            );
+        }
     }
 }
 
@@ -828,7 +818,7 @@ fn paint_axis_names(
     }
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &ClassicTensor) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
     for selector in &state.dimension_mapping.selectors {
         if !selector.visible {
             continue;
