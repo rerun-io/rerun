@@ -103,6 +103,21 @@ impl Event {
         self.props.insert(name.into(), value.into());
         self
     }
+
+    /// Adds Rerun version, git hash, build date and similar as properties to the event.
+    pub fn with_build_info(self, build_info: &re_build_info::BuildInfo) -> Event {
+        self.with_prop("rerun_version", build_info.version.to_string())
+            .with_prop("target", build_info.target_triple)
+            .with_prop("git_hash", build_info.git_hash_or_tag())
+            .with_prop("git_branch", build_info.git_branch)
+            .with_prop("build_date", build_info.datetime)
+            .with_prop("debug", cfg!(debug_assertions)) // debug-build?
+            .with_prop(
+                // proxy for "user checked out the project and built it from source":
+                "rerun_workspace",
+                std::env::var("IS_IN_RERUN_WORKSPACE").is_ok(),
+            )
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

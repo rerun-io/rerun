@@ -44,7 +44,7 @@ document-features = "0.2"
 indent = "0.1"
 itertools = "0.10"
 nohash-hasher = "0.2"
-parking_lot = "0.12"
+parking_lot.workspace = true
 static_assertions = "1.1"
 thiserror.workspace = true
 
