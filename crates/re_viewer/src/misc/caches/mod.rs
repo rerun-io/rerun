@@ -46,6 +46,8 @@ pub struct TensorStats {
 
 impl TensorStats {
     fn new(tensor: &re_log_types::component_types::Tensor) -> Self {
+        use half::f16;
+        use ndarray::ArrayViewD;
         use re_log_types::TensorDataType;
 
         macro_rules! declare_tensor_range_int {
@@ -89,8 +91,6 @@ impl TensorStats {
         declare_tensor_range_float!(tensor_range_f32, f32);
         declare_tensor_range_float!(tensor_range_f64, f64);
 
-        // TODO(854) re-enable once we have F16 tensors
-        /*
         #[allow(clippy::needless_pass_by_value)]
         fn tensor_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
             crate::profile_function!();
@@ -100,50 +100,22 @@ impl TensorStats {
                 });
             (min.to_f64(), max.to_f64())
         }
-        */
 
         let range = match tensor.dtype() {
-            TensorDataType::U8 => ndarray::ArrayViewD::<u8>::try_from(tensor)
-                .ok()
-                .map(tensor_range_u8),
-            TensorDataType::U16 => ndarray::ArrayViewD::<u16>::try_from(tensor)
-                .ok()
-                .map(tensor_range_u16),
-            TensorDataType::U32 => ndarray::ArrayViewD::<u32>::try_from(tensor)
-                .ok()
-                .map(tensor_range_u32),
-            TensorDataType::U64 => ndarray::ArrayViewD::<u64>::try_from(tensor)
-                .ok()
-                .map(tensor_range_u64),
+            TensorDataType::U8 => ArrayViewD::<u8>::try_from(tensor).map(tensor_range_u8),
+            TensorDataType::U16 => ArrayViewD::<u16>::try_from(tensor).map(tensor_range_u16),
+            TensorDataType::U32 => ArrayViewD::<u32>::try_from(tensor).map(tensor_range_u32),
+            TensorDataType::U64 => ArrayViewD::<u64>::try_from(tensor).map(tensor_range_u64),
 
-            TensorDataType::I8 => ndarray::ArrayViewD::<i8>::try_from(tensor)
-                .ok()
-                .map(tensor_range_i8),
-            TensorDataType::I16 => ndarray::ArrayViewD::<i16>::try_from(tensor)
-                .ok()
-                .map(tensor_range_i16),
-            TensorDataType::I32 => ndarray::ArrayViewD::<i32>::try_from(tensor)
-                .ok()
-                .map(tensor_range_i32),
-            TensorDataType::I64 => ndarray::ArrayViewD::<i64>::try_from(tensor)
-                .ok()
-                .map(tensor_range_i64),
-
-            // TODO(854) re-enable once we have F16 tensors
-            /*
-            TensorDataType::F16 => ndarray::ArrayViewD::<f16>::try_from(tensor)
-            .ok()
-            .map(tensor_range_f16),
-            */
-            TensorDataType::F16 => None,
-            TensorDataType::F32 => ndarray::ArrayViewD::<f32>::try_from(tensor)
-                .ok()
-                .map(tensor_range_f32),
-            TensorDataType::F64 => ndarray::ArrayViewD::<f64>::try_from(tensor)
-                .ok()
-                .map(tensor_range_f64),
+            TensorDataType::I8 => ArrayViewD::<i8>::try_from(tensor).map(tensor_range_i8),
+            TensorDataType::I16 => ArrayViewD::<i16>::try_from(tensor).map(tensor_range_i16),
+            TensorDataType::I32 => ArrayViewD::<i32>::try_from(tensor).map(tensor_range_i32),
+            TensorDataType::I64 => ArrayViewD::<i64>::try_from(tensor).map(tensor_range_i64),
+            TensorDataType::F16 => ArrayViewD::<f16>::try_from(tensor).map(tensor_range_f16),
+            TensorDataType::F32 => ArrayViewD::<f32>::try_from(tensor).map(tensor_range_f32),
+            TensorDataType::F64 => ArrayViewD::<f64>::try_from(tensor).map(tensor_range_f64),
         };
 
-        Self { range }
+        Self { range: range.ok() }
     }
 }

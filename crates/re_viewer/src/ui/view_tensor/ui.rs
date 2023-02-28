@@ -286,6 +286,25 @@ fn tensor_ui(
             }
         },
 
+        TensorDataType::F16 => match ndarray::ArrayViewD::<half::f16>::try_from(tensor) {
+            Ok(tensor) => {
+                let color_from_value = |value: half::f16| {
+                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
+                    color_mapping.color_from_normalized(egui::remap(
+                        value.to_f32(),
+                        tensor_min as f32..=tensor_max as f32,
+                        0.0..=1.0,
+                    ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
         TensorDataType::F32 => match ndarray::ArrayViewD::<f32>::try_from(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: f32| {
@@ -323,13 +342,6 @@ fn tensor_ui(
                 ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
-
-        dtype @ TensorDataType::F16 => {
-            ui.label(
-                ctx.re_ui
-                    .error_text(format!("Unsupported tensor type. {dtype}")),
-            );
-        }
     }
 }
 
