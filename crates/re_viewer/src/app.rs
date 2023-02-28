@@ -352,14 +352,16 @@ impl App {
         }
     }
 
-    fn selected_app_id(&mut self) -> ApplicationId {
-        let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-        let selected_app_id = log_db
-            .recording_info()
-            .map_or_else(ApplicationId::unknown, |rec_info| {
-                rec_info.application_id.clone()
-            });
-        selected_app_id
+    fn selected_app_id(&self) -> ApplicationId {
+        if let Some(log_db) = self.log_dbs.get(&self.state.selected_rec_id) {
+            log_db
+                .recording_info()
+                .map_or_else(ApplicationId::unknown, |rec_info| {
+                    rec_info.application_id.clone()
+                })
+        } else {
+            ApplicationId::unknown()
+        }
     }
 
     fn blueprint_mut(&mut self) -> &mut Blueprint {
@@ -768,6 +770,13 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
+    /// Do we have an open `LogDb` that is non-empty?
+    fn log_db_is_nonempty(&self) -> bool {
+        self.log_dbs
+            .get(&self.state.selected_rec_id)
+            .map_or(false, |log_db| !log_db.is_empty())
+    }
+
     fn log_db(&mut self) -> &mut LogDb {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
     }
@@ -1086,9 +1095,8 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             recordings_menu(ui, app);
         });
 
-        #[cfg(debug_assertions)]
-        ui.menu_button("Debug", |ui| {
-            debug_menu(&mut app.state.app_options, ui);
+        ui.menu_button("Options", |ui| {
+            options_menu_ui(ui, &mut app.state.app_options);
         });
 
         ui.add_space(spacing);
@@ -1359,7 +1367,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             });
         });
     } else {
-        ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
+        ui.add_enabled_ui(app.log_db_is_nonempty(), |ui| {
             if ui
                 .add(save_button)
                 .on_hover_text("Save all data to a Rerun data file (.rrd)")
@@ -1414,7 +1422,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         .set_title(title)
         .save_file()
     {
-        let f = save_database_to_file(app, path, loop_selection);
+        let f = save_database_to_file(app.log_db(), path, loop_selection);
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
             // NOTE: Shouldn't even be possible as the "Save" button is already
             // grayed out at this point... better safe than sorry though.
@@ -1426,7 +1434,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
 }
 
 fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
-    if !app.log_db().is_empty() {
+    if app.log_db_is_nonempty() {
         ui.horizontal(|ui| {
             ui.label("Main view:");
             if ui
@@ -1485,20 +1493,27 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-#[cfg(debug_assertions)]
-fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
+fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
-        .checkbox(&mut options.show_metrics, "Show metrics")
-        .on_hover_text("Show status bar metrics for milliseconds, ram usage, etc")
+        .checkbox(&mut options.show_metrics, "Show performance metrics")
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar.")
         .clicked()
     {
         ui.close_menu();
     }
 
-    ui.separator();
+    #[cfg(debug_assertions)]
+    {
+        ui.separator();
+        ui.label("Debug:");
+        debug_menu_options_ui(ui);
+    }
+}
 
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
@@ -1606,7 +1621,7 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
 /// specific time range will be accounted for.
 #[cfg(not(target_arch = "wasm32"))]
 fn save_database_to_file(
-    app: &mut App,
+    log_db: &LogDb,
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
@@ -1614,8 +1629,7 @@ fn save_database_to_file(
 
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
-        None => app
-            .log_db()
+        None => log_db
             .chronological_log_messages()
             .cloned()
             .collect::<Vec<_>>(),
@@ -1624,7 +1638,7 @@ fn save_database_to_file(
         Some((timeline, range)) => {
             use std::ops::RangeInclusive;
             let range: RangeInclusive<TimeInt> = range.min.floor()..=range.max.ceil();
-            app.log_db()
+            log_db
                 .chronological_log_messages()
                 .filter(|msg| {
                     match msg {
