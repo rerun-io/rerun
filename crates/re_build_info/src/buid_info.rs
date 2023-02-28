@@ -23,6 +23,11 @@ pub struct BuildInfo {
     /// Current git branch, or empty string.
     pub git_branch: &'static str,
 
+    /// True if we are building within the rerun repository workspace.
+    ///
+    /// This is a good proxy for "user checked out the project and built it from source".
+    pub is_in_rerun_workspace: bool,
+
     /// Target architecture and OS
     ///
     /// Example: `xaarch64-apple-darwin`
@@ -52,6 +57,7 @@ impl std::fmt::Display for BuildInfo {
             version,
             git_hash,
             git_branch,
+            is_in_rerun_workspace: _,
             target_triple,
             datetime,
         } = self;
