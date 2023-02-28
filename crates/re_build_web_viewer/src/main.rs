@@ -35,10 +35,12 @@ fn main() -> ExitCode {
 
 fn print_help() {
     eprintln!(
-        r"Builds the web-viewer.
+        r"Build the web-viewer.
 
---help:    prints this help text
---debug:   builds a debug binary
---release: builds a release binary"
+  --help:    Print this help text
+  --debug:   Build a debug binary
+  --release: Compile for release, and run wasm-opt.
+             NOTE: --release also removes debug symbols which are otherwise useful for in-browser profiling.
+"
     );
 }
