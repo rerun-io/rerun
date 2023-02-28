@@ -21,8 +21,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
-        TextureDesc,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
     },
 };
 
@@ -62,15 +62,6 @@ mod gpu_data {
 pub enum DepthCloudDepthData {
     U16(Vec<u16>),
     F32(Vec<f32>),
-}
-
-impl DepthCloudDepthData {
-    fn as_bytes(&self) -> &[u8] {
-        match self {
-            DepthCloudDepthData::U16(data) => bytemuck::cast_slice(data),
-            DepthCloudDepthData::F32(data) => bytemuck::cast_slice(data),
-        }
-    }
 }
 
 pub struct DepthCloud {
@@ -122,14 +113,6 @@ impl DepthCloudDrawData {
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
 
-        let mut renderers = ctx.renderers.write();
-        let depth_cloud_renderer = renderers.get_or_create::<_, DepthCloudRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
-
         if depth_clouds.is_empty() {
             return Ok(DepthCloudDrawData {
                 bind_groups: Vec::new(),
@@ -147,62 +130,26 @@ impl DepthCloudDrawData {
             }),
         );
 
+        let bg_layout = ctx
+            .renderers
+            .write()
+            .get_or_create::<_, DepthCloudRenderer>(
+                &ctx.shared_renderer_data,
+                &mut ctx.gpu_resources,
+                &ctx.device,
+                &mut ctx.resolver,
+            )
+            .bind_group_layout;
+
         let mut bind_groups = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
-            let depth_texture = {
-                crate::profile_scope!("depth");
-
-                let depth_texture_size = wgpu::Extent3d {
-                    width: depth_cloud.depth_dimensions.x,
-                    height: depth_cloud.depth_dimensions.y,
-                    depth_or_array_layers: 1,
-                };
-                let depth_format = match depth_cloud.depth_data {
-                    DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
-                    DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
-                };
-                let depth_texture_desc = TextureDesc {
-                    label: "depth_texture".into(),
-                    size: depth_texture_size,
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: depth_format,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                };
-                let depth_texture = ctx
-                    .gpu_resources
-                    .textures
-                    .alloc(&ctx.device, &depth_texture_desc);
-
-                let format_info = depth_texture_desc.format.describe();
-                let width_blocks =
-                    depth_cloud.depth_dimensions.x / format_info.block_dimensions.0 as u32;
-                let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
-
-                {
-                    crate::profile_scope!("write depth texture");
-                    ctx.queue.write_texture(
-                        wgpu::ImageCopyTexture {
-                            texture: &depth_texture.inner.texture,
-                            mip_level: 0,
-                            origin: wgpu::Origin3d::ZERO,
-                            aspect: wgpu::TextureAspect::All,
-                        },
-                        depth_cloud.depth_data.as_bytes(),
-                        wgpu::ImageDataLayout {
-                            offset: 0,
-                            bytes_per_row: Some(
-                                NonZeroU32::new(bytes_per_row_unaligned)
-                                    .expect("invalid bytes per row"),
-                            ),
-                            rows_per_image: None,
-                        },
-                        depth_texture_size,
-                    );
+            let depth_texture = match &depth_cloud.depth_data {
+                DepthCloudDepthData::U16(data) => {
+                    create_and_upload_texture(ctx, depth_cloud, data.as_slice())
                 }
-
-                depth_texture
+                DepthCloudDepthData::F32(data) => {
+                    create_and_upload_texture(ctx, depth_cloud, data.as_slice())
+                }
             };
 
             bind_groups.push((
@@ -215,7 +162,7 @@ impl DepthCloudDrawData {
                             ubo,
                             BindGroupEntry::DefaultTextureView(depth_texture.handle),
                         ],
-                        layout: depth_cloud_renderer.bind_group_layout,
+                        layout: bg_layout,
                     },
                     &ctx.gpu_resources.bind_group_layouts,
                     &ctx.gpu_resources.textures,
@@ -227,6 +174,66 @@ impl DepthCloudDrawData {
 
         Ok(DepthCloudDrawData { bind_groups })
     }
+}
+
+fn create_and_upload_texture<T: bytemuck::Pod>(
+    ctx: &mut RenderContext,
+    depth_cloud: &DepthCloud,
+    data: &[T],
+) -> GpuTexture {
+    crate::profile_function!();
+
+    let depth_texture_size = wgpu::Extent3d {
+        width: depth_cloud.depth_dimensions.x,
+        height: depth_cloud.depth_dimensions.y,
+        depth_or_array_layers: 1,
+    };
+    let depth_format = match depth_cloud.depth_data {
+        DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
+        DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
+    };
+    let depth_texture_desc = TextureDesc {
+        label: "depth_texture".into(),
+        size: depth_texture_size,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: depth_format,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+    };
+    let depth_texture = ctx
+        .gpu_resources
+        .textures
+        .alloc(&ctx.device, &depth_texture_desc);
+
+    let format_info = depth_texture_desc.format.describe();
+    let width_blocks = depth_cloud.depth_dimensions.x / format_info.block_dimensions.0 as u32;
+    let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+
+    let mut depth_texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
+        &ctx.device,
+        &ctx.gpu_resources.buffers,
+        data.len(),
+    );
+    depth_texture_staging.extend_from_slice(data);
+
+    depth_texture_staging.copy_to_texture(
+        ctx.active_frame
+            .frame_global_command_encoder
+            .lock()
+            .get_or_create(&ctx.device),
+        wgpu::ImageCopyTexture {
+            texture: &depth_texture.inner.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        Some(NonZeroU32::new(bytes_per_row_unaligned).expect("invalid bytes per row")),
+        None,
+        depth_texture_size,
+    );
+
+    depth_texture
 }
 
 pub struct DepthCloudRenderer {
