@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::Component,
-    EntityPath, Transform,
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
+    msg_bundle::DeserializableComponent, EntityPath,
 };
 
 use crate::log_db::EntityDb;
@@ -38,6 +38,10 @@ pub struct EntityProperties {
     pub visible: bool,
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
+
+    /// Distance of the projection plane.
+    ///
+    /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
     pinhole_image_plane_distance: Option<ordered_float::NotNan<f32>>,
 }
 
@@ -114,37 +118,39 @@ impl ExtraQueryHistory {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the transform
+/// Get the latest value for a given [`re_log_types::msg_bundle::Component`].
 ///
-/// We first look for the transform in the classic storage system since that's
-/// what most users are still using. If we don't find the transform there, then
-/// we check to see if it exists in the arrow storage.
-pub fn query_transform(
+/// This assumes that the row we get from the store only contains a single instance for this
+/// component; it will log a warning otherwise.
+pub fn query_latest_single<C: DeserializableComponent>(
     entity_db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
-) -> Option<Transform> {
+) -> Option<C>
+where
+    for<'b> &'b C::ArrayType: IntoIterator,
+{
     crate::profile_function!();
 
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
-    // transforms this is easy enough.
+    // single components this is easy enough.
     let data_store = &entity_db.data_store;
 
-    let components = [Transform::name()];
+    let components = [C::name()];
 
-    let row_indices = data_store.latest_at(query, entity_path, Transform::name(), &components)?;
+    let row_indices = data_store.latest_at(query, entity_path, C::name(), &components)?;
 
     let results = data_store.get(&components, &row_indices);
     let arr = results.get(0)?.as_ref()?.as_ref();
 
-    let mut iter = arrow_array_deserialize_iterator::<Transform>(arr).ok()?;
+    let mut iter = arrow_array_deserialize_iterator::<C>(arr).ok()?;
 
-    let transform = iter.next();
+    let component = iter.next();
 
     if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for Transform at: {}", entity_path);
+        re_log::warn_once!("Unexpected batch for {} at: {}", C::name(), entity_path);
     }
 
-    transform
+    component
 }

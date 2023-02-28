@@ -99,9 +99,12 @@ fn main() {
     let host = host.as_deref().unwrap_or("localhost");
     let port = port.as_deref().unwrap_or("8000");
 
-    std::thread::spawn(|| {
-        cargo_run_wasm::run_wasm_with_css(CSS);
-    });
+    std::thread::Builder::new()
+        .name("cargo_run_wasm".into())
+        .spawn(|| {
+            cargo_run_wasm::run_wasm_with_css(CSS);
+        })
+        .expect("Failed to spawn thread");
 
     // Wait for the server to be up before opening a browser tab.
     let addr = format!("{host}:{port}")

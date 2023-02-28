@@ -59,7 +59,7 @@ impl GpuBufferPool {
     ///
     /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible
     /// either manually or using a higher level allocator.
-    pub fn alloc(&mut self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBuffer {
+    pub fn alloc(&self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBuffer {
         self.pool.alloc(desc, |desc| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
@@ -75,8 +75,8 @@ impl GpuBufferPool {
         self.pool.begin_frame(frame_index, |res| res.destroy());
     }
 
-    /// Internal method to retrieve a resource from a weak handle (used by [`super::GpuBindGroupPool`])
-    pub(super) fn get_from_handle(&self, handle: GpuBufferHandle) -> Result<GpuBuffer, PoolError> {
+    /// Method to retrieve a resource from a weak handle (used by [`super::GpuBindGroupPool`])
+    pub fn get_from_handle(&self, handle: GpuBufferHandle) -> Result<GpuBuffer, PoolError> {
         self.pool.get_from_handle(handle)
     }
 

@@ -19,6 +19,10 @@ rust-version = "1.67"
 version = "0.2.0"
 
 [workspace.dependencies]
+# When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
+# This is because we treat alpha-releases as incompatible, but semver doesn't.
+# In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
+# re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "0.2.0" }
 re_arrow_store = { path = "crates/re_arrow_store", version = "0.2.0" }
 re_build_build_info = { path = "crates/re_build_build_info", version = "0.2.0" }

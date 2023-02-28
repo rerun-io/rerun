@@ -28,7 +28,7 @@ where
         // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
         let color_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<Color32>(
             &ctx.device,
-            &mut ctx.gpu_resources.buffers,
+            &ctx.gpu_resources.buffers,
             PointCloudDrawData::MAX_NUM_POINTS,
         );
 
@@ -286,7 +286,7 @@ where
     /// This mustn't call this more than once.
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        self.color.push(&color);
+        self.color.push(color);
         self
     }
 

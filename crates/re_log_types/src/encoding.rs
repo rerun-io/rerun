@@ -21,8 +21,12 @@ mod encoder {
 
     impl<W: std::io::Write> Encoder<W> {
         pub fn new(mut write: W) -> anyhow::Result<Self> {
+            let rerun_version = re_build_info::RustVersion::parse(env!("CARGO_PKG_VERSION"));
+
             write.write_all(b"RRF0").context("header")?;
-            write.write_all(&[0, 0, 0, 0]).context("header")?; // reserved for future use
+            write
+                .write_all(&rerun_version.to_bytes())
+                .context("header")?;
 
             let level = 3;
             let zstd_encoder = zstd::stream::Encoder::new(write, level).context("zstd start")?;
@@ -73,6 +77,25 @@ mod encoder {
 pub use encoder::*;
 
 // ----------------------------------------------------------------------------
+
+fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
+    use re_build_info::RustVersion;
+
+    // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
+    let encoded_version = if encoded_version == [0, 0, 0, 0] {
+        RustVersion::new(0, 2, 0)
+    } else {
+        RustVersion::from_bytes(encoded_version)
+    };
+
+    let local_version = RustVersion::parse(env!("CARGO_PKG_VERSION"));
+
+    if !encoded_version.is_semver_compatible_with(local_version) {
+        re_log::warn!("Found log stream with Rerun version {encoded_version}, which is incompatible with the local Rerun version {local_version}. Loading will try to continue, but might fail in subtle ways.");
+    }
+}
+
+// ----------------------------------------------------------------------------
 // native decode:
 
 #[cfg(feature = "load")]
@@ -93,7 +116,7 @@ impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
         read.read_exact(&mut header).context("missing header")?;
         anyhow::ensure!(&header == b"RRF0", "Not a rerun file");
         read.read_exact(&mut header).context("missing header")?;
-        anyhow::ensure!(header == [0, 0, 0, 0], "Incompatible rerun file format");
+        warn_on_version_mismatch(header);
 
         let zdecoder = zstd::stream::read::Decoder::new(read).context("zstd")?;
         Ok(Self {
@@ -154,7 +177,7 @@ impl<R: std::io::Read> Decoder<R> {
         read.read_exact(&mut header).context("missing header")?;
         anyhow::ensure!(&header == b"RRF0", "Not a rerun file");
         read.read_exact(&mut header).context("missing header")?;
-        anyhow::ensure!(header == [0, 0, 0, 0], "Incompatible rerun file format");
+        warn_on_version_mismatch(header);
 
         let zdecoder =
             ruzstd::StreamingDecoder::new(read).map_err(|err| anyhow::anyhow!("ruzstd: {err}"))?;

@@ -89,6 +89,19 @@ struct Application<E> {
     re_ctx: RenderContext,
 }
 
+// Same as egui_wgpu::preferred_framebuffer_format
+fn preferred_framebuffer_format(formats: &[wgpu::TextureFormat]) -> wgpu::TextureFormat {
+    for &format in formats {
+        if matches!(
+            format,
+            wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Bgra8Unorm
+        ) {
+            return format;
+        }
+    }
+    formats[0] // take the first
+}
+
 impl<E: Example + 'static> Application<E> {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
         let size = window.inner_size();
@@ -124,13 +137,8 @@ impl<E: Example + 'static> Application<E> {
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
-        // re_renderer is doing its own srgb conversion for each ViewBuilder for better egui compatibility.
-        let swapchain_format = if cfg!(target_arch = "wasm32") {
-            wgpu::TextureFormat::Rgba8Unorm
-        } else {
-            wgpu::TextureFormat::Bgra8Unorm
-        };
-
+        let swapchain_format =
+            preferred_framebuffer_format(&surface.get_capabilities(&adapter).formats);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: swapchain_format,

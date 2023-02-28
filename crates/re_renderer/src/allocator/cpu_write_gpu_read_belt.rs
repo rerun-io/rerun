@@ -39,6 +39,7 @@ where
     /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
     fn as_slice(&mut self) -> &mut [T] {
+        // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
         &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.unwritten_element_range.clone()]
     }
 
@@ -47,13 +48,13 @@ where
     /// Panics if the data no longer fits into the buffer.
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) {
-        self.as_slice().copy_from_slice(elements);
+        self.as_slice()[..elements.len()].copy_from_slice(elements);
         self.unwritten_element_range.start += elements.len();
     }
 
     /// Pushes several elements into the buffer.
     ///
-    /// Panics if the data no longer fits into the buffer.
+    /// Extends until either running out of space or elements.
     #[inline]
     pub fn extend(&mut self, elements: impl Iterator<Item = T>) {
         let mut num_elements = 0;
@@ -68,8 +69,8 @@ where
     ///
     /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn push(&mut self, element: &T) {
-        self.as_slice()[0] = *element;
+    pub fn push(&mut self, element: T) {
+        self.as_slice()[0] = element;
         self.unwritten_element_range.start += 1;
     }
 
@@ -285,7 +286,7 @@ impl CpuWriteGpuReadBelt {
     pub fn allocate<T: bytemuck::Pod>(
         &mut self,
         device: &wgpu::Device,
-        buffer_pool: &mut GpuBufferPool,
+        buffer_pool: &GpuBufferPool,
         num_elements: usize,
     ) -> CpuWriteGpuReadBuffer<T> {
         // Potentially overestimate alignment with Self::MIN_ALIGNMENT, see Self::MIN_ALIGNMENT doc string.
