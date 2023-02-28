@@ -27,7 +27,7 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawOrder, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -331,6 +331,7 @@ impl Renderer for DepthCloudRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
@@ -348,9 +349,5 @@ impl Renderer for DepthCloudRenderer {
         }
 
         Ok(())
-    }
-
-    fn draw_order() -> u32 {
-        DrawOrder::Transparent as u32
     }
 }
