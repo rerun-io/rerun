@@ -117,12 +117,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
-
-    #[cfg(feature = "native_viewer")]
-    {
-        m.add_function(wrap_pyfunction!(disconnect, m)?)?;
-        m.add_function(wrap_pyfunction!(show, m)?)?;
-    }
+    m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
 
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
@@ -330,24 +325,9 @@ fn set_enabled(enabled: bool) {
 ///
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
-#[cfg(feature = "native_viewer")]
 #[pyfunction]
 fn disconnect() {
     global_session().disconnect();
-}
-
-/// Show the buffered log data.
-///
-/// NOTE: currently this only works _once_.
-/// Calling this function more than once is undefined behavior.
-/// We will try to fix this in the future.
-/// Blocked on <https://github.com/emilk/egui/issues/1918>.
-#[cfg(feature = "native_viewer")]
-#[pyfunction]
-fn show() -> PyResult<()> {
-    global_session()
-        .show()
-        .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
 }
 
 #[pyfunction]
