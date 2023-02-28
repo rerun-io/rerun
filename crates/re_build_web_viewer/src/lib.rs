@@ -1,36 +1,43 @@
-use std::{path::Path, process::Stdio};
+use std::process::Stdio;
+
+use cargo_metadata::camino::Utf8PathBuf;
+
+fn target_directory() -> Utf8PathBuf {
+    let metadata = cargo_metadata::MetadataCommand::new()
+        .manifest_path("./Cargo.toml")
+        .features(cargo_metadata::CargoOpt::AllFeatures)
+        .exec()
+        .unwrap();
+    metadata.target_directory
+}
 
 // Port of build_web.sh
 pub fn build(release: bool) {
     eprintln!("Building web viewer wasm…");
 
-    let repository_root_dir = format!("{}/../..", std::env!("CARGO_MANIFEST_DIR"));
-
     let crate_name = "re_viewer";
-    let build_dir = format!("{repository_root_dir}/web_viewer");
+
+    // Where cargo is building to
+    let target_wasm_dir = Utf8PathBuf::from(format!("{}_wasm", target_directory()));
+
+    // Repository root
+    let root_dir = target_wasm_dir.parent().unwrap();
+
+    // Where we will place the final .wasm and .js artifacts.
+    let build_dir = root_dir.join("web_viewer");
 
     assert!(
-        Path::new(&build_dir).exists(),
+        build_dir.exists(),
         "Failed to find dir {build_dir}. CWD: {:?}, CARGO_MANIFEST_DIR: {:?}",
         std::env::current_dir(),
         std::env!("CARGO_MANIFEST_DIR")
     );
 
     // Clean previous version of what we are building:
-    let wasm_path = Path::new(&build_dir).join([crate_name, "_bg.wasm"].concat());
+    let wasm_path = build_dir.join([crate_name, "_bg.wasm"].concat());
     std::fs::remove_file(wasm_path.clone()).ok();
-    let js_path = Path::new(&build_dir).join([crate_name, ".js"].concat());
+    let js_path = build_dir.join([crate_name, ".js"].concat());
     std::fs::remove_file(js_path).ok();
-
-    let metadata = cargo_metadata::MetadataCommand::new()
-        .manifest_path("./Cargo.toml")
-        .features(cargo_metadata::CargoOpt::AllFeatures)
-        .exec()
-        .unwrap();
-
-    let target_wasm = format!("{}_wasm", metadata.target_directory);
-
-    let root_dir = metadata.target_directory.parent().unwrap();
 
     // --------------------------------------------------------------------------------
     // Compile rust to wasm
@@ -40,7 +47,7 @@ pub fn build(release: bool) {
     cmd.args([
         "build",
         "--target-dir",
-        &target_wasm,
+        target_wasm_dir.as_str(),
         "-p",
         crate_name,
         "--lib",
@@ -77,7 +84,7 @@ pub fn build(release: bool) {
 
     let target_name = [crate_name, ".wasm"].concat();
 
-    let target_path = Path::new(&target_wasm)
+    let target_path = target_wasm_dir
         .join("wasm32-unknown-unknown")
         .join(build)
         .join(target_name);
@@ -85,9 +92,9 @@ pub fn build(release: bool) {
     let mut cmd = std::process::Command::new("wasm-bindgen");
     cmd.current_dir(root_dir);
     cmd.args([
-        target_path.to_str().unwrap(),
+        target_path.as_str(),
         "--out-dir",
-        &build_dir,
+        build_dir.as_str(),
         "--no-modules",
         "--no-typescript",
     ]);
@@ -101,10 +108,12 @@ pub fn build(release: bool) {
         .unwrap_or_else(|err| panic!("Failed to generate JS bindings: {err}. target_path: {target_path:?}, build_dir: {build_dir}"));
 
     eprintln!("wasm-bindgen status: {}", output.status);
-    eprintln!(
-        "wasm-bindgen stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    if !output.stderr.is_empty() {
+        eprintln!(
+            "wasm-bindgen stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 
     assert!(output.status.success());
 
@@ -112,7 +121,7 @@ pub fn build(release: bool) {
     // Optimize the wasm
 
     if release {
-        let wasm_path = wasm_path.to_str().unwrap();
+        let wasm_path = wasm_path.as_str();
 
         // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
@@ -128,10 +137,12 @@ pub fn build(release: bool) {
             .expect("failed to optimize wasm");
 
         eprintln!("wasm-opt status: {}", output.status);
-        eprintln!(
-            "wasm-opt stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        if !output.stderr.is_empty() {
+            eprintln!(
+                "wasm-opt stderr: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
 
         assert!(output.status.success());
     }
