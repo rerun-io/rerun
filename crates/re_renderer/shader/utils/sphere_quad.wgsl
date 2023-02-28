@@ -1,7 +1,10 @@
 #import <../global_bindings.wgsl>
 #import <../types.wgsl>
+#import <./size.wgsl>
 
-fn span_quad_perspective(
+/// Span a quad in a way that guarantees that we'll be able to draw a perspective correct sphere
+/// on it.
+fn sphere_quad_span_perspective(
     point_pos: Vec3,
     point_radius: f32,
     top_bottom: f32,
@@ -37,7 +40,9 @@ fn span_quad_perspective(
     //      pos = particleCenter + quadPosition * modified_radius;
 }
 
-fn span_quad_orthographic(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
+/// Span a quad in a way that guarantees that we'll be able to draw an orthographic correct sphere
+/// on it.
+fn sphere_quad_span_orthographic(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
     let quad_normal = frame.camera_forward;
     let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
@@ -50,3 +55,37 @@ fn span_quad_orthographic(point_pos: Vec3, point_radius: f32, top_bottom: f32, l
     return point_pos + pos_in_quad * radius;
 }
 
+/// Returns the index of the current quad.
+fn sphere_quad_index(vertex_idx: u32) -> i32 {
+    return i32(vertex_idx) / 6;
+}
+
+struct SphereQuadData {
+    pos_in_world: Vec3,
+    point_resolved_radius: f32,
+}
+
+/// Span a quad onto which perspective correct spheres can be drawn.
+///
+/// Spanning is done in perspective or orthographically depending of the state of the global cam.
+fn sphere_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f32) -> SphereQuadData {
+    // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
+    let to_camera = frame.camera_position - point_pos;
+    let camera_distance = length(to_camera);
+    let radius = unresolved_size_to_world(point_unresolved_radius, camera_distance, frame.auto_size_points);
+
+    // Basic properties of the vertex we're at.
+    let local_idx = vertex_idx % 6u;
+    let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
+    let left_right = f32(vertex_idx % 2u) * 2.0 - 1.0; // 1 for a right vertex, -1 for a left vertex.
+
+    // Span quad
+    var pos: Vec3;
+    if is_camera_perspective() {
+        pos = sphere_quad_span_perspective(point_pos, radius, top_bottom, left_right, to_camera, camera_distance);
+    } else {
+        pos = sphere_quad_span_orthographic(point_pos, radius, top_bottom, left_right);
+    }
+
+    return SphereQuadData(pos, radius);
+}

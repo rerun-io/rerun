@@ -2,8 +2,8 @@
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
 #import <./utils/flags.wgsl>
-#import <./utils/quad.wgsl>
 #import <./utils/size.wgsl>
+#import <./utils/sphere_quad.wgsl>
 
 @group(1) @binding(0)
 var position_data_texture: texture_2d<f32>;
@@ -55,33 +55,20 @@ fn read_data(idx: i32) -> PointData {
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
-    // Basic properties of the vertex we're at.
-    let quad_idx = i32(vertex_idx) / 6;
-    let local_idx = vertex_idx % 6u;
-    let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
-    let left_right = f32(vertex_idx % 2u) * 2.0 - 1.0; // 1 for a right vertex, -1 for a left vertex.
+    let quad_idx = sphere_quad_index(vertex_idx);
 
     // Read point data (valid for the entire quad)
     let point_data = read_data(quad_idx);
-    // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
-    let to_camera = frame.camera_position - point_data.pos;
-    let camera_distance = length(to_camera);
-    let radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, frame.auto_size_points);
 
     // Span quad
-    var pos: Vec3;
-    if is_camera_perspective() {
-        pos = span_quad_perspective(point_data.pos, radius, top_bottom, left_right, to_camera, camera_distance);
-    } else {
-        pos = span_quad_orthographic(point_data.pos, radius, top_bottom, left_right);
-    }
+    let quad = sphere_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius);
 
     // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = frame.projection_from_world * Vec4(pos, 1.0);
+    out.position = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
     out.color = point_data.color;
-    out.radius = radius;
-    out.world_position = pos;
+    out.radius = quad.point_resolved_radius;
+    out.world_position = quad.pos_in_world;
     out.point_center = point_data.pos;
 
     return out;

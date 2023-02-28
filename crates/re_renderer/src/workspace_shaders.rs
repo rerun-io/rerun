@@ -110,12 +110,6 @@ pub fn init() {
     }
 
     {
-        let virtpath = Path::new("shader/utils/quad.wgsl");
-        let content = include_str!("../shader/utils/quad.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
         let virtpath = Path::new("shader/utils/quaternion.wgsl");
         let content = include_str!("../shader/utils/quaternion.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -124,6 +118,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/size.wgsl");
         let content = include_str!("../shader/utils/size.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/utils/sphere_quad.wgsl");
+        let content = include_str!("../shader/utils/sphere_quad.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

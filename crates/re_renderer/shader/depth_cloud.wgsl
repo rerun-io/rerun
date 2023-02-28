@@ -6,8 +6,8 @@
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
 #import <./utils/flags.wgsl>
-#import <./utils/quad.wgsl>
 #import <./utils/size.wgsl>
+#import <./utils/sphere_quad.wgsl>
 #import <./utils/srgb.wgsl>
 
 // ---
@@ -77,34 +77,21 @@ struct VertexOut {
 };
 
 @vertex
-fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
-    // Basic properties of the vertex we're at.
-    let quad_idx = i32(vertex_index) / 6;
-    let local_idx = vertex_index % 6u;
-    let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
-    let left_right = f32(vertex_index % 2u) * 2.0 - 1.0; // 1 for a right vertex, -1 for a left vertex.
+fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
+    let quad_idx = sphere_quad_index(vertex_idx);
 
     // Compute point data (valid for the entire quad).
     let point_data = compute_point_data(quad_idx);
-    // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
-    let to_camera = frame.camera_position - point_data.pos_in_world;
-    let camera_distance = length(to_camera);
-    let radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, frame.auto_size_points);
 
     // Span quad
-    var pos_in_world: Vec3;
-    if is_camera_perspective() {
-        pos_in_world = span_quad_perspective(point_data.pos_in_world, radius, top_bottom, left_right, to_camera, camera_distance);
-    } else {
-        pos_in_world = span_quad_orthographic(point_data.pos_in_world, radius, top_bottom, left_right);
-    }
+    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius);
 
     var out: VertexOut;
-    out.pos_in_clip = frame.projection_from_world * Vec4(pos_in_world, 1.0);
-    out.pos_in_world = pos_in_world;
+    out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
+    out.pos_in_world = quad.pos_in_world;
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
-    out.point_radius = radius;
+    out.point_radius = quad.point_resolved_radius;
 
     return out;
 }
