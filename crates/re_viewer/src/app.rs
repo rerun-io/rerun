@@ -49,7 +49,9 @@ pub struct StartupOptions {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
+#[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 4.0;
 
 /// The Rerun viewer as an [`eframe`] application.
