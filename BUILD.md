@@ -95,7 +95,7 @@ rustflags = [
     "-C",
     "link-arg=-fuse-ld=/usr/local/bin/zld",
     "-C",
-    "split-debuginfo=packed",
+    "split-debuginfo=unpacked",
 ]
 ```
 
@@ -106,7 +106,7 @@ rustflags = [
     "-C",
     "link-arg=-fuse-ld=/opt/homebrew/bin/zld",
     "-C",
-    "split-debuginfo=packed",
+    "split-debuginfo=unpacked",
 ]
 ```
 
@@ -146,6 +146,6 @@ rustup component add llvm-tools-preview
 linker = "rust-lld.exe"
 rustflags = [
     "-C",
-    "split-debuginfo=packed",
+    "split-debuginfo=unpacked",
 ]
 ```
