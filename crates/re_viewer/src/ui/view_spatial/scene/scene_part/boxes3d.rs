@@ -12,7 +12,7 @@ use crate::{
     misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{Label3D, SceneSpatial},
+        view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
         DefaultColor,
     },
 };
@@ -82,9 +82,11 @@ impl Boxes3DPart {
                 .user_data(instance_hash);
 
             if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {
-                scene.ui.labels_3d.push(Label3D {
+                scene.ui.labels.push(UiLabel {
                     text: label,
-                    origin: world_from_obj.transform_point3(tran),
+                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(tran)),
+                    color,
+                    labeled_instance: instance_hash,
                 });
             }
         };

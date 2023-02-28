@@ -51,7 +51,7 @@ sdk = ["dep:re_sdk"]
 web_viewer = [
   "re_ws_comms/server",
   "re_sdk?/web_viewer",
-  "dep:re_web_server",
+  "dep:re_web_viewer_server",
   "dep:webbrowser",
 ]
 
@@ -69,18 +69,21 @@ anyhow.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
 egui = { workspace = true, default-features = false }
+itertools = "0.10"
+parking_lot.workspace = true
 puffin.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_sdk_comms = { workspace = true, optional = true }
-re_web_server = { workspace = true, optional = true }
+re_web_viewer_server = { workspace = true, optional = true }
 
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 mimalloc.workspace = true
 puffin_http = "0.11"
@@ -88,7 +91,6 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # Native unix dependencies:
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
-backtrace = "0.3"
 libc = "0.2"
 
 

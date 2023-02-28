@@ -83,6 +83,7 @@ glam = { workspace = true, features = [
 half.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
+  # "jpeg_rayon", # TODO(emilk): when https://github.com/rayon-rs/rayon/pull/1019 is released
   "png",
 ] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }

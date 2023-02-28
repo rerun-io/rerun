@@ -306,25 +306,14 @@ def serve(open_browser: bool = True) -> None:
 
 
 def disconnect() -> None:
-    """Disconnect from the remote rerun server (if any)."""
+    """
+    Closes all TCP connections, servers, and files.
+
+    Closes all TCP connections, servers, and files that have been opened with
+    [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+    """
+
     bindings.disconnect()
-
-
-def show() -> None:
-    """
-    Show previously logged data.
-
-    This only works if you have not called `connect`.
-
-    NOTE: There is a bug which causes this function to only work once on some platforms.
-
-    """
-
-    if not bindings.is_enabled():
-        print("Rerun is disabled - show() call ignored")
-        return
-
-    bindings.show()
 
 
 def save(path: str) -> None:

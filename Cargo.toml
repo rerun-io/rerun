@@ -19,10 +19,15 @@ rust-version = "1.67"
 version = "0.2.0"
 
 [workspace.dependencies]
+# When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
+# This is because we treat alpha-releases as incompatible, but semver doesn't.
+# In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
+# re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "0.2.0" }
 re_arrow_store = { path = "crates/re_arrow_store", version = "0.2.0" }
 re_build_build_info = { path = "crates/re_build_build_info", version = "0.2.0" }
 re_build_info = { path = "crates/re_build_info", version = "0.2.0" }
+re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "0.2.0" }
 re_data_store = { path = "crates/re_data_store", version = "0.2.0" }
 re_error = { path = "crates/re_error", version = "0.2.0" }
 re_format = { path = "crates/re_format", version = "0.2.0" }
@@ -39,7 +44,7 @@ re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.2.0" }
 re_tuid = { path = "crates/re_tuid", version = "0.2.0" }
 re_ui = { path = "crates/re_ui", version = "0.2.0" }
 re_viewer = { path = "crates/re_viewer", version = "0.2.0" }
-re_web_server = { path = "crates/re_web_server", version = "0.2.0" }
+re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "0.2.0" }
 re_ws_comms = { path = "crates/re_ws_comms", version = "0.2.0" }
 rerun = { path = "crates/rerun", version = "0.2.0" }
 
@@ -59,11 +64,12 @@ epaint = "0.21.0"
 glam = "0.22"
 gltf = "1.1"
 half = "2.0"
-image = "0.24"
+image = { version = "0.24", default-features = false }
 lazy_static = "1.4"
 macaw = "0.18"
 mimalloc = "0.1.29"
 ndarray = "0.15"
+parking_lot = "0.12"
 polars-core = "0.27.1"
 polars-lazy = "0.27.1"
 polars-ops = "0.27.1"

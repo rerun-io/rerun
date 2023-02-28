@@ -1,15 +1,21 @@
-use re_data_store::EntityPath;
+use eframe::epaint::text::TextWrapping;
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath};
 use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, SpaceViewHighlights, ViewerContext},
-    ui::{data_blueprint::DataBlueprintTree, SpaceViewId},
+    misc::{
+        space_info::query_view_coordinates, SelectionHighlight, SpaceViewHighlights, ViewerContext,
+    },
+    ui::{data_blueprint::DataBlueprintTree, view_spatial::UiLabelTarget, SpaceViewId},
 };
 
-use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceSpecs};
+use super::{
+    eye::Eye, scene::SceneSpatialUiData, ui_2d::View2DState, ui_3d::View3DState, SceneSpatial,
+    SpaceSpecs,
+};
 
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
 #[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -145,6 +151,46 @@ impl ViewSpatialState {
             (median_extent / (self.scene_num_primitives.at_least(1) as f32).powf(1.0 / 1.7)) * 0.25;
 
         heuristic0.min(heuristic1)
+    }
+
+    pub fn update_object_property_heuristics(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+    ) {
+        crate::profile_function!();
+
+        let scene_size = self.scene_bbox_accum.size().length();
+        let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+            scene_size * 0.05
+        } else {
+            1.0
+        };
+
+        let query = ctx.current_query();
+
+        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
+        for entity_path in entity_paths {
+            if let Some(re_log_types::Transform::Pinhole(_)) =
+                query_latest_single::<re_log_types::Transform>(
+                    &ctx.log_db.entity_db,
+                    &entity_path,
+                    &query,
+                )
+            {
+                let mut properties = data_blueprint
+                    .data_blueprints_individual()
+                    .get(&entity_path);
+                if properties.pinhole_image_plane_distance.is_auto() {
+                    properties.pinhole_image_plane_distance = EditableAutoValue::Auto(
+                        ordered_float::NotNan::new(default_image_plane_distance).unwrap(),
+                    );
+                    data_blueprint
+                        .data_blueprints_individual()
+                        .set(entity_path, properties);
+                }
+            }
+        }
     }
 
     pub fn selection_ui(
@@ -304,7 +350,7 @@ impl ViewSpatialState {
                 let coordinates =
                     query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                super::view_3d(ctx, ui, self, space, space_view_id, scene);
+                super::view_3d(ctx, ui, self, space, space_view_id, scene, highlights);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -418,4 +464,95 @@ fn axis_name(axis: Option<glam::Vec3>) -> String {
     } else {
         "—".to_owned()
     }
+}
+
+pub fn create_labels(
+    scene_ui: &mut SceneSpatialUiData,
+    ui_from_space2d: egui::emath::RectTransform,
+    space2d_from_ui: egui::emath::RectTransform,
+    eye3d: &Eye,
+    parent_ui: &mut egui::Ui,
+    highlights: &SpaceViewHighlights,
+) -> Vec<egui::Shape> {
+    crate::profile_function!();
+
+    let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
+
+    let ui_from_world_3d = eye3d.ui_from_world(ui_from_space2d.to());
+
+    for label in &scene_ui.labels {
+        let (wrap_width, text_anchor_pos) = match label.target {
+            UiLabelTarget::Rect(rect) => {
+                let rect_in_ui = ui_from_space2d.transform_rect(rect);
+                (
+                    // Place the text centered below the rect
+                    (rect_in_ui.width() - 4.0).at_least(60.0),
+                    rect_in_ui.center_bottom() + egui::vec2(0.0, 3.0),
+                )
+            }
+            UiLabelTarget::Point2D(pos) => {
+                let pos_in_ui = ui_from_space2d.transform_pos(pos);
+                (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
+            }
+            UiLabelTarget::Position3D(pos) => {
+                let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
+                if pos_in_ui.w <= 0.0 {
+                    continue; // behind camera
+                }
+                let pos_in_ui = pos_in_ui / pos_in_ui.w;
+                (f32::INFINITY, egui::pos2(pos_in_ui.x, pos_in_ui.y))
+            }
+        };
+
+        let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
+        let galley = parent_ui.fonts(|fonts| {
+            fonts.layout_job({
+                egui::text::LayoutJob {
+                    sections: vec![egui::text::LayoutSection {
+                        leading_space: 0.0,
+                        byte_range: 0..label.text.len(),
+                        format: egui::TextFormat::simple(font_id, label.color),
+                    }],
+                    text: label.text.clone(),
+                    wrap: TextWrapping {
+                        max_width: wrap_width,
+                        ..Default::default()
+                    },
+                    break_on_newline: true,
+                    halign: egui::Align::Center,
+                    ..Default::default()
+                }
+            })
+        });
+
+        let text_rect = egui::Align2::CENTER_TOP
+            .anchor_rect(egui::Rect::from_min_size(text_anchor_pos, galley.size()));
+        let bg_rect = text_rect.expand2(egui::vec2(4.0, 2.0));
+
+        let hightlight = highlights
+            .entity_highlight(label.labeled_instance.entity_path_hash)
+            .index_highlight(label.labeled_instance.instance_key);
+        let fill_color = match hightlight.hover {
+            crate::misc::HoverHighlight::None => match hightlight.selection {
+                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::SiblingSelection => {
+                    parent_ui.style().visuals.widgets.active.bg_fill
+                }
+                SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
+            },
+            crate::misc::HoverHighlight::Hovered => {
+                parent_ui.style().visuals.widgets.hovered.bg_fill
+            }
+        };
+
+        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
+        label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
+
+        scene_ui.pickable_ui_rects.push((
+            space2d_from_ui.transform_rect(bg_rect),
+            label.labeled_instance,
+        ));
+    }
+
+    label_shapes
 }
