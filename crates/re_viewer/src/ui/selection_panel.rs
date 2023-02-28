@@ -1,4 +1,4 @@
-use re_data_store::{query_latest_single, EntityPath, EntityProperties};
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityProperties};
 use re_log_types::{TimeType, Transform};
 
 use crate::{
@@ -411,11 +411,12 @@ fn entity_props_ui(
             if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
                 if let Some(entity_path) = entity_path {
                     let query = ctx.current_query();
-                    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
+                    if let Some(re_log_types::Transform::Pinhole(_)) =
                         query_latest_single::<Transform>(&ctx.log_db.entity_db, entity_path, &query)
                     {
                         ui.label("Image plane distance");
-                        let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
+                        let mut distance: f32 =
+                            entity_props.pinhole_image_plane_distance.get().into_inner();
                         let speed = (distance * 0.05).at_least(0.01);
                         if ui
                             .add(
@@ -426,7 +427,10 @@ fn entity_props_ui(
                             .on_hover_text("Controls how far away the image plane is.")
                             .changed()
                         {
-                            entity_props.set_pinhole_image_plane_distance(distance);
+                            entity_props.pinhole_image_plane_distance =
+                                EditableAutoValue::UserEdited(
+                                    ordered_float::NotNan::new(distance).unwrap(),
+                                );
                         }
                         ui.end_row();
                     }

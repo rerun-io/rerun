@@ -72,11 +72,25 @@ impl Service<Request<Body>> for Svc {
             "/" | "/index.html" => &include_bytes!("../web_viewer/index.html")[..],
             "/favicon.ico" => &include_bytes!("../web_viewer/favicon.ico")[..],
             "/sw.js" => &include_bytes!("../web_viewer/sw.js")[..],
+
+            #[cfg(debug_assertions)]
+            "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
+            #[cfg(not(debug_assertions))]
             "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer.js")[..],
+
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
                 self.on_serve_wasm();
-                &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+
+                #[cfg(debug_assertions)]
+                {
+                    re_log::info_once!("Serving DEBUG web-viewer");
+                    &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..]
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+                }
             }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());
@@ -111,11 +125,11 @@ impl<T> Service<T> for MakeSvc {
 // ----------------------------------------------------------------------------
 
 /// Hosts the Web Viewer Wasm+HTML
-pub struct WebServer {
+pub struct WebViewerServer {
     server: hyper::Server<AddrIncoming, MakeSvc>,
 }
 
-impl WebServer {
+impl WebViewerServer {
     pub fn new(port: u16) -> Self {
         let bind_addr = format!("0.0.0.0:{port}").parse().unwrap();
         let server = hyper::Server::bind(&bind_addr).serve(MakeSvc);

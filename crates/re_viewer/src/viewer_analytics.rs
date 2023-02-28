@@ -2,7 +2,7 @@
 //!
 //! There are two exceptions:
 //! * `crates/rerun/src/crash_handler.rs` sends anonymized callstacks on crashes
-//! * `crates/re_web_server/src/lib.rs` sends an anonymous event when a `.wasm` web-viewer is served.
+//! * `crates/re_web_viewer_server/src/lib.rs` sends an anonymous event when a `.wasm` web-viewer is served.
 //!
 //! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
