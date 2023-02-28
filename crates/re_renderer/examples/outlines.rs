@@ -52,15 +52,20 @@ impl framework::Example for Outlines {
             )
             .unwrap();
 
-        let instances = self
-            .model_mesh_instances
-            .iter()
-            .map(|instance| MeshInstance {
-                gpu_mesh: instance.gpu_mesh.clone(),
-                mesh: None,
-                world_from_mesh: glam::Affine3A::from_rotation_y(time.seconds_since_startup())
-                    * instance.world_from_mesh,
-                additive_tint: re_renderer::Color32::TRANSPARENT,
+        let instances = (0..2)
+            .into_iter()
+            .flat_map(|i| {
+                self.model_mesh_instances
+                    .iter()
+                    .map(move |instance| MeshInstance {
+                        gpu_mesh: instance.gpu_mesh.clone(),
+                        mesh: None,
+                        world_from_mesh: glam::Affine3A::from_rotation_translation(
+                            glam::Quat::from_rotation_y(time.seconds_since_startup() * i as f32),
+                            glam::vec3(8.0, 0.0, -10.0) * i as f32,
+                        ) * instance.world_from_mesh,
+                        additive_tint: re_renderer::Color32::TRANSPARENT,
+                    })
             })
             .collect_vec();
 

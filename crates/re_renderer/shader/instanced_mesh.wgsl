@@ -43,7 +43,7 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 }
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) Vec4 {
+fn fs_main_shaded(in: VertexOut) -> @location(0) Vec4 {
     let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb
                  * material.albedo_factor.rgb + in.additive_tint_rgb;
 
@@ -55,4 +55,9 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let radiance = albedo * shading;
 
     return Vec4(radiance, 1.0);
+}
+
+@fragment
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+    return UVec2(1u, 0u); // TODO: Mask layer & index
 }

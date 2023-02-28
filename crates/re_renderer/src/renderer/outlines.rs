@@ -36,6 +36,34 @@ pub struct OutlineMaskProcessor {
 }
 
 impl OutlineMaskProcessor {
+    /// Format of the outline mask target.
+    ///
+    /// Two channels with each 256 object ids.
+    pub const MASK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Uint;
+
+    pub const MASK_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
+        count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    };
+    pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> = Some(wgpu::DepthStencilState {
+        format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
+        // Note that we use Greate*Equal*, allowing to pass when the depth is the *same* as before.
+        depth_compare: wgpu::CompareFunction::GreaterEqual,
+        depth_write_enabled: true,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState::IGNORE,
+            back: wgpu::StencilFaceState::IGNORE,
+            read_mask: 0,
+            write_mask: 0,
+        },
+        bias: wgpu::DepthBiasState {
+            constant: 0,
+            slope_scale: 0.0,
+            clamp: 0.0,
+        },
+    });
+
     pub fn new(
         ctx: &mut RenderContext,
         config: OutlineConfig,
@@ -63,7 +91,7 @@ impl OutlineMaskProcessor {
                 mip_level_count: 1,
                 sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rg8Uint, // Two channels with each 256 object ids.
+                format: Self::MASK_FORMAT,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING
                     | wgpu::TextureUsages::RENDER_ATTACHMENT,
             },

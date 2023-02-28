@@ -11,6 +11,7 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
+    renderer::OutlineMaskProcessor,
     resource_managers::GpuMeshHandle,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -225,12 +226,17 @@ impl MeshDrawData {
 }
 
 pub struct MeshRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_shaded: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for MeshRenderer {
     type RendererDrawData = MeshDrawData;
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::Opaque, DrawPhase::OutlineMask]
+    }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -288,27 +294,29 @@ impl Renderer for MeshRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let primitive = wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
+            ..Default::default()
+        };
+        // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
+        let vertex_buffers: smallvec::SmallVec<[_; 4]> =
+            std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
+                .chain(mesh_vertices::vertex_buffer_layouts())
+                .collect();
+
+        let render_pipeline_shaded = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "mesh renderer".into(),
+                label: "mesh renderer - shaded".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main".into(),
+                fragment_entrypoint: "fs_main_shaded".into(),
                 fragment_handle: shader_module,
-
-                // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
-                vertex_buffers: std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
-                    .chain(mesh_vertices::vertex_buffer_layouts())
-                    .collect(),
-
+                vertex_buffers: vertex_buffers.clone(),
                 render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
-                    ..Default::default()
-                },
+                primitive,
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
@@ -316,8 +324,28 @@ impl Renderer for MeshRenderer {
             &pools.shader_modules,
         );
 
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "mesh renderer - outline mask".into(),
+                pipeline_layout,
+                vertex_entrypoint: "vs_main".into(),
+                vertex_handle: shader_module,
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                fragment_handle: shader_module,
+                vertex_buffers,
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                primitive,
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                multisample: OutlineMaskProcessor::MASK_MSAA_STATE,
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
         MeshRenderer {
-            render_pipeline,
+            render_pipeline_shaded,
+            render_pipeline_outline_mask,
             bind_group_layout,
         }
     }
@@ -325,7 +353,7 @@ impl Renderer for MeshRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
-        _phase: DrawPhase,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
@@ -335,7 +363,13 @@ impl Renderer for MeshRenderer {
             return Ok(()); // Instance buffer was empty.
         };
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline_handle = if phase == DrawPhase::OutlineMask {
+            self.render_pipeline_outline_mask
+        } else {
+            self.render_pipeline_shaded
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+
         pass.set_pipeline(pipeline);
 
         pass.set_vertex_buffer(0, instance_buffer.slice(..));
