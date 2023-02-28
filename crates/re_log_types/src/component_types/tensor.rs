@@ -6,8 +6,8 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::TensorElement;
 use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
+use crate::{TensorDataType, TensorElement};
 
 pub trait TensorTrait {
     fn id(&self) -> TensorId;
@@ -17,6 +17,7 @@ pub trait TensorTrait {
     fn is_vector(&self) -> bool;
     fn meaning(&self) -> TensorDataMeaning;
     fn get(&self, index: &[u64]) -> Option<TensorElement>;
+    fn dtype(&self) -> TensorDataType;
 }
 
 // ----------------------------------------------------------------------------
@@ -390,6 +391,21 @@ impl TensorTrait for Tensor {
             TensorData::JPEG(_) => None, // Too expensive to unpack here.
         }
     }
+
+    fn dtype(&self) -> TensorDataType {
+        match &self.data {
+            TensorData::U8(_) | TensorData::JPEG(_) => TensorDataType::U8,
+            TensorData::U16(_) => TensorDataType::U16,
+            TensorData::U32(_) => TensorDataType::U32,
+            TensorData::U64(_) => TensorDataType::U64,
+            TensorData::I8(_) => TensorDataType::I8,
+            TensorData::I16(_) => TensorDataType::I16,
+            TensorData::I32(_) => TensorDataType::I32,
+            TensorData::I64(_) => TensorDataType::I64,
+            TensorData::F32(_) => TensorDataType::F32,
+            TensorData::F64(_) => TensorDataType::F64,
+        }
+    }
 }
 
 impl Component for Tensor {
@@ -412,6 +428,11 @@ pub enum TensorCastError {
 
     #[error("ndarray Array is not contiguous and in standard order")]
     NotContiguousStdOrder,
+
+    #[error(
+        "tensors do not currently support f16 data (https://github.com/rerun-io/rerun/issues/854)"
+    )]
+    F16NotSupported,
 }
 
 impl From<&Tensor> for ClassicTensor {
@@ -553,6 +574,15 @@ tensor_type!(i64, I64);
 
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
+
+// TODO(#854) Switch back to `tensor_type!` once we have F16 tensors
+impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
+    type Error = TensorCastError;
+
+    fn try_from(_: &'a Tensor) -> Result<Self, Self::Error> {
+        Err(TensorCastError::F16NotSupported)
+    }
+}
 
 // ----------------------------------------------------------------------------
 

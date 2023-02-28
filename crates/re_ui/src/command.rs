@@ -29,6 +29,12 @@ pub enum Command {
 
     #[cfg(not(target_arch = "wasm32"))]
     ToggleFullscreen,
+    #[cfg(not(target_arch = "wasm32"))]
+    ZoomIn,
+    #[cfg(not(target_arch = "wasm32"))]
+    ZoomOut,
+    #[cfg(not(target_arch = "wasm32"))]
+    ZoomReset,
 
     SelectionPrevious,
     SelectionNext,
@@ -91,6 +97,15 @@ impl Command {
                 "Toggle fullscreen",
                 "Toggle between windowed and fullscreen viewer",
             ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomIn => ("Zoom In", "Increases the ui scaling factor"),
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomOut => ("Zoom Out", "Decreases the ui scaling factor"),
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomReset => (
+                "Reset Zoom",
+                "Resets ui scaling factor to the OS provided default",
+            ),
 
             Command::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             Command::SelectionNext => ("Next selection", "Go to next selection"),
@@ -151,8 +166,16 @@ impl Command {
             Command::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Command::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Command::ToggleTimePanel => Some(ctrl_shift(Key::T)),
+
             #[cfg(not(target_arch = "wasm32"))]
             Command::ToggleFullscreen => Some(key(Key::F11)),
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomOut => Some(egui::gui_zoom::kb_shortcuts::ZOOM_OUT),
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomReset => Some(egui::gui_zoom::kb_shortcuts::ZOOM_RESET),
+
             Command::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
             Command::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),
             Command::ToggleCommandPalette => Some(cmd(Key::P)),

@@ -1,10 +1,7 @@
 use egui::Vec2;
 use itertools::Itertools as _;
 
-use re_log_types::{
-    component_types::{ClassId, TensorDataMeaning},
-    ClassicTensor,
-};
+use re_log_types::component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait};
 
 use crate::misc::{
     caches::{TensorImageView, TensorStats},
@@ -19,19 +16,7 @@ pub fn format_tensor_shape_single_line(
     format!("[{}]", shape.iter().join(", "))
 }
 
-impl DataUi for re_log_types::component_types::Tensor {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        ClassicTensor::from(self).data_ui(ctx, ui, verbosity, query);
-    }
-}
-
-impl DataUi for ClassicTensor {
+impl DataUi for Tensor {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -114,7 +99,7 @@ impl DataUi for ClassicTensor {
 pub fn tensor_dtype_and_shape_ui_grid_contents(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    tensor: &ClassicTensor,
+    tensor: &Tensor,
     tensor_stats: Option<&TensorStats>,
 ) {
     re_ui
@@ -158,7 +143,7 @@ pub fn tensor_dtype_and_shape_ui_grid_contents(
 pub fn tensor_dtype_and_shape_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    tensor: &ClassicTensor,
+    tensor: &Tensor,
     tensor_stats: Option<&TensorStats>,
 ) {
     egui::Grid::new("tensor_dtype_and_shape_ui")
@@ -452,10 +437,12 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
 #[cfg(not(target_arch = "wasm32"))]
 fn image_options(
     ui: &mut egui::Ui,
-    tensor: &re_log_types::ClassicTensor,
+    tensor: &re_log_types::component_types::Tensor,
     dynamic_image: &image::DynamicImage,
 ) {
     // TODO(emilk): support copying images on web
+
+    use re_log_types::component_types::TensorData;
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
@@ -471,10 +458,26 @@ fn image_options(
     // TODO(emilk): support saving images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
-        use re_log_types::TensorDataStore;
-
         match &tensor.data {
-            TensorDataStore::Dense(_) => {
+            TensorData::JPEG(bytes) => {
+                if let Some(path) = rfd::FileDialog::new()
+                    .set_file_name("image.jpg")
+                    .save_file()
+                {
+                    match write_binary(&path, bytes.as_slice()) {
+                        Ok(()) => {
+                            re_log::info!("Image saved to {path:?}");
+                        }
+                        Err(err) => {
+                            re_log::error!(
+                                "Failed saving image to {path:?}: {}",
+                                re_error::format(&err)
+                            );
+                        }
+                    }
+                }
+            }
+            _ => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.png")
                     .save_file()
@@ -486,24 +489,6 @@ fn image_options(
                         }
                         Err(err) => {
                             re_log::error!("Failed saving image to {path:?}: {err}");
-                        }
-                    }
-                }
-            }
-            TensorDataStore::Jpeg(bytes) => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.jpg")
-                    .save_file()
-                {
-                    match write_binary(&path, bytes) {
-                        Ok(()) => {
-                            re_log::info!("Image saved to {path:?}");
-                        }
-                        Err(err) => {
-                            re_log::error!(
-                                "Failed saving image to {path:?}: {}",
-                                re_error::format(&err)
-                            );
                         }
                     }
                 }

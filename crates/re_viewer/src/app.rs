@@ -49,6 +49,11 @@ pub struct StartupOptions {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(not(target_arch = "wasm32"))]
+const MIN_ZOOM_FACTOR: f32 = 0.2;
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_ZOOM_FACTOR: f32 = 4.0;
+
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -215,16 +220,9 @@ impl App {
         self.pending_promises.contains_key(name.as_ref())
     }
 
-    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
             self.pending_commands.push(cmd);
-        }
-
-        if !frame.is_web() {
-            egui::gui_zoom::zoom_with_keyboard_shortcuts(
-                egui_ctx,
-                frame.info().native_pixels_per_point,
-            );
         }
     }
 
@@ -294,6 +292,18 @@ impl App {
             Command::ToggleFullscreen => {
                 _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomIn => {
+                self.state.app_options.zoom_factor += 0.1;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomOut => {
+                self.state.app_options.zoom_factor -= 0.1;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ZoomReset => {
+                self.state.app_options.zoom_factor = 1.0;
+            }
 
             Command::SelectionPrevious => {
                 let state = &mut self.state;
@@ -344,14 +354,16 @@ impl App {
         }
     }
 
-    fn selected_app_id(&mut self) -> ApplicationId {
-        let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-        let selected_app_id = log_db
-            .recording_info()
-            .map_or_else(ApplicationId::unknown, |rec_info| {
-                rec_info.application_id.clone()
-            });
-        selected_app_id
+    fn selected_app_id(&self) -> ApplicationId {
+        if let Some(log_db) = self.log_dbs.get(&self.state.selected_rec_id) {
+            log_db
+                .recording_info()
+                .map_or_else(ApplicationId::unknown, |rec_info| {
+                    rec_info.application_id.clone()
+                })
+        } else {
+            ApplicationId::unknown()
+        }
     }
 
     fn blueprint_mut(&mut self) -> &mut Blueprint {
@@ -407,6 +419,22 @@ impl eframe::App for App {
             return;
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
+            {
+                let mut zoom_factor = self.state.app_options.zoom_factor;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                self.state.app_options.zoom_factor = zoom_factor;
+            }
+
+            // Apply zoom factor on top of natively reported pixel per point.
+            let pixels_per_point = frame.info().native_pixels_per_point.unwrap_or(1.0)
+                * self.state.app_options.zoom_factor;
+            egui_ctx.set_pixels_per_point(pixels_per_point);
+        }
+
         let gpu_resource_stats = {
             // TODO(andreas): store the re_renderer somewhere else.
             let egui_renderer = {
@@ -425,7 +453,7 @@ impl eframe::App for App {
 
         self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
 
-        self.check_keyboard_shortcuts(egui_ctx, frame);
+        self.check_keyboard_shortcuts(egui_ctx);
 
         self.purge_memory_if_needed();
 
@@ -744,6 +772,13 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
+    /// Do we have an open `LogDb` that is non-empty?
+    fn log_db_is_nonempty(&self) -> bool {
+        self.log_dbs
+            .get(&self.state.selected_rec_id)
+            .map_or(false, |log_db| !log_db.is_empty())
+    }
+
     fn log_db(&mut self) -> &mut LogDb {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
     }
@@ -1033,7 +1068,14 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             ui.add_space(spacing);
 
             // On the web the browser controls the zoom
-            egui::gui_zoom::zoom_menu_buttons(ui, _frame.info().native_pixels_per_point);
+            let zoom_factor = app.state.app_options.zoom_factor;
+            ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
+                .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
+            Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
+            ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
+                Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
+            });
 
             Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
 
@@ -1055,9 +1097,8 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
             recordings_menu(ui, app);
         });
 
-        #[cfg(debug_assertions)]
-        ui.menu_button("Debug", |ui| {
-            debug_menu(&mut app.state.app_options, ui);
+        ui.menu_button("Options", |ui| {
+            options_menu_ui(ui, &mut app.state.app_options);
         });
 
         ui.add_space(spacing);
@@ -1329,7 +1370,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             });
         });
     } else {
-        ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
+        ui.add_enabled_ui(app.log_db_is_nonempty(), |ui| {
             if ui
                 .add(save_button)
                 .on_hover_text("Save all data to a Rerun data file (.rrd)")
@@ -1384,7 +1425,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         .set_title(title)
         .save_file()
     {
-        let f = save_database_to_file(app, path, loop_selection);
+        let f = save_database_to_file(app.log_db(), path, loop_selection);
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
             // NOTE: Shouldn't even be possible as the "Save" button is already
             // grayed out at this point... better safe than sorry though.
@@ -1396,7 +1437,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
 }
 
 fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
-    if !app.log_db().is_empty() {
+    if app.log_db_is_nonempty() {
         ui.horizontal(|ui| {
             ui.label("Main view:");
             if ui
@@ -1455,20 +1496,27 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-#[cfg(debug_assertions)]
-fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
+fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
-        .checkbox(&mut options.show_metrics, "Show metrics")
-        .on_hover_text("Show status bar metrics for milliseconds, ram usage, etc")
+        .checkbox(&mut options.show_metrics, "Show performance metrics")
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar.")
         .clicked()
     {
         ui.close_menu();
     }
 
-    ui.separator();
+    #[cfg(debug_assertions)]
+    {
+        ui.separator();
+        ui.label("Debug:");
+        debug_menu_options_ui(ui);
+    }
+}
 
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
@@ -1576,7 +1624,7 @@ fn debug_menu(options: &mut AppOptions, ui: &mut egui::Ui) {
 /// specific time range will be accounted for.
 #[cfg(not(target_arch = "wasm32"))]
 fn save_database_to_file(
-    app: &mut App,
+    log_db: &LogDb,
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
@@ -1584,8 +1632,7 @@ fn save_database_to_file(
 
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
-        None => app
-            .log_db()
+        None => log_db
             .chronological_log_messages()
             .cloned()
             .collect::<Vec<_>>(),
@@ -1594,7 +1641,7 @@ fn save_database_to_file(
         Some((timeline, range)) => {
             use std::ops::RangeInclusive;
             let range: RangeInclusive<TimeInt> = range.min.floor()..=range.max.ceil();
-            app.log_db()
+            log_db
                 .chronological_log_messages()
                 .filter(|msg| {
                     match msg {
