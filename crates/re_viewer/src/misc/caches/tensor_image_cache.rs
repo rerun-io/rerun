@@ -5,7 +5,7 @@ use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
     component_types::{self, ClassId, TensorData, TensorDataMeaning, TensorTrait},
-    ClassicTensor, MsgId,
+    MsgId,
 };
 use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
@@ -238,12 +238,6 @@ impl CachedImage {
 //TODO(john) this should live in re_log_types along with annotations-related stuff
 pub trait AsDynamicImage: component_types::TensorTrait {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage>;
-}
-
-impl AsDynamicImage for ClassicTensor {
-    fn as_dynamic_image(&self, _annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
-        anyhow::bail!("ClassicTensor is deprecated")
-    }
 }
 
 impl AsDynamicImage for component_types::Tensor {

@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
 use arrow2::buffer::Buffer;
 use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
+use crate::msg_bundle::Component;
 use crate::{TensorDataType, TensorElement};
 
 pub trait TensorTrait {
@@ -415,7 +413,7 @@ impl Component for Tensor {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorCastError {
     #[error("ndarray type mismatch with tensor storage")]
     TypeMismatch,
@@ -433,65 +431,6 @@ pub enum TensorCastError {
         "tensors do not currently support f16 data (https://github.com/rerun-io/rerun/issues/854)"
     )]
     F16NotSupported,
-}
-
-impl From<&Tensor> for ClassicTensor {
-    fn from(value: &Tensor) -> Self {
-        let (dtype, data) = match &value.data {
-            TensorData::U8(data) => (
-                crate::TensorDataType::U8,
-                TensorDataStore::Dense(Arc::from(data.as_slice())),
-            ),
-            TensorData::U16(data) => (
-                crate::TensorDataType::U16,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::U32(data) => (
-                crate::TensorDataType::U32,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::U64(data) => (
-                crate::TensorDataType::U64,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I8(data) => (
-                crate::TensorDataType::I8,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I16(data) => (
-                crate::TensorDataType::I16,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I32(data) => (
-                crate::TensorDataType::I32,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I64(data) => (
-                crate::TensorDataType::I64,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::F32(data) => (
-                crate::TensorDataType::F32,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::F64(data) => (
-                crate::TensorDataType::F64,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::JPEG(data) => (
-                crate::TensorDataType::U8,
-                TensorDataStore::Jpeg(Arc::from(data.as_slice())),
-            ),
-        };
-
-        ClassicTensor::new(
-            value.tensor_id,
-            value.shape.clone(),
-            dtype,
-            value.meaning,
-            data,
-        )
-    }
 }
 
 macro_rules! tensor_type {
@@ -523,15 +462,23 @@ macro_rules! tensor_type {
                         name: None,
                     })
                     .collect();
-                view.to_slice()
-                    .ok_or(TensorCastError::NotContiguousStdOrder)
-                    .map(|slice| Tensor {
+
+                match view.to_slice() {
+                    Some(slice) => Ok(Tensor {
                         tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(Vec::from(slice).into()),
                         meaning: TensorDataMeaning::Unknown,
                         meter: None,
-                    })
+                    }),
+                    None => Ok(Tensor {
+                        tensor_id: TensorId::random(),
+                        shape,
+                        data: TensorData::$variant(view.iter().cloned().collect::<Vec<_>>().into()),
+                        meaning: TensorDataMeaning::Unknown,
+                        meter: None,
+                    }),
+                }
             }
         }
 
@@ -600,6 +547,24 @@ pub enum ImageError {
 
     #[error("Failed to load file: {0}")]
     ReadError(#[from] std::io::Error),
+}
+
+impl Tensor {
+    pub fn new(
+        tensor_id: TensorId,
+        shape: Vec<TensorDimension>,
+        data: TensorData,
+        meaning: TensorDataMeaning,
+        meter: Option<f32>,
+    ) -> Self {
+        Self {
+            tensor_id,
+            shape,
+            data,
+            meaning,
+            meter,
+        }
+    }
 }
 
 #[cfg(feature = "image")]
@@ -708,6 +673,7 @@ impl Tensor {
 #[test]
 fn test_ndarray() {
     let t0 = Tensor {
+        tensor_id: TensorId::random(),
         shape: vec![
             TensorDimension {
                 size: 2,
@@ -718,7 +684,9 @@ fn test_ndarray() {
                 name: None,
             },
         ],
-        data: TensorData::U16(vec![1, 2, 3, 4]),
+        data: TensorData::U16(vec![1, 2, 3, 4].into()),
+        meaning: TensorDataMeaning::Unknown,
+        meter: None,
     };
     let a0: ndarray::ArrayViewD<'_, u16> = (&t0).try_into().unwrap();
     dbg!(a0); // NOLINT
