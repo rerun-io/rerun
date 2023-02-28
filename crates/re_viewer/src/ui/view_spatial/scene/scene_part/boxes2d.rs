@@ -78,7 +78,7 @@ impl Boxes2DPart {
                     rect.top_left_corner().into(),
                     egui::vec2(rect.width(), rect.height()),
                 )),
-                labled_instance: instance_path_hash,
+                labeled_instance: instance_path_hash,
             });
         }
     }

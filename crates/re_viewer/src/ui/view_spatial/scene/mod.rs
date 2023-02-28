@@ -93,7 +93,7 @@ pub struct UiLabel {
     pub target: UiLabelTarget,
 
     /// What is hovered if this label is hovered.
-    pub labled_instance: InstancePathHash,
+    pub labeled_instance: InstancePathHash,
 }
 
 /// Data necessary to setup the ui [`SceneSpatial`] but of no interest to `re_renderer`.

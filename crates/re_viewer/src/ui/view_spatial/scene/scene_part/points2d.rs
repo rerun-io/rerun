@@ -105,7 +105,7 @@ impl Points2DPart {
                         text: label,
                         color,
                         target: UiLabelTarget::Point2D(egui::pos2(pos.x, pos.y)),
-                        labled_instance: instance_hash,
+                        labeled_instance: instance_hash,
                     });
                 }
             }

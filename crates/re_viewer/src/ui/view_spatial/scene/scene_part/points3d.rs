@@ -130,7 +130,7 @@ impl Points3DPart {
             instance_path_hashes,
         )
         .filter_map(
-            move |(annotation_info, point, label, color, labled_instance)| {
+            move |(annotation_info, point, label, color, labeled_instance)| {
                 let label = annotation_info.label(label.map(|l| l.0).as_ref());
                 match (point, label) {
                     (Some(point), Some(label)) => Some(UiLabel {
@@ -139,7 +139,7 @@ impl Points3DPart {
                         target: UiLabelTarget::Position3D(
                             world_from_obj.transform_point3(point.into()),
                         ),
-                        labled_instance: *labled_instance,
+                        labeled_instance: *labeled_instance,
                     }),
                     _ => None,
                 }

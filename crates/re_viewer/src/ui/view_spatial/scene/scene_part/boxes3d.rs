@@ -86,7 +86,7 @@ impl Boxes3DPart {
                     text: label,
                     target: UiLabelTarget::Position3D(world_from_obj.transform_point3(tran)),
                     color,
-                    labled_instance: instance_hash,
+                    labeled_instance: instance_hash,
                 });
             }
         };
