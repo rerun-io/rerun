@@ -12,7 +12,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         view_spatial::{
-            scene::scene_part::instance_path_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
+            scene::scene_part::instance_path_hash_for_picking, SceneSpatial, UiLabel, UiLabelTarget,
         },
         DefaultColor,
     },
@@ -71,10 +71,10 @@ impl Boxes2DPart {
             .user_data(instance_path_hash);
 
         if let Some(label) = label {
-            scene.ui.labels_2d.push(Label2D {
+            scene.ui.labels.push(UiLabel {
                 text: label,
                 color,
-                target: Label2DTarget::Rect(egui::Rect::from_min_size(
+                target: UiLabelTarget::Rect(egui::Rect::from_min_size(
                     rect.top_left_corner().into(),
                     egui::vec2(rect.width(), rect.height()),
                 )),

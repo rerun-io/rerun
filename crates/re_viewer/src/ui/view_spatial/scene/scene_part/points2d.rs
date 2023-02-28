@@ -12,7 +12,7 @@ use crate::{
     misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{scene::Keypoints, Label2D, Label2DTarget, SceneSpatial},
+        view_spatial::{scene::Keypoints, SceneSpatial, UiLabel, UiLabelTarget},
         DefaultColor,
     },
 };
@@ -101,10 +101,10 @@ impl Points2DPart {
 
             if let Some(label) = label {
                 if label_batch.len() < max_num_labels {
-                    label_batch.push(Label2D {
+                    label_batch.push(UiLabel {
                         text: label,
                         color,
-                        target: Label2DTarget::Point(egui::pos2(pos.x, pos.y)),
+                        target: UiLabelTarget::Point2D(egui::pos2(pos.x, pos.y)),
                         labled_instance: instance_hash,
                     });
                 }
@@ -115,7 +115,7 @@ impl Points2DPart {
         drop(point_batch); // Drop batch so we have access to the scene again (batches need to be dropped before starting new ones).
 
         if label_batch.len() < max_num_labels {
-            scene.ui.labels_2d.extend(label_batch.into_iter());
+            scene.ui.labels.extend(label_batch.into_iter());
         }
 
         // Generate keypoint connections if any.

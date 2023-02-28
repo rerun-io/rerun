@@ -1,25 +1,20 @@
-use eframe::{emath::RectTransform, epaint::text::TextWrapping};
+use eframe::emath::RectTransform;
 use egui::{
-    pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape,
-    TextFormat, TextStyle, Vec2,
+    pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape, Vec2,
 };
 use macaw::IsoTransform;
 use re_data_store::EntityPath;
 use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
-use super::{
-    eye::Eye,
-    scene::{AdditionalPickingInfo, SceneSpatialUiData},
-    ViewSpatialState,
-};
+use super::{eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, ViewSpatialState};
 use crate::{
-    misc::{HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            Label2DTarget, SceneSpatial,
+            SceneSpatial,
         },
         SpaceViewId, UiVerbosity,
     },
@@ -303,17 +298,20 @@ fn view_2d_scrollable(
         .state_2d
         .update(&response, space_from_ui, scene_rect_accum, available_size);
 
-    // ------------------------------------------------------------------------
+    let eye = Eye {
+        world_from_view: IsoTransform::IDENTITY,
+        fov_y: None,
+    };
 
+    // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
         &mut scene.ui,
         ui_from_space,
         space_from_ui,
+        &eye,
         parent_ui,
         highlights,
     );
-
-    // ------------------------------------------------------------------------
 
     // Check if we're hovering any hover primitive.
     let mut depth_at_pointer = None;
@@ -323,10 +321,7 @@ fn view_2d_scrollable(
         let picking_result = scene.picking(
             glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
             &scene_rect_accum,
-            &Eye {
-                world_from_view: IsoTransform::IDENTITY,
-                fov_y: None,
-            },
+            &eye,
             hover_radius,
         );
 
@@ -465,85 +460,6 @@ fn view_2d_scrollable(
     painter.extend(label_shapes);
 
     response
-}
-
-fn create_labels(
-    scene_ui: &mut SceneSpatialUiData,
-    ui_from_space: RectTransform,
-    space_from_ui: RectTransform,
-    parent_ui: &mut egui::Ui,
-    highlights: &SpaceViewHighlights,
-) -> Vec<Shape> {
-    crate::profile_function!();
-
-    let mut label_shapes = Vec::with_capacity(scene_ui.labels_2d.len() * 2);
-
-    for label in &scene_ui.labels_2d {
-        let (wrap_width, text_anchor_pos) = match label.target {
-            Label2DTarget::Rect(rect) => {
-                let rect_in_ui = ui_from_space.transform_rect(rect);
-                (
-                    // Place the text centered below the rect
-                    (rect_in_ui.width() - 4.0).at_least(60.0),
-                    rect_in_ui.center_bottom() + vec2(0.0, 3.0),
-                )
-            }
-            Label2DTarget::Point(pos) => {
-                let pos_in_ui = ui_from_space.transform_pos(pos);
-                (f32::INFINITY, pos_in_ui + vec2(0.0, 3.0))
-            }
-        };
-
-        let font_id = TextStyle::Body.resolve(parent_ui.style());
-        let galley = parent_ui.fonts(|fonts| {
-            fonts.layout_job({
-                egui::text::LayoutJob {
-                    sections: vec![egui::text::LayoutSection {
-                        leading_space: 0.0,
-                        byte_range: 0..label.text.len(),
-                        format: TextFormat::simple(font_id, label.color),
-                    }],
-                    text: label.text.clone(),
-                    wrap: TextWrapping {
-                        max_width: wrap_width,
-                        ..Default::default()
-                    },
-                    break_on_newline: true,
-                    halign: Align::Center,
-                    ..Default::default()
-                }
-            })
-        });
-
-        let text_rect =
-            Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
-        let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
-
-        let hightlight = highlights
-            .entity_highlight(label.labled_instance.entity_path_hash)
-            .index_highlight(label.labled_instance.instance_key);
-        let fill_color = match hightlight.hover {
-            crate::misc::HoverHighlight::None => match hightlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
-                SelectionHighlight::SiblingSelection => {
-                    parent_ui.style().visuals.widgets.active.bg_fill
-                }
-                SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
-            },
-            crate::misc::HoverHighlight::Hovered => {
-                parent_ui.style().visuals.widgets.hovered.bg_fill
-            }
-        };
-
-        label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));
-        label_shapes.push(Shape::galley(text_rect.center_top(), galley));
-
-        scene_ui
-            .pickable_ui_rects
-            .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
-    }
-
-    label_shapes
 }
 
 fn setup_target_config(

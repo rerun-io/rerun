@@ -74,38 +74,32 @@ pub struct Image {
     pub annotations: Arc<Annotations>,
 }
 
-pub enum Label2DTarget {
+pub enum UiLabelTarget {
     /// Labels a given rect (in scene coordinates)
     Rect(egui::Rect),
 
     /// Labels a given point (in scene coordinates)
-    Point(egui::Pos2),
+    Point2D(egui::Pos2),
+
+    /// A point in space.
+    Position3D(glam::Vec3),
 }
 
-// TODO(andreas): Merge Label2D and Label3D
-pub struct Label2D {
+pub struct UiLabel {
     pub text: String,
     pub color: Color32,
 
-    /// The shape being labeled.
-    pub target: Label2DTarget,
+    /// The shape/position being labeled.
+    pub target: UiLabelTarget,
 
     /// What is hovered if this label is hovered.
     pub labled_instance: InstancePathHash,
 }
 
-pub struct Label3D {
-    pub(crate) text: String,
-
-    /// Origin of the label
-    pub(crate) origin: glam::Vec3,
-}
-
 /// Data necessary to setup the ui [`SceneSpatial`] but of no interest to `re_renderer`.
 #[derive(Default)]
 pub struct SceneSpatialUiData {
-    pub labels_3d: Vec<Label3D>,
-    pub labels_2d: Vec<Label2D>,
+    pub labels: Vec<UiLabel>,
 
     /// Picking any any of these rects cause the referred instance to be hovered.
     /// Only use this for 2d overlays!
