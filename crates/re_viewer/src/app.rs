@@ -1458,7 +1458,7 @@ fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
 
     if ui
         .checkbox(&mut options.show_metrics, "Show performance metrics")
-        .on_hover_text("Show status bar metrics for milliseconds, ram usage, etc")
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar.")
         .clicked()
     {
         ui.close_menu();
