@@ -26,7 +26,7 @@ emath.workspace = true
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 nohash-hasher = "0.2"
 once_cell = "1.16"
-parking_lot = "0.12"
+parking_lot.workspace = true
 smallvec = "1.10"
 
 # native dependencies:
