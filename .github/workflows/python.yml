@@ -204,7 +204,7 @@ jobs:
           maturin-version: "0.14.10"
           manylinux: manylinux_2_31
           container: off
-          env: IS_IN_RERUN_WORKSPACE=no # override .cargo/config.toml so that our analytics are correct
+          env: RERUN_BUILDING_WHEELS=yes # used by re_build_build_info
           command: build
           args: |
             --manifest-path rerun_py/Cargo.toml

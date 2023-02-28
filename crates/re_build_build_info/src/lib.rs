@@ -38,10 +38,15 @@ pub fn export_env_vars() {
 
     // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
     // because otherwise it won't show up when compiling through maturin.
-    set_env(
-        "RE_BUILD_IS_IN_RERUN_WORKSPACE",
-        &std::env::var("IS_IN_RERUN_WORKSPACE").unwrap_or_default(),
-    );
+    // We must also make an exception for when we build actual wheels (on CI) for release.
+    if std::env::var("RERUN_BUILDING_WHEELS") == Ok("yes".to_owned()) {
+        set_env("RE_BUILD_IS_IN_RERUN_WORKSPACE", "no");
+    } else {
+        set_env(
+            "RE_BUILD_IS_IN_RERUN_WORKSPACE",
+            &std::env::var("IS_IN_RERUN_WORKSPACE").unwrap_or_default(),
+        );
+    }
 
     let time_format =
         time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
