@@ -4,6 +4,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod editable_auto_value;
 pub mod entity_properties;
 pub mod entity_tree;
 mod instance_path;
@@ -16,6 +17,7 @@ pub use log_db::LogDb;
 
 use re_log_types::msg_bundle;
 
+pub use editable_auto_value::EditableAutoValue;
 pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt, Timeline};
 
 // ----------------------------------------------------------------------------

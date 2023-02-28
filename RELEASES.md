@@ -54,6 +54,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] `./scripts/publish_crates.sh --dry-run`
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
+    * Go through https://github.com/rerun-io/rerun/compare/latest...HEAD and manually add any important PR descriptions to the `CHANGELOG.md`, with a link to the PR (which should have a deeper explanation).
     * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
