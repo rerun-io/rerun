@@ -188,8 +188,8 @@ impl Session {
     /// ## Example:
     ///
     /// ``` no_run
-    /// # let mut session = todo!();
-    /// session.connect(rerun::default_server_addr());
+    /// # let mut session = re_sdk::Session::new();
+    /// session.connect(re_sdk::default_server_addr());
     /// ```
     pub fn connect(&mut self, addr: SocketAddr) {
         if !self.enabled {
