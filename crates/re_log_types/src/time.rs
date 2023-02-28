@@ -156,6 +156,57 @@ impl TryFrom<std::time::SystemTime> for Time {
     }
 }
 
+impl TryFrom<time::OffsetDateTime> for Time {
+    type Error = core::num::TryFromIntError;
+
+    fn try_from(datetime: time::OffsetDateTime) -> Result<Time, Self::Error> {
+        i64::try_from(datetime.unix_timestamp_nanos()).map(|ns| Time::from_ns_since_epoch(ns))
+    }
+}
+
+// ---------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use time::macros::{datetime, time};
+
+    #[test]
+    fn test_formatting_short_times() {
+        assert_eq!(&Time::from_us_since_epoch(42_000_000).format(), "+42s");
+        assert_eq!(&Time::from_us_since_epoch(69_000).format(), "+0.069s");
+        assert_eq!(&Time::from_us_since_epoch(69_900).format(), "+0.070s");
+    }
+
+    #[test]
+    fn test_formatting_whole_second_for_datetime() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42 UTC)).unwrap();
+        assert_eq!(&datetime.format(), "2022-02-28 22:35:42Z");
+    }
+
+    #[test]
+    fn test_formatting_whole_millisecond_for_datetime() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069 UTC)).unwrap();
+        assert_eq!(&datetime.format(), "2022-02-28 22:35:42.069Z");
+    }
+
+    #[test]
+    fn test_formatting_many_digits_for_datetime() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
+        assert_eq!(&datetime.format(), "2022-02-28 22:35:42.069042Z"); // format function is not rounding
+    }
+
+    /// Check that formatting today times doesn't display the date.
+    /// WARNING: this test could easily flake with current implementation
+    /// (checking day instead of hour-distance)
+    #[test]
+    fn test_formatting_today_omit_date() {
+        let today = OffsetDateTime::now_utc().replace_time(time!(22:35:42));
+        let datetime = Time::try_from(today).unwrap();
+        assert_eq!(&datetime.format(), "22:35:42Z");
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// A signed duration represented as nanoseconds since unix epoch
