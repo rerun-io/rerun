@@ -365,6 +365,11 @@ impl component_types::TensorTrait for ClassicTensor {
     fn get(&self, index: &[u64]) -> Option<TensorElement> {
         self.get(index)
     }
+
+    #[inline]
+    fn dtype(&self) -> TensorDataType {
+        self.dtype
+    }
 }
 
 impl ClassicTensor {
@@ -392,11 +397,6 @@ impl ClassicTensor {
     #[inline]
     pub fn shape(&self) -> &[component_types::TensorDimension] {
         self.shape.as_slice()
-    }
-
-    #[inline]
-    pub fn dtype(&self) -> TensorDataType {
-        self.dtype
     }
 
     #[inline]
