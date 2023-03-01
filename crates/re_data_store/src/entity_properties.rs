@@ -31,7 +31,7 @@ impl EntityPropertyMap {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
@@ -42,7 +42,7 @@ pub struct EntityProperties {
     /// Distance of the projection plane (frustum far plane).
     ///
     /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
-    pub pinhole_image_plane_distance: EditableAutoValue<ordered_float::NotNan<f32>>,
+    pub pinhole_image_plane_distance: EditableAutoValue<f32>,
 }
 
 impl EntityProperties {

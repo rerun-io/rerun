@@ -86,7 +86,7 @@ impl CamerasPart {
             return;
         };
 
-        let frustum_length: f32 = props.pinhole_image_plane_distance.get().into_inner();
+        let frustum_length = *props.pinhole_image_plane_distance.get();
 
         scene.space_cameras.push(SpaceCamera3D {
             entity_path: entity_path.clone(),
