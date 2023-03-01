@@ -13,11 +13,9 @@
 //! cargo run-wasm --example depth_cloud
 //! ```
 
-use std::{f32::consts::PI, path::PathBuf};
+use std::f32::consts::PI;
 
-use anyhow::Context;
 use glam::Vec3;
-use image::{DynamicImage, GenericImageView};
 use itertools::Itertools;
 use macaw::IsoTransform;
 use re_renderer::{
