@@ -28,7 +28,7 @@ pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
 
-/// The data types supported by a [`ClassicTensor`].
+/// The data types supported by a [`crate::component_types::Tensor`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataType {
@@ -165,7 +165,7 @@ impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }
 
-/// The data that can be stored in a [`ClassicTensor`].
+/// The data that can be stored in a [`crate::component_types::Tensor`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorElement {
