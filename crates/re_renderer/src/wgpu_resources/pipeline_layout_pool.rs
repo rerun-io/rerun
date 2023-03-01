@@ -12,7 +12,7 @@ pub struct GpuPipelineLayout {
     pub layout: wgpu::PipelineLayout,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PipelineLayoutDesc {
     /// Debug label of the pipeline layout. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,

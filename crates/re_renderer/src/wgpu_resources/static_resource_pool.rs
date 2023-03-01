@@ -33,7 +33,7 @@ impl<Handle: Key, Desc, Res> Default for StaticResourcePool<Handle, Desc, Res> {
 impl<Handle, Desc, Res> StaticResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
-    Desc: Clone + Eq + Hash,
+    Desc: std::fmt::Debug + Clone + Eq + Hash,
 {
     fn to_pool_error<T>(get_result: Option<T>, handle: Handle) -> Result<T, PoolError> {
         get_result.ok_or_else(|| {
@@ -51,6 +51,7 @@ where
         creation_func: F,
     ) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
+            re_log::debug!(?desc, "Created new resource");
             let resource = creation_func(desc);
             self.resources.insert(StoredResource {
                 resource,
