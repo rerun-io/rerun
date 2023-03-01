@@ -30,7 +30,7 @@ pub struct RustVersion {
 }
 
 impl RustVersion {
-    const fn new(major: u8, minor: u8, patch: u8) -> Self {
+    pub const fn new(major: u8, minor: u8, patch: u8) -> Self {
         assert!(
             major <= MAX_NUM && minor <= MAX_NUM && patch <= MAX_NUM,
             "Too large number in version string"
