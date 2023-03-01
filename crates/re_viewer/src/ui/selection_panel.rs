@@ -415,8 +415,7 @@ fn entity_props_ui(
                         query_latest_single::<Transform>(&ctx.log_db.entity_db, entity_path, &query)
                     {
                         ui.label("Image plane distance");
-                        let mut distance: f32 =
-                            entity_props.pinhole_image_plane_distance.get().into_inner();
+                        let mut distance = *entity_props.pinhole_image_plane_distance.get();
                         let speed = (distance * 0.05).at_least(0.01);
                         if ui
                             .add(
@@ -428,9 +427,7 @@ fn entity_props_ui(
                             .changed()
                         {
                             entity_props.pinhole_image_plane_distance =
-                                EditableAutoValue::UserEdited(
-                                    ordered_float::NotNan::new(distance).unwrap(),
-                                );
+                                EditableAutoValue::UserEdited(distance);
                         }
                         ui.end_row();
                     }
