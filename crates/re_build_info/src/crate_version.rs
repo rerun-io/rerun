@@ -74,7 +74,7 @@ impl CrateVersion {
         [major, minor, patch, suffix_byte]
     }
 
-    pub fn is_semver_compatible_with(self, other: CrateVersion) -> bool {
+    pub fn is_compatible_with(self, other: CrateVersion) -> bool {
         if self.alpha != other.alpha {
             return false; // Alphas can contain breaking changes
         }
@@ -88,6 +88,7 @@ impl CrateVersion {
         }
     }
 
+    /// Parse a semver version string, ignoring any trailing `+metadata`.
     pub const fn parse(version_string: &str) -> Self {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
@@ -251,7 +252,7 @@ fn test_format_parse_roundtrip() {
 #[test]
 fn test_compatibility() {
     fn are_compatible(a: &str, b: &str) -> bool {
-        CrateVersion::parse(a).is_semver_compatible_with(CrateVersion::parse(b))
+        CrateVersion::parse(a).is_compatible_with(CrateVersion::parse(b))
     }
 
     assert!(are_compatible("0.2.0", "0.2.0"));
