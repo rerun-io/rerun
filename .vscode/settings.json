@@ -28,6 +28,7 @@
         "emath",
         "framebuffer",
         "hoverable",
+        "ilog",
         "jumpflooding",
         "Keypoint",
         "memoffset",

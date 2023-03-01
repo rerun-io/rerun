@@ -4,10 +4,14 @@
 //! * mask layer
 //! * MSAA handling
 
+use std::num::NonZeroU64;
+
 use crate::{
+    allocator::create_and_fill_uniform_buffer_batch,
     context::SharedRendererData,
     include_file,
     view_builder::ViewBuilder,
+    wgpu_buffer_types,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
@@ -38,11 +42,20 @@ pub struct OutlineMaskProcessor {
     mask_depth: GpuTexture,
     distance_textures: [GpuTexture; 2],
 
-    bindgroup_jumpflooding_init: GpuBindGroup,
-    bindgroup_read_distance: [GpuBindGroup; 2],
+    bind_group_jumpflooding_init: GpuBindGroup,
+    bind_group_jumpflooding_steps: Vec<GpuBindGroup>,
+    bind_group_read_final_distance: GpuBindGroup,
 
     render_pipeline_jumpflooding_init: GpuRenderPipelineHandle,
     render_pipeline_jumpflooding_step: GpuRenderPipelineHandle,
+}
+
+#[repr(C, align(256))]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct JumpfloodingStepUniformBuffer {
+    step_width: wgpu_buffer_types::U32RowPadded,
+    /// This hurts. Should be a PushConstant but they are not widely supported enough.
+    end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
 }
 
 impl OutlineMaskProcessor {
@@ -72,6 +85,8 @@ impl OutlineMaskProcessor {
         view_name: &DebugLabel,
         resolution_in_pixel: [u32; 2],
     ) -> Self {
+        crate::profile_function!();
+
         let mut renderers = ctx.renderers.write();
         let compositor_renderer = renderers.get_or_create::<_, OutlineCompositor>(
             &ctx.shared_renderer_data,
@@ -140,64 +155,124 @@ impl OutlineMaskProcessor {
             ),
         ];
 
-        let bind_group_layout_read_mask = ctx.gpu_resources.bind_group_layouts.get_or_create(
-            &ctx.device,
-            &BindGroupLayoutDesc {
-                label: "OutlineMaskProcessor::bind_group_layout_read_mask".into(),
-                entries: vec![wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Uint,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: true,
-                    },
-                    count: None,
-                }],
-            },
-        );
-        let bindgroup_jumpflooding_init = ctx.gpu_resources.bind_groups.alloc(
+        let bind_group_layout_jumpflooding_init =
+            ctx.gpu_resources.bind_group_layouts.get_or_create(
+                &ctx.device,
+                &BindGroupLayoutDesc {
+                    label: "OutlineMaskProcessor::bind_group_layout_jumpflooding_init".into(),
+                    entries: vec![wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: true,
+                        },
+                        count: None,
+                    }],
+                },
+            );
+        let bind_group_jumpflooding_init = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &BindGroupDesc {
                 label: instance_label.clone().push_str("::jumpflooding_init"),
                 entries: smallvec![BindGroupEntry::DefaultTextureView(mask_texture.handle)],
-                layout: bind_group_layout_read_mask,
+                layout: bind_group_layout_jumpflooding_init,
             },
             &ctx.gpu_resources.bind_group_layouts,
             &ctx.gpu_resources.textures,
             &ctx.gpu_resources.buffers,
             &ctx.gpu_resources.samplers,
         );
-        let bindgroup_read_distance = [
-            ctx.gpu_resources.bind_groups.alloc(
+
+        let bind_group_layout_jumpflooding_step =
+            ctx.gpu_resources.bind_group_layouts.get_or_create(
                 &ctx.device,
-                &BindGroupDesc {
-                    label: instance_label.clone().push_str("::read_distance0"),
-                    entries: smallvec![BindGroupEntry::DefaultTextureView(
-                        distance_textures[0].handle
-                    )],
-                    layout: compositor_renderer.bind_group_layout_read_distance,
+                &BindGroupLayoutDesc {
+                    label: "OutlineMaskProcessor::bind_group_layout_jumpflooding_step".into(),
+                    entries: vec![
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                                multisampled: false,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                                    JumpfloodingStepUniformBuffer,
+                                >(
+                                )
+                                    as _),
+                            },
+                            count: None,
+                        },
+                    ],
                 },
-                &ctx.gpu_resources.bind_group_layouts,
-                &ctx.gpu_resources.textures,
-                &ctx.gpu_resources.buffers,
-                &ctx.gpu_resources.samplers,
-            ),
-            ctx.gpu_resources.bind_groups.alloc(
-                &ctx.device,
-                &BindGroupDesc {
-                    label: instance_label.clone().push_str("::read_distance1"),
-                    entries: smallvec![BindGroupEntry::DefaultTextureView(
-                        distance_textures[1].handle
-                    )],
-                    layout: compositor_renderer.bind_group_layout_read_distance,
-                },
-                &ctx.gpu_resources.bind_group_layouts,
-                &ctx.gpu_resources.textures,
-                &ctx.gpu_resources.buffers,
-                &ctx.gpu_resources.samplers,
-            ),
-        ];
+            );
+
+        let max_step_width =
+            (config.outline_thickness_pixel.max(1.0).ceil() as u32).next_power_of_two();
+        let num_steps = max_step_width.ilog2() + 1;
+        let uniform_buffer_jumpflooding_steps_bindings = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "jumpflooding uniformbuffer".into(),
+            (0..num_steps)
+                .into_iter()
+                .map(|step| JumpfloodingStepUniformBuffer {
+                    step_width: (max_step_width >> step).into(),
+                    end_padding: Default::default(),
+                }),
+        );
+        let bind_group_jumpflooding_steps = uniform_buffer_jumpflooding_steps_bindings
+            .into_iter()
+            .enumerate()
+            .map(|(i, uniform_buffer_binding)| {
+                ctx.gpu_resources.bind_groups.alloc(
+                    &ctx.device,
+                    &BindGroupDesc {
+                        label: instance_label
+                            .clone()
+                            .push_str(&format!("::jumpflooding_steps[{i}]")),
+                        entries: smallvec![
+                            BindGroupEntry::DefaultTextureView(distance_textures[i % 2].handle),
+                            uniform_buffer_binding
+                        ],
+                        layout: bind_group_layout_jumpflooding_step,
+                    },
+                    &ctx.gpu_resources.bind_group_layouts,
+                    &ctx.gpu_resources.textures,
+                    &ctx.gpu_resources.buffers,
+                    &ctx.gpu_resources.samplers,
+                )
+            })
+            .collect();
+
+        let bind_group_read_final_distance = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &BindGroupDesc {
+                label: instance_label.clone().push_str("::read_final_distance"),
+                // Points to the last written distance texture
+                // We start writing to distance_textures[0] and then do `num_steps` ping-pong rendering.
+                // Therefore, the last texture is distance_textures[num_steps % 2]
+                entries: smallvec![BindGroupEntry::DefaultTextureView(
+                    distance_textures[(num_steps % 2) as usize].handle
+                )],
+                layout: compositor_renderer.bind_group_layout_read_distance,
+            },
+            &ctx.gpu_resources.bind_group_layouts,
+            &ctx.gpu_resources.textures,
+            &ctx.gpu_resources.buffers,
+            &ctx.gpu_resources.samplers,
+        );
 
         let screen_triangle_vertex_shader =
             screen_triangle_vertex_shader(&mut ctx.gpu_resources, &ctx.device, &mut ctx.resolver);
@@ -209,7 +284,7 @@ impl OutlineMaskProcessor {
                     &ctx.device,
                     &PipelineLayoutDesc {
                         label: "OutlineMaskProcessor::jumpflooding_init".into(),
-                        entries: vec![bind_group_layout_read_mask],
+                        entries: vec![bind_group_layout_jumpflooding_init],
                     },
                     &ctx.gpu_resources.bind_group_layouts,
                 ),
@@ -241,7 +316,7 @@ impl OutlineMaskProcessor {
                     &ctx.device,
                     &PipelineLayoutDesc {
                         label: "OutlineMaskProcessor::jumpflooding_step".into(),
-                        entries: vec![compositor_renderer.bind_group_layout_read_distance],
+                        entries: vec![bind_group_layout_jumpflooding_step],
                     },
                     &ctx.gpu_resources.bind_group_layouts,
                 ),
@@ -271,8 +346,9 @@ impl OutlineMaskProcessor {
             mask_texture,
             mask_depth,
             distance_textures,
-            bindgroup_jumpflooding_init,
-            bindgroup_read_distance,
+            bind_group_jumpflooding_init,
+            bind_group_jumpflooding_steps,
+            bind_group_read_final_distance,
             render_pipeline_jumpflooding_init,
             render_pipeline_jumpflooding_step,
         }
@@ -310,6 +386,11 @@ impl OutlineMaskProcessor {
     ) -> Result<OutlineCompositingDrawData, PoolError> {
         let pipelines = &pools.render_pipelines;
 
+        let ops = wgpu::Operations {
+            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), // Clear is the closest to "don't care"
+            store: true,
+        };
+
         // Initialize the jump flooding into distance texture 0 by looking at the mask texture.
         {
             let mut jumpflooding_init = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -317,22 +398,44 @@ impl OutlineMaskProcessor {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.distance_textures[0].default_view,
                     resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: true,
-                    },
+                    ops,
                 })],
                 depth_stencil_attachment: None,
             });
 
-            let render_pipeline = pipelines.get_resource(self.render_pipeline_jumpflooding_init)?;
-            jumpflooding_init.set_bind_group(0, &self.bindgroup_jumpflooding_init, &[]);
-            jumpflooding_init.set_pipeline(render_pipeline);
+            let render_pipeline_init =
+                pipelines.get_resource(self.render_pipeline_jumpflooding_init)?;
+            jumpflooding_init.set_bind_group(0, &self.bind_group_jumpflooding_init, &[]);
+            jumpflooding_init.set_pipeline(render_pipeline_init);
             jumpflooding_init.draw(0..3, 0..1);
         }
 
+        // Perform jump flooding.
+        let render_pipeline_step =
+            pipelines.get_resource(self.render_pipeline_jumpflooding_step)?;
+        for (i, bind_group) in self.bind_group_jumpflooding_steps.into_iter().enumerate() {
+            let mut jumpflooding_step = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: self
+                    .label
+                    .clone()
+                    .push_str(&format!(" - jumpflooding_step {i}"))
+                    .get(),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    // Start with texture 1 since the init step wrote to texture 0
+                    view: &self.distance_textures[(i + 1) % 2].default_view,
+                    resolve_target: None,
+                    ops,
+                })],
+                depth_stencil_attachment: None,
+            });
+
+            jumpflooding_step.set_pipeline(render_pipeline_step);
+            jumpflooding_step.set_bind_group(0, &bind_group, &[]);
+            jumpflooding_step.draw(0..3, 0..1);
+        }
+
         Ok(OutlineCompositingDrawData {
-            bind_group: self.bindgroup_read_distance[0].clone(),
+            bind_group: self.bind_group_read_final_distance,
         })
     }
 }

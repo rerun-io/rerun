@@ -1,5 +1,4 @@
 #import <../types.wgsl>
-#import <../global_bindings.wgsl>
 #import <../screen_triangle_vertex.wgsl>
 
 @group(0) @binding(0)
@@ -76,15 +75,17 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     }
 
     sub_edge_pos = Vec4(sub_edge_pos.xy / num_edges.x, sub_edge_pos.zw / num_edges.y);
+    sub_edge_pos = sub_edge_pos * 0.5 - Vec4(0.5);
+
     var texcoord_channel_0: Vec2;
     if num_edges.x == 0.0 {
-        texcoord_channel_0 = Vec2(-1.0);
+        texcoord_channel_0 = Vec2(-10.0);
     } else {
         texcoord_channel_0 = in.texcoord + sub_edge_pos.xy / Vec2(resolution);
     }
     var texcoord_channel_1: Vec2;
     if num_edges.y == 0.0 {
-        texcoord_channel_1 = Vec2(-1.0);
+        texcoord_channel_1 = Vec2(-10.0);
     } else {
         texcoord_channel_1 = in.texcoord + sub_edge_pos.zw / Vec2(resolution);
     }
