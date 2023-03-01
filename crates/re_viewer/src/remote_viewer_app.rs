@@ -1,6 +1,6 @@
 use crate::App;
 
-/// Connects to a server over `WebSockets`.
+/// Connects to a server over WebSockets.
 pub struct RemoteViewerApp {
     build_info: re_build_info::BuildInfo,
     app_env: crate::AppEnvironment,
