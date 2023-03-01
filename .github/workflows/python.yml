@@ -257,7 +257,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  # See https://github.com/marvinpinto/action-automatic-releases#automatically-generate-a-pre-release-when-changes-land-on-master for details
+  # See https://github.com/ncipollo/release-action
   pre-release:
     name: Pre Release
     needs: [wheels]
@@ -271,16 +271,18 @@ jobs:
           path: dist
 
       - name: GitHub Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: ncipollo/release-action@v1.12.1
         with:
           body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
           prerelease: true
-          files: dist/*
+          artifacts: dist/*
           name: "Development Build"
-          tag_name: "latest"
+          tag: "latest"
           token: ${{ secrets.GITHUB_TOKEN }}
-          generate_release_notes: true
-          append_body: true
+          generateReleaseNotes: true
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
 
   # ---------------------------------------------------------------------------
 
