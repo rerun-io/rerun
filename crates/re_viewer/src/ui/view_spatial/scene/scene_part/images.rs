@@ -272,8 +272,8 @@ impl ImagesPart {
                 return;
             };
 
-        let scale = properties.backproject_scale.into_inner();
-        let radius_scale = properties.backproject_radius_scale.into_inner();
+        let scale = *properties.backproject_scale.get();
+        let radius_scale = *properties.backproject_radius_scale.get();
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
@@ -299,7 +299,7 @@ impl ImagesPart {
 
         scene.primitives.depth_clouds.push(DepthCloud {
             world_from_obj,
-            intrinsics: xxx,
+            depth_camera_intrinsics: xxx,
             radius_scale,
             depth_dimensions: dimensions,
             depth_data: data,
