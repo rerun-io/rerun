@@ -31,6 +31,7 @@ pub struct OutlineMaskProcessor {
     label: DebugLabel,
 
     mask_texture: GpuTexture,
+    mask_depth: GpuTexture,
 
     bindgroup_debug: GpuBindGroup,
 }
@@ -46,23 +47,9 @@ impl OutlineMaskProcessor {
         mask: !0,
         alpha_to_coverage_enabled: false,
     };
-    pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> = Some(wgpu::DepthStencilState {
-        format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
-        // Note that we use Greate*Equal*, allowing to pass when the depth is the *same* as before.
-        depth_compare: wgpu::CompareFunction::GreaterEqual,
-        depth_write_enabled: true,
-        stencil: wgpu::StencilState {
-            front: wgpu::StencilFaceState::IGNORE,
-            back: wgpu::StencilFaceState::IGNORE,
-            read_mask: 0,
-            write_mask: 0,
-        },
-        bias: wgpu::DepthBiasState {
-            constant: 0,
-            slope_scale: 0.0,
-            clamp: 0.0,
-        },
-    });
+    pub const MASK_DEPTH_FORMAT: wgpu::TextureFormat = ViewBuilder::MAIN_TARGET_DEPTH_FORMAT;
+    pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> =
+        ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
 
     pub fn new(
         ctx: &mut RenderContext,
@@ -97,6 +84,27 @@ impl OutlineMaskProcessor {
             },
         );
 
+        // We have a fresh depth buffer here that we need because:
+        // * We want outlines visible even if there's an object in front, so don't re-use previous
+        // * Overdraw IDs correctly
+        // * TODO(andreas): Make overdrawn outlines more transparent by comparing depth
+        let mask_depth = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &crate::wgpu_resources::TextureDesc {
+                label: label.clone().push_str(" - mask_depth"),
+                size: wgpu::Extent3d {
+                    width: resolution_in_pixel[0],
+                    height: resolution_in_pixel[1],
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+                dimension: wgpu::TextureDimension::D2,
+                format: Self::MASK_DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            },
+        );
+
         let bindgroup_debug = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &BindGroupDesc {
@@ -113,13 +121,13 @@ impl OutlineMaskProcessor {
         Self {
             label,
             mask_texture,
+            mask_depth,
             bindgroup_debug,
         }
     }
 
     pub fn start_mask_render_pass<'a>(
         &'a self,
-        depth_view: &'a wgpu::TextureView,
         encoder: &'a mut wgpu::CommandEncoder,
     ) -> wgpu::RenderPass<'a> {
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -133,10 +141,10 @@ impl OutlineMaskProcessor {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: depth_view,
+                view: &self.mask_depth.default_view,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Load, // We're using depth for depth-test only.
-                    store: false,             // -> Not expecting any writes in this pass.
+                    load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
+                    store: false,
                 }),
                 stencil_ops: None,
             }),

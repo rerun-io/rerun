@@ -205,6 +205,11 @@ impl ViewBuilder {
         alpha_to_coverage_enabled: false,
     };
 
+    /// Default value for clearing depth buffer to infinity.
+    ///
+    /// 0.0 == far since we're using reverse-z.
+    pub const DEFAULT_DEPTH_CLEAR: wgpu::LoadOp<f32> = wgpu::LoadOp::Clear(0.0);
+
     /// Default depth state for enabled depth write & read.
     pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: Option<wgpu::DepthStencilState> =
         Some(wgpu::DepthStencilState {
@@ -521,8 +526,8 @@ impl ViewBuilder {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
-                        store: true,                    // We need the depth buffer later!
+                        load: Self::DEFAULT_DEPTH_CLEAR,
+                        store: false,
                     }),
                     stencil_ops: None,
                 }),
@@ -539,8 +544,7 @@ impl ViewBuilder {
             crate::profile_scope!("outlines");
             {
                 crate::profile_scope!("outline mask pass");
-                let mut pass = outline_mask_processor
-                    .start_mask_render_pass(&setup.depth_buffer.default_view, &mut encoder);
+                let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass)?;
             }
