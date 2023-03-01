@@ -4,8 +4,8 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    component_types::{self, ClassId, TensorDataMeaning, TensorTrait},
-    ClassicTensor, MsgId, TensorDataStore, TensorDataType,
+    component_types::{self, ClassId, TensorData, TensorDataMeaning, TensorTrait},
+    ClassicTensor, MsgId,
 };
 use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
@@ -240,22 +240,21 @@ pub trait AsDynamicImage: component_types::TensorTrait {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage>;
 }
 
-impl AsDynamicImage for component_types::Tensor {
-    fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
-        crate::profile_function!();
-        let classic_tensor = ClassicTensor::from(self);
-        classic_tensor.as_dynamic_image(annotations)
+impl AsDynamicImage for ClassicTensor {
+    fn as_dynamic_image(&self, _annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
+        anyhow::bail!("ClassicTensor is deprecated")
     }
 }
 
-impl AsDynamicImage for ClassicTensor {
+impl AsDynamicImage for component_types::Tensor {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
         use anyhow::Context as _;
         let tensor = self;
 
         crate::profile_function!(format!(
             "dtype: {}, meaning: {:?}",
-            tensor.dtype, tensor.meaning
+            tensor.dtype(),
+            tensor.meaning
         ));
 
         let shape = &tensor.shape();
@@ -287,187 +286,153 @@ impl AsDynamicImage for ClassicTensor {
         use egui::epaint::ecolor::gamma_u8_from_linear_f32;
         use egui::epaint::ecolor::linear_u8_from_linear_f32;
 
-        match &tensor.data {
-            TensorDataStore::Dense(bytes) => {
-                anyhow::ensure!(
-                    bytes.len() as u64 == tensor.len() * tensor.dtype().size(),
-                    "Tensor data length doesn't match tensor shape and dtype"
-                );
+        match (depth, &tensor.data, tensor.meaning) {
+            (1, TensorData::U8(buf), TensorDataMeaning::ClassId) => {
+                // Apply annotation mapping to raw bytes interpreted as u8
+                let color_lookup: Vec<[u8; 4]> = (0..256)
+                    .map(|id| {
+                        annotations
+                            .class_description(Some(ClassId(id)))
+                            .annotation_info()
+                            .color(None, DefaultColor::TransparentBlack)
+                            .to_array()
+                    })
+                    .collect();
+                let color_bytes = buf
+                    .iter()
+                    .flat_map(|p: &u8| color_lookup[*p as usize])
+                    .collect();
+                crate::profile_scope!("from_raw");
+                image::RgbaImage::from_raw(width, height, color_bytes)
+                    .context("Bad RGBA8")
+                    .map(DynamicImage::ImageRgba8)
+            }
+            (1, TensorData::U16(buf), TensorDataMeaning::ClassId) => {
+                // Apply annotations mapping to bytes interpreted as u16
+                let mut color_lookup: ahash::HashMap<u16, [u8; 4]> = Default::default();
+                let color_bytes = buf
+                    .iter()
+                    .flat_map(|id: &u16| {
+                        *color_lookup.entry(*id).or_insert_with(|| {
+                            annotations
+                                .class_description(Some(ClassId(*id)))
+                                .annotation_info()
+                                .color(None, DefaultColor::TransparentBlack)
+                                .to_array()
+                        })
+                    })
+                    .collect();
+                crate::profile_scope!("from_raw");
+                image::RgbaImage::from_raw(width, height, color_bytes)
+                    .context("Bad RGBA8")
+                    .map(DynamicImage::ImageRgba8)
+            }
+            (1, TensorData::U8(buf), _) => {
+                // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+                image::GrayImage::from_raw(width, height, buf.clone())
+                    .context("Bad Luminance8")
+                    .map(DynamicImage::ImageLuma8)
+            }
+            (1, TensorData::U16(buf), _) => {
+                // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+                Gray16Image::from_raw(width, height, buf.to_vec())
+                    .context("Bad Luminance16")
+                    .map(DynamicImage::ImageLuma16)
+            }
+            (1, TensorData::F32(buf), TensorDataMeaning::Depth) => {
+                if buf.is_empty() {
+                    Ok(DynamicImage::ImageLuma16(Gray16Image::default()))
+                } else {
+                    // Convert to u16 so we can put them in an image.
+                    // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
+                    // One big downside of the approach below is that if we have two depth images
+                    // in the same range, they cannot be visually compared with each other,
+                    // because their individual max-depths will be scaled to 65535.
 
-                match (depth, tensor.dtype, tensor.meaning) {
-                    (1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
-                        // Apply annotation mapping to raw bytes interpreted as u8
-                        let color_lookup: Vec<[u8; 4]> = (0..256)
-                            .map(|id| {
-                                annotations
-                                    .class_description(Some(ClassId(id)))
-                                    .annotation_info()
-                                    .color(None, DefaultColor::TransparentBlack)
-                                    .to_array()
-                            })
-                            .collect();
-                        let color_bytes = bytes
+                    let mut min = f32::INFINITY;
+                    let mut max = f32::NEG_INFINITY;
+                    for float in buf.iter() {
+                        min = min.min(*float);
+                        max = max.max(*float);
+                    }
+
+                    anyhow::ensure!(
+                        min.is_finite() && max.is_finite(),
+                        "Depth image had non-finite values"
+                    );
+
+                    if min == max {
+                        // Uniform image. We can't remap it to a 0-1 range, so do whatever:
+                        let ints = buf.iter().map(|&float| float as u16).collect();
+                        Gray16Image::from_raw(width, height, ints)
+                            .context("Bad Luminance16")
+                            .map(DynamicImage::ImageLuma16)
+                    } else {
+                        let ints = buf
                             .iter()
-                            .flat_map(|p: &u8| color_lookup[*p as usize])
+                            .map(|&float| egui::remap(float, min..=max, 0.0..=65535.0) as u16)
                             .collect();
-                        crate::profile_scope!("from_raw");
-                        image::RgbaImage::from_raw(width, height, color_bytes)
-                            .context("Bad RGBA8")
-                            .map(DynamicImage::ImageRgba8)
-                    }
-                    (1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
-                        // Apply annotations mapping to bytes interpreted as u16
-                        let mut color_lookup: ahash::HashMap<u16, [u8; 4]> = Default::default();
-                        let color_bytes = bytemuck::cast_slice(bytes)
-                            .iter()
-                            .flat_map(|id: &u16| {
-                                *color_lookup.entry(*id).or_insert_with(|| {
-                                    annotations
-                                        .class_description(Some(ClassId(*id)))
-                                        .annotation_info()
-                                        .color(None, DefaultColor::TransparentBlack)
-                                        .to_array()
-                                })
-                            })
-                            .collect();
-                        crate::profile_scope!("from_raw");
-                        image::RgbaImage::from_raw(width, height, color_bytes)
-                            .context("Bad RGBA8")
-                            .map(DynamicImage::ImageRgba8)
-                    }
-                    (1, TensorDataType::U8, _) => {
-                        // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-                        image::GrayImage::from_raw(width, height, bytes.to_vec())
-                            .context("Bad Luminance8")
-                            .map(DynamicImage::ImageLuma8)
-                    }
-                    (1, TensorDataType::U16, _) => {
-                        // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-                        Gray16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
+
+                        Gray16Image::from_raw(width, height, ints)
                             .context("Bad Luminance16")
                             .map(DynamicImage::ImageLuma16)
                     }
-                    (1, TensorDataType::F32, TensorDataMeaning::Depth) => {
-                        if bytes.is_empty() {
-                            Ok(DynamicImage::ImageLuma16(Gray16Image::default()))
-                        } else {
-                            let floats = bytemuck::cast_slice(bytes);
-
-                            // Convert to u16 so we can put them in an image.
-                            // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
-                            // One big downside of the approach below is that if we have two depth images
-                            // in the same range, they cannot be visually compared with each other,
-                            // because their individual max-depths will be scaled to 65535.
-
-                            let mut min = f32::INFINITY;
-                            let mut max = f32::NEG_INFINITY;
-                            for &float in floats {
-                                min = min.min(float);
-                                max = max.max(float);
-                            }
-
-                            anyhow::ensure!(
-                                min.is_finite() && max.is_finite(),
-                                "Depth image had non-finite values"
-                            );
-
-                            if min == max {
-                                // Uniform image. We can't remap it to a 0-1 range, so do whatever:
-                                let ints = floats.iter().map(|&float| float as u16).collect();
-                                Gray16Image::from_raw(width, height, ints)
-                                    .context("Bad Luminance16")
-                                    .map(DynamicImage::ImageLuma16)
-                            } else {
-                                let ints = floats
-                                    .iter()
-                                    .map(|&float| {
-                                        egui::remap(float, min..=max, 0.0..=65535.0) as u16
-                                    })
-                                    .collect();
-
-                                Gray16Image::from_raw(width, height, ints)
-                                    .context("Bad Luminance16")
-                                    .map(DynamicImage::ImageLuma16)
-                            }
-                        }
-                    }
-                    (1, TensorDataType::F32, _) => {
-                        let l: &[f32] = bytemuck::cast_slice(bytes);
-                        let colors: Vec<u8> =
-                            l.iter().copied().map(linear_u8_from_linear_f32).collect();
-                        image::GrayImage::from_raw(width, height, colors)
-                            .context("Bad Luminance f32")
-                            .map(DynamicImage::ImageLuma8)
-                    }
-                    (3, TensorDataType::U8, _) => {
-                        image::RgbImage::from_raw(width, height, bytes.to_vec())
-                            .context("Bad RGB8")
-                            .map(DynamicImage::ImageRgb8)
-                    }
-                    (3, TensorDataType::U16, _) => {
-                        Rgb16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
-                            .context("Bad RGB16 image")
-                            .map(DynamicImage::ImageRgb16)
-                    }
-                    (3, TensorDataType::F32, _) => {
-                        let rgb: &[[f32; 3]] = bytemuck::cast_slice(bytes);
-                        let colors: Vec<u8> = rgb
-                            .iter()
-                            .flat_map(|&[r, g, b]| {
-                                let r = gamma_u8_from_linear_f32(r);
-                                let g = gamma_u8_from_linear_f32(g);
-                                let b = gamma_u8_from_linear_f32(b);
-                                [r, g, b]
-                            })
-                            .collect();
-                        image::RgbImage::from_raw(width, height, colors)
-                            .context("Bad RGB f32")
-                            .map(DynamicImage::ImageRgb8)
-                    }
-
-                    (4, TensorDataType::U8, _) => {
-                        image::RgbaImage::from_raw(width, height, bytes.to_vec())
-                            .context("Bad RGBA8")
-                            .map(DynamicImage::ImageRgba8)
-                    }
-                    (4, TensorDataType::U16, _) => {
-                        Rgba16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
-                            .context("Bad RGBA16 image")
-                            .map(DynamicImage::ImageRgba16)
-                    }
-                    (4, TensorDataType::F32, _) => {
-                        let rgba: &[[f32; 4]] = bytemuck::cast_slice(bytes);
-                        let colors: Vec<u8> = rgba
-                            .iter()
-                            .flat_map(|&[r, g, b, a]| {
-                                let r = gamma_u8_from_linear_f32(r);
-                                let g = gamma_u8_from_linear_f32(g);
-                                let b = gamma_u8_from_linear_f32(b);
-                                let a = linear_u8_from_linear_f32(a);
-                                [r, g, b, a]
-                            })
-                            .collect();
-                        image::RgbaImage::from_raw(width, height, colors)
-                            .context("Bad RGBA f32")
-                            .map(DynamicImage::ImageRgba8)
-                    }
-                    (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {
-                        anyhow::bail!(
-                                "Shape={shape:?} and dtype={dtype:?} is incompatible with meaning={meaning:?}"
-                            )
-                    }
-
-                    (_depth, dtype, _) => {
-                        anyhow::bail!(
-                                "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image"
-                            )
-                    }
                 }
             }
+            (1, TensorData::F32(buf), _) => {
+                let l = buf.as_slice();
+                let colors: Vec<u8> = l.iter().copied().map(linear_u8_from_linear_f32).collect();
+                image::GrayImage::from_raw(width, height, colors)
+                    .context("Bad Luminance f32")
+                    .map(DynamicImage::ImageLuma8)
+            }
+            (3, TensorData::U8(buf), _) => image::RgbImage::from_raw(width, height, buf.clone())
+                .context("Bad RGB8")
+                .map(DynamicImage::ImageRgb8),
+            (3, TensorData::U16(buf), _) => Rgb16Image::from_raw(width, height, buf.to_vec())
+                .context("Bad RGB16 image")
+                .map(DynamicImage::ImageRgb16),
+            (3, TensorData::F32(buf), _) => {
+                let rgb: &[[f32; 3]] = bytemuck::cast_slice(buf.as_slice());
+                let colors: Vec<u8> = rgb
+                    .iter()
+                    .flat_map(|&[r, g, b]| {
+                        let r = gamma_u8_from_linear_f32(r);
+                        let g = gamma_u8_from_linear_f32(g);
+                        let b = gamma_u8_from_linear_f32(b);
+                        [r, g, b]
+                    })
+                    .collect();
+                image::RgbImage::from_raw(width, height, colors)
+                    .context("Bad RGB f32")
+                    .map(DynamicImage::ImageRgb8)
+            }
 
-            TensorDataStore::Jpeg(bytes) => {
+            (4, TensorData::U8(buf), _) => image::RgbaImage::from_raw(width, height, buf.clone())
+                .context("Bad RGBA8")
+                .map(DynamicImage::ImageRgba8),
+            (4, TensorData::U16(buf), _) => Rgba16Image::from_raw(width, height, buf.to_vec())
+                .context("Bad RGBA16 image")
+                .map(DynamicImage::ImageRgba16),
+            (4, TensorData::F32(buf), _) => {
+                let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
+                let colors: Vec<u8> = rgba
+                    .iter()
+                    .flat_map(|&[r, g, b, a]| {
+                        let r = gamma_u8_from_linear_f32(r);
+                        let g = gamma_u8_from_linear_f32(g);
+                        let b = gamma_u8_from_linear_f32(b);
+                        let a = linear_u8_from_linear_f32(a);
+                        [r, g, b, a]
+                    })
+                    .collect();
+                image::RgbaImage::from_raw(width, height, colors)
+                    .context("Bad RGBA f32")
+                    .map(DynamicImage::ImageRgba8)
+            }
+            (depth, TensorData::JPEG(buf), _) => {
                 use image::io::Reader as ImageReader;
-                let mut reader = ImageReader::new(std::io::Cursor::new(bytes));
+                let mut reader = ImageReader::new(std::io::Cursor::new(buf));
                 reader.set_format(image::ImageFormat::Jpeg);
                 // TODO(emilk): handle grayscale JPEG:s (depth == 1)
                 let img = {
@@ -485,6 +450,16 @@ impl AsDynamicImage for ClassicTensor {
                 }
 
                 Ok(DynamicImage::ImageRgb8(img))
+            }
+
+            (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {
+                anyhow::bail!(
+                    "Shape={shape:?} and dtype={dtype:?} is incompatible with meaning={meaning:?}"
+                )
+            }
+
+            (_depth, dtype, _) => {
+                anyhow::bail!("Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image")
             }
         }
     }
