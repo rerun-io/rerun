@@ -169,6 +169,7 @@ impl DepthCloudDrawData {
                 depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
+                    &ctx.gpu_resources,
                     &BindGroupDesc {
                         label: "depth_cloud_bg".into(),
                         entries: smallvec![
@@ -177,10 +178,6 @@ impl DepthCloudDrawData {
                         ],
                         layout: bg_layout,
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
-                    &ctx.gpu_resources.textures,
-                    &ctx.gpu_resources.buffers,
-                    &ctx.gpu_resources.samplers,
                 ),
             ));
         }
@@ -236,10 +233,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     depth_texture_staging.extend_from_slice(data);
 
     depth_texture_staging.copy_to_texture(
-        ctx.active_frame
-            .frame_global_command_encoder
-            .lock()
-            .get_or_create(&ctx.device),
+        ctx.active_frame.encoder.lock().get(),
         wgpu::ImageCopyTexture {
             texture: &depth_texture.inner.texture,
             mip_level: 0,
