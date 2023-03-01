@@ -548,12 +548,9 @@ impl ViewBuilder {
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass)?;
             }
-            {
-                crate::profile_scope!("outline processing");
-                // TODO: Mask processing
-            }
-
-            self.queue_draw(&outline_mask_processor.create_composition_debug_draw_data());
+            self.queue_draw(
+                &outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?,
+            );
         }
 
         Ok(encoder.finish())

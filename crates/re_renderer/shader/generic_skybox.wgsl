@@ -2,11 +2,7 @@
 #import <./global_bindings.wgsl>
 #import <./utils/srgb.wgsl>
 #import <./utils/camera.wgsl>
-
-struct VertexOutput {
-    @builtin(position) position: Vec4,
-    @location(0) texcoord: Vec2,
-};
+#import <./screen_triangle_vertex.wgsl>
 
 fn skybox_dark_srgb(dir: Vec3) -> Vec3 {
     let rgb = dir * 0.5 + Vec3(0.5);

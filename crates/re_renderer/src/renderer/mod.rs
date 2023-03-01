@@ -98,3 +98,19 @@ pub enum DrawPhase {
     /// Drawn when compositing with the main target.
     Compositing,
 }
+
+/// Gets or creates a vertex shader module for drawing a screen filling triangle.
+fn screen_triangle_vertex_shader<Fs: FileSystem>(
+    pools: &mut WgpuResourcePools,
+    device: &wgpu::Device,
+    resolver: &mut FileResolver<Fs>,
+) -> crate::wgpu_resources::GpuShaderModuleHandle {
+    pools.shader_modules.get_or_create(
+        device,
+        resolver,
+        &crate::wgpu_resources::ShaderModuleDesc {
+            label: "screen_triangle (vertex)".into(),
+            source: crate::include_file!("../../shader/screen_triangle.wgsl"),
+        },
+    )
+}

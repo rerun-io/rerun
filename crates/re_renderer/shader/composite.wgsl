@@ -1,11 +1,7 @@
 #import <./types.wgsl>
 #import <./utils/srgb.wgsl>
 #import <./global_bindings.wgsl>
-
-struct VertexOutput {
-    @builtin(position) position: Vec4,
-    @location(0) texcoord: Vec2,
-};
+#import <./screen_triangle_vertex.wgsl>
 
 @group(1) @binding(0)
 var input_texture: texture_2d<f32>;
