@@ -174,12 +174,23 @@ impl Session {
         self.recording_source = recording_source;
     }
 
-    /// Send log data to a remote server.
+    /// Send log data to a remote viewer/server.
+    ///
+    /// Usually this is done by running the `rerun` binary (`cargo install rerun`) without arguments,
+    /// and then connecting to it.
     ///
     /// Send all currently buffered messages.
     /// If we are already connected, we will re-connect to this new address.
     ///
+    /// This function returns immediately.
     /// Disconnect with [`Self::disconnect`].
+    ///
+    /// ## Example:
+    ///
+    /// ``` no_run
+    /// # let mut session = re_sdk::Session::new();
+    /// session.connect(re_sdk::default_server_addr());
+    /// ```
     pub fn connect(&mut self, addr: SocketAddr) {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -209,10 +220,16 @@ impl Session {
         }
     }
 
-    /// Serve a Rerun web viewer and stream the log messages to it.
+    /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
     ///
-    /// If the `open_browser` argument is set, your default browser
-    /// will be opened to show the viewer.
+    /// If the `open_browser` argument is `true`, your default browser
+    /// will be opened with a connected web-viewer.
+    ///
+    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
+    ///
+    /// NOTE: you can not connect one `Session` to another.
+    ///
+    /// This function returns immediately.
     #[cfg(feature = "web_viewer")]
     pub fn serve(&mut self, open_browser: bool) {
         if !self.enabled {

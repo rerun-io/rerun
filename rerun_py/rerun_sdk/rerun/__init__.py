@@ -222,6 +222,8 @@ def connect(addr: Optional[str] = None) -> None:
 
     Requires that you first start a Rerun Viewer, e.g. with 'python -m rerun'
 
+    This function returns immediately.
+
     Parameters
     ----------
     addr
@@ -287,9 +289,13 @@ _spawn = spawn  # we need this because Python scoping is horrible
 
 def serve(open_browser: bool = True) -> None:
     """
-    Serve a Rerun Web Viewer.
+    Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+
+    You can connect to this server using `python -m rerun`.
 
     WARNING: This is an experimental feature.
+
+    This function returns immediately.
 
     Parameters
     ----------
