@@ -3,20 +3,29 @@
 /// If you are running up against this limit then feel free to bump it!
 const MAX_NUM: u8 = 31;
 
-const NO_ALPHA: u8 = 255;
+const IS_ALPHA_BIT: u8 = 1 << 7;
+const IS_PRERELEASE_BIT: u8 = 1 << 6;
 
-/// Sub-set of semver supporting major, minor, patch and an optional `-alpha.X` suffix.
+/// Sub-set of semver supporting `major.minor.patch`, an optional `-alpha.X`, and an optional `+prerelease` suffix.
 ///
-/// Examples: `1.2.3` and `1.2.3-alpha.4`.
+/// Examples: `1.2.3`, `1.2.3-alpha.4`, `1.2.3+prerelease`, `1.2.3-alpha.7+prerelease`
 ///
-/// This `struct` is designed to be space-efficient (32-bit)
-/// so it can be used as a version string in file formats.
+/// We use `-alpha.X` when we publish to crates.io and PyPI.
+///
+/// We use `+prerelease` for pre-releases that you can download from our GitHub.
+/// Two pre-releases of the same rust version aren't distinguished by their version string,
+/// but you can still see their git commit hash if you run `rerun --version`.
+///
+/// The version numbers aren't allowed to be very large (current max: 31).
+/// This limited subset it chosen so that we can encode the version in 32 bits
+/// in our `.rrd` files and on the wire.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RustVersion {
     major: u8,
     minor: u8,
     patch: u8,
-    alpha: u8,
+    alpha: Option<u8>,
+    is_prerelease: bool,
 }
 
 impl RustVersion {
@@ -29,17 +38,23 @@ impl RustVersion {
             major,
             minor,
             patch,
-            alpha: NO_ALPHA,
+            alpha: None,
+            is_prerelease: false,
         }
     }
 
     /// From a compact 32-bit representation crated with [`Self::to_bytes`].
-    pub fn from_bytes([major, minor, patch, alpha]: [u8; 4]) -> Self {
+    pub fn from_bytes([major, minor, patch, suffix_byte]: [u8; 4]) -> Self {
+        let is_alpha = (suffix_byte & IS_ALPHA_BIT) != 0;
+        let is_prerelease = (suffix_byte & IS_PRERELEASE_BIT) != 0;
+        let alpha_version = suffix_byte & 0b0011_1111;
+
         Self {
             major,
             minor,
             patch,
-            alpha,
+            alpha: is_alpha.then_some(alpha_version),
+            is_prerelease,
         }
     }
 
@@ -50,18 +65,27 @@ impl RustVersion {
             minor,
             patch,
             alpha,
+            is_prerelease,
         } = self;
-        [major, minor, patch, alpha]
-    }
 
-    /// Is this an alpha-release?
-    pub fn alpha(self) -> Option<u8> {
-        (self.alpha != NO_ALPHA).then_some(self.alpha)
+        let mut suffix_byte = 0;
+        if let Some(alpha) = alpha {
+            suffix_byte |= IS_ALPHA_BIT;
+            suffix_byte |= alpha;
+        }
+        if is_prerelease {
+            suffix_byte |= IS_PRERELEASE_BIT;
+        }
+
+        [major, minor, patch, suffix_byte]
     }
 
     pub fn is_semver_compatible_with(self, other: RustVersion) -> bool {
         if self.alpha != other.alpha {
             return false; // Alphas can contain breaking changes
+        }
+        if self.is_prerelease != other.is_prerelease {
+            return false; // Pre-releases can contain breaking changes
         }
 
         if self.major == 0 {
@@ -128,39 +152,59 @@ impl RustVersion {
         }
 
         let alpha = if s[i] == b'-' {
-            // `-alpha.X` suffix
-            assert!(s[i] == b'-', "Expected `-alpha.X` suffix");
-            i += 1;
-            assert!(s[i] == b'a', "Expected `-alpha.X` suffix");
-            i += 1;
-            assert!(s[i] == b'l', "Expected `-alpha.X` suffix");
-            i += 1;
-            assert!(s[i] == b'p', "Expected `-alpha.X` suffix");
-            i += 1;
-            assert!(s[i] == b'h', "Expected `-alpha.X` suffix");
-            i += 1;
-            assert!(s[i] == b'a', "Expected `-alpha.X` suffix");
-            i += 1;
-            assert!(s[i] == b'.', "Expected `-alpha.X` suffix");
-            i += 1;
+            // `-alpha.X` suffix (Called "pre-release version" in semver).
+            // Comparing strings in `const` functions is fun:
+            assert!(
+                s[i] == b'-'
+                    && s[i + 1] == b'a'
+                    && s[i + 2] == b'l'
+                    && s[i + 3] == b'p'
+                    && s[i + 4] == b'h'
+                    && s[i + 5] == b'a'
+                    && s[i + 6] == b'.',
+                "Expected `-alpha.X` suffix"
+            );
+            i += 7;
 
             let alpha_start = i;
             while i < s.len() && s[i] != b'+' {
                 i += 1;
             }
-            parse_u8(s, alpha_start, i)
+            Some(parse_u8(s, alpha_start, i))
         } else {
-            NO_ALPHA
+            None
         };
 
-        // Any trailing `+22d293392.1` or similar?
-        assert!(i == s.len(), "Rust version suffixes not supported");
+        let is_prerelease = if i == s.len() {
+            false
+        } else {
+            // `+prerelease` suffix ("build metadata" in semver parlance).
+            assert!(s[i] == b'+', "Expected `+prerelease` suffix");
+            assert!(
+                s[i] == b'+'
+                    && s[i + 1] == b'p'
+                    && s[i + 2] == b'r'
+                    && s[i + 3] == b'e'
+                    && s[i + 4] == b'r'
+                    && s[i + 5] == b'e'
+                    && s[i + 6] == b'l'
+                    && s[i + 7] == b'e'
+                    && s[i + 8] == b'a'
+                    && s[i + 9] == b's'
+                    && s[i + 10] == b'e',
+                "Expected `+prerelease` suffix"
+            );
+            i += 11;
+            assert!(i == s.len(), "More stuff found after '+prerelease'");
+            true
+        };
 
         Self {
             major,
             minor,
             patch,
             alpha,
+            is_prerelease,
         }
     }
 }
@@ -172,12 +216,17 @@ impl std::fmt::Display for RustVersion {
             minor,
             patch,
             alpha,
+            is_prerelease,
         } = *self;
-        if alpha == NO_ALPHA {
-            write!(f, "{major}.{minor}.{patch}")
-        } else {
-            write!(f, "{major}.{minor}.{patch}-alpha.{alpha}")
+        write!(f, "{major}.{minor}.{patch}")?;
+        if let Some(alpha) = alpha {
+            write!(f, "-alpha.{alpha}")?;
         }
+        if is_prerelease {
+            write!(f, "+prerelease")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -193,7 +242,28 @@ fn test_parse_version() {
             major: 12,
             minor: 23,
             patch: 24,
-            alpha: 31,
+            alpha: Some(31),
+            is_prerelease: false,
+        }
+    );
+    assert_eq!(
+        parse("12.23.24+prerelease"),
+        RustVersion {
+            major: 12,
+            minor: 23,
+            patch: 24,
+            alpha: None,
+            is_prerelease: true,
+        }
+    );
+    assert_eq!(
+        parse("12.23.24-alpha.31+prerelease"),
+        RustVersion {
+            major: 12,
+            minor: 23,
+            patch: 24,
+            alpha: Some(31),
+            is_prerelease: true,
         }
     );
 }
@@ -201,7 +271,14 @@ fn test_parse_version() {
 #[test]
 fn test_format_parse_roundtrip() {
     let parse = RustVersion::parse;
-    for version in ["0.2.0", "1.2.3", "12.23.24", "12.23.24-alpha.31"] {
+    for version in [
+        "0.2.0",
+        "1.2.3",
+        "12.23.24",
+        "12.23.24-alpha.31",
+        "12.23.24+prerelease",
+        "12.23.24-alpha.31+prerelease",
+    ] {
         assert_eq!(parse(version).to_string(), version);
     }
 }
