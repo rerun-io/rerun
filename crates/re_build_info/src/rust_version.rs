@@ -73,7 +73,7 @@ impl RustVersion {
         }
     }
 
-    pub const fn parse(s: &str) -> Self {
+    pub const fn parse(version_string: &str) -> Self {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
         const fn parse_u8(s: &[u8], begin: usize, end: usize) -> u8 {
@@ -100,7 +100,7 @@ impl RustVersion {
             num as _
         }
 
-        let s = s.as_bytes();
+        let s = version_string.as_bytes();
 
         let mut i = 0;
         while s[i] != b'.' {
@@ -117,12 +117,16 @@ impl RustVersion {
 
         i += 1;
         let patch_start = i;
-        while i < s.len() && s[i] != b'-' {
+        while i < s.len() && s[i] != b'-' && s[i] != b'+' {
             i += 1;
         }
         let patch = parse_u8(s, patch_start, i);
 
-        if i < s.len() {
+        if i == s.len() {
+            return Self::new(major, minor, patch);
+        }
+
+        let alpha = if s[i] == b'-' {
             // `-alpha.X` suffix
             assert!(s[i] == b'-', "Expected `-alpha.X` suffix");
             i += 1;
@@ -138,10 +142,24 @@ impl RustVersion {
             i += 1;
             assert!(s[i] == b'.', "Expected `-alpha.X` suffix");
             i += 1;
-            let alpha = parse_u8(s, i, s.len());
-            Self::new_alpha(major, minor, patch, alpha)
+
+            let alpha_start = i;
+            while i < s.len() && s[i] != b'+' {
+                i += 1;
+            }
+            parse_u8(s, alpha_start, i)
         } else {
-            Self::new(major, minor, patch)
+            NO_ALPHA
+        };
+
+        // Any trailing `+22d293392.1` or similar?
+        assert!(i == s.len(), "Rust version suffixes not supported");
+
+        Self {
+            major,
+            minor,
+            patch,
+            alpha,
         }
     }
 }
