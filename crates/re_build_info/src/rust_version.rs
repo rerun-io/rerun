@@ -10,11 +10,12 @@ const IS_PRERELEASE_BIT: u8 = 1 << 6;
 ///
 /// Examples: `1.2.3`, `1.2.3-alpha.4`, `1.2.3+prerelease`, `1.2.3-alpha.7+prerelease`
 ///
-/// We use `-alpha.X` when we publish to crates.io and PyPI.
+/// We use `-alpha.X` when we publish pre-releases to crates.io and PyPI.
 ///
-/// We use `+prerelease` for pre-releases that you can download from our GitHub.
+/// We use `+prerelease` for continuous pre-releases that you can download from our GitHub.
 /// Two pre-releases of the same rust version aren't distinguished by their version string,
 /// but you can still see their git commit hash if you run `rerun --version`.
+/// See also `scripts/version_util.py`.
 ///
 /// The version numbers aren't allowed to be very large (current max: 31).
 /// This limited subset it chosen so that we can encode the version in 32 bits
