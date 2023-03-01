@@ -84,6 +84,7 @@ glam = { workspace = true, features = [
 half.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
+  # "jpeg_rayon", # TODO(emilk): when https://github.com/rayon-rs/rayon/pull/1019 is released
   "png",
 ] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
@@ -93,7 +94,6 @@ macaw = { workspace = true, features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
-ordered-float = { version = "3.2", features = ["serde"] }
 poll-promise = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.11"

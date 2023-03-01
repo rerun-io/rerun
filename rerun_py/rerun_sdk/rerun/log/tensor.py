@@ -41,7 +41,7 @@ def log_tensor(
     entity_path: str,
     tensor: npt.ArrayLike,
     *,
-    names: Optional[Iterable[str]] = None,
+    names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,

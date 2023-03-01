@@ -222,6 +222,8 @@ def connect(addr: Optional[str] = None) -> None:
 
     Requires that you first start a Rerun Viewer, e.g. with 'python -m rerun'
 
+    This function returns immediately.
+
     Parameters
     ----------
     addr
@@ -287,9 +289,13 @@ _spawn = spawn  # we need this because Python scoping is horrible
 
 def serve(open_browser: bool = True) -> None:
     """
-    Serve a Rerun Web Viewer.
+    Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+
+    You can connect to this server using `python -m rerun`.
 
     WARNING: This is an experimental feature.
+
+    This function returns immediately.
 
     Parameters
     ----------
@@ -306,25 +312,14 @@ def serve(open_browser: bool = True) -> None:
 
 
 def disconnect() -> None:
-    """Disconnect from the remote rerun server (if any)."""
+    """
+    Closes all TCP connections, servers, and files.
+
+    Closes all TCP connections, servers, and files that have been opened with
+    [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+    """
+
     bindings.disconnect()
-
-
-def show() -> None:
-    """
-    Show previously logged data.
-
-    This only works if you have not called `connect`.
-
-    NOTE: There is a bug which causes this function to only work once on some platforms.
-
-    """
-
-    if not bindings.is_enabled():
-        print("Rerun is disabled - show() call ignored")
-        return
-
-    bindings.show()
 
 
 def save(path: str) -> None:

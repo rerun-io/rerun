@@ -4,7 +4,7 @@ use super::{resource::PoolError, static_resource_pool::StaticResourcePool};
 
 slotmap::new_key_type! { pub struct GpuBindGroupLayoutHandle; }
 
-#[derive(Clone, Hash, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Default)]
 pub struct BindGroupLayoutDesc {
     /// Debug label of the bind group layout. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,

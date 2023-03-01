@@ -14,8 +14,8 @@ pub struct BuildInfo {
     /// `CARGO_PKG_NAME`
     pub crate_name: &'static str,
 
-    /// Parsed `CARGO_PKG_VERSION`
-    pub version: super::RustVersion,
+    /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
+    pub version: super::CrateVersion,
 
     /// Git commit hash, or empty string.
     pub git_hash: &'static str,

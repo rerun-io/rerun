@@ -1,30 +1,36 @@
 """Color conversion utilities."""
-from typing import Sequence, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
 
 
-def u8_array_to_rgba(arr: Sequence[int]) -> np.uint32:
+def u8_array_to_rgba(arr: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint32]:
     """
-    Convert an array[4] of uint8 values into a uint32.
+    Convert an array with inner dimension [R,G,B,A] into packed uint32 values.
 
     Parameters
     ----------
-    arr : Sequence[int]
-        The array of uint8 values to convert in RGBA order.
+    arr :
+        Nx3 or Nx4 `[[r,g,b,a], ... ]` of uint8 values
 
     Returns
     -------
-    int
-        The uint32 value as 0xRRGGBBAA.
+    npt.NDArray[np.uint32]
+        Array of uint32 value as 0xRRGGBBAA.
 
     """
-    red = arr[0]
-    green = arr[1]
-    blue = arr[2]
-    alpha = arr[3] if len(arr) == 4 else 0xFF
-    return np.uint32((red << 24) + (green << 16) + (blue << 8) + alpha)
+    r = arr[:, 0]
+    g = arr[:, 1]
+    b = arr[:, 2]
+    a = arr[:, 3] if arr.shape[1] == 4 else np.repeat(0xFF, len(arr))
+    # Reverse the byte order because this is how we encode into uint32
+    arr = np.vstack([a, b, g, r]).T
+    # Make contiguous and then reinterpret
+    arr = np.ascontiguousarray(arr, dtype=np.uint8)
+    arr = arr.view(np.uint32)
+    arr = np.squeeze(arr, axis=1)
+    return arr  # type: ignore[return-value]
 
 
 def linear_to_gamma_u8_value(linear: npt.NDArray[Union[np.float32, np.float64]]) -> npt.NDArray[np.uint8]:

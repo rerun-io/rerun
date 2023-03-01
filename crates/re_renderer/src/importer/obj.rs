@@ -67,12 +67,8 @@ pub fn load_obj_from_buffer(
             };
             let gpu_mesh = ctx
                 .mesh_manager
-                .create(
-                    &mut ctx.gpu_resources,
-                    &ctx.texture_manager_2d,
-                    &mesh,
-                    lifetime,
-                )
+                .write()
+                .create(ctx, &mesh, lifetime)
                 .unwrap(); // TODO(andreas): Handle error
             MeshInstance {
                 gpu_mesh,

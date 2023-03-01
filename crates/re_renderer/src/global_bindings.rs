@@ -131,6 +131,7 @@ impl GlobalBindings {
     ) -> GpuBindGroup {
         pools.bind_groups.alloc(
             device,
+            pools,
             // Needs to be kept in sync with `global_bindings.wgsl` / `self.layout`
             &BindGroupDesc {
                 label: "global bind group".into(),
@@ -141,10 +142,6 @@ impl GlobalBindings {
                 ],
                 layout: self.layout,
             },
-            &pools.bind_group_layouts,
-            &pools.textures,
-            &pools.buffers,
-            &pools.samplers,
         )
     }
 }

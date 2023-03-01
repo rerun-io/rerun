@@ -239,10 +239,8 @@ fn transform_at(
                     // A pinhole camera means that we're looking at an image.
                     // Images are spanned in their local x/y space.
                     // Center it and move it along z, scaling the further we move.
-
-                    let distance = entity_properties
-                        .get(entity_path)
-                        .pinhole_image_plane_distance(&pinhole);
+                    let props = entity_properties.get(entity_path);
+                    let distance = *props.pinhole_image_plane_distance.get();
 
                     let focal_length = pinhole.focal_length_in_pixels();
                     let focal_length = glam::vec2(focal_length.x(), focal_length.y());
