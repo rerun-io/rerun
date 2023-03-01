@@ -110,6 +110,22 @@ pub struct MeshInstance {
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
     pub additive_tint: Color32,
+
+    /// TODO: Document & unify
+    /// TODO: actually use
+    pub outline_mask: Option<glam::UVec2>,
+}
+
+impl Default for MeshInstance {
+    fn default() -> Self {
+        Self {
+            gpu_mesh: GpuMeshHandle::Invalid,
+            mesh: None,
+            world_from_mesh: macaw::Affine3A::IDENTITY,
+            additive_tint: Color32::TRANSPARENT,
+            outline_mask: None,
+        }
+    }
 }
 
 impl MeshDrawData {

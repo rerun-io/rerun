@@ -7,7 +7,7 @@ use crate::{
     mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
     renderer::MeshInstance,
     resource_managers::ResourceLifeTime,
-    Color32, RenderContext,
+    RenderContext,
 };
 
 /// Load a [Wavefront .obj file](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
@@ -73,8 +73,7 @@ pub fn load_obj_from_buffer(
             MeshInstance {
                 gpu_mesh,
                 mesh: Some(Arc::new(mesh)),
-                world_from_mesh: glam::Affine3A::IDENTITY,
-                additive_tint: Color32::TRANSPARENT,
+                ..Default::default()
             }
         })
         .collect())

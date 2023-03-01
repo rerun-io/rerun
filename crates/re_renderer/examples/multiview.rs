@@ -61,6 +61,7 @@ fn build_mesh_instances(
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
                     additive_tint: *c,
+                    ..Default::default()
                 },
             )
         })

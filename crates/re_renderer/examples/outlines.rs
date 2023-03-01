@@ -36,7 +36,7 @@ impl framework::Example for Outlines {
                     name: "2D".into(),
                     resolution_in_pixel: resolution,
                     view_from_world: macaw::IsoTransform::from_translation(glam::vec3(
-                        0.0, -2.0, -10.0,
+                        0.0, -1.0, -6.0,
                     )),
                     projection_from_view: Projection::Perspective {
                         vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
@@ -52,7 +52,7 @@ impl framework::Example for Outlines {
             )
             .unwrap();
 
-        let instances = (0..2)
+        let instances = (0..3)
             .into_iter()
             .flat_map(|i| {
                 self.model_mesh_instances
@@ -62,9 +62,14 @@ impl framework::Example for Outlines {
                         mesh: None,
                         world_from_mesh: glam::Affine3A::from_rotation_translation(
                             glam::Quat::from_rotation_y(time.seconds_since_startup() * i as f32),
-                            glam::vec3(8.0, 0.0, -10.0) * i as f32,
+                            glam::vec3(8.0, 0.5, -10.0) * i as f32,
                         ) * instance.world_from_mesh,
                         additive_tint: re_renderer::Color32::TRANSPARENT,
+                        outline_mask: if i == 0 {
+                            None
+                        } else {
+                            Some(glam::uvec2(i, 0))
+                        },
                     })
             })
             .collect_vec();
