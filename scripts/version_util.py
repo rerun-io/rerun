@@ -90,8 +90,7 @@ def main() -> None:
     cargo_version = get_cargo_version(cargo_toml)
 
     if sys.argv[1] == "--patch_prerelease":
-        git_sha = get_git_sha()
-        new_version = cargo_version.bump_build(git_sha)
+        new_version = f"{cargo_version}+{get_git_sha()}"
         new_cargo_toml = patch_cargo_version(cargo_toml, new_version)
 
         # Write the patched Cargo.toml back to disk
