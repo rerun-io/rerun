@@ -298,6 +298,7 @@ impl PointCloudDrawData {
 
         let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
+            &ctx.gpu_resources,
             &BindGroupDesc {
                 label: "line drawdata".into(),
                 entries: smallvec![
@@ -306,10 +307,6 @@ impl PointCloudDrawData {
                 ],
                 layout: point_renderer.bind_group_layout_all_points,
             },
-            &ctx.gpu_resources.bind_group_layouts,
-            &ctx.gpu_resources.textures,
-            &ctx.gpu_resources.buffers,
-            &ctx.gpu_resources.samplers,
         );
 
         // Process batches
@@ -333,15 +330,12 @@ impl PointCloudDrawData {
             {
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
+                    &ctx.gpu_resources,
                     &BindGroupDesc {
                         label: batch_info.label.clone(),
                         entries: smallvec![uniform_buffer_binding],
                         layout: point_renderer.bind_group_layout_batch,
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
-                    &ctx.gpu_resources.textures,
-                    &ctx.gpu_resources.buffers,
-                    &ctx.gpu_resources.samplers,
                 );
 
                 let point_vertex_range_end = (start_point_for_next_batch + batch_info.point_count)

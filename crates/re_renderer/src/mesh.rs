@@ -232,6 +232,7 @@ impl GpuMesh {
                 let texture = ctx.texture_manager_2d.get(&material.albedo)?;
                 let bind_group = pools.bind_groups.alloc(
                     device,
+                    pools,
                     &BindGroupDesc {
                         label: material.label.clone(),
                         entries: smallvec![
@@ -240,10 +241,6 @@ impl GpuMesh {
                         ],
                         layout: mesh_bind_group_layout,
                     },
-                    &pools.bind_group_layouts,
-                    &pools.textures,
-                    &pools.buffers,
-                    &pools.samplers,
                 );
 
                 materials.push(GpuMaterial {
