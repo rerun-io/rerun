@@ -46,6 +46,15 @@ pub struct TextureDesc {
     pub usage: wgpu::TextureUsages,
 }
 
+impl TextureDesc {
+    /// Copies the desc but changes the label.
+    pub fn with_label(&self, label: DebugLabel) -> Self {
+        let mut new = self.clone();
+        new.label = label;
+        new
+    }
+}
+
 impl DynamicResourcesDesc for TextureDesc {
     /// Number of bytes this texture is expected to take.
     ///

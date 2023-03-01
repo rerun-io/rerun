@@ -5,7 +5,7 @@ use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub struct GpuSamplerHandle; }
 
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct SamplerDesc {
     /// Debug label of the sampler. This will show up in graphics debuggers for easy identification.
     pub label: DebugLabel,
