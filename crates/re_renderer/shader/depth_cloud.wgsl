@@ -114,10 +114,9 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     if smallest_distance_to_sphere > pixel_world_size {
         discard;
     }
-
-    // NOTE: We only want clipping, alpha coverage and shading don't look great for this use case.
+    let coverage = 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
 
-    return vec4(in.point_color.rgb, 1.0);
+    return vec4(in.point_color.rgb, coverage);
 }
