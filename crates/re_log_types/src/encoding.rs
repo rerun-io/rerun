@@ -21,7 +21,7 @@ mod encoder {
 
     impl<W: std::io::Write> Encoder<W> {
         pub fn new(mut write: W) -> anyhow::Result<Self> {
-            let rerun_version = re_build_info::RustVersion::parse(env!("CARGO_PKG_VERSION"));
+            let rerun_version = re_build_info::CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
             write.write_all(b"RRF0").context("header")?;
             write
@@ -79,16 +79,16 @@ pub use encoder::*;
 // ----------------------------------------------------------------------------
 
 fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
-    use re_build_info::RustVersion;
+    use re_build_info::CrateVersion;
 
     // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
     let encoded_version = if encoded_version == [0, 0, 0, 0] {
-        RustVersion::new(0, 2, 0)
+        CrateVersion::new(0, 2, 0)
     } else {
-        RustVersion::from_bytes(encoded_version)
+        CrateVersion::from_bytes(encoded_version)
     };
 
-    let local_version = RustVersion::parse(env!("CARGO_PKG_VERSION"));
+    let local_version = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
     if !encoded_version.is_semver_compatible_with(local_version) {
         re_log::warn!("Found log stream with Rerun version {encoded_version}, which is incompatible with the local Rerun version {local_version}. Loading will try to continue, but might fail in subtle ways.");

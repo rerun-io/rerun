@@ -5,7 +5,9 @@ const MAX_NUM: u8 = 31;
 
 const IS_ALPHA_BIT: u8 = 1 << 7;
 
-/// Sub-set of semver supporting `major.minor.patch`, an optional `-alpha.X`.
+/// The version of a Rerun crate.
+///
+/// Sub-set of semver supporting `major.minor.patch` plus an optional `-alpha.X`.
 ///
 /// When parsing, any `+metadata` suffix is ignored.
 ///
@@ -20,14 +22,14 @@ const IS_ALPHA_BIT: u8 = 1 << 7;
 /// This limited subset it chosen so that we can encode the version in 32 bits
 /// in our `.rrd` files and on the wire.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct RustVersion {
+pub struct CrateVersion {
     major: u8,
     minor: u8,
     patch: u8,
     alpha: Option<u8>,
 }
 
-impl RustVersion {
+impl CrateVersion {
     pub const fn new(major: u8, minor: u8, patch: u8) -> Self {
         assert!(
             major <= MAX_NUM && minor <= MAX_NUM && patch <= MAX_NUM,
@@ -72,7 +74,7 @@ impl RustVersion {
         [major, minor, patch, suffix_byte]
     }
 
-    pub fn is_semver_compatible_with(self, other: RustVersion) -> bool {
+    pub fn is_semver_compatible_with(self, other: CrateVersion) -> bool {
         if self.alpha != other.alpha {
             return false; // Alphas can contain breaking changes
         }
@@ -178,7 +180,7 @@ impl RustVersion {
     }
 }
 
-impl std::fmt::Display for RustVersion {
+impl std::fmt::Display for CrateVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             major,
@@ -197,13 +199,13 @@ impl std::fmt::Display for RustVersion {
 
 #[test]
 fn test_parse_version() {
-    let parse = RustVersion::parse;
-    assert_eq!(parse("0.2.0"), RustVersion::new(0, 2, 0));
-    assert_eq!(parse("1.2.3"), RustVersion::new(1, 2, 3));
-    assert_eq!(parse("12.23.24"), RustVersion::new(12, 23, 24));
+    let parse = CrateVersion::parse;
+    assert_eq!(parse("0.2.0"), CrateVersion::new(0, 2, 0));
+    assert_eq!(parse("1.2.3"), CrateVersion::new(1, 2, 3));
+    assert_eq!(parse("12.23.24"), CrateVersion::new(12, 23, 24));
     assert_eq!(
         parse("12.23.24-alpha.31"),
-        RustVersion {
+        CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
@@ -212,7 +214,7 @@ fn test_parse_version() {
     );
     assert_eq!(
         parse("12.23.24+foo"),
-        RustVersion {
+        CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
@@ -221,7 +223,7 @@ fn test_parse_version() {
     );
     assert_eq!(
         parse("12.23.24-alpha.31+bar"),
-        RustVersion {
+        CrateVersion {
             major: 12,
             minor: 23,
             patch: 24,
@@ -232,7 +234,7 @@ fn test_parse_version() {
 
 #[test]
 fn test_format_parse_roundtrip() {
-    let parse = RustVersion::parse;
+    let parse = CrateVersion::parse;
     for version in [
         "0.2.0",
         "1.2.3",
@@ -249,7 +251,7 @@ fn test_format_parse_roundtrip() {
 #[test]
 fn test_compatibility() {
     fn are_compatible(a: &str, b: &str) -> bool {
-        RustVersion::parse(a).is_semver_compatible_with(RustVersion::parse(b))
+        CrateVersion::parse(a).is_semver_compatible_with(CrateVersion::parse(b))
     }
 
     assert!(are_compatible("0.2.0", "0.2.0"));
