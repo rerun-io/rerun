@@ -182,9 +182,8 @@ impl ViewSpatialState {
                     .data_blueprints_individual()
                     .get(&entity_path);
                 if properties.pinhole_image_plane_distance.is_auto() {
-                    properties.pinhole_image_plane_distance = EditableAutoValue::Auto(
-                        ordered_float::NotNan::new(default_image_plane_distance).unwrap(),
-                    );
+                    properties.pinhole_image_plane_distance =
+                        EditableAutoValue::Auto(default_image_plane_distance);
                     data_blueprint
                         .data_blueprints_individual()
                         .set(entity_path, properties);

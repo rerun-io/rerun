@@ -3,7 +3,7 @@
 #[serde(bound = "T: serde::Serialize, for<'de2> T: serde::Deserialize<'de2>")]
 pub enum EditableAutoValue<T>
 where
-    T: std::fmt::Debug + Eq + PartialEq + Clone + Default + serde::Serialize,
+    T: std::fmt::Debug + Clone + Default + PartialEq + serde::Serialize,
     for<'de2> T: serde::Deserialize<'de2>,
 {
     /// The user explicitly specified what they wanted
@@ -17,7 +17,7 @@ where
 
 impl<T> Default for EditableAutoValue<T>
 where
-    T: std::fmt::Debug + Eq + PartialEq + Clone + Default + serde::Serialize,
+    T: std::fmt::Debug + Clone + Default + PartialEq + serde::Serialize,
     for<'de2> T: serde::Deserialize<'de2>,
 {
     fn default() -> Self {
@@ -27,7 +27,7 @@ where
 
 impl<T> EditableAutoValue<T>
 where
-    T: std::fmt::Debug + Eq + PartialEq + Clone + Default + serde::Serialize,
+    T: std::fmt::Debug + Clone + Default + PartialEq + serde::Serialize,
     for<'de2> T: serde::Deserialize<'de2>,
 {
     pub fn is_auto(&self) -> bool {

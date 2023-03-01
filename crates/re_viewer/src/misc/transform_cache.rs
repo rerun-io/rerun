@@ -240,7 +240,7 @@ fn transform_at(
                     // Images are spanned in their local x/y space.
                     // Center it and move it along z, scaling the further we move.
                     let props = entity_properties.get(entity_path);
-                    let distance: f32 = props.pinhole_image_plane_distance.get().into_inner();
+                    let distance = *props.pinhole_image_plane_distance.get();
 
                     let focal_length = pinhole.focal_length_in_pixels();
                     let focal_length = glam::vec2(focal_length.x(), focal_length.y());
