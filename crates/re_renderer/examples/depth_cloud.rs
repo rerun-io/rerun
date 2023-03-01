@@ -13,7 +13,7 @@
 //! cargo run-wasm --example depth_cloud
 //! ```
 
-use std::path::PathBuf;
+use std::{f32::consts::PI, path::PathBuf};
 
 use anyhow::Context;
 use glam::Vec3;
@@ -239,11 +239,8 @@ impl framework::Example for RenderDepthClouds {
     fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         re_log::info!("Stop camera movement by pressing 'Space'");
 
-        let depth = DepthTexture::from_bytes(include_bytes!("assets/nyud_depth.png"), None);
-        let albedo = AlbedoTexture::from_bytes(
-            include_bytes!("assets/nyud_albedo.png"),
-            depth.dimensions.into(),
-        );
+        let depth = DepthTexture::spiral((640, 480).into());
+        let albedo = AlbedoTexture::spiral(depth.dimensions);
 
         let albedo_handle = re_ctx.texture_manager_2d.create(
             &mut re_ctx.gpu_resources.textures,
@@ -383,33 +380,76 @@ fn main() {
 
 // ---
 
+/// Returns `(position_in_image, linear_depth)`.
+fn spiral(dimensions: glam::UVec2) -> impl Iterator<Item = (glam::UVec2, f32)> {
+    let size = (dimensions.x * dimensions.y) as usize;
+    let factor = dimensions.as_vec2() - 1.0;
+
+    let mut i = 0;
+    let mut angle_rad: f32 = 0.0;
+
+    std::iter::from_fn(move || {
+        if i < size {
+            let radius = i as f32 / size as f32;
+            let pos = glam::Vec2::splat(0.5)
+                + glam::Vec2::new(angle_rad.cos(), angle_rad.sin()) * 0.5 * radius;
+            let texcoords = (pos * factor).as_uvec2();
+
+            i += 1;
+            angle_rad += 0.001 * PI;
+
+            return Some((texcoords, radius));
+        }
+
+        None
+    })
+}
+
+// Copied from re_viewer, this will be removed in an upcoming PR that handles colormapping.
+//
+// Copyright 2019 Google LLC.
+// SPDX-License-Identifier: Apache-2.0
+// Authors:
+//   Colormap Design: Anton Mikhailov (mikhailov@google.com)
+//   GLSL Approximation: Ruofei Du (ruofei@google.com)/
+//
+// TODO(cmc): remove in GPU color maps PR.
+#[allow(clippy::excessive_precision)]
+fn turbo_color_map(x: f32) -> [u8; 4] {
+    use glam::{Vec2, Vec4};
+
+    const RED_VEC4: Vec4 = Vec4::new(0.13572138, 4.61539260, -42.66032258, 132.13108234);
+    const GREEN_VEC4: Vec4 = Vec4::new(0.09140261, 2.19418839, 4.84296658, -14.18503333);
+    const BLUE_VEC4: Vec4 = Vec4::new(0.10667330, 12.64194608, -60.58204836, 110.36276771);
+    const RED_VEC2: Vec2 = Vec2::new(-152.94239396, 59.28637943);
+    const GREEN_VEC2: Vec2 = Vec2::new(4.27729857, 2.82956604);
+    const BLURE_VEC2: Vec2 = Vec2::new(-89.90310912, 27.34824973);
+
+    let v4 = glam::vec4(1.0, x, x * x, x * x * x);
+    let v2 = glam::vec2(v4.z, v4.w) * v4.z;
+
+    // Above sources are not explicit about it but this color is seemingly already in sRGB
+    // gamma space.
+    [
+        ((v4.dot(RED_VEC4) + v2.dot(RED_VEC2)) * 255.0) as u8,
+        ((v4.dot(GREEN_VEC4) + v2.dot(GREEN_VEC2)) * 255.0) as u8,
+        ((v4.dot(BLUE_VEC4) + v2.dot(BLURE_VEC2)) * 255.0) as u8,
+        255,
+    ]
+}
+
 struct DepthTexture {
     dimensions: glam::UVec2,
     data: DepthCloudDepthData,
 }
 impl DepthTexture {
-    #![allow(dead_code)]
-    pub fn from_file(path: impl Into<PathBuf>, dimensions: Option<glam::UVec2>) -> Self {
-        let path = path.into();
-
-        let img = image::open(&path)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
-
-        Self::from_bytes(img.as_bytes(), dimensions)
-    }
-
-    pub fn from_bytes(bytes: &[u8], dimensions: Option<glam::UVec2>) -> Self {
-        let mut img = image::load_from_memory(bytes).unwrap();
-        if let Some(dimensions) = dimensions {
-            img = img.resize(dimensions.x, dimensions.y, image::imageops::Nearest);
-        }
-
-        let dimensions = glam::UVec2::new(img.width(), img.height());
-        let data = match img {
-            DynamicImage::ImageLuma16(img) => DepthCloudDepthData::U16(img.to_vec()),
-            _ => panic!("only u16 depth is supported in this example"),
-        };
+    pub fn spiral(dimensions: glam::UVec2) -> Self {
+        let size = (dimensions.x * dimensions.y) as usize;
+        let mut data = std::iter::repeat(0f32).take(size).collect_vec();
+        spiral(dimensions).for_each(|(texcoords, d)| {
+            data[(texcoords.x + texcoords.y * dimensions.x) as usize] = d;
+        });
+        let data = DepthCloudDepthData::F32(data);
 
         Self { dimensions, data }
     }
@@ -429,30 +469,18 @@ struct AlbedoTexture {
     rgba8: Vec<u8>,
 }
 impl AlbedoTexture {
-    #![allow(dead_code)]
-    pub fn from_file(path: impl Into<PathBuf>, dimensions: Option<glam::UVec2>) -> Self {
-        let path = path.into();
-
-        let img = image::open(&path)
-            .with_context(|| format!("{path:?}"))
-            .unwrap();
-
-        Self::from_bytes(img.as_bytes(), dimensions)
-    }
-
-    pub fn from_bytes(bytes: &[u8], dimensions: Option<glam::UVec2>) -> Self {
-        let mut img = image::load_from_memory(bytes).unwrap();
-
-        if let Some(dimensions) = dimensions {
-            img = img.resize(dimensions.x, dimensions.y, image::imageops::Triangle);
-        }
-
-        let dimensions = glam::UVec2::new(img.width(), img.height());
-        let rgba8 = img.pixels().flat_map(|(_, _, p)| p.0).collect();
+    pub fn spiral(dimensions: glam::UVec2) -> Self {
+        let size = (dimensions.x * dimensions.y) as usize;
+        let mut rgba8 = std::iter::repeat(0).take(size * 4).collect_vec();
+        spiral(dimensions).for_each(|(texcoords, d)| {
+            let idx = ((texcoords.x + texcoords.y * dimensions.x) * 4) as usize;
+            rgba8[idx..idx + 4].copy_from_slice(turbo_color_map(d).as_slice());
+        });
 
         Self { dimensions, rgba8 }
     }
 
+    #[allow(dead_code)]
     pub fn get(&self, x: u32, y: u32) -> [u8; 4] {
         let p = &self.rgba8[(x + y * self.dimensions.x) as usize * 4..];
         [p[0], p[1], p[2], p[3]]
