@@ -174,6 +174,7 @@ impl RectangleDrawData {
 
             bind_groups.push(ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
+                &ctx.gpu_resources,
                 &BindGroupDesc {
                     label: "rectangle".into(),
                     entries: smallvec![
@@ -183,10 +184,6 @@ impl RectangleDrawData {
                     ],
                     layout: rectangle_renderer.bind_group_layout,
                 },
-                &ctx.gpu_resources.bind_group_layouts,
-                &ctx.gpu_resources.textures,
-                &ctx.gpu_resources.buffers,
-                &ctx.gpu_resources.samplers,
             ));
         }
 
