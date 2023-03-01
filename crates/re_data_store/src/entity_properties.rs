@@ -4,17 +4,22 @@ use re_log_types::{
     msg_bundle::DeserializableComponent, EntityPath,
 };
 
-use crate::{log_db::EntityDb, EditableAutoValue};
+use crate::log_db::EntityDb;
+
+#[cfg(feature = "serde")]
+use crate::EditableAutoValue;
 
 // ----------------------------------------------------------------------------
 
 /// Properties for a collection of entities.
+#[cfg(feature = "serde")]
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPropertyMap {
     props: nohash_hasher::IntMap<EntityPath, EntityProperties>,
 }
 
+#[cfg(feature = "serde")]
 impl EntityPropertyMap {
     pub fn get(&self, entity_path: &EntityPath) -> EntityProperties {
         self.props.get(entity_path).cloned().unwrap_or_default()
@@ -31,6 +36,7 @@ impl EntityPropertyMap {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(feature = "serde")]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -42,9 +48,11 @@ pub struct EntityProperties {
     /// Distance of the projection plane (frustum far plane).
     ///
     /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
+    ///
     pub pinhole_image_plane_distance: EditableAutoValue<f32>,
 }
 
+#[cfg(feature = "serde")]
 impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
@@ -60,6 +68,7 @@ impl EntityProperties {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
@@ -87,6 +96,7 @@ pub struct ExtraQueryHistory {
 
 impl ExtraQueryHistory {
     /// Multiply/and these together.
+    #[allow(dead_code)]
     fn with_child(&self, child: &Self) -> Self {
         Self {
             nanos: self.nanos.max(child.nanos),
