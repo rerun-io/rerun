@@ -144,13 +144,15 @@ impl DepthCloudDrawData {
         let mut bind_groups = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
             let depth_texture = match &depth_cloud.depth_data {
-                // On native, we can use D16 textures without issues.
+                // On native, we can use D16 textures without issues, but they aren't supported on
+                // the web (and won't ever be on the WebGL backend, see
+                // https://github.com/gfx-rs/wgpu/issues/3537).
+                //
+                // TODO(cmc): use an RG8 texture and unpack it manually in the shader instead.
                 #[cfg(not(target_arch = "wasm32"))]
                 DepthCloudDepthData::U16(data) => {
                     create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
                 }
-                // On the web, OTOH, they are currently broken, see
-                // https://github.com/gfx-rs/wgpu/issues/3537.
                 #[cfg(target_arch = "wasm32")]
                 DepthCloudDepthData::U16(data) => {
                     let dataf32 = data
