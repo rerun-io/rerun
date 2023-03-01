@@ -1,3 +1,8 @@
+/// We disallow version numbers larger than this in order to keep a few bits for future use.
+///
+/// If you are running up against this limit then feel free to bump it!
+const MAX_NUM: u8 = 31;
+
 const NO_ALPHA: u8 = 255;
 
 /// Sub-set of semver supporting major, minor, patch and an optional `-alpha.X` suffix.
@@ -15,21 +20,16 @@ pub struct RustVersion {
 }
 
 impl RustVersion {
-    pub const fn new(major: u8, minor: u8, patch: u8) -> Self {
+    const fn new(major: u8, minor: u8, patch: u8) -> Self {
+        assert!(
+            major <= MAX_NUM && minor <= MAX_NUM && patch <= MAX_NUM,
+            "Too large number in version string"
+        );
         Self {
             major,
             minor,
             patch,
             alpha: NO_ALPHA,
-        }
-    }
-
-    pub const fn new_alpha(major: u8, minor: u8, patch: u8, alpha: u8) -> Self {
-        Self {
-            major,
-            minor,
-            patch,
-            alpha,
         }
     }
 
@@ -94,6 +94,7 @@ impl RustVersion {
                 );
                 let digit = c - b'0';
                 num = num * 10 + digit as u64;
+                assert!(num <= MAX_NUM as _, "Too large number in rust version");
                 i += 1;
             }
             assert!(num <= u8::MAX as u64);
@@ -185,17 +186,22 @@ fn test_parse_version() {
     let parse = RustVersion::parse;
     assert_eq!(parse("0.2.0"), RustVersion::new(0, 2, 0));
     assert_eq!(parse("1.2.3"), RustVersion::new(1, 2, 3));
-    assert_eq!(parse("123.45.67"), RustVersion::new(123, 45, 67));
+    assert_eq!(parse("12.23.24"), RustVersion::new(12, 23, 24));
     assert_eq!(
-        parse("123.45.67-alpha.89"),
-        RustVersion::new_alpha(123, 45, 67, 89)
+        parse("12.23.24-alpha.31"),
+        RustVersion {
+            major: 12,
+            minor: 23,
+            patch: 24,
+            alpha: 31,
+        }
     );
 }
 
 #[test]
 fn test_format_parse_roundtrip() {
     let parse = RustVersion::parse;
-    for version in ["0.2.0", "1.2.3", "123.45.67", "123.45.67-alpha.89"] {
+    for version in ["0.2.0", "1.2.3", "12.23.24", "12.23.24-alpha.31"] {
         assert_eq!(parse(version).to_string(), version);
     }
 }
