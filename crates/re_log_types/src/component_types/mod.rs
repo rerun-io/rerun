@@ -209,6 +209,10 @@ where
 
 pub struct FastFixedSizeListArray<T, const SIZE: usize>(std::marker::PhantomData<T>);
 
+extern "C" {
+    fn do_not_call_into_iter(); // we never define this function, so the linker will fail
+}
+
 impl<'a, T, const SIZE: usize> IntoIterator for &'a FastFixedSizeListArray<T, SIZE>
 where
     T: arrow2::types::NativeType,
@@ -218,7 +222,15 @@ where
     type IntoIter = FastFixedSizeArrayIter<'a, T, SIZE>;
 
     fn into_iter(self) -> Self::IntoIter {
-        panic!("Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert.");
+        #[allow(unsafe_code)]
+        // SAFETY:
+        // This exists so we get a link-error if some code tries to call into_iter
+        // Iteration should only happen via iter_from_array_ref.
+        // This is a quirk of the way the traits work in arrow2_convert.
+        unsafe {
+            do_not_call_into_iter();
+        }
+        unreachable!();
     }
 }
 
