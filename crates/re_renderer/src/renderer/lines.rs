@@ -480,6 +480,7 @@ impl LineDrawData {
 
         let bind_group_all_lines = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
+            &ctx.gpu_resources,
             &BindGroupDesc {
                 label: "line draw data".into(),
                 entries: smallvec![
@@ -488,10 +489,6 @@ impl LineDrawData {
                 ],
                 layout: line_renderer.bind_group_layout_all_lines,
             },
-            &ctx.gpu_resources.bind_group_layouts,
-            &ctx.gpu_resources.textures,
-            &ctx.gpu_resources.buffers,
-            &ctx.gpu_resources.samplers,
         );
 
         // Process batches
@@ -517,15 +514,12 @@ impl LineDrawData {
                     .min(Self::MAX_NUM_VERTICES as u32);
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
+                    &ctx.gpu_resources,
                     &BindGroupDesc {
                         label: batch_info.label.clone(),
                         entries: smallvec![uniform_buffer_binding],
                         layout: line_renderer.bind_group_layout_batch,
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
-                    &ctx.gpu_resources.textures,
-                    &ctx.gpu_resources.buffers,
-                    &ctx.gpu_resources.samplers,
                 );
 
                 batches_internal.push(LineStripBatch {

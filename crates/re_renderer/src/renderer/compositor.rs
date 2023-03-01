@@ -30,26 +30,22 @@ impl DrawData for CompositorDrawData {
 
 impl CompositorDrawData {
     pub fn new(ctx: &mut RenderContext, target: &GpuTexture) -> Self {
-        let pools = &mut ctx.gpu_resources;
         let mut renderers = ctx.renderers.write();
         let compositor = renderers.get_or_create::<_, Compositor>(
             &ctx.shared_renderer_data,
-            pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
         CompositorDrawData {
-            bind_group: pools.bind_groups.alloc(
+            bind_group: ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
+                &ctx.gpu_resources,
                 &BindGroupDesc {
                     label: "compositor".into(),
                     entries: smallvec![BindGroupEntry::DefaultTextureView(target.handle)],
                     layout: compositor.bind_group_layout,
                 },
-                &pools.bind_group_layouts,
-                &pools.textures,
-                &pools.buffers,
-                &pools.samplers,
             ),
         }
     }
