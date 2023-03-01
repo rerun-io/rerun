@@ -459,9 +459,7 @@ impl AsDynamicImage for component_types::Tensor {
             }
 
             (_depth, dtype, _) => {
-                anyhow::bail!(
-                                "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image"
-                            )
+                anyhow::bail!("Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image")
             }
         }
     }
