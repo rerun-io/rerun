@@ -4,18 +4,17 @@
 Script should only be called by the CI system.
 
 This script accepts one argument:
-    --patch_prerelease: This will patch the version in rerun/Cargo.toml with a `+prerelease` suffix.
-    This is intended to create a prerelease version for continuous releases.
+    --patch_prerelease: This will patch the version in rerun/Cargo.toml with the current git sha. This is intended to
+    create a prerelease version for continuous releases.
 
     --check_version: This will check that the version in rerun/Cargo.toml matches the version in the tag name from
     `GITHUB_REF_NAME`. This is intended to be used to check that the version number in Cargo.toml is correct before
     creating a release on PyPI. If the versions don't match, an exception will be raised.
 """
 
-# See also crates/re_build_info/src/rust_version.rs
-
 import os
 import re
+import subprocess
 import sys
 from typing import Final
 
@@ -37,6 +36,11 @@ def get_cargo_version(cargo_toml: str) -> semver.VersionInfo:
         raise Exception("Could not find valid base version number in Cargo.toml")
 
     return semver.parse_version_info(match.groups()[0])
+
+
+def get_git_sha() -> str:
+    """Return the git short sha of the current commit."""
+    return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
 
 
 def get_ref_name_version() -> semver.VersionInfo:
@@ -86,7 +90,7 @@ def main() -> None:
     cargo_version = get_cargo_version(cargo_toml)
 
     if sys.argv[1] == "--patch_prerelease":
-        new_version = f"{cargo_version}+prerelease"
+        new_version = f"{cargo_version}+{get_git_sha()}"
         new_cargo_toml = patch_cargo_version(cargo_toml, new_version)
 
         # Write the patched Cargo.toml back to disk
