@@ -10,40 +10,13 @@ from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import _normalize_colors
 from rerun.log.log_decorator import log_decorator
+from rerun.log.text_internal import LogLevel
 
 __all__ = [
     "LogLevel",
     "LoggingHandler",
     "log_text_entry",
 ]
-
-
-@dataclass
-class LogLevel:
-    """
-    Represents the standard log levels.
-
-    This is a collection of constants rather than an enum because we do support
-    arbitrary strings as level (e.g. for user-defined levels).
-    """
-
-    CRITICAL: Final = "CRITICAL"
-    """ Designates catastrophic failures. """
-
-    ERROR: Final = "ERROR"
-    """ Designates very serious errors. """
-
-    WARN: Final = "WARN"
-    """ Designates hazardous situations. """
-
-    INFO: Final = "INFO"
-    """ Designates useful information. """
-
-    DEBUG: Final = "DEBUG"
-    """ Designates lower priority information. """
-
-    TRACE: Final = "TRACE"
-    """ Designates very low priority, often extremely verbose, information. """
 
 
 class LoggingHandler(logging.Handler):
