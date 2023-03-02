@@ -11,12 +11,14 @@ from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_arrow",
 ]
 
 
+@log_decorator
 def log_arrow(
     entity_path: str,
     origin: Optional[npt.ArrayLike],
@@ -57,9 +59,6 @@ def log_arrow(
         The entity is not time-dependent, and will be visible at any time point.
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}

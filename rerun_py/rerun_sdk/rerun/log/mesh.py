@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_mesh",
@@ -11,6 +12,7 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_mesh(
     entity_path: str,
     positions: npt.ArrayLike,
@@ -72,9 +74,6 @@ def log_mesh(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     positions = np.asarray(positions, dtype=np.float32).flatten()
 
     if indices is not None:
@@ -88,6 +87,7 @@ def log_mesh(
     bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
 
 
+@log_decorator
 def log_meshes(
     entity_path: str,
     position_buffers: Sequence[npt.ArrayLike],
@@ -123,9 +123,6 @@ def log_meshes(
         If true, the mesh will be timeless (default: False)
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     position_buffers = [np.asarray(p, dtype=np.float32).flatten() for p in position_buffers]
     if index_buffers is not None:
