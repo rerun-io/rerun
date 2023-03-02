@@ -3,6 +3,7 @@ import logging
 import traceback
 from typing import Any, Callable, TypeVar, cast
 
+import rerun
 from rerun import bindings
 from rerun.log.text_internal import LogLevel, log_text_entry_internal
 
@@ -26,7 +27,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
         if not bindings.is_enabled():
             return
 
-        if bindings.strict_mode():
+        if rerun.strict_mode():
             # Pass on any exceptions to the caller
             return func(*args, **kwargs)
         else:
