@@ -1,6 +1,7 @@
 name: CI (Misc)
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -25,3 +26,7 @@ jobs:
       - name: Rerun lints
         run: |
           ./scripts/lint.py
+
+      - name: Check for too large files
+        run: |
+          ./scripts/check_large_files.sh
