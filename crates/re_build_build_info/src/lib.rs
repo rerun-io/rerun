@@ -32,23 +32,30 @@ use std::process::Command;
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 pub fn export_env_vars() {
     // target triple
-    println!(
-        "cargo:rustc-env=RE_BUILD_TARGET_TRIPLE={}",
-        std::env::var("TARGET").unwrap()
-    );
+    set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
+    set_env("RE_BUILD_GIT_HASH", &git_hash().unwrap_or_default());
+    set_env("RE_BUILD_GIT_BRANCH", &git_branch().unwrap_or_default());
 
-    let git_hash = git_hash().unwrap_or_default();
-    println!("cargo:rustc-env=RE_BUILD_GIT_HASH={git_hash}");
-
-    let git_branch = git_branch().unwrap_or_default();
-    println!("cargo:rustc-env=RE_BUILD_GIT_BRANCH={git_branch}");
+    // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
+    // because otherwise it won't show up when compiling through maturin.
+    // We must also make an exception for when we build actual wheels (on CI) for release.
+    if std::env::var("CI").is_ok() {
+        // Probably building wheels on CI.
+        // `CI` is an env-var set by GitHub actions.
+        set_env("RE_BUILD_IS_IN_RERUN_WORKSPACE", "no");
+    } else {
+        set_env(
+            "RE_BUILD_IS_IN_RERUN_WORKSPACE",
+            &std::env::var("IS_IN_RERUN_WORKSPACE").unwrap_or_default(),
+        );
+    }
 
     let time_format =
         time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
     let date_time = time::OffsetDateTime::now_utc()
         .format(&time_format)
         .unwrap();
-    println!("cargo:rustc-env=RE_BUILD_DATETIME={date_time}");
+    set_env("RE_BUILD_DATETIME", &date_time);
 
     // Make sure we re-run the build script if the branch or commit changes:
     if let Ok(head_path) = git_path("HEAD") {
@@ -61,6 +68,10 @@ pub fn export_env_vars() {
             }
         }
     }
+}
+
+fn set_env(name: &str, value: &str) {
+    println!("cargo:rustc-env={name}={value}");
 }
 
 fn run_command(cmd: &'static str, args: &[&str]) -> anyhow::Result<String> {

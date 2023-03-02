@@ -42,6 +42,23 @@ pub fn build_some_point2d(len: usize) -> Vec<component_types::Point2D> {
         .collect()
 }
 
+/// Create `len` dummy `Vec3D`
+pub fn build_some_vec3d(len: usize) -> Vec<component_types::Vec3D> {
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+
+    (0..len)
+        .into_iter()
+        .map(|_| {
+            component_types::Vec3D::new(
+                rng.gen_range(0.0..10.0),
+                rng.gen_range(0.0..10.0),
+                rng.gen_range(0.0..10.0),
+            )
+        })
+        .collect()
+}
+
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`crate::TimePoint`].
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
     (Timeline::log_time(), log_time.into())
