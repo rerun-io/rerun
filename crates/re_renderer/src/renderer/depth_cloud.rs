@@ -155,6 +155,7 @@ impl DepthCloudDrawData {
                 }
                 #[cfg(target_arch = "wasm32")]
                 DepthCloudDepthData::U16(data) => {
+                    use itertools::Itertools as _;
                     let dataf32 = data
                         .as_slice()
                         .iter()
