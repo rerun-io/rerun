@@ -15,7 +15,14 @@ def _build_warning_context_string(skip_first: int) -> str:
 
 
 def _send_warning(message: str, depth_to_user_code: int) -> None:
-    """Sends a warning about the usage of the Rerun SDK."""
+    """
+    Sends a warning about the usage of the Rerun SDK.
+
+    Used for recoverable problems.
+    You can also use this fo unrecoverable problems,
+    or raise an exception and let the @log_decorator handle it instead.
+    """
+
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
     log_text_entry("rerun", warning, level=LogLevel.WARN)

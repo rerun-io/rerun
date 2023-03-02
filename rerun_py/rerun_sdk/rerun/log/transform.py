@@ -150,9 +150,9 @@ def log_rigid3(
     """
 
     if parent_from_child and child_from_parent:
-        _send_warning("Set either parent_from_child or child_from_parent, but not both. Ignoring log.", 1)
-        return
-    elif parent_from_child:
+        raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
+
+    if parent_from_child:
         (t, q) = parent_from_child
         bindings.log_rigid3(
             entity_path,
@@ -171,8 +171,7 @@ def log_rigid3(
             timeless=timeless,
         )
     else:
-        _send_warning("Set either parent_from_child or child_from_parent. Ignoring log.", 1)
-        return
+        raise TypeError("Set either parent_from_child or child_from_parent.")
 
     if xyz != "":
         log_view_coordinates(entity_path, xyz=xyz, timeless=timeless)

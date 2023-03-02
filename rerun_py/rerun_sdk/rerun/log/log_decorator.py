@@ -37,6 +37,6 @@ def log_decorator(func: _TFunc) -> _TFunc:
             except Exception as e:
                 warning = "".join(traceback.format_exception(e.__class__, e, e.__traceback__))
                 log_text_entry("rerun", warning, level=LogLevel.WARN)
-                logging.warning(warning)
+                logging.warning(f"Ignoring rerun log call: {warning}")
 
     return cast(_TFunc, wrapper)
