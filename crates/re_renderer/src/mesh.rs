@@ -189,7 +189,7 @@ impl GpuMesh {
             vertex_buffer_combined
         };
 
-        let index_buffer_size = std::mem::size_of_val(data.indices.as_slice()) as u64;
+        let index_buffer_size = (std::mem::size_of::<u32>() * data.indices.len()) as u64;
         let index_buffer = {
             let index_buffer = pools.buffers.alloc(
                 device,
