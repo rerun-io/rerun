@@ -160,7 +160,7 @@ impl TryFrom<time::OffsetDateTime> for Time {
     type Error = core::num::TryFromIntError;
 
     fn try_from(datetime: time::OffsetDateTime) -> Result<Time, Self::Error> {
-        i64::try_from(datetime.unix_timestamp_nanos()).map(|ns| Time::from_ns_since_epoch(ns))
+        i64::try_from(datetime.unix_timestamp_nanos()).map(Time::from_ns_since_epoch)
     }
 }
 
