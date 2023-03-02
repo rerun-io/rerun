@@ -113,6 +113,17 @@ impl DepthCloudDrawData {
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
 
+        let bg_layout = ctx
+            .renderers
+            .write()
+            .get_or_create::<_, DepthCloudRenderer>(
+                &ctx.shared_renderer_data,
+                &mut ctx.gpu_resources,
+                &ctx.device,
+                &mut ctx.resolver,
+            )
+            .bind_group_layout;
+
         if depth_clouds.is_empty() {
             return Ok(DepthCloudDrawData {
                 bind_groups: Vec::new(),
@@ -129,17 +140,6 @@ impl DepthCloudDrawData {
                 end_padding: Default::default(),
             }),
         );
-
-        let bg_layout = ctx
-            .renderers
-            .write()
-            .get_or_create::<_, DepthCloudRenderer>(
-                &ctx.shared_renderer_data,
-                &mut ctx.gpu_resources,
-                &ctx.device,
-                &mut ctx.resolver,
-            )
-            .bind_group_layout;
 
         let mut bind_groups = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
