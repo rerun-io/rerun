@@ -105,17 +105,24 @@ where
 
     /// Copies the entire buffer to another buffer and drops it.
     pub fn copy_to_buffer(
-        mut self,
+        self,
         encoder: &mut wgpu::CommandEncoder,
         destination: &GpuBuffer,
         destination_offset: wgpu::BufferAddress,
     ) {
+        let copy_size = (std::mem::size_of::<T>() * self.unwritten_element_range.start) as u64;
+
+        // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
+        debug_assert!(copy_size <= destination_offset + destination.size(),
+            "Target buffer has a size of {}, can't write {copy_size} bytes with an offset of {destination_offset}!",
+            destination.size());
+
         encoder.copy_buffer_to_buffer(
             &self.chunk_buffer,
             self.byte_offset_in_chunk_buffer,
             destination,
             destination_offset,
-            self.write_view.deref_mut().len() as u64,
+            copy_size,
         );
     }
 }
