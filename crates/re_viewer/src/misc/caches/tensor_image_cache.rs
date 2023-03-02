@@ -472,7 +472,9 @@ fn dynamic_image_to_egui_color_image(
             pixels: gray
                 .pixels()
                 .map(|pixel| {
-                    crate::misc::color_map::turbo_color_map((pixel[0] as f32) / (u16::MAX as f32))
+                    let [r, g, b, _] =
+                        re_renderer::colormap_turbo_srgb((pixel[0] as f32) / (u16::MAX as f32));
+                    egui::Color32::from_rgb(r, g, b)
                 })
                 .collect(),
         },
