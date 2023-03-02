@@ -277,7 +277,7 @@ jobs:
           prerelease: true
           artifacts: dist/*
           name: "Development Build"
-          tag: "latest"
+          tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}
           generateReleaseNotes: true
           allowUpdates: true
