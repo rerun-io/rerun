@@ -21,6 +21,7 @@ __all__ = [
     "scalar",
     "tensor",
     "text",
+    "text_internal",
     "transform",
     "ext",
 ]
