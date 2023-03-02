@@ -14,6 +14,12 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
+        let virtpath = Path::new("shader/color_mapping.wgsl");
+        let content = include_str!("../shader/color_mapping.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/composite.wgsl");
         let content = include_str!("../shader/composite.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

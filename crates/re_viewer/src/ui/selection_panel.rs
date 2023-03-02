@@ -371,6 +371,8 @@ fn entity_props_ui(
     entity_props: &mut EntityProperties,
     view_state: &ViewState,
 ) {
+    use egui::NumExt;
+
     ui.checkbox(&mut entity_props.visible, "Visible");
     ui.checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
@@ -405,6 +407,7 @@ fn entity_props_ui(
             }
             ui.end_row();
 
+            // pinhole_image_plane_distance
             if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
                 if let Some(entity_path) = entity_path {
                     let query = ctx.current_query();
@@ -431,112 +434,4 @@ fn entity_props_ui(
                 }
             }
         });
-}
-
-fn pinhole_props_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
-) {
-    // pinhole_image_plane_distance
-    let query = ctx.current_query();
-    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-        query_latest_single::<Transform>(&ctx.log_db.entity_db, entity_path, &query)
-    {
-        ui.label("Image plane distance");
-        let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
-        let speed = (distance * 0.05).at_least(0.01);
-        if ui
-            .add(
-                egui::DragValue::new(&mut distance)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text("Controls how far away the image plane is.")
-            .changed()
-        {
-            entity_props.set_pinhole_image_plane_distance(distance);
-        }
-        ui.end_row();
-    }
-}
-
-fn depth_props_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
-) {
-    let query = ctx.current_query();
-
-    // Find closest pinhole transform, if any.
-    let mut pinhole_ent_path = None;
-    let mut cur_path = Some(entity_path.clone());
-    while let Some(path) = cur_path {
-        if let Some(re_log_types::Transform::Pinhole(_)) =
-            query_latest_single::<Transform>(&ctx.log_db.entity_db, &path, &query)
-        {
-            pinhole_ent_path = Some(path);
-            break;
-        }
-        cur_path = path.parent();
-    }
-
-    // Early out if there's no pinhole transform upwards in the tree.
-    let Some(pinhole_ent_path) = pinhole_ent_path else { return; };
-
-    entity_props.backproject_pinhole_ent_path = Some(pinhole_ent_path.clone());
-
-    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query);
-    if tensor.map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
-        ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
-            .on_hover_text(
-                "If enabled, the depth texture will be backprojected into a point cloud rather \
-                than simply displayed as an image.",
-            );
-        ui.end_row();
-
-        if entity_props.backproject_depth {
-            ui.label("Backproject scale");
-            let mut scale = entity_props.backproject_scale.into_inner();
-            let speed = (scale * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_scale = ordered_float::NotNan::new(scale).unwrap();
-            }
-            ui.end_row();
-
-            ui.label("Backproject radius scale");
-            let mut radius_scale = entity_props.backproject_radius_scale.into_inner();
-            let speed = (radius_scale * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut radius_scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the radii of the points in the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_radius_scale =
-                    ordered_float::NotNan::new(radius_scale).unwrap();
-            }
-            ui.end_row();
-
-            ui.label("Pinhole");
-            ctx.entity_path_button(ui, None, &pinhole_ent_path)
-                .on_hover_text(
-                    "The entity path of the pinhole transform being used to do the backprojection.",
-                );
-            ui.end_row();
-        }
-    }
 }

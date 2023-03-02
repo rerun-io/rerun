@@ -15,6 +15,7 @@ pub mod resource_managers;
 pub mod view_builder;
 
 mod allocator;
+mod colormap;
 mod context;
 mod debug_label;
 mod depth_offset;
@@ -25,6 +26,10 @@ mod size;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
+pub use colormap::{
+    colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
+    colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, ColorMap,
+};
 pub use context::RenderContext;
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
