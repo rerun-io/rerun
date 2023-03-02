@@ -19,6 +19,7 @@ from rerun.log import (
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "RectFormat",
@@ -27,6 +28,7 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_rect(
     entity_path: str,
     rect: Optional[npt.ArrayLike],
@@ -64,9 +66,6 @@ def log_rect(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
     else:
@@ -101,6 +100,7 @@ def log_rect(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
+@log_decorator
 def log_rects(
     entity_path: str,
     rects: Optional[npt.ArrayLike],
@@ -152,9 +152,6 @@ def log_rects(
             If true, the rects will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     # Treat None the same as []
     if np.any(rects):  # type: ignore[arg-type]

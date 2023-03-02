@@ -60,6 +60,11 @@ __all__ = [
 ]
 
 
+# If `True`, we raise exceptions on use error (wrong parameter types etc).
+# If `False` we catch all errors and log a warning instead.
+_strict_mode = False
+
+
 def rerun_shutdown() -> None:
     bindings.shutdown()
 
@@ -118,7 +123,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn: bool = False, default_enabled: bool = True) -> None:
+def init(application_id: str, spawn: bool = False, default_enabled: bool = True, strict: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -139,8 +144,13 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True)
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    strict
+        If `True`, an exceptions is raised on use error (wrong parameter types etc).
+        If `False`, errors are logged as warnings instead.
 
     """
+
+    _strict_mode = strict
     application_path = None
 
     # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
@@ -214,6 +224,34 @@ def set_enabled(enabled: bool) -> None:
 
     """
     bindings.set_enabled(enabled)
+
+
+def strict_mode() -> bool:
+    """
+    Strict mode enabled.
+
+    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
+    will result in exception being raised.
+    When strict mode is on, such problems are instead logged as warnings.
+
+    The default is OFF.
+    """
+
+    return _strict_mode
+
+
+def set_strict_mode(strict_mode: bool) -> None:
+    """
+    Turn strict mode on/off.
+
+    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
+    will result in exception being raised.
+    When strict mode is off, such problems are instead logged as warnings.
+
+    The default is OFF.
+    """
+
+    _strict_mode = strict_mode
 
 
 def connect(addr: Optional[str] = None) -> None:

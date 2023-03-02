@@ -130,7 +130,7 @@ def lint_file(filepath: str) -> int:
     return num_errors
 
 
-if __name__ == "__main__":
+def main() -> None:
     test_lint()  # Make sure we are bug free before we run!
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
@@ -179,3 +179,7 @@ if __name__ == "__main__":
     else:
         print(f"{num_errors} errors.")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

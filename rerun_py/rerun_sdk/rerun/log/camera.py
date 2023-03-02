@@ -2,12 +2,14 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_pinhole",
 ]
 
 
+@log_decorator
 def log_pinhole(
     entity_path: str,
     *,
@@ -58,9 +60,6 @@ def log_pinhole(
         If true, the camera will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     # Transform arrow handling happens inside the python bridge
     bindings.log_pinhole(

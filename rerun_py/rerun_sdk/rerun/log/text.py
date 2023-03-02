@@ -9,6 +9,7 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import _normalize_colors
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "LogLevel",
@@ -92,6 +93,7 @@ class LoggingHandler(logging.Handler):
         log_text_entry(objpath, record.getMessage(), level=level)
 
 
+@log_decorator
 def log_text_entry(
     entity_path: str,
     text: str,
@@ -122,9 +124,6 @@ def log_text_entry(
         Whether the text entry should be timeless.
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
