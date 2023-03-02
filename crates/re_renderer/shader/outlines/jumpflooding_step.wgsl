@@ -10,16 +10,16 @@ struct FrameUniformBuffer {
 @group(0) @binding(1)
 var<uniform> uniforms: FrameUniformBuffer;
 
-fn distance_sq_two_channels(texcoord: Vec2, positions: Vec4) -> Vec2 {
-    let a = texcoord - positions.xy;
-    let b = texcoord - positions.zw;
-    return Vec2(dot(a,a), dot(b,b));
+fn distance_sq(pos0: Vec2, pos1: Vec2) -> f32 {
+    let to = pos0 - pos1;
+    return dot(to, to);
 }
 
 @fragment
 fn main(in: VertexOutput) -> @location(0) Vec4 {
-    let resolution = textureDimensions(closest_pos_texture).xy;
-    let center_coord = IVec2(Vec2(resolution) * in.texcoord);
+    let resolution = Vec2(textureDimensions(closest_pos_texture).xy);
+    let center_coord_f = Vec2(resolution) * in.texcoord;
+    let center_coord = IVec2(center_coord_f);
 
     var closest_positions_a = Vec2(-1.0);
     var closest_distance_sq_a = 99999.0;
@@ -29,19 +29,19 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     for (var y: i32 = -1; y <= 1; y += 1) {
         for (var x: i32 = -1; x <= 1; x += 1) {
             let positions = textureLoad(closest_pos_texture, center_coord + IVec2(x, y) * uniforms.step_width, 0);
+            let pos_a = positions.xy;
+            let pos_b = positions.zw;
 
-            let to_pos_a = in.texcoord - positions.xy;
-            let distance_sq_a = dot(to_pos_a, to_pos_a);
+            let distance_sq_a = distance_sq(pos_a * resolution, center_coord_f);
             if closest_distance_sq_a > distance_sq_a {
                 closest_distance_sq_a = distance_sq_a;
-                closest_positions_a = positions.xy;
+                closest_positions_a = pos_a;
             }
 
-            let to_pos_b = in.texcoord - positions.xy;
-            let distance_sq_b = dot(to_pos_b, to_pos_b);
+            let distance_sq_b = distance_sq(pos_b * resolution, center_coord_f);
             if closest_distance_sq_b > distance_sq_b {
                 closest_distance_sq_b = distance_sq_b;
-                closest_positions_b = positions.zw;
+                closest_positions_b = pos_b;
             }
         }
     }

@@ -5,9 +5,10 @@
 var mask_texture: texture_multisampled_2d<u32>;
 
 // Sample positions for 4 MSAA samples are actually standardized accross all APIs we care about!
-// https://registry.khronos.org/vulkan/specs/1.3-khr-extensions/html/chap25.html#primsrast-multisampling
-// https://developer.apple.com/documentation/metal/mtldevice/2866120-getdefaultsamplepositions
-// TODO: Link DX12
+// Vulkan: https://registry.khronos.org/vulkan/specs/1.3-khr-extensions/html/chap25.html#primsrast-multisampling
+// Metal: https://developer.apple.com/documentation/metal/mtldevice/2866120-getdefaultsamplepositions
+// DX12 does *not* specify the sampling pattern. However DX11 does, again the same for 4 samples:
+// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels
 var<private> subsample_positions: array<Vec2, 4> = array<Vec2, 4>(
     Vec2(0.375, 0.125),
     Vec2(0.875, 0.375),
@@ -25,54 +26,43 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     // TODO(andreas): Should we assert somehow on textureNumSamples here?
 
     let center_coord = UVec2(Vec2(resolution) * in.texcoord);
-    let mask_center = array<UVec2, 4>(
-        textureLoad(mask_texture, center_coord, 0).xy,
-        textureLoad(mask_texture, center_coord, 1).xy,
-        textureLoad(mask_texture, center_coord, 2).xy,
-        textureLoad(mask_texture, center_coord, 3).xy,
-    );
 
     var sub_edge_pos = Vec4(0.0);
     var num_edges = Vec2(0.0);
 
-    // Internal samples in a circle.
-    {
-        let edge_between_0_1 = Vec2(mask_center[0] != mask_center[1]);
-        let edge_pos_0_1 = (subsample_positions[0] + subsample_positions[1]) * 0.5;
-        sub_edge_pos += Vec4(edge_pos_0_1 * edge_between_0_1.x, edge_pos_0_1 * edge_between_0_1.y);
-        num_edges +=edge_between_0_1;
 
-        let edge_between_1_3 = Vec2(mask_center[1] != mask_center[3]);
-        let edge_pos_1_3 = (subsample_positions[1] + subsample_positions[3]) * 0.5;
-        sub_edge_pos += Vec4(edge_pos_1_3 * edge_between_1_3.x, edge_pos_1_3 * edge_between_1_3.y);
-        num_edges +=edge_between_1_3;
+    for (var sample_idx: i32 = 0; sample_idx < 4; sample_idx += 1) {
+        let center = textureLoad(mask_texture, center_coord, sample_idx).xy;
+        let up = textureLoad(mask_texture, center_coord - UVec2(0u, 1u), sample_idx).xy;
+        let down = textureLoad(mask_texture, center_coord + UVec2(0u, 1u), sample_idx).xy;
+        let left = textureLoad(mask_texture, center_coord - UVec2(1u, 0u), sample_idx).xy;
+        let right = textureLoad(mask_texture, center_coord + UVec2(1u, 0u), sample_idx).xy;
 
-        let edge_between_3_2 = Vec2(mask_center[3] != mask_center[2]);
-        let edge_pos_3_2 = (subsample_positions[3] + subsample_positions[2]) * 0.5;
-        sub_edge_pos += Vec4(edge_pos_3_2 * edge_between_3_2.x, edge_pos_3_2 * edge_between_3_2.y);
-        num_edges +=edge_between_3_2;
+        let has_edge_up = Vec2(center != up);
+        let edge_pos_up = subsample_positions[sample_idx] + Vec2(0.0, 0.5);
+        sub_edge_pos += Vec4(edge_pos_up * has_edge_up.x, edge_pos_up  * has_edge_up.y);
+        num_edges += has_edge_up;
 
-        let edge_between_2_0 = Vec2(mask_center[2] != mask_center[0]);
-        let edge_pos_2_0 = (subsample_positions[2] + subsample_positions[0]) * 0.5;
-        sub_edge_pos += Vec4(edge_pos_2_0 * edge_between_2_0.x, edge_pos_2_0 * edge_between_2_0.y);
-        num_edges += edge_between_2_0;
+        let has_edge_down = Vec2(center != down);
+        let edge_pos_down = subsample_positions[sample_idx] - Vec2(0.0, 0.5);
+        sub_edge_pos += Vec4(edge_pos_down * has_edge_down.x, edge_pos_down  * has_edge_down.y);
+        num_edges += has_edge_down;
+
+        let has_edge_right = Vec2(center != right);
+        let edge_pos_right = subsample_positions[sample_idx] + Vec2(0.5, 0.0);
+        sub_edge_pos += Vec4(edge_pos_right * has_edge_right.x, edge_pos_right  * has_edge_right.y);
+        num_edges += has_edge_right;
+
+        let has_edge_left = Vec2(center != left);
+        let edge_pos_left = subsample_positions[sample_idx] - Vec2(0.5, 0.0);
+        sub_edge_pos += Vec4(edge_pos_left * has_edge_left.x, edge_pos_left  * has_edge_left.y);
+        num_edges += has_edge_left;
+
+        // num_edges += Vec2(center != down);
+        // num_edges += Vec2(center != left);
+        // num_edges += Vec2(center != right);
     }
 
-    // Two samples to the neighbors - closest right and closest down.
-    {
-        let mask_closest_right = textureLoad(mask_texture, center_coord + UVec2(1u, 0u), 2).xy;
-        let mask_closest_down = textureLoad(mask_texture, center_coord + UVec2(0u, 1u), 0).xy;
-
-        let edge_between_1_right = Vec2(mask_center[1] != mask_closest_right);
-        let edge_pos_1_right = Vec2(1.0, 0.5);
-        sub_edge_pos += Vec4(edge_pos_1_right * edge_between_1_right.x, edge_pos_1_right * edge_between_1_right.y);
-        num_edges +=edge_between_1_right;
-
-        let edge_between_3_down = Vec2(mask_center[3] != mask_closest_down);
-        let edge_pos_3_down = Vec2(0.5, 1.0);
-        sub_edge_pos += Vec4(edge_pos_3_down * edge_between_3_down.x, edge_pos_3_down * edge_between_3_down.y);
-        num_edges += edge_between_3_down;
-    }
 
     sub_edge_pos = Vec4(sub_edge_pos.xy / num_edges.x, sub_edge_pos.zw / num_edges.y);
     sub_edge_pos = sub_edge_pos * 0.5 - Vec4(0.5);

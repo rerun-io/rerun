@@ -13,9 +13,11 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     let to_closest_a = (closest_positions.xy - in.texcoord) * Vec2(resolution);
     let distance_a = length(abs(to_closest_a));
 
-    let outline_a = saturate(8.0 - distance_a);
+    let outline_a = saturate(4.0 - distance_a);
 
-    return Vec4(outline_a, 0.0, 0.0, outline_a);
+    return Vec4(1.0, 0.6, 0.0, 1.0) * outline_a ;
+    //let l = distance_a / 32.0;
+    //return Vec4(l, l, l, 1.0);
 
-    //return Vec4(closest_positions.xy, 0.0, 1.0);
+   // return Vec4(closest_positions.xy, 0.0, 1.0);
 }

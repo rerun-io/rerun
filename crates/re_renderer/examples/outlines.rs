@@ -44,7 +44,7 @@ impl framework::Example for Outlines {
                     },
                     pixels_from_point,
                     outline_config: Some(OutlineConfig {
-                        outline_thickness_pixel: 8.0,
+                        outline_thickness_pixel: 32.0,
                         color_layer_0: re_renderer::Rgba::RED,
                         color_layer_1: re_renderer::Rgba::BLUE,
                     }),
