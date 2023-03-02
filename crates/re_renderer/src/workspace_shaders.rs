@@ -14,8 +14,8 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
-        let virtpath = Path::new("shader/color_mapping.wgsl");
-        let content = include_str!("../shader/color_mapping.wgsl").into();
+        let virtpath = Path::new("shader/colormap.wgsl");
+        let content = include_str!("../shader/colormap.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
@@ -112,12 +112,6 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/flags.wgsl");
         let content = include_str!("../shader/utils/flags.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
-        let virtpath = Path::new("shader/utils/quad.wgsl");
-        let content = include_str!("../shader/utils/quad.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

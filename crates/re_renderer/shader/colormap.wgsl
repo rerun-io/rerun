@@ -1,7 +1,7 @@
 #import <./types.wgsl>
 #import <./utils/srgb.wgsl>
 
-// NOTE: Keep in sync with `color_mapping.rs`!
+// NOTE: Keep in sync with `colormap.rs`!
 const GRAYSCALE:        u32 = 0u;
 const COLORMAP_TURBO:   u32 = 1u;
 const COLORMAP_VIRIDIS: u32 = 2u;

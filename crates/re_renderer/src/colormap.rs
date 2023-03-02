@@ -4,7 +4,7 @@ use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
 
 // ---
 
-// NOTE: Keep in sync with `color_mapping.wgsl`!
+// NOTE: Keep in sync with `colormap.wgsl`!
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum ColorMap {
