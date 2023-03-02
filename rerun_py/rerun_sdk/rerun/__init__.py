@@ -145,7 +145,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
     strict
-        If `True`, an exceptions is rasied on use error (wrong parameter types etc).
+        If `True`, an exceptions is raised on use error (wrong parameter types etc).
         If `False`, errors are logged as warnings instead.
 
     """
