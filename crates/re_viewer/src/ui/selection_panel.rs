@@ -514,33 +514,30 @@ fn depth_props_ui(
 
             ui.label("Backproject scale");
             let speed = (scale * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_scale = EditableAutoValue::UserEdited(scale);
-            }
+            ui.add(
+                egui::DragValue::new(&mut scale)
+                    .clamp_range(0.0..=1.0e8)
+                    .speed(speed),
+            )
+            .on_hover_text("Scales the backprojected point cloud");
             ui.end_row();
 
             ui.label("Backproject radius scale");
             let speed = (radius_scale * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut radius_scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the radii of the points in the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
-            }
+            ui.add(
+                egui::DragValue::new(&mut radius_scale)
+                    .clamp_range(0.0..=1.0e8)
+                    .speed(speed),
+            )
+            .on_hover_text("Scales the radii of the points in the backprojected point cloud");
             ui.end_row();
+
+            // We actually want these to update anyhow, as this might be the first tick, where we
+            // compute the initial Auto value.
+            entity_props.backproject_scale = EditableAutoValue::UserEdited(scale);
+            entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
+        } else {
+            entity_props.backproject_pinhole_ent_path = None;
         }
     }
 }

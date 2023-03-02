@@ -36,7 +36,7 @@ impl EntityPropertyMap {
 
 // ----------------------------------------------------------------------------
 
-// TODO(cmc): We need to properly split entity properties that only apply to specific
+// TODO(#1423): We need to properly split entity properties that only apply to specific
 // views/primitives.
 #[cfg(feature = "serde")]
 #[derive(Clone, Debug, PartialEq)]

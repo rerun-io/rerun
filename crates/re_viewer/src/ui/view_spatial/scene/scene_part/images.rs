@@ -287,6 +287,9 @@ impl ImagesPart {
 
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
         let data = match &tensor.data {
+            // TODO(cmc): re_renderer needs native interop with Arrow, we shouldn't need to
+            // allocate this massive buffer and do a memcpy when we could just carry arround the
+            // original `arrow::Buffer`.
             TensorData::U16(data) => DepthCloudDepthData::U16(data.to_vec()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.to_vec()),
             _ => {
@@ -298,23 +301,8 @@ impl ImagesPart {
             }
         };
 
-        // TODO(cmc): we need access to mutable entity properties from here, because that's where
-        // we need to compute the actual Auto value... but right now we have no way to write it
-        // back :(
-
-        let scale = *properties
-            .backproject_scale
-            .or(&re_data_store::EditableAutoValue::Auto(
-                tensor.meter.map_or(1.0, |meter| match &data {
-                    DepthCloudDepthData::U16(_) => 1.0 / meter * u16::MAX as f32,
-                    DepthCloudDepthData::F32(_) => meter,
-                }),
-            ))
-            .get();
-        let radius_scale = *properties
-            .backproject_radius_scale
-            .or(&re_data_store::EditableAutoValue::Auto(0.02))
-            .get();
+        let scale = *properties.backproject_scale.get();
+        let radius_scale = *properties.backproject_radius_scale.get();
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
