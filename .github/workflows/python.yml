@@ -388,14 +388,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy via mike # https://github.com/jimporter/mike
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python -u ${{github.ref_name}} latest
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{github.ref_name}} latest
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
 
+
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy tag via mike # https://github.com/jimporter/mike
         if: github.ref == 'refs/heads/main'
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python HEAD
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python HEAD
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
