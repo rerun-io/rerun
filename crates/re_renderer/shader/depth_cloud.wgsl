@@ -2,6 +2,7 @@
 //!
 //! See `src/renderer/depth_cloud.rs` for more documentation.
 
+#import <./colormap.wgsl>
 #import <./global_bindings.wgsl>
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
@@ -26,8 +27,8 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
     let norm_linear_depth = textureLoad(depth_texture, texcoords, 0).x;
 
-    // TODO(cmc): support color maps & albedo textures
-    let color = Vec4(linear_from_srgb(Vec3(norm_linear_depth)), 1.0);
+    // TODO(cmc): albedo textures
+    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, norm_linear_depth), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
     let intrinsics = depth_cloud_info.depth_camera_intrinsics;
@@ -62,6 +63,14 @@ struct DepthCloudInfo {
 
     /// The scale to apply to the radii of the backprojected points.
     radius_scale: f32,
+
+    // TODO: is that fine or does Andreas has something else in mind?
+    pad0: f32,
+    pad1: f32,
+    pad2: f32,
+
+    /// Configures color mapping mode, see `colormap.wgsl`.
+    colormap: u32,
 };
 @group(1) @binding(0)
 var<uniform> depth_cloud_info: DepthCloudInfo;

@@ -1,5 +1,7 @@
 use egui::NumExt as _;
-use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityProperties};
+use re_data_store::{
+    query_latest_single, ColorMap, ColorMapper, EditableAutoValue, EntityPath, EntityProperties,
+};
 use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
@@ -418,6 +420,80 @@ fn entity_props_ui(
         });
 }
 
+fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
+    ui.checkbox(&mut entity_props.color_mapping, "Color mapping")
+        .on_hover_text("Toggles color mapping");
+    ui.end_row();
+
+    if !entity_props.color_mapping {
+        return;
+    }
+
+    let current = *entity_props.color_mapper.get();
+
+    fn selectable_label(
+        ui: &mut egui::Ui,
+        props: &mut EntityProperties,
+        current: ColorMapper,
+        proposed: ColorMapper,
+    ) {
+        if ui
+            .selectable_label(current == proposed, proposed.to_string())
+            .clicked()
+        {
+            props.color_mapper = EditableAutoValue::Auto(proposed);
+        }
+    }
+
+    ui.label("Color map");
+    egui::ComboBox::from_id_source("color_mapper")
+        .selected_text(current.to_string())
+        .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
+            ui.set_min_width(64.0);
+
+            // TODO(cmc): that is not ideal but I don't want to import yet another proc-macro...
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Grayscale),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Turbo),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Viridis),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Plasma),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Magma),
+            );
+            selectable_label(
+                ui,
+                entity_props,
+                current,
+                ColorMapper::ColorMap(ColorMap::Inferno),
+            );
+        });
+
+    ui.end_row();
+}
+
 fn pinhole_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -520,6 +596,10 @@ fn depth_props_ui(
                 entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
             }
             ui.end_row();
+
+            // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
+            // need to get the current hardcoded colormapping out of the image cache first.
+            colormap_props_ui(ui, entity_props);
         } else {
             entity_props.backproject_pinhole_ent_path = None;
         }
