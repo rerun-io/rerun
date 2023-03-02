@@ -10,6 +10,7 @@ import numpy.typing as npt
 from rerun import bindings
 from rerun.log import _to_sequence
 from rerun.log.error_utils import _send_warning
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_view_coordinates",
@@ -18,6 +19,7 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_view_coordinates(
     entity_path: str,
     *,
@@ -91,15 +93,14 @@ def log_view_coordinates(
         bindings.log_view_coordinates_up_handedness(entity_path, up, right_handed, timeless)
 
 
+@log_decorator
 def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
     """Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate."""
-
-    if not bindings.is_enabled():
-        return
 
     bindings.log_unknown_transform(entity_path, timeless=timeless)
 
 
+@log_decorator
 def log_rigid3(
     entity_path: str,
     *,
@@ -148,13 +149,10 @@ def log_rigid3(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     if parent_from_child and child_from_parent:
-        _send_warning("Set either parent_from_child or child_from_parent, but not both. Ignoring log.", 1)
-        return
-    elif parent_from_child:
+        raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
+
+    if parent_from_child:
         (t, q) = parent_from_child
         bindings.log_rigid3(
             entity_path,
@@ -173,8 +171,7 @@ def log_rigid3(
             timeless=timeless,
         )
     else:
-        _send_warning("Set either parent_from_child or child_from_parent. Ignoring log.", 1)
-        return
+        raise TypeError("Set either parent_from_child or child_from_parent.")
 
     if xyz != "":
         log_view_coordinates(entity_path, xyz=xyz, timeless=timeless)

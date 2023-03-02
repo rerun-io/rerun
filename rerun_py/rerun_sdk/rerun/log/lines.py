@@ -11,6 +11,7 @@ from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_path",
@@ -29,11 +30,10 @@ def log_path(
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
-    if not bindings.is_enabled():
-        return
     log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
 
 
+@log_decorator
 def log_line_strip(
     entity_path: str,
     positions: Optional[npt.ArrayLike],
@@ -73,9 +73,6 @@ def log_line_strip(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
@@ -111,6 +108,7 @@ def log_line_strip(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
+@log_decorator
 def log_line_segments(
     entity_path: str,
     positions: npt.ArrayLike,
@@ -148,9 +146,6 @@ def log_line_segments(
         If true, the line segments will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     if positions is None:
         positions = np.require([], dtype="float32")
