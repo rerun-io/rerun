@@ -3,7 +3,7 @@ use re_data_store::{
     query_latest_single, ColorMap, ColorMapper, EditableAutoValue, EntityPath, EntityProperties,
 };
 use re_log_types::{
-    component_types::{Tensor, TensorDataMeaning},
+    component_types::{Tensor, TensorDataMeaning, TensorTrait},
     TimeType, Transform,
 };
 
@@ -420,43 +420,94 @@ fn entity_props_ui(
         });
 }
 
-fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
-    ui.checkbox(&mut entity_props.color_mapping, "Color mapping")
-        .on_hover_text("Toggles color mapping");
-    ui.end_row();
+fn colormap_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &EntityPath,
+    entity_props: &mut EntityProperties,
+) {
+    // Global toggle
+    {
+        ui.checkbox(&mut entity_props.color_mapping, "Color mapping")
+            .on_hover_text("Toggles color mapping");
+        ui.end_row();
+    }
 
     if !entity_props.color_mapping {
         return;
     }
 
-    let current = *entity_props.color_mapper.get();
+    // Color mapping picker
+    {
+        let current = *entity_props.color_mapper.get();
+        ui.label("Color map");
+        egui::ComboBox::from_id_source("depth_color_mapper")
+            .selected_text(current.to_string())
+            .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.set_min_width(64.0);
 
-    ui.label("Color map");
-    egui::ComboBox::from_id_source("color_mapper")
-        .selected_text(current.to_string())
-        .show_ui(ui, |ui| {
+                let mut add_label = |proposed| {
+                    if ui
+                        .selectable_label(current == proposed, proposed.to_string())
+                        .clicked()
+                    {
+                        entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                    }
+                };
+
+                // TODO: that is not ideal but I don't want to import yet another proc-macro...
+                add_label(ColorMapper::ColorMap(ColorMap::Grayscale));
+                add_label(ColorMapper::ColorMap(ColorMap::Turbo));
+                add_label(ColorMapper::ColorMap(ColorMap::Viridis));
+                add_label(ColorMapper::ColorMap(ColorMap::Plasma));
+                add_label(ColorMapper::ColorMap(ColorMap::Magma));
+                add_label(ColorMapper::ColorMap(ColorMap::Inferno));
+                add_label(ColorMapper::AlbedoTexture);
+            });
+        ui.end_row();
+    }
+
+    if *entity_props.color_mapper.get() != ColorMapper::AlbedoTexture {
+        return;
+    }
+
+    // Albedo texture picker
+    if let Some(tree) = entity_path
+        .parent()
+        .and_then(|path| ctx.log_db.entity_db.tree.subtree(&path))
+    {
+        let query = ctx.current_query();
+        let current = entity_props.albedo_texture.clone();
+
+        let mut combo = egui::ComboBox::from_id_source("depth_color_texture");
+        if let Some(current) = current.as_ref() {
+            combo = combo.selected_text(current.to_string());
+        }
+
+        combo.show_ui(ui, |ui| {
             ui.style_mut().wrap = Some(false);
             ui.set_min_width(64.0);
 
-            // TODO(cmc): that is not ideal but I don't want to import yet another proc-macro...
-            let mut add_label = |proposed| {
-                if ui
-                    .selectable_label(current == proposed, proposed.to_string())
-                    .clicked()
+            tree.visit_children_recursively(&mut |ent_path| {
+                let Some(tensor) = query_latest_single::<Tensor>(
+                    &ctx.log_db.entity_db,
+                    ent_path,
+                    &query,
+                ) else {
+                    return;
+                };
+
+                if tensor.is_shaped_like_an_image()
+                    && ui
+                        .selectable_label(current.as_ref() == Some(ent_path), ent_path.to_string())
+                        .clicked()
                 {
-                    entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                    entity_props.albedo_texture = Some(ent_path.clone());
                 }
-            };
-
-            add_label(ColorMapper::ColorMap(ColorMap::Grayscale));
-            add_label(ColorMapper::ColorMap(ColorMap::Turbo));
-            add_label(ColorMapper::ColorMap(ColorMap::Viridis));
-            add_label(ColorMapper::ColorMap(ColorMap::Plasma));
-            add_label(ColorMapper::ColorMap(ColorMap::Magma));
-            add_label(ColorMapper::ColorMap(ColorMap::Inferno));
+            });
         });
-
-    ui.end_row();
+    }
 }
 
 fn pinhole_props_ui(
@@ -564,7 +615,7 @@ fn depth_props_ui(
 
             // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
             // need to get the current hardcoded colormapping out of the image cache first.
-            colormap_props_ui(ui, entity_props);
+            colormap_props_ui(ctx, ui, entity_path, entity_props);
         } else {
             entity_props.backproject_pinhole_ent_path = None;
         }

@@ -53,6 +53,10 @@ pub struct EntityProperties {
     pub color_mapping: bool,
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>,
+    /// Points to an entity with an albedo texture.
+    ///
+    /// Only relevant if [`Self::color_mapper`] is set to `AlbedoTexture`.
+    pub albedo_texture: Option<EntityPath>,
 
     /// Distance of the projection plane (frustum far plane).
     ///
@@ -85,6 +89,7 @@ impl EntityProperties {
 
             color_mapping: self.color_mapping || child.color_mapping,
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
+            albedo_texture: self.albedo_texture.clone().or(child.albedo_texture.clone()),
 
             pinhole_image_plane_distance: self
                 .pinhole_image_plane_distance
@@ -114,6 +119,7 @@ impl Default for EntityProperties {
             interactive: true,
             color_mapping: false,
             color_mapper: EditableAutoValue::default(),
+            albedo_texture: None,
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: false,
             backproject_pinhole_ent_path: None,
@@ -177,14 +183,16 @@ impl std::fmt::Display for ColorMap {
 pub enum ColorMapper {
     /// Use a well-known color map, pre-implemented as a wgsl module.
     ColorMap(ColorMap),
-    // TODO(cmc): support textures.
+    /// Point to an entity with an albedo texture.
+    AlbedoTexture,
     // TODO(cmc): support custom transfer functions.
 }
 
 impl std::fmt::Display for ColorMapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ColorMapper::ColorMap(colormap) => colormap.fmt(f),
+            ColorMapper::ColorMap(colormap) => write!(f, "Map:{colormap}"),
+            ColorMapper::AlbedoTexture => write!(f, "Albedo texture"),
         }
     }
 }

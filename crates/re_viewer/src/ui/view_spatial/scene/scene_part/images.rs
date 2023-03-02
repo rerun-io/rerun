@@ -318,6 +318,10 @@ impl ImagesPart {
                     re_data_store::ColorMap::Magma => ColorMap::ColorMapMagma,
                     re_data_store::ColorMap::Inferno => ColorMap::ColorMapInferno,
                 },
+                re_data_store::ColorMapper::AlbedoTexture => {
+                    // TODO
+                    ColorMap::ColorMapInferno
+                }
             })
             .unwrap_or(ColorMap::Grayscale);
 
