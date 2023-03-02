@@ -1,4 +1,5 @@
 use std::ops::RangeInclusive;
+use time::OffsetDateTime;
 
 /// A date-time represented as nanoseconds since unix epoch
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -44,19 +45,11 @@ impl Time {
         20 <= years_since_epoch && years_since_epoch <= 150
     }
 
-    /// Returns the absolute datetime, if this is a valid, unambiguous, absolute time.
-    pub fn to_chrono(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+    /// Returns the absolute datetime if applicable.
+    pub fn to_datetime(&self) -> Option<OffsetDateTime> {
         let ns_since_epoch = self.nanos_since_epoch();
         if self.is_abolute_date() {
-            use chrono::TimeZone as _;
-            if let chrono::LocalResult::Single(datetime) = chrono::Utc.timestamp_opt(
-                ns_since_epoch / 1_000_000_000,
-                (ns_since_epoch % 1_000_000_000) as _,
-            ) {
-                Some(datetime)
-            } else {
-                None
-            }
+            OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
         } else {
             None
         }
@@ -74,35 +67,26 @@ impl Time {
     pub fn format(&self) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
 
-        if self.is_abolute_date() {
-            use chrono::TimeZone as _;
-            let datetime = chrono::Utc.timestamp_opt(
-                nanos_since_epoch / 1_000_000_000,
-                (nanos_since_epoch % 1_000_000_000) as _,
-            );
-            match datetime {
-                chrono::LocalResult::Single(datetime) => {
-                    let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
-                    let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
+        if let Some(datetime) = self.to_datetime() {
+            let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
+            let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
 
-                    let time_format = if is_whole_second {
-                        "%H:%M:%SZ"
-                    } else if is_whole_millisecond {
-                        "%H:%M:%S%.3fZ"
-                    } else {
-                        "%H:%M:%S%.6fZ"
-                    };
+            let time_format = if is_whole_second {
+                "[hour]:[minute]:[second]Z"
+            } else if is_whole_millisecond {
+                "[hour]:[minute]:[second].[subsecond digits:3]Z"
+            } else {
+                "[hour]:[minute]:[second].[subsecond digits:6]Z"
+            };
 
-                    if datetime.date_naive() == chrono::offset::Utc::now().date_naive() {
-                        datetime.format(time_format).to_string()
-                    } else {
-                        let date_format = format!("%Y-%m-%d {time_format}");
-                        datetime.format(&date_format).to_string()
-                    }
-                }
-                chrono::LocalResult::None => "Invalid timestamp".to_owned(),
-                chrono::LocalResult::Ambiguous(_, _) => "Ambiguous timestamp".to_owned(),
-            }
+            let date_is_today = datetime.date() == OffsetDateTime::now_utc().date();
+            let date_format = format!("[year]-[month]-[day] {time_format}");
+            let parsed_format = if date_is_today {
+                time::format_description::parse(time_format).unwrap()
+            } else {
+                time::format_description::parse(&date_format).unwrap()
+            };
+            datetime.format(&parsed_format).unwrap()
         } else {
             // Relative time
             let secs = nanos_since_epoch as f64 * 1e-9;
@@ -113,20 +97,6 @@ impl Time {
             } else {
                 format!("{secs:+.3}s")
             }
-        }
-    }
-
-    pub fn format_time(&self, format_str: &str) -> String {
-        use chrono::TimeZone as _;
-        let nanos_since_epoch = self.nanos_since_epoch();
-        let datetime = chrono::Utc.timestamp_opt(
-            nanos_since_epoch / 1_000_000_000,
-            (nanos_since_epoch % 1_000_000_000) as _,
-        );
-        match datetime {
-            chrono::LocalResult::Single(datetime) => datetime.format(format_str).to_string(),
-            chrono::LocalResult::None => "Invalid timestamp".to_owned(),
-            chrono::LocalResult::Ambiguous(_, _) => "Ambiguous timestamp".to_owned(),
         }
     }
 
@@ -183,6 +153,57 @@ impl TryFrom<std::time::SystemTime> for Time {
     fn try_from(time: std::time::SystemTime) -> Result<Time, Self::Error> {
         time.duration_since(std::time::SystemTime::UNIX_EPOCH)
             .map(|duration_since_epoch| Time(duration_since_epoch.as_nanos() as _))
+    }
+}
+
+impl TryFrom<time::OffsetDateTime> for Time {
+    type Error = core::num::TryFromIntError;
+
+    fn try_from(datetime: time::OffsetDateTime) -> Result<Time, Self::Error> {
+        i64::try_from(datetime.unix_timestamp_nanos()).map(Time::from_ns_since_epoch)
+    }
+}
+
+// ---------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use time::macros::{datetime, time};
+
+    #[test]
+    fn test_formatting_short_times() {
+        assert_eq!(&Time::from_us_since_epoch(42_000_000).format(), "+42s");
+        assert_eq!(&Time::from_us_since_epoch(69_000).format(), "+0.069s");
+        assert_eq!(&Time::from_us_since_epoch(69_900).format(), "+0.070s");
+    }
+
+    #[test]
+    fn test_formatting_whole_second_for_datetime() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42 UTC)).unwrap();
+        assert_eq!(&datetime.format(), "2022-02-28 22:35:42Z");
+    }
+
+    #[test]
+    fn test_formatting_whole_millisecond_for_datetime() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069 UTC)).unwrap();
+        assert_eq!(&datetime.format(), "2022-02-28 22:35:42.069Z");
+    }
+
+    #[test]
+    fn test_formatting_many_digits_for_datetime() {
+        let datetime = Time::try_from(datetime!(2022-02-28 22:35:42.069_042_7 UTC)).unwrap();
+        assert_eq!(&datetime.format(), "2022-02-28 22:35:42.069042Z"); // format function is not rounding
+    }
+
+    /// Check that formatting today times doesn't display the date.
+    /// WARNING: this test could easily flake with current implementation
+    /// (checking day instead of hour-distance)
+    #[test]
+    fn test_formatting_today_omit_date() {
+        let today = OffsetDateTime::now_utc().replace_time(time!(22:35:42));
+        let datetime = Time::try_from(today).unwrap();
+        assert_eq!(&datetime.format(), "22:35:42Z");
     }
 }
 
