@@ -78,7 +78,7 @@ impl RenderDepthClouds {
         } = self;
 
         let focal_length = glam::Vec2::new(intrinsics.x_axis.x, intrinsics.y_axis.y);
-        let offset = glam::Vec2::new(intrinsics.x_axis.z, intrinsics.y_axis.z);
+        let offset = glam::Vec2::new(intrinsics.z_axis.x, intrinsics.z_axis.y);
 
         let point_cloud_draw_data = {
             let num_points = depth.dimensions.x * depth.dimensions.y;
@@ -171,12 +171,7 @@ impl RenderDepthClouds {
             ..
         } = self;
 
-        let world_from_obj = glam::Mat4::from_cols(
-            glam::Vec4::NEG_X * *scale,
-            glam::Vec4::NEG_Y * *scale,
-            glam::Vec4::Z * *scale,
-            glam::Vec4::W,
-        );
+        let world_from_obj = glam::Mat4::from_scale(glam::Vec3::splat(*scale));
 
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
@@ -261,7 +256,8 @@ impl framework::Example for RenderDepthClouds {
             Vec3::new(focal_length, 0.0, offset.x),
             Vec3::new(0.0, focal_length, offset.y),
             Vec3::new(0.0, 0.0, 1.0),
-        );
+        )
+        .transpose();
 
         RenderDepthClouds {
             depth,

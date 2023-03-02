@@ -30,7 +30,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let color = Vec4(linear_from_srgb(Vec3(norm_linear_depth)), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
-    let intrinsics = transpose(depth_cloud_info.depth_camera_intrinsics);
+    let intrinsics = depth_cloud_info.depth_camera_intrinsics;
     let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
     let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 

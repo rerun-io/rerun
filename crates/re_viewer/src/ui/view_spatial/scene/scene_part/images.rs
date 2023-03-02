@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::NumExt;
-use glam::Vec3;
+use glam::{Vec3, Vec4Swizzles};
 use itertools::Itertools;
 
 use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
@@ -132,6 +132,7 @@ impl ImagesPart {
         entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
+        transforms: &TransformCache,
         properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
@@ -153,11 +154,14 @@ impl ImagesPart {
                 if tensor.meaning == TensorDataMeaning::Depth {
                     if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
                     {
+                        // NOTE: we don't pass `world_from_obj` because this corresponds to the
+                        // transform of the projection plane, which is of no use to us here.
+                        // What we want are the extrinsics from the depth camera!
                         Self::process_entity_view_as_depth_cloud(
                             scene,
                             ctx,
+                            transforms,
                             properties,
-                            world_from_obj,
                             tensor,
                             pinhole_ent_path,
                         );
@@ -257,21 +261,31 @@ impl ImagesPart {
     fn process_entity_view_as_depth_cloud(
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
+        transforms: &TransformCache,
         properties: &EntityProperties,
-        world_from_obj: glam::Mat4,
         tensor: Tensor,
         pinhole_ent_path: &EntityPath,
     ) {
         crate::profile_function!();
 
-        let query = ctx.current_query();
+        let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
+            &ctx.log_db.entity_db,
+            pinhole_ent_path,
+            &ctx.current_query(),
+        ) else {
+            re_log::warn_once!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}");
+            return;
+        };
 
-        let Some(re_log_types::Transform::Pinhole(pinhole)) =
-            query_latest_single::<Transform>(&ctx.log_db.entity_db, pinhole_ent_path, &query) else {
-                re_log::warn_once!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}");
-                return;
-            };
+        // TODO(cmc): getting to those extrinsics is no easy task :|
+        let Some(extrinsics) = pinhole_ent_path
+            .parent()
+            .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
+            re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
+            return;
+        };
 
+        // TODO: that's where we derive it if Auto
         let scale = *properties.backproject_scale.get();
         let radius_scale = *properties.backproject_radius_scale.get();
 
@@ -291,11 +305,9 @@ impl ImagesPart {
             }
         };
 
-        let world_from_obj = glam::Mat4::from_scale(glam::Vec3::splat(scale))
-            * glam::Mat4::from_translation(glam::Vec3::new(-0.5, -0.5, 0.0));
-        // let world_from_obj = glam::Mat4::from_translation(glam::Vec3::new(-0.5, -0.5, 0.0));
+        let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
-        let xxx: glam::Mat3 = pinhole.image_from_cam.into();
+        let xxx: glam::Mat3 = intrinsics.image_from_cam.into();
 
         scene.primitives.depth_clouds.push(DepthCloud {
             world_from_obj,
@@ -337,6 +349,7 @@ impl ScenePart for ImagesPart {
                         &entity,
                         scene,
                         ctx,
+                        transforms,
                         &props,
                         ent_path,
                         world_from_obj,

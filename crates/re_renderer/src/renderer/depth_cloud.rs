@@ -65,6 +65,7 @@ pub enum DepthCloudDepthData {
 }
 
 pub struct DepthCloud {
+    // TODO: just call it extrinsics at this point
     pub world_from_obj: glam::Mat4,
 
     /// The intrinsics of the camera used for the projection.
