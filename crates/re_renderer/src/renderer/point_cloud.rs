@@ -467,7 +467,8 @@ impl Renderer for PointCloudRenderer {
                 },
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: wgpu::MultisampleState {
-                    // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
+                    // We discard pixels to do the round cutout, therefore we need to calculate
+                    // our own sampling mask.
                     alpha_to_coverage_enabled: true,
                     ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
                 },
