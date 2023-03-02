@@ -26,9 +26,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
         if not bindings.is_enabled():
             return
 
-        strict = False  # TODO: settable by the user
-
-        if strict:
+        if bindings.strict_mode():
             # Pass on any exceptions to the caller
             return func(*args, **kwargs)
         else:

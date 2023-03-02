@@ -1,6 +1,7 @@
 import inspect
 import logging
 
+from rerun import bindings
 from rerun.log.text import LogLevel, log_text_entry
 
 __all__ = [
@@ -22,6 +23,9 @@ def _send_warning(message: str, depth_to_user_code: int) -> None:
     You can also use this fo unrecoverable problems,
     or raise an exception and let the @log_decorator handle it instead.
     """
+
+    if bindings.strict_mode():
+        raise TypeError(message)
 
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
