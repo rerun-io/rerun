@@ -101,7 +101,7 @@ rustflags = [
 
 On Apple-silicon Mac (M1, M2), the default settings are already pretty good. The default linker is just as good as `zld`. Do NOT set `split-debuginfo=packed`, as that will make linking a lot slower. You can set `split-debuginfo=unpacked` for a small improvement.
 
-`config.toml` (M1):
+`config.toml` (M1, M2):
 ```toml
 [target.aarch64-apple-darwin]
 rustflags = [
