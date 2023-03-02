@@ -231,7 +231,7 @@ def strict_mode() -> bool:
     Strict mode enabled.
 
     In strict mode, misuses of the Rerun API will result in exception being raised.
-    When stirct mode if oss, such misuses are instead logged as warnings.
+    When strict mode is on, such misuses are instead logged as warnings.
 
     The default is OFF.
     """
