@@ -112,11 +112,7 @@ impl Event {
             .with_prop("git_branch", build_info.git_branch)
             .with_prop("build_date", build_info.datetime)
             .with_prop("debug", cfg!(debug_assertions)) // debug-build?
-            .with_prop(
-                // proxy for "user checked out the project and built it from source":
-                "rerun_workspace",
-                std::env::var("IS_IN_RERUN_WORKSPACE").is_ok(),
-            )
+            .with_prop("rerun_workspace", build_info.is_in_rerun_workspace)
     }
 }
 
