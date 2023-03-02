@@ -2,7 +2,6 @@ import inspect
 import logging
 
 import rerun
-from rerun import bindings
 from rerun.log.text_internal import LogLevel, log_text_entry_internal
 
 __all__ = [

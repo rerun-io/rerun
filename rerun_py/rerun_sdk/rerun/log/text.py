@@ -1,5 +1,4 @@
 import logging
-from dataclasses import dataclass
 from typing import Any, Dict, Final, Optional, Sequence
 
 # Fully qualified to avoid circular import

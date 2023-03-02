@@ -11,8 +11,7 @@ from rerun.log import _normalize_colors
 
 __all__ = [
     "LogLevel",
-    "LoggingHandler",
-    "log_text_entry",
+    "log_text_entry_internal",
 ]
 
 
@@ -42,8 +41,6 @@ class LogLevel:
 
     TRACE: Final = "TRACE"
     """ Designates very low priority, often extremely verbose, information. """
-
-
 
 
 def log_text_entry_internal(
@@ -88,9 +85,6 @@ def log_text_entry_internal(
     if color:
         colors = _normalize_colors([color])
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
-
-    if ext:
-        rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
