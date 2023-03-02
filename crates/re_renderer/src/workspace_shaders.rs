@@ -20,6 +20,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/depth_cloud.wgsl");
+        let content = include_str!("../shader/depth_cloud.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/generic_skybox.wgsl");
         let content = include_str!("../shader/generic_skybox.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -112,6 +118,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/size.wgsl");
         let content = include_str!("../shader/utils/size.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/utils/sphere_quad.wgsl");
+        let content = include_str!("../shader/utils/sphere_quad.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
