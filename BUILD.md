@@ -83,7 +83,7 @@ These tools can configured through your `Cargo` configuration, available at `$HO
 
 ### macOS
 
-On macOS, use the [zld](https://github.com/michaeleisel/zld) linker and keep debuginfo in a single separate file.
+On x64 macOS, use the [zld](https://github.com/michaeleisel/zld) linker and keep debuginfo in a single separate file.
 
 Pre-requisites:
 - Install [zld](https://github.com/michaeleisel/zld): `brew install michaeleisel/zld/zld`.
@@ -99,14 +99,14 @@ rustflags = [
 ]
 ```
 
-`config.toml` (M1):
+On Apple-silicon Mac (M1, M2), the default settings are already pretty good. The default linker is just as good as `zld`. Do NOT set `split-debuginfo=packed`, as that will make linking a lot slower. You can set `split-debuginfo=unpacked` for a small improvement.
+
+`config.toml` (M1, M2):
 ```toml
 [target.aarch64-apple-darwin]
 rustflags = [
     "-C",
-    "link-arg=-fuse-ld=/opt/homebrew/bin/zld",
-    "-C",
-    "split-debuginfo=packed",
+    "split-debuginfo=unpacked",
 ]
 ```
 
