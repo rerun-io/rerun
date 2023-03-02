@@ -403,39 +403,6 @@ fn spiral(dimensions: glam::UVec2) -> impl Iterator<Item = (glam::UVec2, f32)> {
     })
 }
 
-// Copied from re_viewer, this will be removed in an upcoming PR that handles colormapping.
-//
-// Copyright 2019 Google LLC.
-// SPDX-License-Identifier: Apache-2.0
-// Authors:
-//   Colormap Design: Anton Mikhailov (mikhailov@google.com)
-//   GLSL Approximation: Ruofei Du (ruofei@google.com)/
-//
-// TODO(cmc): remove in GPU color maps PR.
-#[allow(clippy::excessive_precision)]
-fn turbo_color_map(x: f32) -> [u8; 4] {
-    use glam::{Vec2, Vec4};
-
-    const RED_VEC4: Vec4 = Vec4::new(0.13572138, 4.61539260, -42.66032258, 132.13108234);
-    const GREEN_VEC4: Vec4 = Vec4::new(0.09140261, 2.19418839, 4.84296658, -14.18503333);
-    const BLUE_VEC4: Vec4 = Vec4::new(0.10667330, 12.64194608, -60.58204836, 110.36276771);
-    const RED_VEC2: Vec2 = Vec2::new(-152.94239396, 59.28637943);
-    const GREEN_VEC2: Vec2 = Vec2::new(4.27729857, 2.82956604);
-    const BLURE_VEC2: Vec2 = Vec2::new(-89.90310912, 27.34824973);
-
-    let v4 = glam::vec4(1.0, x, x * x, x * x * x);
-    let v2 = glam::vec2(v4.z, v4.w) * v4.z;
-
-    // Above sources are not explicit about it but this color is seemingly already in sRGB
-    // gamma space.
-    [
-        ((v4.dot(RED_VEC4) + v2.dot(RED_VEC2)) * 255.0) as u8,
-        ((v4.dot(GREEN_VEC4) + v2.dot(GREEN_VEC2)) * 255.0) as u8,
-        ((v4.dot(BLUE_VEC4) + v2.dot(BLURE_VEC2)) * 255.0) as u8,
-        255,
-    ]
-}
-
 struct DepthTexture {
     dimensions: glam::UVec2,
     data: DepthCloudDepthData,
@@ -472,7 +439,7 @@ impl AlbedoTexture {
         let mut rgba8 = std::iter::repeat(0).take(size * 4).collect_vec();
         spiral(dimensions).for_each(|(texcoords, d)| {
             let idx = ((texcoords.x + texcoords.y * dimensions.x) * 4) as usize;
-            rgba8[idx..idx + 4].copy_from_slice(turbo_color_map(d).as_slice());
+            rgba8[idx..idx + 4].copy_from_slice(re_renderer::colormap_turbo_srgb(d).as_slice());
         });
 
         Self { dimensions, rgba8 }
