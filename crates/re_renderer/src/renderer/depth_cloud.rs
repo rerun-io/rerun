@@ -60,8 +60,21 @@ mod gpu_data {
 // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
 #[derive(Debug, Clone)]
 pub enum DepthCloudDepthData {
+    #[cfg(not(feature = "arrow"))]
     U16(Vec<u16>),
+    #[cfg(feature = "arrow")]
+    U16(arrow2::buffer::Buffer<u16>),
+
+    #[cfg(not(feature = "arrow"))]
     F32(Vec<f32>),
+    #[cfg(feature = "arrow")]
+    F32(arrow2::buffer::Buffer<f32>),
+}
+
+impl Default for DepthCloudDepthData {
+    fn default() -> Self {
+        Self::F32(Default::default())
+    }
 }
 
 pub struct DepthCloud {
@@ -92,7 +105,7 @@ impl Default for DepthCloud {
             depth_camera_intrinsics: glam::Mat3::IDENTITY,
             radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
-            depth_data: DepthCloudDepthData::F32(Vec::new()),
+            depth_data: DepthCloudDepthData::default(),
         }
     }
 }

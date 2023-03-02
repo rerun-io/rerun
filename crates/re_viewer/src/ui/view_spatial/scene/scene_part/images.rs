@@ -287,11 +287,9 @@ impl ImagesPart {
 
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
         let data = match &tensor.data {
-            // TODO(cmc): re_renderer needs native interop with Arrow, we shouldn't need to
-            // allocate this massive buffer and do a memcpy when we could just carry arround the
-            // original `arrow::Buffer`.
-            TensorData::U16(data) => DepthCloudDepthData::U16(data.to_vec()),
-            TensorData::F32(data) => DepthCloudDepthData::F32(data.to_vec()),
+            // NOTE: Shallow clone if feature `arrow` is enabled, full alloc + memcpy otherwise.
+            TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
+            TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
             _ => {
                 let discriminant = std::mem::discriminant(&tensor.data);
                 re_log::warn_once!(
