@@ -2,7 +2,6 @@
 #import <./types.wgsl>
 #import <./utils/camera.wgsl>
 #import <./utils/flags.wgsl>
-#import <./utils/quad.wgsl>
 #import <./utils/size.wgsl>
 #import <./utils/sphere_quad.wgsl>
 
