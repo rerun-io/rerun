@@ -16,8 +16,8 @@ import os
 import re
 import subprocess
 import sys
-from typing import Final
 from datetime import datetime
+from typing import Final
 
 import semver
 
