@@ -1,1 +1,3 @@
+Cargo.lock
+crates/re_ui/data/Inter-Medium.otf
 rerun_py/rerun_sdk/rerun_demo/demo.rrd
