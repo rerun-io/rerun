@@ -174,15 +174,12 @@ impl OutlineMaskProcessor {
             );
         let bind_group_jumpflooding_init = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
+            &ctx.gpu_resources,
             &BindGroupDesc {
                 label: instance_label.clone().push_str("::jumpflooding_init"),
                 entries: smallvec![BindGroupEntry::DefaultTextureView(mask_texture.handle)],
                 layout: bind_group_layout_jumpflooding_init,
             },
-            &ctx.gpu_resources.bind_group_layouts,
-            &ctx.gpu_resources.textures,
-            &ctx.gpu_resources.buffers,
-            &ctx.gpu_resources.samplers,
         );
 
         let bind_group_layout_jumpflooding_step =
@@ -238,6 +235,7 @@ impl OutlineMaskProcessor {
             .map(|(i, uniform_buffer_binding)| {
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
+                    &ctx.gpu_resources,
                     &BindGroupDesc {
                         label: instance_label
                             .clone()
@@ -248,16 +246,13 @@ impl OutlineMaskProcessor {
                         ],
                         layout: bind_group_layout_jumpflooding_step,
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
-                    &ctx.gpu_resources.textures,
-                    &ctx.gpu_resources.buffers,
-                    &ctx.gpu_resources.samplers,
                 )
             })
             .collect();
 
         let bind_group_read_final_distance = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
+            &ctx.gpu_resources,
             &BindGroupDesc {
                 label: instance_label.clone().push_str("::read_final_distance"),
                 // Points to the last written distance texture
@@ -268,10 +263,6 @@ impl OutlineMaskProcessor {
                 )],
                 layout: compositor_renderer.bind_group_layout_read_distance,
             },
-            &ctx.gpu_resources.bind_group_layouts,
-            &ctx.gpu_resources.textures,
-            &ctx.gpu_resources.buffers,
-            &ctx.gpu_resources.samplers,
         );
 
         let screen_triangle_vertex_shader =

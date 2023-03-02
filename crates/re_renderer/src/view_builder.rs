@@ -546,7 +546,7 @@ impl ViewBuilder {
                 crate::profile_scope!("outline mask pass");
                 let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass)?;
+                self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass);
             }
             self.queue_draw(
                 &outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?,
