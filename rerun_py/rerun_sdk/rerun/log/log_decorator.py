@@ -3,8 +3,9 @@ import logging
 import traceback
 from typing import Any, Callable, TypeVar, cast
 
+import rerun
 from rerun import bindings
-from rerun.log.text import LogLevel, log_text_entry
+from rerun.log.text_internal import LogLevel, log_text_entry_internal
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
@@ -26,7 +27,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
         if not bindings.is_enabled():
             return
 
-        if bindings.strict_mode():
+        if rerun.strict_mode():
             # Pass on any exceptions to the caller
             return func(*args, **kwargs)
         else:
@@ -34,7 +35,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
                 return func(*args, **kwargs)
             except Exception as e:
                 warning = "".join(traceback.format_exception(e.__class__, e, e.__traceback__))
-                log_text_entry("rerun", warning, level=LogLevel.WARN)
+                log_text_entry_internal("rerun", warning, level=LogLevel.WARN)
                 logging.warning(f"Ignoring rerun log call: {warning}")
 
     return cast(_TFunc, wrapper)

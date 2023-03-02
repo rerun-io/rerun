@@ -1,8 +1,8 @@
 import inspect
 import logging
 
-from rerun import bindings
-from rerun.log.text import LogLevel, log_text_entry
+import rerun
+from rerun.log.text_internal import LogLevel, log_text_entry_internal
 
 __all__ = [
     "_send_warning",
@@ -24,10 +24,10 @@ def _send_warning(message: str, depth_to_user_code: int) -> None:
     or raise an exception and let the @log_decorator handle it instead.
     """
 
-    if bindings.strict_mode():
+    if rerun.strict_mode():
         raise TypeError(message)
 
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
-    log_text_entry("rerun", warning, level=LogLevel.WARN)
+    log_text_entry_internal("rerun", warning, level=LogLevel.WARN)
     logging.warning(warning)
