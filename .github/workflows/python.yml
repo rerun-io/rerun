@@ -270,6 +270,13 @@ jobs:
           name: wheels
           path: dist
 
+      - name: Update prerelease tag
+        uses: richardsimko/update-tag@v1
+        with:
+          tag_name: prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: GitHub Release
         uses: ncipollo/release-action@v1.12.0
         with:
@@ -277,7 +284,7 @@ jobs:
           prerelease: true
           artifacts: dist/*
           name: "Development Build"
-          tag: "latest"
+          tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}
           generateReleaseNotes: true
           allowUpdates: true
