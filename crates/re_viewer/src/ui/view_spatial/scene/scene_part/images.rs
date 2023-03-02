@@ -12,7 +12,7 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData},
+    renderer::{DepthCloud, DepthCloudAlbedoData, DepthCloudDepthData},
     ColorMap, Size,
 };
 
@@ -286,14 +286,14 @@ impl ImagesPart {
         };
 
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
-        let data = match &tensor.data {
+        let depth_data = match &tensor.data {
             // NOTE: Shallow clone if feature `arrow` is enabled, full alloc + memcpy otherwise.
             TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
             _ => {
-                let discriminant = std::mem::discriminant(&tensor.data);
                 re_log::warn_once!(
-                    "Tensor datatype is not supported for backprojection ({discriminant:?})"
+                    "Tensor datatype not supported for depth texture ({:?})",
+                    std::mem::discriminant(&tensor.data),
                 );
                 return;
             }
@@ -303,11 +303,11 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
-        let dimensions = glam::UVec2::new(w as _, h as _);
+        let depth_dimensions = glam::UVec2::new(w as _, h as _);
 
         let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
-        let colormap = properties
+        let mut colormap = properties
             .color_mapping
             .then(|| match *properties.color_mapper.get() {
                 re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
@@ -318,19 +318,53 @@ impl ImagesPart {
                     re_data_store::ColorMap::Magma => ColorMap::ColorMapMagma,
                     re_data_store::ColorMap::Inferno => ColorMap::ColorMapInferno,
                 },
-                re_data_store::ColorMapper::AlbedoTexture => {
-                    // TODO
-                    ColorMap::ColorMapInferno
-                }
+                re_data_store::ColorMapper::AlbedoTexture => ColorMap::AlbedoTexture,
             })
             .unwrap_or(ColorMap::Grayscale);
+
+        let mut albedo_data = None;
+        let mut albedo_dimensions = glam::UVec2::ZERO;
+
+        if colormap == ColorMap::AlbedoTexture {
+            let tensor = properties.albedo_texture.as_ref().and_then(|path| {
+                query_latest_single::<Tensor>(&ctx.log_db.entity_db, path, &ctx.current_query())
+            });
+            if let Some(tensor) = tensor {
+                let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
+                albedo_dimensions = glam::UVec2::new(w as _, h as _);
+
+                // TODO(cmc): How does one know whether the texture is sRGB or not at this point?
+                // TODO(cmc): We should easily be able to pass almost any datatype here.
+
+                albedo_data = match &tensor.data {
+                    // TODO: check shape to know whether we have alpha
+                    // TODO: just go through image cache
+                    TensorData::U8(data) => Some(DepthCloudAlbedoData::Rgb8Srgb(data.to_vec())),
+                    _ => {
+                        re_log::warn_once!(
+                            "Tensor datatype not supported for albedo texture ({:?})",
+                            std::mem::discriminant(&tensor.data),
+                        );
+                        None
+                    }
+                };
+            } else {
+                re_log::warn_once!(
+                    "Albedo texture couldn't be fetched ({:?})",
+                    properties.albedo_texture
+                );
+                colormap = ColorMap::Grayscale;
+            }
+        }
 
         scene.primitives.depth_clouds.push(DepthCloud {
             depth_camera_extrinsics: world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             radius_scale,
-            depth_dimensions: dimensions,
-            depth_data: data,
+            depth_dimensions,
+            depth_data,
+            albedo_dimensions,
+            albedo_data,
             colormap,
         });
     }

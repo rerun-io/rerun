@@ -2,12 +2,13 @@
 #import <./utils/srgb.wgsl>
 
 // NOTE: Keep in sync with `colormap.rs`!
-const GRAYSCALE:        u32 = 0u;
-const COLORMAP_TURBO:   u32 = 1u;
-const COLORMAP_VIRIDIS: u32 = 2u;
-const COLORMAP_PLASMA:  u32 = 3u;
-const COLORMAP_MAGMA:   u32 = 4u;
-const COLORMAP_INFERNO: u32 = 5u;
+const GRAYSCALE:        u32 =   0u;
+const COLORMAP_TURBO:   u32 =   1u;
+const COLORMAP_VIRIDIS: u32 =   2u;
+const COLORMAP_PLASMA:  u32 =   3u;
+const COLORMAP_MAGMA:   u32 =   4u;
+const COLORMAP_INFERNO: u32 =   5u;
+const ALBEDO_TEXTURE:   u32 = 100u;
 
 fn colormap_srgb(which: u32, t: f32) -> Vec3 {
     if which == COLORMAP_TURBO {

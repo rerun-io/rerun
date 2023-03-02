@@ -178,6 +178,8 @@ impl RenderDepthClouds {
                 radius_scale: *radius_scale,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
+                albedo_dimensions: glam::UVec2::ZERO,
+                albedo_data: None,
                 colormap: re_renderer::ColorMap::ColorMapTurbo,
             }],
         )

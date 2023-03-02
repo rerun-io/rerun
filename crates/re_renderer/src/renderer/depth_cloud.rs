@@ -11,6 +11,7 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
+use itertools::Itertools;
 use smallvec::smallvec;
 use std::num::NonZeroU32;
 
@@ -49,7 +50,7 @@ mod gpu_data {
     }
 }
 
-/// The raw data from a depth texture.
+/// The raw data for the depth texture.
 ///
 /// This is either `u16` or `f32` values; in both cases the data will be uploaded to the shader
 /// as-is.
@@ -72,6 +73,18 @@ impl Default for DepthCloudDepthData {
     }
 }
 
+/// The raw data for the (optional) albedo texture.
+//
+// TODO(cmc): support more albedo data types.
+// TODO(cmc): arrow buffers for u8...
+#[derive(Debug, Clone)]
+pub enum DepthCloudAlbedoData {
+    Rgb8(Vec<u8>),
+    Rgb8Srgb(Vec<u8>),
+    Rgba8(Vec<u8>),
+    Rgba8Srgb(Vec<u8>),
+}
+
 pub struct DepthCloud {
     /// The extrinsics of the camera used for the projection.
     pub depth_camera_extrinsics: glam::Mat4,
@@ -87,10 +100,20 @@ pub struct DepthCloud {
     /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
 
-    /// The actual data from the depth texture.
+    /// The actual data for the depth texture.
     ///
     /// See [`DepthCloudDepthData`] for more information.
     pub depth_data: DepthCloudDepthData,
+
+    /// The dimensions of the (optional) albedo texture in pixels.
+    ///
+    /// Irrelevant if [`Self::albedo_data`] isn't set.
+    pub albedo_dimensions: glam::UVec2,
+
+    /// The actual data for the (optional) albedo texture.
+    ///
+    /// If set, takes precedence over [`Self::colormap`].
+    pub albedo_data: Option<DepthCloudAlbedoData>,
 
     /// Configures color mapping mode.
     pub colormap: ColorMap,
@@ -104,6 +127,8 @@ impl Default for DepthCloud {
             radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::default(),
+            albedo_dimensions: glam::UVec2::ZERO,
+            albedo_data: None,
             colormap: ColorMap::ColorMapTurbo,
         }
     }
@@ -164,9 +189,12 @@ impl DepthCloudDrawData {
                 //
                 // TODO(cmc): use an RG8 texture and unpack it manually in the shader instead.
                 #[cfg(not(target_arch = "wasm32"))]
-                DepthCloudDepthData::U16(data) => {
-                    create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
-                }
+                DepthCloudDepthData::U16(data) => create_and_upload_texture(
+                    ctx,
+                    depth_cloud.depth_dimensions,
+                    wgpu::TextureFormat::Depth16Unorm,
+                    data.as_slice(),
+                ),
                 #[cfg(target_arch = "wasm32")]
                 DepthCloudDepthData::U16(data) => {
                     use itertools::Itertools as _;
@@ -175,12 +203,78 @@ impl DepthCloudDrawData {
                         .iter()
                         .map(|d| *d as f32 / u16::MAX as f32)
                         .collect_vec();
-                    create_and_upload_texture(ctx, depth_cloud, dataf32.as_slice(), true)
+                    create_and_upload_texture(
+                        ctx,
+                        depth_cloud.depth_dimensions,
+                        wgpu::TextureFormat::R32Float,
+                        dataf32.as_slice(),
+                    )
                 }
-                DepthCloudDepthData::F32(data) => {
-                    create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
-                }
+                DepthCloudDepthData::F32(data) => create_and_upload_texture(
+                    ctx,
+                    depth_cloud.depth_dimensions,
+                    wgpu::TextureFormat::R32Float,
+                    data.as_slice(),
+                ),
             };
+
+            // TODO: add todos to make the colormap system capable of ingesting almost anything
+            // transparently.
+
+            let albedo_texture = depth_cloud
+                .albedo_data
+                .as_ref()
+                .map(|data| match data {
+                    DepthCloudAlbedoData::Rgba8(data) => create_and_upload_texture(
+                        ctx,
+                        depth_cloud.albedo_dimensions,
+                        wgpu::TextureFormat::Rgba8Unorm,
+                        data.as_slice(),
+                    ),
+                    DepthCloudAlbedoData::Rgba8Srgb(data) => create_and_upload_texture(
+                        ctx,
+                        depth_cloud.albedo_dimensions,
+                        wgpu::TextureFormat::Rgba8UnormSrgb,
+                        data.as_slice(),
+                    ),
+                    // TODO
+                    DepthCloudAlbedoData::Rgb8(data) => {
+                        let data = data
+                            .chunks(3)
+                            .into_iter()
+                            .flat_map(|c| [c[0], c[1], c[2], 255])
+                            .collect_vec();
+                        create_and_upload_texture(
+                            ctx,
+                            depth_cloud.albedo_dimensions,
+                            wgpu::TextureFormat::Rgba8Unorm,
+                            data.as_slice(),
+                        )
+                    }
+                    DepthCloudAlbedoData::Rgb8Srgb(data) => {
+                        let data = data
+                            .chunks(3)
+                            .into_iter()
+                            .flat_map(|c| [c[0], c[1], c[2], 255])
+                            .collect_vec();
+                        create_and_upload_texture(
+                            ctx,
+                            depth_cloud.albedo_dimensions,
+                            wgpu::TextureFormat::Rgba8UnormSrgb,
+                            data.as_slice(),
+                        )
+                    }
+                })
+                .unwrap_or_else(|| {
+                    // TODO: need a permanent fake texture... I think we have one somewhere already
+                    // right?
+                    create_and_upload_texture(
+                        ctx,
+                        (1, 1).into(),
+                        wgpu::TextureFormat::Rgba8Unorm,
+                        [0u8; 4].as_slice(),
+                    )
+                });
 
             bind_groups.push((
                 depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
@@ -192,6 +286,7 @@ impl DepthCloudDrawData {
                         entries: smallvec![
                             ubo,
                             BindGroupEntry::DefaultTextureView(depth_texture.handle),
+                            BindGroupEntry::DefaultTextureView(albedo_texture.handle),
                         ],
                         layout: bg_layout,
                     },
@@ -203,66 +298,64 @@ impl DepthCloudDrawData {
     }
 }
 
+// TODO: gotta refactor this one
+// fn create_and_upload_texture<T: bytemuck::Pod>(
+//     ctx: &mut RenderContext,
+//     depth_cloud: &DepthCloud,
+//     data: &[T],
+//     force_32bit: bool,
+// ) -> GpuTexture {
 fn create_and_upload_texture<T: bytemuck::Pod>(
     ctx: &mut RenderContext,
-    depth_cloud: &DepthCloud,
+    dimensions: glam::UVec2,
+    format: wgpu::TextureFormat,
     data: &[T],
-    force_32bit: bool,
 ) -> GpuTexture {
     crate::profile_function!();
 
-    let depth_texture_size = wgpu::Extent3d {
-        width: depth_cloud.depth_dimensions.x,
-        height: depth_cloud.depth_dimensions.y,
+    let texture_size = wgpu::Extent3d {
+        width: dimensions.x,
+        height: dimensions.y,
         depth_or_array_layers: 1,
     };
-    let depth_format = if force_32bit {
-        wgpu::TextureFormat::R32Float
-    } else {
-        match depth_cloud.depth_data {
-            DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
-            DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
-        }
-    };
-    let depth_texture_desc = TextureDesc {
-        label: "depth_texture".into(),
-        size: depth_texture_size,
+    let texture_desc = TextureDesc {
+        label: "texture".into(),
+        size: texture_size,
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: depth_format,
+        format,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
     };
-    let depth_texture = ctx
-        .gpu_resources
-        .textures
-        .alloc(&ctx.device, &depth_texture_desc);
+    let texture = ctx.gpu_resources.textures.alloc(&ctx.device, &texture_desc);
 
-    let format_info = depth_texture_desc.format.describe();
-    let width_blocks = depth_cloud.depth_dimensions.x / format_info.block_dimensions.0 as u32;
+    let format_info = texture_desc.format.describe();
+    let width_blocks = dimensions.x / format_info.block_dimensions.0 as u32;
     let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+    // TODO
+    let bytes_per_row = u32::max(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
-    let mut depth_texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
+    let mut texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
         &ctx.device,
         &ctx.gpu_resources.buffers,
         data.len(),
     );
-    depth_texture_staging.extend_from_slice(data);
+    texture_staging.extend_from_slice(data);
 
-    depth_texture_staging.copy_to_texture(
+    texture_staging.copy_to_texture(
         ctx.active_frame.encoder.lock().get(),
         wgpu::ImageCopyTexture {
-            texture: &depth_texture.inner.texture,
+            texture: &texture.inner.texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        Some(NonZeroU32::new(bytes_per_row_unaligned).expect("invalid bytes per row")),
+        Some(NonZeroU32::new(bytes_per_row).expect("invalid bytes per row")),
         None,
-        depth_texture_size,
+        texture_size,
     );
 
-    depth_texture
+    texture
 }
 
 pub struct DepthCloudRenderer {
@@ -304,6 +397,16 @@ impl Renderer for DepthCloudRenderer {
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },

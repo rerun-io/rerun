@@ -14,6 +14,7 @@ pub enum ColorMap {
     ColorMapPlasma = 3,
     ColorMapMagma = 4,
     ColorMapInferno = 5,
+    AlbedoTexture = 100,
 }
 
 pub fn colormap_srgb(which: ColorMap, t: f32) -> [u8; 4] {
@@ -24,6 +25,10 @@ pub fn colormap_srgb(which: ColorMap, t: f32) -> [u8; 4] {
         ColorMap::ColorMapPlasma => colormap_plasma_srgb(t),
         ColorMap::ColorMapMagma => colormap_magma_srgb(t),
         ColorMap::ColorMapInferno => colormap_inferno_srgb(t),
+        ColorMap::AlbedoTexture => {
+            re_log::error_once!("Trying to do texture sampling on the CPU");
+            [0; 4]
+        }
     }
 }
 

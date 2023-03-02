@@ -27,8 +27,19 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
     let norm_linear_depth = textureLoad(depth_texture, texcoords, 0).x;
 
-    // TODO(cmc): albedo textures
-    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, norm_linear_depth), 1.0);
+    // TODO(cmc): transfer functions
+
+    var color: Vec4;
+    if depth_cloud_info.colormap == ALBEDO_TEXTURE {
+        color = textureSampleLevel(
+            albedo_texture,
+            trilinear_sampler,
+            Vec2(texcoords) / Vec2(textureDimensions(albedo_texture)),
+            0.0
+        );
+    } else {
+        color = Vec4(colormap_srgb(depth_cloud_info.colormap, norm_linear_depth), 1.0);
+    }
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
     let intrinsics = depth_cloud_info.depth_camera_intrinsics;
@@ -75,6 +86,10 @@ var<uniform> depth_cloud_info: DepthCloudInfo;
 
 @group(1) @binding(1)
 var depth_texture: texture_2d<f32>;
+
+/// Only sampled if `DepthCloudInfo::colormap == 100`.
+@group(1) @binding(2)
+var albedo_texture: texture_2d<f32>;
 
 struct VertexOut {
     @builtin(position) pos_in_clip: Vec4,

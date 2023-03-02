@@ -480,9 +480,13 @@ fn colormap_props_ui(
         let query = ctx.current_query();
         let current = entity_props.albedo_texture.clone();
 
+        ui.label("Albedo texture");
+
         let mut combo = egui::ComboBox::from_id_source("depth_color_texture");
         if let Some(current) = current.as_ref() {
             combo = combo.selected_text(current.to_string());
+        } else {
+            combo = combo.selected_text("(empty)");
         }
 
         combo.show_ui(ui, |ui| {
