@@ -290,17 +290,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Create the actual prerelease
-      # https://github.com/softprops/action-gh-release
+      # https://github.com/ncipollo/release-action
       - name: GitHub Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: ncipollo/release-action@v1.12.0
         with:
-          name: "Development Build"
           body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
           prerelease: true
-          tag_name: prerelease
-          files: dist/*
+          artifacts: dist/*
+          name: "Development Build"
+          tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}
-          generate_release_notes: true
+          generateReleaseNotes: true
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
 
   # ---------------------------------------------------------------------------
 
@@ -317,13 +320,14 @@ jobs:
           name: wheels
           path: dist
 
+      # https://github.com/ncipollo/release-action
       - name: GitHub Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: ncipollo/release-action@v1.12.0
         with:
           prerelease: false
-          files: dist/*
+          artifacts: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
-          generate_release_notes: true
+          generateReleaseNotes: true
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
