@@ -23,6 +23,7 @@ type DrawFn = dyn for<'a, 'b> Fn(
 struct QueuedDraw {
     draw_func: Box<DrawFn>,
     draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
+    renderer_name: &'static str,
     participated_phases: &'static [DrawPhase],
 }
 
@@ -423,14 +424,17 @@ impl ViewBuilder {
         ctx: &'a RenderContext,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
-    ) -> Result<(), anyhow::Error> {
+    ) {
         for queued_draw in &self.queued_draws {
             if queued_draw.participated_phases.contains(&phase) {
-                (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
-                    .with_context(|| format!("Draw call during phase {phase:?}"))?;
+                let res = (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
+                    .with_context(|| format!("draw call during phase {phase:?}"));
+                if let Err(err) = res {
+                    re_log::error!(renderer=%queued_draw.renderer_name, %err,
+                        "renderer failed to draw");
+                }
             }
         }
-        Ok(())
     }
 
     pub fn queue_draw<D: DrawData + Sync + Send + Clone + 'static>(
@@ -450,6 +454,7 @@ impl ViewBuilder {
                 renderer.draw(&ctx.gpu_resources, phase, pass, draw_data)
             }),
             draw_data: Box::new(draw_data.clone()),
+            renderer_name: std::any::type_name::<D::Renderer>(),
             participated_phases: D::Renderer::participated_phases(),
         });
 
@@ -510,7 +515,7 @@ impl ViewBuilder {
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
             for phase in [DrawPhase::Opaque, DrawPhase::Background] {
-                self.draw_phase(ctx, phase, &mut pass)?;
+                self.draw_phase(ctx, phase, &mut pass);
             }
         }
 
@@ -544,6 +549,8 @@ impl ViewBuilder {
         );
 
         pass.set_bind_group(0, &setup.bind_group_0, &[]);
-        self.draw_phase(ctx, DrawPhase::Compositing, pass)
+        self.draw_phase(ctx, DrawPhase::Compositing, pass);
+
+        Ok(())
     }
 }
