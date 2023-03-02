@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::NumExt;
-use glam::{Vec3, Vec4Swizzles};
+use glam::Vec3;
 use itertools::Itertools;
 
 use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
@@ -154,15 +154,15 @@ impl ImagesPart {
                 if tensor.meaning == TensorDataMeaning::Depth {
                     if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
                     {
-                        // NOTE: we don't pass `world_from_obj` because this corresponds to the
+                        // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                         // transform of the projection plane, which is of no use to us here.
-                        // What we want are the extrinsics from the depth camera!
+                        // What we want are the extrinsics of the depth camera!
                         Self::process_entity_view_as_depth_cloud(
                             scene,
                             ctx,
                             transforms,
                             properties,
-                            tensor,
+                            &tensor,
                             pinhole_ent_path,
                         );
                         return Ok(());
@@ -263,7 +263,7 @@ impl ImagesPart {
         ctx: &mut ViewerContext<'_>,
         transforms: &TransformCache,
         properties: &EntityProperties,
-        tensor: Tensor,
+        tensor: &Tensor,
         pinhole_ent_path: &EntityPath,
     ) {
         crate::profile_function!();
@@ -285,15 +285,8 @@ impl ImagesPart {
             return;
         };
 
-        // TODO: that's where we derive it if Auto
-        let scale = *properties.backproject_scale.get();
-        let radius_scale = *properties.backproject_radius_scale.get();
-
-        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
-        let dimensions = glam::UVec2::new(w as _, h as _);
-
-        // TODO(cmc): automagically convert as needed for non-native datatypes?
-        let data = match tensor.data {
+        // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
+        let data = match &tensor.data {
             TensorData::U16(data) => DepthCloudDepthData::U16(data.to_vec()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.to_vec()),
             _ => {
@@ -305,13 +298,32 @@ impl ImagesPart {
             }
         };
 
+        // TODO(cmc): we need access to mutable entity properties from here, because that's where
+        // we need to compute the actual Auto value... but right now we have no way to write it
+        // back :(
+
+        let scale = *properties
+            .backproject_scale
+            .or(&re_data_store::EditableAutoValue::Auto(
+                tensor.meter.map_or(1.0, |meter| match &data {
+                    DepthCloudDepthData::U16(_) => 1.0 / meter * u16::MAX as f32,
+                    DepthCloudDepthData::F32(_) => meter,
+                }),
+            ))
+            .get();
+        let radius_scale = *properties
+            .backproject_radius_scale
+            .or(&re_data_store::EditableAutoValue::Auto(0.02))
+            .get();
+
+        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
+        let dimensions = glam::UVec2::new(w as _, h as _);
+
         let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
-        let xxx: glam::Mat3 = intrinsics.image_from_cam.into();
-
         scene.primitives.depth_clouds.push(DepthCloud {
-            world_from_obj,
-            depth_camera_intrinsics: xxx,
+            depth_camera_extrinsics: world_from_obj,
+            depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             radius_scale,
             depth_dimensions: dimensions,
             depth_data: data,

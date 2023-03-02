@@ -85,10 +85,7 @@ impl RenderDepthClouds {
             let (points, colors, radii): (Vec<_>, Vec<_>, Vec<_>) = (0..depth.dimensions.y)
                 .flat_map(|y| (0..depth.dimensions.x).map(move |x| glam::UVec2::new(x, y)))
                 .map(|texcoords| {
-                    let linear_depth = depth.get_linear(
-                        depth.dimensions.x - texcoords.x - 1,
-                        depth.dimensions.y - texcoords.y - 1,
-                    );
+                    let linear_depth = depth.get_linear(texcoords.x, texcoords.y);
                     let pos_in_world = ((texcoords.as_vec2() - offset) * linear_depth
                         / focal_length)
                         .extend(linear_depth);
@@ -176,7 +173,7 @@ impl RenderDepthClouds {
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &[DepthCloud {
-                world_from_obj,
+                depth_camera_extrinsics: world_from_obj,
                 depth_camera_intrinsics: *intrinsics,
                 radius_scale: *radius_scale,
                 depth_dimensions: depth.dimensions,

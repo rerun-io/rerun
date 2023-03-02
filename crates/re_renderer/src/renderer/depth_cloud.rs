@@ -39,7 +39,7 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
-        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
+        pub depth_camera_extrinsics: crate::wgpu_buffer_types::Mat4,
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
         pub radius_scale: crate::wgpu_buffer_types::F32RowPadded,
 
@@ -65,8 +65,8 @@ pub enum DepthCloudDepthData {
 }
 
 pub struct DepthCloud {
-    // TODO: just call it extrinsics at this point
-    pub world_from_obj: glam::Mat4,
+    /// The extrinsics of the camera used for the projection.
+    pub depth_camera_extrinsics: glam::Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///
@@ -88,7 +88,7 @@ pub struct DepthCloud {
 impl Default for DepthCloud {
     fn default() -> Self {
         Self {
-            world_from_obj: glam::Mat4::IDENTITY,
+            depth_camera_extrinsics: glam::Mat4::IDENTITY,
             depth_camera_intrinsics: glam::Mat3::IDENTITY,
             radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
@@ -135,7 +135,7 @@ impl DepthCloudDrawData {
             ctx,
             "depth_cloud_ubos".into(),
             depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
-                world_from_obj: info.world_from_obj.into(),
+                depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
                 depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
                 radius_scale: info.radius_scale.into(),
                 end_padding: Default::default(),

@@ -102,7 +102,7 @@ impl Default for EntityProperties {
             visible_history: ExtraQueryHistory::default(),
             interactive: true,
             pinhole_image_plane_distance: EditableAutoValue::default(),
-            backproject_depth: true,
+            backproject_depth: false,
             backproject_pinhole_ent_path: None,
             backproject_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::default(),
