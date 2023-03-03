@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Very simple example of capturing from a live webcam."""
+"""
+Very simple example of capturing from a live webcam.
+
+NOTE: this example currently runs forever and will eventually exhaust your
+system memory. It is advised you run an independent rerun viewer with a memory
+limit:
+```
+rerun --memory-limit 4GB
+```
+
+And then connect using:
+```
+python examples/python/opencv_canny/main.py --connect
+```
+
+"""
 
 import argparse
 
@@ -45,6 +60,27 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.script_setup(args, "opencv_canny")
+
+    print(args.connect)
+
+    if not args.connect:
+        print(
+            """
+################################################################################
+NOTE: this example currently runs forever and will eventually exhaust your
+system memory. It is advised you run an independent rerun viewer with a memory
+limit:
+```
+rerun --memory-limit 4GB
+```
+
+And then connect using:
+```
+python examples/python/opencv_canny/main.py --connect
+```
+################################################################################
+        """
+        )
 
     run_canny()
 
