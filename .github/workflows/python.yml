@@ -203,7 +203,7 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --target {{ matrix.target }}
+            --target ${{ matrix.target }}
             --no-default-features
             --features pypi
             --out pre-dist
