@@ -431,20 +431,6 @@ fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
 
     let current = *entity_props.color_mapper.get();
 
-    fn selectable_label(
-        ui: &mut egui::Ui,
-        props: &mut EntityProperties,
-        current: ColorMapper,
-        proposed: ColorMapper,
-    ) {
-        if ui
-            .selectable_label(current == proposed, proposed.to_string())
-            .clicked()
-        {
-            props.color_mapper = EditableAutoValue::Auto(proposed);
-        }
-    }
-
     ui.label("Color map");
     egui::ComboBox::from_id_source("color_mapper")
         .selected_text(current.to_string())
@@ -453,42 +439,21 @@ fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
             ui.set_min_width(64.0);
 
             // TODO(cmc): that is not ideal but I don't want to import yet another proc-macro...
-            selectable_label(
-                ui,
-                entity_props,
-                current,
-                ColorMapper::ColorMap(ColorMap::Grayscale),
-            );
-            selectable_label(
-                ui,
-                entity_props,
-                current,
-                ColorMapper::ColorMap(ColorMap::Turbo),
-            );
-            selectable_label(
-                ui,
-                entity_props,
-                current,
-                ColorMapper::ColorMap(ColorMap::Viridis),
-            );
-            selectable_label(
-                ui,
-                entity_props,
-                current,
-                ColorMapper::ColorMap(ColorMap::Plasma),
-            );
-            selectable_label(
-                ui,
-                entity_props,
-                current,
-                ColorMapper::ColorMap(ColorMap::Magma),
-            );
-            selectable_label(
-                ui,
-                entity_props,
-                current,
-                ColorMapper::ColorMap(ColorMap::Inferno),
-            );
+            let mut add_label = |proposed| {
+                if ui
+                    .selectable_label(current == proposed, proposed.to_string())
+                    .clicked()
+                {
+                    entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                }
+            };
+
+            add_label(ColorMapper::ColorMap(ColorMap::Grayscale));
+            add_label(ColorMapper::ColorMap(ColorMap::Turbo));
+            add_label(ColorMapper::ColorMap(ColorMap::Viridis));
+            add_label(ColorMapper::ColorMap(ColorMap::Plasma));
+            add_label(ColorMapper::ColorMap(ColorMap::Magma));
+            add_label(ColorMapper::ColorMap(ColorMap::Inferno));
         });
 
     ui.end_row();
