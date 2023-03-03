@@ -92,7 +92,7 @@ pub fn color_spiral(
 
     let colors = (0..num_points)
         .map(move |i| {
-            re_viewer::color_map::turbo_color_map(i as f32 / num_points as f32).to_array()
+            re_viewer::external::re_renderer::colormap_turbo_srgb(i as f32 / num_points as f32)
         })
         .collect();
 
