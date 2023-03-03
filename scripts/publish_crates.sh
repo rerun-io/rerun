@@ -70,6 +70,8 @@ export RERUN_IS_PUBLISHING=yes
 
 echo "Publishing crates…"
 
+cargo publish $FLAGS -p re_build_info
+cargo publish $FLAGS -p re_build_build_info
 cargo publish $FLAGS -p re_log
 cargo publish $FLAGS -p re_error
 cargo publish $FLAGS -p re_format
