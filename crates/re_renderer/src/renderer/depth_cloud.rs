@@ -24,6 +24,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, TextureDesc,
     },
+    ColorMap,
 };
 
 use super::{
@@ -42,8 +43,9 @@ mod gpu_data {
         pub depth_camera_extrinsics: crate::wgpu_buffer_types::Mat4,
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
         pub radius_scale: crate::wgpu_buffer_types::F32RowPadded,
+        pub colormap: crate::wgpu_buffer_types::U32RowPadded,
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 8],
+        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 9],
     }
 }
 
@@ -89,6 +91,9 @@ pub struct DepthCloud {
     ///
     /// See [`DepthCloudDepthData`] for more information.
     pub depth_data: DepthCloudDepthData,
+
+    /// Configures color mapping mode.
+    pub colormap: ColorMap,
 }
 
 impl Default for DepthCloud {
@@ -99,6 +104,7 @@ impl Default for DepthCloud {
             radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::default(),
+            colormap: ColorMap::ColorMapTurbo,
         }
     }
 }
@@ -144,6 +150,7 @@ impl DepthCloudDrawData {
                 depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
                 depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
                 radius_scale: info.radius_scale.into(),
+                colormap: (info.colormap as u32).into(),
                 end_padding: Default::default(),
             }),
         );
