@@ -22,6 +22,7 @@ from rerun.log import (
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_point",
@@ -29,6 +30,7 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_point(
     entity_path: str,
     position: Optional[npt.ArrayLike] = None,
@@ -85,9 +87,6 @@ def log_point(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     if keypoint_id is not None and class_id is None:
         class_id = 0
     if position is not None:
@@ -131,6 +130,7 @@ def log_point(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
+@log_decorator
 def log_points(
     entity_path: str,
     positions: Optional[npt.ArrayLike] = None,
@@ -190,9 +190,6 @@ def log_points(
         If true, the points will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0

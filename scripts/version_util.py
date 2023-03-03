@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 
 """
 Script should only be called by the CI system.
@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime
 from typing import Final
 
 import semver
@@ -90,7 +91,8 @@ def main() -> None:
     cargo_version = get_cargo_version(cargo_toml)
 
     if sys.argv[1] == "--patch_prerelease":
-        new_version = f"{cargo_version}+{get_git_sha()}"
+        date = datetime.now().strftime("%Y-%m-%d")
+        new_version = f"{cargo_version}+{date}-{get_git_sha()}"
         new_cargo_toml = patch_cargo_version(cargo_toml, new_version)
 
         # Write the patched Cargo.toml back to disk

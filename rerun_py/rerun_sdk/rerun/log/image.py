@@ -5,6 +5,7 @@ import numpy.typing as npt
 
 from rerun import bindings
 from rerun.log.error_utils import _send_warning
+from rerun.log.log_decorator import log_decorator
 from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_image(
     entity_path: str,
     image: Tensor,
@@ -47,9 +49,6 @@ def log_image(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     image = _to_numpy(image)
 
     shape = image.shape
@@ -77,6 +76,7 @@ def log_image(
     _log_tensor(entity_path, image, ext=ext, timeless=timeless)
 
 
+@log_decorator
 def log_depth_image(
     entity_path: str,
     image: Tensor,
@@ -111,9 +111,6 @@ def log_depth_image(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     image = _to_numpy(image)
 
     # TODO(#635): Remove when issue with displaying f64 depth images is fixed.
@@ -142,6 +139,7 @@ def log_depth_image(
         )
 
 
+@log_decorator
 def log_segmentation_image(
     entity_path: str,
     image: npt.ArrayLike,
@@ -173,9 +171,6 @@ def log_segmentation_image(
         If true, the image will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     image = np.array(image, copy=False)
     if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
