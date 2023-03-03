@@ -507,7 +507,7 @@ fn depth_props_ui(
 
             ui.label("Backproject radius scale");
             let mut radius_scale = *entity_props.backproject_radius_scale.get();
-            let speed = (radius_scale * 0.01).at_least(0.01);
+            let speed = (radius_scale * 0.001).at_least(0.001);
             if ui
                 .add(
                     egui::DragValue::new(&mut radius_scale)
