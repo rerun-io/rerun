@@ -24,7 +24,10 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["import-obj", "import-gltf"]
+default = ["arrow", "import-obj", "import-gltf"]
+
+## Support for Arrow datatypes for end-to-end zero-copy.
+arrow = ["dep:arrow2"]
 
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
@@ -61,6 +64,7 @@ thiserror.workspace = true
 type-map = "0.5"
 
 # optional
+arrow2 = { workspace = true, optional = true }
 gltf = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 tobj = { version = "3.2", optional = true }

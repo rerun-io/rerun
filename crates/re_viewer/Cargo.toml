@@ -50,7 +50,7 @@ re_log_types = { workspace = true, features = [
 ] }
 re_memory.workspace = true
 re_query.workspace = true
-re_renderer = { workspace = true, features = ["serde"] }
+re_renderer = { workspace = true, features = ["arrow", "serde"] }
 re_smart_channel.workspace = true
 re_string_interner.workspace = true
 re_tensor_ops.workspace = true

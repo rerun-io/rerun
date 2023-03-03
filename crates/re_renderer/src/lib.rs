@@ -65,6 +65,16 @@ pub use ecolor::{Color32, Rgba};
 
 // ---------------------------------------------------------------------------
 
+// Make Arrow integration as transparent as possible.
+
+#[cfg(feature = "arrow")]
+pub type Buffer<T> = arrow2::buffer::Buffer<T>;
+
+#[cfg(not(feature = "arrow"))]
+pub type Buffer<T> = Vec<T>;
+
+// ---------------------------------------------------------------------------
+
 /// Profiling macro for puffin
 #[doc(hidden)]
 #[macro_export]

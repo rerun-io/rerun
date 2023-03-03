@@ -39,7 +39,7 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
-        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
+        pub depth_camera_extrinsics: crate::wgpu_buffer_types::Mat4,
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
         pub radius_scale: crate::wgpu_buffer_types::F32RowPadded,
 
@@ -60,12 +60,19 @@ mod gpu_data {
 // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
 #[derive(Debug, Clone)]
 pub enum DepthCloudDepthData {
-    U16(Vec<u16>),
-    F32(Vec<f32>),
+    U16(crate::Buffer<u16>),
+    F32(crate::Buffer<f32>),
+}
+
+impl Default for DepthCloudDepthData {
+    fn default() -> Self {
+        Self::F32(Default::default())
+    }
 }
 
 pub struct DepthCloud {
-    pub world_from_obj: glam::Mat4,
+    /// The extrinsics of the camera used for the projection.
+    pub depth_camera_extrinsics: glam::Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///
@@ -87,11 +94,11 @@ pub struct DepthCloud {
 impl Default for DepthCloud {
     fn default() -> Self {
         Self {
-            world_from_obj: glam::Mat4::IDENTITY,
+            depth_camera_extrinsics: glam::Mat4::IDENTITY,
             depth_camera_intrinsics: glam::Mat3::IDENTITY,
             radius_scale: 1.0,
             depth_dimensions: glam::UVec2::ZERO,
-            depth_data: DepthCloudDepthData::F32(Vec::new()),
+            depth_data: DepthCloudDepthData::default(),
         }
     }
 }
@@ -113,23 +120,6 @@ impl DepthCloudDrawData {
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
 
-        if depth_clouds.is_empty() {
-            return Ok(DepthCloudDrawData {
-                bind_groups: Vec::new(),
-            });
-        }
-
-        let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
-            ctx,
-            "depth_cloud_ubos".into(),
-            depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
-                world_from_obj: info.world_from_obj.into(),
-                depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
-                radius_scale: info.radius_scale.into(),
-                end_padding: Default::default(),
-            }),
-        );
-
         let bg_layout = ctx
             .renderers
             .write()
@@ -140,6 +130,23 @@ impl DepthCloudDrawData {
                 &mut ctx.resolver,
             )
             .bind_group_layout;
+
+        if depth_clouds.is_empty() {
+            return Ok(DepthCloudDrawData {
+                bind_groups: Vec::new(),
+            });
+        }
+
+        let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "depth_cloud_ubos".into(),
+            depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
+                depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
+                depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
+                radius_scale: info.radius_scale.into(),
+                end_padding: Default::default(),
+            }),
+        );
 
         let mut bind_groups = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {

@@ -30,7 +30,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let color = Vec4(linear_from_srgb(Vec3(norm_linear_depth)), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
-    let intrinsics = transpose(depth_cloud_info.depth_camera_intrinsics);
+    let intrinsics = depth_cloud_info.depth_camera_intrinsics;
     let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
     let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
@@ -39,7 +39,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
         norm_linear_depth,
     );
 
-    let pos_in_world = depth_cloud_info.world_from_obj * Vec4(pos_in_obj, 1.0);
+    let pos_in_world = depth_cloud_info.extrinsincs * Vec4(pos_in_obj, 1.0);
 
     var data: PointData;
     data.pos_in_world = pos_in_world.xyz;
@@ -52,7 +52,8 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 // ---
 
 struct DepthCloudInfo {
-    world_from_obj: Mat4,
+    /// The extrinsincs of the camera used for the projection.
+    extrinsincs: Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///
