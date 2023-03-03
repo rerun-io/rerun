@@ -47,10 +47,16 @@ pub struct EntityProperties {
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
 
+    /// Enable color mapping?
+    ///
+    /// See [`Self::color_mapper`] to select an actual mapping.
+    pub color_mapping: bool,
+    /// What kind of color mapping should be applied (none, map, texture, transfer..)?
+    pub color_mapper: EditableAutoValue<ColorMapper>,
+
     /// Distance of the projection plane (frustum far plane).
     ///
     /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
-    ///
     pub pinhole_image_plane_distance: EditableAutoValue<f32>,
 
     /// Should the depth texture be backprojected into a point cloud?
@@ -76,10 +82,15 @@ impl EntityProperties {
             visible: self.visible && child.visible,
             visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
+
+            color_mapping: self.color_mapping || child.color_mapping,
+            color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
+
             pinhole_image_plane_distance: self
                 .pinhole_image_plane_distance
                 .or(&child.pinhole_image_plane_distance)
                 .clone(),
+
             backproject_depth: self.backproject_depth || child.backproject_depth,
             backproject_pinhole_ent_path: self
                 .backproject_pinhole_ent_path
@@ -101,6 +112,8 @@ impl Default for EntityProperties {
             visible: true,
             visible_history: ExtraQueryHistory::default(),
             interactive: true,
+            color_mapping: false,
+            color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: false,
             backproject_pinhole_ent_path: None,
@@ -132,6 +145,53 @@ impl ExtraQueryHistory {
             nanos: self.nanos.max(child.nanos),
             sequences: self.sequences.max(child.sequences),
         }
+    }
+} // ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum ColorMap {
+    Grayscale,
+    Turbo,
+    Viridis,
+    Plasma,
+    Magma,
+    Inferno,
+}
+
+impl std::fmt::Display for ColorMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ColorMap::Grayscale => "Grayscale",
+            ColorMap::Turbo => "Turbo",
+            ColorMap::Viridis => "Viridis",
+            ColorMap::Plasma => "Plasma",
+            ColorMap::Magma => "Magma",
+            ColorMap::Inferno => "Inferno",
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum ColorMapper {
+    /// Use a well-known color map, pre-implemented as a wgsl module.
+    ColorMap(ColorMap),
+    // TODO(cmc): support textures.
+    // TODO(cmc): support custom transfer functions.
+}
+
+impl std::fmt::Display for ColorMapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorMapper::ColorMap(colormap) => colormap.fmt(f),
+        }
+    }
+}
+
+impl Default for ColorMapper {
+    fn default() -> Self {
+        Self::ColorMap(ColorMap::Grayscale)
     }
 }
 

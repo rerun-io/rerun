@@ -13,7 +13,7 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthCloudDepthData},
-    Size,
+    ColorMap, Size,
 };
 
 use crate::{
@@ -307,12 +307,27 @@ impl ImagesPart {
 
         let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
+        let colormap = properties
+            .color_mapping
+            .then(|| match *properties.color_mapper.get() {
+                re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
+                    re_data_store::ColorMap::Grayscale => ColorMap::Grayscale,
+                    re_data_store::ColorMap::Turbo => ColorMap::ColorMapTurbo,
+                    re_data_store::ColorMap::Viridis => ColorMap::ColorMapViridis,
+                    re_data_store::ColorMap::Plasma => ColorMap::ColorMapPlasma,
+                    re_data_store::ColorMap::Magma => ColorMap::ColorMapMagma,
+                    re_data_store::ColorMap::Inferno => ColorMap::ColorMapInferno,
+                },
+            })
+            .unwrap_or(ColorMap::Grayscale);
+
         scene.primitives.depth_clouds.push(DepthCloud {
             depth_camera_extrinsics: world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             radius_scale,
             depth_dimensions: dimensions,
             depth_data: data,
+            colormap,
         });
     }
 }

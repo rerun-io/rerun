@@ -11,15 +11,15 @@ const COLORMAP_INFERNO: u32 = 5u;
 
 fn colormap_srgb(which: u32, t: f32) -> Vec3 {
     if which == COLORMAP_TURBO {
-        return colormap_turbo(t);
+        return colormap_turbo_srgb(t);
     } else if which == COLORMAP_VIRIDIS {
-        return colormap_viridis(t);
+        return colormap_viridis_srgb(t);
     } else if which == COLORMAP_PLASMA {
-        return colormap_plasma(t);
+        return colormap_plasma_srgb(t);
     } else if which == COLORMAP_MAGMA {
-        return colormap_magma(t);
+        return colormap_magma_srgb(t);
     } else if which == COLORMAP_INFERNO {
-        return colormap_inferno(t);
+        return colormap_inferno_srgb(t);
     } else { // assume grayscale
         return linear_from_srgb(Vec3(t));
     }
