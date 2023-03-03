@@ -8,6 +8,7 @@ import pyarrow as pa
 import rerun.log.error_utils
 from rerun import bindings
 from rerun.components.instance import InstanceArray
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "_add_extension_components",
@@ -61,6 +62,7 @@ def _add_extension_components(
             instanced[name] = pa_value
 
 
+@log_decorator
 def log_extension_components(
     entity_path: str,
     ext: Dict[str, Any],
@@ -108,9 +110,6 @@ def log_extension_components(
         If true, the components will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     identifiers_np = np.array((), dtype="uint64")
     if identifiers:

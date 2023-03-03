@@ -3,6 +3,7 @@ from typing import Iterable, Optional, Sequence, Tuple, Union
 
 from rerun import bindings
 from rerun.log import Color, _normalize_colors
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "AnnotationInfo",
@@ -72,6 +73,7 @@ def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
         return ClassDescription(info=arg)  # type: ignore[arg-type]
 
 
+@log_decorator
 def log_annotation_context(
     entity_path: str,
     class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
@@ -113,9 +115,6 @@ def log_annotation_context(
         If true, the annotation context will be timeless (default: True).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     if not isinstance(class_descriptions, Iterable):
         class_descriptions = [class_descriptions]
