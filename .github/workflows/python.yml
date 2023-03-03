@@ -11,7 +11,8 @@ on:
     inputs:
       force_build_wheel:
         description: 'Build python wheels'
-        required: false
+        required: true
+        default: false
         type: boolean
 
 env:
@@ -65,7 +66,7 @@ jobs:
   matrix-setup:
     # Building all the wheels is expensive, so we only run this job when we push (to main or release tags),
     # or if the job was manually triggered with `force_build_wheel` set to true.
-    if: github.event_name == 'push' || ${{ inputs.force_build_wheel }}
+    if: github.event_name == 'push' || github.event.inputs.force_build_wheel
     runs-on: ubuntu-latest
 
     outputs:
