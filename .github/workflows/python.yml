@@ -279,15 +279,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Re-tag the prerelease with the commit from this build
-      # https://github.com/richardsimko/update-tag
-      - name: Update prerelease tag
-        uses: richardsimko/update-tag@v1
-        with:
-          tag_name: prerelease
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       # Create the actual prerelease
       # https://github.com/ncipollo/release-action
       - name: GitHub Release
