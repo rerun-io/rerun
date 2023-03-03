@@ -106,7 +106,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // Sphere intersection with anti-aliasing as described by Iq here
     // https://www.shadertoy.com/view/MsSSWV
-    // (but rearranged and labled to it's easier to understand!)
+    // (but rearranged and labeled to it's easier to understand!)
     let d = ray_sphere_distance(ray_in_world, in.point_pos_in_world, in.point_radius);
     let smallest_distance_to_sphere = d.x;
     let closest_ray_dist = d.y;

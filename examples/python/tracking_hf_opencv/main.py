@@ -209,7 +209,7 @@ class Tracker:
 
         if self.num_recent_undetected_frames >= Tracker.MAX_TIMES_UNDETECTED:
             logging.info(
-                "Dropping tracker with id #%d after not beeing detected %d times",
+                "Dropping tracker with id #%d after not being detected %d times",
                 self.tracking_id,
                 self.num_recent_undetected_frames,
             )

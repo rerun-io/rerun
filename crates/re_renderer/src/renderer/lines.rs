@@ -26,7 +26,7 @@
 //!
 //! Data is provided in two separate textures, the "position data texture" and the "line strip texture".
 //! The "line strip texture" contains packed information over properties that are global to a single strip (see `gpu_data::LineStripInfo`)
-//! Data in the "position data texture" is layed out a follows (see `gpu_data::PositionData`):
+//! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionData`):
 //! ```raw
 //!                   ___________________________________________________________________
 //! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...

@@ -1220,7 +1220,7 @@ impl ComponentBucket {
 
         debug_assert!(
             !self.archived,
-            "achiving an already archived bucket, something is likely wrong"
+            "archiving an already archived bucket, something is likely wrong"
         );
 
         // Chunk compaction
