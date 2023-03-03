@@ -251,7 +251,7 @@ impl MsgSender {
 
     // --- Send ---
 
-    /// Consumes, packs, sanity checkes and finally sends the message to the currently configured
+    /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
     pub fn send(self, session: &mut Session) -> Result<(), MsgSenderError> {
         if !session.is_enabled() {

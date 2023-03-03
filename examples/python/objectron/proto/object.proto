@@ -12,7 +12,7 @@ message KeyPoint {
   float y = 2;
   float z = 3;
 
-  // Sphere around the keypoint, indiciating annotator's confidence of the
+  // Sphere around the keypoint, indicating annotator's confidence of the
   // position in meters.
   float confidence_radius = 4;
 
@@ -99,7 +99,7 @@ message Skeleton {
 
   // Initialization value for all the keypoints in the skeleton in the object's
   // local coordinate system. Pursuit will transform these points using object's
-  // transformation to get the keypoint in the world-cooridnate.
+  // transformation to get the keypoint in the world-coordinate.
   repeated KeyPoint keypoints = 3;
 
   // List of edges connecting keypoints

@@ -274,7 +274,7 @@ pub enum LineDrawDataError {
 
 // Textures are 2D since 1D textures are very limited in size (8k typically).
 // Need to keep these values in sync with lines.wgsl!
-const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionDatas
+const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionData
 const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65536 line strips
 
 impl LineDrawData {

@@ -1,1 +1,4 @@
 # https://github.com/crate-ci/typos
+
+[default.extend-words]
+lod = "lod" # level-of-detail

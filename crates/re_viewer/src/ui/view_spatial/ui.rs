@@ -528,11 +528,11 @@ pub fn create_labels(
             .anchor_rect(egui::Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(egui::vec2(4.0, 2.0));
 
-        let hightlight = highlights
+        let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance_key);
-        let fill_color = match hightlight.hover {
-            crate::misc::HoverHighlight::None => match hightlight.selection {
+        let fill_color = match highlight.hover {
+            crate::misc::HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
