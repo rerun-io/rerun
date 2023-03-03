@@ -63,11 +63,9 @@ struct DepthCloudInfo {
 
     /// The scale to apply to the radii of the backprojected points.
     radius_scale: f32,
-
-    // TODO: is that fine or does Andreas has something else in mind?
-    pad0: f32,
-    pad1: f32,
-    pad2: f32,
+    radius_scale_row_pad0: f32,
+    radius_scale_row_pad1: f32,
+    radius_scale_row_pad2: f32,
 
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,
