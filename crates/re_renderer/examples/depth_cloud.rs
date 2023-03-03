@@ -78,17 +78,14 @@ impl RenderDepthClouds {
         } = self;
 
         let focal_length = glam::Vec2::new(intrinsics.x_axis.x, intrinsics.y_axis.y);
-        let offset = glam::Vec2::new(intrinsics.x_axis.z, intrinsics.y_axis.z);
+        let offset = glam::Vec2::new(intrinsics.z_axis.x, intrinsics.z_axis.y);
 
         let point_cloud_draw_data = {
             let num_points = depth.dimensions.x * depth.dimensions.y;
             let (points, colors, radii): (Vec<_>, Vec<_>, Vec<_>) = (0..depth.dimensions.y)
                 .flat_map(|y| (0..depth.dimensions.x).map(move |x| glam::UVec2::new(x, y)))
                 .map(|texcoords| {
-                    let linear_depth = depth.get_linear(
-                        depth.dimensions.x - texcoords.x - 1,
-                        depth.dimensions.y - texcoords.y - 1,
-                    );
+                    let linear_depth = depth.get_linear(texcoords.x, texcoords.y);
                     let pos_in_world = ((texcoords.as_vec2() - offset) * linear_depth
                         / focal_length)
                         .extend(linear_depth);
@@ -171,17 +168,12 @@ impl RenderDepthClouds {
             ..
         } = self;
 
-        let world_from_obj = glam::Mat4::from_cols(
-            glam::Vec4::NEG_X * *scale,
-            glam::Vec4::NEG_Y * *scale,
-            glam::Vec4::Z * *scale,
-            glam::Vec4::W,
-        );
+        let world_from_obj = glam::Mat4::from_scale(glam::Vec3::splat(*scale));
 
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
             &[DepthCloud {
-                world_from_obj,
+                depth_camera_extrinsics: world_from_obj,
                 depth_camera_intrinsics: *intrinsics,
                 radius_scale: *radius_scale,
                 depth_dimensions: depth.dimensions,
@@ -261,7 +253,8 @@ impl framework::Example for RenderDepthClouds {
             Vec3::new(focal_length, 0.0, offset.x),
             Vec3::new(0.0, focal_length, offset.y),
             Vec3::new(0.0, 0.0, 1.0),
-        );
+        )
+        .transpose();
 
         RenderDepthClouds {
             depth,

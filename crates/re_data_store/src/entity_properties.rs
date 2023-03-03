@@ -36,6 +36,8 @@ impl EntityPropertyMap {
 
 // ----------------------------------------------------------------------------
 
+// TODO(#1423): We need to properly split entity properties that only apply to specific
+// views/primitives.
 #[cfg(feature = "serde")]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -50,6 +52,20 @@ pub struct EntityProperties {
     /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
     ///
     pub pinhole_image_plane_distance: EditableAutoValue<f32>,
+
+    /// Should the depth texture be backprojected into a point cloud?
+    ///
+    /// Only applies to tensors with meaning=depth that are affected by a pinhole transform when
+    /// in a spatial view, using 3D navigation.
+    pub backproject_depth: bool,
+    /// Entity path of the pinhole transform used for the backprojection.
+    ///
+    /// `None` means backprojection is disabled.
+    pub backproject_pinhole_ent_path: Option<EntityPath>,
+    /// Used to scale the resulting point cloud.
+    pub backproject_scale: EditableAutoValue<f32>,
+    /// Used to scale the radii of the points in the resulting point cloud.
+    pub backproject_radius_scale: EditableAutoValue<f32>,
 }
 
 #[cfg(feature = "serde")]
@@ -64,6 +80,16 @@ impl EntityProperties {
                 .pinhole_image_plane_distance
                 .or(&child.pinhole_image_plane_distance)
                 .clone(),
+            backproject_depth: self.backproject_depth || child.backproject_depth,
+            backproject_pinhole_ent_path: self
+                .backproject_pinhole_ent_path
+                .clone()
+                .or(child.backproject_pinhole_ent_path.clone()),
+            backproject_scale: self.backproject_scale.or(&child.backproject_scale).clone(),
+            backproject_radius_scale: self
+                .backproject_radius_scale
+                .or(&child.backproject_radius_scale)
+                .clone(),
         }
     }
 }
@@ -76,6 +102,10 @@ impl Default for EntityProperties {
             visible_history: ExtraQueryHistory::default(),
             interactive: true,
             pinhole_image_plane_distance: EditableAutoValue::default(),
+            backproject_depth: false,
+            backproject_pinhole_ent_path: None,
+            backproject_scale: EditableAutoValue::default(),
+            backproject_radius_scale: EditableAutoValue::default(),
         }
     }
 }
