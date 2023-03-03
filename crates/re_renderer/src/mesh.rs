@@ -31,7 +31,7 @@ pub mod mesh_vertices {
         // TODO(andreas): More properties? Different kinds of vertices?
     }
 
-    /// Vertex buffer layouts describing how vertex data should be layed out.
+    /// Vertex buffer layouts describing how vertex data should be laid out.
     ///
     /// Needs to be kept in sync with `mesh_vertex.wgsl`.
     pub fn vertex_buffer_layouts() -> [VertexBufferLayout; 2] {

@@ -30,7 +30,7 @@
           "type": "color"
         },
         "Pressed": {
-          "description": "Background color for supressed UI elements, like a select that is currently showing a menu",
+          "description": "Background color for suppressed UI elements, like a select that is currently showing a menu",
           "value": "{Global.Color.Grey.250}",
           "type": "color"
         }

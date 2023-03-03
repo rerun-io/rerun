@@ -870,7 +870,7 @@ pub struct CmDeviceMotion {
     #[prost(message, optional, tag = "5")]
     pub magnetic_field: ::core::option::Option<CmCalibratedMagneticField>,
     /// The rotation rate of the device adjusted by bias-removing Core Motion
-    /// algoriths.
+    /// algorithms.
     #[prost(message, optional, tag = "6")]
     pub rotation_rate: ::core::option::Option<CmVector>,
 }
@@ -1124,7 +1124,7 @@ pub struct KeyPoint {
     pub y: f32,
     #[prost(float, tag = "3")]
     pub z: f32,
-    /// Sphere around the keypoint, indiciating annotator's confidence of the
+    /// Sphere around the keypoint, indicating annotator's confidence of the
     /// position in meters.
     #[prost(float, tag = "4")]
     pub confidence_radius: f32,
@@ -1291,7 +1291,7 @@ pub struct Skeleton {
     pub category: ::prost::alloc::string::String,
     /// Initialization value for all the keypoints in the skeleton in the object's
     /// local coordinate system. Pursuit will transform these points using object's
-    /// transformation to get the keypoint in the world-cooridnate.
+    /// transformation to get the keypoint in the world-coordinate.
     #[prost(message, repeated, tag = "3")]
     pub keypoints: ::prost::alloc::vec::Vec<KeyPoint>,
     /// List of edges connecting keypoints

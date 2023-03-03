@@ -73,7 +73,7 @@ def script_setup(
         rr.serve()
     elif args.connect:
         # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
+        # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
     elif args.save is not None:

@@ -243,13 +243,13 @@ impl TimeRangesUi {
         value
     }
 
-    // Make sure playback time doesn't get stuck between non-continuos regions:
+    // Make sure playback time doesn't get stuck between non-continuous regions:
     pub fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
         if ctx.rec_cfg.time_ctrl.play_state() != PlayState::Playing {
             return;
         }
 
-        // Make sure time doesn't get stuck between non-continuos regions:
+        // Make sure time doesn't get stuck between non-continuous regions:
         if let Some(time) = ctx.rec_cfg.time_ctrl.time() {
             let time = self.snap_time_to_segments(time);
             ctx.rec_cfg.time_ctrl.set_time(time);

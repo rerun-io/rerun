@@ -177,7 +177,7 @@ fn log_ar_camera(
     let w = ar_camera.image_resolution_width.unwrap() as f32;
     let h = ar_camera.image_resolution_height.unwrap() as f32;
 
-    // The actual data is in portait (1440x1920), but the transforms assume landscape
+    // The actual data is in portrait (1440x1920), but the transforms assume landscape
     // input (1920x1440); we need to convert between the two.
     // See:
     // - https://github.com/google-research-datasets/Objectron/issues/39
@@ -187,7 +187,7 @@ fn log_ar_camera(
     intrinsics.z_axis = intrinsics.z_axis.yxz();
     // swap w/h
     let resolution = glam::Vec2::new(h, w);
-    // rotate 90 degrees CCW around 2D plane normal (landscape -> portait)
+    // rotate 90 degrees CCW around 2D plane normal (landscape -> portrait)
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::Z, std::f32::consts::TAU / 4.0);
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);

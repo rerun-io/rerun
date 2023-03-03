@@ -1,4 +1,4 @@
-// TODO(andreas): global_bindings are imported implicitely
+// TODO(andreas): global_bindings are imported implicitly
 
 fn inf() -> f32 {
     return 1.0 / 0.0;

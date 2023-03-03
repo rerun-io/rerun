@@ -656,7 +656,7 @@ impl IndexBucket {
             indices,
         } = &mut *guard;
 
-        // append time to primary index and update time range approriately
+        // append time to primary index and update time range appropriately
         times.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
 
@@ -1220,7 +1220,7 @@ impl ComponentBucket {
 
         debug_assert!(
             !self.archived,
-            "achiving an already archived bucket, something is likely wrong"
+            "archiving an already archived bucket, something is likely wrong"
         );
 
         // Chunk compaction

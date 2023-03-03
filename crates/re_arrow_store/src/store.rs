@@ -1222,7 +1222,7 @@ pub struct ComponentTable {
     /// Component buckets are append-only, they can never be written to in an out of order
     /// fashion.
     /// As such, a double-ended queue covers all our needs:
-    /// - poping from the front for garbage collection
+    /// - popping from the front for garbage collection
     /// - pushing to the back for insertions
     /// - binary search for queries
     pub(crate) buckets: VecDeque<ComponentBucket>,

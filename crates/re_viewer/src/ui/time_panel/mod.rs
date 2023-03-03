@@ -309,7 +309,7 @@ impl TimePanel {
             // In the design the shadow starts under the time markers.
             //let shadow_y_start =
             //    timeline_rect.bottom() + ui.visuals().widgets.noninteractive.bg_stroke.width;
-            // This looks great but only if there are still time markes.
+            // This looks great but only if there are still time markers.
             // When they move to the right (or have a cut) one expects the shadow to go all the way up.
             // But that's quite complicated so let's have the shadow all the way
             let shadow_y_start = *full_y_range.start();

@@ -50,9 +50,6 @@ def lint_line(line: str) -> Optional[str]:
     if todo_pattern.search(line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
 
-    if "rerurn" in line.lower():
-        return "Emil: you put an extra 'r' in 'Rerun' again!"
-
     if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 

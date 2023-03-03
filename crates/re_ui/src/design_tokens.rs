@@ -154,7 +154,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
 
-    egui_style.spacing.combo_width = 8.0; // minium width of ComboBox - keep them small, with the down-arrow close.
+    egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
 
     egui_style.spacing.scroll_bar_inner_margin = 2.0;
     egui_style.spacing.scroll_bar_width = 6.0;

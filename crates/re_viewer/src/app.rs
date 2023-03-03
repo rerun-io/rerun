@@ -610,7 +610,7 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
                 ready_and_waiting(ui, "Waiting for logging data from SDK");
             }
             re_smart_channel::Source::WsClient { ws_server_url } => {
-                // TODO(emilk): it would be even better to know wether or not we are connected, or are attempting to connect
+                // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
                 ready_and_waiting(ui, &format!("Waiting for data from {ws_server_url}"));
             }
             re_smart_channel::Source::TcpServer { port } => {
@@ -1381,7 +1381,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             }
 
             // We need to know the loop selection _before_ we can even display the
-            // button, as this will determine wether its grayed out or not!
+            // button, as this will determine whether its grayed out or not!
             // TODO(cmc): In practice the loop (green) selection is always there
             // at the moment so...
             let loop_selection = app.loop_selection();

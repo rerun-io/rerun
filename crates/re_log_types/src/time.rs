@@ -38,7 +38,7 @@ impl Time {
     }
 
     /// If true, this time is likely relative to unix epoch.
-    pub fn is_abolute_date(&self) -> bool {
+    pub fn is_absolute_date(&self) -> bool {
         let nanos_since_epoch = self.nanos_since_epoch();
         let years_since_epoch = nanos_since_epoch / 1_000_000_000 / 60 / 60 / 24 / 365;
 
@@ -48,7 +48,7 @@ impl Time {
     /// Returns the absolute datetime if applicable.
     pub fn to_datetime(&self) -> Option<OffsetDateTime> {
         let ns_since_epoch = self.nanos_since_epoch();
-        if self.is_abolute_date() {
+        if self.is_absolute_date() {
             OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
         } else {
             None
