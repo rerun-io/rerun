@@ -60,15 +60,8 @@ mod gpu_data {
 // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
 #[derive(Debug, Clone)]
 pub enum DepthCloudDepthData {
-    #[cfg(not(feature = "arrow"))]
-    U16(Vec<u16>),
-    #[cfg(feature = "arrow")]
-    U16(arrow2::buffer::Buffer<u16>),
-
-    #[cfg(not(feature = "arrow"))]
-    F32(Vec<f32>),
-    #[cfg(feature = "arrow")]
-    F32(arrow2::buffer::Buffer<f32>),
+    U16(crate::Buffer<u16>),
+    F32(crate::Buffer<f32>),
 }
 
 impl Default for DepthCloudDepthData {
