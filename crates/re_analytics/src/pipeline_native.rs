@@ -298,7 +298,7 @@ fn flush_events(
                 match serde_json::from_str::<Event>(&event_str) {
                     Ok(event) => Some(event),
                     Err(err) => {
-                        // NOTE: This is effectively where we detect posssible half-writes.
+                        // NOTE: This is effectively where we detect possible half-writes.
                         error!(%err, %analytics_id, %session_id,
                             "couldn't deserialize event from analytics data file: dropping it");
                         None

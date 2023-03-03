@@ -78,8 +78,8 @@ class Detector:
         logging.info("Looking for things to track on frame %d", frame_idx)
 
         logging.debug("Preprocess image for detection network")
-        pil_im_smal = Image.fromarray(rgb)
-        inputs = self.feature_extractor(images=pil_im_smal, return_tensors="pt")
+        pil_im_small = Image.fromarray(rgb)
+        inputs = self.feature_extractor(images=pil_im_small, return_tensors="pt")
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv.resize(rgb, scaled_size)
@@ -209,7 +209,7 @@ class Tracker:
 
         if self.num_recent_undetected_frames >= Tracker.MAX_TIMES_UNDETECTED:
             logging.info(
-                "Dropping tracker with id #%d after not beeing detected %d times",
+                "Dropping tracker with id #%d after not being detected %d times",
                 self.tracking_id,
                 self.num_recent_undetected_frames,
             )

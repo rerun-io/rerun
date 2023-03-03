@@ -151,7 +151,7 @@ impl TextureManager2D {
         let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
-        // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuissance!
+        // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
         let data = creation_desc.data;
 
         // TODO(andreas): temp allocator for staging data?

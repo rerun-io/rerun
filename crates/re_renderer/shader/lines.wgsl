@@ -31,7 +31,7 @@ const CAP_START_TRIANGLE: u32 = 4u;
 const CAP_START_ROUND: u32 = 8u;
 const NO_COLOR_GRADIENT: u32 = 16u;
 
-// A lot of the attributes don't need to be interpolated accross triangles.
+// A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
 // (see https://www.w3.org/TR/WGSL/#interpolation)
 struct VertexOut {

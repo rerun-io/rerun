@@ -465,7 +465,7 @@ message CMDeviceMotion {
   optional CMCalibratedMagneticField magnetic_field = 5;
 
   // The rotation rate of the device adjusted by bias-removing Core Motion
-  // algoriths.
+  // algorithms.
   optional CMVector rotation_rate = 6;
 }
 

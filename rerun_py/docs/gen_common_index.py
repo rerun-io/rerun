@@ -122,7 +122,7 @@ SECTION_TABLE: Final[List[Section]] = [
     ),
 ]
 
-# Virual folder where we will generate the md files
+# Virtual folder where we will generate the md files
 root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
 

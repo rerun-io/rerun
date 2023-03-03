@@ -90,7 +90,7 @@ def log_cleared(entity_path: str, *, recursive: bool = False) -> None:
     bindings.log_cleared(entity_path, recursive)
 
 
-def set_visible(entity_path: str, visibile: bool) -> None:
+def set_visible(entity_path: str, visible: bool) -> None:
     """
     set_visible has been deprecated.
 

@@ -212,7 +212,7 @@ def set_enabled(enabled: bool) -> None:
 
     This is a global setting that affects all threads.
 
-    By default logging is enabled, but can be controlled with the enviornment variable `RERUN`,
+    By default logging is enabled, but can be controlled with the environment variable `RERUN`,
     (e.g. `RERUN=on` or `RERUN=off`).
 
     The default can be set in [`rerun.init`][].

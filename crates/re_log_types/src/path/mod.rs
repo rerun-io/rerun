@@ -31,7 +31,7 @@ pub enum EntityPathPart {
     /// Struct member. Each member can have a different type.
     Name(InternedString),
 
-    /// Array/table/map member. Each member must be of the same type (homogenous).
+    /// Array/table/map member. Each member must be of the same type (homogeneous).
     Index(Index),
 }
 

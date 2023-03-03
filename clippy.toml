@@ -19,9 +19,9 @@ disallowed-methods = [
   "std::env::temp_dir", # Use the tempdir crate instead
 
   # Disabled because of https://github.com/rust-lang/rust-clippy/issues/10406
-  #   "std::time::Instant::now",      # use `instant` crate instead for wasm/web compatability
-  "std::time::Duration::elapsed", # use `instant` crate instead for wasm/web compatability
-  "std::time::SystemTime::now",   # use `instant` or `time` crates instead for wasm/web compatability
+  #   "std::time::Instant::now",      # use `instant` crate instead for wasm/web compatibility
+  "std::time::Duration::elapsed", # use `instant` crate instead for wasm/web compatibility
+  "std::time::SystemTime::now",   # use `instant` or `time` crates instead for wasm/web compatibility
 
   "std::thread::spawn", # Use `std::thread::Builder` and name the thread
 

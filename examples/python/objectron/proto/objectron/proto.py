@@ -473,7 +473,7 @@ class CMDeviceMotion(betterproto.Message):
     # Returns the magnetic field vector filtered with respect to the device bias.
     magnetic_field: "CMCalibratedMagneticField" = betterproto.message_field(5)
     # The rotation rate of the device adjusted by bias-removing Core Motion
-    # algoriths.
+    # algorithms.
     rotation_rate: "CMVector" = betterproto.message_field(6)
 
 
@@ -634,7 +634,7 @@ class KeyPoint(betterproto.Message):
     x: float = betterproto.float_field(1)
     y: float = betterproto.float_field(2)
     z: float = betterproto.float_field(3)
-    # Sphere around the keypoint, indiciating annotator's confidence of the
+    # Sphere around the keypoint, indicating annotator's confidence of the
     # position in meters.
     confidence_radius: float = betterproto.float_field(4)
     # The name of the keypoint (e.g. legs, head, etc.). Does not have to be
@@ -700,7 +700,7 @@ class Skeleton(betterproto.Message):
     category: str = betterproto.string_field(2)
     # Initialization value for all the keypoints in the skeleton in the object's
     # local coordinate system. Pursuit will transform these points using object's
-    # transformation to get the keypoint in the world-cooridnate.
+    # transformation to get the keypoint in the world-coordinate.
     keypoints: List["KeyPoint"] = betterproto.message_field(3)
     # List of edges connecting keypoints
     edges: List["Edge"] = betterproto.message_field(4)

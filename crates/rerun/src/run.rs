@@ -286,7 +286,7 @@ async fn run_impl(
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
 
-                // `rerun.spawn()` doesn't ned to log that a connection has been made
+                // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
             re_sdk_comms::serve(args.port, server_options)?

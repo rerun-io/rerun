@@ -20,7 +20,7 @@ def _send_warning(message: str, depth_to_user_code: int) -> None:
     Sends a warning about the usage of the Rerun SDK.
 
     Used for recoverable problems.
-    You can also use this fo unrecoverable problems,
+    You can also use this for unrecoverable problems,
     or raise an exception and let the @log_decorator handle it instead.
     """
 

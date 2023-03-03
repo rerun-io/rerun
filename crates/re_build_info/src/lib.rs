@@ -2,10 +2,10 @@
 //!
 //! To use this you also need to call `re_build_build_info::export_env_vars()` from your build.rs.
 
-mod buid_info;
+mod build_info;
 mod crate_version;
 
-pub use buid_info::BuildInfo;
+pub use build_info::BuildInfo;
 pub use crate_version::CrateVersion;
 
 /// Create a [`BuildInfo`] at compile-time using environment variables exported by
