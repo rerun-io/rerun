@@ -81,14 +81,14 @@ impl EntityProperties {
                 .or(&child.pinhole_image_plane_distance)
                 .clone(),
             backproject_depth: self.backproject_depth || child.backproject_depth,
-            backproject_pinhole_ent_path: child
+            backproject_pinhole_ent_path: self
                 .backproject_pinhole_ent_path
                 .clone()
-                .or(self.backproject_pinhole_ent_path.clone()),
-            backproject_scale: child.backproject_scale.or(&self.backproject_scale).clone(),
-            backproject_radius_scale: child
+                .or(child.backproject_pinhole_ent_path.clone()),
+            backproject_scale: self.backproject_scale.or(&child.backproject_scale).clone(),
+            backproject_radius_scale: self
                 .backproject_radius_scale
-                .or(&self.backproject_radius_scale)
+                .or(&child.backproject_radius_scale)
                 .clone(),
         }
     }

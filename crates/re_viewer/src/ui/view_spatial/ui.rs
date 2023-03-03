@@ -4,6 +4,7 @@ use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
+use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
 
 use crate::{
     misc::{
@@ -161,34 +162,97 @@ impl ViewSpatialState {
         crate::profile_function!();
 
         let scene_size = self.scene_bbox_accum.size().length();
-        let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-            scene_size * 0.05
-        } else {
-            1.0
-        };
 
         let query = ctx.current_query();
 
         let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
         for entity_path in entity_paths {
-            if let Some(re_log_types::Transform::Pinhole(_)) =
-                query_latest_single::<re_log_types::Transform>(
-                    &ctx.log_db.entity_db,
-                    &entity_path,
-                    &query,
-                )
-            {
-                let mut properties = data_blueprint
+            Self::update_pinhole_property_heuristics(
+                ctx,
+                data_blueprint,
+                &query,
+                &entity_path,
+                scene_size,
+            );
+            Self::update_depth_cloud_property_heuristics(
+                ctx,
+                data_blueprint,
+                &query,
+                &entity_path,
+                scene_size,
+            );
+        }
+    }
+
+    fn update_pinhole_property_heuristics(
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+        query: &re_arrow_store::LatestAtQuery,
+        entity_path: &EntityPath,
+        scene_size: f32,
+    ) {
+        if let Some(re_log_types::Transform::Pinhole(_)) =
+            query_latest_single::<re_log_types::Transform>(
+                &ctx.log_db.entity_db,
+                entity_path,
+                query,
+            )
+        {
+            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+                scene_size * 0.05
+            } else {
+                1.0
+            };
+
+            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+            if properties.pinhole_image_plane_distance.is_auto() {
+                properties.pinhole_image_plane_distance =
+                    EditableAutoValue::Auto(default_image_plane_distance);
+                data_blueprint
                     .data_blueprints_individual()
-                    .get(&entity_path);
-                if properties.pinhole_image_plane_distance.is_auto() {
-                    properties.pinhole_image_plane_distance =
-                        EditableAutoValue::Auto(default_image_plane_distance);
-                    data_blueprint
-                        .data_blueprints_individual()
-                        .set(entity_path, properties);
-                }
+                    .set(entity_path.clone(), properties);
             }
+        }
+    }
+
+    fn update_depth_cloud_property_heuristics(
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+        query: &re_arrow_store::LatestAtQuery,
+        entity_path: &EntityPath,
+        scene_size: f32,
+    ) {
+        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
+        if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
+            let tensor = tensor.as_ref().unwrap();
+
+            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+            if properties.backproject_scale.is_auto() {
+                let auto = tensor.meter.map_or_else(
+                    || match &tensor.data {
+                        TensorData::U16(_) => 1.0 / u16::MAX as f32,
+                        _ => 1.0,
+                    },
+                    |meter| match &tensor.data {
+                        TensorData::U16(_) => 1.0 / meter * u16::MAX as f32,
+                        _ => meter,
+                    },
+                );
+                properties.backproject_scale = EditableAutoValue::Auto(auto);
+            }
+
+            if properties.backproject_radius_scale.is_auto() {
+                let auto = if scene_size.is_finite() && scene_size > 0.0 {
+                    f32::max(0.02, scene_size * 0.001)
+                } else {
+                    0.02
+                };
+                properties.backproject_radius_scale = EditableAutoValue::Auto(auto);
+            }
+
+            data_blueprint
+                .data_blueprints_individual()
+                .set(entity_path.clone(), properties);
         }
     }
 

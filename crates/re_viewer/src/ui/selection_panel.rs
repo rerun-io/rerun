@@ -1,7 +1,7 @@
 use egui::NumExt as _;
 use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{Tensor, TensorData, TensorDataMeaning},
+    component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
 };
 
@@ -474,8 +474,6 @@ fn depth_props_ui(
 
     let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query);
     if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
-        let tensor = tensor.as_ref().unwrap();
-
         ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
             .on_hover_text(
                 "If enabled, the depth texture will be backprojected into a point cloud rather \
@@ -491,51 +489,37 @@ fn depth_props_ui(
                 );
             ui.end_row();
 
-            // Compute Auto scale values
-            let mut scale = *entity_props
-                .backproject_scale
-                .or(&re_data_store::EditableAutoValue::Auto(
-                    tensor.meter.map_or_else(
-                        || match &tensor.data {
-                            TensorData::U16(_) => 1.0 / u16::MAX as f32,
-                            _ => 1.0,
-                        },
-                        |meter| match &tensor.data {
-                            TensorData::U16(_) => 1.0 / meter * u16::MAX as f32,
-                            _ => meter,
-                        },
-                    ),
-                ))
-                .get();
-            let mut radius_scale = *entity_props
-                .backproject_radius_scale
-                .or(&re_data_store::EditableAutoValue::Auto(0.02))
-                .get();
-
             ui.label("Backproject scale");
+            let mut scale = *entity_props.backproject_scale.get();
             let speed = (scale * 0.05).at_least(0.01);
-            ui.add(
-                egui::DragValue::new(&mut scale)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text("Scales the backprojected point cloud");
+            if ui
+                .add(
+                    egui::DragValue::new(&mut scale)
+                        .clamp_range(0.0..=1.0e8)
+                        .speed(speed),
+                )
+                .on_hover_text("Scales the backprojected point cloud")
+                .changed()
+            {
+                entity_props.backproject_scale = EditableAutoValue::UserEdited(scale);
+            }
             ui.end_row();
 
             ui.label("Backproject radius scale");
-            let speed = (radius_scale * 0.05).at_least(0.01);
-            ui.add(
-                egui::DragValue::new(&mut radius_scale)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text("Scales the radii of the points in the backprojected point cloud");
+            let mut radius_scale = *entity_props.backproject_radius_scale.get();
+            let speed = (radius_scale * 0.001).at_least(0.001);
+            if ui
+                .add(
+                    egui::DragValue::new(&mut radius_scale)
+                        .clamp_range(0.0..=1.0e8)
+                        .speed(speed),
+                )
+                .on_hover_text("Scales the radii of the points in the backprojected point cloud")
+                .changed()
+            {
+                entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
+            }
             ui.end_row();
-
-            // We actually want these to update anyhow, as this might be the first tick, where we
-            // compute the initial Auto value.
-            entity_props.backproject_scale = EditableAutoValue::UserEdited(scale);
-            entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
         } else {
             entity_props.backproject_pinhole_ent_path = None;
         }

@@ -270,19 +270,37 @@ jobs:
           name: wheels
           path: dist
 
-      - name: GitHub Release
-        uses: ncipollo/release-action@v1.12.0
+      # First delete the old prerelease. If we don't do this, we don't get things like
+      # proper source-archives and changelog info.
+      # https://github.com/dev-drprasad/delete-tag-and-release
+      - uses: dev-drprasad/delete-tag-and-release@v0.2.0
         with:
+          tag_name: prerelease
+          delete_release: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag the prerelease with the commit from this build
+      # https://github.com/richardsimko/update-tag
+      - name: Update prerelease tag
+        uses: richardsimko/update-tag@v1
+        with:
+          tag_name: prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create the actual prerelease
+      # https://github.com/softprops/action-gh-release
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          name: "Development Build"
           body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
           prerelease: true
-          artifacts: dist/*
-          name: "Development Build"
-          tag: "latest"
+          tag_name: prerelease
+          files: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
-          generateReleaseNotes: true
-          allowUpdates: true
-          removeArtifacts: true
-          replacesArtifacts: true
+          generate_release_notes: true
 
   # ---------------------------------------------------------------------------
 
