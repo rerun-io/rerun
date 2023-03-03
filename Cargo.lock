@@ -3939,6 +3939,7 @@ version = "0.2.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
+ "arrow2",
  "async-executor",
  "bitflags",
  "bytemuck",

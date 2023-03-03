@@ -440,7 +440,7 @@ impl DepthTexture {
         spiral(dimensions).for_each(|(texcoords, d)| {
             data[(texcoords.x + texcoords.y * dimensions.x) as usize] = d;
         });
-        let data = DepthCloudDepthData::F32(data);
+        let data = DepthCloudDepthData::F32(data.into());
 
         Self { dimensions, data }
     }
