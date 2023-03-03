@@ -38,6 +38,8 @@ fn colormap_srgb(which: u32, t: f32) -> Vec3 {
 //   Colormap Design: Anton Mikhailov (mikhailov@google.com)
 //   GLSL Approximation: Ruofei Du (ruofei@google.com)
 
+/// Returns a normalized sRGB polynomial approximation from Turbo color map, assuming `t` is
+/// normalized (it will be saturated no matter what).
 fn colormap_turbo_srgb(t: f32) -> Vec3 {
     let r4 = Vec4(0.13572138, 4.61539260, -42.66032258, 132.13108234);
     let g4 = Vec4(0.09140261, 2.19418839, 4.84296658, -14.18503333);
@@ -46,6 +48,7 @@ fn colormap_turbo_srgb(t: f32) -> Vec3 {
     let g2 = Vec2(4.27729857, 2.82956604);
     let b2 = Vec2(-89.90310912, 27.34824973);
 
+    let t = saturate(t);
     let v4 = vec4(1.0, t, t * t, t * t * t);
     let v2 = v4.zw * v4.z;
 
@@ -70,6 +73,8 @@ fn colormap_turbo_srgb(t: f32) -> Vec3 {
 //
 // Data fitted from https://github.com/BIDS/colormap/blob/master/colormaps.py (CC0).
 
+/// Returns a normalized sRGB polynomial approximation from Viridis color map, assuming `t` is
+/// normalized (it will be saturated no matter what).
 fn colormap_viridis_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
     let c1 = Vec3(0.1050930431085774, 1.404613529898575, 1.384590162594685);
@@ -78,9 +83,12 @@ fn colormap_viridis_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(6.228269936347081, 14.17993336680509, 56.69055260068105);
     let c5 = Vec3(4.776384997670288, -13.74514537774601, -65.35303263337234);
     let c6 = Vec3(-5.435455855934631, 4.645852612178535, 26.3124352495832);
+    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
+/// Returns a normalized sRGB polynomial approximation from Plasma color map, assuming `t` is
+/// normalized (it will be saturated no matter what).
 fn colormap_plasma_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(0.05873234392399702, 0.02333670892565664, 0.5433401826748754);
     let c1 = Vec3(2.176514634195958, 0.2383834171260182, 0.7539604599784036);
@@ -89,9 +97,12 @@ fn colormap_plasma_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(-11.10743619062271, -82.66631109428045, 60.13984767418263);
     let c5 = Vec3(10.02306557647065, 71.41361770095349, -54.07218655560067);
     let c6 = Vec3(-3.658713842777788, -22.93153465461149, 18.19190778539828);
+    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
+/// Returns a normalized sRGB polynomial approximation from Magma color map, assuming `t` is
+/// normalized (it will be saturated no matter what).
 fn colormap_magma_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(-0.002136485053939582, -0.000749655052795221, -0.005386127855323933);
     let c1 = Vec3(0.2516605407371642, 0.6775232436837668, 2.494026599312351);
@@ -100,9 +111,12 @@ fn colormap_magma_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(52.17613981234068, -27.94360607168351, 12.94416944238394);
     let c5 = Vec3(-50.76852536473588, 29.04658282127291, 4.23415299384598);
     let c6 = Vec3(18.65570506591883, -11.48977351997711, -5.601961508734096);
+    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
+/// Returns a normalized sRGB polynomial approximation from Inferno color map, assuming `t` is
+/// normalized (it will be saturated no matter what).
 fn colormap_inferno_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(0.0002189403691192265, 0.001651004631001012, -0.01948089843709184);
     let c1 = Vec3(0.1065134194856116, 0.5639564367884091, 3.932712388889277);
@@ -111,5 +125,6 @@ fn colormap_inferno_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(77.162935699427, -33.40235894210092, -81.80730925738993);
     let c5 = Vec3(-71.31942824499214, 32.62606426397723, 73.20951985803202);
     let c6 = Vec3(25.13112622477341, -12.24266895238567, -23.07032500287172);
+    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
