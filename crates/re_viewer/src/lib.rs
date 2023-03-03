@@ -11,7 +11,6 @@ mod remote_viewer_app;
 mod ui;
 mod viewer_analytics;
 
-pub use self::misc::color_map;
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
 use re_log_types::PythonVersion;
 pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, UiVerbosity};
@@ -22,6 +21,7 @@ pub use remote_viewer_app::RemoteViewerApp;
 pub mod external {
     pub use eframe;
     pub use egui;
+    pub use re_renderer;
 }
 
 // ----------------------------------------------------------------------------
