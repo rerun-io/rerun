@@ -5,7 +5,7 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
-use crate::{file_writer::FileWriter, log_sink::LogSink};
+use crate::{file_writer::FileWriter, LogSink};
 
 #[cfg(feature = "web_viewer")]
 use crate::remote_viewer_server::RemoteViewerServer;
@@ -24,7 +24,8 @@ pub struct Session {
     #[cfg(feature = "web_viewer")]
     tokio_rt: tokio::runtime::Runtime,
 
-    sink: LogSink,
+    /// Where we put the log messages.
+    sink: Box<dyn LogSink>,
 
     application_id: Option<ApplicationId>,
     recording_id: Option<RecordingId>,
@@ -115,7 +116,7 @@ impl Session {
             #[cfg(feature = "web_viewer")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
-            sink: Default::default(),
+            sink: Box::new(crate::log_sink::BufferedSink::new()),
             application_id: None,
             recording_id: None,
             is_official_example: None,
@@ -174,7 +175,7 @@ impl Session {
         self.recording_source = recording_source;
     }
 
-    fn set_sink(&mut self, sink: LogSink) {
+    fn set_sink(&mut self, sink: Box<dyn LogSink>) {
         let backlog = self.sink.drain_backlog();
         self.sink = sink;
         self.sink.send_all(backlog);
@@ -204,7 +205,7 @@ impl Session {
         }
 
         re_log::debug!("Connecting to remote {addr}…");
-        self.set_sink(LogSink::Remote(re_sdk_comms::Client::new(addr)));
+        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
     }
 
     /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
@@ -224,7 +225,7 @@ impl Session {
             return;
         }
 
-        self.set_sink(LogSink::WebViewer(RemoteViewerServer::new(
+        self.set_sink(Box::new(RemoteViewerServer::new(
             &self.tokio_rt,
             open_browser,
         )));
@@ -232,7 +233,7 @@ impl Session {
 
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
-        self.set_sink(LogSink::Buffered(vec![]));
+        self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).
@@ -306,8 +307,7 @@ impl Session {
             return Ok(());
         }
 
-        let file_writer = FileWriter::new(path)?;
-        self.set_sink(LogSink::File(file_writer));
+        self.set_sink(Box::new(FileWriter::new(path)?));
         Ok(())
     }
 }
@@ -371,7 +371,7 @@ impl Session {
         }
 
         let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-        self.set_sink(LogSink::NativeViewer(tx));
+        self.set_sink(Box::new(crate::log_sink::NativeViewer(tx)));
         let app_env = self.app_env();
 
         // NOTE: Forget the handle on purpose, leave that thread be.

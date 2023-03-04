@@ -1,81 +1,95 @@
 use re_log_types::LogMsg;
 
-/// The sink for all log messages from the SDK.
-pub enum LogSink {
-    Buffered(Vec<LogMsg>),
+/// Where the SDK sends its log messages.
+pub trait LogSink: Send {
+    /// Send this log message.
+    fn send(&mut self, msg: LogMsg);
 
-    File(crate::file_writer::FileWriter),
-
-    Remote(re_sdk_comms::Client),
-
-    #[cfg(feature = "native_viewer")]
-    NativeViewer(re_smart_channel::Sender<LogMsg>),
-
-    /// Serve it to the web viewer over WebSockets
-    #[cfg(feature = "web_viewer")]
-    WebViewer(crate::remote_viewer_server::RemoteViewerServer),
-}
-
-impl Default for LogSink {
-    fn default() -> Self {
-        LogSink::Buffered(vec![])
+    /// Send all these log messages.
+    fn send_all(&mut self, messages: Vec<LogMsg>) {
+        for msg in messages {
+            self.send(msg);
+        }
     }
-}
 
-impl LogSink {
     /// Drain all buffered [`LogMsg`]es and return them.
-    pub fn drain_backlog(&mut self) -> Vec<LogMsg> {
-        if let Self::Buffered(log_messages) = self {
-            std::mem::take(log_messages)
-        } else {
-            vec![]
-        }
-    }
-
-    pub fn send(&mut self, msg: LogMsg) {
-        match self {
-            Self::Buffered(buffer) => buffer.push(msg),
-
-            Self::File(file) => file.write(msg),
-
-            Self::Remote(client) => client.send(msg),
-
-            #[cfg(feature = "native_viewer")]
-            Self::NativeViewer(sender) => {
-                if let Err(err) = sender.send(msg) {
-                    re_log::error_once!("Failed to send log message to viewer: {err}");
-                }
-            }
-
-            #[cfg(feature = "web_viewer")]
-            Self::WebViewer(remote) => {
-                remote.send(msg);
-            }
-        }
-    }
-
-    pub fn send_all(&mut self, mut messages: Vec<LogMsg>) {
-        match self {
-            Self::Buffered(buffer) => buffer.append(&mut messages),
-            _ => {
-                for msg in messages {
-                    self.send(msg);
-                }
-            }
-        }
+    fn drain_backlog(&mut self) -> Vec<LogMsg> {
+        vec![]
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).
-    pub fn flush(&self) {
-        if let LogSink::Remote(sender) = self {
-            sender.flush();
-        }
+    fn flush(&self) {}
+
+    /// If the TCP session is disconnected, allow it to quit early and drop unsent messages.
+    fn drop_msgs_if_disconnected(&self) {}
+}
+
+// ----------------------------------------------------------------------------
+
+/// Store log messages in memory until you call [`LogSink::drain_backlog`].
+#[derive(Default)]
+pub struct BufferedSink(Vec<LogMsg>);
+
+impl BufferedSink {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl LogSink for BufferedSink {
+    fn send(&mut self, msg: LogMsg) {
+        self.0.push(msg);
     }
 
-    /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
-    pub fn drop_msgs_if_disconnected(&self) {
-        if let LogSink::Remote(sender) = self {
-            sender.drop_if_disconnected();
+    fn send_all(&mut self, mut messages: Vec<LogMsg>) {
+        self.0.append(&mut messages);
+    }
+
+    fn drain_backlog(&mut self) -> Vec<LogMsg> {
+        std::mem::take(&mut self.0)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Stream log messages to a Rerun TCP server.
+pub struct TcpSink {
+    client: re_sdk_comms::Client,
+}
+
+impl TcpSink {
+    pub fn new(addr: std::net::SocketAddr) -> Self {
+        Self {
+            client: re_sdk_comms::Client::new(addr),
+        }
+    }
+}
+
+impl LogSink for TcpSink {
+    fn send(&mut self, msg: LogMsg) {
+        self.client.send(msg);
+    }
+
+    fn flush(&self) {
+        self.client.flush();
+    }
+
+    fn drop_msgs_if_disconnected(&self) {
+        self.client.drop_if_disconnected();
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Stream log messages to a native viewer on the main thread.
+#[cfg(feature = "native_viewer")]
+pub struct NativeViewer(pub re_smart_channel::Sender<LogMsg>);
+
+#[cfg(feature = "native_viewer")]
+impl LogSink for NativeViewer {
+    fn send(&mut self, msg: LogMsg) {
+        if let Err(err) = self.0.send(msg) {
+            re_log::error_once!("Failed to send log message to viewer: {err}");
         }
     }
 }
