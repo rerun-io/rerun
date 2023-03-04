@@ -32,7 +32,7 @@ glam = ["re_sdk?/glam"]
 image = ["re_log_types/image"]
 
 ## Support spawning a native viewer.
-native_viewer = ["re_sdk?/native_viewer", "dep:re_viewer"]
+native_viewer = ["dep:re_viewer"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]

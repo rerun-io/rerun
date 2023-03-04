@@ -17,7 +17,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "glam", "image", "native_viewer"]
+default = ["demo", "glam", "image"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["re_web_viewer_server?/analytics"]
@@ -30,9 +30,6 @@ glam = ["re_log_types/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
-
-## Support for the native viewer.
-native_viewer = ["image"]
 
 ## Support serving a web viewer over HTTP.
 ##
