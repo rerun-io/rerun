@@ -268,7 +268,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
-        re_sdk_comms::default_server_addr()
+        rerun::default_server_addr()
     };
     global_session().connect(addr);
     Ok(())
