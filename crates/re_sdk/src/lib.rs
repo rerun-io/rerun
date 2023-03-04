@@ -21,9 +21,6 @@ pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::session::Session;
 pub use log_sink::LogSink;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod clap;
-
 #[cfg(feature = "demo")]
 pub mod demo_util;
 

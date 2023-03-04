@@ -93,6 +93,10 @@
 mod crash_handler;
 mod run;
 
+/// Module for connecting to the [`clap`](https://crates.io/crates/clap) command line argument parser.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod clap;
+
 /// Methods for spawning the native viewer and streaming the SDK log stream to it.
 #[cfg(feature = "native_viewer")]
 #[cfg(not(target_arch = "wasm32"))]
