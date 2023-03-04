@@ -10,6 +10,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod file_writer;
 mod global;
+mod log_sink;
 mod msg_sender;
 #[cfg(feature = "web_viewer")]
 mod remote_viewer_server;

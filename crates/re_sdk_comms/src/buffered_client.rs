@@ -36,7 +36,7 @@ enum PacketMsg {
     Flush,
 }
 
-/// Send [`LogMsg`]es to a server.
+/// Send [`LogMsg`]es to a server over TCP.
 ///
 /// The messages are encoded and sent on separate threads
 /// so that calling [`Client::send`] is non-blocking.
@@ -58,6 +58,7 @@ impl Default for Client {
 }
 
 impl Client {
+    /// Connect via TCP to this log server.
     pub fn new(addr: SocketAddr) -> Self {
         // TODO(emilk): keep track of how much memory is in each pipe
         // and apply back-pressure to not use too much RAM.
@@ -114,7 +115,7 @@ impl Client {
     }
 
     /// Stall until all messages so far has been sent.
-    pub fn flush(&mut self) {
+    pub fn flush(&self) {
         re_log::debug!("Flushing message queue…");
         self.send_msg_msg(MsgMsg::Flush);
 
@@ -133,13 +134,13 @@ impl Client {
     ///
     /// Calling this before a flush (or drop) ensures we won't get stuck trying to send
     /// messages to a closed endpoint, but we will still send all messages to an open endpoint.
-    pub fn drop_if_disconnected(&mut self) {
+    pub fn drop_if_disconnected(&self) {
         self.send_quit_tx
             .send(InterruptMsg::DropIfDisconnected)
             .ok();
     }
 
-    fn send_msg_msg(&mut self, msg: MsgMsg) {
+    fn send_msg_msg(&self, msg: MsgMsg) {
         // ignoring errors, because Ctrl-C can shut down the receiving end.
         self.msg_tx.send(msg).ok();
     }

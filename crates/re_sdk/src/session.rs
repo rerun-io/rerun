@@ -5,7 +5,7 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
-use crate::file_writer::FileWriter;
+use crate::{file_writer::FileWriter, log_sink::LogSink};
 
 #[cfg(feature = "web_viewer")]
 use crate::remote_viewer_server::RemoteViewerServer;
@@ -24,7 +24,7 @@ pub struct Session {
     #[cfg(feature = "web_viewer")]
     tokio_rt: tokio::runtime::Runtime,
 
-    sender: Sender,
+    sink: LogSink,
 
     application_id: Option<ApplicationId>,
     recording_id: Option<RecordingId>,
@@ -115,7 +115,7 @@ impl Session {
             #[cfg(feature = "web_viewer")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
 
-            sender: Default::default(),
+            sink: Default::default(),
             application_id: None,
             recording_id: None,
             is_official_example: None,
@@ -174,6 +174,12 @@ impl Session {
         self.recording_source = recording_source;
     }
 
+    fn set_sink(&mut self, sink: LogSink) {
+        let backlog = self.sink.drain_backlog();
+        self.sink = sink;
+        self.sink.send_all(backlog);
+    }
+
     /// Send log data to a remote viewer/server.
     ///
     /// Usually this is done by running the `rerun` binary (`cargo install rerun`) without arguments,
@@ -197,27 +203,8 @@ impl Session {
             return;
         }
 
-        let backlog = self.drain_log_messages_buffer();
-
-        match &mut self.sender {
-            Sender::Remote(remote) => {
-                remote.set_addr(addr);
-            }
-
-            #[cfg(feature = "re_viewer")]
-            Sender::NativeViewer(_) => {
-                re_log::error!("Cannot connect from within a spawn() call");
-            }
-
-            _ => {
-                re_log::debug!("Connecting to remote…");
-                let mut client = re_sdk_comms::Client::new(addr);
-                for msg in backlog {
-                    client.send(msg);
-                }
-                self.sender = Sender::Remote(client);
-            }
-        }
+        re_log::debug!("Connecting to remote {addr}…");
+        self.set_sink(LogSink::Remote(re_sdk_comms::Client::new(addr)));
     }
 
     /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
@@ -237,50 +224,25 @@ impl Session {
             return;
         }
 
-        self.sender = Sender::WebViewer(RemoteViewerServer::new(&self.tokio_rt, open_browser));
+        self.set_sink(LogSink::WebViewer(RemoteViewerServer::new(
+            &self.tokio_rt,
+            open_browser,
+        )));
     }
 
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
-        if !matches!(&self.sender, &Sender::Buffered(_)) {
-            re_log::debug!("Switching to buffered.");
-            self.sender = Sender::Buffered(Default::default());
-        }
-    }
-
-    /// Are we streaming log messages over TCP?
-    ///
-    /// Returns true after a call to [`Self::connect`].
-    ///
-    /// Returns `false` if we are serving the messages to a web viewer,
-    /// or if we are buffering the messages (to save them to file later).
-    ///
-    /// This can return true even before the connection is yet to be established.
-    pub fn is_streaming_over_tcp(&self) -> bool {
-        matches!(&self.sender, &Sender::Remote(_))
+        self.set_sink(LogSink::Buffered(vec![]));
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).
     pub fn flush(&mut self) {
-        if let Sender::Remote(sender) = &mut self.sender {
-            sender.flush();
-        }
+        self.sink.flush();
     }
 
     /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
     pub fn drop_msgs_if_disconnected(&mut self) {
-        if let Sender::Remote(sender) = &mut self.sender {
-            sender.drop_if_disconnected();
-        }
-    }
-
-    /// Drain all buffered [`LogMsg`]es and return them.
-    pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
-        if let Sender::Buffered(log_messages) = &mut self.sender {
-            std::mem::take(log_messages)
-        } else {
-            vec![]
-        }
+        self.sink.drop_msgs_if_disconnected();
     }
 
     /// Send a [`LogMsg`].
@@ -305,7 +267,7 @@ impl Session {
                     recording_id
                 );
 
-                self.sender.send(
+                self.sink.send(
                     BeginRecordingMsg {
                         msg_id: MsgId::random(),
                         info: RecordingInfo {
@@ -322,7 +284,7 @@ impl Session {
             }
         }
 
-        self.sender.send(log_msg);
+        self.sink.send(log_msg);
     }
 
     /// Send a [`PathOp`].
@@ -345,11 +307,7 @@ impl Session {
         }
 
         let file_writer = FileWriter::new(path)?;
-        let backlog = self.drain_log_messages_buffer();
-        for log_msg in backlog {
-            file_writer.write(log_msg);
-        }
-        self.sender = Sender::File(file_writer);
+        self.set_sink(LogSink::File(file_writer));
         Ok(())
     }
 }
@@ -380,7 +338,7 @@ impl Session {
             return Ok(());
         }
 
-        let log_messages = self.drain_log_messages_buffer();
+        let log_messages = self.sink.drain_backlog();
         let startup_options = re_viewer::StartupOptions::default();
         re_viewer::run_native_viewer_with_messages(
             re_build_info::build_info!(),
@@ -413,12 +371,7 @@ impl Session {
         }
 
         let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-
-        for msg in self.drain_log_messages_buffer() {
-            tx.send(msg).ok();
-        }
-
-        self.sender = Sender::NativeViewer(tx);
+        self.set_sink(LogSink::NativeViewer(tx));
         let app_env = self.app_env();
 
         // NOTE: Forget the handle on purpose, leave that thread be.
@@ -442,50 +395,5 @@ impl Session {
                 rx,
             ))
         }))
-    }
-}
-
-enum Sender {
-    Buffered(Vec<LogMsg>),
-
-    File(FileWriter),
-
-    Remote(re_sdk_comms::Client),
-
-    #[cfg(feature = "native_viewer")]
-    NativeViewer(re_smart_channel::Sender<LogMsg>),
-
-    /// Serve it to the web viewer over WebSockets
-    #[cfg(feature = "web_viewer")]
-    WebViewer(RemoteViewerServer),
-}
-
-impl Default for Sender {
-    fn default() -> Self {
-        Sender::Buffered(vec![])
-    }
-}
-
-impl Sender {
-    pub fn send(&mut self, msg: LogMsg) {
-        match self {
-            Self::Buffered(buffer) => buffer.push(msg),
-
-            Self::File(file) => file.write(msg),
-
-            Self::Remote(client) => client.send(msg),
-
-            #[cfg(feature = "native_viewer")]
-            Self::NativeViewer(sender) => {
-                if let Err(err) = sender.send(msg) {
-                    re_log::error_once!("Failed to send log message to viewer: {err}");
-                }
-            }
-
-            #[cfg(feature = "web_viewer")]
-            Self::WebViewer(remote) => {
-                remote.send(msg);
-            }
-        }
     }
 }
