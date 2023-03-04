@@ -72,7 +72,6 @@ webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-clap = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, optional = true, features = [
   "macros",
   "rt-multi-thread",
