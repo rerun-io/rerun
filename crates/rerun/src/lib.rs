@@ -104,3 +104,11 @@ pub use run::{run, CallSource};
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
+
+/// Re-exports of other crates.
+pub mod external {
+    #[cfg(feature = "native_viewer")]
+    pub use re_viewer;
+
+    pub use re_sdk::external::*;
+}

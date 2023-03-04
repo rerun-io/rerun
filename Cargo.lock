@@ -4012,7 +4012,6 @@ dependencies = [
  "re_sdk_comms",
  "re_smart_channel",
  "re_string_interner",
- "re_viewer",
  "re_web_viewer_server",
  "re_ws_comms",
  "thiserror",

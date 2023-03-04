@@ -91,10 +91,34 @@ pub fn color_spiral(
         .collect();
 
     let colors = (0..num_points)
-        .map(move |i| {
-            re_viewer::external::re_renderer::colormap_turbo_srgb(i as f32 / num_points as f32)
-        })
+        .map(move |i| colormap_turbo_srgb(i as f32 / num_points as f32))
         .collect();
 
     (points, colors)
+}
+
+/// Returns sRGB polynomial approximation from Turbo color map, assuming `t` is normalized.
+fn colormap_turbo_srgb(t: f32) -> [u8; 4] {
+    #![allow(clippy::excessive_precision)]
+    use glam::{Vec2, Vec4, Vec4Swizzles};
+
+    const R4: Vec4 = Vec4::new(0.13572138, 4.61539260, -42.66032258, 132.13108234);
+    const G4: Vec4 = Vec4::new(0.09140261, 2.19418839, 4.84296658, -14.18503333);
+    const B4: Vec4 = Vec4::new(0.10667330, 12.64194608, -60.58204836, 110.36276771);
+
+    const R2: Vec2 = Vec2::new(-152.94239396, 59.28637943);
+    const G2: Vec2 = Vec2::new(4.27729857, 2.82956604);
+    const B2: Vec2 = Vec2::new(-89.90310912, 27.34824973);
+
+    debug_assert!((0.0..=1.0).contains(&t));
+
+    let v4 = glam::vec4(1.0, t, t * t, t * t * t);
+    let v2 = v4.zw() * v4.z;
+
+    [
+        ((v4.dot(R4) + v2.dot(R2)) * 255.0) as u8,
+        ((v4.dot(G4) + v2.dot(G2)) * 255.0) as u8,
+        ((v4.dot(B4) + v2.dot(B2)) * 255.0) as u8,
+        255,
+    ]
 }

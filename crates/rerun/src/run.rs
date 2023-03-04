@@ -1,9 +1,6 @@
 use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::Receiver;
 
-#[cfg(feature = "native_viewer")]
-use re_sdk::external::re_viewer;
-
 use anyhow::Context as _;
 use clap::Subcommand;
 
