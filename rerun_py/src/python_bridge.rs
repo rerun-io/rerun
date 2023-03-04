@@ -280,6 +280,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 fn serve(open_browser: bool) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
+        use rerun::WebViewerSessionExt as _;
         global_session().serve(open_browser);
         Ok(())
     }

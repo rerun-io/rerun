@@ -40,6 +40,9 @@ image = ["re_log_types/image"]
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web_viewer = ["dep:re_ws_comms", "dep:re_web_viewer_server", "dep:webbrowser"]
 
+# Add a tokio runtime to the `Session` type.
+tokio_runtime = ["dep:tokio"]
+
 
 [dependencies]
 re_build_info.workspace = true
@@ -70,7 +73,10 @@ webbrowser = { version = "0.8", optional = true }
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 clap = { workspace = true, features = ["derive"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, optional = true, features = [
+  "macros",
+  "rt-multi-thread",
+] }
 
 
 [dev-dependencies]

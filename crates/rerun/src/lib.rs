@@ -93,21 +93,25 @@
 mod crash_handler;
 mod run;
 
-/// Module for connecting to the [`clap`](https://crates.io/crates/clap) command line argument parser.
+/// Module for integrating with the [`clap`](https://crates.io/crates/clap) command line argument parser.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clap;
 
 /// Methods for spawning the native viewer and streaming the SDK log stream to it.
-#[cfg(feature = "native_viewer")]
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "sdk")]
+#[cfg(all(feature = "sdk", feature = "native_viewer"))]
 pub mod native_viewer;
+
+#[cfg(all(feature = "sdk", feature = "web_viewer"))]
+mod web_viewer;
 
 pub use run::{run, CallSource};
 
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
+
+#[cfg(all(feature = "sdk", feature = "web_viewer"))]
+pub use web_viewer::WebViewerSessionExt;
 
 /// Re-exports of other crates.
 pub mod external {

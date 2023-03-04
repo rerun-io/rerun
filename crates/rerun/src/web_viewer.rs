@@ -3,7 +3,7 @@ use re_log_types::LogMsg;
 /// Hosts two servers:
 /// * A web-server, serving the web-viewer
 /// * A `WebSocket` server, server [`LogMsg`]es to remote viewer(s).
-pub struct RemoteViewerServer {
+struct RemoteViewerServer {
     web_server_join_handle: tokio::task::JoinHandle<()>,
     sender: re_smart_channel::Sender<LogMsg>,
 }
@@ -57,5 +57,36 @@ impl crate::LogSink for RemoteViewerServer {
         if let Err(err) = self.sender.send(msg) {
             re_log::error_once!("Failed to send log message to web server: {err}");
         }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Extension trait for [`Session`] to allow serving a web-viewer with `session.serve()`.
+pub trait WebViewerSessionExt {
+    /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+    ///
+    /// If the `open_browser` argument is `true`, your default browser
+    /// will be opened with a connected web-viewer.
+    ///
+    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
+    ///
+    /// NOTE: you can not connect one `Session` to another.
+    ///
+    /// This function returns immediately.
+    fn serve(&mut self, open_browser: bool);
+}
+
+impl WebViewerSessionExt for crate::Session {
+    fn serve(&mut self, open_browser: bool) {
+        if !self.is_enabled() {
+            re_log::debug!("Rerun disabled - call to serve() ignored");
+            return;
+        }
+
+        self.set_sink(Box::new(RemoteViewerServer::new(
+            self.tokio_runtime(),
+            open_browser,
+        )));
     }
 }

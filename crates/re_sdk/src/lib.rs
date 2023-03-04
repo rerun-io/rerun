@@ -12,8 +12,6 @@ mod file_writer;
 mod global;
 mod log_sink;
 mod msg_sender;
-#[cfg(feature = "web_viewer")]
-mod remote_viewer_server;
 mod session;
 
 pub use self::global::{global_session, global_session_with_default_enabled};

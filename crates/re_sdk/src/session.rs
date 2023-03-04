@@ -7,9 +7,6 @@ use re_log_types::{
 
 use crate::{file_writer::FileWriter, LogSink};
 
-#[cfg(feature = "web_viewer")]
-use crate::remote_viewer_server::RemoteViewerServer;
-
 /// This is the main object you need to create to use the Rerun SDK.
 ///
 /// You should ideally create one session object and reuse it.
@@ -21,8 +18,8 @@ pub struct Session {
 
     recording_source: RecordingSource,
 
-    #[cfg(feature = "web_viewer")]
-    tokio_rt: tokio::runtime::Runtime,
+    #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
+    tokio_runtime: tokio::runtime::Runtime,
 
     /// Where we put the log messages.
     sink: Box<dyn LogSink>,
@@ -113,8 +110,8 @@ impl Session {
                 rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
             },
 
-            #[cfg(feature = "web_viewer")]
-            tokio_rt: tokio::runtime::Runtime::new().unwrap(),
+            #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
+            tokio_runtime: tokio::runtime::Runtime::new().unwrap(),
 
             sink: Box::new(crate::log_sink::BufferedSink::new()),
             application_id: None,
@@ -132,6 +129,12 @@ impl Session {
     /// Enable or disable logging on this `Session`.
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
+    }
+
+    #[doc(hidden)]
+    /// Used by the `rerun` crate when hosting a web viewer server.
+    pub fn tokio_runtime(&self) -> &tokio::runtime::Runtime {
+        &self.tokio_runtime
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -220,29 +223,6 @@ impl Session {
 
         re_log::debug!("Connecting to remote {addr}…");
         self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
-    }
-
-    /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
-    ///
-    /// If the `open_browser` argument is `true`, your default browser
-    /// will be opened with a connected web-viewer.
-    ///
-    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
-    ///
-    /// NOTE: you can not connect one `Session` to another.
-    ///
-    /// This function returns immediately.
-    #[cfg(feature = "web_viewer")]
-    pub fn serve(&mut self, open_browser: bool) {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to serve() ignored");
-            return;
-        }
-
-        self.set_sink(Box::new(RemoteViewerServer::new(
-            &self.tokio_rt,
-            open_browser,
-        )));
     }
 
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
