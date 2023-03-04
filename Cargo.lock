@@ -4171,6 +4171,7 @@ dependencies = [
  "re_analytics",
  "re_build_web_viewer",
  "re_log",
+ "re_viewer",
  "tokio",
 ]
 
