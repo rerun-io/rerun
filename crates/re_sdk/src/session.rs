@@ -131,8 +131,9 @@ impl Session {
         self.enabled = enabled;
     }
 
-    #[doc(hidden)]
     /// Used by the `rerun` crate when hosting a web viewer server.
+    #[doc(hidden)]
+    #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
     pub fn tokio_runtime(&self) -> &tokio::runtime::Runtime {
         &self.tokio_runtime
     }
