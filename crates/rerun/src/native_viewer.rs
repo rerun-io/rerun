@@ -8,7 +8,7 @@ use re_sdk::Session;
 /// All messages logged from the passed-in callback will be streamed to the viewer in
 /// real-time.
 ///
-/// This method will not return as long as the viewer runs.
+/// The method will return when the viewer is closed.
 ///
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
@@ -51,10 +51,13 @@ where
     }))
 }
 
-/// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
-/// been logged so far.
+/// Drains all pending log messages and starts a Rerun viewer to visualize
+/// everything that has been logged so far.
 ///
-/// This method MUST be run from the main thread!
+/// The method will return when the viewer is closed.
+///
+/// ⚠️  This function must be called from the main thread since some platforms require that
+/// their UI runs on the main thread! ⚠️
 pub fn show(session: &mut Session) -> re_viewer::external::eframe::Result<()> {
     if !session.is_enabled() {
         re_log::debug!("Rerun disabled - call to show() ignored");
