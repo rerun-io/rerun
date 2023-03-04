@@ -31,6 +31,7 @@ pub trait LogSink: Send {
 pub struct BufferedSink(Vec<LogMsg>);
 
 impl BufferedSink {
+    /// An empty buffer.
     pub fn new() -> Self {
         Self::default()
     }
@@ -58,6 +59,8 @@ pub struct TcpSink {
 }
 
 impl TcpSink {
+    /// Connect to the given address in a background thread.
+    /// Retries until successful.
     pub fn new(addr: std::net::SocketAddr) -> Self {
         Self {
             client: re_sdk_comms::Client::new(addr),

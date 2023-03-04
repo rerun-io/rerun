@@ -62,7 +62,7 @@ impl crate::LogSink for RemoteViewerServer {
 
 // ----------------------------------------------------------------------------
 
-/// Extension trait for [`Session`] to allow serving a web-viewer with `session.serve()`.
+/// Extension trait for [`crate::Session`] to allow serving a web-viewer with `session.serve()`.
 pub trait WebViewerSessionExt {
     /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
     ///

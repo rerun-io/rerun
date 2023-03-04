@@ -187,7 +187,7 @@ impl Session {
 
     /// Set the [`LogSink`] to use. This is where the log messages will be sent.
     ///
-    /// If the sink is [`BufferedSink`] (the default(, it will be drained and sent to the new sink.
+    /// If the sink is [`crate::log_sink::BufferedSink`] (the default), it will be drained and sent to the new sink.
     pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
         let backlog = self.sink.drain_backlog();
         self.sink = sink;
