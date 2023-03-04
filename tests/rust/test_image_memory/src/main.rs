@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let session = rerun::Session::init("test_image_memory_rs", true);
 
-    rerun::spawn_native_viewer(session, |mut session| {
+    rerun::native_viewer::spawn(session, |mut session| {
         log_images(&mut session).unwrap();
     })?;
 

@@ -651,7 +651,7 @@ fn main() -> anyhow::Result<()> {
 
     let should_spawn = args.rerun.on_startup(&mut session)?;
     if should_spawn {
-        rerun::spawn_native_viewer(session, move |mut session| run(&mut session, &args))?;
+        rerun::native_viewer::spawn(session, move |mut session| run(&mut session, &args))?;
     } else {
         run(&mut session, &args)?;
         args.rerun.on_teardown();

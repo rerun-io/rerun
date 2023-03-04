@@ -93,16 +93,14 @@
 mod crash_handler;
 mod run;
 
+/// Methods for spawning the native viewer and streaming the SDK log stream to it.
 #[cfg(feature = "native_viewer")]
 #[cfg(not(target_arch = "wasm32"))]
-mod spawn_native_viewer;
+#[cfg(feature = "sdk")]
+pub mod native_viewer;
 
 pub use run::{run, CallSource};
 
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
-
-#[cfg(feature = "native_viewer")]
-#[cfg(not(target_arch = "wasm32"))]
-pub use spawn_native_viewer::spawn_native_viewer;

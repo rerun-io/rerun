@@ -4,7 +4,6 @@ use re_log_types::{
     ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
     RecordingSource, Time, TimePoint,
 };
-use re_viewer::AppEnvironment;
 
 use crate::{file_writer::FileWriter, LogSink};
 
@@ -191,6 +190,11 @@ impl Session {
         self.sink.send_all(backlog);
     }
 
+    /// Drain all buffered [`LogMsg`]es and return them.
+    pub fn drain_backlog(&mut self) -> Vec<LogMsg> {
+        self.sink.drain_backlog()
+    }
+
     /// Send log data to a remote viewer/server.
     ///
     /// Usually this is done by running the `rerun` binary (`cargo install rerun`) without arguments,
@@ -319,28 +323,5 @@ impl Session {
 
         self.set_sink(Box::new(FileWriter::new(path)?));
         Ok(())
-    }
-}
-
-#[cfg(feature = "native_viewer")]
-impl Session {
-    /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
-    /// been logged so far.
-    ///
-    /// This method MUST be run from the main thread!
-    pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to show() ignored");
-            return Ok(());
-        }
-
-        let log_messages = self.sink.drain_backlog();
-        let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(
-            re_build_info::build_info!(),
-            AppEnvironment::from_recording_source(self.recording_source()),
-            startup_options,
-            log_messages,
-        )
     }
 }

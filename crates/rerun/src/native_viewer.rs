@@ -13,16 +13,13 @@ use re_sdk::Session;
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
 #[cfg(not(target_arch = "wasm32"))]
-pub fn spawn_native_viewer<F, T>(
-    mut session: Session,
-    run: F,
-) -> re_viewer::external::eframe::Result<()>
+pub fn spawn<F, T>(mut session: Session, run: F) -> re_viewer::external::eframe::Result<()>
 where
     F: FnOnce(Session) -> T + Send + 'static,
     T: Send + 'static,
 {
     if !session.is_enabled() {
-        re_log::debug!("Rerun disabled - call to spawn_native_viewer() ignored");
+        re_log::debug!("Rerun disabled - call to rerun::native_viewer::spawn() ignored");
         run(session);
         return Ok(());
     }
@@ -52,6 +49,26 @@ where
             rx,
         ))
     }))
+}
+
+/// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
+/// been logged so far.
+///
+/// This method MUST be run from the main thread!
+pub fn show(session: &mut Session) -> re_viewer::external::eframe::Result<()> {
+    if !session.is_enabled() {
+        re_log::debug!("Rerun disabled - call to show() ignored");
+        return Ok(());
+    }
+
+    let log_messages = session.drain_backlog();
+    let startup_options = re_viewer::StartupOptions::default();
+    re_viewer::run_native_viewer_with_messages(
+        re_build_info::build_info!(),
+        re_viewer::AppEnvironment::from_recording_source(session.recording_source()),
+        startup_options,
+        log_messages,
+    )
 }
 
 // ----------------------------------------------------------------------------
