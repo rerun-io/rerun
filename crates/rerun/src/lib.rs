@@ -69,7 +69,7 @@
 //!
 //! let mut rr_session = rerun::Session::init("my_app", true);
 //! log_using(&mut rr_session);
-//! rr_session.show();
+//! rerun::native_viewer::show(&mut rr_session);
 //! ```
 //!
 //! ## Binary
