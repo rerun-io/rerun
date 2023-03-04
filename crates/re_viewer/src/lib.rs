@@ -85,6 +85,21 @@ pub enum AppEnvironment {
     Web,
 }
 
+impl AppEnvironment {
+    pub fn from_recording_source(source: &re_log_types::RecordingSource) -> Self {
+        use re_log_types::RecordingSource;
+        match source {
+            RecordingSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
+            RecordingSource::RustSdk { rust_version } => Self::RustSdk {
+                rust_version: rust_version.clone(),
+            },
+            RecordingSource::Unknown | RecordingSource::Other(_) => Self::RustSdk {
+                rust_version: "unknown".into(),
+            },
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 
 #[allow(dead_code)]

@@ -78,18 +78,3 @@ impl LogSink for TcpSink {
         self.client.drop_if_disconnected();
     }
 }
-
-// ----------------------------------------------------------------------------
-
-/// Stream log messages to a native viewer on the main thread.
-#[cfg(feature = "native_viewer")]
-pub struct NativeViewer(pub re_smart_channel::Sender<LogMsg>);
-
-#[cfg(feature = "native_viewer")]
-impl LogSink for NativeViewer {
-    fn send(&mut self, msg: LogMsg) {
-        if let Err(err) = self.0.send(msg) {
-            re_log::error_once!("Failed to send log message to viewer: {err}");
-        }
-    }
-}

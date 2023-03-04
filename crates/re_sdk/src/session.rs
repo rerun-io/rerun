@@ -4,6 +4,7 @@ use re_log_types::{
     ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
     RecordingSource, Time, TimePoint,
 };
+use re_viewer::AppEnvironment;
 
 use crate::{file_writer::FileWriter, LogSink};
 
@@ -175,7 +176,16 @@ impl Session {
         self.recording_source = recording_source;
     }
 
-    fn set_sink(&mut self, sink: Box<dyn LogSink>) {
+    /// Where the recording is coming from.
+    /// The default is [`RecordingSource::RustSdk`].
+    pub fn recording_source(&self) -> &RecordingSource {
+        &self.recording_source
+    }
+
+    /// Set the [`LogSink`] to use. This is where the log messages will be sent.
+    ///
+    /// If the sink is [`BufferedSink`] (the default(, it will be drained and sent to the new sink.
+    pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
         let backlog = self.sink.drain_backlog();
         self.sink = sink;
         self.sink.send_all(backlog);
@@ -314,24 +324,10 @@ impl Session {
 
 #[cfg(feature = "native_viewer")]
 impl Session {
-    fn app_env(&self) -> re_viewer::AppEnvironment {
-        match &self.recording_source {
-            RecordingSource::PythonSdk(python_version) => {
-                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
-            }
-            RecordingSource::RustSdk { rust_version } => re_viewer::AppEnvironment::RustSdk {
-                rust_version: rust_version.clone(),
-            },
-            RecordingSource::Unknown | RecordingSource::Other(_) => {
-                re_viewer::AppEnvironment::RustSdk {
-                    rust_version: "unknown".into(),
-                }
-            }
-        }
-    }
-
     /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
     /// been logged so far.
+    ///
+    /// This method MUST be run from the main thread!
     pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to show() ignored");
@@ -342,58 +338,9 @@ impl Session {
         let startup_options = re_viewer::StartupOptions::default();
         re_viewer::run_native_viewer_with_messages(
             re_build_info::build_info!(),
-            self.app_env(),
+            AppEnvironment::from_recording_source(self.recording_source()),
             startup_options,
             log_messages,
         )
-    }
-
-    /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
-    /// the active `Session`, to a newly spawned thread where the callback will run until
-    /// completion.
-    ///
-    /// All messages logged from the passed-in callback will be streamed to the viewer in
-    /// real-time.
-    ///
-    /// This method will not return as long as the viewer runs.
-    ///
-    /// ⚠️  This function must be called from the main thread since some platforms require that
-    /// their UI runs on the main thread! ⚠️
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn spawn<F, T>(mut self, run: F) -> re_viewer::external::eframe::Result<()>
-    where
-        F: FnOnce(Session) -> T + Send + 'static,
-        T: Send + 'static,
-    {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to spawn() ignored");
-            return Ok(());
-        }
-
-        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-        self.set_sink(Box::new(crate::log_sink::NativeViewer(tx)));
-        let app_env = self.app_env();
-
-        // NOTE: Forget the handle on purpose, leave that thread be.
-        std::thread::Builder::new()
-            .name("spawned".into())
-            .spawn(move || run(self))
-            .expect("Failed to spawn thread");
-
-        // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
-        // to spawn the viewer in place and migrate the user callback to a new thread.
-        re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            // TODO(cmc): it'd be nice to centralize all the UI wake up logic somewhere.
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let startup_options = re_viewer::StartupOptions::default();
-            Box::new(re_viewer::App::from_receiver(
-                re_build_info::build_info!(),
-                &app_env,
-                startup_options,
-                re_ui,
-                cc.storage,
-                rx,
-            ))
-        }))
     }
 }

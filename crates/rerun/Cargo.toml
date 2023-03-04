@@ -31,8 +31,8 @@ glam = ["re_sdk?/glam"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
 
-## Support a native viewer
-native_viewer = ["re_sdk?/native_viewer"]
+## Support spawning a native viewer.
+native_viewer = ["re_sdk?/native_viewer", "dep:re_viewer"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
@@ -77,6 +77,7 @@ puffin.workspace = true
 re_analytics = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_sdk_comms = { workspace = true, optional = true }
+re_viewer = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 webbrowser = { version = "0.8", optional = true }

@@ -198,14 +198,11 @@ fn main() -> anyhow::Result<()> {
 
     let should_spawn = args.rerun.on_startup(&mut session)?;
     if should_spawn {
-        return session
-            .spawn(move |mut session| run(&mut session, &args))
-            .map_err(Into::into);
+        rerun::spawn_native_viewer(session, move |mut session| run(&mut session, &args))?;
+    } else {
+        run(&mut session, &args)?;
+        args.rerun.on_teardown();
     }
-
-    run(&mut session, &args)?;
-
-    args.rerun.on_teardown();
 
     Ok(())
 }
