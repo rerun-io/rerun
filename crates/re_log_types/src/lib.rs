@@ -261,6 +261,7 @@ pub enum RecordingSource {
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
+        /// `CARGO_PKG_RUST_VERSION` = the MSRV specified by out crate. TODO(#1509): remove or improve
         rust_version: String,
     },
 

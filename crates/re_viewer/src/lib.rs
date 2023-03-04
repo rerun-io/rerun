@@ -76,10 +76,16 @@ pub enum AppEnvironment {
     PythonSdk(PythonVersion),
 
     /// Created from the Rerun Rust SDK.
-    RustSdk { rust_version: String },
+    RustSdk {
+        /// `CARGO_PKG_RUST_VERSION` = the MSRV specified by out crate. TODO(#1509): remove or improve
+        rust_version: String,
+    },
 
     /// Running the Rust `rerun` binary from the CLI.
-    RerunCli { rust_version: String },
+    RerunCli {
+        /// `CARGO_PKG_RUST_VERSION` = the MSRV specified by out crate. TODO(#1509): remove or improve
+        rust_version: String,
+    },
 
     /// We are a web-viewer running in a browser as Wasm.
     Web,
