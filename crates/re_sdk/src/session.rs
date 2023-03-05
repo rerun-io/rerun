@@ -131,6 +131,12 @@ impl Session {
         self.enabled = enabled;
     }
 
+    /// Set wether or not logging is enabled by default.
+    /// This will be overridden by the `RERUN` environment variable, if found.
+    pub fn set_default_enabled(&mut self, default_enabled: bool) {
+        self.enabled = crate::decide_logging_enabled(default_enabled);
+    }
+
     /// Used by the `rerun` crate when hosting a web viewer server.
     #[doc(hidden)]
     #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]

@@ -9,12 +9,17 @@
 // Send data to a rerun session
 #[cfg(not(target_arch = "wasm32"))]
 mod file_writer;
+
+#[cfg(feature = "global")]
 mod global;
+
 mod log_sink;
 mod msg_sender;
 mod session;
 
+#[cfg(feature = "global")]
 pub use self::global::{global_session, global_session_with_default_enabled};
+
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::session::Session;
 pub use log_sink::{BufferedSink, LogSink, TcpSink};
@@ -100,22 +105,24 @@ fn get_rerun_env() -> Option<bool> {
 ///
 /// Also adds some helpful logging.
 fn decide_logging_enabled(default_enabled: bool) -> bool {
+    // We use `info_once` so that we can call this function
+    // multiple times without spamming the log.
     match get_rerun_env() {
         Some(true) => {
-            re_log::info!(
+            re_log::info_once!(
                 "Rerun Logging is enabled by the '{RERUN_ENV_VAR}' environment variable."
             );
             true
         }
         Some(false) => {
-            re_log::info!(
+            re_log::info_once!(
                 "Rerun Logging is disabled by the '{RERUN_ENV_VAR}' environment variable."
             );
             false
         }
         None => {
             if !default_enabled {
-                re_log::info!(
+                re_log::info_once!(
                     "Rerun Logging has been disabled. Turn it on with the '{RERUN_ENV_VAR}' environment variable."
                 );
             }

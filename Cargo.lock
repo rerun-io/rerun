@@ -4299,6 +4299,8 @@ dependencies = [
  "macaw",
  "mimalloc",
  "numpy",
+ "once_cell",
+ "parking_lot 0.12.1",
  "pyo3",
  "pyo3-build-config",
  "rand",
