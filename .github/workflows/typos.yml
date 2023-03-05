@@ -1,5 +1,6 @@
 # https://github.com/crate-ci/typos
 # Add exceptions to _typos.toml
+# install and run locally: cargo install typos-cli && typos
 
 name: Spell Check
 on: [pull_request]
