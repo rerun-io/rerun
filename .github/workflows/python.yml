@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build_wheel:
-        description: 'Build python wheels'
+        description: "Build python wheels"
         required: true
         default: false
         type: boolean
@@ -314,7 +314,7 @@ jobs:
       - name: GitHub Release
         uses: ncipollo/release-action@v1.12.0
         with:
-          prerelease: false
+          prerelease: true
           artifacts: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
           generateReleaseNotes: true
@@ -394,7 +394,6 @@ jobs:
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
           git push origin gh-pages-orphan:gh-pages -f
-
 
       # Mike will incrementally update the existing gh-pages branch
       # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
