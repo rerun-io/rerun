@@ -263,7 +263,7 @@ fn init(application_id: String, application_path: Option<PathBuf>, default_enabl
     // HOTFIX: Currently, the session is already fetched when initializing the bindings, and so
     // `default_enabled` has already been set... we need to overwrite it if the user calls `init`
     // manually.
-    session.set_enabled(default_enabled);
+    session.set_default_enabled(default_enabled);
 
     session.set_application_id(ApplicationId(application_id), is_official_example);
 }
