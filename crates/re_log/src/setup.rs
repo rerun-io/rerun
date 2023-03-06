@@ -40,7 +40,8 @@ pub fn setup_native_logging() {
 
 #[cfg(target_arch = "wasm32")]
 fn default_web_log_filter() -> String {
-    "debug,naga=warn,wgpu_core=warn,wgpu_hal=warn".to_owned()
+    // TODO(#1513): Logging a lot of things (every frame?) causes the web viewer to crash after a while in some scenes.
+    "warn".to_owned()
 }
 
 #[cfg(target_arch = "wasm32")]
