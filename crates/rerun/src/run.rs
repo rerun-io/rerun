@@ -321,7 +321,9 @@ async fn run_impl(
         #[cfg(not(feature = "web_viewer"))]
         {
             _ = (call_source, rx);
-            anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
+            anyhow::bail!(
+                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+            );
         }
     } else {
         #[cfg(feature = "native_viewer")]
