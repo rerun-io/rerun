@@ -69,7 +69,7 @@
 //!
 //! let mut rr_session = rerun::Session::init("my_app", true);
 //! log_using(&mut rr_session);
-//! rr_session.show();
+//! rerun::native_viewer::show(&mut rr_session);
 //! ```
 //!
 //! ## Binary
@@ -93,8 +93,31 @@
 mod crash_handler;
 mod run;
 
+/// Module for integrating with the [`clap`](https://crates.io/crates/clap) command line argument parser.
+#[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+pub mod clap;
+
+/// Methods for spawning the native viewer and streaming the SDK log stream to it.
+#[cfg(all(feature = "sdk", feature = "native_viewer"))]
+pub mod native_viewer;
+
+#[cfg(all(feature = "sdk", feature = "web_viewer"))]
+mod web_viewer;
+
 pub use run::{run, CallSource};
 
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
+
+#[cfg(all(feature = "sdk", feature = "web_viewer"))]
+pub use web_viewer::serve_web_viewer;
+
+/// Re-exports of other crates.
+pub mod external {
+    #[cfg(feature = "native_viewer")]
+    pub use re_viewer;
+
+    #[cfg(feature = "sdk")]
+    pub use re_sdk::external::*;
+}

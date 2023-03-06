@@ -1,9 +1,6 @@
 use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::Receiver;
 
-#[cfg(feature = "native_viewer")]
-use re_sdk::external::re_viewer;
-
 use anyhow::Context as _;
 use clap::Subcommand;
 
@@ -130,7 +127,8 @@ impl CallSource {
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match self {
             CallSource::Cli => re_viewer::AppEnvironment::RerunCli {
-                rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
+                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
             CallSource::Python(python_version) => {
                 re_viewer::AppEnvironment::PythonSdk(python_version.clone())

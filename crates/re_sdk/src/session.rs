@@ -5,10 +5,7 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
-use crate::file_writer::FileWriter;
-
-#[cfg(feature = "web_viewer")]
-use crate::remote_viewer_server::RemoteViewerServer;
+use crate::{file_writer::FileWriter, LogSink};
 
 /// This is the main object you need to create to use the Rerun SDK.
 ///
@@ -21,10 +18,11 @@ pub struct Session {
 
     recording_source: RecordingSource,
 
-    #[cfg(feature = "web_viewer")]
-    tokio_rt: tokio::runtime::Runtime,
+    #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
+    tokio_runtime: tokio::runtime::Runtime,
 
-    sender: Sender,
+    /// Where we put the log messages.
+    sink: Box<dyn LogSink>,
 
     application_id: Option<ApplicationId>,
     recording_id: Option<RecordingId>,
@@ -109,13 +107,14 @@ impl Session {
             enabled,
 
             recording_source: RecordingSource::RustSdk {
-                rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
+                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
 
-            #[cfg(feature = "web_viewer")]
-            tokio_rt: tokio::runtime::Runtime::new().unwrap(),
+            #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
+            tokio_runtime: tokio::runtime::Runtime::new().unwrap(),
 
-            sender: Default::default(),
+            sink: Box::new(crate::log_sink::BufferedSink::new()),
             application_id: None,
             recording_id: None,
             is_official_example: None,
@@ -137,6 +136,13 @@ impl Session {
     /// This will be overridden by the `RERUN` environment variable, if found.
     pub fn set_default_enabled(&mut self, default_enabled: bool) {
         self.enabled = crate::decide_logging_enabled(default_enabled);
+    }
+
+    /// Used by the `rerun` crate when hosting a web viewer server.
+    #[doc(hidden)]
+    #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
+    pub fn tokio_runtime(&self) -> &tokio::runtime::Runtime {
+        &self.tokio_runtime
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -180,6 +186,27 @@ impl Session {
         self.recording_source = recording_source;
     }
 
+    /// Where the recording is coming from.
+    /// The default is [`RecordingSource::RustSdk`].
+    pub fn recording_source(&self) -> &RecordingSource {
+        &self.recording_source
+    }
+
+    /// Set the [`LogSink`] to use. This is where the log messages will be sent.
+    ///
+    /// If the previous sink is [`crate::log_sink::BufferedSink`] (the default),
+    /// it will be drained and sent to the new sink.
+    pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
+        let backlog = self.sink.drain_backlog();
+        self.sink = sink;
+        self.sink.send_all(backlog);
+    }
+
+    /// Drain all buffered [`LogMsg`]es and return them.
+    pub fn drain_backlog(&mut self) -> Vec<LogMsg> {
+        self.sink.drain_backlog()
+    }
+
     /// Send log data to a remote viewer/server.
     ///
     /// Usually this is done by running the `rerun` binary (`cargo install rerun`) without arguments,
@@ -203,90 +230,23 @@ impl Session {
             return;
         }
 
-        let backlog = self.drain_log_messages_buffer();
-
-        match &mut self.sender {
-            Sender::Remote(remote) => {
-                remote.set_addr(addr);
-            }
-
-            #[cfg(feature = "re_viewer")]
-            Sender::NativeViewer(_) => {
-                re_log::error!("Cannot connect from within a spawn() call");
-            }
-
-            _ => {
-                re_log::debug!("Connecting to remote…");
-                let mut client = re_sdk_comms::Client::new(addr);
-                for msg in backlog {
-                    client.send(msg);
-                }
-                self.sender = Sender::Remote(client);
-            }
-        }
-    }
-
-    /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
-    ///
-    /// If the `open_browser` argument is `true`, your default browser
-    /// will be opened with a connected web-viewer.
-    ///
-    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
-    ///
-    /// NOTE: you can not connect one `Session` to another.
-    ///
-    /// This function returns immediately.
-    #[cfg(feature = "web_viewer")]
-    pub fn serve(&mut self, open_browser: bool) {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to serve() ignored");
-            return;
-        }
-
-        self.sender = Sender::WebViewer(RemoteViewerServer::new(&self.tokio_rt, open_browser));
+        re_log::debug!("Connecting to remote {addr}…");
+        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
     }
 
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
-        if !matches!(&self.sender, &Sender::Buffered(_)) {
-            re_log::debug!("Switching to buffered.");
-            self.sender = Sender::Buffered(Default::default());
-        }
-    }
-
-    /// Are we streaming log messages over TCP?
-    ///
-    /// Returns true after a call to [`Self::connect`].
-    ///
-    /// Returns `false` if we are serving the messages to a web viewer,
-    /// or if we are buffering the messages (to save them to file later).
-    ///
-    /// This can return true even before the connection is yet to be established.
-    pub fn is_streaming_over_tcp(&self) -> bool {
-        matches!(&self.sender, &Sender::Remote(_))
+        self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).
     pub fn flush(&mut self) {
-        if let Sender::Remote(sender) = &mut self.sender {
-            sender.flush();
-        }
+        self.sink.flush();
     }
 
     /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
     pub fn drop_msgs_if_disconnected(&mut self) {
-        if let Sender::Remote(sender) = &mut self.sender {
-            sender.drop_if_disconnected();
-        }
-    }
-
-    /// Drain all buffered [`LogMsg`]es and return them.
-    pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
-        if let Sender::Buffered(log_messages) = &mut self.sender {
-            std::mem::take(log_messages)
-        } else {
-            vec![]
-        }
+        self.sink.drop_msgs_if_disconnected();
     }
 
     /// Send a [`LogMsg`].
@@ -311,7 +271,7 @@ impl Session {
                     recording_id
                 );
 
-                self.sender.send(
+                self.sink.send(
                     BeginRecordingMsg {
                         msg_id: MsgId::random(),
                         info: RecordingInfo {
@@ -328,7 +288,7 @@ impl Session {
             }
         }
 
-        self.sender.send(log_msg);
+        self.sink.send(log_msg);
     }
 
     /// Send a [`PathOp`].
@@ -350,148 +310,7 @@ impl Session {
             return Ok(());
         }
 
-        let file_writer = FileWriter::new(path)?;
-        let backlog = self.drain_log_messages_buffer();
-        for log_msg in backlog {
-            file_writer.write(log_msg);
-        }
-        self.sender = Sender::File(file_writer);
+        self.set_sink(Box::new(FileWriter::new(path)?));
         Ok(())
-    }
-}
-
-#[cfg(feature = "native_viewer")]
-impl Session {
-    fn app_env(&self) -> re_viewer::AppEnvironment {
-        match &self.recording_source {
-            RecordingSource::PythonSdk(python_version) => {
-                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
-            }
-            RecordingSource::RustSdk { rust_version } => re_viewer::AppEnvironment::RustSdk {
-                rust_version: rust_version.clone(),
-            },
-            RecordingSource::Unknown | RecordingSource::Other(_) => {
-                re_viewer::AppEnvironment::RustSdk {
-                    rust_version: "unknown".into(),
-                }
-            }
-        }
-    }
-
-    /// Drains all pending log messages and starts a Rerun viewer to visualize everything that has
-    /// been logged so far.
-    pub fn show(&mut self) -> re_viewer::external::eframe::Result<()> {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to show() ignored");
-            return Ok(());
-        }
-
-        let log_messages = self.drain_log_messages_buffer();
-        let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(
-            re_build_info::build_info!(),
-            self.app_env(),
-            startup_options,
-            log_messages,
-        )
-    }
-
-    /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
-    /// the active `Session`, to a newly spawned thread where the callback will run until
-    /// completion.
-    ///
-    /// All messages logged from the passed-in callback will be streamed to the viewer in
-    /// real-time.
-    ///
-    /// This method will not return as long as the viewer runs.
-    ///
-    /// ⚠️  This function must be called from the main thread since some platforms require that
-    /// their UI runs on the main thread! ⚠️
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn spawn<F, T>(mut self, run: F) -> re_viewer::external::eframe::Result<()>
-    where
-        F: FnOnce(Session) -> T + Send + 'static,
-        T: Send + 'static,
-    {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to spawn() ignored");
-            return Ok(());
-        }
-
-        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-
-        for msg in self.drain_log_messages_buffer() {
-            tx.send(msg).ok();
-        }
-
-        self.sender = Sender::NativeViewer(tx);
-        let app_env = self.app_env();
-
-        // NOTE: Forget the handle on purpose, leave that thread be.
-        std::thread::Builder::new()
-            .name("spawned".into())
-            .spawn(move || run(self))
-            .expect("Failed to spawn thread");
-
-        // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
-        // to spawn the viewer in place and migrate the user callback to a new thread.
-        re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            // TODO(cmc): it'd be nice to centralize all the UI wake up logic somewhere.
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let startup_options = re_viewer::StartupOptions::default();
-            Box::new(re_viewer::App::from_receiver(
-                re_build_info::build_info!(),
-                &app_env,
-                startup_options,
-                re_ui,
-                cc.storage,
-                rx,
-            ))
-        }))
-    }
-}
-
-enum Sender {
-    Buffered(Vec<LogMsg>),
-
-    File(FileWriter),
-
-    Remote(re_sdk_comms::Client),
-
-    #[cfg(feature = "native_viewer")]
-    NativeViewer(re_smart_channel::Sender<LogMsg>),
-
-    /// Serve it to the web viewer over WebSockets
-    #[cfg(feature = "web_viewer")]
-    WebViewer(RemoteViewerServer),
-}
-
-impl Default for Sender {
-    fn default() -> Self {
-        Sender::Buffered(vec![])
-    }
-}
-
-impl Sender {
-    pub fn send(&mut self, msg: LogMsg) {
-        match self {
-            Self::Buffered(buffer) => buffer.push(msg),
-
-            Self::File(file) => file.write(msg),
-
-            Self::Remote(client) => client.send(msg),
-
-            #[cfg(feature = "native_viewer")]
-            Self::NativeViewer(sender) => {
-                if let Err(err) = sender.send(msg) {
-                    re_log::error_once!("Failed to send log message to viewer: {err}");
-                }
-            }
-
-            #[cfg(feature = "web_viewer")]
-            Self::WebViewer(remote) => {
-                remote.send(msg);
-            }
-        }
     }
 }

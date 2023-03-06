@@ -76,13 +76,39 @@ pub enum AppEnvironment {
     PythonSdk(PythonVersion),
 
     /// Created from the Rerun Rust SDK.
-    RustSdk { rust_version: String },
+    RustSdk {
+        rustc_version: String,
+        llvm_version: String,
+    },
 
     /// Running the Rust `rerun` binary from the CLI.
-    RerunCli { rust_version: String },
+    RerunCli {
+        rustc_version: String,
+        llvm_version: String,
+    },
 
     /// We are a web-viewer running in a browser as Wasm.
     Web,
+}
+
+impl AppEnvironment {
+    pub fn from_recording_source(source: &re_log_types::RecordingSource) -> Self {
+        use re_log_types::RecordingSource;
+        match source {
+            RecordingSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
+            RecordingSource::RustSdk {
+                rustc_version: rust_version,
+                llvm_version,
+            } => Self::RustSdk {
+                rustc_version: rust_version.clone(),
+                llvm_version: llvm_version.clone(),
+            },
+            RecordingSource::Unknown | RecordingSource::Other(_) => Self::RustSdk {
+                rustc_version: "unknown".into(),
+                llvm_version: "unknown".into(),
+            },
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

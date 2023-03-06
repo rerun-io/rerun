@@ -11,7 +11,6 @@ use pyo3::{
 };
 
 use rerun::{
-    global_session,
     log::{LogMsg, MsgBundle, MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
@@ -29,6 +28,20 @@ pub use rerun::{
 };
 
 use crate::arrow::get_registered_component_names;
+
+// ----------------------------------------------------------------------------
+
+/// The [`rerun::Session`] object used by the Python API.
+fn python_session() -> parking_lot::MutexGuard<'static, rerun::Session> {
+    use once_cell::sync::OnceCell;
+    use parking_lot::Mutex;
+    static INSTANCE: OnceCell<Mutex<rerun::Session>> = OnceCell::new();
+
+    let default_enabled = true;
+    let mutex =
+        INSTANCE.get_or_init(|| Mutex::new(rerun::Session::with_default_enabled(default_enabled)));
+    mutex.lock()
+}
 
 // ----------------------------------------------------------------------------
 
@@ -96,13 +109,13 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // called more than once.
     re_log::setup_native_logging();
 
-    global_session()
+    python_session()
         .set_recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)));
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
     // See `default_recording_id` for extra information.
-    global_session().set_recording_id(default_recording_id(py));
+    python_session().set_recording_id(default_recording_id(py));
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
 
@@ -224,7 +237,7 @@ fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
 
 #[pyfunction]
 fn get_recording_id() -> PyResult<String> {
-    global_session()
+    python_session()
         .recording_id()
         .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
         .map(|recording_id| recording_id.to_string())
@@ -233,7 +246,7 @@ fn get_recording_id() -> PyResult<String> {
 #[pyfunction]
 fn set_recording_id(recording_id: &str) -> PyResult<()> {
     if let Ok(recording_id) = recording_id.parse() {
-        global_session().set_recording_id(recording_id);
+        python_session().set_recording_id(recording_id);
         Ok(())
     } else {
         Err(PyTypeError::new_err(format!(
@@ -258,13 +271,8 @@ fn init(application_id: String, application_path: Option<PathBuf>, default_enabl
         false
     });
 
-    let mut session = rerun::global_session_with_default_enabled(default_enabled);
-
-    // HOTFIX: Currently, the session is already fetched when initializing the bindings, and so
-    // `default_enabled` has already been set... we need to overwrite it if the user calls `init`
-    // manually.
+    let mut session = python_session();
     session.set_default_enabled(default_enabled);
-
     session.set_application_id(ApplicationId(application_id), is_official_example);
 }
 
@@ -273,9 +281,9 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
-        re_sdk_comms::default_server_addr()
+        rerun::default_server_addr()
     };
-    global_session().connect(addr);
+    python_session().connect(addr);
     Ok(())
 }
 
@@ -285,7 +293,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 fn serve(open_browser: bool) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
-        global_session().serve(open_browser);
+        rerun::serve_web_viewer(&mut python_session(), open_browser);
         Ok(())
     }
 
@@ -304,7 +312,7 @@ fn shutdown(py: Python<'_>) {
     // cleanup a python object.
     py.allow_threads(|| {
         re_log::debug!("Shutting down the Rerun SDK");
-        let mut session = global_session();
+        let mut session = python_session();
         session.drop_msgs_if_disconnected();
         session.flush();
         session.disconnect();
@@ -314,7 +322,7 @@ fn shutdown(py: Python<'_>) {
 /// Is logging enabled in the global session?
 #[pyfunction]
 fn is_enabled() -> bool {
-    global_session().is_enabled()
+    python_session().is_enabled()
 }
 
 /// Enable or disable logging in the global session.
@@ -323,7 +331,7 @@ fn is_enabled() -> bool {
 /// By default logging is enabled.
 #[pyfunction]
 fn set_enabled(enabled: bool) {
-    global_session().set_enabled(enabled);
+    python_session().set_enabled(enabled);
 }
 
 /// Disconnect from remote server (if any).
@@ -332,12 +340,12 @@ fn set_enabled(enabled: bool) {
 /// or shown with `show`.
 #[pyfunction]
 fn disconnect() {
-    global_session().disconnect();
+    python_session().disconnect();
 }
 
 #[pyfunction]
 fn save(path: &str) -> PyResult<()> {
-    let mut session = global_session();
+    let mut session = python_session();
     session
         .save(path)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
@@ -438,7 +446,7 @@ fn log_transform(
     if entity_path.is_root() {
         return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
     }
-    let mut session = global_session();
+    let mut session = python_session();
     let time_point = time(timeless);
 
     // We currently log arrow transforms from inside the bridge because we are
@@ -519,7 +527,7 @@ fn log_view_coordinates(
         parse_entity_path(entity_path_str)?
     };
 
-    let mut session = global_session();
+    let mut session = python_session();
     let time_point = time(timeless);
 
     // We currently log view coordinates from inside the bridge because the code
@@ -581,7 +589,7 @@ fn log_meshes(
         )));
     }
 
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(timeless);
 
@@ -689,7 +697,7 @@ fn log_mesh_file(
         ]
     };
 
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(timeless);
 
@@ -780,7 +788,7 @@ fn log_image_file(
         }
     };
 
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(timeless);
 
@@ -835,7 +843,7 @@ fn log_annotation_context(
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut session = global_session();
+    let mut session = python_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let entity_path = if entity_path_str == "/" {
@@ -888,7 +896,7 @@ fn log_annotation_context(
 #[pyfunction]
 fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(false);
 
@@ -906,7 +914,7 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     // cause a deadlock.
     let msg = crate::arrow::build_chunk_from_components(&entity_path, components, &time(timeless))?;
 
-    let mut session = global_session();
+    let mut session = python_session();
     session.send(msg);
 
     Ok(())

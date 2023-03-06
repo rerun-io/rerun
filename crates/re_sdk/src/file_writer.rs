@@ -2,6 +2,7 @@ use anyhow::Context as _;
 
 use re_log_types::LogMsg;
 
+/// Stream log messages to a file.
 pub struct FileWriter {
     // None = quit
     tx: std::sync::mpsc::Sender<Option<LogMsg>>,
@@ -50,8 +51,10 @@ impl FileWriter {
             join_handle: Some(join_handle),
         })
     }
+}
 
-    pub fn write(&self, msg: LogMsg) {
+impl crate::LogSink for FileWriter {
+    fn send(&mut self, msg: LogMsg) {
         self.tx.send(Some(msg)).ok();
     }
 }

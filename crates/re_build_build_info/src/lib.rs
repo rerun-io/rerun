@@ -36,6 +36,11 @@ pub fn export_env_vars() {
     set_env("RE_BUILD_GIT_HASH", &git_hash().unwrap_or_default());
     set_env("RE_BUILD_GIT_BRANCH", &git_branch().unwrap_or_default());
 
+    // rust version
+    let (rustc, llvm) = rust_version().unwrap_or_default();
+    set_env("RE_BUILD_RUSTC_VERSION", &rustc);
+    set_env("RE_BUILD_LLVM_VERSION", &llvm);
+
     // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
     // because otherwise it won't show up when compiling through maturin.
     // We must also make an exception for when we build actual wheels (on CI) for release.
@@ -74,7 +79,7 @@ fn set_env(name: &str, value: &str) {
     println!("cargo:rustc-env={name}={value}");
 }
 
-fn run_command(cmd: &'static str, args: &[&str]) -> anyhow::Result<String> {
+fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {
     let output = Command::new(cmd)
         .args(args)
         .output()
@@ -100,4 +105,43 @@ fn git_branch() -> anyhow::Result<String> {
 /// For example, if `$GIT_OBJECT_DIRECTORY` is set to /foo/bar then `git rev-parse --git-path objects/abc` returns `/foo/bar/abc`.
 fn git_path(path: &str) -> anyhow::Result<String> {
     run_command("git", &["rev-parse", "--git-path", path])
+}
+
+/// Returns `(rustc, LLVM)` versions.
+///
+/// Defaults to `"unknown"` if, for whatever reason, the output from `rustc -vV` did not contain
+/// version information and/or the output format underwent breaking changes.
+fn rust_version() -> anyhow::Result<(String, String)> {
+    let cmd = std::env::var("RUSTC").unwrap_or("rustc".into());
+    let args = &["-vV"];
+
+    // $ rustc -vV
+    // rustc 1.67.0 (fc594f156 2023-01-24)
+    // binary: rustc
+    // commit-hash: fc594f15669680fa70d255faec3ca3fb507c3405
+    // commit-date: 2023-01-24
+    // host: x86_64-unknown-linux-gnu
+    // release: 1.67.0
+    // LLVM version: 15.0.6
+
+    let res = run_command(&cmd, args)?;
+
+    let mut rustc_version = None;
+    let mut llvm_version = None;
+
+    for line in res.lines() {
+        if let Some(version) = line.strip_prefix("rustc ") {
+            rustc_version = Some(version.to_owned());
+        } else if let Some(version) = line.strip_prefix("LLVM version: ") {
+            llvm_version = Some(version.to_owned());
+        }
+    }
+
+    // NOTE: This should never happen, but if it does, we want to make sure we can differentiate
+    // between "failed to invoke rustc" vs. "rustc's output did not contain any version (??)
+    // and/or the output format has changed".
+    Ok((
+        rustc_version.unwrap_or_else(|| "unknown".to_owned()),
+        llvm_version.unwrap_or_else(|| "unknown".to_owned()),
+    ))
 }
