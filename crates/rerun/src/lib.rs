@@ -111,7 +111,7 @@ pub use run::{run, CallSource};
 pub use re_sdk::*;
 
 #[cfg(all(feature = "sdk", feature = "web_viewer"))]
-pub use web_viewer::WebViewerSessionExt;
+pub use web_viewer::serve_web_viewer;
 
 /// Re-exports of other crates.
 pub mod external {

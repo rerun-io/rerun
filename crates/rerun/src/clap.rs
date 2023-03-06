@@ -69,8 +69,7 @@ impl RerunArgs {
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                use crate::WebViewerSessionExt as _;
-                session.serve(true);
+                crate::serve_web_viewer(session, true);
             }
 
             RerunBehavior::Spawn => return Ok(true),

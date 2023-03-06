@@ -62,31 +62,24 @@ impl crate::LogSink for RemoteViewerServer {
 
 // ----------------------------------------------------------------------------
 
-/// Extension trait for [`crate::Session`] to allow serving a web-viewer with `session.serve()`.
-pub trait WebViewerSessionExt {
-    /// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
-    ///
-    /// If the `open_browser` argument is `true`, your default browser
-    /// will be opened with a connected web-viewer.
-    ///
-    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
-    ///
-    /// NOTE: you can not connect one `Session` to another.
-    ///
-    /// This function returns immediately.
-    fn serve(&mut self, open_browser: bool);
-}
-
-impl WebViewerSessionExt for crate::Session {
-    fn serve(&mut self, open_browser: bool) {
-        if !self.is_enabled() {
-            re_log::debug!("Rerun disabled - call to serve() ignored");
-            return;
-        }
-
-        self.set_sink(Box::new(RemoteViewerServer::new(
-            self.tokio_runtime(),
-            open_browser,
-        )));
+/// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+///
+/// If the `open_browser` argument is `true`, your default browser
+/// will be opened with a connected web-viewer.
+///
+/// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
+///
+/// NOTE: you can not connect one `Session` to another.
+///
+/// This function returns immediately.
+pub fn serve_web_viewer(session: &mut crate::Session, open_browser: bool) {
+    if !session.is_enabled() {
+        re_log::debug!("Rerun disabled - call to serve() ignored");
+        return;
     }
+
+    session.set_sink(Box::new(RemoteViewerServer::new(
+        session.tokio_runtime(),
+        open_browser,
+    )));
 }
