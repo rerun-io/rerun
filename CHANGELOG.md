@@ -94,6 +94,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Versioned log streams streams [#1420](https://github.com/rerun-io/rerun/pull/1420)
 * Fix path issues when running debug viewer within workspace [#1341](https://github.com/rerun-io/rerun/pull/1341)
 * Detailed errors for re_renderer `include_file!` [#1339](https://github.com/rerun-io/rerun/pull/1339)
+* Limit logging in web-viewer to `warn` in order to workaround a crash issue (and reduce log spam) [1514](https://github.com/rerun-io/rerun/pull/1514)
 
 #### CI, Testing & Build improvements
 * Reduce build dependencies
