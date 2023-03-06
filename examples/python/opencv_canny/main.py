@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-Very simple example of capturing from a live webcam.
+Very simple example of capturing from a live camera.
+
+Runs the opencv canny edge detector on the image stream.
+
+Known issues:
+ - Only two layers of image transparency are visible. [#1503](https://github.com/rerun-io/rerun/issues/1503)
 
 NOTE: this example currently runs forever and will eventually exhaust your
 system memory. It is advised you run an independent rerun viewer with a memory
@@ -51,7 +56,7 @@ def run_canny() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Streams a local system camera and runs the canny edge detector.")
     parser.add_argument(
         "--device", type=int, default=0, help="Which camera device to use. (Passed to `cv2.VideoCapture()`)"
     )
