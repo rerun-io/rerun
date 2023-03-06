@@ -46,7 +46,7 @@ struct Args {
     port: u16,
 
     /// Start the viewer in the browser (instead of locally).
-    /// Requires Rerun to have been compiled with the 'web' feature.
+    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
     #[clap(long)]
     web_viewer: bool,
 
@@ -321,7 +321,7 @@ async fn run_impl(
         #[cfg(not(feature = "web_viewer"))]
         {
             _ = (call_source, rx);
-            anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+            anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
         }
     } else {
         #[cfg(feature = "native_viewer")]
@@ -415,7 +415,7 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
 
 #[cfg(not(feature = "web_viewer"))]
 async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
-    panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+    panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
 }
 
 #[cfg(feature = "server")]
