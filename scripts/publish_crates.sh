@@ -69,7 +69,7 @@ elif [ $pkillexitstatus -eq 3 ]; then
   echo "fatal error"
   exit $pkillexitstatus
 else
-  echo "unexected error running pkill"
+  echo "unexpected error running pkill"
   exit $pkillexitstatus
 fi
 
