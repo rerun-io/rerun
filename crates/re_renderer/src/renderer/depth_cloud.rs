@@ -240,14 +240,40 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
 
     let format_info = depth_texture_desc.format.describe();
     let width_blocks = depth_cloud.depth_dimensions.x / format_info.block_dimensions.0 as u32;
+    let height_blocks = depth_cloud.depth_dimensions.y / format_info.block_dimensions.1 as u32;
     let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+
+    // TODO(andreas): CpuGpuWriteBelt should make it easier to do this.
+    let bytes_per_row_aligned =
+        wgpu::util::align_to(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+    let bytes_padding_per_row = (bytes_per_row_aligned - bytes_per_row_unaligned) as usize;
+    // Sanity check the padding size. If this happens something is seriously wrong, as it would imply
+    // that we can't express the required alignment with the block size.
+    debug_assert!(
+        bytes_padding_per_row % std::mem::size_of::<T>() == 0,
+        "Padding is not a multiple of pixel size. Can't correctly pad the texture data"
+    );
+    let blocks_padding_per_row = bytes_padding_per_row / std::mem::size_of::<T>();
 
     let mut depth_texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
         &ctx.device,
         &ctx.gpu_resources.buffers,
-        data.len(),
+        data.len() + blocks_padding_per_row * height_blocks as usize,
     );
-    depth_texture_staging.extend_from_slice(data);
+
+    // Fill with a single copy if possible, otherwise do multiple, filling in padding.
+    if blocks_padding_per_row == 0 {
+        depth_texture_staging.extend_from_slice(data);
+    } else {
+        let row_padding = std::iter::repeat(T::zeroed())
+            .take(blocks_padding_per_row)
+            .collect::<Vec<_>>();
+
+        for row in data.chunks(width_blocks as usize) {
+            depth_texture_staging.extend_from_slice(row);
+            depth_texture_staging.extend_from_slice(&row_padding);
+        }
+    }
 
     depth_texture_staging.copy_to_texture(
         ctx.active_frame.encoder.lock().get(),
@@ -257,7 +283,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        Some(NonZeroU32::new(bytes_per_row_unaligned).expect("invalid bytes per row")),
+        Some(NonZeroU32::new(bytes_per_row_aligned).expect("invalid bytes per row")),
         None,
         depth_texture_size,
     );
