@@ -1,7 +1,8 @@
 //! This module provides integration with integration with [`clap`](https://github.com/clap-rs/clap).
 
-use crate::Session;
 use std::{net::SocketAddr, path::PathBuf};
+
+use crate::Session;
 
 // ---
 
@@ -24,7 +25,7 @@ enum RerunBehavior {
 /// #[clap(author, version, about)]
 /// struct MyArgs {
 ///     #[command(flatten)]
-///     rerun: re_sdk::clap::RerunArgs,
+///     rerun: rerun::clap::RerunArgs,
 ///
 ///     #[clap(long)]
 ///     my_arg: bool,
@@ -63,9 +64,14 @@ impl RerunArgs {
     pub fn on_startup(&self, session: &mut Session) -> anyhow::Result<bool> {
         match self.to_behavior() {
             RerunBehavior::Connect(addr) => session.connect(addr),
+
             RerunBehavior::Save(path) => session.save(path)?,
+
             #[cfg(feature = "web_viewer")]
-            RerunBehavior::Serve => session.serve(true),
+            RerunBehavior::Serve => {
+                crate::serve_web_viewer(session, true);
+            }
+
             RerunBehavior::Spawn => return Ok(true),
         }
 

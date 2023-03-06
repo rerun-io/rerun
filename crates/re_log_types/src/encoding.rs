@@ -233,7 +233,8 @@ fn test_encode_decode() {
             is_official_example: true,
             started: Time::now(),
             recording_source: crate::RecordingSource::RustSdk {
-                rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
+                rustc_version: String::new(),
+                llvm_version: String::new(),
             },
         },
     })];

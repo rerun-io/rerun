@@ -79,8 +79,8 @@ impl ViewerAnalytics {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
-            AppEnvironment::RustSdk { rust_version: _ } => "rust_sdk",
-            AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
+            AppEnvironment::RustSdk { .. } => "rust_sdk",
+            AppEnvironment::RerunCli { .. } => "rerun_cli",
             AppEnvironment::Web => "web_viewer",
         };
         self.register("app_env", app_env_str);
@@ -95,9 +95,16 @@ impl ViewerAnalytics {
             // The Python/Rust versions appearing in user profiles always apply to the host
             // environment, _not_ the environment in which the data logging is taking place!
             match &app_env {
-                AppEnvironment::RustSdk { rust_version }
-                | AppEnvironment::RerunCli { rust_version } => {
-                    event = event.with_prop("rust_version", rust_version.clone());
+                AppEnvironment::RustSdk {
+                    rustc_version,
+                    llvm_version,
+                }
+                | AppEnvironment::RerunCli {
+                    rustc_version,
+                    llvm_version,
+                } => {
+                    event = event.with_prop("rust_version", rustc_version.clone());
+                    event = event.with_prop("llvm_version", llvm_version.clone());
                 }
                 _ => {}
             }
@@ -145,7 +152,7 @@ impl ViewerAnalytics {
             let recording_source = match &rec_info.recording_source {
                 RecordingSource::Unknown => "unknown".to_owned(),
                 RecordingSource::PythonSdk(_version) => "python_sdk".to_owned(),
-                RecordingSource::RustSdk { rust_version: _ } => "rust_sdk".to_owned(),
+                RecordingSource::RustSdk { .. } => "rust_sdk".to_owned(),
                 RecordingSource::Other(other) => other.clone(),
             };
 
@@ -154,13 +161,19 @@ impl ViewerAnalytics {
             //
             // The Python/Rust versions appearing in events always apply to the recording
             // environment, _not_ the environment in which the viewer is running!
-            if let RecordingSource::RustSdk { rust_version } = &rec_info.recording_source {
+            if let RecordingSource::RustSdk {
+                rustc_version: rust_version,
+                llvm_version,
+            } = &rec_info.recording_source
+            {
                 self.register("rust_version", rust_version.to_string());
+                self.register("llvm_version", llvm_version.to_string());
                 self.deregister("python_version"); // can't be both!
             }
             if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {
                 self.register("python_version", version.to_string());
                 self.deregister("rust_version"); // can't be both!
+                self.deregister("llvm_version"); // can't be both!
             }
 
             self.register("recording_source", recording_source);

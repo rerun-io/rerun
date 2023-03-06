@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&colors)?
         .send(&mut session)?;
 
-    session.show()?;
+    rerun::native_viewer::show(&mut session)?;
 
     Ok(())
 }
