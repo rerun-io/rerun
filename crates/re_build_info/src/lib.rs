@@ -20,6 +20,8 @@ macro_rules! build_info {
             llvm_version: env!("RE_BUILD_LLVM_VERSION"),
             git_hash: env!("RE_BUILD_GIT_HASH"),
             git_branch: env!("RE_BUILD_GIT_BRANCH"),
+            // TODO(cmc): `PartialEq` is not available in const contexts, so this won't actually
+            // build if you try to instantiate a BuildInfo in a constant.
             is_in_rerun_workspace: env!("RE_BUILD_IS_IN_RERUN_WORKSPACE") == "yes",
             target_triple: env!("RE_BUILD_TARGET_TRIPLE"),
             datetime: env!("RE_BUILD_DATETIME"),

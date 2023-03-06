@@ -261,8 +261,8 @@ pub enum RecordingSource {
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
-        /// `CARGO_PKG_RUST_VERSION` = the MSRV specified by out crate. TODO(#1509): remove or improve
-        rust_version: String,
+        rustc_version: String,
+        llvm_version: String,
     },
 
     /// Perhaps from some manual data ingestion?
@@ -274,7 +274,10 @@ impl std::fmt::Display for RecordingSource {
         match self {
             Self::Unknown => "Unknown".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk { rust_version } => write!(f, "Rust {rust_version} SDK"),
+            Self::RustSdk {
+                rustc_version: rust_version,
+                llvm_version: _,
+            } => write!(f, "Rust {rust_version} SDK"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
