@@ -76,7 +76,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * Before pushing the release tag:
     * [ ] `just py-run-all`
     * [ ] Test the web viewer:
-        * [ ] `cargo run -p rerun --features web -- --web-viewer ../nyud.rrd`
+        * [ ] `cargo run -p rerun --features web_viewer -- --web-viewer ../nyud.rrd`
         * [ ] Test on:
             * [ ] Chromium
             * [ ] Firefox
