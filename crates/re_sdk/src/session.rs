@@ -107,7 +107,8 @@ impl Session {
             enabled,
 
             recording_source: RecordingSource::RustSdk {
-                rust_version: env!("CARGO_PKG_RUST_VERSION").into(),
+                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
 
             #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]

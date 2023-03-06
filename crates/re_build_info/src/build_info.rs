@@ -17,6 +17,12 @@ pub struct BuildInfo {
     /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
     pub version: super::CrateVersion,
 
+    /// The raw version string of the Rust compiler used, or an empty string.
+    pub rustc_version: &'static str,
+
+    /// The raw version string of the LLVM toolchain used, or an empty string.
+    pub llvm_version: &'static str,
+
     /// Git commit hash, or empty string.
     pub git_hash: &'static str,
 
@@ -55,6 +61,8 @@ impl std::fmt::Display for BuildInfo {
         let Self {
             crate_name,
             version,
+            rustc_version,
+            llvm_version,
             git_hash,
             git_branch,
             is_in_rerun_workspace: _,
@@ -62,7 +70,18 @@ impl std::fmt::Display for BuildInfo {
             datetime,
         } = self;
 
+        let rustc_version = (!rustc_version.is_empty()).then(|| format!("rustc {rustc_version}"));
+        let llvm_version = (!llvm_version.is_empty()).then(|| format!("LLVM {llvm_version}"));
+
         write!(f, "{crate_name} {version}")?;
+
+        if let Some(rustc_version) = rustc_version {
+            write!(f, " [{rustc_version}")?;
+            if let Some(llvm_version) = llvm_version {
+                write!(f, ", {llvm_version}")?;
+            }
+            write!(f, "]")?;
+        }
 
         write!(f, " {target_triple}")?;
 

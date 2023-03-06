@@ -1119,6 +1119,8 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
     let re_build_info::BuildInfo {
         crate_name,
         version,
+        rustc_version,
+        llvm_version,
         git_hash: _,
         git_branch: _,
         is_in_rerun_workspace: _,
@@ -1128,10 +1130,24 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
 
     ui.style_mut().wrap = Some(false);
 
+    let rustc_version = if rustc_version.is_empty() {
+        "unknown"
+    } else {
+        rustc_version
+    };
+
+    let llvm_version = if llvm_version.is_empty() {
+        "unknown"
+    } else {
+        llvm_version
+    };
+
     ui.label(format!(
         "{crate_name} {version}\n\
         {target_triple}\n\
-        Built {datetime}"
+        rustc {rustc_version}\n\
+        LLVM {llvm_version}\n\
+        Built {datetime}",
     ));
 
     ui.add_space(12.0);
