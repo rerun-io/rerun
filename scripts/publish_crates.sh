@@ -56,7 +56,23 @@ set -x
 # though, so unless you have tools set up to run build scripts with the `--release` flag, we _should_ be fine,
 # but just in case:
 echo "MAKE SURE RUST ANALYZER, BACON, CARGO-WATCH etc are all OFF!"
-sudo pkill -9 rust-analyzer bacon cargo cargo-watch
+pkillexitstatus=0
+sudo pkill -9 rust-analyzer bacon cargo cargo-watch || pkillexitstatus=$?
+if [ $pkillexitstatus -eq 0 ]; then
+  echo "killed one or more processes"
+elif [ $pkillexitstatus -eq 1 ]; then
+  echo "no problematic processes found"
+elif [ $pkillexitstatus -eq 2 ]; then
+  echo "syntax error in the pkill command line"
+  exit $pkillexitstatus
+elif [ $pkillexitstatus -eq 3 ]; then
+  echo "fatal error"
+  exit $pkillexitstatus
+else
+  echo "unexected error running pkill"
+  exit $pkillexitstatus
+fi
+
 
 rm -rf target_wasm # force clean build
 rm -f web_viewer/re_viewer_bg.wasm
