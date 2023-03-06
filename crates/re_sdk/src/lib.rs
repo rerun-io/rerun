@@ -10,14 +10,14 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod file_writer;
 
-#[cfg(feature = "global")]
+#[cfg(feature = "global_session")]
 mod global;
 
 mod log_sink;
 mod msg_sender;
 mod session;
 
-#[cfg(feature = "global")]
+#[cfg(feature = "global_session")]
 pub use self::global::{global_session, global_session_with_default_enabled};
 
 pub use self::msg_sender::{MsgSender, MsgSenderError};

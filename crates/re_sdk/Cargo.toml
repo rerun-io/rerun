@@ -26,7 +26,7 @@ demo = []
 glam = ["re_log_types/glam"]
 
 ## Add the `global_session` method.
-global = ["dep:once_cell", "dep:parking_lot"]
+global_session = ["dep:once_cell", "dep:parking_lot"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]

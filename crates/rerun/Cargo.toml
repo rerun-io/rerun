@@ -34,7 +34,7 @@ glam = ["re_sdk?/glam"]
 
 ## Add the `global_session` method.
 ## Only makes sense together with the `sdk` feature.
-global = ["re_sdk?/global"]
+global_session = ["re_sdk?/global_session"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
