@@ -240,7 +240,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
 
     let format_info = depth_texture_desc.format.describe();
     let width_blocks = depth_cloud.depth_dimensions.x / format_info.block_dimensions.0 as u32;
-    let height_blocks = depth_cloud.depth_dimensions.y / format_info.block_dimensions.0 as u32;
+    let height_blocks = depth_cloud.depth_dimensions.y / format_info.block_dimensions.1 as u32;
     let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
 
     // TODO(andreas): CpuGpuWriteBelt should make it easier to do this.
