@@ -133,6 +133,12 @@ impl Session {
         self.enabled = enabled;
     }
 
+    /// Set whether or not logging is enabled by default.
+    /// This will be overridden by the `RERUN` environment variable, if found.
+    pub fn set_default_enabled(&mut self, default_enabled: bool) {
+        self.enabled = crate::decide_logging_enabled(default_enabled);
+    }
+
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
     ///
     /// This should be called once before anything else.
