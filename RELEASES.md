@@ -54,6 +54,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
     * Go through https://github.com/rerun-io/rerun/compare/latest...HEAD and manually add any important PR descriptions to the `CHANGELOG.md`, with a link to the PR (which should have a deeper explanation).
+      * You can use git log to quickly generate a list of commit headlines, use `git fetch --tags --force && git log --pretty=format:%s latest..HEAD` (fetch with `--force` is necessary to update the `latest` tag)
     * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
