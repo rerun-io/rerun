@@ -26,8 +26,8 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Showing tensors in the viewer is now faster
 * Log streams / .rrd files are now versioned [#1420](https://github.com/rerun-io/rerun/pull/1420)
     * ⚠️ BREAKING: old `.rrd` files no longer load
-* Less build dependencies ([still more work to do!](https://github.com/rerun-io/rerun/issues/1316))
-  * notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235)
+* Fewer build dependencies ([still more work to do!](https://github.com/rerun-io/rerun/issues/1316))
+  * notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235), thanks @mpizenberg!
 * Print more information & troubleshooting info on crash
 * u8 segmentation stay u8 now (they converted to u16 before) [#1376](https://github.com/rerun-io/rerun/pull/1376)
 
