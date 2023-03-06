@@ -77,8 +77,11 @@ fi
 rm -rf target_wasm # force clean build
 rm -f web_viewer/re_viewer_bg.wasm
 rm -f web_viewer/re_viewer.js
+rm -f web_viewer/re_viewer_debug_bg.wasm
+rm -f web_viewer/re_viewer_debug.js
 touch crates/re_viewer/src/lib.rs # force recompile of web server
 cargo r -p re_build_web_viewer -- --release
+cargo r -p re_build_web_viewer -- --debug
 
 
 # Some of build.rs scripts checks this env-var:
@@ -105,6 +108,7 @@ cargo publish $FLAGS -p re_query
 cargo publish $FLAGS -p re_sdk_comms
 cargo publish $FLAGS -p re_ws_comms
 cargo publish $FLAGS -p re_renderer
+cargo publish $FLAGS -p re_build_web_viewer
 cargo publish $FLAGS -p re_web_viewer_server
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
