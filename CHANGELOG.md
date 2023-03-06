@@ -31,8 +31,8 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Print more information & troubleshooting info on crash
 * u8 segmentation stay u8 now (they converted to u16 before) [#1376](https://github.com/rerun-io/rerun/pull/1376)
 
-#### In Detail
-##### New Features
+### In Detail
+#### New Features
 * Generate point clouds directly from depth textures
   * re_renderer: implement depth cloud renderer [#1415](https://github.com/rerun-io/rerun/pull/1415)
   * Integrate depth clouds into Rerun [#1421](https://github.com/rerun-io/rerun/pull/1421)
@@ -45,7 +45,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Add signal handler on *nix with troubleshooting and stacktrace [#1340](https://github.com/rerun-io/rerun/pull/1340)
   * Point users to our troubleshooting page on panic [#1338](https://github.com/rerun-io/rerun/pull/1338)
 
-##### Performance
+#### Performance
 * Speed up conversions for color arrays in Python [#1454](https://github.com/rerun-io/rerun/pull/1454)
 * Speed up fixed-sized array iteration [#1050](https://github.com/rerun-io/rerun/pull/1050)
 * Speed up tensor handling by padding data through more directly
@@ -59,7 +59,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
   * Uniform buffer utility using `CpuWriteGpuReadBelt` [#1400](https://github.com/rerun-io/rerun/pull/1400)
   * Use `CpuWriteGpuReadBelt` for mesh data gpu upload [#1416](https://github.com/rerun-io/rerun/pull/1416)
 
-### Small improvements & Bugfixes
+#### Small improvements & Bugfixes
 * UI
   * Add scroll-bars the "Add/Remove entities" window [#1445](https://github.com/rerun-io/rerun/pull/1445)
   * Unify the time formatting between the time panel and the plot [#1369](https://github.com/rerun-io/rerun/pull/1369)
@@ -95,7 +95,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Fix path issues when running debug viewer within workspace [#1341](https://github.com/rerun-io/rerun/pull/1341)
 * Detailed errors for re_renderer `include_file!` [#1339](https://github.com/rerun-io/rerun/pull/1339)
 
-##### CI, Testing & Build improvements
+#### CI, Testing & Build improvements
 * Reduce build dependencies
   * Get rid of time 0.1.* dependency [#1408](https://github.com/rerun-io/rerun/pull/1408)
   * Remove unnecessary ordered-float [#1461](https://github.com/rerun-io/rerun/pull/1461)
@@ -127,7 +127,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
   * Switch pre-release action to ncipollo/release-action [#1466](https://github.com/rerun-io/rerun/pull/1466)
 * Disallow some methods and types via Clippy[#1411](https://github.com/rerun-io/rerun/pull/1411)
 
-##### Other not user facing refactors
+#### Other not user facing refactors
 * Fix: don't create a dummy LogDb when opening the Rerun Menu [#1440](https://github.com/rerun-io/rerun/pull/1440)
 * `re_renderer`
   * `Draw Phases` in preparation of executing `Renderer` several times on different targets [#1419](https://github.com/rerun-io/rerun/pull/1419)
