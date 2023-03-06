@@ -107,7 +107,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Add spell checking to CI [#1492](https://github.com/rerun-io/rerun/pull/1492)
 * Repo size
   * Always create new orphaned branch for gh-pages [#1490](https://github.com/rerun-io/rerun/pull/1490)
-  * Github Action to prevent large files [#1478](https://github.com/rerun-io/rerun/pull/1478)
+  * GitHub Action to prevent large files [#1478](https://github.com/rerun-io/rerun/pull/1478)
 * Python
   * Remove the python job path filters [#1452](https://github.com/rerun-io/rerun/pull/1452)
   * Use ruff for our python lints [#1378](https://github.com/rerun-io/rerun/pull/1378)
