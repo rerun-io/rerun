@@ -7,7 +7,7 @@
 ## 0.3.0
 ### Overview & Highlights
 
-After a successful launch a couple of weeks ago, we're back with our first release!
+After a successful launch a couple of weeks ago, we're back with our second release!
 With a few exceptions this release focuses on internal refactors & improving our processes.
 However, we think you'll enjoy these goodies that made it in nonetheless!
 
