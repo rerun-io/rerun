@@ -25,7 +25,7 @@ pub trait LogSink: Send + Sync + 'static {
 
     /// Returns `false` if this sink just discards all messages.
     fn is_enabled(&self) -> bool {
-        false
+        true
     }
 }
 
