@@ -2,8 +2,8 @@
 
 use itertools::Itertools as _;
 use re_log_types::{
-    external::arrow2_convert::deserialize::{arrow_array_deserialize_iterator, TryIntoCollection},
-    msg_bundle::{wrap_in_listarray, Component, ComponentBundle, MsgBundle},
+    external::arrow2_convert::deserialize::TryIntoCollection,
+    msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
     ComponentName, EntityPath, MsgId, TimePoint,
 };
 
@@ -26,7 +26,9 @@ impl DataStore {
         let timeless = self.dump_timeless_indices(id_key);
         let temporal = self.dump_temporal_indices(id_key);
 
-        timeless.merge_by(temporal, |bundle1, bundle2| bundle1.msg_id < bundle2.msg_id)
+        timeless.merge_by(temporal, |bundle1, bundle2| {
+            bundle1.msg_id <= bundle2.msg_id
+        })
     }
 
     /// Dumps the timeless indices & tables.
@@ -57,20 +59,18 @@ impl DataStore {
             // It's up to the application layer to guarantee the presence of this index: this will
             // panic otherwise.
             let ids_index = &index.indices[&id_key];
-            let ids_table = &self.timeless_components[&id_key];
-            let ids = ids_index
-                .iter()
-                .map(|row_idx| row_idx.map(|row_idx| ids_table.get(row_idx)));
+            let ids =
+                ids_index.iter().map(
+                    move |row_idx| self.get(&[id_key], &[*row_idx])[0].clone(), /* shallow */
+                );
 
             let mut all_tables = Vec::with_capacity(all_indices.len());
             for (component, index) in &all_indices {
-                // NOTE: the store guarantees that all matching tables exist.
-                let table = &self.timeless_components[*component];
                 all_tables.push((
                     *component,
-                    index
-                        .iter()
-                        .map(|row_idx| row_idx.map(|row_idx| table.get(row_idx))),
+                    index.iter().map(
+                        |row_idx| self.get(&[**component], &[*row_idx])[0].clone(), /* shallow */
+                    ),
                 ));
             }
 
@@ -109,7 +109,7 @@ impl DataStore {
             })
         });
 
-        msg_bundles.kmerge_by(|bundle1, bundle2| bundle1.msg_id < bundle2.msg_id)
+        msg_bundles.kmerge_by(|bundle1, bundle2| bundle1.msg_id <= bundle2.msg_id)
     }
 
     /// Dumps the temporal indices & tables.
@@ -123,7 +123,7 @@ impl DataStore {
             })
         });
 
-        msg_bundles.kmerge_by(|bundle1, bundle2| bundle1.msg_id < bundle2.msg_id)
+        msg_bundles.kmerge_by(|bundle1, bundle2| bundle1.msg_id <= bundle2.msg_id)
     }
 
     /// Dumps one specific temporal bucket.
@@ -163,20 +163,17 @@ impl DataStore {
         // It's up to the application layer to guarantee the presence of this index:
         // this will panic otherwise.
         let ids_index = &index.indices[&id_key];
-        let ids_table = &self.timeless_components[&id_key];
-        let ids = ids_index
-            .iter()
-            .map(|row_idx| row_idx.map(|row_idx| ids_table.get(row_idx)));
+        let ids = ids_index.iter().map(
+            move |row_idx| self.get(&[id_key], &[*row_idx])[0].clone(), /* shallow */
+        );
 
         let mut all_tables = Vec::with_capacity(all_indices.len());
         for (component, index) in &all_indices {
-            // NOTE: the store guarantees that all matching tables exist.
-            let table = &self.timeless_components[*component];
             all_tables.push((
                 *component,
-                index
-                    .iter()
-                    .map(|row_idx| row_idx.map(|row_idx| table.get(row_idx))),
+                index.iter().map(
+                    |row_idx| self.get(&[**component], &[*row_idx])[0].clone(), /* shallow */
+                ),
             ));
         }
 
@@ -199,7 +196,8 @@ impl DataStore {
                 // instances will actually have N message IDs.
                 let msg_ids: Vec<MsgId> = TryIntoCollection::try_into_collection(msg_ids).unwrap();
 
-                // TODO: this will probably dupe for multi timepoint data
+                // TODO(cmc): We should identify and merge back together messages spread across
+                // multiple timelines.
                 let timepoint = TimePoint::from([(timeline, (*time).into())]);
 
                 let components = all_tables

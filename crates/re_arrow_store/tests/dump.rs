@@ -2,50 +2,37 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use arrow2::array::{Array, UInt64Array};
 use itertools::Itertools;
-use nohash_hasher::IntMap;
-use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
-use rand::Rng;
-use re_arrow_store::{
-    polars_util, test_bundle, DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionTarget,
-    LatestAtQuery, RangeQuery, TimeInt, TimeRange,
-};
+use re_arrow_store::{polars_util, test_bundle, DataStore, DataStoreStats, TimeInt};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Point2D, Rect2D},
+    component_types::InstanceKey,
     datagen::{
-        build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
-        build_some_point2d, build_some_rects,
+        build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
-    ComponentName, EntityPath, MsgId, TimeType, Timeline,
+    msg_bundle::{Component as _, MsgBundle},
+    EntityPath, MsgId, Time,
 };
 
-// --- LatestAt ---
+// --- Dump ---
 
 #[test]
 fn dump() {
     init_logs();
 
-    // TODO:
-    // config
-    //   dump
-    //     gc
+    // TODO(cmc): Sprinkle some serialization roundtrips in main end-to-end test suites to account
+    // for feature intersection.
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for mut config in re_arrow_store::test_util::all_configs() {
+        // NOTE: insert IDs A) are irrelevant for our purposes and B) cannot possibly match at the
+        // moment since we don't auto-merge multi-timestamp rows back into a single message (yet?).
+        config.store_insert_ids = false;
+
         let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
         let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
         let mut store3 = DataStore::new(InstanceKey::name(), config.clone());
 
         dump_impl(&mut store1, &mut store2, &mut store3);
-        // store1.gc(
-        //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-        //     Timeline::new("frame_nr", TimeType::Sequence),
-        //     MsgId::name(),
-        // );
-        // dump_impl(&mut store1, &mut store2);
     }
 }
 
@@ -56,22 +43,28 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
     let frame3: TimeInt = 3.into();
     let frame4: TimeInt = 4.into();
 
-    // TODO: real important to add an extra timeline here
     let create_bundles = |store: &mut DataStore, ent_path| {
         let ent_path = EntityPath::from(ent_path);
 
         let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-        let bundle1 =
-            test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
+        let bundle1 = test_bundle!(ent_path @ [
+            build_log_time(Time::now()), build_frame_nr(frame1),
+        ] => [instances1.clone(), colors1]);
 
         let points2 = build_some_point2d(3);
-        let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [instances1, points2]);
+        let bundle2 = test_bundle!(ent_path @ [
+            build_log_time(Time::now()), build_frame_nr(frame2),
+        ] => [instances1, points2]);
 
         let points3 = build_some_point2d(10);
-        let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
+        let bundle3 = test_bundle!(ent_path @ [
+            build_log_time(Time::now()), build_frame_nr(frame3),
+        ] => [points3]);
 
         let colors4 = build_some_colors(5);
-        let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [colors4]);
+        let bundle4 = test_bundle!(ent_path @ [
+            build_log_time(Time::now()), build_frame_nr(frame4),
+        ] => [colors4]);
 
         vec![bundle1, bundle2, bundle3, bundle4]
     };
@@ -93,10 +86,10 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
         .flat_map(|ent_path| create_bundles(store1, *ent_path))
         .collect_vec();
 
+    // Fill the first store.
     for bundle in &bundles {
         insert(store1, bundle);
     }
-
     if let err @ Err(_) = store1.sanity_check() {
         store1.sort_indices_if_needed();
         eprintln!("{store1}");
@@ -105,40 +98,51 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
 
     // Dump the first store into the second one.
     for bundle in store1.as_msg_bundles(MsgId::name()) {
-        insert(store2, &bundle);
+        store2.insert(&bundle).unwrap();
+    }
+    if let err @ Err(_) = store2.sanity_check() {
+        store2.sort_indices_if_needed();
+        eprintln!("{store2}");
+        err.unwrap();
     }
 
     // Dump the second store into the third one.
     for bundle in store2.as_msg_bundles(MsgId::name()) {
-        insert(store3, &bundle);
+        store3.insert(&bundle).unwrap();
+    }
+    if let err @ Err(_) = store3.sanity_check() {
+        store3.sort_indices_if_needed();
+        eprintln!("{store3}");
+        err.unwrap();
     }
 
-    let store1_df = store1.to_dataframe();
-    let store2_df = store2.to_dataframe();
-    let store3_df = store3.to_dataframe();
-    assert_eq!(
-        store1_df, store2_df,
+    let mut store1_df = store1.to_dataframe();
+    let mut store2_df = store2.to_dataframe();
+    let mut store3_df = store3.to_dataframe();
+    assert!(
+        store1_df == store2_df,
         "First & second stores differ:\n{store1_df}\n{store2_df}"
     );
-    assert_eq!(
-        store1_df, store3_df,
+    assert!(
+        store1_df == store3_df,
         "First & third stores differ:\n{store1_df}\n{store3_df}"
     );
 
-    // NOTE: These are <= rather than == because we're not yet identifying and filtering
-    // autogenerated cluster keys while dumping.
+    // NOTE: These are <= rather than == because..:
+    // - we're not yet identifying and filtering autogenerated cluster keys while dumping
+    // - we're not yet identifying and merging multi-timestamp rows
     let store1_stats = DataStoreStats::from_store(store1);
     let store2_stats = DataStoreStats::from_store(store2);
     let store3_stats = DataStoreStats::from_store(store3);
     assert!(
         store1_stats <= store2_stats,
         "First store should have <= amount of data of second store:\n\
-            {store1_stats:?}\n{store2_stats:?}"
+            {store1_stats:#?}\n{store2_stats:#?}"
     );
     assert!(
         store2_stats <= store3_stats,
         "Second store should have <= amount of data of third store:\n\
-            {store2_stats:?}\n{store3_stats:?}"
+            {store2_stats:#?}\n{store3_stats:#?}"
     );
 }
 
