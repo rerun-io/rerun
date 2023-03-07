@@ -181,12 +181,20 @@ impl SessionBuilder {
 ///
 /// Cloning a [`Session`] is cheap (it's a shallow clone).
 /// The clone will send its messages to the same sink as the prototype.
+///
+/// `Session` also implements `Send` and `Sync`.
 #[must_use]
 #[derive(Clone)]
 pub struct Session {
     sink: Arc<dyn LogSink>,
     // TODO(emilk): add convenience `TimePoint` here so that users can
     // do things like `session.set_time_sequence("frame", frame_idx);`
+}
+
+#[test]
+fn session_impl_send_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<Session>();
 }
 
 impl Session {
@@ -244,7 +252,7 @@ impl Session {
     }
 
     /// Send a [`LogMsg`].
-    pub fn send(&mut self, log_msg: LogMsg) {
+    pub fn send(&self, log_msg: LogMsg) {
         self.sink.send(log_msg);
     }
 
@@ -252,7 +260,7 @@ impl Session {
     ///
     /// This is a convenience wrapper for [`Self::send`].
     pub fn send_path_op(
-        &mut self,
+        &self,
         time_point: &re_log_types::TimePoint,
         path_op: re_log_types::PathOp,
     ) {
@@ -264,7 +272,7 @@ impl Session {
     }
 
     /// Drain all buffered [`LogMsg`]es and return them.
-    pub fn drain_backlog(&mut self) -> Vec<LogMsg> {
+    pub fn drain_backlog(&self) -> Vec<LogMsg> {
         self.sink.drain_backlog()
     }
 }
