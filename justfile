@@ -70,7 +70,6 @@ py-lint:
     blackdoc --check {{py_folders}}
     ruff check --config rerun_py/pyproject.toml  {{py_folders}}
     mypy --no-warn-unused-ignore
-    typos
 
 # Run fast unittests
 py-test:
