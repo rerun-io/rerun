@@ -52,6 +52,7 @@ rerun = { workspace = true, default-features = false, features = [
 ] }
 
 ahash = "0.8"
+anyhow.workspace = true
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"

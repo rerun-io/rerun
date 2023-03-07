@@ -4288,6 +4288,7 @@ name = "rerun_py"
 version = "0.3.0"
 dependencies = [
  "ahash 0.8.2",
+ "anyhow",
  "arrow2",
  "bytemuck",
  "crossbeam",

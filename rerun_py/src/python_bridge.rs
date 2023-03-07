@@ -27,20 +27,16 @@ pub use rerun::{
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
-use crate::arrow::get_registered_component_names;
+use crate::{arrow::get_registered_component_names, python_session::PythonSession};
 
 // ----------------------------------------------------------------------------
 
-/// The [`rerun::Session`] object used by the Python API.
-fn python_session() -> parking_lot::MutexGuard<'static, rerun::Session> {
+/// The global [`PythonSession`] object used by the Python API.
+fn python_session() -> parking_lot::MutexGuard<'static, PythonSession> {
     use once_cell::sync::OnceCell;
     use parking_lot::Mutex;
-    static INSTANCE: OnceCell<Mutex<rerun::Session>> = OnceCell::new();
-
-    let default_enabled = true;
-    let mutex =
-        INSTANCE.get_or_init(|| Mutex::new(rerun::Session::with_default_enabled(default_enabled)));
-    mutex.lock()
+    static PYTHON_SESSION: OnceCell<Mutex<PythonSession>> = OnceCell::new();
+    PYTHON_SESSION.get_or_init(Default::default).lock()
 }
 
 // ----------------------------------------------------------------------------
@@ -109,8 +105,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // called more than once.
     re_log::setup_native_logging();
 
-    python_session()
-        .set_recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)));
+    python_session().set_python_version(python_version(py));
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
