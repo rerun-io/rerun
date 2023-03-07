@@ -16,19 +16,20 @@ pub struct Session {
     /// If not, all calls into it are ignored!
     enabled: bool,
 
-    recording_source: RecordingSource,
+    has_sent_begin_recording_msg: bool,
 
+    // Used in [`BeginRecordingMsg`]:
+    recording_source: RecordingSource,
+    application_id: Option<ApplicationId>,
+    recording_id: Option<RecordingId>,
+    is_official_example: Option<bool>,
+
+    // Used by `rerun::serve_web_viewer`
     #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
     tokio_runtime: tokio::runtime::Runtime,
 
     /// Where we put the log messages.
     sink: Box<dyn LogSink>,
-
-    application_id: Option<ApplicationId>,
-    recording_id: Option<RecordingId>,
-    is_official_example: Option<bool>,
-
-    has_sent_begin_recording_msg: bool,
 }
 
 impl Default for Session {
@@ -50,29 +51,7 @@ impl Session {
     /// Usually you should only call this once and then reuse the same [`Session`].
     #[track_caller]
     pub fn init(application_id: impl Into<ApplicationId>, default_enabled: bool) -> Self {
-        // official example detection
-        let is_official_example = {
-            // The sentinel file we use to identify the official examples directory.
-            const SENTINEL_FILENAME: &str = ".rerun_examples";
-
-            // TODO(cmc): Normally we should be collecting a full backtrace here in order to
-            // support cases where the caller we're interested in isn't necessarily the direct one.
-            // For now this'll do and avoids pulling `backtrace` and adding yet another feature
-            // flag.
-            let caller = core::panic::Location::caller();
-            let mut path = std::path::PathBuf::from(caller.file());
-
-            let mut is_official_example = false;
-            // more than 4 layers would be really pushing it
-            for _ in 0..4 {
-                path.pop(); // first iteration is always a file path in our examples
-                if path.join(SENTINEL_FILENAME).exists() {
-                    is_official_example = true;
-                }
-            }
-
-            is_official_example
-        };
+        let is_official_example = called_from_official_rust_example();
 
         let mut session = Self::with_default_enabled(default_enabled);
         session.set_application_id(application_id.into(), is_official_example);
@@ -313,4 +292,20 @@ impl Session {
         self.set_sink(Box::new(FileWriter::new(path)?));
         Ok(())
     }
+}
+
+#[track_caller]
+fn called_from_official_rust_example() -> bool {
+    // The sentinel file we use to identify the official examples directory.
+    const SENTINEL_FILENAME: &str = ".rerun_examples";
+    let caller = core::panic::Location::caller();
+    let mut path = std::path::PathBuf::from(caller.file());
+    let mut is_official_example = false;
+    for _ in 0..4 {
+        path.pop(); // first iteration is always a file path in our examples
+        if path.join(SENTINEL_FILENAME).exists() {
+            is_official_example = true;
+        }
+    }
+    is_official_example
 }
