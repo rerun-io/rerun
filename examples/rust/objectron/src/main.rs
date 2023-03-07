@@ -433,16 +433,12 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut session = Session::init("objectron_rs", true);
-
-    let should_spawn = args.rerun.on_startup(&mut session)?;
-    if should_spawn {
-        rerun::native_viewer::spawn(session, move |mut session| run(&mut session, &args))?;
-    } else {
-        run(&mut session, &args)?;
-        args.rerun.on_teardown();
-    }
-    Ok(())
+    let default_enabled = true;
+    args.rerun
+        .clone()
+        .run("objectron_rs", default_enabled, move |mut session| {
+            run(&mut session, &args).unwrap();
+        })
 }
 
 // --- Protobuf parsing ---

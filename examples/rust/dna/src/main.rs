@@ -97,5 +97,5 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
 
 fn main() {
     let session = Session::init("DNA Abacus", true);
-    rerun::native_viewer::spawn(session, run).unwrap();
+    rerun::native_viewer::spawn(session, |session| run(session).unwrap()).unwrap();
 }

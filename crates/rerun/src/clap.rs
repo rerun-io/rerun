@@ -33,7 +33,7 @@ enum RerunBehavior {
 /// ```
 ///
 /// Checkout the official examples to see it used in practice.
-#[derive(Debug, clap::Args, Clone)]
+#[derive(Clone, Debug, clap::Args)]
 #[clap(author, version, about)]
 pub struct RerunArgs {
     /// Start a viewer and feed it data in real-time.
@@ -58,33 +58,43 @@ pub struct RerunArgs {
 }
 
 impl RerunArgs {
-    /// Run common Rerun script setup actions. Connect to the viewer if necessary.
+    /// Set up Rerun, and run the given code with a [`Session`] object
+    /// that can be used to log data.
     ///
-    /// Returns `true` if you should call `session.spawn`.
-    pub fn on_startup(&self, session: &mut Session) -> anyhow::Result<bool> {
-        match self.to_behavior() {
-            RerunBehavior::Connect(addr) => session.connect(addr),
+    /// Logging will be controlled by the `RERUN` environment variable,
+    /// or the `default_enabled` argument if the environment variable is not set.
+    pub fn run(
+        &self,
+        application_id: &str,
+        default_enabled: bool,
+        run: impl FnOnce(Session) + Send + 'static,
+    ) -> anyhow::Result<()> {
+        let mut session = Session::init(application_id, default_enabled);
 
-            RerunBehavior::Save(path) => session.save(path)?,
+        match self.to_behavior() {
+            RerunBehavior::Connect(addr) => {
+                session.connect(addr);
+                run(session);
+            }
+
+            RerunBehavior::Save(path) => {
+                session.save(path)?;
+                run(session);
+            }
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                crate::serve_web_viewer(session, true);
+                crate::serve_web_viewer(&mut session, true);
+                run(session);
+                eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
+                std::thread::sleep(std::time::Duration::from_secs(1_000_000));
             }
 
-            RerunBehavior::Spawn => return Ok(true),
+            RerunBehavior::Spawn => {
+                crate::native_viewer::spawn(session, run)?;
+            }
         }
-
-        Ok(false)
-    }
-
-    /// Run common post-actions. Sleep if serving the web viewer.
-    pub fn on_teardown(&self) {
-        #[cfg(feature = "web_viewer")]
-        if self.to_behavior() == RerunBehavior::Serve {
-            eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C"); // TODO(emilk): sleep in `drop` instead?
-            std::thread::sleep(std::time::Duration::from_secs(1_000_000));
-        }
+        Ok(())
     }
 
     fn to_behavior(&self) -> RerunBehavior {

@@ -13,10 +13,9 @@ use re_sdk::Session;
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
 #[cfg(not(target_arch = "wasm32"))]
-pub fn spawn<F, T>(mut session: Session, run: F) -> re_viewer::external::eframe::Result<()>
+pub fn spawn<F>(mut session: Session, run: F) -> re_viewer::external::eframe::Result<()>
 where
-    F: FnOnce(Session) -> T + Send + 'static,
-    T: Send + 'static,
+    F: FnOnce(Session) + Send + 'static,
 {
     if !session.is_enabled() {
         re_log::debug!("Rerun disabled - call to rerun::native_viewer::spawn() ignored");
