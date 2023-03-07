@@ -1,5 +1,3 @@
-// TODO: all you need to dump the store as log messages
-
 use itertools::Itertools as _;
 use re_log_types::{
     external::arrow2_convert::deserialize::TryIntoCollection,

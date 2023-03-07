@@ -3,8 +3,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
-use polars_ops::prelude::DataFrameJoinOps;
-use re_arrow_store::{polars_util, test_bundle, DataStore, DataStoreStats, TimeInt};
+use re_arrow_store::{test_bundle, DataStore, DataStoreStats, TimeInt};
 use re_log_types::{
     component_types::InstanceKey,
     datagen::{
@@ -37,13 +36,12 @@ fn dump() {
 }
 
 fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataStore) {
-    let frame0: TimeInt = 0.into();
     let frame1: TimeInt = 1.into();
     let frame2: TimeInt = 2.into();
     let frame3: TimeInt = 3.into();
     let frame4: TimeInt = 4.into();
 
-    let create_bundles = |store: &mut DataStore, ent_path| {
+    let create_bundles = |ent_path| {
         let ent_path = EntityPath::from(ent_path);
 
         let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
@@ -83,7 +81,7 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
     let ent_paths = ["this/that", "other", "yet/another/one"];
     let bundles = ent_paths
         .iter()
-        .flat_map(|ent_path| create_bundles(store1, *ent_path))
+        .flat_map(|ent_path| create_bundles(*ent_path))
         .collect_vec();
 
     // Fill the first store.
@@ -116,9 +114,9 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
         err.unwrap();
     }
 
-    let mut store1_df = store1.to_dataframe();
-    let mut store2_df = store2.to_dataframe();
-    let mut store3_df = store3.to_dataframe();
+    let store1_df = store1.to_dataframe();
+    let store2_df = store2.to_dataframe();
+    let store3_df = store3.to_dataframe();
     assert!(
         store1_df == store2_df,
         "First & second stores differ:\n{store1_df}\n{store2_df}"
