@@ -155,6 +155,18 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         except TransformException as ex:
             print("Failed to get transform: {}".format(ex))
 
+    def odom_callback(self, odom: Odometry) -> None:
+        """Update transforms when odom is updated."""
+        time = Time.from_msg(odom.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        # Capture time-series data for the linear and angular velocities
+        rr.log_scalar("odometry/vel", odom.twist.twist.linear.x)
+        rr.log_scalar("odometry/ang_vel", odom.twist.twist.angular.z)
+
+        # Update the robot pose itself via TF
+        self.log_tf_as_rigid3("map/robot", time)
+
     def urdf_callback(self, urdf_msg: String) -> None:
         """Log a URDF using `log_scene` from `rerun_urdf`."""
         urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
@@ -240,12 +252,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
         self.log_tf_as_rigid3("map/robot/scan", time)
-
-    def odom_callback(self, odom: Odometry) -> None:
-        """Update transforms when odom is updated."""
-        time = Time.from_msg(odom.header.stamp)
-        rr.set_time_nanos("ros_time", time.nanoseconds)
-        self.log_tf_as_rigid3("map/robot", time)
 
 
 def main() -> None:
