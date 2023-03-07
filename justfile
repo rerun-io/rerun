@@ -2,6 +2,9 @@
 #
 # Then run `just --list` to see the available commands
 
+export RUSTFLAGS := "--deny warnings"
+export RUSTDOCFLAGS := "--deny warnings --deny rustdoc::missing_crate_level_docs"
+
 default:
   @just --list
 
@@ -12,10 +15,7 @@ format: toml-format py-format
     cargo fmt --all
 
 # Lint all of our code
-lint: toml-lint py-lint
-    cargo cranky
-    scripts/lint.py
-
+lint: toml-lint py-lint rs-lint
 
 ### Python
 
@@ -88,6 +88,16 @@ py-docs-serve:
 # This is an unstable flag, available only on nightly.
 rs-doc:
     cargo +nightly doc --all --open --keep-going --all-features -Zunstable-options
+
+# Lint all of Rust code
+rs-lint:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    cargo cranky
+    scripts/lint.py
+    cargo doc --no-deps --all-features
+    cargo doc --document-private-items --no-deps --all-features
+    cargo test --doc --all-features # runs all doc-tests
 
 
 ### TOML
