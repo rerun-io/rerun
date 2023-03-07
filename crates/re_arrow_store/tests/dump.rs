@@ -103,18 +103,21 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
     }
 
     // Dump the first store into the second one.
-    for bundle in store1.as_msg_bundles() {
+    for bundle in store1.as_msg_bundles(MsgId::name()) {
         insert(store2, &bundle);
     }
 
     // Dump the second store into the third one.
-    for bundle in store2.as_msg_bundles() {
+    for bundle in store2.as_msg_bundles(MsgId::name()) {
         insert(store3, &bundle);
     }
 
     let store1_df = store1.to_dataframe();
     let store2_df = store2.to_dataframe();
     let store3_df = store3.to_dataframe();
+
+    dbg!(DataStoreStats::from_store(store1));
+    dbg!(DataStoreStats::from_store(store3));
 
     assert_eq!(
         store1_df, store2_df,
