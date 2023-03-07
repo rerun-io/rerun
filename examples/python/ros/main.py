@@ -87,20 +87,18 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
         # Subscriptions
-
-        # The urdf is published as latching
-        self.urdf_sub = self.create_subscription(
-            String,
-            "/robot_description",
-            self.urdf_callback,
-            qos_profile=latching_qos,
-            callback_group=self.callback_group,
-        )
-
         self.info_sub = self.create_subscription(
             CameraInfo,
             "/intel_realsense_r200_depth/camera_info",
             self.cam_info_callback,
+            10,
+            callback_group=self.callback_group,
+        )
+
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            "/odom",
+            self.odom_callback,
             10,
             callback_group=self.callback_group,
         )
@@ -129,11 +127,12 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             callback_group=self.callback_group,
         )
 
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            "/odom",
-            self.odom_callback,
-            10,
+        # The urdf is published as latching
+        self.urdf_sub = self.create_subscription(
+            String,
+            "/robot_description",
+            self.urdf_callback,
+            qos_profile=latching_qos,
             callback_group=self.callback_group,
         )
 
@@ -155,31 +154,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         except TransformException as ex:
             print("Failed to get transform: {}".format(ex))
 
-    def odom_callback(self, odom: Odometry) -> None:
-        """Update transforms when odom is updated."""
-        time = Time.from_msg(odom.header.stamp)
-        rr.set_time_nanos("ros_time", time.nanoseconds)
-
-        # Capture time-series data for the linear and angular velocities
-        rr.log_scalar("odometry/vel", odom.twist.twist.linear.x)
-        rr.log_scalar("odometry/ang_vel", odom.twist.twist.angular.z)
-
-        # Update the robot pose itself via TF
-        self.log_tf_as_rigid3("map/robot", time)
-
-    def urdf_callback(self, urdf_msg: String) -> None:
-        """Log a URDF using `log_scene` from `rerun_urdf`."""
-        urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
-
-        # The turtlebot URDF appears to have scale set incorrectly for the camera-link
-        # Although rviz loads it properly `yourdfpy` does not.
-        orig, _ = urdf.scene.graph.get("camera_link")
-        scale = trimesh.transformations.scale_matrix(0.00254)
-        urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
-        scaled = urdf.scene.scaled(1.0)
-
-        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", timeless=True)
-
     def cam_info_callback(self, info: CameraInfo) -> None:
         """Log a `CameraInfo` with `log_pinhole`."""
         time = Time.from_msg(info.header.stamp)
@@ -193,6 +167,18 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             width=self.model.width,
             height=self.model.height,
         )
+
+    def odom_callback(self, odom: Odometry) -> None:
+        """Update transforms when odom is updated."""
+        time = Time.from_msg(odom.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        # Capture time-series data for the linear and angular velocities
+        rr.log_scalar("odometry/vel", odom.twist.twist.linear.x)
+        rr.log_scalar("odometry/ang_vel", odom.twist.twist.angular.z)
+
+        # Update the robot pose itself via TF
+        self.log_tf_as_rigid3("map/robot", time)
 
     def image_callback(self, img: Image) -> None:
         """Log an `Image` with `log_image` using `cv_bridge`."""
@@ -252,6 +238,19 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
         self.log_tf_as_rigid3("map/robot/scan", time)
+
+    def urdf_callback(self, urdf_msg: String) -> None:
+        """Log a URDF using `log_scene` from `rerun_urdf`."""
+        urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
+
+        # The turtlebot URDF appears to have scale set incorrectly for the camera-link
+        # Although rviz loads it properly `yourdfpy` does not.
+        orig, _ = urdf.scene.graph.get("camera_link")
+        scale = trimesh.transformations.scale_matrix(0.00254)
+        urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
+        scaled = urdf.scene.scaled(1.0)
+
+        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", timeless=True)
 
 
 def main() -> None:
