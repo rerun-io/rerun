@@ -62,6 +62,16 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
+        # Define a mapping for transforms
+        self.path_to_frame = {
+            "map": "map",
+            "map/points": "camera_depth_frame",
+            "map/robot": "base_footprint",
+            "map/robot/scan": "base_scan",
+            "map/robot/camera": "camera_rgb_optical_frame",
+            "map/robot/camera/points": "camera_depth_frame",
+        }
+
         # Assorted helpers for data conversions
         self.model = PinholeCameraModel()
         self.cv_bridge = cv_bridge.CvBridge()
@@ -69,7 +79,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         # Log a bounding box as a visual placeholder for the map
         rr.log_obb(
-            "map",
+            "map/box",
             half_size=[6, 6, 2],
             position=[0, 0, 1],
             color=[255, 255, 255, 255],
@@ -127,10 +137,18 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             callback_group=self.callback_group,
         )
 
-    def log_tf_as_rigid3(self, path: str, ros_parent_frame: str, ros_child_frame: str, time: Time) -> None:
+    def log_tf_as_rigid3(self, path: str, time: Time) -> None:
         """Helper to look up a transform with tf and log using `log_rigid3`."""
+        # Get the parent path
+        parent_path = path.rsplit("/", 1)[0]
+
+        # Find the corresponding frames from the mapping
+        child_frame = self.path_to_frame[path]
+        parent_frame = self.path_to_frame[parent_path]
+
+        # Do the TF lookup to get transform from child (source) -> parent (target)
         try:
-            tf = self.tf_buffer.lookup_transform(ros_parent_frame, ros_child_frame, time, timeout=Duration(seconds=0.1))
+            tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
             t = tf.transform.translation
             q = tf.transform.rotation
             rr.log_rigid3(path, parent_from_child=([t.x, t.y, t.z], [q.x, q.y, q.z, q.w]))
@@ -170,7 +188,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.set_time_nanos("ros_time", time.nanoseconds)
 
         rr.log_image("map/robot/camera/img", self.cv_bridge.imgmsg_to_cv2(img))
-        self.log_tf_as_rigid3("map/robot/camera", "base_footprint", "camera_rgb_optical_frame", time)
+        self.log_tf_as_rigid3("map/robot/camera", time)
 
     def points_callback(self, points: PointCloud2) -> None:
         """Log a `PointCloud2` with `log_points`."""
@@ -193,12 +211,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Log points once rigidly under robot/camera/points. This is a robot-centric
         # view of the world.
         rr.log_points("map/robot/camera/points", positions=pts, colors=colors)
-        self.log_tf_as_rigid3(
-            "map/robot/camera/points",
-            "camera_rgb_optical_frame",
-            "camera_depth_frame",
-            time,
-        )
+        self.log_tf_as_rigid3("map/robot/camera/points", time)
 
         # Log points a second time after transforming to the map frame. This is a map-centric
         # view of the world.
@@ -206,7 +219,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Once Rerun supports fixed-frame aware transforms (https://github.com/rerun-io/rerun/issues/1522)
         # this will no longer be necessary.
         rr.log_points("map/points", positions=pts, colors=colors)
-        self.log_tf_as_rigid3("map/points", "map", "camera_depth_frame", time)
+        self.log_tf_as_rigid3("map/points", time)
 
     def scan_callback(self, scan: LaserScan) -> None:
         """Log a LaserScan after transforming it to line-segments."""
@@ -223,13 +236,13 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
 
         rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
-        self.log_tf_as_rigid3("map/robot/scan", "base_footprint", "base_scan", time)
+        self.log_tf_as_rigid3("map/robot/scan", time)
 
     def odom_callback(self, odom: Odometry) -> None:
         """Update transforms when odom is updated."""
         time = Time.from_msg(odom.header.stamp)
         rr.set_time_nanos("ros_time", time.nanoseconds)
-        self.log_tf_as_rigid3("map/robot", "map", "base_footprint", time)
+        self.log_tf_as_rigid3("map/robot", time)
 
 
 def main() -> None:
