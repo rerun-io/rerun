@@ -160,7 +160,7 @@ impl Drop for Client {
         self.encode_join.take().map(|j| j.join().ok());
         self.send_join.take().map(|j| j.join().ok());
         self.drop_join.take().map(|j| j.join().ok());
-        re_log::debug!("Sender has shut down.");
+        re_log::debug!("TCP client has shut down.");
     }
 }
 

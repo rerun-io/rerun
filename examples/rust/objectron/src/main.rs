@@ -18,9 +18,11 @@ use std::{
 
 use anyhow::{anyhow, Context as _};
 
-use rerun::external::re_log;
-use rerun::time::{Time, TimePoint, TimeType, Timeline};
-use rerun::{MsgSender, Session};
+use rerun::{
+    external::re_log,
+    time::{Time, TimePoint, TimeType, Timeline},
+    MsgSender, Session,
+};
 
 // --- Rerun logging ---
 
