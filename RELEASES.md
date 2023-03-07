@@ -54,6 +54,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
     * Go through https://github.com/rerun-io/rerun/compare/latest...HEAD and manually add any important PR descriptions to the `CHANGELOG.md`, with a link to the PR (which should have a deeper explanation).
+      * You can use git log to quickly generate a list of commit headlines, use `git fetch --tags --force && git log --pretty=format:%s latest..HEAD` (fetch with `--force` is necessary to update the `latest` tag)
     * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
@@ -72,16 +73,52 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 
 
 ### Testing a release
-* Before pushing the release tag:
-    * [ ] `just py-run-all`
-    * [ ] Test the web viewer:
-        * [ ] `cargo run -p rerun --features web -- --web-viewer ../nyud.rrd`
-        * [ ] Test on:
-            * [ ] Chromium
-            * [ ] Firefox
-            * [ ] Mobile
-* After tagging and the CI has published:
-    * [ ] Test the Python packages from PyPI: `pip install --upgrade rerun-sdk`
+Before pushing the release tag:
+  * [ ] `just py-run-all`
+  * [ ] Test the web viewer:
+      * [ ] `cargo run -p rerun --features web_viewer -- --web-viewer ../nyud.rrd`
+      * [ ] Test on:
+          * [ ] Chromium
+          * [ ] Firefox
+          * [ ] Mobile
+
+After tagging and the CI has published:
+  * [ ] Test the Python packages from PyPI: `pip install rerun_sdk==0.3.0a1`
+  * [ ] Test rust install version: `cargo install -f rerun@0.3.0-alpha.1 -F web_viewer && rerun --web-viewer api.rrd`
+  * [ ] Test rust crate: Modify Cargo.toml of any example to not point to the workspace
+    * [ ] run with `--serve` to test web player
+
+Checklist for testing alpha releases:
+* Windows
+  * [ ] Python Wheel
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust crate
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust install
+    * [ ] Web
+    * [ ] Native
+* Linux
+  * [ ] Python Wheel
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust crate
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust install
+    * [ ] Web
+    * [ ] Native
+* Mac
+  * [ ] Python Wheel
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust crate
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust install
+    * [ ] Web
+    * [ ] Native
 
 
 ## Publishing
