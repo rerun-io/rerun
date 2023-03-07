@@ -29,11 +29,11 @@ Other highlights:
   * Python packages now work with Ubuntu-20.04 [#1334](https://github.com/rerun-io/rerun/pull/1334)
   * u8 segmentation stay u8 now (they converted to u16 before) [#1376](https://github.com/rerun-io/rerun/pull/1376)
   * 2D Line strips can now be logged directly [#1430](https://github.com/rerun-io/rerun/pull/1430)
-  * Add a `strict` mode to the Python SDK where misuses of the API results in exceptions being raised.[#1477](https://github.com/rerun-io/rerun/pull/1477)
+  * Add a `strict` mode to the Python SDK where misuses of the API result in exceptions being raised.[#1477](https://github.com/rerun-io/rerun/pull/1477)
   * Fix disabling Python API through `init` not working [#1517](https://github.com/rerun-io/rerun/pull/1517)
 * General
   * We build now with fewer build dependencies (there is however [still more work to do!](https://github.com/rerun-io/rerun/issues/1316)).  
-  Notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235), thanks @mpizenberg!
+  Notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235), thanks @mpizenberg for helping out!
   * Print more information & troubleshooting info on crash
 
 Meanwhile, we did a bunch of improvements to our manual. If you had trouble running Rerun so far, check our updated [troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting) page (and as always, please [open an issue](https://github.com/rerun-io/rerun/issues/new/choose) if something doesn't work).
