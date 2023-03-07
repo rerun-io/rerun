@@ -6,8 +6,8 @@ NOTE: Unlike many of the other examples, this example requires a system installa
 in addition to the packages from requirements.txt.
 """
 
+import argparse
 import sys
-from typing import List
 
 import numpy as np
 import rerun as rr
@@ -232,9 +232,14 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.log_tf_as_rigid3("map/robot", "map", "base_footprint", time)
 
 
-def main(args: List[str]) -> None:
-    rr.init("turtlebot_viz", spawn=True)
-    rclpy.init(args=args)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Simple example of a ROS node that republishes to Rerun.")
+    rr.script_add_args(parser)
+    args, unknownargs = parser.parse_known_args()
+    rr.script_setup(args, "turtlebot_viz")
+
+    # Any remaining args go to rclpy
+    rclpy.init(args=unknownargs)
 
     turtle_subscriber = TurtleSubscriber()
 
@@ -246,4 +251,4 @@ def main(args: List[str]) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
