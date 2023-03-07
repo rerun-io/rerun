@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+"""Simple example of a ROS node that republishes to Rerun."""
+
+import sys
+from typing import List
+
+import cv_bridge
+import laser_geometry
+import numpy as np
+import rclpy
+import rerun as rr
+import trimesh
+from image_geometry import PinholeCameraModel
+from nav_msgs.msg import Odometry
+from numpy.lib.recfunctions import structured_to_unstructured
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.node import Node
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile
+from rclpy.time import Duration, Time
+from rerun_urdf import load_urdf_from_msg, log_scene
+from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2, PointField
+from sensor_msgs_py import point_cloud2
+from std_msgs.msg import String
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
+
+class TurtleSubscriber(Node):  # type: ignore[misc]
+    def __init__(self) -> None:
+        super().__init__("rr_turtlebot")
+
+        # Used for subscribing to latching topics
+        latching_qos = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+
+        # Allow concurrent callbacks
+        self.callback_group = ReentrantCallbackGroup()
+
+        # Subscribe to TF topics
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        # Assorted helpers for data conversions
+        self.model = PinholeCameraModel()
+        self.cv_bridge = cv_bridge.CvBridge()
+        self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
+
+        # Log a bounding box as a visual placeholder for the map
+        rr.log_obb(
+            "map",
+            half_size=[6, 6, 2],
+            position=[0, 0, 1],
+            color=[255, 255, 255, 255],
+            timeless=True,
+        )
+
+        # Subscriptions
+
+        # The urdf is published as latching
+        self.urdf_sub = self.create_subscription(
+            String,
+            "/robot_description",
+            self.urdf_callback,
+            qos_profile=latching_qos,
+            callback_group=self.callback_group,
+        )
+
+        self.info_sub = self.create_subscription(
+            CameraInfo,
+            "/intel_realsense_r200_depth/camera_info",
+            self.cam_info_callback,
+            10,
+            callback_group=self.callback_group,
+        )
+
+        self.img_sub = self.create_subscription(
+            Image,
+            "/intel_realsense_r200_depth/image_raw",
+            self.image_callback,
+            10,
+            callback_group=self.callback_group,
+        )
+
+        self.points_sub = self.create_subscription(
+            PointCloud2,
+            "/intel_realsense_r200_depth/points",
+            self.points_callback,
+            10,
+            callback_group=self.callback_group,
+        )
+
+        self.scan_sub = self.create_subscription(
+            LaserScan,
+            "/scan",
+            self.scan_callback,
+            10,
+            callback_group=self.callback_group,
+        )
+
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            "/odom",
+            self.odom_callback,
+            10,
+            callback_group=self.callback_group,
+        )
+
+    def log_tf_as_rigid3(self, path: str, ros_parent_frame: str, ros_child_frame: str, time: Time) -> None:
+        """Helper to look up a transform with tf and log using `log_rigid3`."""
+        try:
+            tf = self.tf_buffer.lookup_transform(ros_parent_frame, ros_child_frame, time, timeout=Duration(seconds=0.1))
+            t = tf.transform.translation
+            q = tf.transform.rotation
+            rr.log_rigid3(path, parent_from_child=([t.x, t.y, t.z], [q.x, q.y, q.z, q.w]))
+        except TransformException as ex:
+            print("Failed to get transform: {}".format(ex))
+
+    def urdf_callback(self, urdf_msg: String) -> None:
+        """Log a URDF using `log_scene` from `rerun_urdf`."""
+        urdf = load_urdf_from_msg(urdf_msg)
+
+        # The turtlebot URDF appears to have scale set incorrectly for the camera-link
+        # Although rviz loads it properly `yourdfpy` does not.
+        orig, _ = urdf.scene.graph.get("camera_link")
+        scale = trimesh.transformations.scale_matrix(0.00254)
+        urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
+        scaled = urdf.scene.scaled(1.0)
+
+        log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf")
+
+    def cam_info_callback(self, info: CameraInfo) -> None:
+        """Log a `CameraInfo` with `log_pinhole`."""
+        time = Time.from_msg(info.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        self.model.fromCameraInfo(info)
+
+        rr.log_pinhole(
+            "map/robot/camera/img",
+            child_from_parent=self.model.intrinsicMatrix(),
+            width=self.model.width,
+            height=self.model.height,
+        )
+
+    def image_callback(self, img: Image) -> None:
+        """Log an `Image` with `log_image` using `cv_bridge`."""
+        time = Time.from_msg(img.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        rr.log_image("map/robot/camera/img", self.cv_bridge.imgmsg_to_cv2(img))
+        self.log_tf_as_rigid3("map/robot/camera", "base_footprint", "camera_rgb_optical_frame", time)
+
+    def points_callback(self, points: PointCloud2) -> None:
+        """Log a `PointCloud2` with `log_points`."""
+        time = Time.from_msg(points.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        pts = point_cloud2.read_points(points, field_names=["x", "y", "z"], skip_nans=True)
+
+        points.fields = [
+            PointField(name="r", offset=16, datatype=PointField.UINT8, count=1),
+            PointField(name="g", offset=17, datatype=PointField.UINT8, count=1),
+            PointField(name="b", offset=18, datatype=PointField.UINT8, count=1),
+        ]
+
+        colors = point_cloud2.read_points(points, field_names=["r", "g", "b"], skip_nans=True)
+
+        pts = structured_to_unstructured(pts)
+        colors = colors = structured_to_unstructured(colors)
+
+        # Log points once rigidly under robot/camera/points. This is a robot-centric
+        # view of the world.
+        rr.log_points("map/robot/camera/points", positions=pts, colors=colors)
+        self.log_tf_as_rigid3(
+            "map/robot/camera/points",
+            "camera_rgb_optical_frame",
+            "camera_depth_frame",
+            time,
+        )
+
+        # Log points a second time after transforming to the map frame. This is a map-centric
+        # view of the world.
+        #
+        # Once Rerun supports fixed-frame aware transforms (https://github.com/rerun-io/rerun/issues/1522)
+        # this will no longer be necessary.
+        rr.log_points("map/points", positions=pts, colors=colors)
+        self.log_tf_as_rigid3("map/points", "map", "camera_depth_frame", time)
+
+    def scan_callback(self, scan: LaserScan) -> None:
+        """Log a LaserScan after transforming it to line-segments."""
+        time = Time.from_msg(scan.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        # Project the laser scan to a collection of points
+        points = self.laser_proj.projectLaser(scan)
+        pts = point_cloud2.read_points(points, field_names=["x", "y", "z"], skip_nans=True)
+        pts = structured_to_unstructured(pts)
+
+        # Turn every pt into a line-segment from the origin to the point.
+        origin = (pts / np.linalg.norm(pts, axis=1).reshape(-1, 1)) * 0.3
+        segs = np.hstack([origin, pts]).reshape(pts.shape[0] * 2, 3)
+
+        rr.log_line_segments("map/robot/scan", segs, stroke_width=0.005)
+        self.log_tf_as_rigid3("map/robot/scan", "base_footprint", "base_scan", time)
+
+    def odom_callback(self, odom: Odometry) -> None:
+        """Update transforms when odom is updated."""
+        time = Time.from_msg(odom.header.stamp)
+        rr.set_time_nanos("ros_time", time.nanoseconds)
+        self.log_tf_as_rigid3("map/robot", "map", "base_footprint", time)
+
+
+def main(args: List[str]) -> None:
+    rr.init("turtlebot_viz", spawn=True)
+    rclpy.init(args=args)
+
+    turtle_subscriber = TurtleSubscriber()
+
+    # Use the MultiThreadedExecutor so that calls to `lookup_transform` don't block the other threads
+    rclpy.spin(turtle_subscriber, executor=rclpy.executors.MultiThreadedExecutor())
+
+    turtle_subscriber.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main(sys.argv)
