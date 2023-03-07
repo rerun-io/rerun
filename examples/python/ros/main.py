@@ -197,6 +197,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         pts = point_cloud2.read_points(points, field_names=["x", "y", "z"], skip_nans=True)
 
+        # The realsense driver exposes a float field called 'rgb', but the data is actually stored
+        # as bytes within the payload (not a float at all). Patch points.field to use the correct
+        # r,g,b, offsets so we can extract them with read_points.
         points.fields = [
             PointField(name="r", offset=16, datatype=PointField.UINT8, count=1),
             PointField(name="g", offset=17, datatype=PointField.UINT8, count=1),
