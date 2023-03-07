@@ -66,10 +66,6 @@ pub struct Session {
     has_sent_begin_recording_msg: bool,
     recording_meta_data: RecordingMetaData,
 
-    // Used by `rerun::serve_web_viewer`
-    #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
-    tokio_runtime: tokio::runtime::Runtime,
-
     /// Where we put the log messages.
     sink: Box<dyn LogSink>,
 }
@@ -130,9 +126,6 @@ impl Session {
             has_sent_begin_recording_msg: false,
             recording_meta_data: Default::default(),
 
-            #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
-            tokio_runtime: tokio::runtime::Runtime::new().unwrap(),
-
             sink: Box::new(crate::log_sink::BufferedSink::new()),
         }
     }
@@ -151,13 +144,6 @@ impl Session {
     /// This will be overridden by the `RERUN` environment variable, if found.
     pub fn set_default_enabled(&mut self, default_enabled: bool) {
         self.enabled = crate::decide_logging_enabled(default_enabled);
-    }
-
-    /// Used by the `rerun` crate when hosting a web viewer server.
-    #[doc(hidden)]
-    #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
-    pub fn tokio_runtime(&self) -> &tokio::runtime::Runtime {
-        &self.tokio_runtime
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.

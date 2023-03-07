@@ -26,13 +26,10 @@ demo = []
 glam = ["re_log_types/glam"]
 
 ## Add the `global_session` method.
-global_session = ["dep:once_cell", "dep:parking_lot"]
+global_session = ["dep:once_cell"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
-
-# Add a tokio runtime to the `Session` type.
-tokio_runtime = ["dep:tokio"]
 
 
 [dependencies]
@@ -50,18 +47,11 @@ crossbeam = "0.8"
 document-features = "0.2"
 lazy_static.workspace = true
 nohash-hasher = "0.2"
+parking_lot.workspace = true
 thiserror.workspace = true
 
 # Optional dependencies:
 once_cell = { version = "1.12", optional = true }
-parking_lot = { version = "0.12", optional = true }
-
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { workspace = true, optional = true, features = [
-  "macros",
-  "rt-multi-thread",
-] }
 
 
 [dev-dependencies]

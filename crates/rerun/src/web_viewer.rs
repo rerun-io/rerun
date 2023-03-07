@@ -78,8 +78,15 @@ pub fn serve_web_viewer(session: &mut crate::Session, open_browser: bool) {
         return;
     }
 
+    // TODO(emilk): creating a tokio runtime on-demand like this is not great. Not sure how this interacts with `#[tokio::main]`, for instance.
+    use once_cell::sync::Lazy;
+    use parking_lot::Mutex;
+    static TOKIO_RUNTIME: Lazy<Mutex<tokio::runtime::Runtime>> = Lazy::new(|| {
+        Mutex::new(tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"))
+    });
+
     session.set_sink(Box::new(RemoteViewerServer::new(
-        session.tokio_runtime(),
+        &TOKIO_RUNTIME.lock(),
         open_browser,
     )));
 }
