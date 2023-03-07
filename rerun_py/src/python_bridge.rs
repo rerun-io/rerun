@@ -301,7 +301,7 @@ fn serve(open_browser: bool) -> PyResult<()> {
     {
         _ = open_browser;
         Err(PyRuntimeError::new_err(
-            "The Rerun SDK was not compiled with the 'web' feature",
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
     }
 }
