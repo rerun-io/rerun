@@ -40,11 +40,11 @@ pub struct OutlineMaskProcessor {
 
     mask_texture: GpuTexture,
     mask_depth: GpuTexture,
-    distance_textures: [GpuTexture; 2],
+    voronoi_textures: [GpuTexture; 2],
 
     bind_group_jumpflooding_init: GpuBindGroup,
     bind_group_jumpflooding_steps: Vec<GpuBindGroup>,
-    bind_group_read_final_distance: GpuBindGroup,
+    bind_group_read_voronoi: GpuBindGroup,
 
     render_pipeline_jumpflooding_init: GpuRenderPipelineHandle,
     render_pipeline_jumpflooding_step: GpuRenderPipelineHandle,
@@ -81,7 +81,7 @@ impl OutlineMaskProcessor {
 
     pub fn new(
         ctx: &mut RenderContext,
-        config: OutlineConfig,
+        config: &OutlineConfig,
         view_name: &DebugLabel,
         resolution_in_pixel: [u32; 2],
     ) -> Self {
@@ -142,7 +142,7 @@ impl OutlineMaskProcessor {
             format: Self::DISTANCE_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
         };
-        let distance_textures = [
+        let voronoi_textures = [
             ctx.gpu_resources.textures.alloc(
                 &ctx.device,
                 &distance_texture_desc
@@ -241,7 +241,7 @@ impl OutlineMaskProcessor {
                             .clone()
                             .push_str(&format!("::jumpflooding_steps[{i}]")),
                         entries: smallvec![
-                            BindGroupEntry::DefaultTextureView(distance_textures[i % 2].handle),
+                            BindGroupEntry::DefaultTextureView(voronoi_textures[i % 2].handle),
                             uniform_buffer_binding
                         ],
                         layout: bind_group_layout_jumpflooding_step,
@@ -250,18 +250,18 @@ impl OutlineMaskProcessor {
             })
             .collect();
 
-        let bind_group_read_final_distance = ctx.gpu_resources.bind_groups.alloc(
+        let bind_group_read_final_voronoi = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &ctx.gpu_resources,
             &BindGroupDesc {
                 label: instance_label.clone().push_str("::read_final_distance"),
                 // Points to the last written distance texture
-                // We start writing to distance_textures[0] and then do `num_steps` ping-pong rendering.
-                // Therefore, the last texture is distance_textures[num_steps % 2]
+                // We start writing to voronoi_textures[0] and then do `num_steps` ping-pong rendering.
+                // Therefore, the last texture is voronoi_textures[num_steps % 2]
                 entries: smallvec![BindGroupEntry::DefaultTextureView(
-                    distance_textures[(num_steps % 2) as usize].handle
+                    voronoi_textures[(num_steps % 2) as usize].handle
                 )],
-                layout: compositor_renderer.bind_group_layout_read_distance,
+                layout: compositor_renderer.bind_group_layout_read_voronoi,
             },
         );
 
@@ -336,10 +336,10 @@ impl OutlineMaskProcessor {
             label: instance_label,
             mask_texture,
             mask_depth,
-            distance_textures,
+            voronoi_textures,
             bind_group_jumpflooding_init,
             bind_group_jumpflooding_steps,
-            bind_group_read_final_distance,
+            bind_group_read_voronoi: bind_group_read_final_voronoi,
             render_pipeline_jumpflooding_init,
             render_pipeline_jumpflooding_step,
         }
@@ -387,7 +387,7 @@ impl OutlineMaskProcessor {
             let mut jumpflooding_init = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: self.label.clone().push_str(" - jumpflooding_init").get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.distance_textures[0].default_view,
+                    view: &self.voronoi_textures[0].default_view,
                     resolve_target: None,
                     ops,
                 })],
@@ -413,7 +413,7 @@ impl OutlineMaskProcessor {
                     .get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     // Start with texture 1 since the init step wrote to texture 0
-                    view: &self.distance_textures[(i + 1) % 2].default_view,
+                    view: &self.voronoi_textures[(i + 1) % 2].default_view,
                     resolve_target: None,
                     ops,
                 })],
@@ -426,14 +426,14 @@ impl OutlineMaskProcessor {
         }
 
         Ok(OutlineCompositingDrawData {
-            bind_group: self.bind_group_read_final_distance,
+            bind_group: self.bind_group_read_voronoi,
         })
     }
 }
 
 pub struct OutlineCompositor {
     render_pipeline: GpuRenderPipelineHandle,
-    bind_group_layout_read_distance: GpuBindGroupLayoutHandle,
+    bind_group_layout_read_voronoi: GpuBindGroupLayoutHandle,
 }
 
 #[derive(Clone)]
@@ -458,10 +458,10 @@ impl Renderer for OutlineCompositor {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout_read_distance = pools.bind_group_layouts.get_or_create(
+        let bind_group_layout_read_voronoi = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "OutlineCompositor::bind_group_layout_read_distance".into(),
+                label: "OutlineCompositor::bind_group_layout_read_voronoi".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -485,7 +485,7 @@ impl Renderer for OutlineCompositor {
                         label: "OutlineCompositor".into(),
                         entries: vec![
                             shared_data.global_bindings.layout,
-                            bind_group_layout_read_distance,
+                            bind_group_layout_read_voronoi,
                         ],
                     },
                     &pools.bind_group_layouts,
@@ -497,8 +497,8 @@ impl Renderer for OutlineCompositor {
                     device,
                     resolver,
                     &ShaderModuleDesc {
-                        label: "outlines_from_distance".into(),
-                        source: include_file!("../../shader/outlines/outlines_from_distance.wgsl"),
+                        label: "outlines_from_voronoi".into(),
+                        source: include_file!("../../shader/outlines/outlines_from_voronoi.wgsl"),
                     },
                 ),
                 vertex_buffers: smallvec![],
@@ -517,7 +517,7 @@ impl Renderer for OutlineCompositor {
 
         OutlineCompositor {
             render_pipeline,
-            bind_group_layout_read_distance,
+            bind_group_layout_read_voronoi,
         }
     }
 

@@ -4,7 +4,7 @@
 @group(0) @binding(0)
 var mask_texture: texture_multisampled_2d<u32>;
 
-// Sample positions for 4 MSAA samples are actually standardized accross all APIs we care about!
+// Sample positions for 4x MSAA samples are actually standardized accross all APIs we care about!
 // Vulkan: https://registry.khronos.org/vulkan/specs/1.3-khr-extensions/html/chap25.html#primsrast-multisampling
 // Metal: https://developer.apple.com/documentation/metal/mtldevice/2866120-getdefaultsamplepositions
 // DX12 does *not* specify the sampling pattern. However DX11 does, again the same for 4 samples:
@@ -69,13 +69,13 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
 
     var texcoord_channel_0: Vec2;
     if num_edges.x == 0.0 {
-        texcoord_channel_0 = Vec2(-10.0);
+        texcoord_channel_0 = Vec2(-1.0);
     } else {
         texcoord_channel_0 = in.texcoord + sub_edge_pos.xy / Vec2(resolution);
     }
     var texcoord_channel_1: Vec2;
     if num_edges.y == 0.0 {
-        texcoord_channel_1 = Vec2(-10.0);
+        texcoord_channel_1 = Vec2(-1.0);
     } else {
         texcoord_channel_1 = in.texcoord + sub_edge_pos.zw / Vec2(resolution);
     }

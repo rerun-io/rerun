@@ -424,7 +424,7 @@ impl ViewBuilder {
         self.outline_mask_processor = config.outline_config.map(|outline_config| {
             OutlineMaskProcessor::new(
                 ctx,
-                outline_config,
+                &outline_config,
                 &config.name,
                 config.resolution_in_pixel,
             )
