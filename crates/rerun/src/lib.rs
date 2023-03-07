@@ -64,7 +64,7 @@
 //! #### Buffering
 //!
 //! ``` no_run
-//! # fn log_using(rr_session: &mut rerun::Session) {}
+//! # fn log_using(rr_session: &rerun::Session) {}
 //!
 //! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
 //! log_using(&mut rr_session);

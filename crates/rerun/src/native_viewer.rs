@@ -57,7 +57,7 @@ where
 ///
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
-pub fn show(session: &mut Session) -> re_viewer::external::eframe::Result<()> {
+pub fn show(session: &Session) -> re_viewer::external::eframe::Result<()> {
     if !session.is_enabled() {
         re_log::debug!("Rerun disabled - call to show() ignored");
         return Ok(());

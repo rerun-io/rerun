@@ -14,13 +14,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let recording_info = rerun::new_recording_info("test_image_memory_rs");
-    rerun::native_viewer::spawn(recording_info, |mut session| {
-        log_images(&mut session).unwrap();
+    rerun::native_viewer::spawn(recording_info, |session| {
+        log_images(&session).unwrap();
     })?;
     Ok(())
 }
 
-fn log_images(session: &mut rerun::Session) -> Result<(), Box<dyn std::error::Error>> {
+fn log_images(session: &rerun::Session) -> Result<(), Box<dyn std::error::Error>> {
     let (w, h) = (2048, 1024);
     let n = 100;
 

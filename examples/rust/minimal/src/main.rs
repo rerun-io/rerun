@@ -9,7 +9,7 @@ use rerun::{
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rerun_enabled, recording_info) = SessionBuilder::new("minimal_rs").finalize();
-    let mut session = if rerun_enabled {
+    let session = if rerun_enabled {
         Session::buffered(recording_info)
     } else {
         Session::disabled()
@@ -25,9 +25,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
-        .send(&mut session)?;
+        .send(&session)?;
 
-    rerun::native_viewer::show(&mut session)?;
+    rerun::native_viewer::show(&session)?;
 
     Ok(())
 }

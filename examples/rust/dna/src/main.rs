@@ -17,12 +17,12 @@ const NUM_POINTS: usize = 100;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let recording_info = rerun::new_recording_info("DNA Abacus");
     rerun::native_viewer::spawn(recording_info, |session| {
-        run(session).unwrap();
+        run(&session).unwrap();
     })?;
     Ok(())
 }
 
-fn run(mut session: Session) -> Result<(), MsgSenderError> {
+fn run(session: &Session) -> Result<(), MsgSenderError> {
     let stable_time = Timeline::new("stable_time", TimeType::Time);
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
@@ -33,14 +33,14 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
         .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors1.iter().copied().map(ColorRGBA::from).collect_vec())?
         .with_splat(Radius(0.08))?
-        .send(&mut session)?;
+        .send(session)?;
 
     MsgSender::new("dna/structure/right")
         .with_time(stable_time, 0)
         .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors2.iter().copied().map(ColorRGBA::from).collect_vec())?
         .with_splat(Radius(0.08))?
-        .send(&mut session)?;
+        .send(session)?;
 
     let scaffolding = points1
         .iter()
@@ -55,7 +55,7 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
         .with_time(stable_time, 0)
         .with_component(&scaffolding)?
         .with_splat(ColorRGBA::from([128, 128, 128, 255]))?
-        .send(&mut session)?;
+        .send(session)?;
 
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
@@ -86,7 +86,7 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
             .with_component(&beads)?
             .with_component(&colors)?
             .with_splat(Radius(0.06))?
-            .send(&mut session)?;
+            .send(session)?;
 
         MsgSender::new("dna/structure")
             .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
@@ -97,7 +97,7 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
                 )),
                 ..Default::default()
             })])?
-            .send(&mut session)?;
+            .send(session)?;
     }
 
     Ok(())

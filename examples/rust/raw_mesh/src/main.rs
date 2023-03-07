@@ -69,7 +69,7 @@ impl From<GltfTransform> for Transform {
 }
 
 /// Log a glTF node with Rerun.
-fn log_node(session: &mut Session, node: GltfNode) -> anyhow::Result<()> {
+fn log_node(session: &Session, node: GltfNode) -> anyhow::Result<()> {
     let ent_path = EntityPath::from(node.name.as_str());
 
     // Convert glTF objects into Rerun components.
@@ -97,7 +97,7 @@ fn log_node(session: &mut Session, node: GltfNode) -> anyhow::Result<()> {
 }
 
 fn log_coordinate_space(
-    session: &mut Session,
+    session: &Session,
     ent_path: impl Into<EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
@@ -173,7 +173,7 @@ impl Args {
     }
 }
 
-fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
+fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
     // Read glTF scene
     let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
     let nodes = load_gltf(&doc, &buffers);
@@ -197,8 +197,8 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("objectron_rs", default_enabled, move |mut session| {
-            run(&mut session, &args).unwrap();
+        .run("objectron_rs", default_enabled, move |session| {
+            run(&session, &args).unwrap();
         })
 }
 

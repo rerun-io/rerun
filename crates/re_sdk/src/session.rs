@@ -276,3 +276,9 @@ impl Session {
         self.sink.drain_backlog()
     }
 }
+
+impl AsRef<dyn LogSink> for Session {
+    fn as_ref(&self) -> &dyn LogSink {
+        self.sink.as_ref()
+    }
+}

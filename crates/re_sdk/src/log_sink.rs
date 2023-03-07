@@ -1,7 +1,7 @@
 use re_log_types::LogMsg;
 
 /// Where the SDK sends its log messages.
-pub trait LogSink: Send + Sync {
+pub trait LogSink: Send + Sync + 'static {
     /// Send this log message.
     fn send(&self, msg: LogMsg);
 
