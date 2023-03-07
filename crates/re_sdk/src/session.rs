@@ -38,16 +38,10 @@ impl RecordingMetaData {
             .clone()
             .unwrap_or_else(ApplicationId::unknown);
 
-        re_log::debug!(
-            "Beginning new recording with application_id {:?} and recording id {}",
-            application_id.0,
-            recording_id
-        );
-
         Some(RecordingInfo {
             application_id,
             recording_id,
-            is_official_example: self.is_official_example.unwrap_or_default(),
+            is_official_example: self.is_official_example.unwrap_or(false),
             started: Time::now(),
             recording_source: self.recording_source.clone(),
         })
@@ -70,16 +64,11 @@ pub struct Session {
     sink: Box<dyn LogSink>,
 }
 
-impl Default for Session {
-    fn default() -> Self {
-        Self::with_default_enabled(true)
-    }
-}
-
 impl Session {
-    /// Initializes a new session with a properly set [`ApplicationId`], [`RecordingId`] and
+    /// Initializes a new session with a properly set [`ApplicationId`] and
     /// logging toggle.
-    /// This is a higher-level interface on top of [`Self::new`] and
+    ///
+    /// This is a higher-level interface on top of
     /// [`Self::with_default_enabled`].
     ///
     /// `default_enabled` controls whether or not logging is enabled by default.
@@ -96,20 +85,6 @@ impl Session {
         session.set_recording_id(RecordingId::random());
 
         session
-    }
-
-    /// Construct a new session.
-    ///
-    /// Usually you should only call this once and then reuse the same [`Session`].
-    ///
-    /// For convenience, there is also a global [`Session`] object you can access with
-    /// [`crate::global_session`].
-    ///
-    /// Logging is enabled by default, but can be turned off with the `RERUN` environment variable
-    /// or by calling [`Self::set_enabled`].
-    #[doc(hidden)]
-    pub fn new() -> Self {
-        Self::with_default_enabled(true)
     }
 
     /// Construct a new session, with control of whether or not logging is enabled by default.
