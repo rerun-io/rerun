@@ -2,7 +2,6 @@
 #
 # Then run `just --list` to see the available commands
 
-export RUSTFLAGS := "--deny warnings"
 export RUSTDOCFLAGS := "--deny warnings --deny rustdoc::missing_crate_level_docs"
 
 default:
@@ -94,7 +93,7 @@ rs-doc:
 rs-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
-    cargo cranky --quiet
+    cargo cranky --quiet --all-features -- --deny warnings
     typos
     scripts/lint.py
     cargo doc --quiet --no-deps --all-features
