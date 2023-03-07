@@ -17,6 +17,7 @@ try:
     import cv_bridge
     import laser_geometry
     import rclpy
+    import rerun_urdf
     import trimesh
     from image_geometry import PinholeCameraModel
     from nav_msgs.msg import Odometry
@@ -25,7 +26,6 @@ try:
     from rclpy.node import Node
     from rclpy.qos import QoSDurabilityPolicy, QoSProfile
     from rclpy.time import Duration, Time
-    from rerun_urdf import load_urdf_from_msg, log_scene
     from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2, PointField
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import String
@@ -157,7 +157,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
     def urdf_callback(self, urdf_msg: String) -> None:
         """Log a URDF using `log_scene` from `rerun_urdf`."""
-        urdf = load_urdf_from_msg(urdf_msg)
+        urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
 
         # The turtlebot URDF appears to have scale set incorrectly for the camera-link
         # Although rviz loads it properly `yourdfpy` does not.
@@ -166,7 +166,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
         scaled = urdf.scene.scaled(1.0)
 
-        log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", timeless=True)
+        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", timeless=True)
 
     def cam_info_callback(self, info: CameraInfo) -> None:
         """Log a `CameraInfo` with `log_pinhole`."""
