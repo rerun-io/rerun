@@ -13,23 +13,32 @@ However, we think you'll enjoy these goodies that made it in nonetheless!
 
 https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-bbd2-37baab4247e8.mp4
 
-* You can now generate point clouds directly from depth textures! Check out @teh-cmc's [video](https://www.youtube.com/watch?v=7eJWS_DGBn0) on how to use it.
-  * This is **a lot** faster and more convenient than doing so manually in your own code
-  * Allows to choose you from a wide variety of color maps
-  * Picking is not yet working
-* Python packages now work with Ubuntu-20.04 [#1334](https://github.com/rerun-io/rerun/pull/1334)
-* Improve display of date-times in plots [#1356](https://github.com/rerun-io/rerun/pull/1356)
-* UI scale factor is saved across sessions and more persistent between screens [#1448](https://github.com/rerun-io/rerun/pull/1448)
-* SDK:
+You can now generate point clouds directly from depth textures and choose a wide variety of color maps.
+Check out this [video](https://user-images.githubusercontent.com/1220815/223365363-da13585f-3a91-4cb8-a6ef-8a6fadbeb4eb.webm) on how to use it.
+This is **a lot** faster and more convenient than doing so manually in your own code
+Some caveats: Picking is not yet working and visible history may behave differently (related to [#723](https://github.com/rerun-io/rerun/issues/723))
+
+Other highlights:
+
+* Viewer
+  * Improved formatting of date-times in plots [#1356](https://github.com/rerun-io/rerun/pull/1356)
+  * Labels for 3D objects have now a color can now be selected & hovered [#1438](https://github.com/rerun-io/rerun/pull/1438)
+  * Scale factor is saved across sessions and more persistent between screens [#1448](https://github.com/rerun-io/rerun/pull/1448)
+  * Showing tensors in the viewer is now faster
+* SDK
+  * Python packages now work with Ubuntu-20.04 [#1334](https://github.com/rerun-io/rerun/pull/1334)
+  * u8 segmentation stay u8 now (they converted to u16 before) [#1376](https://github.com/rerun-io/rerun/pull/1376)
   * 2D Line strips can now be logged directly [#1430](https://github.com/rerun-io/rerun/pull/1430)
-  * Add a `strict` mode to the Python SDK where misuses of the API results in exceptions being raised.[#1477](https://github.com/rerun-io/rerun/pull/1477)
-* Showing tensors in the viewer is now faster
-* Log streams / .rrd files are now versioned [#1420](https://github.com/rerun-io/rerun/pull/1420)
-    * ⚠️ BREAKING: old `.rrd` files no longer load
-* Fewer build dependencies ([still more work to do!](https://github.com/rerun-io/rerun/issues/1316))
-  * notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235), thanks @mpizenberg!
-* Print more information & troubleshooting info on crash
-* u8 segmentation stay u8 now (they converted to u16 before) [#1376](https://github.com/rerun-io/rerun/pull/1376)
+  * Add a `strict` mode to the Python SDK where misuses of the API result in exceptions being raised.[#1477](https://github.com/rerun-io/rerun/pull/1477)
+  * Fix disabling Python API through `init` not working [#1517](https://github.com/rerun-io/rerun/pull/1517)
+* General
+  * We build now with fewer build dependencies (there is however [still more work to do!](https://github.com/rerun-io/rerun/issues/1316)).  
+  Notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235), thanks @mpizenberg for helping out!
+  * Print more information & troubleshooting info on crash
+
+Meanwhile, we did a bunch of improvements to our manual. If you had trouble running Rerun so far, check our updated [troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting) page (and as always, please [open an issue](https://github.com/rerun-io/rerun/issues/new/choose) if something doesn't work).
+
+⚠️ BREAKING: old `.rrd` files no longer load ⚠️
 
 ### In Detail
 #### New Features
@@ -75,7 +84,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Heuristic for camera frustum length is now based on scene size [#1433](https://github.com/rerun-io/rerun/pull/1433)
 * Fix python type signature for tensor names [#1443](https://github.com/rerun-io/rerun/pull/1443)
 * Don't convert u8 segmentation images to u16 [#1376](https://github.com/rerun-io/rerun/pull/1376)
-* Docs (excluding manual)
+* Docs (excluding the manual)
   * Improve the docs of `connect` and `serve` [#1450](https://github.com/rerun-io/rerun/pull/1450)
   * Update log_mesh and log_meshes docs. [#1286](https://github.com/rerun-io/rerun/pull/1286)
   * Add guidelines for adding dependencies in a PR [#1431](https://github.com/rerun-io/rerun/pull/1431)
@@ -95,6 +104,7 @@ https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-b
 * Fix path issues when running debug viewer within workspace [#1341](https://github.com/rerun-io/rerun/pull/1341)
 * Detailed errors for re_renderer `include_file!` [#1339](https://github.com/rerun-io/rerun/pull/1339)
 * Limit logging in web-viewer to `warn` in order to workaround a crash issue (and reduce log spam) [1514](https://github.com/rerun-io/rerun/pull/1514)
+* Fix disabling API through `init` not working [#1517](https://github.com/rerun-io/rerun/pull/1517)
 
 #### CI, Testing & Build improvements
 * Reduce build dependencies
