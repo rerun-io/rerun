@@ -71,6 +71,7 @@ py-lint:
     blackdoc --check {{py_folders}}
     ruff check --config rerun_py/pyproject.toml  {{py_folders}}
     mypy --no-warn-unused-ignore
+    typos
 
 # Run fast unittests
 py-test:
@@ -93,11 +94,12 @@ rs-doc:
 rs-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
-    cargo cranky
+    cargo cranky --quiet
+    typos
     scripts/lint.py
-    cargo doc --no-deps --all-features
-    cargo doc --document-private-items --no-deps --all-features
-    cargo test --doc --all-features # runs all doc-tests
+    cargo doc --quiet --no-deps --all-features
+    cargo doc --quiet --document-private-items --no-deps --all-features
+    cargo test --quiet --doc --all-features # runs all doc-tests
 
 
 ### TOML
