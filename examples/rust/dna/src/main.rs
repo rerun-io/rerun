@@ -14,6 +14,14 @@ use rerun::{
 
 const NUM_POINTS: usize = 100;
 
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let recording_info = rerun::new_recording_info("DNA Abacus");
+    rerun::native_viewer::spawn(recording_info, |session| {
+        run(session).unwrap();
+    })?;
+    Ok(())
+}
+
 fn run(mut session: Session) -> Result<(), MsgSenderError> {
     let stable_time = Timeline::new("stable_time", TimeType::Time);
 
@@ -93,9 +101,4 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
     }
 
     Ok(())
-}
-
-fn main() {
-    let session = Session::init("DNA Abacus", true);
-    rerun::native_viewer::spawn(session, |session| run(session).unwrap()).unwrap();
 }

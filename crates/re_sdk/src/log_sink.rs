@@ -22,6 +22,31 @@ pub trait LogSink: Send + Sync {
 
     /// If the TCP session is disconnected, allow it to quit early and drop unsent messages.
     fn drop_msgs_if_disconnected(&self) {}
+
+    /// Returns `false` if this sink just discards all messages.
+    fn is_enabled(&self) -> bool {
+        false
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+struct DisabledSink;
+
+impl LogSink for DisabledSink {
+    fn send(&self, _msg: LogMsg) {
+        // It's intended that the logging SDK should drop messages earlier than this if logging is disabled.
+        re_log::debug_once!("Logging is disabled, dropping message(s).");
+    }
+
+    fn is_enabled(&self) -> bool {
+        false
+    }
+}
+
+/// A sink that does nothing. All log messages are just dropped.
+pub fn disabled() -> Box<dyn LogSink> {
+    Box::new(DisabledSink)
 }
 
 // ----------------------------------------------------------------------------

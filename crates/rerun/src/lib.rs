@@ -31,7 +31,7 @@
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::components::ColorRGBA> { Default::default() }
-//! let mut rr_session = rerun::Session::init("my_app", true);
+//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
 //!
 //! let points: Vec<rerun::components::Point3D> = positions();
 //! let colors: Vec<rerun::components::ColorRGBA> = colors();
@@ -58,8 +58,7 @@
 //! Then do this:
 //!
 //! ``` no_run
-//! let mut rr_session = rerun::Session::init("my_app", true);
-//! rr_session.connect(rerun::default_server_addr());
+//! let mut rr_session = rerun::SessionBuilder::new("my_app").connect(rerun::default_server_addr());
 //! ```
 //!
 //! #### Buffering
@@ -67,7 +66,7 @@
 //! ``` no_run
 //! # fn log_using(rr_session: &mut rerun::Session) {}
 //!
-//! let mut rr_session = rerun::Session::init("my_app", true);
+//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
 //! log_using(&mut rr_session);
 //! rerun::native_viewer::show(&mut rr_session);
 //! ```

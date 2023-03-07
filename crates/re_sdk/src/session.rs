@@ -1,147 +1,70 @@
-use std::net::SocketAddr;
+use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time};
 
-use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
-    RecordingSource, Time, TimePoint,
-};
+use crate::sink::LogSink;
 
-use crate::sink::{FileSink, LogSink};
+// ----------------------------------------------------------------------------
 
-/// Used to contruct a [`RecordingInfo`]:
-struct RecordingMetaData {
-    recording_source: RecordingSource,
-    application_id: Option<ApplicationId>,
-    recording_id: Option<RecordingId>,
-    is_official_example: Option<bool>,
-}
-
-impl Default for RecordingMetaData {
-    fn default() -> Self {
-        Self {
-            recording_source: RecordingSource::RustSdk {
-                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-            },
-            application_id: Default::default(),
-            recording_id: Default::default(),
-            is_official_example: Default::default(),
-        }
-    }
-}
-
-impl RecordingMetaData {
-    pub fn to_recording_info(&self) -> Option<RecordingInfo> {
-        let recording_id = self.recording_id?;
-
-        let application_id = self
-            .application_id
-            .clone()
-            .unwrap_or_else(ApplicationId::unknown);
-
-        Some(RecordingInfo {
-            application_id,
-            recording_id,
-            is_official_example: self.is_official_example.unwrap_or(false),
-            started: Time::now(),
-            recording_source: self.recording_source.clone(),
-        })
-    }
-}
-
-/// This is the main object you need to create to use the Rerun SDK.
+/// Construct a [`Session`].
 ///
-/// You should ideally create one session object and reuse it.
-/// For convenience, there is a global [`Session`] object you can access with [`crate::global_session`].
-pub struct Session {
-    /// Is this session enabled?
-    /// If not, all calls into it are ignored!
-    enabled: bool,
-
-    has_sent_begin_recording_msg: bool,
-    recording_meta_data: RecordingMetaData,
-
-    /// Where we put the log messages.
-    sink: Box<dyn LogSink>,
+/// ``` no_run
+/// # use re_sdk::SessionBuilder;
+/// let session = SessionBuilder::new("my_app").save("my_recording.rrd")?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+#[must_use]
+pub struct SessionBuilder {
+    application_id: ApplicationId,
+    is_official_example: bool,
+    enabled: Option<bool>,
+    default_enabled: bool,
+    recording_id: Option<RecordingId>,
 }
 
-impl Session {
-    /// Initializes a new session with a properly set [`ApplicationId`] and
-    /// logging toggle.
+impl SessionBuilder {
+    /// Create a new [`SessionBuilder`] with an application id.
     ///
-    /// This is a higher-level interface on top of
-    /// [`Self::with_default_enabled`].
+    /// The application id is usually the name of your app.
     ///
-    /// `default_enabled` controls whether or not logging is enabled by default.
-    /// The default can always be overridden using the `RERUN` environment variable
-    /// or by calling [`Self::set_enabled`].
-    ///
-    /// Usually you should only call this once and then reuse the same [`Session`].
-    #[track_caller]
-    pub fn init(application_id: impl Into<ApplicationId>, default_enabled: bool) -> Self {
-        let is_official_example = called_from_official_rust_example();
-
-        let mut session = Self::with_default_enabled(default_enabled);
-        session.set_application_id(application_id.into(), is_official_example);
-        session.set_recording_id(RecordingId::random());
-
-        session
-    }
-
-    /// Construct a new session, with control of whether or not logging is enabled by default.
-    ///
-    /// The default can always be overridden using the `RERUN` environment variable
-    /// or by calling [`Self::set_enabled`].
-    #[doc(hidden)]
-    pub fn with_default_enabled(default_enabled: bool) -> Self {
-        let enabled = crate::decide_logging_enabled(default_enabled);
+    /// ``` no_run
+    /// # use re_sdk::SessionBuilder;
+    /// let session = SessionBuilder::new("my_app").save("my_recording.rrd")?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[track_caller] // track_caller so that we can see if we are being called from an official example.
+    pub fn new(application_id: impl Into<ApplicationId>) -> Self {
+        let application_id = application_id.into();
+        let is_official_example = crate::called_from_official_rust_example();
 
         Self {
-            enabled,
-
-            has_sent_begin_recording_msg: false,
-            recording_meta_data: Default::default(),
-
-            sink: Box::new(crate::log_sink::BufferedSink::new()),
+            application_id,
+            is_official_example,
+            enabled: None,
+            default_enabled: true,
+            recording_id: None,
         }
     }
 
-    /// Check if logging is enabled on this `Session`.
-    pub fn is_enabled(&self) -> bool {
-        self.enabled
-    }
-
-    /// Enable or disable logging on this `Session`.
-    pub fn set_enabled(&mut self, enabled: bool) {
-        self.enabled = enabled;
-    }
-
-    /// Set whether or not logging is enabled by default.
-    /// This will be overridden by the `RERUN` environment variable, if found.
-    pub fn set_default_enabled(&mut self, default_enabled: bool) {
-        self.enabled = crate::decide_logging_enabled(default_enabled);
-    }
-
-    /// Set the [`ApplicationId`] to use for the following stream of log messages.
+    /// Set whether or not Rerun is enabled by default.
     ///
-    /// This should be called once before anything else.
-    /// If you don't call this, the resulting application id will be [`ApplicationId::unknown`].
+    /// If the `RERUN` environment variable is set, it will override this.
     ///
-    /// Note that many recordings can share the same [`ApplicationId`], but
-    /// they all have unique [`RecordingId`]s.
-    pub fn set_application_id(&mut self, application_id: ApplicationId, is_official_example: bool) {
-        if self.recording_meta_data.application_id.as_ref() != Some(&application_id) {
-            self.recording_meta_data.application_id = Some(application_id);
-            self.recording_meta_data.is_official_example = Some(is_official_example);
-            self.has_sent_begin_recording_msg = false;
-        }
+    /// Set also: [`Self::enabled`].
+    pub fn default_enabled(mut self, default_enabled: bool) -> Self {
+        self.default_enabled = default_enabled;
+        self
     }
 
-    /// The current [`RecordingId`], if set.
-    pub fn recording_id(&self) -> Option<RecordingId> {
-        self.recording_meta_data.recording_id
+    /// Set whether or not Rerun is enabled.
+    ///
+    /// Setting this will ignore the `RERUN` environment variable.
+    ///
+    /// Set also: [`Self::default_enabled`].
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = Some(enabled);
+        self
     }
 
-    /// Set the [`RecordingId`] of this message stream.
+    /// Set the [`RecordingId`] for this session.
     ///
     /// If you're logging from multiple processes and want all the messages
     /// to end up as the same recording, you must make sure they all set the same
@@ -149,38 +72,24 @@ impl Session {
     ///
     /// Note that many recordings can share the same [`ApplicationId`], but
     /// they all have unique [`RecordingId`]s.
-    pub fn set_recording_id(&mut self, recording_id: RecordingId) {
-        if self.recording_meta_data.recording_id != Some(recording_id) {
-            self.recording_meta_data.recording_id = Some(recording_id);
-            self.has_sent_begin_recording_msg = false;
-        }
-    }
-
-    /// Set where the recording is coming from.
-    /// The default is [`RecordingSource::RustSdk`].
-    pub fn set_recording_source(&mut self, recording_source: RecordingSource) {
-        self.recording_meta_data.recording_source = recording_source;
-    }
-
-    /// Where the recording is coming from.
-    /// The default is [`RecordingSource::RustSdk`].
-    pub fn recording_source(&self) -> &RecordingSource {
-        &self.recording_meta_data.recording_source
-    }
-
-    /// Set the [`LogSink`] to use. This is where the log messages will be sent.
     ///
-    /// If the previous sink is [`crate::log_sink::BufferedSink`] (the default),
-    /// it will be drained and sent to the new sink.
-    pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
-        let backlog = self.sink.drain_backlog();
-        self.sink = sink;
-        self.sink.send_all(backlog);
+    /// The default is to use a random [`RecordingId`].
+    pub fn recording_id(mut self, recording_id: RecordingId) -> Self {
+        self.recording_id = Some(recording_id);
+        self
     }
 
-    /// Drain all buffered [`LogMsg`]es and return them.
-    pub fn drain_backlog(&mut self) -> Vec<LogMsg> {
-        self.sink.drain_backlog()
+    /// Buffer log messages in RAM.
+    ///
+    /// Retrieve them later with [`Session::drain_backlog`].
+    pub fn buffered(self) -> Session {
+        let (rerun_enabled, recording_info) = self.finalize();
+        if rerun_enabled {
+            Session::buffered(recording_info)
+        } else {
+            re_log::debug!("Rerun disabled - call to buffered() ignored");
+            Session::disabled()
+        }
     }
 
     /// Send log data to a remote viewer/server.
@@ -192,106 +101,164 @@ impl Session {
     /// If we are already connected, we will re-connect to this new address.
     ///
     /// This function returns immediately.
-    /// Disconnect with [`Self::disconnect`].
     ///
     /// ## Example:
     ///
     /// ``` no_run
-    /// # let mut session = re_sdk::Session::new();
-    /// session.connect(re_sdk::default_server_addr());
+    /// let session = re_sdk::SessionBuilder::new("my_app").connect(re_sdk::default_server_addr());
     /// ```
-    pub fn connect(&mut self, addr: SocketAddr) {
-        if !self.enabled {
+    pub fn connect(self, addr: std::net::SocketAddr) -> Session {
+        let (rerun_enabled, recording_info) = self.finalize();
+        if rerun_enabled {
+            Session::new(
+                recording_info,
+                Box::new(crate::log_sink::TcpSink::new(addr)),
+            )
+        } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
-            return;
+            Session::disabled()
+        }
+    }
+
+    /// Stream all log messages to an `.rrd` file.
+    ///
+    /// ``` no_run
+    /// # use re_sdk::SessionBuilder;
+    /// let session = SessionBuilder::new("my_app").save("my_recording.rrd")?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn save(self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<Session> {
+        let (rerun_enabled, recording_info) = self.finalize();
+        if rerun_enabled {
+            Ok(Session::new(
+                recording_info,
+                Box::new(crate::sink::FileSink::new(path)?),
+            ))
+        } else {
+            re_log::debug!("Rerun disabled - call to save() ignored");
+            Ok(Session::disabled())
+        }
+    }
+
+    /// Returns whether or not logging is enabled, plus a [`RecordingInfo`].
+    ///
+    /// This can be used to then construct a [`Session`] manually using [`Session::new`].
+    pub fn finalize(self) -> (bool, RecordingInfo) {
+        let Self {
+            application_id,
+            is_official_example,
+            enabled,
+            default_enabled,
+            recording_id,
+        } = self;
+
+        let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
+        let recording_id = recording_id.unwrap_or_else(RecordingId::random);
+
+        let recording_info = RecordingInfo {
+            application_id,
+            recording_id,
+            is_official_example,
+            started: Time::now(),
+            recording_source: RecordingSource::RustSdk {
+                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+            },
+        };
+
+        (enabled, recording_info)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// The main way to do Rerun loggning.
+///
+/// You can construct a [`Session`] with [`SessionBuilder`] or [`Session::new`].
+#[must_use]
+pub struct Session {
+    sink: Box<dyn LogSink>,
+    // TODO(emilk): add convenience `TimePoint` here so that users can
+    // do things like `session.set_time_sequence("frame", frame_idx);`
+}
+
+impl Session {
+    /// Construct a new session with a given [`RecordingInfo`] and [`LogSink`].
+    ///
+    /// You can create a [`RecordingInfo`] with [`crate::new_recording_info`];
+    ///
+    /// The [`RecordingInfo`] is immediately sent to the sink in the form of a
+    /// [`re_log_types::BeginRecordingMsg`].
+    ///
+    /// You can find sinks in [`crate::sink`].
+    ///
+    /// See also: [`SessionBuilder`].
+    pub fn new(recording_info: RecordingInfo, sink: Box<dyn LogSink>) -> Self {
+        if sink.is_enabled() {
+            re_log::debug!(
+                "Beginning new recording with application_id {:?} and recording id {}",
+                recording_info.application_id.0,
+                recording_info.recording_id
+            );
+
+            sink.send(
+                re_log_types::BeginRecordingMsg {
+                    msg_id: re_log_types::MsgId::random(),
+                    info: recording_info,
+                }
+                .into(),
+            );
         }
 
-        re_log::debug!("Connecting to remote {addr}…");
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
+        Self { sink }
     }
 
-    /// Disconnects any TCP connection, shuts down any server, and closes any file.
-    pub fn disconnect(&mut self) {
-        self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
+    /// Construct a new session with a disabled "dummy" sink that drops all logging messages.
+    ///
+    /// [`Self::is_enabled`] will return `false`.
+    pub fn disabled() -> Self {
+        Self {
+            sink: crate::sink::disabled(),
+        }
     }
 
-    /// Wait until all logged data have been sent to the remove server (if any).
-    pub fn flush(&mut self) {
-        self.sink.flush();
+    /// Buffer log messages in RAM.
+    ///
+    /// Retrieve them later with [`Self::drain_backlog`].
+    pub fn buffered(recording_info: RecordingInfo) -> Self {
+        Self::new(recording_info, Box::new(crate::sink::BufferedSink::new()))
     }
 
-    /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
-    pub fn drop_msgs_if_disconnected(&mut self) {
-        self.sink.drop_msgs_if_disconnected();
+    /// Check if logging is enabled on this `Session`.
+    ///
+    /// If not, all logging calls will be ignored.
+    pub fn is_enabled(&self) -> bool {
+        self.sink.is_enabled()
     }
 
     /// Send a [`LogMsg`].
     pub fn send(&mut self, log_msg: LogMsg) {
-        if !self.enabled {
-            // It's intended that the logging SDK should drop messages earlier than this if logging is disabled. This
-            // check here is just a safety net.
-            re_log::debug_once!("Logging is disabled, dropping message.");
-            return;
-        }
-
-        if !self.has_sent_begin_recording_msg {
-            if let Some(info) = self.recording_meta_data.to_recording_info() {
-                re_log::debug!(
-                    "Beginning new recording with application_id {:?} and recording id {}",
-                    info.application_id.0,
-                    info.recording_id
-                );
-
-                self.sink.send(
-                    BeginRecordingMsg {
-                        msg_id: MsgId::random(),
-                        info,
-                    }
-                    .into(),
-                );
-                self.has_sent_begin_recording_msg = true;
-            }
-        }
-
         self.sink.send(log_msg);
     }
 
-    /// Send a [`PathOp`].
-    pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
+    /// Send a [`re_log_types::PathOp`].
+    ///
+    /// This is a convenience wrapper for [`Self::send`].
+    pub fn send_path_op(
+        &mut self,
+        time_point: &re_log_types::TimePoint,
+        path_op: re_log_types::PathOp,
+    ) {
         self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
-            msg_id: MsgId::random(),
+            msg_id: re_log_types::MsgId::random(),
             time_point: time_point.clone(),
             path_op,
         }));
     }
 
-    /// Drains all pending log messages and saves them to disk into an rrd file.
-    // TODO(cmc): We're gonna have to properly type all these errors all the way up to the encoding
-    // methods in re_log_types at some point...
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
-        if !self.enabled {
-            re_log::debug!("Rerun disabled - call to save() ignored");
-            return Ok(());
-        }
-
-        self.set_sink(Box::new(FileSink::new(path)?));
-        Ok(())
+    /// Drain all buffered [`LogMsg`]es and return them.
+    pub fn drain_backlog(&mut self) -> Vec<LogMsg> {
+        self.sink.drain_backlog()
     }
-}
-
-#[track_caller]
-fn called_from_official_rust_example() -> bool {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let caller = core::panic::Location::caller();
-    let mut path = std::path::PathBuf::from(caller.file());
-    let mut is_official_example = false;
-    for _ in 0..4 {
-        path.pop(); // first iteration is always a file path in our examples
-        if path.join(SENTINEL_FILENAME).exists() {
-            is_official_example = true;
-        }
-    }
-    is_official_example
 }

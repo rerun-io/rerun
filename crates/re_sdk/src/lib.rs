@@ -23,10 +23,10 @@ mod session;
 // Public items:
 
 #[cfg(feature = "global_session")]
-pub use self::global::{global_session, global_session_with_default_enabled};
+pub use self::global::global_session;
 
 pub use self::msg_sender::{MsgSender, MsgSenderError};
-pub use self::session::Session;
+pub use self::session::{Session, SessionBuilder};
 
 pub use re_sdk_comms::default_server_addr;
 
@@ -43,10 +43,10 @@ pub mod demo_util;
 
 /// Different destinations for log messages.
 ///
-/// This is how you select wether a log stream ends up
+/// This is how you select whether the log stream ends up
 /// sent over TCP, written to file, etc.
 pub mod sink {
-    pub use crate::log_sink::{BufferedSink, LogSink, TcpSink};
+    pub use crate::log_sink::{disabled, BufferedSink, LogSink, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use crate::file_sink::FileSink;
@@ -148,4 +148,39 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
             default_enabled
         }
     }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Creates a new [`re_log_types::RecordingInfo`] which can be used with [`Session::new`].
+#[track_caller] // track_caller so that we can see if we are being called from an official example.
+pub fn new_recording_info(
+    application_id: impl Into<re_log_types::ApplicationId>,
+) -> re_log_types::RecordingInfo {
+    re_log_types::RecordingInfo {
+        application_id: application_id.into(),
+        recording_id: RecordingId::random(),
+        is_official_example: called_from_official_rust_example(),
+        started: re_log_types::Time::now(),
+        recording_source: re_log_types::RecordingSource::RustSdk {
+            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+        },
+    }
+}
+
+#[track_caller]
+fn called_from_official_rust_example() -> bool {
+    // The sentinel file we use to identify the official examples directory.
+    const SENTINEL_FILENAME: &str = ".rerun_examples";
+    let caller = core::panic::Location::caller();
+    let mut path = std::path::PathBuf::from(caller.file());
+    let mut is_official_example = false;
+    for _ in 0..4 {
+        path.pop(); // first iteration is always a file path in our examples
+        if path.join(SENTINEL_FILENAME).exists() {
+            is_official_example = true;
+        }
+    }
+    is_official_example
 }

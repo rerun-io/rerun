@@ -1,4 +1,5 @@
 use re_log_types::LogMsg;
+use re_log_types::RecordingInfo;
 use re_sdk::Session;
 
 /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
@@ -13,19 +14,16 @@ use re_sdk::Session;
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
 #[cfg(not(target_arch = "wasm32"))]
-pub fn spawn<F>(mut session: Session, run: F) -> re_viewer::external::eframe::Result<()>
+pub fn spawn<F>(recording_info: RecordingInfo, run: F) -> re_viewer::external::eframe::Result<()>
 where
     F: FnOnce(Session) + Send + 'static,
 {
-    if !session.is_enabled() {
-        re_log::debug!("Rerun disabled - call to rerun::native_viewer::spawn() ignored");
-        run(session);
-        return Ok(());
-    }
-
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-    session.set_sink(Box::new(NativeViewerSink(tx)));
-    let app_env = re_viewer::AppEnvironment::from_recording_source(session.recording_source());
+    let sink = Box::new(NativeViewerSink(tx));
+    let app_env =
+        re_viewer::AppEnvironment::from_recording_source(&recording_info.recording_source);
+
+    let session = Session::new(recording_info, sink);
 
     // NOTE: Forget the handle on purpose, leave that thread be.
     std::thread::Builder::new()
@@ -55,6 +53,8 @@ where
 ///
 /// The method will return when the viewer is closed.
 ///
+/// You should use this method together with [`Session::buffered`];
+///
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
 pub fn show(session: &mut Session) -> re_viewer::external::eframe::Result<()> {
@@ -62,12 +62,16 @@ pub fn show(session: &mut Session) -> re_viewer::external::eframe::Result<()> {
         re_log::debug!("Rerun disabled - call to show() ignored");
         return Ok(());
     }
+    let recording_source = re_log_types::RecordingSource::RustSdk {
+        rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+        llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+    };
 
     let log_messages = session.drain_backlog();
     let startup_options = re_viewer::StartupOptions::default();
     re_viewer::run_native_viewer_with_messages(
         re_build_info::build_info!(),
-        re_viewer::AppEnvironment::from_recording_source(session.recording_source()),
+        re_viewer::AppEnvironment::from_recording_source(&recording_source),
         startup_options,
         log_messages,
     )

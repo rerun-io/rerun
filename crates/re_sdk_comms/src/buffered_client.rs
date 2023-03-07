@@ -60,6 +60,8 @@ impl Default for Client {
 impl Client {
     /// Connect via TCP to this log server.
     pub fn new(addr: SocketAddr) -> Self {
+        re_log::debug!("Connecting to remote {addr}…");
+
         // TODO(emilk): keep track of how much memory is in each pipe
         // and apply back-pressure to not use too much RAM.
         let (msg_tx, msg_rx) = crossbeam::channel::unbounded();

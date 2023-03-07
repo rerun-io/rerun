@@ -9,7 +9,7 @@ use rerun::sink::LogSink;
 
 // ----------------------------------------------------------------------------
 
-/// Used to contruct a [`RecordingInfo`]:
+/// Used to construct a [`RecordingInfo`]:
 struct RecordingMetaData {
     recording_source: RecordingSource,
     application_id: Option<ApplicationId>,
@@ -50,7 +50,7 @@ impl RecordingMetaData {
 
 // ----------------------------------------------------------------------------
 
-/// The python API bindins create a single [`PythonSession`]
+/// The python API bindings create a single [`PythonSession`]
 /// which is used to send log messages.
 ///
 /// This mirrors the Python API to a certain extent, allowing users

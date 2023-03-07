@@ -67,38 +67,49 @@ impl RerunArgs {
     ///
     /// Logging will be controlled by the `RERUN` environment variable,
     /// or the `default_enabled` argument if the environment variable is not set.
+    #[track_caller] // track_caller so that we can see if we are being called from an official example.
     pub fn run(
         &self,
         application_id: &str,
         default_enabled: bool,
         run: impl FnOnce(Session) + Send + 'static,
     ) -> anyhow::Result<()> {
-        let mut session = Session::init(application_id, default_enabled);
+        let (rerun_enabled, recording_info) = crate::SessionBuilder::new(application_id)
+            .default_enabled(default_enabled)
+            .finalize();
 
-        match self.to_behavior()? {
-            RerunBehavior::Connect(addr) => {
-                session.connect(addr);
-                run(session);
-            }
+        if !rerun_enabled {
+            run(Session::disabled());
+            return Ok(());
+        }
 
-            RerunBehavior::Save(path) => {
-                session.save(path)?;
-                run(session);
-            }
+        let sink: Box<dyn re_sdk::sink::LogSink> = match self.to_behavior()? {
+            RerunBehavior::Connect(addr) => Box::new(crate::sink::TcpSink::new(addr)),
+
+            RerunBehavior::Save(path) => Box::new(crate::sink::FileSink::new(path)?),
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                crate::web_viewer::serve(&mut session, true);
-                run(session);
-                eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
-                std::thread::sleep(std::time::Duration::from_secs(1_000_000));
+                let open_browser = true;
+                crate::web_viewer::new_sink(open_browser)
             }
 
             #[cfg(feature = "native_viewer")]
             RerunBehavior::Spawn => {
-                crate::native_viewer::spawn(session, run)?;
+                crate::native_viewer::spawn(recording_info, run)?;
+                return Ok(());
             }
+        };
+
+        let session = Session::new(recording_info, sink);
+        run(session);
+
+        #[cfg(feature = "web_viewer")]
+        if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
+            eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
+            std::thread::sleep(std::time::Duration::from_secs(1_000_000));
         }
+
         Ok(())
     }
 

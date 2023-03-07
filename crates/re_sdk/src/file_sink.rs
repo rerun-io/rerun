@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 
 use re_log_types::LogMsg;
 
-/// Stream log messages to a file.
+/// Stream log messages to an `.rrd` file.
 pub struct FileSink {
     // None = quit
     tx: Mutex<Sender<Option<LogMsg>>>,

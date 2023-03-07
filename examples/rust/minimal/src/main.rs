@@ -1,14 +1,19 @@
 //! Demonstrates the most barebone usage of the Rerun SDK.
 
-use rerun::demo_util::grid;
-use rerun::external::glam;
 use rerun::{
     components::{ColorRGBA, Point3D},
-    MsgSender, Session,
+    demo_util::grid,
+    external::glam,
+    MsgSender, Session, SessionBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut session = Session::init("minimal_rs", true);
+    let (rerun_enabled, recording_info) = SessionBuilder::new("minimal_rs").finalize();
+    let mut session = if rerun_enabled {
+        Session::buffered(recording_info)
+    } else {
+        Session::disabled()
+    };
 
     let points = grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 10)
         .map(Point3D::from)
