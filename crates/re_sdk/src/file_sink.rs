@@ -6,13 +6,13 @@ use parking_lot::Mutex;
 use re_log_types::LogMsg;
 
 /// Stream log messages to a file.
-pub struct FileWriter {
+pub struct FileSink {
     // None = quit
     tx: Mutex<Sender<Option<LogMsg>>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
 }
 
-impl Drop for FileWriter {
+impl Drop for FileSink {
     fn drop(&mut self) {
         self.tx.lock().send(None).ok();
         if let Some(join_handle) = self.join_handle.take() {
@@ -21,7 +21,8 @@ impl Drop for FileWriter {
     }
 }
 
-impl FileWriter {
+impl FileSink {
+    /// Start writing log messages to a file at the given path.
     pub fn new(path: impl Into<std::path::PathBuf>) -> anyhow::Result<Self> {
         let (tx, rx) = std::sync::mpsc::channel();
 
@@ -56,7 +57,7 @@ impl FileWriter {
     }
 }
 
-impl crate::LogSink for FileWriter {
+impl crate::sink::LogSink for FileSink {
     fn send(&self, msg: LogMsg) {
         self.tx.lock().send(Some(msg)).ok();
     }

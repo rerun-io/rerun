@@ -6,9 +6,11 @@
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
-// Send data to a rerun session
+// ----------------
+// Private modules:
+
 #[cfg(not(target_arch = "wasm32"))]
-mod file_writer;
+mod file_sink;
 
 #[cfg(feature = "global_session")]
 mod global;
@@ -17,17 +19,38 @@ mod log_sink;
 mod msg_sender;
 mod session;
 
+// -------------
+// Public items:
+
 #[cfg(feature = "global_session")]
 pub use self::global::{global_session, global_session_with_default_enabled};
 
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::session::Session;
-pub use log_sink::{BufferedSink, LogSink, TcpSink};
+
+pub use re_sdk_comms::default_server_addr;
+
+pub use re_log_types::{
+    msg_bundle::{Component, SerializableComponent},
+    ApplicationId, ComponentName, EntityPath, RecordingId,
+};
+
+// ---------------
+// Public modules:
 
 #[cfg(feature = "demo")]
 pub mod demo_util;
 
-pub use re_sdk_comms::default_server_addr;
+/// Different destinations for log messages.
+///
+/// This is how you select wether a log stream ends up
+/// sent over TCP, written to file, etc.
+pub mod sink {
+    pub use crate::log_sink::{BufferedSink, LogSink, TcpSink};
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use crate::file_sink::FileSink;
+}
 
 /// Things directly related to logging.
 pub mod log {
@@ -76,12 +99,8 @@ pub mod external {
     pub use re_log_types::external::image;
 }
 
-// ---
-
-pub use re_log_types::{
-    msg_bundle::{Component, SerializableComponent},
-    ApplicationId, ComponentName, EntityPath, RecordingId,
-};
+// -----
+// Misc:
 
 const RERUN_ENV_VAR: &str = "RERUN";
 
@@ -104,7 +123,7 @@ fn get_rerun_env() -> Option<bool> {
 /// Checks the `RERUN` environment variable. If not found, returns the argument.
 ///
 /// Also adds some helpful logging.
-fn decide_logging_enabled(default_enabled: bool) -> bool {
+pub fn decide_logging_enabled(default_enabled: bool) -> bool {
     // We use `info_once` so that we can call this function
     // multiple times without spamming the log.
     match get_rerun_env() {

@@ -5,7 +5,7 @@ use re_log_types::{
     RecordingSource, Time, TimePoint,
 };
 
-use crate::{file_writer::FileWriter, LogSink};
+use crate::sink::{FileSink, LogSink};
 
 /// Used to contruct a [`RecordingInfo`]:
 struct RecordingMetaData {
@@ -275,7 +275,7 @@ impl Session {
             return Ok(());
         }
 
-        self.set_sink(Box::new(FileWriter::new(path)?));
+        self.set_sink(Box::new(FileSink::new(path)?));
         Ok(())
     }
 }

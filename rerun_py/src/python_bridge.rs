@@ -293,7 +293,14 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 fn serve(open_browser: bool) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
-        rerun::serve_web_viewer(&mut python_session(), open_browser);
+        let mut session = python_session();
+
+        if !session.is_enabled() {
+            re_log::debug!("Rerun disabled - call to serve() ignored");
+            return Ok(());
+        }
+
+        session.set_sink(rerun::web_viewer::new_sink(open_browser));
         Ok(())
     }
 

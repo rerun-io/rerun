@@ -88,7 +88,7 @@ impl RerunArgs {
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                crate::serve_web_viewer(&mut session, true);
+                crate::web_viewer::serve(&mut session, true);
                 run(session);
                 eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
                 std::thread::sleep(std::time::Duration::from_secs(1_000_000));

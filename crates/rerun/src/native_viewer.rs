@@ -80,7 +80,7 @@ pub fn show(session: &mut Session) -> re_viewer::external::eframe::Result<()> {
 struct NativeViewerSink(pub re_smart_channel::Sender<LogMsg>);
 
 #[cfg(feature = "native_viewer")]
-impl re_sdk::LogSink for NativeViewerSink {
+impl re_sdk::sink::LogSink for NativeViewerSink {
     fn send(&self, msg: LogMsg) {
         if let Err(err) = self.0.send(msg) {
             re_log::error_once!("Failed to send log message to viewer: {err}");
