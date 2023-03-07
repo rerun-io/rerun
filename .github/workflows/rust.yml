@@ -130,6 +130,13 @@ jobs:
           command: check
           args: --locked --no-default-features --features __ci --lib
 
+      # Check a few important permutations of the feature flags for our `rerun` library:
+      - name: Check rerun with --features sdk
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --no-default-features --features sdk
+
       - name: Test doc-tests
         uses: actions-rs/cargo@v1
         with:
