@@ -230,6 +230,8 @@ pub struct DataStore {
     /// Maps `MsgId`s to some metadata (just timepoints at the moment).
     ///
     /// `BTreeMap` because of garbage collection.
+    //
+    // TODO: this isn't garbage collected, is it?
     pub(crate) messages: BTreeMap<MsgId, TimePoint>,
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc

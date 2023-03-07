@@ -283,8 +283,6 @@ fn latest_at() {
 }
 
 fn latest_at_impl(store: &mut DataStore) {
-    init_logs();
-
     let ent_path = EntityPath::from("this/that");
 
     let frame0: TimeInt = 0.into();
