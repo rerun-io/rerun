@@ -51,7 +51,7 @@ rerun = { workspace = true, default-features = false, features = [
   "sdk",
 ] }
 
-ahash = "0.8"
+ahash.workspace = true
 anyhow.workspace = true
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }

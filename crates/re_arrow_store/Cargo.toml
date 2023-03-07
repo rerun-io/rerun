@@ -33,7 +33,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 
 # External dependencies:
-ahash = "0.8"
+ahash.workspace = true
 anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",

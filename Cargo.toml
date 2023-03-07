@@ -48,6 +48,7 @@ re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "0.3.0"
 re_ws_comms = { path = "crates/re_ws_comms", version = "0.3.0" }
 rerun = { path = "crates/rerun", version = "0.3.0" }
 
+ahash = "0.8"
 anyhow = "1.0"
 arrow2 = "0.16"
 arrow2_convert = "0.4.2"

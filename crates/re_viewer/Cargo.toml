@@ -62,7 +62,7 @@ re_analytics = { workspace = true, optional = true }
 
 
 # External
-ahash = "0.8"
+ahash.workspace = true
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 eframe = { workspace = true, default-features = false, features = [
