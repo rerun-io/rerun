@@ -38,7 +38,7 @@ tokio_runtime = ["dep:tokio"]
 [dependencies]
 re_build_info.workspace = true
 re_error.workspace = true
-re_log_types.workspace = true
+re_log_types = { workspace = true, features = ["save"] }
 re_log.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }

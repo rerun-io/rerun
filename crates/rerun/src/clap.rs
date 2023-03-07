@@ -9,9 +9,13 @@ use crate::Session;
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RerunBehavior {
     Connect(SocketAddr),
+
     Save(PathBuf),
+
     #[cfg(feature = "web_viewer")]
     Serve,
+
+    #[cfg(feature = "native_viewer")]
     Spawn,
 }
 
@@ -71,7 +75,7 @@ impl RerunArgs {
     ) -> anyhow::Result<()> {
         let mut session = Session::init(application_id, default_enabled);
 
-        match self.to_behavior() {
+        match self.to_behavior()? {
             RerunBehavior::Connect(addr) => {
                 session.connect(addr);
                 run(session);
@@ -90,6 +94,7 @@ impl RerunArgs {
                 std::thread::sleep(std::time::Duration::from_secs(1_000_000));
             }
 
+            #[cfg(feature = "native_viewer")]
             RerunBehavior::Spawn => {
                 crate::native_viewer::spawn(session, run)?;
             }
@@ -97,22 +102,27 @@ impl RerunArgs {
         Ok(())
     }
 
-    fn to_behavior(&self) -> RerunBehavior {
+    #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
+    fn to_behavior(&self) -> anyhow::Result<RerunBehavior> {
         if let Some(path) = self.save.as_ref() {
-            return RerunBehavior::Save(path.clone());
+            return Ok(RerunBehavior::Save(path.clone()));
         }
 
         #[cfg(feature = "web_viewer")]
         if self.serve {
-            return RerunBehavior::Serve;
+            return Ok(RerunBehavior::Serve);
         }
 
         match self.connect {
-            Some(Some(addr)) => return RerunBehavior::Connect(addr),
-            Some(None) => return RerunBehavior::Connect(crate::default_server_addr()),
+            Some(Some(addr)) => return Ok(RerunBehavior::Connect(addr)),
+            Some(None) => return Ok(RerunBehavior::Connect(crate::default_server_addr())),
             None => {}
         }
 
-        RerunBehavior::Spawn
+        #[cfg(not(feature = "native_viewer"))]
+        anyhow::bail!("Expected --save, --connect, or --serve");
+
+        #[cfg(feature = "native_viewer")]
+        Ok(RerunBehavior::Spawn)
     }
 }

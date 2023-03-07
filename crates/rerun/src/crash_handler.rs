@@ -19,7 +19,7 @@ pub fn install_crash_handlers(build_info: BuildInfo) {
     install_signal_handler(build_info);
 }
 
-fn install_panic_hook(build_info: BuildInfo) {
+fn install_panic_hook(_build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
     std::panic::set_hook(Box::new(move |panic_info: &std::panic::PanicInfo<'_>| {
@@ -37,7 +37,7 @@ fn install_panic_hook(build_info: BuildInfo) {
             {
                 let callstack = callstack_from("panicking::panic_fmt\n");
                 let mut event = re_analytics::Event::append("crash-panic")
-                    .with_build_info(&build_info)
+                    .with_build_info(&_build_info)
                     .with_prop("callstack", callstack);
                 if let Some(location) = panic_info.location() {
                     event = event.with_prop(
