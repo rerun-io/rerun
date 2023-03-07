@@ -84,7 +84,7 @@ Before pushing the release tag:
 
 After tagging and the CI has published:
   * [ ] Test the Python packages from PyPI: `pip install rerun_sdk==0.3.0a1`
-  * [ ] Test rust install version: `cargo install -f rerun@0.3.0-alpha.1 -F web && rerun --web-viewer api.rrd`
+  * [ ] Test rust install version: `cargo install -f rerun@0.3.0-alpha.1 -F web_viewer && rerun --web-viewer api.rrd`
   * [ ] Test rust crate: Modify Cargo.toml of any example to not point to the workspace
     * [ ] run with `--serve` to test web player
 
