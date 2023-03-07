@@ -1,29 +1,51 @@
 #!/usr/bin/env python3
-"""Simple example of a ROS node that republishes to Rerun."""
+"""
+Simple example of a ROS node that republishes to Rerun.
+
+NOTE: Unlike many of the other examples, this example requires a system installation of ROS
+in addition to the packages from requirements.txt.
+"""
 
 import sys
 from typing import List
 
-import cv_bridge
-import laser_geometry
 import numpy as np
-import rclpy
 import rerun as rr
-import trimesh
-from image_geometry import PinholeCameraModel
-from nav_msgs.msg import Odometry
-from numpy.lib.recfunctions import structured_to_unstructured
-from rclpy.callback_groups import ReentrantCallbackGroup
-from rclpy.node import Node
-from rclpy.qos import QoSDurabilityPolicy, QoSProfile
-from rclpy.time import Duration, Time
-from rerun_urdf import load_urdf_from_msg, log_scene
-from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2, PointField
-from sensor_msgs_py import point_cloud2
-from std_msgs.msg import String
-from tf2_ros import TransformException
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
+
+ros_packages_found = True
+try:
+    import cv_bridge
+    import laser_geometry
+    import rclpy
+    import trimesh
+    from image_geometry import PinholeCameraModel
+    from nav_msgs.msg import Odometry
+    from numpy.lib.recfunctions import structured_to_unstructured
+    from rclpy.callback_groups import ReentrantCallbackGroup
+    from rclpy.node import Node
+    from rclpy.qos import QoSDurabilityPolicy, QoSProfile
+    from rclpy.time import Duration, Time
+    from rerun_urdf import load_urdf_from_msg, log_scene
+    from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2, PointField
+    from sensor_msgs_py import point_cloud2
+    from std_msgs.msg import String
+    from tf2_ros import TransformException
+    from tf2_ros.buffer import Buffer
+    from tf2_ros.transform_listener import TransformListener
+
+    ros_packages_found = True
+except ImportError:
+    print(
+        """
+Could not import the required ROS2 packages.
+
+Make sure you have installed ROS2 (https://docs.ros.org/en/humble/index.html)
+and sourced /opt/ros/humble/setup.bash
+
+See: README.md for more details.
+"""
+    )
+    sys.exit(1)
 
 
 class TurtleSubscriber(Node):  # type: ignore[misc]

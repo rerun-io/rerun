@@ -42,7 +42,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
             q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
             # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
             q = np.array([q[1], q[2], q[3], q[0]])
-            rr.log_rigid3(path, parent_from_child=(t, q))
+            rr.log_rigid3(path, parent_from_child=(t, q), timeless=timeless)
 
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
@@ -75,6 +75,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
                 indices=mesh.faces,
                 normals=mesh.vertex_normals,
                 albedo_factor=albedo_factor,
+                timeless=timeless,
             )
 
     if children:

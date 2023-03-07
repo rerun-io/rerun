@@ -3,6 +3,10 @@
 A minimal example of creating a ROS node that subscribes to topics and converts
 the messages to rerun log calls.
 
+NOTE: Unlike many of the other examples, this example requires a system installation of ROS
+in addition to the packages from requirements.txt.
+
+
 # Dependencies
 
 This example was developed and tested on top of [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
