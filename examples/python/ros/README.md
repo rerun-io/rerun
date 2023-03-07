@@ -6,7 +6,6 @@ the messages to rerun log calls.
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
 
-
 # Dependencies
 
 This example was developed and tested on top of [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
@@ -14,7 +13,7 @@ and the the [turtlebot3 navigation example](https://navigation.ros.org/getting_s
 
 Installing ROS is outside the scope of this example, but you will need the equivalent of the following packages:
 ```
-sudo apt install ros-humble-desktop ros-humble-navigation2 ros-humble-turtlebot3 python3-colcon-common-extensions
+sudo apt install ros-humble-desktop gazebo ros-humble-navigation2 ros-humble-turtlebot3 ros-humble-turtlebot3-gazebo
 ```
 
 In addition to installing the dependencies from `requirements.txt` into a venv you will also need to source the
