@@ -126,7 +126,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
         scaled = urdf.scene.scaled(1.0)
 
-        log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf")
+        log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", timeless=True)
 
     def cam_info_callback(self, info: CameraInfo) -> None:
         """Log a `CameraInfo` with `log_pinhole`."""

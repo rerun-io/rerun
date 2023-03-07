@@ -25,7 +25,7 @@ def load_urdf_from_msg(msg: String) -> URDF:
     return URDF.load(f, filename_handler=ament_locate_package)
 
 
-def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> None:
+def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timeless: bool = False) -> None:
     """Log a trimesh scene to rerun."""
     path = path + "/" + node if path else node
 
@@ -33,6 +33,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
     children = scene.graph.transforms.children.get(node)
 
     node_data = scene.graph.get(frame_to=node, frame_from=parent)
+
     if node_data:
         # Log the transform between this node and its direct parent (if it has one!).
         if parent:
@@ -60,20 +61,22 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
             # as an albedo factor for the whole primitive.
             visual_color = None
             try:
-                visual_color = mesh.visual.to_color().vertex_colors
+                colors = mesh.visual.to_color().vertex_colors
                 if len(colors) == 4:
                     visual_color = np.array(colors) / 255.0
             except Exception:
                 pass
+
+            albedo_factor = vertex_colors if vertex_colors is not None else visual_color
 
             rr.log_mesh(
                 path,
                 mesh.vertices,
                 indices=mesh.faces,
                 normals=mesh.vertex_normals,
-                albedo_factor=vertex_colors or visual_color,
+                albedo_factor=albedo_factor,
             )
 
-        if children:
-            for child in children:
-                log_scene(scene, child, path)
+    if children:
+        for child in children:
+            log_scene(scene, child, path, timeless)
