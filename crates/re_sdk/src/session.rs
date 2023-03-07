@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time};
 
 use crate::sink::LogSink;
@@ -176,9 +178,13 @@ impl SessionBuilder {
 /// The main way to do Rerun loggning.
 ///
 /// You can construct a [`Session`] with [`SessionBuilder`] or [`Session::new`].
+///
+/// Cloning a [`Session`] is cheap (it's a shallow clone).
+/// The clone will send its messages to the same sink as the prototype.
 #[must_use]
+#[derive(Clone)]
 pub struct Session {
-    sink: Box<dyn LogSink>,
+    sink: Arc<dyn LogSink>,
     // TODO(emilk): add convenience `TimePoint` here so that users can
     // do things like `session.set_time_sequence("frame", frame_idx);`
 }
@@ -211,7 +217,7 @@ impl Session {
             );
         }
 
-        Self { sink }
+        Self { sink: sink.into() }
     }
 
     /// Construct a new session with a disabled "dummy" sink that drops all logging messages.
@@ -219,7 +225,7 @@ impl Session {
     /// [`Self::is_enabled`] will return `false`.
     pub fn disabled() -> Self {
         Self {
-            sink: crate::sink::disabled(),
+            sink: crate::sink::disabled().into(),
         }
     }
 
