@@ -1,17 +1,20 @@
+use std::sync::mpsc::Sender;
+
 use anyhow::Context as _;
+use parking_lot::Mutex;
 
 use re_log_types::LogMsg;
 
 /// Stream log messages to a file.
 pub struct FileWriter {
     // None = quit
-    tx: std::sync::mpsc::Sender<Option<LogMsg>>,
+    tx: Mutex<Sender<Option<LogMsg>>>,
     join_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Drop for FileWriter {
     fn drop(&mut self) {
-        self.tx.send(None).ok();
+        self.tx.lock().send(None).ok();
         if let Some(join_handle) = self.join_handle.take() {
             join_handle.join().ok();
         }
@@ -47,14 +50,14 @@ impl FileWriter {
             .context("Failed to spawn thread")?;
 
         Ok(Self {
-            tx,
+            tx: tx.into(),
             join_handle: Some(join_handle),
         })
     }
 }
 
 impl crate::LogSink for FileWriter {
-    fn send(&mut self, msg: LogMsg) {
-        self.tx.send(Some(msg)).ok();
+    fn send(&self, msg: LogMsg) {
+        self.tx.lock().send(Some(msg)).ok();
     }
 }

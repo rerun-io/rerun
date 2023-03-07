@@ -53,7 +53,7 @@ impl RemoteViewerServer {
 }
 
 impl crate::LogSink for RemoteViewerServer {
-    fn send(&mut self, msg: LogMsg) {
+    fn send(&self, msg: LogMsg) {
         if let Err(err) = self.sender.send(msg) {
             re_log::error_once!("Failed to send log message to web server: {err}");
         }

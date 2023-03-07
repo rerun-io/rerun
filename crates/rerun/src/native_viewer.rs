@@ -81,7 +81,7 @@ struct NativeViewerSink(pub re_smart_channel::Sender<LogMsg>);
 
 #[cfg(feature = "native_viewer")]
 impl re_sdk::LogSink for NativeViewerSink {
-    fn send(&mut self, msg: LogMsg) {
+    fn send(&self, msg: LogMsg) {
         if let Err(err) = self.0.send(msg) {
             re_log::error_once!("Failed to send log message to viewer: {err}");
         }

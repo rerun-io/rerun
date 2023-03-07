@@ -110,7 +110,7 @@ impl Client {
         self.send_msg_msg(MsgMsg::SetAddr(addr));
     }
 
-    pub fn send(&mut self, log_msg: LogMsg) {
+    pub fn send(&self, log_msg: LogMsg) {
         self.send_msg_msg(MsgMsg::LogMsg(log_msg));
     }
 
