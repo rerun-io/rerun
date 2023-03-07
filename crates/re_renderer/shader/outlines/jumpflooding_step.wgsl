@@ -25,6 +25,8 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     var closest_positions_b = Vec2(-99.0);
     var closest_distance_sq_b = 99999.0;
 
+    // TODO: Ignore position at 0,0
+
     for (var y: i32 = -1; y <= 1; y += 1) {
         for (var x: i32 = -1; x <= 1; x += 1) {
             let positions_a_and_b = textureLoad(voronoi_texture, center_coord + IVec2(x, y) * uniforms.step_width, 0);

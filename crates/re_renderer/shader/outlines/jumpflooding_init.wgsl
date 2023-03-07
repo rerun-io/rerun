@@ -4,81 +4,142 @@
 @group(0) @binding(0)
 var mask_texture: texture_multisampled_2d<u32>;
 
-// Sample positions for 4x MSAA samples are actually standardized accross all APIs we care about!
-// Vulkan: https://registry.khronos.org/vulkan/specs/1.3-khr-extensions/html/chap25.html#primsrast-multisampling
-// Metal: https://developer.apple.com/documentation/metal/mtldevice/2866120-getdefaultsamplepositions
-// DX12 does *not* specify the sampling pattern. However DX11 does, again the same for 4 samples:
-// https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels
-var<private> subsample_positions: array<Vec2, 4> = array<Vec2, 4>(
-    Vec2(0.375, 0.125),
-    Vec2(0.875, 0.375),
-    Vec2(0.125, 0.625),
-    Vec2(0.625, 0.875)
-);
+fn has_edge(closest_center_sample: UVec2, sample_coord: IVec2, sample_idx: i32) -> Vec2 {
+    let mask_neighbor = textureLoad(mask_texture, sample_coord, sample_idx).xy;
+    return Vec2(closest_center_sample != mask_neighbor);
+}
 
 @fragment
 fn main(in: VertexOutput) -> @location(0) Vec4 {
     let resolution = textureDimensions(mask_texture).xy;
 
-    // Determine *where* (in texture coordinates) the closest edge to the center is.
-    // TODO: write something about the strategy we're using here.
+    // Determine *where* in texture coordinates (with sub-pixel accuracy!) the closest edge to the center is.
+    //
+    // In Ben Golus article on line rendering (https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9),
+    // anti-aliasing was achieved by a kind of sobel filter on an already resolved target.
+    // In our case however, we have a number of different masks, identified by an index per-pixel.
+    // Therefore, there is no straight-forward way to resolve this MSAA texture!
+    // Resolving accurate sub-pixel edges therefore requires us to look at the sub-samples of the MSAA mask directly.
+    //
+    // There's a bunch of ways on how to go about this and it's not exactly clear where the trade-offs between quality & performance are.
+    // But I found that by using our knowledge of the sampling pattern
+    // we can detect the closest edges to each sample, and therefore get a pretty good result with *relatively* few texture fetches.
+    //
+    // We do so by checking particular edges, summing top their sub-sample positions and dividing by the number of edges.
+    //
+    //
+    // About the sampling pattern:
+    // Vulkan: https://registry.khronos.org/vulkan/specs/1.3-khr-extensions/html/chap25.html#primsrast-multisampling
+    // Metal: https://developer.apple.com/documentation/metal/mtldevice/2866120-getdefaultsamplepositions
+    // DX12 does *not* specify the sampling pattern. However DX11 does, again the same for 4 samples:
+    // https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels
+    //
+    // (0, 0) _____________
+    //       |    0       |
+    //       |          1 |
+    //       | 2          |
+    //       |        3   |
+    //        ‾‾‾‾‾‾‾‾‾‾‾‾(1, 1)
+    //
+    // var<private> subsample_positions: array<Vec2, 4> = array<Vec2, 4>(
+    //     Vec2(0.375, 0.125),
+    //     Vec2(0.875, 0.375),
+    //     Vec2(0.125, 0.625),
+    //     Vec2(0.625, 0.875)
+    // );
+    //
+    // Note that the algorithm should still produce _some_ edges if this is not the case!
+
     //let num_samples = textureNumSamples(mask_texture);
     // TODO(andreas): Should we assert somehow on textureNumSamples here?
 
-    let center_coord = UVec2(Vec2(resolution) * in.texcoord);
+    let center_coord = IVec2(Vec2(resolution) * in.texcoord);
+    let mask_top_left = textureLoad(mask_texture, center_coord, 0).xy;
+    let mask_right_top = textureLoad(mask_texture, center_coord, 1).xy;
+    let mask_left_bottom = textureLoad(mask_texture, center_coord, 2).xy;
+    let mask_bottom_right = textureLoad(mask_texture, center_coord, 3).xy;
 
-    var sub_edge_pos = Vec4(0.0);
-    var num_edges = Vec2(0.0);
+    var edge_pos_a_and_b = Vec4(0.0);
+    var num_edges_and_b = Vec2(0.0);
 
-
-    for (var sample_idx: i32 = 0; sample_idx < 4; sample_idx += 1) {
-        let center = textureLoad(mask_texture, center_coord, sample_idx).xy;
-        let up = textureLoad(mask_texture, center_coord - UVec2(0u, 1u), sample_idx).xy;
-        let down = textureLoad(mask_texture, center_coord + UVec2(0u, 1u), sample_idx).xy;
-        let left = textureLoad(mask_texture, center_coord - UVec2(1u, 0u), sample_idx).xy;
-        let right = textureLoad(mask_texture, center_coord + UVec2(1u, 0u), sample_idx).xy;
-
-        let has_edge_up = Vec2(center != up);
-        let edge_pos_up = subsample_positions[sample_idx] + Vec2(0.0, 0.5);
-        sub_edge_pos += Vec4(edge_pos_up * has_edge_up.x, edge_pos_up  * has_edge_up.y);
-        num_edges += has_edge_up;
-
-        let has_edge_down = Vec2(center != down);
-        let edge_pos_down = subsample_positions[sample_idx] - Vec2(0.0, 0.5);
-        sub_edge_pos += Vec4(edge_pos_down * has_edge_down.x, edge_pos_down  * has_edge_down.y);
-        num_edges += has_edge_down;
-
-        let has_edge_right = Vec2(center != right);
-        let edge_pos_right = subsample_positions[sample_idx] + Vec2(0.5, 0.0);
-        sub_edge_pos += Vec4(edge_pos_right * has_edge_right.x, edge_pos_right  * has_edge_right.y);
-        num_edges += has_edge_right;
-
-        let has_edge_left = Vec2(center != left);
-        let edge_pos_left = subsample_positions[sample_idx] - Vec2(0.5, 0.0);
-        sub_edge_pos += Vec4(edge_pos_left * has_edge_left.x, edge_pos_left  * has_edge_left.y);
-        num_edges += has_edge_left;
-
-        // num_edges += Vec2(center != down);
-        // num_edges += Vec2(center != left);
-        // num_edges += Vec2(center != right);
+    // Internal samples accross the center point
+    // Tried weighting this higher, didn't make a difference in quality. TODO: try again
+    {
+        let has_edge_at_center = Vec2(mask_top_left != mask_bottom_right) + Vec2(mask_right_top != mask_left_bottom);
+        num_edges_and_b += has_edge_at_center;
+        edge_pos_a_and_b += has_edge_at_center.xxyy * 0.5;
     }
 
+    // A lot of this code is repetetive, but wgsl/naga doesn't know yet how to do static indexing from unrolled loops.
 
-    sub_edge_pos = Vec4(sub_edge_pos.xy / num_edges.x, sub_edge_pos.zw / num_edges.y);
-    sub_edge_pos = sub_edge_pos * 0.5 - Vec4(0.5);
+    // Sample closest neighbors top/bottom/left/right
+    { // right
+        let has_edge = has_edge(mask_right_top, center_coord + IVec2(1, 0), 2);
+        let edge_pos = Vec2(1.0, 0.5);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+    { // bottom
+        let has_edge = has_edge(mask_bottom_right, center_coord + IVec2(0, 1), 0);
+        let edge_pos = Vec2(0.5, 1.0);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+    { // left
+        let has_edge = has_edge(mask_left_bottom, center_coord + IVec2(-1, 0), 1);
+        let edge_pos = Vec2(0.0, 0.5);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+    { // top
+        let has_edge = has_edge(mask_top_left, center_coord + IVec2(0, -1), 3);
+        let edge_pos = Vec2(0.5, 0.0);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
 
-    var texcoord_channel_0: Vec2;
-    if num_edges.x == 0.0 {
-        texcoord_channel_0 = Vec2(-1.0);
+    // Sample closest neighbors diagonally.
+    // This is not strictly necessary, but empirically the result looks a lot better!
+    { // top-right
+        let has_edge = has_edge(mask_right_top, center_coord + IVec2(1, -1), 2);
+        let edge_pos = Vec2(1.0, 0.0);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+    { // bottom-right
+        let has_edge = has_edge(mask_bottom_right, center_coord + IVec2(1, 1), 0);
+        let edge_pos = Vec2(1.0, 1.0);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+    { // bottom-left
+        let has_edge = has_edge(mask_left_bottom, center_coord + IVec2(-1, 1), 1);
+        let edge_pos = Vec2(0.0, 1.0);
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+    { // top-left
+        let has_edge = has_edge(mask_top_left, center_coord + IVec2(-1, -1), 3);
+        //let edge_pos = Vec2(0.0, 0.0);
+        //edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
+        num_edges_and_b += has_edge;
+    }
+
+    // Normalize edges ans get range from [0, 1] to [-0.5, 0.5].
+    edge_pos_a_and_b = edge_pos_a_and_b / num_edges_and_b.xxyy - Vec4(0.5);
+
+    var texcoord_channel_a: Vec2;
+    if num_edges_and_b.x == 0.0 {
+        texcoord_channel_a = Vec2(-10.0);
     } else {
-        texcoord_channel_0 = in.texcoord + sub_edge_pos.xy / Vec2(resolution);
+        texcoord_channel_a = in.texcoord + edge_pos_a_and_b.xy / Vec2(resolution);
     }
-    var texcoord_channel_1: Vec2;
-    if num_edges.y == 0.0 {
-        texcoord_channel_1 = Vec2(-1.0);
+    var texcoord_channel_b: Vec2;
+    if num_edges_and_b.y == 0.0 {
+        texcoord_channel_b = Vec2(-10.0);
     } else {
-        texcoord_channel_1 = in.texcoord + sub_edge_pos.zw / Vec2(resolution);
+        texcoord_channel_b = in.texcoord + edge_pos_a_and_b.zw / Vec2(resolution);
     }
 
-    return Vec4(texcoord_channel_0, texcoord_channel_1);
+    return Vec4(texcoord_channel_a, texcoord_channel_b);
 }

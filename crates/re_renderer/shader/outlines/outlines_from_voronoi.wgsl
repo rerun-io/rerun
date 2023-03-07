@@ -13,11 +13,14 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     let to_closest_a = (closest_positions.xy - in.texcoord) * Vec2(resolution);
     let distance_a = length(abs(to_closest_a));
 
-    let outline_a = saturate(8.0 - distance_a);
+
+    let sharpness = 1.0;
+    let thickness = 4.5;
+    let outline_a = saturate((thickness - distance_a) * sharpness);
 
     // TODO: Second outline, coloring.
     return Vec4(1.0, 0.6, 0.0, 1.0) * outline_a ;
 
-    // Useful for debugging
+    // Show the raw voronoi texture. Useful for debugging.
     //return Vec4(closest_positions.xy, 0.0, 1.0);
 }
