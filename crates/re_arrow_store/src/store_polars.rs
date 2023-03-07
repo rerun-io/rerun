@@ -89,13 +89,19 @@ impl DataStore {
             })
             .collect();
 
+        // Some internal functions of `polars` will panic if everything's empty: early exit.
+        if dfs.iter().all(|df| df.is_empty()) {
+            return DataFrame::empty();
+        }
+
         // Concatenate all indices together.
         //
         // This has to be done diagonally since these indices refer to different entities with
         // potentially wildly different sets of components and lengths.
-        let df = diag_concat_df(dfs.as_slice())
-            // TODO(cmc): is there any way this can fail in this case?
-            .unwrap();
+        //
+        // NOTE: The only way this can fail in this case is if all these frames are empty, because
+        // the store itself is empty, which we check just above.
+        let df = diag_concat_df(dfs.as_slice()).unwrap();
 
         let df = sort_df_columns(&df, self.config.store_insert_ids);
 
