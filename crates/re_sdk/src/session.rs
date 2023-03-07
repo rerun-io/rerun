@@ -7,6 +7,53 @@ use re_log_types::{
 
 use crate::{file_writer::FileWriter, LogSink};
 
+/// Used to contruct a [`RecordingInfo`]:
+struct RecordingMetaData {
+    recording_source: RecordingSource,
+    application_id: Option<ApplicationId>,
+    recording_id: Option<RecordingId>,
+    is_official_example: Option<bool>,
+}
+
+impl Default for RecordingMetaData {
+    fn default() -> Self {
+        Self {
+            recording_source: RecordingSource::RustSdk {
+                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+            },
+            application_id: Default::default(),
+            recording_id: Default::default(),
+            is_official_example: Default::default(),
+        }
+    }
+}
+
+impl RecordingMetaData {
+    pub fn to_recording_info(&self) -> Option<RecordingInfo> {
+        let recording_id = self.recording_id?;
+
+        let application_id = self
+            .application_id
+            .clone()
+            .unwrap_or_else(ApplicationId::unknown);
+
+        re_log::debug!(
+            "Beginning new recording with application_id {:?} and recording id {}",
+            application_id.0,
+            recording_id
+        );
+
+        Some(RecordingInfo {
+            application_id,
+            recording_id,
+            is_official_example: self.is_official_example.unwrap_or_default(),
+            started: Time::now(),
+            recording_source: self.recording_source.clone(),
+        })
+    }
+}
+
 /// This is the main object you need to create to use the Rerun SDK.
 ///
 /// You should ideally create one session object and reuse it.
@@ -17,12 +64,7 @@ pub struct Session {
     enabled: bool,
 
     has_sent_begin_recording_msg: bool,
-
-    // Used in [`BeginRecordingMsg`]:
-    recording_source: RecordingSource,
-    application_id: Option<ApplicationId>,
-    recording_id: Option<RecordingId>,
-    is_official_example: Option<bool>,
+    recording_meta_data: RecordingMetaData,
 
     // Used by `rerun::serve_web_viewer`
     #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
@@ -85,19 +127,13 @@ impl Session {
         Self {
             enabled,
 
-            recording_source: RecordingSource::RustSdk {
-                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-            },
+            has_sent_begin_recording_msg: false,
+            recording_meta_data: Default::default(),
 
             #[cfg(all(feature = "tokio_runtime", not(target_arch = "wasm32")))]
             tokio_runtime: tokio::runtime::Runtime::new().unwrap(),
 
             sink: Box::new(crate::log_sink::BufferedSink::new()),
-            application_id: None,
-            recording_id: None,
-            is_official_example: None,
-            has_sent_begin_recording_msg: false,
         }
     }
 
@@ -132,16 +168,16 @@ impl Session {
     /// Note that many recordings can share the same [`ApplicationId`], but
     /// they all have unique [`RecordingId`]s.
     pub fn set_application_id(&mut self, application_id: ApplicationId, is_official_example: bool) {
-        if self.application_id.as_ref() != Some(&application_id) {
-            self.application_id = Some(application_id);
-            self.is_official_example = Some(is_official_example);
+        if self.recording_meta_data.application_id.as_ref() != Some(&application_id) {
+            self.recording_meta_data.application_id = Some(application_id);
+            self.recording_meta_data.is_official_example = Some(is_official_example);
             self.has_sent_begin_recording_msg = false;
         }
     }
 
     /// The current [`RecordingId`], if set.
     pub fn recording_id(&self) -> Option<RecordingId> {
-        self.recording_id
+        self.recording_meta_data.recording_id
     }
 
     /// Set the [`RecordingId`] of this message stream.
@@ -153,8 +189,8 @@ impl Session {
     /// Note that many recordings can share the same [`ApplicationId`], but
     /// they all have unique [`RecordingId`]s.
     pub fn set_recording_id(&mut self, recording_id: RecordingId) {
-        if self.recording_id != Some(recording_id) {
-            self.recording_id = Some(recording_id);
+        if self.recording_meta_data.recording_id != Some(recording_id) {
+            self.recording_meta_data.recording_id = Some(recording_id);
             self.has_sent_begin_recording_msg = false;
         }
     }
@@ -162,13 +198,13 @@ impl Session {
     /// Set where the recording is coming from.
     /// The default is [`RecordingSource::RustSdk`].
     pub fn set_recording_source(&mut self, recording_source: RecordingSource) {
-        self.recording_source = recording_source;
+        self.recording_meta_data.recording_source = recording_source;
     }
 
     /// Where the recording is coming from.
     /// The default is [`RecordingSource::RustSdk`].
     pub fn recording_source(&self) -> &RecordingSource {
-        &self.recording_source
+        &self.recording_meta_data.recording_source
     }
 
     /// Set the [`LogSink`] to use. This is where the log messages will be sent.
@@ -238,28 +274,17 @@ impl Session {
         }
 
         if !self.has_sent_begin_recording_msg {
-            if let Some(recording_id) = self.recording_id {
-                let application_id = self
-                    .application_id
-                    .clone()
-                    .unwrap_or_else(ApplicationId::unknown);
-
+            if let Some(info) = self.recording_meta_data.to_recording_info() {
                 re_log::debug!(
                     "Beginning new recording with application_id {:?} and recording id {}",
-                    application_id.0,
-                    recording_id
+                    info.application_id.0,
+                    info.recording_id
                 );
 
                 self.sink.send(
                     BeginRecordingMsg {
                         msg_id: MsgId::random(),
-                        info: RecordingInfo {
-                            application_id,
-                            recording_id,
-                            is_official_example: self.is_official_example.unwrap_or_default(),
-                            started: Time::now(),
-                            recording_source: self.recording_source.clone(),
-                        },
+                        info,
                     }
                     .into(),
                 );
