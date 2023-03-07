@@ -10,6 +10,12 @@ struct Outlines {
     model_mesh_instances: Vec<MeshInstance>,
 }
 
+struct MeshProperties {
+    outline_mask: Option<glam::UVec2>,
+    position: glam::Vec3,
+    rotation: glam::Quat,
+}
+
 impl framework::Example for Outlines {
     fn title() -> &'static str {
         "Outlines"
@@ -53,24 +59,33 @@ impl framework::Example for Outlines {
             )
             .unwrap();
 
-        let instances = (0..3)
+        let mesh_properties = [
+            MeshProperties {
+                outline_mask: None,
+                position: glam::Vec3::ZERO,
+                rotation: glam::Quat::IDENTITY,
+            },
+            MeshProperties {
+                outline_mask: Some(glam::uvec2(1, 0)),
+                position: glam::vec3(8.0, 0.5, -10.0),
+                rotation: glam::Quat::from_rotation_y(time.seconds_since_startup()),
+            },
+        ];
+
+        let instances = mesh_properties
             .into_iter()
-            .flat_map(|i| {
+            .flat_map(|props| {
                 self.model_mesh_instances
                     .iter()
                     .map(move |instance| MeshInstance {
                         gpu_mesh: instance.gpu_mesh.clone(),
                         mesh: None,
                         world_from_mesh: glam::Affine3A::from_rotation_translation(
-                            glam::Quat::from_rotation_y(time.seconds_since_startup() * i as f32),
-                            glam::vec3(8.0, 0.5, -10.0) * i as f32,
+                            props.rotation,
+                            props.position,
                         ) * instance.world_from_mesh,
-                        additive_tint: re_renderer::Color32::TRANSPARENT,
-                        outline_mask: if i == 0 {
-                            None
-                        } else {
-                            Some(glam::uvec2(i, 0))
-                        },
+                        outline_mask: props.outline_mask,
+                        ..Default::default()
                     })
             })
             .collect_vec();

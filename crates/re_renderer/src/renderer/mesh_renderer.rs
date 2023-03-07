@@ -82,6 +82,9 @@ mod gpu_data {
 struct MeshBatch {
     mesh: GpuMesh,
     count: u32,
+    /// Number of meshes out of `count` which have outlines.
+    /// We put all instances with outlines at the start of the instance buffer range.
+    count_with_outlines: u32,
 }
 
 #[derive(Clone)]
@@ -112,7 +115,6 @@ pub struct MeshInstance {
     pub additive_tint: Color32,
 
     /// TODO: Document & unify
-    /// TODO: actually use
     pub outline_mask: Option<glam::UVec2>,
 }
 
@@ -166,7 +168,7 @@ impl MeshDrawData {
             },
         );
 
-        let mut mesh_runs = Vec::new();
+        let mut batches = Vec::new();
         {
             let mut instance_buffer_staging = ctx
                 .queue
@@ -179,15 +181,37 @@ impl MeshDrawData {
             let instance_buffer_staging: &mut [gpu_data::InstanceData] =
                 bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
+            let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
+            // TODO: This grouping doesn't seem to do its job correctly. We're not actually batching correctly right now in all cases.
             for (mesh, instances) in &instances.iter().group_by(|instance| &instance.gpu_mesh) {
                 let mut count = 0;
+                let mut count_with_outlines = 0;
+
+                // Put all instances with outlines at the start of the instance buffer range.
+                let instances = instances.sorted_by(|a, b| {
+                    if a.outline_mask.is_some() {
+                        if b.outline_mask.is_some() {
+                            std::cmp::Ordering::Equal
+                        } else {
+                            std::cmp::Ordering::Less
+                        }
+                    } else if b.outline_mask.is_none() {
+                        std::cmp::Ordering::Equal
+                    } else {
+                        std::cmp::Ordering::Greater
+                    }
+                });
+
                 for (instance, gpu_instance) in instances.zip(
                     instance_buffer_staging
                         .iter_mut()
                         .skip(num_processed_instances),
                 ) {
                     count += 1;
+                    if instance.outline_mask.is_some() {
+                        count_with_outlines += 1;
+                    }
 
                     let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
                     gpu_instance.world_from_mesh_row_0 = world_from_mesh_mat3
@@ -215,27 +239,20 @@ impl MeshDrawData {
                     gpu_instance.additive_tint = instance.additive_tint;
                 }
                 num_processed_instances += count;
-                mesh_runs.push((mesh, count as u32));
+
+                // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
+                let mesh = mesh_manager.get(mesh)?;
+                batches.push(MeshBatch {
+                    mesh: mesh.clone(),
+                    count: count as _,
+                    count_with_outlines,
+                });
             }
             assert_eq!(num_processed_instances, instances.len());
         }
 
-        // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
-        let batches: Result<Vec<_>, _> = mesh_runs
-            .into_iter()
-            .map(|(mesh_handle, count)| {
-                ctx.mesh_manager
-                    .read()
-                    .get(mesh_handle)
-                    .map(|mesh| MeshBatch {
-                        mesh: mesh.clone(),
-                        count,
-                    })
-            })
-            .collect();
-
         Ok(MeshDrawData {
-            batches: batches?,
+            batches,
             instance_buffer: Some(instance_buffer),
         })
     }
@@ -392,6 +409,11 @@ impl Renderer for MeshRenderer {
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
+            if phase == DrawPhase::OutlineMask && mesh_batch.count_with_outlines == 0 {
+                instance_start_index += mesh_batch.count;
+                continue;
+            }
+
             let vertex_buffer_combined = &mesh_batch.mesh.vertex_buffer_combined;
             let index_buffer = &mesh_batch.mesh.index_buffer;
 
@@ -408,17 +430,22 @@ impl Renderer for MeshRenderer {
                 wgpu::IndexFormat::Uint32,
             );
 
-            let instance_range = instance_start_index..(instance_start_index + mesh_batch.count);
+            let num_meshes_to_draw = if phase == DrawPhase::OutlineMask {
+                mesh_batch.count_with_outlines
+            } else {
+                mesh_batch.count
+            };
+            let instance_range = instance_start_index..(instance_start_index + num_meshes_to_draw);
 
             for material in &mesh_batch.mesh.materials {
-                debug_assert!(mesh_batch.count > 0);
+                debug_assert!(num_meshes_to_draw > 0);
 
                 pass.set_bind_group(1, &material.bind_group, &[]);
-
                 pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }
 
-            instance_start_index = instance_range.end;
+            // Advance instance start index with *total* number of instances in this batch.
+            instance_start_index += mesh_batch.count;
         }
 
         Ok(())
