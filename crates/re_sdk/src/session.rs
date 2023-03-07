@@ -282,3 +282,9 @@ impl AsRef<dyn LogSink> for Session {
         self.sink.as_ref()
     }
 }
+
+impl std::borrow::Borrow<dyn LogSink> for Session {
+    fn borrow(&self) -> &dyn LogSink {
+        self.sink.as_ref()
+    }
+}

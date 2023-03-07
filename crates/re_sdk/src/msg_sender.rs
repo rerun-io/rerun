@@ -10,6 +10,7 @@ use nohash_hasher::IntMap;
 use crate::{
     components::Transform,
     log::{ComponentBundle, LogMsg, MsgBundle, MsgId},
+    sink::LogSink,
     time::{Time, TimeInt, TimePoint, Timeline},
     Component, ComponentName, EntityPath, SerializableComponent,
 };
@@ -258,13 +259,13 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send(self, session: &crate::Session) -> Result<(), MsgSenderError> {
-        self.send_to_sink(session.as_ref())
+    pub fn send(self, sink: &impl std::borrow::Borrow<dyn LogSink>) -> Result<(), MsgSenderError> {
+        self.send_to_sink(sink.borrow())
     }
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send_to_sink(self, sink: &dyn crate::sink::LogSink) -> Result<(), MsgSenderError> {
+    fn send_to_sink(self, sink: &dyn LogSink) -> Result<(), MsgSenderError> {
         if !sink.is_enabled() {
             return Ok(()); // silently drop the message
         }
