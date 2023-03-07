@@ -29,6 +29,7 @@ use re_log_types::{
 fn dump() {
     init_logs();
 
+    // TODO:
     // config
     //   dump
     //     gc
@@ -55,6 +56,7 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
     let frame3: TimeInt = 3.into();
     let frame4: TimeInt = 4.into();
 
+    // TODO: real important to add an extra timeline here
     let create_bundles = |store: &mut DataStore, ent_path| {
         let ent_path = EntityPath::from(ent_path);
 
@@ -77,8 +79,7 @@ fn dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataSt
     // helper to insert a bundle both as a temporal and timeless payload
     let insert = |store: &mut DataStore, bundle: &MsgBundle| {
         // insert temporal
-        // TODO
-        // store.insert(bundle).unwrap();
+        store.insert(bundle).unwrap();
 
         // insert timeless
         let mut bundle_timeless = bundle.clone();
