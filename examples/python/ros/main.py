@@ -12,7 +12,7 @@ import sys
 import numpy as np
 import rerun as rr
 
-ros_packages_found = True
+ros_packages_found = False
 try:
     import cv_bridge
     import laser_geometry
