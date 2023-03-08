@@ -17,7 +17,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "glam", "image"]
+default = ["demo", "glam", "image", "tracing_layer"]
 
 ## Enable the `demo` module (helpers for Rerun examples).
 demo = []
@@ -31,6 +31,9 @@ global_session = ["dep:once_cell"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
 
+## Enable the `tracing` integration.
+## This lets you send logs from the `tracing` crate to Rerun.
+tracing_layer = ["dep:ahash", "dep:tracing", "dep:tracing-subscriber"]
 
 [dependencies]
 re_build_info.workspace = true
@@ -51,7 +54,10 @@ parking_lot.workspace = true
 thiserror.workspace = true
 
 # Optional dependencies:
+ahash = { workspace = true, optional = true }
 once_cell = { version = "1.12", optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", optional = true }
 
 
 [dev-dependencies]

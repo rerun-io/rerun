@@ -19,6 +19,9 @@ mod log_sink;
 mod msg_sender;
 mod session;
 
+#[cfg(feature = "tracing_layer")]
+pub mod tracing_layer;
+
 // -------------
 // Public items:
 

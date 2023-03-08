@@ -644,6 +644,14 @@ fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
+    // use tracing_subscriber::prelude::*;
+    // let tracing_layers: Vec<Box<dyn tracing_subscriber::layer::Layer<_> + 'static>> =
+    //     vec![Box::new(tracing_subscriber::fmt::layer().with_filter(
+    //         tracing_subscriber::EnvFilter::from_default_env(),
+    //     ))];
+    // let (tracing_layers, reload_handle) = tracing_subscriber::reload::Layer::new(tracing_layers);
+    // tracing_subscriber::registry().with(tracing_layers).init();
+
     use clap::Parser as _;
     let args = Args::parse();
 
@@ -651,6 +659,29 @@ fn main() -> anyhow::Result<()> {
     args.rerun
         .clone()
         .run("api_demo_rs", default_enabled, move |session| {
+            use tracing_subscriber::prelude::*;
+
+            re_log::info!("Piping tracing log stream to rerun…");
+
+            let stdout_layer = tracing_subscriber::fmt::layer()
+                .with_filter(tracing_subscriber::EnvFilter::from_default_env());
+            let rerun_layer =
+                rerun::tracing_layer::RerunLayer::new("tracing", session.sink().clone())
+                    .with_filter(tracing_subscriber::EnvFilter::from_default_env());
+            tracing_subscriber::registry()
+                .with(stdout_layer)
+                .with(rerun_layer)
+                .init();
+
+            // reload_handle.modify(|layers| {
+            //     let rerun_layer =
+            //         rerun::tracing_layer::RerunLayer::new("tracing", session.sink().clone())
+            //             .with_filter(tracing_subscriber::EnvFilter::from_default_env());
+            //     layers.push(Box::new(rerun_layer));
+            // });
+
+            re_log::info!("Tracing log should now go to rerun as well as to stdout.");
+
             run(&session, &args).unwrap();
         })
 }

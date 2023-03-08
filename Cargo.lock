@@ -134,6 +134,8 @@ dependencies = [
  "ndarray-rand",
  "rand",
  "rerun",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3990,6 +3992,7 @@ dependencies = [
 name = "re_sdk"
 version = "0.3.0"
 dependencies = [
+ "ahash 0.8.2",
  "anyhow",
  "arrow2",
  "arrow2_convert",
@@ -4011,6 +4014,8 @@ dependencies = [
  "re_sdk_comms",
  "re_smart_channel",
  "thiserror",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
