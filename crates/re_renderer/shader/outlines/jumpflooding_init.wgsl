@@ -63,11 +63,11 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     var num_edges_and_b = Vec2(0.0);
 
     // Internal samples accross the center point
-    // Tried weighting this higher, didn't make a difference in quality. TODO: try again
+    // Tried weighting this higher, didn't make a difference in quality since we almost always have only a single edge.
     {
-        let has_edge_at_center = Vec2(mask_top_left != mask_bottom_right) + Vec2(mask_right_top != mask_left_bottom);
-        num_edges_and_b += has_edge_at_center;
-        edge_pos_a_and_b += has_edge_at_center.xxyy * 0.5;
+        let has_edge = Vec2(mask_top_left != mask_bottom_right) + Vec2(mask_right_top != mask_left_bottom);
+        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += has_edge.xxyy * 0.5;
     }
 
     // A lot of this code is repetetive, but wgsl/naga doesn't know yet how to do static indexing from unrolled loops.

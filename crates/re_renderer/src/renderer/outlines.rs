@@ -4,6 +4,7 @@
 //! * mask layer
 //! * MSAA handling
 
+use super::{screen_triangle_vertex_shader, DrawData, DrawPhase, Renderer};
 use crate::{
     allocator::{create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch},
     context::SharedRendererData,
@@ -12,12 +13,10 @@ use crate::{
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, ShaderModuleDesc, WgpuResourcePools,
+        RenderPipelineDesc, SamplerDesc, ShaderModuleDesc, WgpuResourcePools,
     },
     DebugLabel, FileResolver, FileSystem, RenderContext,
 };
-
-use super::{screen_triangle_vertex_shader, DrawData, DrawPhase, Renderer};
 
 use smallvec::smallvec;
 
@@ -26,7 +25,7 @@ pub struct OutlineConfig {
     /// Outline thickness for both layers in pixels. Fractional pixels are valid.
     ///
     /// Could do different thicknesses for both layers if the need arises, but for now this simplifies things.
-    pub outline_thickness_pixel: f32,
+    pub outline_radius_pixel: f32,
 
     /// Premultiplied RGBA color for the first outline layer.
     pub color_layer_a: crate::Rgba,
@@ -68,7 +67,7 @@ mod gpu_data {
     pub struct OutlineConfigUniformBuffer {
         pub color_layer_a: wgpu_buffer_types::Vec4,
         pub color_layer_b: wgpu_buffer_types::Vec4,
-        pub outline_thickness_pixel: wgpu_buffer_types::F32RowPadded,
+        pub outline_radius_pixel: wgpu_buffer_types::F32RowPadded,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 3],
     }
 }
@@ -199,6 +198,12 @@ impl OutlineMaskProcessor {
                         wgpu::BindGroupLayoutEntry {
                             binding: 1,
                             visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
                                 // Dynamic offset would make sense here since we cycle through a bunch of these.
@@ -218,7 +223,7 @@ impl OutlineMaskProcessor {
             );
 
         let max_step_width =
-            (config.outline_thickness_pixel.max(1.0).ceil() as u32).next_power_of_two();
+            (config.outline_radius_pixel.max(1.0).ceil() as u32).next_power_of_two();
         let num_steps = max_step_width.ilog2() + 1;
         let uniform_buffer_jumpflooding_steps_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -229,6 +234,16 @@ impl OutlineMaskProcessor {
                     step_width: (max_step_width >> step).into(),
                     end_padding: Default::default(),
                 }),
+        );
+        let sampler = ctx.gpu_resources.samplers.get_or_create(
+            &ctx.device,
+            &SamplerDesc {
+                label: "nearest_clamp".into(),
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                ..Default::default()
+            },
         );
         let bind_group_jumpflooding_steps = uniform_buffer_jumpflooding_steps_bindings
             .into_iter()
@@ -243,6 +258,7 @@ impl OutlineMaskProcessor {
                             .push_str(&format!("::jumpflooding_steps[{i}]")),
                         entries: smallvec![
                             BindGroupEntry::DefaultTextureView(voronoi_textures[i % 2].handle),
+                            BindGroupEntry::Sampler(sampler),
                             uniform_buffer_binding
                         ],
                         layout: bind_group_layout_jumpflooding_step,
@@ -464,7 +480,7 @@ impl OutlineCompositor {
             gpu_data::OutlineConfigUniformBuffer {
                 color_layer_a: config.color_layer_a.into(),
                 color_layer_b: config.color_layer_b.into(),
-                outline_thickness_pixel: config.outline_thickness_pixel.into(),
+                outline_radius_pixel: config.outline_radius_pixel.into(),
                 end_padding: Default::default(),
             },
         );
