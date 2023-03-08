@@ -1,7 +1,9 @@
 # Overview
 
-A minimal example of creating a ROS node that subscribes to topics and converts
-the messages to rerun log calls.
+A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
+
+The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun. Fore more information on
+future improved ROS support, see the tracking issue: [#1527](https://github.com/rerun-io/rerun/issues/1537)
 
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
