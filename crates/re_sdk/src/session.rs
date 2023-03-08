@@ -251,6 +251,11 @@ impl Session {
         self.sink.is_enabled()
     }
 
+    /// Access the underlying log sink to where we send out log messages.
+    pub fn sink(&self) -> &Arc<dyn LogSink> {
+        &self.sink
+    }
+
     /// Send a [`LogMsg`].
     pub fn send(&self, log_msg: LogMsg) {
         self.sink.send(log_msg);
