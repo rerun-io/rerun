@@ -147,6 +147,10 @@ impl OutlineMaskProcessor {
         crate::profile_function!();
 
         let instance_label = view_name.clone().push_str(" - OutlineMaskProcessor");
+
+        // ------------- Textures -------------
+        let texture_pool = &ctx.gpu_resources.textures;
+
         let mask_texture_desc = crate::wgpu_resources::TextureDesc {
             label: instance_label.clone().push_str("::mask_texture"),
             size: wgpu::Extent3d {
@@ -160,17 +164,13 @@ impl OutlineMaskProcessor {
             format: Self::MASK_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
         };
-
-        let mask_texture = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &mask_texture_desc);
+        let mask_texture = texture_pool.alloc(&ctx.device, &mask_texture_desc);
 
         // We have a fresh depth buffer here that we need because:
         // * We want outlines visible even if there's an object in front, so don't re-use previous
         // * Overdraw IDs correctly
         // * TODO(andreas): Make overdrawn outlines more transparent by comparing depth
-        let mask_depth = ctx.gpu_resources.textures.alloc(
+        let mask_depth = texture_pool.alloc(
             &ctx.device,
             &crate::wgpu_resources::TextureDesc {
                 label: instance_label.clone().push_str("::mask_depth"),
@@ -187,130 +187,21 @@ impl OutlineMaskProcessor {
             ..mask_texture_desc
         };
         let voronoi_textures = [
-            ctx.gpu_resources.textures.alloc(
-                &ctx.device,
-                &voronoi_texture_desc.with_label(voronoi_texture_desc.label.clone().push_str("0")),
-            ),
-            ctx.gpu_resources.textures.alloc(
-                &ctx.device,
-                &voronoi_texture_desc.with_label(voronoi_texture_desc.label.clone().push_str("1")),
-            ),
+            texture_pool.alloc(&ctx.device, &voronoi_texture_desc.with_label_push("0")),
+            texture_pool.alloc(&ctx.device, &voronoi_texture_desc.with_label_push("1")),
         ];
 
-        let bind_group_layout_jumpflooding_init =
-            ctx.gpu_resources.bind_group_layouts.get_or_create(
-                &ctx.device,
-                &BindGroupLayoutDesc {
-                    label: "OutlineMaskProcessor::bind_group_layout_jumpflooding_init".into(),
-                    entries: vec![wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Uint,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: true,
-                        },
-                        count: None,
-                    }],
-                },
-            );
-        let bind_group_jumpflooding_init = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: instance_label.clone().push_str("::jumpflooding_init"),
-                entries: smallvec![BindGroupEntry::DefaultTextureView(mask_texture.handle)],
-                layout: bind_group_layout_jumpflooding_init,
-            },
-        );
+        // ------------- Bind Groups -------------
 
-        let bind_group_layout_jumpflooding_step =
-            ctx.gpu_resources.bind_group_layouts.get_or_create(
-                &ctx.device,
-                &BindGroupLayoutDesc {
-                    label: "OutlineMaskProcessor::bind_group_layout_jumpflooding_step".into(),
-                    entries: vec![
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                                view_dimension: wgpu::TextureViewDimension::D2,
-                                multisampled: false,
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 2,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Buffer {
-                                ty: wgpu::BufferBindingType::Uniform,
-                                // Dynamic offset would make sense here since we cycle through a bunch of these.
-                                // But we need at least two bind groups anyways since we're ping-ponging between two textures,
-                                // which would make this needlessly complicated.
-                                has_dynamic_offset: false,
-                                min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<
-                                    gpu_data::JumpfloodingStepUniformBuffer,
-                                >(
-                                )
-                                    as _),
-                            },
-                            count: None,
-                        },
-                    ],
-                },
+        let (bind_group_jumpflooding_init, bind_group_layout_jumpflooding_init) =
+            Self::create_bind_group_jumpflooding_init(ctx, &instance_label, &mask_texture);
+        let (bind_group_jumpflooding_steps, bind_group_layout_jumpflooding_step) =
+            Self::create_bind_groups_for_jumpflooding_steps(
+                config,
+                ctx,
+                &instance_label,
+                &voronoi_textures,
             );
-
-        let max_step_width =
-            (config.outline_radius_pixel.max(1.0).ceil() as u32).next_power_of_two();
-        let num_steps = max_step_width.ilog2() + 1;
-        let uniform_buffer_jumpflooding_steps_bindings = create_and_fill_uniform_buffer_batch(
-            ctx,
-            "jumpflooding uniformbuffer".into(),
-            (0..num_steps)
-                .into_iter()
-                .map(|step| gpu_data::JumpfloodingStepUniformBuffer {
-                    step_width: (max_step_width >> step).into(),
-                    end_padding: Default::default(),
-                }),
-        );
-        let sampler = ctx.gpu_resources.samplers.get_or_create(
-            &ctx.device,
-            &SamplerDesc {
-                label: "nearest_clamp".into(),
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                ..Default::default()
-            },
-        );
-        let bind_group_jumpflooding_steps = uniform_buffer_jumpflooding_steps_bindings
-            .into_iter()
-            .enumerate()
-            .map(|(i, uniform_buffer_binding)| {
-                ctx.gpu_resources.bind_groups.alloc(
-                    &ctx.device,
-                    &ctx.gpu_resources,
-                    &BindGroupDesc {
-                        label: instance_label
-                            .clone()
-                            .push_str(&format!("::jumpflooding_steps[{i}]")),
-                        entries: smallvec![
-                            BindGroupEntry::DefaultTextureView(voronoi_textures[i % 2].handle),
-                            BindGroupEntry::Sampler(sampler),
-                            uniform_buffer_binding
-                        ],
-                        layout: bind_group_layout_jumpflooding_step,
-                    },
-                )
-            })
-            .collect();
 
         // Create a bind group for the final compositor pass - it will read the last voronoi texture
         let bind_group_draw_outlines = {
@@ -327,42 +218,45 @@ impl OutlineMaskProcessor {
             // Therefore, the last texture is voronoi_textures[num_steps % 2]
             compositor_renderer.create_bind_group(
                 ctx,
-                voronoi_textures[(num_steps % 2) as usize].handle,
+                voronoi_textures[bind_group_jumpflooding_steps.len() % 2].handle,
                 config,
             )
         };
 
+        // ------------- Render Pipelines -------------
+
         let screen_triangle_vertex_shader =
             screen_triangle_vertex_shader(&mut ctx.gpu_resources, &ctx.device, &mut ctx.resolver);
+        let jumpflooding_init_desc = RenderPipelineDesc {
+            label: "OutlineMaskProcessor::jumpflooding_init".into(),
+            pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
+                &ctx.device,
+                &PipelineLayoutDesc {
+                    label: "OutlineMaskProcessor::jumpflooding_init".into(),
+                    entries: vec![bind_group_layout_jumpflooding_init],
+                },
+                &ctx.gpu_resources.bind_group_layouts,
+            ),
+            vertex_entrypoint: "main".into(),
+            vertex_handle: screen_triangle_vertex_shader,
+            fragment_entrypoint: "main".into(),
+            fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
+                &ctx.device,
+                &mut ctx.resolver,
+                &ShaderModuleDesc {
+                    label: "jumpflooding_init".into(),
+                    source: include_file!("../../shader/outlines/jumpflooding_init.wgsl"),
+                },
+            ),
+            vertex_buffers: smallvec![],
+            render_targets: smallvec![Some(Self::VORONOI_FORMAT.into())],
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+        };
         let render_pipeline_jumpflooding_init = ctx.gpu_resources.render_pipelines.get_or_create(
             &ctx.device,
-            &RenderPipelineDesc {
-                label: "OutlineMaskProcessor::jumpflooding_init".into(),
-                pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
-                    &ctx.device,
-                    &PipelineLayoutDesc {
-                        label: "OutlineMaskProcessor::jumpflooding_init".into(),
-                        entries: vec![bind_group_layout_jumpflooding_init],
-                    },
-                    &ctx.gpu_resources.bind_group_layouts,
-                ),
-                vertex_entrypoint: "main".into(),
-                vertex_handle: screen_triangle_vertex_shader,
-                fragment_entrypoint: "main".into(),
-                fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                    &ctx.device,
-                    &mut ctx.resolver,
-                    &ShaderModuleDesc {
-                        label: "jumpflooding_init".into(),
-                        source: include_file!("../../shader/outlines/jumpflooding_init.wgsl"),
-                    },
-                ),
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(Self::VORONOI_FORMAT.into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-            },
+            &jumpflooding_init_desc,
             &ctx.gpu_resources.pipeline_layouts,
             &ctx.gpu_resources.shader_modules,
         );
@@ -378,9 +272,6 @@ impl OutlineMaskProcessor {
                     },
                     &ctx.gpu_resources.bind_group_layouts,
                 ),
-                vertex_entrypoint: "main".into(),
-                vertex_handle: screen_triangle_vertex_shader,
-                fragment_entrypoint: "main".into(),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
                     &ctx.device,
                     &mut ctx.resolver,
@@ -389,11 +280,7 @@ impl OutlineMaskProcessor {
                         source: include_file!("../../shader/outlines/jumpflooding_step.wgsl"),
                     },
                 ),
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(Self::VORONOI_FORMAT.into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
+                ..jumpflooding_init_desc
             },
             &ctx.gpu_resources.pipeline_layouts,
             &ctx.gpu_resources.shader_modules,
@@ -495,6 +382,142 @@ impl OutlineMaskProcessor {
         Ok(OutlineCompositingDrawData {
             bind_group: self.bind_group_draw_outlines,
         })
+    }
+
+    fn create_bind_group_jumpflooding_init(
+        ctx: &mut RenderContext,
+        instance_label: &DebugLabel,
+        mask_texture: &GpuTexture,
+    ) -> (GpuBindGroup, GpuBindGroupLayoutHandle) {
+        let bind_group_layout_jumpflooding_init =
+            ctx.gpu_resources.bind_group_layouts.get_or_create(
+                &ctx.device,
+                &BindGroupLayoutDesc {
+                    label: "OutlineMaskProcessor::bind_group_layout_jumpflooding_init".into(),
+                    entries: vec![wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: true,
+                        },
+                        count: None,
+                    }],
+                },
+            );
+        (
+            ctx.gpu_resources.bind_groups.alloc(
+                &ctx.device,
+                &ctx.gpu_resources,
+                &BindGroupDesc {
+                    label: instance_label.clone().push_str("::jumpflooding_init"),
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(mask_texture.handle)],
+                    layout: bind_group_layout_jumpflooding_init,
+                },
+            ),
+            bind_group_layout_jumpflooding_init,
+        )
+    }
+
+    fn create_bind_groups_for_jumpflooding_steps(
+        config: &OutlineConfig,
+        ctx: &mut RenderContext,
+        instance_label: &DebugLabel,
+        voronoi_textures: &[GpuTexture; 2],
+    ) -> (Vec<GpuBindGroup>, GpuBindGroupLayoutHandle) {
+        let bind_group_layout_jumpflooding_step =
+            ctx.gpu_resources.bind_group_layouts.get_or_create(
+                &ctx.device,
+                &BindGroupLayoutDesc {
+                    label: "OutlineMaskProcessor::bind_group_layout_jumpflooding_step".into(),
+                    entries: vec![
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                                multisampled: false,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                // Dynamic offset would make sense here since we cycle through a bunch of these.
+                                // But we need at least two bind groups anyways since we're ping-ponging between two textures,
+                                // which would make this needlessly complicated.
+                                has_dynamic_offset: false,
+                                min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<
+                                    gpu_data::JumpfloodingStepUniformBuffer,
+                                >(
+                                )
+                                    as _),
+                            },
+                            count: None,
+                        },
+                    ],
+                },
+            );
+
+        let max_step_width =
+            (config.outline_radius_pixel.max(1.0).ceil() as u32).next_power_of_two();
+        let num_steps = max_step_width.ilog2() + 1;
+        let uniform_buffer_jumpflooding_steps_bindings = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "jumpflooding uniformbuffer".into(),
+            (0..num_steps)
+                .into_iter()
+                .map(|step| gpu_data::JumpfloodingStepUniformBuffer {
+                    step_width: (max_step_width >> step).into(),
+                    end_padding: Default::default(),
+                }),
+        );
+        let sampler = ctx.gpu_resources.samplers.get_or_create(
+            &ctx.device,
+            &SamplerDesc {
+                label: "nearest_clamp".into(),
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                ..Default::default()
+            },
+        );
+        let uniform_buffer_jumpflooding_steps = uniform_buffer_jumpflooding_steps_bindings
+            .into_iter()
+            .enumerate()
+            .map(|(i, uniform_buffer_binding)| {
+                ctx.gpu_resources.bind_groups.alloc(
+                    &ctx.device,
+                    &ctx.gpu_resources,
+                    &BindGroupDesc {
+                        label: instance_label
+                            .clone()
+                            .push_str(&format!("::jumpflooding_steps[{i}]")),
+                        entries: smallvec![
+                            BindGroupEntry::DefaultTextureView(voronoi_textures[i % 2].handle),
+                            BindGroupEntry::Sampler(sampler),
+                            uniform_buffer_binding
+                        ],
+                        layout: bind_group_layout_jumpflooding_step,
+                    },
+                )
+            })
+            .collect();
+
+        (
+            uniform_buffer_jumpflooding_steps,
+            bind_group_layout_jumpflooding_step,
+        )
     }
 }
 
