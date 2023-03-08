@@ -39,6 +39,7 @@ impl Points2DPart {
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
+        let any_part_selected = entity_highlight.any_selection_highlight();
 
         // If keypoints ids show up we may need to connect them later!
         // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -62,7 +63,7 @@ impl Points2DPart {
                 instance_key,
                 entity_view,
                 props,
-                entity_highlight,
+                any_part_selected,
             );
 
             let pos: glam::Vec2 = pos.into();

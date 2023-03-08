@@ -24,7 +24,7 @@ pub(crate) use points3d::Points3DPart;
 
 use super::SceneSpatial;
 use crate::{
-    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::scene::SceneQuery,
 };
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
@@ -48,10 +48,10 @@ pub fn instance_path_hash_for_picking<T: re_log_types::msg_bundle::Component>(
     instance_key: re_log_types::component_types::InstanceKey,
     entity_view: &re_query::EntityView<T>,
     props: &EntityProperties,
-    entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+    any_part_selected: bool,
 ) -> InstancePathHash {
     if props.interactive {
-        if entity_view.num_instances() == 1 || !entity_highlight.any_selection_highlight() {
+        if entity_view.num_instances() == 1 || !any_part_selected {
             InstancePathHash::entity_splat(ent_path)
         } else {
             InstancePathHash::instance(ent_path, instance_key)

@@ -140,6 +140,7 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
 pub struct SpaceViewOutlineMasks {
     overall: OutlineMaskPreference,
     instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
+    pub any_selection_highlight: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -156,6 +157,10 @@ impl<'a> OptionalSpaceViewOutlineMask<'a> {
                     .unwrap_or_default()
                     .max(entity_outline_mask.overall)
             })
+    }
+
+    pub fn any_selection_highlight(&self) -> bool {
+        self.0.map_or(false, |mask| mask.any_selection_highlight)
     }
 }
 
@@ -393,10 +398,10 @@ impl SelectionState {
                                         .or_default()
                                         .overall
                                         .selection = SelectionHighlight::SiblingSelection;
-                                    outlines_masks
-                                        .entry(entity_path.hash())
-                                        .or_default()
-                                        .overall = selection_mask;
+                                    let outline_mask =
+                                        outlines_masks.entry(entity_path.hash()).or_default();
+                                    outline_mask.overall = outline_mask.overall.max(selection_mask);
+                                    outline_mask.any_selection_highlight = true;
                                 },
                             );
                         }
@@ -428,15 +433,16 @@ impl SelectionState {
                         *highlight_target = (*highlight_target).max(highlight);
                     }
                     {
-                        let outlined_entity = outlines_masks
+                        let outline_mask = outlines_masks
                             .entry(selected_instance.entity_path.hash())
                             .or_default();
+                        outline_mask.any_selection_highlight = true;
                         let outline_mask_target = if let Some(selected_index) =
                             selected_instance.instance_key.specific_index()
                         {
-                            outlined_entity.instances.entry(selected_index).or_default()
+                            outline_mask.instances.entry(selected_index).or_default()
                         } else {
-                            &mut outlined_entity.overall
+                            &mut outline_mask.overall
                         };
                         *outline_mask_target = outline_mask_target
                             .max(OutlineMaskPreference::some(next_selection_mask_index(), 0));

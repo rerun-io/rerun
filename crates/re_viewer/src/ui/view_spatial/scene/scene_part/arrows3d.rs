@@ -34,6 +34,7 @@ impl Arrows3DPart {
         let default_color = DefaultColor::EntityPath(ent_path);
 
         let entity_highlight = highlights.entity_highlight(ent_path.hash());
+        let any_part_selected = entity_highlight.any_selection_highlight();
 
         let mut line_batch = scene
             .primitives
@@ -51,7 +52,7 @@ impl Arrows3DPart {
                 instance_key,
                 entity_view,
                 props,
-                entity_highlight,
+                any_part_selected,
             );
 
             // TODO(andreas): support labels

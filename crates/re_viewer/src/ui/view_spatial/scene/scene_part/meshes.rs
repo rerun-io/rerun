@@ -37,7 +37,6 @@ impl MeshPart {
 
         let _default_color = DefaultColor::EntityPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-        let entity_highlight = highlights.entity_highlight(ent_path.hash()); // TODO: remove this
         let entity_outlines = highlights.entity_outline_mask(ent_path.hash());
 
         let visitor =
@@ -47,7 +46,7 @@ impl MeshPart {
                     instance_key,
                     entity_view,
                     props,
-                    entity_highlight,
+                    entity_outlines.any_selection_highlight(),
                 );
 
                 let outline_mask = entity_outlines.index_outline_mask(instance_key);

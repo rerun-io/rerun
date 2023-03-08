@@ -209,7 +209,7 @@ impl ImagesPart {
             instance_key,
             entity_view,
             properties,
-            entity_highlight,
+            entity_highlight.any_selection_highlight(),
         );
 
         let annotations = scene.annotation_map.find(ent_path);
