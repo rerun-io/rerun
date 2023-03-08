@@ -4134,6 +4134,7 @@ dependencies = [
  "re_memory",
  "re_query",
  "re_renderer",
+ "re_sdk",
  "re_smart_channel",
  "re_string_interner",
  "re_tensor_ops",

@@ -94,6 +94,7 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
+    rerun_ouroboros: crate::rerun_ouroboros::RerunOuroboros,
 
     icon_status: AppIconStatus,
 }
@@ -156,6 +157,7 @@ impl App {
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
 
+            rerun_ouroboros: Default::default(),
             analytics,
 
             icon_status: AppIconStatus::NotSetTryAgain,
@@ -273,6 +275,11 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             Command::OpenProfiler => {
                 self.state.profiler.start();
+            }
+
+            #[cfg(all(feature = "re_sdk", not(target_arch = "wasm32")))]
+            Command::OpenRerun => {
+                self.rerun_ouroboros.start();
             }
 
             Command::ToggleMemoryPanel => {
@@ -1087,6 +1094,13 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
 
             #[cfg(not(target_arch = "wasm32"))]
             Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
+
+            #[cfg(all(feature = "re_sdk", not(target_arch = "wasm32")))]
+            {
+                if crate::rerun_ouroboros::RerunOuroboros::SUPPORTED {
+                    Command::OpenRerun.menu_button_ui(ui, &mut app.pending_commands);
+                }
+            }
 
             Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
         }

@@ -22,6 +22,10 @@ pub enum Command {
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
 
+    /// Start another Rerun Viewer, viewing this viewer (ouroboros).
+    #[cfg(all(feature = "open_rerun", not(target_arch = "wasm32")))]
+    OpenRerun,
+
     ToggleMemoryPanel,
     ToggleBlueprintPanel,
     ToggleSelectionPanel,
@@ -82,6 +86,12 @@ impl Command {
             Command::OpenProfiler => (
                 "Open profiler",
                 "Starts a profiler, showing what makes the viewer run slow",
+            ),
+
+            #[cfg(all(feature = "open_rerun", not(target_arch = "wasm32")))]
+            Command::OpenRerun => (
+                "Open ouroboros Rerun",
+                "Open another Rerun Viewer, monitoring this viewer",
             ),
 
             Command::ToggleMemoryPanel => (
@@ -145,6 +155,13 @@ impl Command {
             KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), key)
         }
 
+        fn ctrl_alt_shift(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(
+                Modifiers::CTRL.plus(Modifiers::ALT).plus(Modifiers::SHIFT),
+                key,
+            )
+        }
+
         match self {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => Some(cmd(Key::S)),
@@ -160,8 +177,13 @@ impl Command {
             Command::Quit => Some(cmd(Key::Q)),
 
             Command::ResetViewer => Some(ctrl_shift(Key::R)),
+
             #[cfg(not(target_arch = "wasm32"))]
             Command::OpenProfiler => Some(ctrl_shift(Key::P)),
+
+            #[cfg(all(feature = "open_rerun", not(target_arch = "wasm32")))]
+            Command::OpenRerun => Some(ctrl_alt_shift(Key::R)),
+
             Command::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
             Command::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Command::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),

@@ -32,7 +32,7 @@ pub use re_sdk_comms::default_server_addr;
 
 pub use re_log_types::{
     msg_bundle::{Component, SerializableComponent},
-    ApplicationId, ComponentName, EntityPath, RecordingId,
+    ApplicationId, ComponentName, EntityPath, RecordingId, RecordingInfo,
 };
 
 // ---------------

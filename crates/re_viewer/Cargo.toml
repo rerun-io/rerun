@@ -33,6 +33,9 @@ default = ["analytics"]
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Enable ouroboros logging: send Rerun log events to another Rerun instance.
+re_sdk = ["dep:re_sdk", "re_ui/open_rerun"]
+
 
 [dependencies]
 # Internal:
@@ -104,7 +107,7 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu.workspace = true
 
-# native dependencies:
+# Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { version = "3.2", default-features = false, features = [
   "image-data",
@@ -112,6 +115,7 @@ arboard = { version = "3.2", default-features = false, features = [
 ctrlc = { version = "3.0", features = ["termination"] }
 puffin_http = "0.11"
 puffin.workspace = true
+re_sdk = { workspace = true, optional = true } # ouroboros logging
 
 [target.'cfg(any(target_os = "macos"))'.dependencies]
 cocoa = "0.24.1"
@@ -120,7 +124,7 @@ objc = "0.2.7"
 [target.'cfg(any(target_os = "windows"))'.dependencies]
 winapi = "0.3.9"
 
-# web dependencies:
+# Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 tracing.workspace = true

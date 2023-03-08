@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time};
+use re_log_types::{
+    ApplicationId, EntityPath, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time,
+};
 
-use crate::sink::LogSink;
+use crate::{sink::LogSink, MsgSender};
 
 // ----------------------------------------------------------------------------
 
@@ -282,6 +284,18 @@ impl Session {
     /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_backlog(&self) -> Vec<LogMsg> {
         self.sink.drain_backlog()
+    }
+}
+
+/// ## Logging helpers
+impl Session {
+    /// Log a single scalar value.
+    pub fn log_scalar(&self, ent_path: impl Into<EntityPath>, scalar: f64) {
+        MsgSender::new(ent_path)
+            .with_component(&[crate::components::Scalar(scalar)])
+            .unwrap()
+            .send(self)
+            .unwrap();
     }
 }
 

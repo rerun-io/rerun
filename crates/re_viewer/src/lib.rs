@@ -8,6 +8,7 @@ pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
+mod rerun_ouroboros;
 mod ui;
 mod viewer_analytics;
 

@@ -27,6 +27,7 @@ default = ["eframe", "egui_dock"]
 
 eframe = ["dep:eframe"]
 egui_dock = ["dep:egui_dock"]
+open_rerun = []
 
 
 [dependencies]
