@@ -48,6 +48,8 @@ mod gpu_data {
         pub world_from_mesh_normal_row_2: [f32; 3],
 
         pub additive_tint: Color32,
+        // Need only the first two bytes, but we want to keep everything aligned to at least 4 bytes.
+        pub outline_mask: [u8; 4],
     }
 
     impl InstanceData {
@@ -70,6 +72,9 @@ mod gpu_data {
                         wgpu::VertexFormat::Float32x3,
                         // Tint color
                         wgpu::VertexFormat::Unorm8x4,
+                        // Outline mask.
+                        // This adds a tiny bit of overhead to all instances during non-outline pass, but the alternative is having yet another vertex buffer.
+                        wgpu::VertexFormat::Uint8x2,
                     ]
                     .into_iter(),
                 ),
@@ -171,15 +176,13 @@ impl MeshDrawData {
         let mut batches = Vec::new();
         {
             let mut instance_buffer_staging = ctx
-                .queue
-                .write_buffer_with(
-                    &instance_buffer,
-                    0,
-                    instance_buffer_size.try_into().unwrap(),
-                )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-            let instance_buffer_staging: &mut [gpu_data::InstanceData] =
-                bytemuck::cast_slice_mut(&mut instance_buffer_staging);
+                .cpu_write_gpu_read_belt
+                .lock()
+                .allocate::<gpu_data::InstanceData>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                instances.len(),
+            );
 
             let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
@@ -203,40 +206,36 @@ impl MeshDrawData {
                     }
                 });
 
-                for (instance, gpu_instance) in instances.zip(
-                    instance_buffer_staging
-                        .iter_mut()
-                        .skip(num_processed_instances),
-                ) {
+                for instance in instances {
                     count += 1;
                     if instance.outline_mask.is_some() {
                         count_with_outlines += 1;
                     }
 
                     let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
-                    gpu_instance.world_from_mesh_row_0 = world_from_mesh_mat3
-                        .row(0)
-                        .extend(instance.world_from_mesh.translation.x)
-                        .to_array();
-                    gpu_instance.world_from_mesh_row_1 = world_from_mesh_mat3
-                        .row(1)
-                        .extend(instance.world_from_mesh.translation.y)
-                        .to_array();
-                    gpu_instance.world_from_mesh_row_2 = world_from_mesh_mat3
-                        .row(2)
-                        .extend(instance.world_from_mesh.translation.z)
-                        .to_array();
-
                     let world_from_mesh_normal =
                         instance.world_from_mesh.matrix3.inverse().transpose();
-                    gpu_instance.world_from_mesh_normal_row_0 =
-                        world_from_mesh_normal.row(0).to_array();
-                    gpu_instance.world_from_mesh_normal_row_1 =
-                        world_from_mesh_normal.row(1).to_array();
-                    gpu_instance.world_from_mesh_normal_row_2 =
-                        world_from_mesh_normal.row(2).to_array();
-
-                    gpu_instance.additive_tint = instance.additive_tint;
+                    instance_buffer_staging.push(gpu_data::InstanceData {
+                        world_from_mesh_row_0: world_from_mesh_mat3
+                            .row(0)
+                            .extend(instance.world_from_mesh.translation.x)
+                            .to_array(),
+                        world_from_mesh_row_1: world_from_mesh_mat3
+                            .row(1)
+                            .extend(instance.world_from_mesh.translation.y)
+                            .to_array(),
+                        world_from_mesh_row_2: world_from_mesh_mat3
+                            .row(2)
+                            .extend(instance.world_from_mesh.translation.z)
+                            .to_array(),
+                        world_from_mesh_normal_row_0: world_from_mesh_normal.row(0).to_array(),
+                        world_from_mesh_normal_row_1: world_from_mesh_normal.row(1).to_array(),
+                        world_from_mesh_normal_row_2: world_from_mesh_normal.row(2).to_array(),
+                        additive_tint: instance.additive_tint,
+                        outline_mask: instance
+                            .outline_mask
+                            .map_or([0, 0, 0, 0], |mask| [mask.x as u8, mask.y as u8, 0, 0]),
+                    });
                 }
                 num_processed_instances += count;
 
@@ -249,6 +248,11 @@ impl MeshDrawData {
                 });
             }
             assert_eq!(num_processed_instances, instances.len());
+            instance_buffer_staging.copy_to_buffer(
+                ctx.active_frame.encoder.lock().get(),
+                &instance_buffer,
+                0,
+            );
         }
 
         Ok(MeshDrawData {

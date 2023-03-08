@@ -18,6 +18,9 @@ struct VertexOut {
     @location(0) texcoord: Vec2,
     @location(1) normal_world_space: Vec3,
     @location(2) additive_tint_rgb: Vec3,
+
+    @location(3) @interpolate(flat)
+    outline_mask: UVec2,
 };
 
 @vertex
@@ -38,6 +41,7 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
     out.texcoord = in_vertex.texcoord;
     out.normal_world_space = world_normal;
     out.additive_tint_rgb = linear_from_srgb(in_instance.additive_tint_srgb.rgb);
+    out.outline_mask = in_instance.outline_mask;
 
     return out;
 }
@@ -59,5 +63,5 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) Vec4 {
 
 @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
-    return UVec2(1u, 0u); // TODO: Mask layer & index
+    return in.outline_mask;
 }

@@ -59,15 +59,22 @@ impl framework::Example for Outlines {
             )
             .unwrap();
 
+        let outline_mask_large_mesh = match (time.seconds_since_startup() as u64) % 3 {
+            0 => None,
+            1 => Some(glam::uvec2(1, 0)), // Same as the other mesh.
+            2 => Some(glam::uvec2(2, 0)), // Different from the other mesh, demonstrating that the outline is not shared.
+            _ => unreachable!(),
+        };
+
         let mesh_properties = [
             MeshProperties {
-                outline_mask: None,
+                outline_mask: outline_mask_large_mesh,
                 position: glam::Vec3::ZERO,
                 rotation: glam::Quat::IDENTITY,
             },
             MeshProperties {
                 outline_mask: Some(glam::uvec2(1, 0)),
-                position: glam::vec3(8.0, 0.5, -10.0),
+                position: glam::vec3(0.0, 1.0, -8.0),
                 rotation: glam::Quat::from_rotation_y(time.seconds_since_startup()),
             },
         ];
