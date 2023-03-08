@@ -27,6 +27,8 @@ pub struct SceneSpatialPrimitives {
 
     pub meshes: Vec<MeshSource>,
     pub depth_clouds: Vec<DepthCloud>,
+
+    pub any_outlines: bool,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -43,6 +45,7 @@ impl SceneSpatialPrimitives {
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
             depth_clouds: Default::default(),
+            any_outlines: false,
         }
     }
 
@@ -61,6 +64,7 @@ impl SceneSpatialPrimitives {
             points,
             meshes,
             depth_clouds,
+            any_outlines: _,
         } = &self;
 
         textured_rectangles.len()
@@ -81,6 +85,7 @@ impl SceneSpatialPrimitives {
             points,
             meshes,
             depth_clouds: _, // no bbox for depth clouds
+            any_outlines: _,
         } = self;
 
         *bounding_box = macaw::BoundingBox::nothing();

@@ -530,8 +530,10 @@ fn paint_view(
         pixels_from_point,
         auto_size_config,
 
-        // TODO: Should turn off the outline renderer if there's nothing is highlighted.
-        outline_config: Some(outline_config(ui.ctx())),
+        outline_config: scene
+            .primitives
+            .any_outlines
+            .then(|| outline_config(ui.ctx())),
     };
 
     let Ok(callback) = create_scene_paint_callback(
