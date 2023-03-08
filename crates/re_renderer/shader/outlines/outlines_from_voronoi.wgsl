@@ -27,12 +27,13 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
     let outline_a = saturate((uniforms.outline_radius_pixel - distance_pixel_a) * sharpness);
     let outline_b = saturate((uniforms.outline_radius_pixel - distance_pixel_b) * sharpness);
 
-    let color_a = outline_a * uniforms.color_layer_a;
-    let color_b = outline_b * uniforms.color_layer_b;
+    // We're going directly to an srgb-gamma target without automatic conversion.
+    let color_a = srgba_from_linear(outline_a * uniforms.color_layer_a);
+    let color_b = srgba_from_linear(outline_b * uniforms.color_layer_b);
 
     // Blend B over A.
     let color = color_a * (1.0 - color_b.a) + color_b;
-    return srgba_from_linear(color);
+    return color;
 
     // Show only the outline. Useful for debugging.
     //return Vec4(color.rgb, 1.0);

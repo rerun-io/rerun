@@ -13,6 +13,7 @@ use crate::{
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
+            ui::outline_config,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial,
         },
@@ -490,7 +491,8 @@ fn setup_target_config(
             },
             pixels_from_point: pixels_from_points,
             auto_size_config,
-            ..Default::default()
+            // TODO: Should turn off the outline renderer if there's nothing is highlighted.
+            outline_config: Some(outline_config(painter.ctx())),
         }
     })
 }
