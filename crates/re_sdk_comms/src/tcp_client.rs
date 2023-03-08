@@ -60,14 +60,6 @@ impl TcpClient {
         }
     }
 
-    pub fn set_addr(&mut self, addr: SocketAddr) {
-        let addrs = vec![addr];
-        if addrs != self.addrs {
-            self.addrs = addrs;
-            self.stream_state = TcpStreamState::Pending;
-        }
-    }
-
     /// return `false` on failure. Does nothing if already connected.
     pub fn connect(&mut self) -> anyhow::Result<()> {
         if let TcpStreamState::Connected(_) = self.stream_state {

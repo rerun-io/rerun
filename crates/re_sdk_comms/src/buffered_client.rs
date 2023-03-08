@@ -26,13 +26,11 @@ enum InterruptMsg {
 
 enum MsgMsg {
     LogMsg(LogMsg),
-    SetAddr(SocketAddr),
     Flush,
 }
 
 enum PacketMsg {
     Packet(Vec<u8>),
-    SetAddr(SocketAddr),
     Flush,
 }
 
@@ -106,10 +104,6 @@ impl Client {
             send_join: Some(send_join),
             drop_join: Some(drop_join),
         }
-    }
-
-    pub fn set_addr(&mut self, addr: SocketAddr) {
-        self.send_msg_msg(MsgMsg::SetAddr(addr));
     }
 
     pub fn send(&self, log_msg: LogMsg) {
@@ -199,7 +193,6 @@ fn msg_encode(
                             re_log::trace!("Encoded message of size {}", packet.len());
                             PacketMsg::Packet(packet)
                         }
-                        MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(*new_addr),
                         MsgMsg::Flush => PacketMsg::Flush,
                     };
 
@@ -243,9 +236,6 @@ fn tcp_sender(
                                 }
                                 None => {}
                             }
-                        }
-                        PacketMsg::SetAddr(new_addr) => {
-                            tcp_client.set_addr(new_addr);
                         }
                         PacketMsg::Flush => {
                             tcp_client.flush();
