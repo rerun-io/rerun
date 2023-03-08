@@ -12,16 +12,12 @@ struct FrameUniformBuffer {
 @group(0) @binding(2)
 var<uniform> uniforms: FrameUniformBuffer;
 
-fn length_sq_aspect_ratio_corrected(v: Vec2, aspect_ratio: f32) -> f32 {
-    let v = Vec2(v.x * aspect_ratio, v.y);
-    return dot(v, v);
-}
 
 @fragment
 fn main(in: VertexOutput) -> @location(0) Vec4 {
     let resolution = Vec2(textureDimensions(voronoi_texture).xy);
     let pixel_step = Vec2(f32(uniforms.step_width), f32(uniforms.step_width)) / resolution;
-    let aspect_ratio = resolution.x / resolution.y;
+    let pixel_coordinates = resolution * in.texcoord;
 
     var closest_positions_a = Vec2(-99.0);
     var closest_distance_sq_a = 99999.0;
@@ -32,15 +28,15 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
         for (var x: i32 = -1; x <= 1; x += 1) {
             let texcoord = in.texcoord + Vec2(f32(x), f32(y)) * pixel_step;
             let positions_a_and_b = textureSampleLevel(voronoi_texture, voronoi_sampler, texcoord, 0.0);
-            let to_positions_a_and_b = positions_a_and_b - Vec4(in.texcoord, in.texcoord);
+            let to_positions_a_and_b = positions_a_and_b - pixel_coordinates.xyxy;
 
-            let distance_sq_a = length_sq_aspect_ratio_corrected(to_positions_a_and_b.xy, aspect_ratio);
+            let distance_sq_a = dot(to_positions_a_and_b.xy, to_positions_a_and_b.xy);
             if closest_distance_sq_a > distance_sq_a {
                 closest_distance_sq_a = distance_sq_a;
                 closest_positions_a = positions_a_and_b.xy;
             }
 
-            let distance_sq_b = length_sq_aspect_ratio_corrected(to_positions_a_and_b.zw, aspect_ratio);
+            let distance_sq_b = dot(to_positions_a_and_b.zw, to_positions_a_and_b.zw);
             if closest_distance_sq_b > distance_sq_b {
                 closest_distance_sq_b = distance_sq_b;
                 closest_positions_b = positions_a_and_b.zw;

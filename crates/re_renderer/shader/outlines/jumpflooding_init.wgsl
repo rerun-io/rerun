@@ -128,18 +128,18 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     // Normalize edges ans get range from [0, 1] to [-0.5, 0.5].
     edge_pos_a_and_b = edge_pos_a_and_b / num_edges_and_b.xxyy - Vec4(0.5);
 
-    var texcoord_channel_a: Vec2;
+    var pixel_coord_a: Vec2;
     if num_edges_and_b.x == 0.0 {
-        texcoord_channel_a = Vec2(-10.0);
+        pixel_coord_a = Vec2(-10.0);
     } else {
-        texcoord_channel_a = in.texcoord + edge_pos_a_and_b.xy / Vec2(resolution);
+        pixel_coord_a = Vec2(center_coord) + edge_pos_a_and_b.xy;
     }
-    var texcoord_channel_b: Vec2;
+    var pixel_coord_b: Vec2;
     if num_edges_and_b.y == 0.0 {
-        texcoord_channel_b = Vec2(-10.0);
+        pixel_coord_b = Vec2(-10.0);
     } else {
-        texcoord_channel_b = in.texcoord + edge_pos_a_and_b.zw / Vec2(resolution);
+        pixel_coord_b = Vec2(center_coord) + edge_pos_a_and_b.zw;
     }
 
-    return Vec4(texcoord_channel_a, texcoord_channel_b);
+    return Vec4(pixel_coord_a, pixel_coord_b);
 }

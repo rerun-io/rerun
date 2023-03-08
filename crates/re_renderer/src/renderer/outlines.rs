@@ -87,10 +87,7 @@ impl OutlineMaskProcessor {
     pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> =
         ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
 
-    /// Holds two pairs of texture coordinates (one for each layer).
-    ///
-    /// Since we know the range is [0;1] [`wgpu::TextureFormat::Rgba16Snorm`] would be preferred,
-    /// but this requires a non-standard feature.
+    /// Holds two pairs of pixel coordinates (one for each layer).
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     pub fn new(

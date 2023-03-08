@@ -16,12 +16,11 @@ var<uniform> uniforms: OutlineConfigUniformBuffer;
 @fragment
 fn main(in: VertexOutput) -> @location(0) Vec4 {
     let resolution = Vec2(textureDimensions(voronoi_texture).xy);
+    let pixel_coordinates = resolution * in.texcoord;
     let closest_positions = textureSample(voronoi_texture, nearest_sampler, in.texcoord);
-
-    let to_closest_a_and_b = (closest_positions - Vec4(in.texcoord, in.texcoord));
-    let to_closest_a_and_b_pixel = to_closest_a_and_b * resolution.xyxy;
-    let distance_pixel_a = length(to_closest_a_and_b_pixel.xy);
-    let distance_pixel_b = length(to_closest_a_and_b_pixel.zw);
+    let to_closest_a_and_b = (closest_positions - pixel_coordinates.xyxy);
+    let distance_pixel_a = length(to_closest_a_and_b.xy);
+    let distance_pixel_b = length(to_closest_a_and_b.zw);
 
     let sharpness = 1.0; // Fun to play around with, but not exposed yet.
     let outline_a = saturate((uniforms.outline_radius_pixel - distance_pixel_a) * sharpness);
@@ -38,5 +37,5 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     //return Vec4(color.rgb, 1.0);
 
     // Show the raw voronoi texture. Useful for debugging.
-    //return Vec4(closest_positions.xy, 0.0, 1.0);
+    //return Vec4(closest_positions.xy / resolution, 0.0, 1.0);
 }
