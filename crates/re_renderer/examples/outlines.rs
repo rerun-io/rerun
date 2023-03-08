@@ -35,34 +35,52 @@ impl framework::Example for Outlines {
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let mut view_builder = ViewBuilder::default();
+
+        let seconds_since_startup = time.seconds_since_startup();
+        // TODO(#1426): unify camera logic between examples.
+        // let camera_position = glam::vec3(
+        //     (seconds_since_startup * 0.5).sin() * 10.0,
+        //     2.5,
+        //     (seconds_since_startup * 0.5).cos() * 10.0,
+        // );
+        let camera_position = glam::vec3(1.0, 3.5, 7.0);
+
         view_builder
             .setup_view(
                 re_ctx,
                 TargetConfiguration {
                     name: "2D".into(),
                     resolution_in_pixel: resolution,
-                    view_from_world: macaw::IsoTransform::from_translation(glam::vec3(
-                        0.0, -1.0, -6.0,
-                    )),
+                    view_from_world: macaw::IsoTransform::look_at_rh(
+                        camera_position,
+                        glam::Vec3::ZERO,
+                        glam::Vec3::Y,
+                    )
+                    .unwrap(),
                     projection_from_view: Projection::Perspective {
                         vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                         near_plane_distance: 0.01,
                     },
                     pixels_from_point,
                     outline_config: Some(OutlineConfig {
-                        outline_thickness_pixel: 32.0,
-                        color_layer_0: re_renderer::Rgba::RED,
-                        color_layer_1: re_renderer::Rgba::BLUE,
+                        outline_thickness_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0
+                            + 2.0,
+                        color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
+                        color_layer_b: re_renderer::Rgba::from_rgba_unmultiplied(
+                            0.25, 0.3, 1.0, 0.5,
+                        ),
                     }),
                     ..Default::default()
                 },
             )
             .unwrap();
 
-        let outline_mask_large_mesh = match (time.seconds_since_startup() as u64) % 3 {
+        let outline_mask_large_mesh = match ((seconds_since_startup * 0.5) as u64) % 5 {
             0 => None,
-            1 => Some(glam::uvec2(1, 0)), // Same as the other mesh.
-            2 => Some(glam::uvec2(2, 0)), // Different from the other mesh, demonstrating that the outline is not shared.
+            1 => Some(glam::uvec2(1, 0)), // Same as the the y spinning mesh.
+            2 => Some(glam::uvec2(2, 0)), // Different than both meshes, outline A.
+            3 => Some(glam::uvec2(0, 1)), // Same as the the x spinning mesh.
+            4 => Some(glam::uvec2(0, 2)), // Different than both meshes, outline B.
             _ => unreachable!(),
         };
 
@@ -74,8 +92,13 @@ impl framework::Example for Outlines {
             },
             MeshProperties {
                 outline_mask: Some(glam::uvec2(1, 0)),
-                position: glam::vec3(0.0, 1.0, -8.0),
-                rotation: glam::Quat::from_rotation_y(time.seconds_since_startup()),
+                position: glam::vec3(2.0, 0.0, -3.0),
+                rotation: glam::Quat::from_rotation_y(seconds_since_startup),
+            },
+            MeshProperties {
+                outline_mask: Some(glam::uvec2(0, 1)),
+                position: glam::vec3(-2.0, 1.0, 3.0),
+                rotation: glam::Quat::from_rotation_x(seconds_since_startup),
             },
         ];
 

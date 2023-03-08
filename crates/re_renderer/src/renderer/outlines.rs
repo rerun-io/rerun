@@ -4,18 +4,15 @@
 //! * mask layer
 //! * MSAA handling
 
-use std::num::NonZeroU64;
-
 use crate::{
-    allocator::create_and_fill_uniform_buffer_batch,
+    allocator::{create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch},
     context::SharedRendererData,
     include_file,
     view_builder::ViewBuilder,
-    wgpu_buffer_types,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        ShaderModuleDesc, WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
+        RenderPipelineDesc, ShaderModuleDesc, WgpuResourcePools,
     },
     DebugLabel, FileResolver, FileSystem, RenderContext,
 };
@@ -30,8 +27,11 @@ pub struct OutlineConfig {
     ///
     /// Could do different thicknesses for both layers if the need arises, but for now this simplifies things.
     pub outline_thickness_pixel: f32,
-    pub color_layer_0: crate::Rgba,
-    pub color_layer_1: crate::Rgba,
+
+    /// Premultiplied RGBA color for the first outline layer.
+    pub color_layer_a: crate::Rgba,
+    /// Premultiplied RGBA color for the second outline layer.
+    pub color_layer_b: crate::Rgba,
 }
 
 // TODO(andreas): Is this a sort of DrawPhase implementor? Need a system for this.
@@ -44,18 +44,33 @@ pub struct OutlineMaskProcessor {
 
     bind_group_jumpflooding_init: GpuBindGroup,
     bind_group_jumpflooding_steps: Vec<GpuBindGroup>,
-    bind_group_read_voronoi: GpuBindGroup,
+    bind_group_draw_outlines: GpuBindGroup,
 
     render_pipeline_jumpflooding_init: GpuRenderPipelineHandle,
     render_pipeline_jumpflooding_step: GpuRenderPipelineHandle,
 }
 
-#[repr(C, align(256))]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct JumpfloodingStepUniformBuffer {
-    step_width: wgpu_buffer_types::U32RowPadded,
-    /// This hurts. Should be a PushConstant but they are not widely supported enough.
-    end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+mod gpu_data {
+    use crate::wgpu_buffer_types;
+
+    /// Keep in sync with `jumpflooding_step.wgsl`
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct JumpfloodingStepUniformBuffer {
+        pub step_width: wgpu_buffer_types::U32RowPadded,
+        /// All this padding hurts. `step_width` be a PushConstant but they are not widely supported enough!
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
+
+    /// Keep in sync with `outlines_from_voronoi.wgsl`
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct OutlineConfigUniformBuffer {
+        pub color_layer_a: wgpu_buffer_types::Vec4,
+        pub color_layer_b: wgpu_buffer_types::Vec4,
+        pub outline_thickness_pixel: wgpu_buffer_types::F32RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 3],
+    }
 }
 
 impl OutlineMaskProcessor {
@@ -77,7 +92,7 @@ impl OutlineMaskProcessor {
     ///
     /// Since we know the range is [0;1] [`wgpu::TextureFormat::Rgba16Snorm`] would be preferred,
     /// but this requires a non-standard feature.
-    const DISTANCE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+    const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     pub fn new(
         ctx: &mut RenderContext,
@@ -87,34 +102,25 @@ impl OutlineMaskProcessor {
     ) -> Self {
         crate::profile_function!();
 
-        let mut renderers = ctx.renderers.write();
-        let compositor_renderer = renderers.get_or_create::<_, OutlineCompositor>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
-
         let instance_label = view_name.clone().push_str(" - OutlineMaskProcessor");
-        let screen_texture_size = wgpu::Extent3d {
-            width: resolution_in_pixel[0],
-            height: resolution_in_pixel[1],
-            depth_or_array_layers: 1,
+        let mask_texture_desc = crate::wgpu_resources::TextureDesc {
+            label: instance_label.clone().push_str("::mask_texture"),
+            size: wgpu::Extent3d {
+                width: resolution_in_pixel[0],
+                height: resolution_in_pixel[1],
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::MASK_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
         };
 
-        let mask_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &crate::wgpu_resources::TextureDesc {
-                label: instance_label.clone().push_str("::mask_texture"),
-                size: screen_texture_size,
-                mip_level_count: 1,
-                sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
-                dimension: wgpu::TextureDimension::D2,
-                format: Self::MASK_FORMAT,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            },
-        );
+        let mask_texture = ctx
+            .gpu_resources
+            .textures
+            .alloc(&ctx.device, &mask_texture_desc);
 
         // We have a fresh depth buffer here that we need because:
         // * We want outlines visible even if there's an object in front, so don't re-use previous
@@ -124,34 +130,26 @@ impl OutlineMaskProcessor {
             &ctx.device,
             &crate::wgpu_resources::TextureDesc {
                 label: instance_label.clone().push_str("::mask_depth"),
-                size: screen_texture_size,
-                mip_level_count: 1,
-                sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
-                dimension: wgpu::TextureDimension::D2,
                 format: Self::MASK_DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                ..mask_texture_desc
             },
         );
 
-        let distance_texture_desc = crate::wgpu_resources::TextureDesc {
+        let voronoi_texture_desc = crate::wgpu_resources::TextureDesc {
             label: instance_label.clone().push_str("::distance_texture"),
-            size: screen_texture_size,
-            mip_level_count: 1,
             sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: Self::DISTANCE_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: Self::VORONOI_FORMAT,
+            ..mask_texture_desc
         };
         let voronoi_textures = [
             ctx.gpu_resources.textures.alloc(
                 &ctx.device,
-                &distance_texture_desc
-                    .with_label(distance_texture_desc.label.clone().push_str("0")),
+                &voronoi_texture_desc.with_label(voronoi_texture_desc.label.clone().push_str("0")),
             ),
             ctx.gpu_resources.textures.alloc(
                 &ctx.device,
-                &distance_texture_desc
-                    .with_label(distance_texture_desc.label.clone().push_str("1")),
+                &voronoi_texture_desc.with_label(voronoi_texture_desc.label.clone().push_str("1")),
             ),
         ];
 
@@ -203,9 +201,12 @@ impl OutlineMaskProcessor {
                             visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
+                                // Dynamic offset would make sense here since we cycle through a bunch of these.
+                                // But we need at least two bind groups anyways since we're ping-ponging between two textures,
+                                // which would make this needlessly complicated.
                                 has_dynamic_offset: false,
-                                min_binding_size: NonZeroU64::new(std::mem::size_of::<
-                                    JumpfloodingStepUniformBuffer,
+                                min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<
+                                    gpu_data::JumpfloodingStepUniformBuffer,
                                 >(
                                 )
                                     as _),
@@ -224,7 +225,7 @@ impl OutlineMaskProcessor {
             "jumpflooding uniformbuffer".into(),
             (0..num_steps)
                 .into_iter()
-                .map(|step| JumpfloodingStepUniformBuffer {
+                .map(|step| gpu_data::JumpfloodingStepUniformBuffer {
                     step_width: (max_step_width >> step).into(),
                     end_padding: Default::default(),
                 }),
@@ -250,20 +251,25 @@ impl OutlineMaskProcessor {
             })
             .collect();
 
-        let bind_group_read_final_voronoi = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: instance_label.clone().push_str("::read_final_distance"),
-                // Points to the last written distance texture
-                // We start writing to voronoi_textures[0] and then do `num_steps` ping-pong rendering.
-                // Therefore, the last texture is voronoi_textures[num_steps % 2]
-                entries: smallvec![BindGroupEntry::DefaultTextureView(
-                    voronoi_textures[(num_steps % 2) as usize].handle
-                )],
-                layout: compositor_renderer.bind_group_layout_read_voronoi,
-            },
-        );
+        // Create a bind group for the final compositor pass - it will read the last voronoi texture
+        let bind_group_draw_outlines = {
+            let mut renderers = ctx.renderers.write();
+            let compositor_renderer = renderers.get_or_create::<_, OutlineCompositor>(
+                &ctx.shared_renderer_data,
+                &mut ctx.gpu_resources,
+                &ctx.device,
+                &mut ctx.resolver,
+            );
+
+            // Point to the last written voronoi texture
+            // We start writing to voronoi_textures[0] and then do `num_steps` ping-pong rendering.
+            // Therefore, the last texture is voronoi_textures[num_steps % 2]
+            compositor_renderer.create_bind_group(
+                ctx,
+                voronoi_textures[(num_steps % 2) as usize].handle,
+                config,
+            )
+        };
 
         let screen_triangle_vertex_shader =
             screen_triangle_vertex_shader(&mut ctx.gpu_resources, &ctx.device, &mut ctx.resolver);
@@ -291,7 +297,7 @@ impl OutlineMaskProcessor {
                     },
                 ),
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(Self::DISTANCE_FORMAT.into())],
+                render_targets: smallvec![Some(Self::VORONOI_FORMAT.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
@@ -323,7 +329,7 @@ impl OutlineMaskProcessor {
                     },
                 ),
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(Self::DISTANCE_FORMAT.into())],
+                render_targets: smallvec![Some(Self::VORONOI_FORMAT.into())],
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
@@ -339,7 +345,7 @@ impl OutlineMaskProcessor {
             voronoi_textures,
             bind_group_jumpflooding_init,
             bind_group_jumpflooding_steps,
-            bind_group_read_voronoi: bind_group_read_final_voronoi,
+            bind_group_draw_outlines,
             render_pipeline_jumpflooding_init,
             render_pipeline_jumpflooding_step,
         }
@@ -382,7 +388,7 @@ impl OutlineMaskProcessor {
             store: true,
         };
 
-        // Initialize the jump flooding into distance texture 0 by looking at the mask texture.
+        // Initialize the jump flooding into voronoi texture 0 by looking at the mask texture.
         {
             let mut jumpflooding_init = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: self.label.clone().push_str(" - jumpflooding_init").get(),
@@ -426,14 +432,14 @@ impl OutlineMaskProcessor {
         }
 
         Ok(OutlineCompositingDrawData {
-            bind_group: self.bind_group_read_voronoi,
+            bind_group: self.bind_group_draw_outlines,
         })
     }
 }
 
 pub struct OutlineCompositor {
     render_pipeline: GpuRenderPipelineHandle,
-    bind_group_layout_read_voronoi: GpuBindGroupLayoutHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 #[derive(Clone)]
@@ -443,6 +449,39 @@ pub struct OutlineCompositingDrawData {
 
 impl DrawData for OutlineCompositingDrawData {
     type Renderer = OutlineCompositor;
+}
+
+impl OutlineCompositor {
+    fn create_bind_group(
+        &self,
+        ctx: &RenderContext,
+        final_voronoi_texture: GpuTextureHandle,
+        config: &OutlineConfig,
+    ) -> GpuBindGroup {
+        let uniform_buffer_binding = create_and_fill_uniform_buffer(
+            ctx,
+            "OutlineCompositingDrawData".into(),
+            gpu_data::OutlineConfigUniformBuffer {
+                color_layer_a: config.color_layer_a.into(),
+                color_layer_b: config.color_layer_b.into(),
+                outline_thickness_pixel: config.outline_thickness_pixel.into(),
+                end_padding: Default::default(),
+            },
+        );
+
+        ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &ctx.gpu_resources,
+            &BindGroupDesc {
+                label: "OutlineCompositingDrawData".into(),
+                entries: smallvec![
+                    BindGroupEntry::DefaultTextureView(final_voronoi_texture),
+                    uniform_buffer_binding
+                ],
+                layout: self.bind_group_layout,
+            },
+        )
+    }
 }
 
 impl Renderer for OutlineCompositor {
@@ -458,20 +497,36 @@ impl Renderer for OutlineCompositor {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout_read_voronoi = pools.bind_group_layouts.get_or_create(
+        let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "OutlineCompositor::bind_group_layout_read_voronoi".into(),
-                entries: vec![wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                label: "OutlineCompositor::bind_group_layout".into(),
+                entries: vec![
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<
+                                gpu_data::OutlineConfigUniformBuffer,
+                            >(
+                            )
+                                as _),
+                        },
+                        count: None,
+                    },
+                ],
             },
         );
         let vertex_handle = screen_triangle_vertex_shader(pools, device, resolver);
@@ -483,10 +538,7 @@ impl Renderer for OutlineCompositor {
                     device,
                     &PipelineLayoutDesc {
                         label: "OutlineCompositor".into(),
-                        entries: vec![
-                            shared_data.global_bindings.layout,
-                            bind_group_layout_read_voronoi,
-                        ],
+                        entries: vec![shared_data.global_bindings.layout, bind_group_layout],
                     },
                     &pools.bind_group_layouts,
                 ),
@@ -517,7 +569,7 @@ impl Renderer for OutlineCompositor {
 
         OutlineCompositor {
             render_pipeline,
-            bind_group_layout_read_voronoi,
+            bind_group_layout,
         }
     }
 

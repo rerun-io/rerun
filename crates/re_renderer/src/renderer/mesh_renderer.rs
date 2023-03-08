@@ -34,7 +34,7 @@ mod gpu_data {
     /// Element in the gpu residing instance buffer.
     ///
     /// Keep in sync with `mesh_vertex.wgsl`
-    #[repr(C, packed)]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct InstanceData {
         // Don't use aligned glam types because they enforce alignment.
