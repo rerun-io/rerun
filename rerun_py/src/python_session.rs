@@ -174,9 +174,10 @@ impl PythonSession {
     }
 
     /// Drains all pending log messages and saves them to disk into an rrd file.
-    // TODO(cmc): We're gonna have to properly type all these errors all the way up to the encoding
-    // methods in re_log_types at some point…
-    pub fn save(&mut self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<()> {
+    pub fn save(
+        &mut self,
+        path: impl Into<std::path::PathBuf>,
+    ) -> Result<(), rerun::sink::FileSinkError> {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to save() ignored");
             return Ok(());

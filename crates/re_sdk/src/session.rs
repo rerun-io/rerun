@@ -130,7 +130,10 @@ impl SessionBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn save(self, path: impl Into<std::path::PathBuf>) -> anyhow::Result<Session> {
+    pub fn save(
+        self,
+        path: impl Into<std::path::PathBuf>,
+    ) -> Result<Session, crate::file_sink::FileSinkError> {
         let (rerun_enabled, recording_info) = self.finalize();
         if rerun_enabled {
             Ok(Session::new(

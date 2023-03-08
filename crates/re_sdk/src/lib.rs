@@ -49,7 +49,7 @@ pub mod sink {
     pub use crate::log_sink::{disabled, BufferedSink, LogSink, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub use crate::file_sink::FileSink;
+    pub use crate::file_sink::{FileSink, FileSinkError};
 }
 
 /// Things directly related to logging.

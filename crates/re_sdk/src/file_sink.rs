@@ -1,9 +1,24 @@
-use std::sync::mpsc::Sender;
+use std::{path::PathBuf, sync::mpsc::Sender};
 
-use anyhow::Context as _;
 use parking_lot::Mutex;
 
 use re_log_types::LogMsg;
+
+/// Errors that can occur when creating a [`FileSink`].
+#[derive(thiserror::Error, Debug)]
+pub enum FileSinkError {
+    /// Error creating the file.
+    #[error("Failed to create file {0}: {1}")]
+    CreateFile(PathBuf, std::io::Error),
+
+    /// Error spawning the file writer thread.
+    #[error("Failed to spawn thread: {0}")]
+    SpawnThread(std::io::Error),
+
+    /// Error encoding a log message.
+    #[error("Failed to encode LogMsg: {0}")]
+    LogMsgEncode(#[from] re_log_types::encoding::EncodeError),
+}
 
 /// Stream log messages to an `.rrd` file.
 pub struct FileSink {
@@ -23,14 +38,15 @@ impl Drop for FileSink {
 
 impl FileSink {
     /// Start writing log messages to a file at the given path.
-    pub fn new(path: impl Into<std::path::PathBuf>) -> anyhow::Result<Self> {
+    pub fn new(path: impl Into<std::path::PathBuf>) -> Result<Self, FileSinkError> {
         let (tx, rx) = std::sync::mpsc::channel();
 
         let path = path.into();
 
         re_log::debug!("Saving file to {path:?}…");
 
-        let file = std::fs::File::create(&path).with_context(|| format!("Path: {path:?}"))?;
+        let file = std::fs::File::create(&path)
+            .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
         let mut encoder = re_log_types::encoding::Encoder::new(file)?;
 
         let join_handle = std::thread::Builder::new()
@@ -48,7 +64,7 @@ impl FileSink {
                     re_log::debug!("Log stream saved to {path:?}");
                 }
             })
-            .context("Failed to spawn thread")?;
+            .map_err(FileSinkError::SpawnThread)?;
 
         Ok(Self {
             tx: tx.into(),
