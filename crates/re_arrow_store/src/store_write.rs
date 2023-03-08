@@ -1108,7 +1108,7 @@ impl ComponentTable {
             );
 
             // TODO(cmc): Compaction is disabled until we implement batching.
-            // See <todolink> for rationale.
+            // See https://github.com/rerun-io/rerun/pull/1535 for rationale.
             //
             // This has no noticeable impact on importance.
             //
