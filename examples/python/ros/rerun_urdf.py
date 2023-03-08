@@ -41,6 +41,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
             t = trimesh.transformations.translation_from_matrix(world_from_mesh)
             q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
             # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
+            # TODO(jleibs): Remove conversion once [#883](https://github.com/rerun-io/rerun/issues/883) is closed
             q = np.array([q[1], q[2], q[3], q[0]])
             rr.log_rigid3(path, parent_from_child=(t, q), timeless=timeless)
 

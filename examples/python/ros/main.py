@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Simple example of a ROS node that republishes to Rerun.
+Simple example of a ROS node that republishes some common types to Rerun.
+
+The solution here is mostly a toy example to show how ROS concepts can be
+mapped to Rerun. Fore more information on future improved ROS support,
+see the tracking issue: https://github.com/rerun-io/rerun/issues/1537
 
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
@@ -76,6 +80,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         self.laser_proj = laser_geometry.laser_geometry.LaserProjection()
 
         # Log a bounding box as a visual placeholder for the map
+        # # TODO(jleibs): Log the real map once [#1531](https://github.com/rerun-io/rerun/issues/1531) is merged
         rr.log_obb(
             "map/box",
             half_size=[6, 6, 2],
@@ -135,7 +140,12 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         )
 
     def log_tf_as_rigid3(self, path: str, time: Time) -> None:
-        """Helper to look up a transform with tf and log using `log_rigid3`."""
+        """
+        Helper to look up a transform with tf and log using `log_rigid3`.
+
+        Note: we do the lookup on the client side instead of re-logging the raw transforms until
+        Rerun has support for Derived Transforms [#1533](https://github.com/rerun-io/rerun/issues/1533)
+        """
         # Get the parent path
         parent_path = path.rsplit("/", 1)[0]
 
@@ -144,8 +154,6 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         parent_frame = self.path_to_frame[parent_path]
 
         # Do the TF lookup to get transform from child (source) -> parent (target)
-        # Note: we do the lookup on the client side instead of re-logging the raw transforms
-        # until Rerun has support for Derived Transforms(https://github.com/rerun-io/rerun/issues/1533)
         try:
             tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
             t = tf.transform.translation
@@ -217,19 +225,21 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Log points a second time after transforming to the map frame. This is a map-centric
         # view of the world.
         #
-        # Once Rerun supports fixed-frame aware transforms (https://github.com/rerun-io/rerun/issues/1522)
+        # Once Rerun supports fixed-frame aware transforms [#1522](https://github.com/rerun-io/rerun/issues/1522)
         # this will no longer be necessary.
         rr.log_points("map/points", positions=pts, colors=colors)
         self.log_tf_as_rigid3("map/points", time)
 
     def scan_callback(self, scan: LaserScan) -> None:
-        """Log a LaserScan after transforming it to line-segments."""
+        """
+        Log a LaserScan after transforming it to line-segments.
+
+        Note: we do a client-side transformation of the LaserScan data into Rerun
+        points / lines until Rerun has native support for LaserScan style projections:
+        [#1534](https://github.com/rerun-io/rerun/issues/1534)
+        """
         time = Time.from_msg(scan.header.stamp)
         rr.set_time_nanos("ros_time", time.nanoseconds)
-
-        # Note: we do a client-side transformation of the LaserScan data into Rerun
-        # points / lines until Rerun has native support for LaserScan style projections:
-        # (https://github.com/rerun-io/rerun/issues/1534)
 
         # Project the laser scan to a collection of points
         points = self.laser_proj.projectLaser(scan)
