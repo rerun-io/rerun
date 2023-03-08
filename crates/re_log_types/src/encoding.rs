@@ -8,10 +8,22 @@ use crate::LogMsg;
 #[cfg(feature = "save")]
 #[cfg(not(target_arch = "wasm32"))]
 mod encoder {
-    use anyhow::Context as _;
     use std::io::Write as _;
 
     use crate::LogMsg;
+
+    /// On failure to encode or serialize a [`LogMsg`].
+    #[derive(thiserror::Error, Debug)]
+    pub enum EncodeError {
+        #[error("Failed to write: {0}")]
+        Write(std::io::Error),
+
+        #[error("Zstd error: {0}")]
+        Zstd(std::io::Error),
+
+        #[error("MsgPack error: {0}")]
+        MsgPack(#[from] rmp_serde::encode::Error),
+    }
 
     /// Encode a stream of [`LogMsg`] into an `.rrd` file.
     pub struct Encoder<W: std::io::Write> {
@@ -20,16 +32,17 @@ mod encoder {
     }
 
     impl<W: std::io::Write> Encoder<W> {
-        pub fn new(mut write: W) -> anyhow::Result<Self> {
+        pub fn new(mut write: W) -> Result<Self, EncodeError> {
             let rerun_version = re_build_info::CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
-            write.write_all(b"RRF0").context("header")?;
+            write.write_all(b"RRF0").map_err(EncodeError::Write)?;
             write
                 .write_all(&rerun_version.to_bytes())
-                .context("header")?;
+                .map_err(EncodeError::Write)?;
 
             let level = 3;
-            let zstd_encoder = zstd::stream::Encoder::new(write, level).context("zstd start")?;
+            let zstd_encoder =
+                zstd::stream::Encoder::new(write, level).map_err(EncodeError::Zstd)?;
 
             Ok(Self {
                 zstd_encoder,
@@ -37,25 +50,25 @@ mod encoder {
             })
         }
 
-        pub fn append(&mut self, message: &LogMsg) -> anyhow::Result<()> {
+        pub fn append(&mut self, message: &LogMsg) -> Result<(), EncodeError> {
             let Self {
                 zstd_encoder,
                 buffer,
             } = self;
 
             buffer.clear();
-            rmp_serde::encode::write_named(buffer, message).context("MessagePack encoding")?;
+            rmp_serde::encode::write_named(buffer, message)?;
 
             zstd_encoder
                 .write_all(&(buffer.len() as u64).to_le_bytes())
-                .context("zstd write")?;
-            zstd_encoder.write_all(buffer).context("zstd write")?;
+                .map_err(EncodeError::Zstd)?;
+            zstd_encoder.write_all(buffer).map_err(EncodeError::Zstd)?;
 
             Ok(())
         }
 
-        pub fn finish(self) -> anyhow::Result<()> {
-            self.zstd_encoder.finish().context("zstd finish")?;
+        pub fn finish(self) -> Result<(), EncodeError> {
+            self.zstd_encoder.finish().map_err(EncodeError::Zstd)?;
             Ok(())
         }
     }
@@ -63,7 +76,7 @@ mod encoder {
     pub fn encode<'a>(
         messages: impl Iterator<Item = &'a LogMsg>,
         write: impl std::io::Write,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), EncodeError> {
         let mut encoder = Encoder::new(write)?;
         for message in messages {
             encoder.append(message)?;
