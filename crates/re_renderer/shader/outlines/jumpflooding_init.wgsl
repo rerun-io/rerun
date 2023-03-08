@@ -130,13 +130,13 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
 
     var pixel_coord_a: Vec2;
     if num_edges_and_b.x == 0.0 {
-        pixel_coord_a = Vec2(-10.0);
+        pixel_coord_a = Vec2(inf());
     } else {
         pixel_coord_a = Vec2(center_coord) + edge_pos_a_and_b.xy;
     }
     var pixel_coord_b: Vec2;
     if num_edges_and_b.y == 0.0 {
-        pixel_coord_b = Vec2(-10.0);
+        pixel_coord_b = Vec2(inf());
     } else {
         pixel_coord_b = Vec2(center_coord) + edge_pos_a_and_b.zw;
     }
