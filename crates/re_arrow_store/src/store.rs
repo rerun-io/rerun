@@ -301,6 +301,11 @@ impl DataStore {
         self.cluster_key
     }
 
+    /// The timeline used to store all incoming data in insertion order.
+    pub fn insertion_order_timeline() -> Timeline {
+        Timeline::new_sequence("_insertion_order")
+    }
+
     /// Lookup the arrow `DataType` of a `Component`
     pub fn lookup_data_type(&self, component: &ComponentName) -> Option<&DataType> {
         self.components.get(component).map(|c| &c.datatype)

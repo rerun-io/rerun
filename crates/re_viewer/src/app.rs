@@ -1644,14 +1644,14 @@ fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
-    use re_log_types::{EntityPathOpMsg, TimeInt};
+    use re_log_types::TimeInt;
 
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
         None => log_db
             .chronological_log_messages()
-            .cloned()
-            .collect::<Vec<_>>(),
+            .map(|(_, msg)| msg.into_owned())
+            .collect_vec(),
 
         // Query path: time to filter!
         Some((timeline, range)) => {
@@ -1659,27 +1659,15 @@ fn save_database_to_file(
             let range: RangeInclusive<TimeInt> = range.min.floor()..=range.max.ceil();
             log_db
                 .chronological_log_messages()
-                .filter(|msg| {
-                    match msg {
-                        LogMsg::BeginRecordingMsg(_) | LogMsg::Goodbye(_) => {
-                            true // timeless
-                        }
-                        LogMsg::EntityPathOpMsg(EntityPathOpMsg { time_point, .. }) => {
-                            time_point.is_timeless() || {
-                                let is_within_range = time_point
-                                    .get(&timeline)
-                                    .map_or(false, |t| range.contains(t));
-                                is_within_range
-                            }
-                        }
-                        LogMsg::ArrowMsg(_) => {
-                            // TODO(john)
-                            false
-                        }
-                    }
+                .filter_map(|(tp, msg)| {
+                    (tp.is_timeless() || {
+                        let is_within_range =
+                            tp.get(&timeline).map_or(false, |t| range.contains(t));
+                        is_within_range
+                    })
+                    .then_some(msg.into_owned())
                 })
-                .cloned()
-                .collect::<Vec<_>>()
+                .collect_vec()
         }
     };
 

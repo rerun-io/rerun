@@ -9,7 +9,7 @@ use crate::LogMsg;
 #[cfg(not(target_arch = "wasm32"))]
 mod encoder {
     use anyhow::Context as _;
-    use std::io::Write as _;
+    use std::{borrow::Borrow, io::Write as _};
 
     use crate::LogMsg;
 
@@ -60,13 +60,13 @@ mod encoder {
         }
     }
 
-    pub fn encode<'a>(
-        messages: impl Iterator<Item = &'a LogMsg>,
+    pub fn encode<T: Borrow<LogMsg>>(
+        messages: impl Iterator<Item = T>,
         write: impl std::io::Write,
     ) -> anyhow::Result<()> {
         let mut encoder = Encoder::new(write)?;
         for message in messages {
-            encoder.append(message)?;
+            encoder.append(message.borrow())?;
         }
         encoder.finish()
     }

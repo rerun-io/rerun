@@ -131,7 +131,7 @@ impl DataStore {
             .find_position(|bundle| bundle.name() == self.cluster_key)
             .map(|(pos, _)| pos);
 
-        if time_point.is_timeless() {
+        let row_indices = if time_point.is_timeless() {
             let mut row_indices = IntMap::default();
 
             // TODO(#589): support for batched row component insertions
@@ -144,6 +144,8 @@ impl DataStore {
                 .entry(ent_path_hash)
                 .or_insert_with(|| PersistentIndexTable::new(self.cluster_key, ent_path.clone()));
             index.insert(&row_indices)?;
+
+            row_indices
         } else {
             let mut row_indices = IntMap::default();
 
@@ -166,6 +168,22 @@ impl DataStore {
                     .or_insert_with(|| IndexTable::new(self.cluster_key, *timeline, ent_path));
                 index.insert(&self.config, *time, &row_indices)?;
             }
+
+            row_indices
+        };
+
+        // Insert into the insertion-order based index no matter what.
+        // TODO: how does that work with GC though? same way as everything else, acts as
+        // tombstones
+        // TODO: could even have an extra msg-id based timeline
+        {
+            let timeline = Self::insertion_order_timeline();
+            let ent_path = ent_path.clone(); // shallow
+            let index = self
+                .indices
+                .entry((timeline, ent_path_hash))
+                .or_insert_with(|| IndexTable::new(self.cluster_key, timeline, ent_path));
+            index.insert(&self.config, (self.insert_id as i64).into(), &row_indices)?;
         }
 
         // This is valuable information, even for a timeless timepoint!

@@ -1,3 +1,7 @@
+use std::{borrow::Cow, collections::BTreeMap};
+
+use ahash::HashMap;
+use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
@@ -37,6 +41,8 @@ impl Default for EntityDb {
             data_store: re_arrow_store::DataStore::new(
                 InstanceKey::name(),
                 DataStoreConfig {
+                    component_bucket_nb_rows: 1,
+                    index_bucket_nb_rows: 1,
                     component_bucket_size_bytes: 1024 * 1024, // 1 MiB
                     index_bucket_size_bytes: 1024,            // 1KiB
                     ..Default::default()
@@ -154,14 +160,11 @@ impl EntityDb {
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
 pub struct LogDb {
-    /// Messages in the order they arrived
-    chronological_message_ids: Vec<MsgId>,
-    log_messages: ahash::HashMap<MsgId, LogMsg>,
-
-    /// Data that was logged with [`TimePoint::timeless`].
-    /// We need to re-insert those in any new timelines
-    /// that are created after they were logged.
-    timeless_message_ids: Vec<MsgId>,
+    /// All the control messages (i.e. everything but the actual data / `ArrowMsg`), in ascending
+    /// order according to their `MsgId`.
+    ///
+    /// Reminder: `MsgId`s are timestamped using the client's wall clock.
+    control_messages: BTreeMap<MsgId, LogMsg>,
 
     /// Set by whomever created this [`LogDb`].
     pub data_source: Option<re_smart_channel::Source>,
@@ -199,13 +202,17 @@ impl LogDb {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.log_messages.is_empty()
+        self.control_messages.is_empty()
     }
 
     pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
         crate::profile_function!();
-        match &msg {
-            LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
+
+        let msg_id = match &msg {
+            LogMsg::BeginRecordingMsg(msg) => {
+                self.add_begin_recording_msg(msg);
+                msg.msg_id
+            }
             LogMsg::EntityPathOpMsg(msg) => {
                 let EntityPathOpMsg {
                     msg_id,
@@ -213,14 +220,18 @@ impl LogDb {
                     path_op,
                 } = msg;
                 self.entity_db.add_path_op(*msg_id, time_point, path_op);
+                *msg_id
             }
             LogMsg::ArrowMsg(msg) => {
                 self.entity_db.try_add_arrow_data_msg(msg)?;
+                // Not a control message, return early.
+                return Ok(());
             }
-            LogMsg::Goodbye(_) => {}
-        }
-        self.chronological_message_ids.push(msg.id());
-        self.log_messages.insert(msg.id(), msg);
+            LogMsg::Goodbye(msg_id) => *msg_id,
+        };
+
+        self.control_messages.insert(msg_id, msg);
+
         Ok(())
     }
 
@@ -229,18 +240,160 @@ impl LogDb {
     }
 
     pub fn len(&self) -> usize {
-        self.log_messages.len()
+        self.control_messages.len()
+        // TODO: add arrow DB "length" (?) (use DataStoreStats maybe?)
+        // TODO: this wont make much sense with batches anyway
     }
 
-    /// In the order they arrived
-    pub fn chronological_log_messages(&self) -> impl Iterator<Item = &LogMsg> {
-        self.chronological_message_ids
+    /// Returns all log messages in the database, in the order they arrived.
+    ///
+    // TODO: well... almost in the order they arrived.
+    // TODO: really it's "insertion order"
+    pub fn chronological_log_messages(&self) -> impl Iterator<Item = (TimePoint, Cow<'_, LogMsg>)> {
+        // TODO: this will also fix save-to-selection which.. turns out it's been broken since the
+        // switch to arrow.
+        //
+        // TODO: guess what, the timeless stuff doesn't even have a log time...
+
+        // TODO: alright, so what if we introduced an actual timeline driven by the msg_id times?
+
+        // TODO: beginrecording shouldn't really be a thing though, you should just ask the server
+        // to register a new recording with the given metadata and get an ID back?
+        // Or simpler: just generate a UUID on the client
+        //
+        // maybe that's a separate issue though?
+        //
+        // Now that I think of it, this is actually very much related to
+        // https://github.com/rerun-io/rerun/issues/903
+        //
+        // Not only so-called chronological (insertion) order is problematic, but those things are
+        // also stateful which makes matters worse (imagine if sql's `use DB` was stateful)
+        // Also they live externally...
+        //
+        // Also: how we all of that fit into the general story of dumping the store into a native
+        // file (i.e. dropping rrd?).
+        //
+        // Also: GC shouldn't even really be a thing though, the streaming system should just
+        // forward to a file... and sure, that file might be the void / dev/null
+
+        // let meta = self
+        //     .chronological_message_ids
+        //     .iter()
+        //     .filter_map(|id| self.get_log_msg(id))
+        //     .map(|msg| match msg {
+        //         LogMsg::BeginRecordingMsg(inner) => (inner.msg_id, TimePoint::timeless(), msg),
+        //         LogMsg::EntityPathOpMsg(inner) => (inner.msg_id, inner.time_point.clone(), msg),
+        //         LogMsg::ArrowMsg(_) => {
+        //             panic!("Arrow messages should never be stored in Viewer memory")
+        //         }
+        //         LogMsg::Goodbye(inner) => (*inner, TimePoint::timeless(), msg),
+        //     })
+        //     .map(|(id, tp, msg)| (id, tp, Cow::Borrowed(msg)));
+
+        // TODO: not actually sure how any of this behaves after a GC pass? though at this point
+        // the impacted msg ids should not be present in `chronological_message_ids` anymore so we
+        // can filter that out
+
+        let mut data: HashMap<MsgId, (TimePoint, _)> = self
+            .entity_db
+            .data_store
+            .as_msg_bundles_xxx(MsgId::name())
+            .filter_map(|msg_bundle| {
+                let msg_id = msg_bundle.msg_id;
+                let tp = msg_bundle.time_point.clone();
+
+                // NOTE: Serialization shouldn't possibly be able to fail: this had to be
+                // serialized as-is to be inserted into the store in the first place.
+                // But.. you know.
+                let msg: ArrowMsg = match msg_bundle.try_into() {
+                    Ok(msg) => msg,
+                    Err(err) => {
+                        re_log::error_once!(
+                            "Failed to serialize a reconstructed MsgBundle ({err}):\
+                                something has gone seriously wrong"
+                        );
+                        return None;
+                    }
+                };
+
+                Some((msg_id, (tp, Cow::Owned(LogMsg::ArrowMsg(msg)))))
+            })
+            .collect();
+
+        let control = self
+            .control_messages
             .iter()
-            .filter_map(|id| self.get_log_msg(id))
+            .filter_map(move |(msg_id, msg)| {
+                Some(match msg {
+                    LogMsg::BeginRecordingMsg(_) => (TimePoint::timeless(), msg),
+                    LogMsg::EntityPathOpMsg(inner) => (inner.time_point.clone(), msg),
+                    LogMsg::ArrowMsg(_) => return None,
+                    LogMsg::Goodbye(_) => (TimePoint::timeless(), msg),
+                })
+            })
+            .map(|(tp, msg)| (tp, Cow::Borrowed(msg)));
+
+        // self.chronological_message_ids.iter().filter_map(move |id| {
+        //     self.get_log_msg(id)
+        //         .map(|(tp, msg)| (tp, Cow::Borrowed(msg)))
+        //         .or(data.remove(id))
+        // })
+
+        // TODO: explain why we go through all this pain (and open a ticket once we've talked
+        // it through): control vs. data messages, "chronological" order that the store knows
+        // nothing of (and isn't chronological)
+
+        // // TODO: we're going to need to talk about time...
+        // // let mut arrow_msgs: IntMap<MsgId, MsgBundle> = Default::default();
+        // // let data = self.entity_db.data_store.as_msg_bundles(MsgId::name());
+        // // for data in data {
+        // //     //
+        // // }
+
+        // let data = self
+        //     .entity_db
+        //     .data_store
+        //     .as_msg_bundles(MsgId::name())
+        //     .filter_map(|msg_bundle| {
+        //         let msg_id = msg_bundle.msg_id;
+        //         let tp = msg_bundle.time_point.clone();
+
+        //         // NOTE: Serialization shouldn't possibly be able to fail: this had to be
+        //         // serialized as-is to be inserted into the store in the first place.
+        //         // But.. you know.
+        //         let msg: ArrowMsg = match msg_bundle.try_into() {
+        //             Ok(msg) => msg,
+        //             Err(err) => {
+        //                 re_log::error_once!(
+        //                     "Failed to serialize a reconstructed MsgBundle ({err}):\
+        //                         something has gone seriously wrong"
+        //                 );
+        //                 return None;
+        //             }
+        //         };
+
+        //         Some((msg_id, tp, Cow::Owned(LogMsg::ArrowMsg(msg))))
+        //     });
+
+        // // TODO: or we pop from above rather than merging?
+
+        // // TODO: at this point in particular it could get weird
+        // // TODO: need to have a second look at the main PR too
+        // // TODO: really need to get read of non-arrow messages
+        // meta.merge_by(data, |meta, data| meta.0 <= data.0)
+        //     .map(|(_, tp, msg)| (tp, msg))
     }
 
-    pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
-        self.log_messages.get(msg_id)
+    // TODO
+    pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<(TimePoint, &LogMsg)> {
+        self.log_messages.get(msg_id).and_then(|msg| {
+            Some(match msg {
+                LogMsg::BeginRecordingMsg(_) => (TimePoint::timeless(), msg),
+                LogMsg::EntityPathOpMsg(inner) => (inner.time_point.clone(), msg),
+                LogMsg::ArrowMsg(_) => return None,
+                LogMsg::Goodbye(_) => (TimePoint::timeless(), msg),
+            })
+        })
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
@@ -260,6 +413,7 @@ impl LogDb {
                 .flat_map(|chunk| {
                     arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap()
                 })
+                // TODO: about that...
                 .map(Option::unwrap) // MsgId is always present
                 .collect::<ahash::HashSet<_>>()
         };
@@ -267,9 +421,9 @@ impl LogDb {
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
+            control_messages,
             chronological_message_ids,
             log_messages,
-            timeless_message_ids,
             data_source: _,
             recording_info: _,
             entity_db,
@@ -283,10 +437,6 @@ impl LogDb {
         {
             crate::profile_scope!("log_messages");
             log_messages.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
-        }
-        {
-            crate::profile_scope!("timeless_message_ids");
-            timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
         entity_db.purge(&cutoff_times, &drop_msg_ids);

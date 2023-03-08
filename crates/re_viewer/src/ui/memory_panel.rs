@@ -20,6 +20,7 @@ impl MemoryPanel {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &DataStoreStats,
     ) {
+        // dbg!(store_stats);
         crate::profile_function!();
         self.history.capture(
             Some(

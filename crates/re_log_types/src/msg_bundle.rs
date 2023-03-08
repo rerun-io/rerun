@@ -333,6 +333,7 @@ impl MsgBundle {
 
         // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
         // we need to craft an array of `MsgId`s that matches the length of the other components.
+        // TODO: this simply doesn't work when inserting empty data on purpose...
         if let Some(num_instances) = this.num_instances(0) {
             this.try_append_component(&vec![msg_id; num_instances])
                 .unwrap();

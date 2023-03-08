@@ -22,7 +22,11 @@ impl EventLogView {
 
         let messages = {
             crate::profile_scope!("Collecting messages");
-            ctx.log_db.chronological_log_messages().collect_vec()
+            // TODO: awful
+            ctx.log_db
+                .chronological_log_messages()
+                .map(|(_, msg)| msg.into_owned())
+                .collect_vec()
         };
 
         egui::Frame {
@@ -42,7 +46,7 @@ impl EventLogView {
     }
 }
 
-pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[&LogMsg]) {
+pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[LogMsg]) {
     crate::profile_function!();
 
     use egui_extras::{Column, TableBuilder};
@@ -85,17 +89,14 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
 
             // for MANY messages, `heterogeneous_rows` is too slow. TODO(emilk): how many?
             if messages.len() < 10_000_000 {
-                body.heterogeneous_rows(
-                    messages.iter().copied().map(row_height),
-                    |index, mut row| {
-                        let msg = messages[index];
-                        table_row(ctx, &mut row, msg, row_height(msg));
-                    },
-                );
+                body.heterogeneous_rows(messages.iter().map(row_height), |index, mut row| {
+                    let msg = &messages[index];
+                    table_row(ctx, &mut row, msg, row_height(msg));
+                });
             } else {
                 let row_height = re_ui::ReUi::table_line_height();
                 body.rows(row_height, messages.len(), |index, mut row| {
-                    table_row(ctx, &mut row, messages[index], row_height);
+                    table_row(ctx, &mut row, &messages[index], row_height);
                 });
             }
         });
