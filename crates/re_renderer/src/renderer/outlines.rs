@@ -3,7 +3,7 @@
 //! This module provides the [`OutlineMaskProcessor`] which handles render passes around outlines
 //! and [`OutlineCompositor`] which handles compositing the outlines into the final image.
 //!
-//! There are two channels (in shader code referred to as A and B) that are handled simulataneously.
+//! There are two channels (in shader code referred to as A and B) that are handled simultaneously.
 //! For configuring the look of the outline refer to [`OutlineConfig`].
 //! For setting outlines for an individual primitive from another [`Renderer`]/[`DrawData`],
 //! check for [`OutlineMaskPreference`] settings on that primitive.

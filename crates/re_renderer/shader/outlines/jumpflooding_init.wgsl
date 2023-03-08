@@ -19,7 +19,7 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     // anti-aliasing was achieved by a kind of sobel filter on an already resolved target.
     // In our case however, we have a number of different masks, identified by an index per-pixel.
     // Therefore, there is no straight-forward way to resolve this MSAA texture!
-    // Resolving accurate sub-pixel edges therefore requires us to look at the sub-samples of the MSAA mask directly.
+    // Resolving accurate sub-pixel edges requires us to look at the sub-samples of the MSAA mask directly.
     //
     // There's a bunch of ways on how to go about this and it's not exactly clear where the trade-offs between quality & performance are.
     // But I found that by using our knowledge of the sampling pattern
@@ -62,7 +62,7 @@ fn main(in: VertexOutput) -> @location(0) Vec4 {
     var edge_pos_a_and_b = Vec4(0.0);
     var num_edges_and_b = Vec2(0.0);
 
-    // Internal samples accross the center point
+    // Internal samples across the center point
     // Tried weighting this higher, didn't make a difference in quality since we almost always have only a single edge.
     {
         let has_edge = Vec2(mask_top_left != mask_bottom_right) + Vec2(mask_right_top != mask_left_bottom);
