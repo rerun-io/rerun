@@ -14,7 +14,7 @@ use std::{
 enum TcpStreamState {
     /// The [`TcpStream`] is yet to be connected.
     ///
-    /// Behavior: Try to connect on next [`TcpClient::send()`]
+    /// Behavior: Try to connect on next [`TcpClient::connect`] or [`TcpClient::send`].
     ///
     /// Transitions:
     ///  - Pending -> Connected on successful connection.
@@ -23,24 +23,24 @@ enum TcpStreamState {
 
     /// A healthy [`TcpStream`] ready to send packets
     ///
-    /// Behavior: Send packets on [`TcpClient::send()`]
+    /// Behavior: Send packets on [`TcpClient::send`]
     ///
     /// Transitions:
     ///  - Connected -> Disconnected on send error
-    ///  - Connected -> Pending on [`TcpClient::set_addr`]
     Connected(TcpStream),
 
-    /// A broken [`TcpStream`] which experienced a failure to connect or send
+    /// A broken [`TcpStream`] which experienced a failure to connect or send.
     ///
-    /// Behavior: Try to re-connect on next [`TcpClient::send()`]
+    /// Behavior: Try to re-connect on next [`TcpClient::connect`] or [`TcpClient::send`]
     ///
     /// Transitions:
     ///  - Disconnected -> Connected on successful connection.
-    ///  - Disconnected -> Pending on [`TcpClient::set_addr`]
     Disconnected,
 }
 
 /// Connect to a rerun server and send log messages.
+///
+/// Blocking connection.
 pub struct TcpClient {
     addrs: Vec<SocketAddr>,
     stream_state: TcpStreamState,
@@ -60,7 +60,9 @@ impl TcpClient {
         }
     }
 
-    /// return `false` on failure. Does nothing if already connected.
+    /// Returns `false` on failure. Does nothing if already connected.
+    ///
+    /// [`Self::send`] will call this.
     pub fn connect(&mut self) -> anyhow::Result<()> {
         if let TcpStreamState::Connected(_) = self.stream_state {
             Ok(())
