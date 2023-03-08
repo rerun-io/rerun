@@ -12,7 +12,6 @@ import sys
 import numpy as np
 import rerun as rr
 
-ros_packages_found = False
 try:
     import cv_bridge
     import laser_geometry
@@ -33,7 +32,6 @@ try:
     from tf2_ros.buffer import Buffer
     from tf2_ros.transform_listener import TransformListener
 
-    ros_packages_found = True
 except ImportError:
     print(
         """
