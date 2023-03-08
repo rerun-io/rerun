@@ -18,7 +18,7 @@
 //! * Extract a contour from the mask texture, for each contour contour pixel write the position in the (to-be) voronoi texture.
 //!     * in our case we extract all pixels at which the mask changes (details below)
 //! * Jump-flooding iterations: For each pixel in the voronoi texture,
-//!   check the 4 neighbors at decreasing distance and write the minimum of the 4.
+//!  sample the current pixel and an 8-neighborhood at a certain, for each pass decreasing, distance and write out the closest position seen so far.
 //!     * This is repeated for `log2(outline_width)` iterations.
 //! * During composition, extract an outline by checking the distance to the closest contour using the voronoi texture
 //!
