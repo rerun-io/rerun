@@ -22,8 +22,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 mod gpu_data {
@@ -119,8 +119,8 @@ pub struct MeshInstance {
     /// Alpha channel is currently unused.
     pub additive_tint: Color32,
 
-    /// TODO: Document & unify
-    pub outline_mask: Option<glam::UVec2>,
+    /// Optional outline mask setting for this instance.
+    pub outline_mask: OutlineMaskPreference,
 }
 
 impl Default for MeshInstance {
@@ -186,7 +186,7 @@ impl MeshDrawData {
 
             let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
-            // TODO: This grouping doesn't seem to do its job correctly. We're not actually batching correctly right now in all cases.
+            // TODO(#1530) This grouping doesn't seem to do its job correctly. We're not actually batching correctly right now in all cases.
             for (mesh, instances) in &instances.iter().group_by(|instance| &instance.gpu_mesh) {
                 let mut count = 0;
                 let mut count_with_outlines = 0;

@@ -28,8 +28,8 @@ pub use mesh_renderer::{MeshDrawData, MeshInstance};
 pub mod compositor;
 
 mod outlines;
-pub use outlines::OutlineConfig;
 pub(crate) use outlines::OutlineMaskProcessor;
+pub use outlines::{OutlineConfig, OutlineMaskPreference};
 
 use crate::{
     context::{RenderContext, SharedRendererData},

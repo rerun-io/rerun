@@ -1,8 +1,47 @@
-//! Outlines
+//! Outlines as postprocessing effect.
 //!
-//! TODO: How do they work, how are they configured. What's going on!
-//! * mask layer
-//! * MSAA handling
+//! This module provides the [`OutlineMaskProcessor`] which handles render passes around outlines
+//! and [`OutlineCompositor`] which handles compositing the outlines into the final image.
+//!
+//! There are two channels (in shader code referred to as A and B) that are handled simulataneously.
+//! For configuring the look of the outline refer to [`OutlineConfig`].
+//! For setting outlines for an individual primitive from another [`Renderer`]/[`DrawData`],
+//! check for [`OutlineMaskPreference`] settings on that primitive.
+//!
+//! How it works:
+//! =============
+//! The basic approach follows closely @bgolus' [blog post](https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9)
+//! on jump-flooding based outlines.
+//!
+//! Quick recap & overview:
+//! * Render scene into a mask texture
+//! * Extract a contour from the mask texture, for each contour contour pixel write the position in the (to-be) voronoi texture.
+//!     * in our case we extract all pixels at which the mask changes (details below)
+//! * Jump-flooding iterations: For each pixel in the voronoi texture,
+//!   check the 4 neighbors at decreasing distance and write the minimum of the 4.
+//!     * This is repeated for `log2(outline_width)` iterations.
+//! * During composition, extract an outline by checking the distance to the closest contour using the voronoi texture
+//!
+//! What makes our implementation (a little bit) special:
+//! -----------------------------------------------------
+//! In short: We have more complex outline relationships but do so without additional passes!
+//!
+//! * Different objects may have outlines between each other
+//!     * This is achieved by making the mask texture a 2 channel texture, where each channel is a different 8bit object id.
+//!         * object ids are arbitrary and only for the purpose of distinguishing between outlines
+//!     * Since we now no longer can resolve anti-aliasing in a straight forward manner (can't blend object ids!),
+//!         * This implies a custom resolve during contour extraction!
+//!     * It seems to force our hand towards outlines that extend inwards:
+//!         * For each channel A & B we only get a single voronoi texture (fused into one 4 channel texture),
+//!           meaning that we only have a single unsigned distance to the closest contour.
+//!           If we don't want to ignore objects drawn upon each other, we need to compute the distance to any contour (== pixel where object id changes).
+//!         * It might be possible to mask out inner outlines during composition, but it's not clear what the exact masking rules are for this.
+//! * We use two channels (A and B) for outlines, so that we can have two independent outlines (even for the same object if desired)
+//!     * We do this in a single pass by using a 2 channel texture on the mask (object id A, object id B) and
+//!       a 4 channel texture on the voronoi texture (xy coordinates for A, xy coordinates for B)
+//!
+//! More details can be found in the respective shader code.
+//!
 
 use super::{screen_triangle_vertex_shader, DrawData, DrawPhase, Renderer};
 use crate::{
@@ -19,6 +58,15 @@ use crate::{
 };
 
 use smallvec::smallvec;
+
+/// What outline (if any) should be drawn.
+///
+/// Outlines have two channels (referred to as A and B).
+/// Each channel can distinguish up 255 different objects, each getting their own outline.
+///
+/// Object index 0 is special: It is the default background of each outline channel, thus rendering with it
+/// is a form of "active no outline", effectively subtracting from the outline channel.
+pub type OutlineMaskPreference = Option<glam::UVec2>;
 
 #[derive(Clone, Debug)]
 pub struct OutlineConfig {
