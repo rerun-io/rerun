@@ -146,6 +146,8 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         parent_frame = self.path_to_frame[parent_path]
 
         # Do the TF lookup to get transform from child (source) -> parent (target)
+        # Note: we do the lookup on the client side instead of re-logging the raw transforms
+        # until Rerun has support for Derived Transforms(https://github.com/rerun-io/rerun/issues/1533)
         try:
             tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
             t = tf.transform.translation
@@ -226,6 +228,10 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         """Log a LaserScan after transforming it to line-segments."""
         time = Time.from_msg(scan.header.stamp)
         rr.set_time_nanos("ros_time", time.nanoseconds)
+
+        # Note: we do a client-side transformation of the LaserScan data into Rerun
+        # points / lines until Rerun has native support for LaserScan style projections:
+        # (https://github.com/rerun-io/rerun/issues/1534)
 
         # Project the laser scan to a collection of points
         points = self.laser_proj.projectLaser(scan)
