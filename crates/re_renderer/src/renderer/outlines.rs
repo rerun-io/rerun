@@ -70,9 +70,9 @@ pub type OutlineMaskPreference = Option<glam::UVec2>;
 
 #[derive(Clone, Debug)]
 pub struct OutlineConfig {
-    /// Outline thickness for both layers in pixels. Fractional pixels are valid.
+    /// Outline radius for both layers in pixels. Fractional pixels are valid.
     ///
-    /// Could do different thicknesses for both layers if the need arises, but for now this simplifies things.
+    /// Could do different radius for both layers if the need arises, but for now this simplifies things.
     pub outline_radius_pixel: f32,
 
     /// Premultiplied RGBA color for the first outline layer.

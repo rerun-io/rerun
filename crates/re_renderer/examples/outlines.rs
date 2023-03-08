@@ -63,7 +63,7 @@ impl framework::Example for Outlines {
                     },
                     pixels_from_point,
                     outline_config: Some(OutlineConfig {
-                        outline_thickness_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0
+                        outline_radius_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0
                             + 2.0,
                         color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
                         color_layer_b: re_renderer::Rgba::from_rgba_unmultiplied(
