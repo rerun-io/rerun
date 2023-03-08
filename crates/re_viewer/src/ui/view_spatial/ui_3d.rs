@@ -6,6 +6,7 @@ use macaw::{vec3, BoundingBox, Quat, Vec3};
 use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
+    renderer::OutlineConfig,
     view_builder::{Projection, TargetConfiguration},
     RenderContext, Size,
 };
@@ -515,6 +516,10 @@ fn paint_view(
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
         return;
     }
+
+    let selection_outline_color: re_renderer::Rgba = ui.visuals().selection.bg_fill.into();
+    let hover_outline_color = (selection_outline_color * 1.5).additive();
+
     let target_config = TargetConfiguration {
         name: name.into(),
 
@@ -529,7 +534,11 @@ fn paint_view(
         pixels_from_point,
         auto_size_config,
 
-        ..Default::default()
+        outline_config: Some(OutlineConfig {
+            outline_radius_pixel: pixels_from_point * 2.0,
+            color_layer_a: selection_outline_color,
+            color_layer_b: hover_outline_color,
+        }),
     };
 
     let Ok(callback) = create_scene_paint_callback(

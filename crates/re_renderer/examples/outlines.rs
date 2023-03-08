@@ -79,11 +79,11 @@ impl framework::Example for Outlines {
             .unwrap();
 
         let outline_mask_large_mesh = match ((seconds_since_startup * 0.5) as u64) % 5 {
-            0 => OutlineMaskPreference::None,
-            1 => Some([1, 0]), // Same as the the y spinning mesh.
-            2 => Some([2, 0]), // Different than both meshes, outline A.
-            3 => Some([0, 1]), // Same as the the x spinning mesh.
-            4 => Some([0, 2]), // Different than both meshes, outline B.
+            0 => OutlineMaskPreference::NONE,
+            1 => OutlineMaskPreference::some(1, 0), // Same as the the y spinning mesh.
+            2 => OutlineMaskPreference::some(2, 0), // Different than both meshes, outline A.
+            3 => OutlineMaskPreference::some(0, 1), // Same as the the x spinning mesh.
+            4 => OutlineMaskPreference::some(0, 2), // Different than both meshes, outline B.
             _ => unreachable!(),
         };
 
@@ -94,12 +94,12 @@ impl framework::Example for Outlines {
                 rotation: glam::Quat::IDENTITY,
             },
             MeshProperties {
-                outline_mask: Some([1, 0]),
+                outline_mask: OutlineMaskPreference::some(1, 0),
                 position: glam::vec3(2.0, 0.0, -3.0),
                 rotation: glam::Quat::from_rotation_y(seconds_since_startup),
             },
             MeshProperties {
-                outline_mask: Some([0, 1]),
+                outline_mask: OutlineMaskPreference::some(0, 1),
                 position: glam::vec3(-2.0, 1.0, 3.0),
                 rotation: glam::Quat::from_rotation_x(seconds_since_startup),
             },

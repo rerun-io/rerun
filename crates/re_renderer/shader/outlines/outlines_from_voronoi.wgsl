@@ -1,6 +1,7 @@
 #import <../types.wgsl>
 #import <../global_bindings.wgsl>
 #import <../screen_triangle_vertex.wgsl>
+#import <../utils/srgb.wgsl>
 
 @group(1) @binding(0)
 var voronoi_texture: texture_2d<f32>;
@@ -31,7 +32,7 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
 
     // Blend B over A.
     let color = color_a * (1.0 - color_b.a) + color_b;
-    return color;
+    return srgba_from_linear(color);
 
     // Show only the outline. Useful for debugging.
     //return Vec4(color.rgb, 1.0);

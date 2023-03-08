@@ -1,7 +1,9 @@
 use ahash::{HashMap, HashSet};
+use egui::NumExt;
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, LogDb};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
+use re_renderer::renderer::OutlineMaskPreference;
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -134,12 +136,36 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
     }
 }
 
+#[derive(Default)]
+pub struct SpaceViewEntityOutlineMask {
+    overall: OutlineMaskPreference,
+    instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
+}
+
+#[derive(Copy, Clone)]
+pub struct OptionalSpaceViewEntityOutlineMask<'a>(Option<&'a SpaceViewEntityOutlineMask>);
+
+impl<'a> OptionalSpaceViewEntityOutlineMask<'a> {
+    pub fn index_outline_mask(&self, instance_key: InstanceKey) -> OutlineMaskPreference {
+        self.0
+            .map_or(OutlineMaskPreference::NONE, |entity_outline_mask| {
+                entity_outline_mask
+                    .instances
+                    .get(&instance_key)
+                    .cloned()
+                    .unwrap_or_default()
+                    .max(entity_outline_mask.overall)
+            })
+    }
+}
+
 /// Highlights in a specific space view.
 ///
 /// Using this in bulk on many objects is faster than querying single objects.
 #[derive(Default)]
 pub struct SpaceViewHighlights {
     highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewEntityHighlight>,
+    entity_outlines_masks: IntMap<EntityPathHash, SpaceViewEntityOutlineMask>,
 }
 
 impl SpaceViewHighlights {
@@ -148,6 +174,13 @@ impl SpaceViewHighlights {
         entity_path_hash: EntityPathHash,
     ) -> OptionalSpaceViewEntityHighlight<'_> {
         OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
+    }
+
+    pub fn entity_outline_mask(
+        &self,
+        entity_path_hash: EntityPathHash,
+    ) -> OptionalSpaceViewEntityOutlineMask<'_> {
+        OptionalSpaceViewEntityOutlineMask(self.entity_outlines_masks.get(&entity_path_hash))
     }
 }
 
@@ -420,8 +453,52 @@ impl SelectionState {
             };
         }
 
+        // Compute outline masks from space view highlights.
+        let mut selection_mask_index: u8 = 0;
+        let mut hover_mask_index: u8 = 0;
+        let mut get_mask_preference = move |highlight: InteractionHighlight| {
+            if highlight.is_some() {
+                let a = if highlight.selection.is_some() {
+                    // We don't expect to overflow u8, but if we do, don't use the "background mask".
+                    selection_mask_index = selection_mask_index.wrapping_add(1).at_least(1);
+                    selection_mask_index
+                } else {
+                    0
+                };
+                let b = if highlight.hover.is_some() {
+                    // We don't expect to overflow u8, but if we do, don't use the "background mask".
+                    hover_mask_index = hover_mask_index.wrapping_add(1).at_least(1);
+                    hover_mask_index
+                } else {
+                    0
+                };
+                OutlineMaskPreference::some(a, b)
+            } else {
+                OutlineMaskPreference::NONE
+            }
+        };
+        let entity_outlines_masks = highlighted_entity_paths
+            .iter()
+            .map(|(entity, highlight)| {
+                (
+                    *entity,
+                    SpaceViewEntityOutlineMask {
+                        overall: get_mask_preference(highlight.overall),
+                        instances: highlight
+                            .instances
+                            .iter()
+                            .map(|(instance, highlight)| {
+                                (*instance, get_mask_preference(*highlight))
+                            })
+                            .collect(),
+                    },
+                )
+            })
+            .collect();
+
         SpaceViewHighlights {
             highlighted_entity_paths,
+            entity_outlines_masks,
         }
     }
 }

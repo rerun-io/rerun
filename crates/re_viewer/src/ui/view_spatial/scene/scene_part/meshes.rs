@@ -1,4 +1,3 @@
-use egui::Color32;
 use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties};
@@ -38,7 +37,8 @@ impl MeshPart {
 
         let _default_color = DefaultColor::EntityPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-        let entity_highlight = highlights.entity_highlight(ent_path.hash());
+        let entity_highlight = highlights.entity_highlight(ent_path.hash()); // TODO: remove this
+        let entity_outlines = highlights.entity_outline_mask(ent_path.hash());
 
         let visitor =
             |instance_key: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
@@ -48,11 +48,6 @@ impl MeshPart {
                     entity_view,
                     props,
                     entity_highlight,
-                );
-
-                let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
-                    Color32::TRANSPARENT,
-                    entity_highlight.index_highlight(instance_path_hash.instance_key),
                 );
 
                 if let Some(mesh) = ctx
@@ -67,7 +62,7 @@ impl MeshPart {
                         instance_path_hash,
                         world_from_mesh: world_from_obj_affine,
                         mesh: cpu_mesh,
-                        additive_tint,
+                        outline_mask: entity_outlines.index_outline_mask(instance_key),
                     })
                 {
                     scene.primitives.meshes.push(mesh);
