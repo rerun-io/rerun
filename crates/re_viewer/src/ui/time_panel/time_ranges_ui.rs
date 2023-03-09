@@ -334,6 +334,19 @@ impl TimeRangesUi {
         Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time))
     }
 
+    pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> TimeRange {
+        let (min_x, max_x) = (*x_range.start(), *x_range.end());
+        TimeRange {
+            min: self
+                .time_from_x_f32(min_x)
+                .map_or(TimeInt::MIN, |tf| tf.floor()),
+
+            max: self
+                .time_from_x_f32(max_x)
+                .map_or(TimeInt::MAX, |tf| tf.ceil()),
+        }
+    }
+
     /// Pan the view, returning the new view.
     pub fn pan(&self, delta_x: f32) -> Option<TimeView> {
         Some(TimeView {

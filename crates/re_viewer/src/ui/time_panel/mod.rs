@@ -331,6 +331,8 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
+        crate::profile_function!();
+
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
@@ -338,7 +340,6 @@ impl TimePanel {
             // We implement drag-to-scroll manually instead!
             .drag_to_scroll(false)
             .show(ui, |ui| {
-                crate::profile_scope!("tree_ui");
                 if time_area_response.dragged_by(PointerButton::Primary) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }

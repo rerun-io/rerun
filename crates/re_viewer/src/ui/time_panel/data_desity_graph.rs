@@ -236,15 +236,10 @@ pub fn data_density_graph_ui(
 
     add_data_point(TimeInt::BEGINNING, num_timeless_messages);
 
-    let visible_time_range = TimeRange {
-        min: time_ranges_ui
-            .time_from_x_f32(time_area_painter.clip_rect().left() - MARGIN_X)
-            .map_or(TimeInt::MIN, |tf| tf.floor()),
-
-        max: time_ranges_ui
-            .time_from_x_f32(time_area_painter.clip_rect().right() + MARGIN_X)
-            .map_or(TimeInt::MAX, |tf| tf.ceil()),
-    };
+    let visible_time_range = time_ranges_ui.time_range_from_x_range(
+        (time_area_painter.clip_rect().left() - MARGIN_X)
+            ..=(time_area_painter.clip_rect().right() + MARGIN_X),
+    );
 
     for (&time, &num_messages_at_time) in
         num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
