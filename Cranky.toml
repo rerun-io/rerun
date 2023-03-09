@@ -130,7 +130,9 @@ warn = [
 ]
 
 allow = [
-  # TODO(emilk): enable more lints
+  "clippy::manual_range_contains", # this one is just worse imho
+
+  # TODO(emilk): enable more of these lints:
   "clippy::cloned_instead_of_copied",
   "clippy::missing_errors_doc",
   "trivial_casts",
