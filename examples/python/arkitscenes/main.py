@@ -12,7 +12,7 @@ from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
-ORIENTATION = {"42444949": "portrait", "48458663": "landscape"}
+ORIENTATION = {"42444949": "portrait", "48458663": "landscape", "41069046": "portrait"}
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
