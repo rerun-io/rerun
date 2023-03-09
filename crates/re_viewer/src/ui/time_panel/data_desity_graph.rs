@@ -2,7 +2,7 @@
 
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use egui::{epaint::Vertex, pos2, remap, NumExt as _, Rect, Shape};
+use egui::{epaint::Vertex, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 
@@ -25,18 +25,32 @@ const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct DataDensityGraphPainter {
     /// The maximum density of the previous frame.
+    /// This is what we use to normalize the density graphs.
     previous_max_density: f32,
 
+    /// The maximum density we've seen so far this frame.
     next_max_density: f32,
 }
 
 impl DataDensityGraphPainter {
-    pub fn begin_frame(&mut self) {
-        if self.next_max_density > 0.0 {
-            // TODO(emilk): maybe a smooth transition would be better?
-            self.previous_max_density = self.next_max_density;
-            self.next_max_density = 0.0;
+    pub fn begin_frame(&mut self, egui_ctx: &egui::Context) {
+        if self.next_max_density == 0.0 {
+            return;
         }
+
+        let dt = egui_ctx.input(|input| input.stable_dt.at_most(0.1));
+
+        let new = egui::lerp(
+            self.previous_max_density..=self.next_max_density,
+            egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
+        );
+
+        if self.previous_max_density != new {
+            egui_ctx.request_repaint();
+        }
+
+        self.previous_max_density = new;
+        self.next_max_density = 0.0;
     }
 
     /// Return something in the 0-1 range.
@@ -114,6 +128,7 @@ impl DensityGraph {
         data_dentity_graph_painter: &mut DataDensityGraphPainter,
         y_range: RangeInclusive<f32>,
         painter: &egui::Painter,
+        full_color: Color32,
     ) {
         crate::profile_function!();
 
@@ -159,8 +174,7 @@ impl DensityGraph {
                 const MIN_RADIUS: f32 = 1.0;
                 (max_radius * normalized_density).at_least(MIN_RADIUS)
             };
-            let color =
-                egui::Color32::from_gray(egui::lerp(128.0..=255.0, normalized_density) as u8);
+            let color = full_color.gamma_multiply(remap(normalized_density, 0.0..=1.0, 0.35..=1.0));
 
             mesh.vertices.push(Vertex {
                 pos: pos2(x, center_y - radius),
@@ -246,8 +260,20 @@ pub fn data_density_graph_ui(
     // Density over x-axis in UI points.
     let mut density_graph = DensityGraph::new(full_width_rect.x_range());
 
-    // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
-    // let is_selected = ctx.selection().iter().contains(&select_on_click);
+    let is_selected = ctx.selection().contains(&select_on_click);
+    // let hovered_color = ui.visuals().widgets.hovered.text_color();
+    let graph_color = if is_selected {
+        let color = ui.visuals().selection.bg_fill;
+        // make a bit brighter:
+        let [r, g, b, _] = color.to_array();
+        egui::Color32::from_rgb(
+            r.saturating_add(64),
+            g.saturating_add(64),
+            b.saturating_add(64),
+        )
+    } else {
+        Color32::WHITE
+    };
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
@@ -291,6 +317,7 @@ pub fn data_density_graph_ui(
         data_dentity_graph_painter,
         full_width_rect.y_range(),
         time_area_painter,
+        graph_color,
     );
 
     if 0 < num_hovered_messages {

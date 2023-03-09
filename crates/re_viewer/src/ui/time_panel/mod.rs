@@ -178,7 +178,7 @@ impl TimePanel {
     ) {
         crate::profile_function!();
 
-        self.data_dentity_graph_painter.begin_frame();
+        self.data_dentity_graph_painter.begin_frame(ui.ctx());
 
         //               |timeline            |
         // ------------------------------------
