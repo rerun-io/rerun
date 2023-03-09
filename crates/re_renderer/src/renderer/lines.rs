@@ -111,7 +111,7 @@ use std::{
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use enumset::EnumSet;
+use enumset::{enum_set, EnumSet};
 use smallvec::smallvec;
 
 use crate::{
@@ -240,14 +240,15 @@ pub struct LineBatchInfo {
     pub line_vertex_count: u32,
 
     /// Optional outline mask setting for the entire batch.
-    ///
-    /// If only some of the lines in this batch should have an outline, you need to create a second batch
-    /// with `skip_color_rendering` set to true
-    pub outline_mask: OutlineMaskPreference,
+    pub overall_outline_mask: OutlineMaskPreference,
 
-    /// Don't render this batch to any color target (i.e. skip opaque/transparent draw phases)
-    /// This is useful if you only want to render an outline for this batch.
-    pub skip_color_rendering: bool,
+    /// Defines an outline mask for an individual line strip.
+    /// Index is relative within the current batch.
+    ///
+    /// Having many per-strip outline masks can have a significant performance impact!
+    /// This feature is meant for a limited number of "extra selections"
+    /// If an overall mask is defined as well, the per-strip masks is overwriting the overall mask.
+    pub per_strip_outline_masks: Vec<(usize, OutlineMaskPreference)>,
 }
 
 /// Style information for a line strip.
@@ -333,8 +334,8 @@ impl LineDrawData {
             world_from_obj: glam::Mat4::IDENTITY,
             label: "all lines".into(),
             line_vertex_count: vertices.len() as _,
-            outline_mask: OutlineMaskPreference::NONE,
-            skip_color_rendering: false,
+            overall_outline_mask: OutlineMaskPreference::NONE,
+            per_strip_outline_masks: Vec::new(),
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -516,7 +517,7 @@ impl LineDrawData {
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
-                        outline_mask: batch_info.outline_mask.0.unwrap_or_default().into(),
+                        outline_mask: batch_info.overall_outline_mask.0.unwrap_or_default().into(),
                         end_padding: Default::default(),
                     }),
             );
@@ -538,15 +539,11 @@ impl LineDrawData {
                     },
                 );
 
-                let mut active_phases = EnumSet::new();
-                if !batch_info.skip_color_rendering {
-                    active_phases.insert(DrawPhase::Opaque);
-                }
-                if batch_info.outline_mask.is_some() {
+                let mut active_phases = enum_set![DrawPhase::Opaque];
+                if batch_info.overall_outline_mask.is_some()
+                    || !batch_info.per_strip_outline_masks.is_empty()
+                {
                     active_phases.insert(DrawPhase::OutlineMask);
-                }
-                if active_phases.is_empty() {
-                    re_log::warn_once!("Line batch has no active draw phases - no outlines and skips color rendering.");
                 }
 
                 batches_internal.push(LineStripBatch {

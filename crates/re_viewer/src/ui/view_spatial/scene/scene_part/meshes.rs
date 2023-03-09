@@ -46,11 +46,10 @@ impl MeshPart {
                     instance_key,
                     entity_view,
                     props,
-                    entity_highlight.any_selection_highlight(),
+                    entity_highlight.any_selection_highlight,
                 );
 
                 let outline_mask = entity_highlight.index_outline_mask(instance_key);
-                scene.primitives.any_outlines |= outline_mask.is_some();
 
                 if let Some(mesh) = ctx
                     .cache

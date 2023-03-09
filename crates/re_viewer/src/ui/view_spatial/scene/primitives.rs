@@ -23,6 +23,7 @@ pub struct SceneSpatialPrimitives {
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
     pub line_strips: LineStripSeriesBuilder<InstancePathHash>,
+    pub line_strips_outline_only: LineStripSeriesBuilder<()>,
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
@@ -42,6 +43,7 @@ impl SceneSpatialPrimitives {
             textured_rectangles_ids: Default::default(),
             textured_rectangles: Default::default(),
             line_strips: Default::default(),
+            line_strips_outline_only: Default::default(),
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
             depth_clouds: Default::default(),
@@ -61,6 +63,7 @@ impl SceneSpatialPrimitives {
             textured_rectangles,
             textured_rectangles_ids: _,
             line_strips,
+            line_strips_outline_only: _,
             points,
             meshes,
             depth_clouds,
@@ -82,6 +85,7 @@ impl SceneSpatialPrimitives {
             textured_rectangles_ids: _,
             textured_rectangles,
             line_strips,
+            line_strips_outline_only: _,
             points,
             meshes,
             depth_clouds: _, // no bbox for depth clouds

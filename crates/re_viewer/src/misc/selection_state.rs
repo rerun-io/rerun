@@ -1,6 +1,8 @@
 use ahash::{HashMap, HashSet};
 use egui::NumExt;
+use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
+
 use re_data_store::{EntityPath, LogDb};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::renderer::OutlineMaskPreference;
@@ -138,29 +140,27 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
 
 #[derive(Default)]
 pub struct SpaceViewOutlineMasks {
-    overall: OutlineMaskPreference,
-    instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
+    pub overall: OutlineMaskPreference,
+    pub instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
     pub any_selection_highlight: bool,
 }
 
-#[derive(Copy, Clone)]
-pub struct OptionalSpaceViewOutlineMask<'a>(Option<&'a SpaceViewOutlineMasks>);
+lazy_static! {
+    static ref SPACEVIEW_OUTLINE_MASK_NONE: SpaceViewOutlineMasks =
+        SpaceViewOutlineMasks::default();
+}
 
-impl<'a> OptionalSpaceViewOutlineMask<'a> {
+impl SpaceViewOutlineMasks {
     pub fn index_outline_mask(&self, instance_key: InstanceKey) -> OutlineMaskPreference {
-        self.0
-            .map_or(OutlineMaskPreference::NONE, |entity_outline_mask| {
-                entity_outline_mask
-                    .instances
-                    .get(&instance_key)
-                    .cloned()
-                    .unwrap_or_default()
-                    .with_fallback_to(entity_outline_mask.overall)
-            })
+        self.instances
+            .get(&instance_key)
+            .cloned()
+            .unwrap_or_default()
+            .with_fallback_to(self.overall)
     }
 
-    pub fn any_selection_highlight(&self) -> bool {
-        self.0.map_or(false, |mask| mask.any_selection_highlight)
+    pub fn any_outlines(&self) -> bool {
+        self.overall.is_some() || !self.instances.is_empty()
     }
 }
 
@@ -181,11 +181,13 @@ impl SpaceViewHighlights {
         OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
     }
 
-    pub fn entity_outline_mask(
-        &self,
+    pub fn entity_outline_mask<'a>(
+        &'a self,
         entity_path_hash: EntityPathHash,
-    ) -> OptionalSpaceViewOutlineMask<'_> {
-        OptionalSpaceViewOutlineMask(self.outlines_masks.get(&entity_path_hash))
+    ) -> &'a SpaceViewOutlineMasks {
+        self.outlines_masks
+            .get(&entity_path_hash)
+            .unwrap_or(&SPACEVIEW_OUTLINE_MASK_NONE)
     }
 }
 
