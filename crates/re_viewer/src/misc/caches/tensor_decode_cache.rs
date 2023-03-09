@@ -14,7 +14,7 @@ pub enum TensorDecodeError {
 }
 
 #[derive(Clone)]
-struct CachedTensor {
+struct DecodedTensor {
     /// `None` if the tensor was not successfully decoded
     tensor: Result<Tensor, TensorDecodeError>,
 
@@ -25,15 +25,21 @@ struct CachedTensor {
     last_use_generation: u64,
 }
 
+/// A cache of decoded [`Tensor`] entities, indexed by `TensorId`.
 #[derive(Default)]
 pub struct DecodeCache {
-    images: nohash_hasher::IntMap<TensorId, CachedTensor>,
+    images: nohash_hasher::IntMap<TensorId, DecodedTensor>,
     memory_used: u64,
     generation: u64,
 }
 
 #[allow(clippy::map_err_ignore)]
 impl DecodeCache {
+    /// Decode a [`Tensor`] if necessary and cache the result.
+    ///
+    /// This is a no-op for Tensors that are not compressed.
+    ///
+    /// Currently supports JPEG encoded tensors.
     pub fn try_decode_tensor_if_necessary(
         &mut self,
         maybe_encoded_tensor: Tensor,
@@ -71,12 +77,13 @@ impl DecodeCache {
                         };
                         self.memory_used += memory_used;
                         let last_use_generation = 0;
-                        CachedTensor {
+                        DecodedTensor {
                             tensor,
                             memory_used,
                             last_use_generation,
                         }
                     });
+                lookup.last_use_generation = self.generation;
                 lookup.tensor.clone()
             }
             _ => Ok(maybe_encoded_tensor),
@@ -85,6 +92,9 @@ impl DecodeCache {
 
     /// Call once per frame to (potentially) flush the cache.
     pub fn new_frame(&mut self, max_memory_use: u64) {
+        // TODO(jleibs): a more incremental purging mechanism, maybe switching to an LRU Cache
+        // would likely improve the behavior.
+
         if self.memory_used > max_memory_use {
             self.purge_memory();
         }
@@ -92,6 +102,7 @@ impl DecodeCache {
         self.generation += 1;
     }
 
+    /// Attempt to free up memory.
     pub fn purge_memory(&mut self) {
         crate::profile_function!();
 
