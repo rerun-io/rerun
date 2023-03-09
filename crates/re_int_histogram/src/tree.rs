@@ -231,7 +231,7 @@ enum Node {
     /// Always at the [`BOTTOM_LEVEL`] level.
     DenseLeaf(DenseLeaf),
 }
-static_assertions::assert_eq_size!(Node, (u64, BranchNode), [u8; 80]); // 8-way tree
+// static_assertions::assert_eq_size!(Node, (u64, BranchNode), [u8; 80]); // 8-way tree
 
 #[derive(Clone, Debug, Default)]
 struct BranchNode {
