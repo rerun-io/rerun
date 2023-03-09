@@ -172,7 +172,7 @@ impl DensityGraph {
                 0.0
             } else {
                 // Make sure we see small things even when they are dwarfed by the max:
-                const MIN_RADIUS: f32 = 1.0;
+                const MIN_RADIUS: f32 = 1.5;
                 (max_radius * normalized_density).at_least(MIN_RADIUS)
             };
             let color = if hovered_x_range.contains(&x) {
@@ -255,7 +255,7 @@ pub fn data_density_graph_ui(
     num_messages_at_time: &BTreeMap<TimeInt, usize>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
-    select_on_click: Item,
+    item: Item,
 ) {
     crate::profile_function!();
 
@@ -300,8 +300,7 @@ pub fn data_density_graph_ui(
         }
     }
 
-    let is_hovered = num_hovered_messages > 0;
-    let graph_color = graph_color(ctx, &select_on_click, ui);
+    let graph_color = graph_color(ctx, &item, ui);
 
     let hovered_x_range = (time_ranges_ui
         .x_from_time_f32(hovered_time_range.min.into())
@@ -311,15 +310,6 @@ pub fn data_density_graph_ui(
             .x_from_time_f32(hovered_time_range.max.into())
             .unwrap_or(f32::MIN)
             + MARGIN_X);
-
-    time_area_painter.hline(
-        full_width_rect.x_range(),
-        full_width_rect.center().y,
-        (
-            0.5,
-            egui::Color32::from_additive_luminance(if is_hovered { 64 } else { 32 }),
-        ),
-    );
 
     density_graph.density = smooth(&density_graph.density);
     density_graph.paint(
@@ -331,8 +321,12 @@ pub fn data_density_graph_ui(
     );
 
     if 0 < num_hovered_messages {
+        ctx.rec_cfg
+            .selection_state
+            .set_hovered(std::iter::once(item.clone()));
+
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            ctx.set_single_selection(select_on_click);
+            ctx.set_single_selection(item);
             ctx.rec_cfg.time_ctrl.set_time(hovered_time_range.min);
             ctx.rec_cfg.time_ctrl.pause();
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
@@ -340,7 +334,7 @@ pub fn data_density_graph_ui(
                 ctx,
                 blueprint,
                 ui.ctx(),
-                &select_on_click,
+                &item,
                 hovered_time_range,
                 num_hovered_messages,
             );
@@ -348,8 +342,8 @@ pub fn data_density_graph_ui(
     }
 }
 
-fn graph_color(ctx: &mut ViewerContext<'_>, select_on_click: &Item, ui: &mut egui::Ui) -> Color32 {
-    let is_selected = ctx.selection().contains(select_on_click);
+fn graph_color(ctx: &mut ViewerContext<'_>, item: &Item, ui: &mut egui::Ui) -> Color32 {
+    let is_selected = ctx.selection().contains(item);
     // let hovered_color = ui.visuals().widgets.hovered.text_color();
     if is_selected {
         make_brighter(ui.visuals().selection.bg_fill)

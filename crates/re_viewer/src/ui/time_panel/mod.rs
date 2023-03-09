@@ -419,20 +419,15 @@ impl TimePanel {
 
         let is_visible = ui.is_rect_visible(full_width_rect);
 
-        if is_visible && false {
-            // paint hline guide:
-            let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-            stroke.color = stroke.color.linear_multiply(0.5);
-            let left = response_rect.left() + ui.spacing().indent;
-            let y = response_rect.bottom() + ui.spacing().item_spacing.y * 0.5;
-            ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
-        }
-
         // ----------------------------------------------
 
         // show the data in the time area:
 
         if is_visible && is_closed {
+            let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));
+
+            paint_streams_guide_line(ctx, &item, ui, response_rect);
+
             let empty = BTreeMap::default();
             let num_messages_at_time = tree
                 .prefix_times
@@ -450,7 +445,7 @@ impl TimePanel {
                 num_messages_at_time,
                 full_width_rect,
                 &self.time_ranges_ui,
-                Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone())),
+                item,
             );
         }
     }
@@ -508,35 +503,29 @@ impl TimePanel {
                     })
                     .response;
 
-                self.next_col_right = self.next_col_right.max(response.rect.right());
+                let response_rect = response.rect;
+
+                self.next_col_right = self.next_col_right.max(response_rect.right());
 
                 let full_width_rect = Rect::from_x_y_ranges(
-                    response.rect.left()..=ui.max_rect().right(),
-                    response.rect.y_range(),
+                    response_rect.left()..=ui.max_rect().right(),
+                    response_rect.y_range(),
                 );
                 let is_visible = ui.is_rect_visible(full_width_rect);
 
-                if is_visible && false {
-                    // paint hline guide:
-                    let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-                    stroke.color = stroke.color.linear_multiply(0.5);
-                    let left = response.rect.left() + ui.spacing().indent;
-                    let y = response.rect.bottom() + ui.spacing().item_spacing.y * 0.5;
-                    ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
-                }
-
                 if is_visible {
                     response.on_hover_ui(|ui| {
-                        let selection = Item::ComponentPath(component_path.clone());
-                        what_is_selected_ui(ui, ctx, blueprint, &selection);
+                        let item = Item::ComponentPath(component_path.clone());
+                        what_is_selected_ui(ui, ctx, blueprint, &item);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
                         component_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
-                }
 
-                // show the data in the time area:
-                if is_visible {
+                    // show the data in the time area:
+                    let item = Item::ComponentPath(component_path);
+                    paint_streams_guide_line(ctx, &item, ui, response_rect);
+
                     let empty_messages_over_time = BTreeMap::default();
                     let messages_over_time = data
                         .times
@@ -554,12 +543,37 @@ impl TimePanel {
                         messages_over_time,
                         full_width_rect,
                         &self.time_ranges_ui,
-                        Item::ComponentPath(component_path),
+                        item,
                     );
                 }
             }
         }
     }
+}
+
+/// Painted behind the data density graph.
+fn paint_streams_guide_line(
+    ctx: &mut ViewerContext<'_>,
+    item: &Item,
+    ui: &mut egui::Ui,
+    response_rect: Rect,
+) {
+    let is_selected = ctx.selection().contains(item);
+    let is_hovered = ctx.hovered().contains(item);
+
+    let stroke_width = if is_hovered { 1.0 } else { 0.5 };
+
+    let line_color = if is_selected {
+        ui.visuals().selection.bg_fill
+    } else {
+        ui.visuals().widgets.noninteractive.bg_stroke.color
+    };
+
+    ui.painter().hline(
+        response_rect.right()..=ui.max_rect().right(),
+        response_rect.center().y,
+        (stroke_width, line_color),
+    );
 }
 
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
