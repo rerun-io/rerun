@@ -13,7 +13,7 @@ use crate::{
 
 use super::time_ranges_ui::TimeRangesUi;
 
-const MARGIN_X: f32 = 5.0;
+const MARGIN_X: f32 = 2.0;
 const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 
 // ----------------------------------------------------------------------------
@@ -129,7 +129,7 @@ impl DensityGraph {
         y_range: RangeInclusive<f32>,
         painter: &egui::Painter,
         full_color: Color32,
-        is_hovered: bool,
+        hovered_x_range: RangeInclusive<f32>,
     ) {
         crate::profile_function!();
 
@@ -175,8 +175,8 @@ impl DensityGraph {
                 const MIN_RADIUS: f32 = 1.0;
                 (max_radius * normalized_density).at_least(MIN_RADIUS)
             };
-            let color = if is_hovered {
-                full_color
+            let color = if hovered_x_range.contains(&x) {
+                Color32::WHITE
             } else {
                 full_color.gamma_multiply(remap(normalized_density, 0.0..=1.0, 0.35..=1.0))
             };
@@ -259,54 +259,67 @@ pub fn data_density_graph_ui(
 ) {
     crate::profile_function!();
 
-    let hover_radius = 5.0; // TODO
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
     let center_y = full_width_rect.center().y;
 
     // Density over x-axis in UI points.
     let mut density_graph = DensityGraph::new(full_width_rect.x_range());
 
-    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = TimeRange::EMPTY;
 
-    let mut add_data_point = |time_int: TimeInt, count: usize| {
-        if count == 0 {
-            return;
-        }
-        let time_real = TimeReal::from(time_int);
-        if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-            density_graph.add(x, count as _);
-
-            // TODO(emilk): handle hovering better
-            let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
-                pos2(x, center_y).distance(pointer_pos) < hover_radius
-            });
-            if is_hovered {
-                hovered_time_range = hovered_time_range.union(TimeRange::point(time_int));
-                num_hovered_messages += count;
-            }
-        }
-    };
-
-    add_data_point(TimeInt::BEGINNING, num_timeless_messages);
-
-    let visible_time_range = time_ranges_ui.time_range_from_x_range(
-        (time_area_painter.clip_rect().left() - MARGIN_X)
-            ..=(time_area_painter.clip_rect().right() + MARGIN_X),
-    );
-
-    for (&time, &num_messages_at_time) in
-        num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
     {
-        add_data_point(time, num_messages_at_time);
+        let mut add_data_point = |time_int: TimeInt, count: usize| {
+            if count == 0 {
+                return;
+            }
+            let time_real = TimeReal::from(time_int);
+            if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
+                density_graph.add(x, count as _);
+
+                if let Some(pointer_pos) = pointer_pos {
+                    let distance_sq = pos2(x, center_y).distance_sq(pointer_pos);
+                    let is_hovered = distance_sq < interact_radius_sq;
+
+                    if is_hovered {
+                        hovered_time_range = hovered_time_range.union(TimeRange::point(time_int));
+                        num_hovered_messages += count;
+                    }
+                }
+            }
+        };
+        add_data_point(TimeInt::BEGINNING, num_timeless_messages);
+        let visible_time_range = time_ranges_ui.time_range_from_x_range(
+            (full_width_rect.left() - MARGIN_X)..=(full_width_rect.right() + MARGIN_X),
+        );
+        for (&time, &num_messages_at_time) in
+            num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
+        {
+            add_data_point(time, num_messages_at_time);
+        }
     }
 
     let is_hovered = num_hovered_messages > 0;
-    let mut graph_color = graph_color(ctx, &select_on_click, ui);
-    if is_hovered {
-        graph_color = make_brighter(graph_color);
-    }
+    let graph_color = graph_color(ctx, &select_on_click, ui);
+
+    let hovered_x_range = (time_ranges_ui
+        .x_from_time_f32(hovered_time_range.min.into())
+        .unwrap_or(f32::MAX)
+        - MARGIN_X)
+        ..=(time_ranges_ui
+            .x_from_time_f32(hovered_time_range.max.into())
+            .unwrap_or(f32::MIN)
+            + MARGIN_X);
+
+    time_area_painter.hline(
+        full_width_rect.x_range(),
+        full_width_rect.center().y,
+        (
+            0.5,
+            egui::Color32::from_additive_luminance(if is_hovered { 64 } else { 32 }),
+        ),
+    );
 
     density_graph.density = smooth(&density_graph.density);
     density_graph.paint(
@@ -314,7 +327,7 @@ pub fn data_density_graph_ui(
         full_width_rect.y_range(),
         time_area_painter,
         graph_color,
-        is_hovered,
+        hovered_x_range,
     );
 
     if 0 < num_hovered_messages {
@@ -341,7 +354,7 @@ fn graph_color(ctx: &mut ViewerContext<'_>, select_on_click: &Item, ui: &mut egu
     if is_selected {
         make_brighter(ui.visuals().selection.bg_fill)
     } else {
-        Color32::WHITE
+        Color32::from_gray(196)
     }
 }
 
@@ -362,24 +375,25 @@ fn show_msg_ids_tooltip(
     time_range: TimeRange,
     num_messages: usize,
 ) {
+    if num_messages == 0 {
+        return;
+    }
+
     use crate::ui::data_ui::DataUi as _;
 
     egui::show_tooltip_at_pointer(egui_ctx, egui::Id::new("data_tooltip"), |ui| {
-        if time_range.min == time_range.max {
-            if num_messages > 1 {
-                ui.label(format!("{num_messages} messages"));
-                ui.add_space(8.0);
-                // Could be an entity made up of many components logged at the same time.
-                // Still show a preview!
-            }
-            crate::ui::selection_panel::what_is_selected_ui(ui, ctx, blueprint, item);
-            ui.add_space(8.0);
-
-            let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-            let query = re_arrow_store::LatestAtQuery::new(timeline, time_range.min);
-            item.data_ui(ctx, ui, crate::ui::UiVerbosity::Reduced, &query);
+        if num_messages == 1 {
+            ui.label(format!("{num_messages} message"));
         } else {
             ui.label(format!("{num_messages} messages"));
         }
+
+        ui.add_space(8.0);
+        crate::ui::selection_panel::what_is_selected_ui(ui, ctx, blueprint, item);
+        ui.add_space(8.0);
+
+        let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+        let query = re_arrow_store::LatestAtQuery::new(timeline, time_range.max);
+        item.data_ui(ctx, ui, crate::ui::UiVerbosity::Reduced, &query);
     });
 }

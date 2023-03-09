@@ -419,7 +419,7 @@ impl TimePanel {
 
         let is_visible = ui.is_rect_visible(full_width_rect);
 
-        if is_visible {
+        if is_visible && false {
             // paint hline guide:
             let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             stroke.color = stroke.color.linear_multiply(0.5);
@@ -516,7 +516,7 @@ impl TimePanel {
                 );
                 let is_visible = ui.is_rect_visible(full_width_rect);
 
-                if is_visible {
+                if is_visible && false {
                     // paint hline guide:
                     let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
                     stroke.color = stroke.color.linear_multiply(0.5);
