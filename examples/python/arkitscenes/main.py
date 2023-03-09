@@ -17,7 +17,7 @@ assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
 
-def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.ArrayLike]:
+def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.NDArray[np.float64]]:
     """
     Converts trajectory string into translation and rotation matrices.
 
@@ -58,50 +58,16 @@ def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.ArrayLike]:
     return (ts, Rt)
 
 
-def get_intrinsic(intrinsics_dir: Path, frame_id: str, video_id: str) -> Tuple[npt.ArrayLike, int, int]:
-    """
-    Retrieves the intrinsic matrix for a given frame and video.
-
-    Args:
-        intrinsics_dir (Path): Directory containing intrinsic matrix files.
-        frame_id (str): Frame identifier.
-        video_id (str): Video identifier.
-
-    Returns
-    -------
-        tuple: A tuple containing the intrinsic matrix, image width, and image height.
-
-    Raises
-    ------
-        FileNotFoundError: If the intrinsic matrix file is not found in the directory.
-    """
-    intrinsic_fn: Path = (
-        intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-    )  # Construct the filename for the intrinsic matrix
-
-    # Check if the filename exists, if not try adjusting the frame_id by -0.001 or +0.001
-    if not intrinsic_fn.exists():
-        intrinsic_fn = intrinsics_dir / f"{video_id}_{float(frame_id) - 0.001:.3f}.pincam"
-    if not intrinsic_fn.exists():
-        intrinsic_fn = intrinsics_dir / f"{video_id}_{float(frame_id) + 0.001:.3f}.pincam"
-
-    # Load the intrinsic matrix and extract the parameters
-    w, h, fx, fy, hw, hh = np.loadtxt(intrinsic_fn)
-    intrinsic = np.asarray([[fx, 0, hw], [0, fy, hh], [0, 0, 1]])
-
-    return intrinsic, w, h
-
-
 def rotate_camera_90_degrees_counterclockwise(
-    translation: npt.ArrayLike, quaternion: npt.ArrayLike, intrinsics: npt.ArrayLike
-) -> Tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+    translation: npt.NDArray[np.float64], quaternion: npt.NDArray[np.float64], intrinsics: npt.NDArray[np.float64]
+) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Rotates the camera position by 90 degrees counterclockwise.
 
     Args:
-        translation (ArrayLike[float]): Translation vector representing the camera position.
-        quaternion (ArrayLike[float]): Quaternion representing the camera orientation.
-        intrinsics (ArrayLike[float]): Intrinsic matrix representing the camera parameters.
+        translation: Translation vector representing the camera position.
+        quaternion: Quaternion representing the camera orientation.
+        intrinsics: Intrinsic matrix representing the camera parameters.
 
     Returns
     -------
@@ -113,43 +79,13 @@ def rotate_camera_90_degrees_counterclockwise(
     quaternion = (R.from_quat(quaternion) * R.from_quat(rotation_quaternion)).as_quat()
 
     # Apply a translation in the rotated coordinate system
-    translation = np.array([-translation[1], translation[0], translation[2]])
+    translation = np.array([-1, 1, 1]) * np.array(translation)[[1, 0, 2]]
 
     # Apply a rotation to the intrinsics matrix
-    intrinsics = np.array([[intrinsics[1, 1], 0, intrinsics[1, 2]], [0, intrinsics[0, 0], intrinsics[0, 2]], [0, 0, 1]])
+    swizzle_x_y = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
+    intrinsics = swizzle_x_y @ intrinsics @ swizzle_x_y
 
     return translation, quaternion, intrinsics
-
-
-def backproject(depth_image: npt.ArrayLike, intrinsics: npt.ArrayLike) -> npt.ArrayLike:
-    """
-    Given a depth image, generates a matching point cloud.
-
-    Args:
-        depth_image (ArrayLike[float]): 2D array representing the depth image.
-        intrinsics (ArrayLike[float]): Intrinsic matrix representing the camera parameters.
-
-    Returns
-    -------
-        ArrayLike[float]: A 3D array representing the point cloud.
-
-    """
-    (h, w) = depth_image.shape
-    fx: float = intrinsics[0, 0]
-    fy: float = intrinsics[1, 1]
-    cx: float = intrinsics[0, 2]
-    cy: float = intrinsics[1, 2]
-
-    # Pre-generate image containing the x and y coordinates per pixel
-    u_coords, v_coords = np.meshgrid(np.arange(0, w), np.arange(0, h))
-
-    # Apply inverse of the intrinsics matrix:
-    z = depth_image.reshape(-1)
-    x = (u_coords.reshape(-1).astype(float) - cx) * z / fx
-    y = (v_coords.reshape(-1).astype(float) - cy) * z / fy
-
-    back_projected = np.vstack((x, y, z)).T
-    return back_projected
 
 
 def log_arkit(recording_path: Path, orientation: str) -> None:
@@ -190,8 +126,8 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
         # Log the camera transforms:
         if str(frame_id) in poses_from_traj:
             intrinsic_fn = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            w, h, fx, fy, hw, hh = np.loadtxt(intrinsic_fn)
-            intrinsic = np.asarray([[fx, 0, hw], [0, fy, hh], [0, 0, 1]])
+            w, h, fx, fy, cx, cy = np.loadtxt(intrinsic_fn)
+            intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
             frame_pose = np.array(poses_from_traj[str(frame_id)])
 
             rot_matrix = frame_pose[:3, :3]
@@ -201,8 +137,8 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
             quaternion = rot.as_quat()
 
             if orientation == "portrait":
-                # TODO should probably be done via log_view_coordinates? so that rotation image also rotates the
-                # intrinsics/extrinsics
+                # TODO(pablovela5620) should probably be done via log_view_coordinates?
+                # so that rotation image also rotates the intrinsics/extrinsics
                 translation, quaternion, intrinsic = rotate_camera_90_degrees_counterclockwise(
                     translation, quaternion, intrinsic
                 )
@@ -210,15 +146,11 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
                 bgr = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
                 depth = cv2.rotate(depth, cv2.ROTATE_90_CLOCKWISE)
 
-            # back project the depth map to get the 3D points, no longer needed with new backproject in GUI
-            # points_3d = backproject(depth, intrinsic)
-
             rr.set_time_sequence("frame_id", num)
             rr.log_image("world/camera/image/rgb", bgr[..., ::-1])
-            # TODO: no clear way to change colormap for dpeth via log function (only back projected points?)
+            # TODO(pablovela5620): no clear way to change colormap for depth via log function
+            # (only back projected points?)
             rr.log_depth_image("world/camera/image/depth", depth, meter=1000)
-            # no longer needed with new backproject in GUI
-            # rr.log_points("world/camera/points", positions=points_3d.reshape(-1, 3) / 1000)
             rr.log_rigid3(
                 "world/camera",
                 parent_from_child=(translation, quaternion),
