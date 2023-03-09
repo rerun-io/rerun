@@ -2,7 +2,7 @@
 
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use egui::{epaint::Vertex, pos2, remap, Color32, Rect, Shape};
+use egui::{epaint::Vertex, pos2, remap, Color32, NumExt as _, Rect, Shape};
 use itertools::Itertools as _;
 
 use re_log_types::{TimeInt, TimeRange, TimeReal};
@@ -15,8 +15,11 @@ use crate::{
 use super::time_ranges_ui::TimeRangesUi;
 
 const MARGIN_X: f32 = 5.0;
+const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 
 fn smooth(density: &[f32]) -> Vec<f32> {
+    crate::profile_function!();
+
     fn kernel(x: f32) -> f32 {
         (0.25 * std::f32::consts::TAU * x).cos()
     }
@@ -57,7 +60,7 @@ impl DensityGraph {
     pub fn new(x_range: RangeInclusive<f32>) -> Self {
         let min_x = *x_range.start() - MARGIN_X;
         let max_x = *x_range.end() + MARGIN_X;
-        let n = (max_x - min_x).ceil() as usize;
+        let n = ((max_x - min_x) * DENSITIES_PER_UI_PIXEL).ceil() as usize;
         Self {
             density: vec![0.0; n],
             min_x,
@@ -93,7 +96,19 @@ impl DensityGraph {
         }
     }
 
-    pub fn paint(mut self, center_y: f32, painter: &egui::Painter, inactive_color: Color32) {
+    pub fn paint(
+        mut self,
+        y_range: RangeInclusive<f32>,
+        painter: &egui::Painter,
+        inactive_color: Color32,
+    ) {
+        self.density = smooth(&self.density);
+        crate::profile_function!();
+
+        let (min_y, max_y) = (*y_range.start(), *y_range.end());
+        let center_y = (min_y + max_y) / 2.0;
+        let max_radius = 0.9 * (max_y - min_y) / 2.0;
+
         // We paint a symmetric thing, like so:
         //
         // 0  1 2   3
@@ -108,8 +123,6 @@ impl DensityGraph {
         // x
         // 0  1 2   3
 
-        self.density = smooth(&self.density);
-
         fn height_from_density(density: f32) -> f32 {
             5.0 * density // TODO
         }
@@ -122,6 +135,8 @@ impl DensityGraph {
         mesh.indices.reserve(6 * (self.density.len() - 1));
 
         for (i, &density) in self.density.iter().enumerate() {
+            // TODO: early-out if density is 0 for long stretches
+
             // let x = self.min_x + i as f32;
             let x = remap(
                 i as f32,
@@ -129,15 +144,16 @@ impl DensityGraph {
                 self.min_x..=self.max_x,
             );
 
-            let radiius = height_from_density(density);
+            let radius = height_from_density(density).at_most(max_radius);
+            // TODO: color from density
 
             mesh.vertices.push(Vertex {
-                pos: pos2(x, center_y - radiius),
+                pos: pos2(x, center_y - radius),
                 color,
                 uv,
             });
             mesh.vertices.push(Vertex {
-                pos: pos2(x, center_y + radiius),
+                pos: pos2(x, center_y + radius),
                 color,
                 uv,
             });
@@ -178,13 +194,14 @@ pub fn show_data_over_time(
     // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
     let is_selected = ctx.selection().iter().contains(&select_on_click);
 
-    // painting each data point as a separate circle is slow (too many circles!)
-    // so we join time points that are close together.
-    let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f64::INFINITY);
+    // // painting each data point as a separate circle is slow (too many circles!)
+    // // so we join time points that are close together.
+    // let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f64::INFINITY);
+    // let hovered_color = ui.visuals().widgets.hovered.text_color();
+    // let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
-    let hovered_color = ui.visuals().widgets.hovered.text_color();
     let inactive_color = if is_selected {
         ui.visuals().selection.stroke.color
     } else {
@@ -197,8 +214,6 @@ pub fn show_data_over_time(
 
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = TimeRange::EMPTY;
-
-    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
     let mut add_data_point = |time_int: TimeInt, count: usize| {
         if count == 0 {
@@ -237,7 +252,7 @@ pub fn show_data_over_time(
         add_data_point(time, num_messages_at_time);
     }
 
-    density_graph.paint(center_y, time_area_painter, inactive_color);
+    density_graph.paint(full_width_rect.y_range(), time_area_painter, inactive_color);
 
     if 0 < num_hovered_messages {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
