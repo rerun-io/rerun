@@ -1,3 +1,5 @@
+//! Show the data density over time for a data stream.
+
 use std::collections::BTreeMap;
 
 use egui::{NumExt as _, Rect, Shape};
@@ -11,6 +13,14 @@ use crate::{
 };
 
 use super::time_ranges_ui::TimeRangesUi;
+
+struct Stretch {
+    start_x: f32,
+    time_range: TimeRange,
+    selected: bool,
+    /// Times x count at the given time
+    time_points: Vec<(TimeInt, usize)>,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn show_data_over_time(
@@ -48,15 +58,6 @@ pub fn show_data_over_time(
             .linear_multiply(0.75)
     };
 
-    struct Stretch {
-        start_x: f32,
-        start_time: TimeInt,
-        stop_time: TimeInt,
-        selected: bool,
-        /// Times x count at the given time
-        time_points: Vec<(TimeInt, usize)>,
-    }
-
     let mut shapes = vec![];
     let mut scatter = BallScatterer::default();
     // Time x number of messages at that time point
@@ -65,7 +66,7 @@ pub fn show_data_over_time(
 
     let mut paint_stretch = |stretch: &Stretch| {
         let stop_x = time_ranges_ui
-            .x_from_time_f32(stretch.stop_time.into())
+            .x_from_time_f32(stretch.time_range.max.into())
             .unwrap_or(stretch.start_x);
 
         let num_messages: usize = stretch.time_points.iter().map(|(_time, count)| count).sum();
@@ -101,7 +102,7 @@ pub fn show_data_over_time(
 
         if is_hovered {
             hovered_messages.extend(stretch.time_points.iter().copied());
-            hovered_time.get_or_insert(stretch.start_time);
+            hovered_time.get_or_insert(stretch.time_range.min);
         }
     };
 
@@ -114,8 +115,7 @@ pub fn show_data_over_time(
             let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
             paint_stretch(&Stretch {
                 start_x: x,
-                start_time: time_int,
-                stop_time: time_int,
+                time_range: TimeRange::point(time_int),
                 selected,
                 time_points: vec![(time_int, num_timeless_messages)],
             });
@@ -147,10 +147,10 @@ pub fn show_data_over_time(
 
         if let Some(current_stretch) = &mut stretch {
             if current_stretch.selected == selected
-                && (time - current_stretch.start_time).as_f64() < max_stretch_length_in_time
+                && (time - current_stretch.time_range.min).as_f64() < max_stretch_length_in_time
             {
                 // extend:
-                current_stretch.stop_time = time;
+                current_stretch.time_range.max = time;
                 current_stretch
                     .time_points
                     .push((time, num_messages_at_time));
@@ -166,8 +166,7 @@ pub fn show_data_over_time(
             if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
                 stretch = Some(Stretch {
                     start_x: x,
-                    start_time: time,
-                    stop_time: time,
+                    time_range: TimeRange::point(time),
                     selected,
                     time_points: vec![(time, num_messages_at_time)],
                 });
