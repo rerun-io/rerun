@@ -129,6 +129,7 @@ impl DensityGraph {
         y_range: RangeInclusive<f32>,
         painter: &egui::Painter,
         full_color: Color32,
+        is_hovered: bool,
     ) {
         crate::profile_function!();
 
@@ -174,7 +175,11 @@ impl DensityGraph {
                 const MIN_RADIUS: f32 = 1.0;
                 (max_radius * normalized_density).at_least(MIN_RADIUS)
             };
-            let color = full_color.gamma_multiply(remap(normalized_density, 0.0..=1.0, 0.35..=1.0));
+            let color = if is_hovered {
+                full_color
+            } else {
+                full_color.gamma_multiply(remap(normalized_density, 0.0..=1.0, 0.35..=1.0))
+            };
 
             mesh.vertices.push(Vertex {
                 pos: pos2(x, center_y - radius),
@@ -260,21 +265,6 @@ pub fn data_density_graph_ui(
     // Density over x-axis in UI points.
     let mut density_graph = DensityGraph::new(full_width_rect.x_range());
 
-    let is_selected = ctx.selection().contains(&select_on_click);
-    // let hovered_color = ui.visuals().widgets.hovered.text_color();
-    let graph_color = if is_selected {
-        let color = ui.visuals().selection.bg_fill;
-        // make a bit brighter:
-        let [r, g, b, _] = color.to_array();
-        egui::Color32::from_rgb(
-            r.saturating_add(64),
-            g.saturating_add(64),
-            b.saturating_add(64),
-        )
-    } else {
-        Color32::WHITE
-    };
-
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
     let mut num_hovered_messages = 0;
@@ -312,12 +302,19 @@ pub fn data_density_graph_ui(
         add_data_point(time, num_messages_at_time);
     }
 
+    let is_hovered = num_hovered_messages > 0;
+    let mut graph_color = graph_color(ctx, &select_on_click, ui);
+    if is_hovered {
+        graph_color = make_brighter(graph_color);
+    }
+
     density_graph.density = smooth(&density_graph.density);
     density_graph.paint(
         data_dentity_graph_painter,
         full_width_rect.y_range(),
         time_area_painter,
         graph_color,
+        is_hovered,
     );
 
     if 0 < num_hovered_messages {
@@ -336,6 +333,25 @@ pub fn data_density_graph_ui(
             );
         }
     }
+}
+
+fn graph_color(ctx: &mut ViewerContext<'_>, select_on_click: &Item, ui: &mut egui::Ui) -> Color32 {
+    let is_selected = ctx.selection().contains(select_on_click);
+    // let hovered_color = ui.visuals().widgets.hovered.text_color();
+    if is_selected {
+        make_brighter(ui.visuals().selection.bg_fill)
+    } else {
+        Color32::WHITE
+    }
+}
+
+fn make_brighter(color: Color32) -> Color32 {
+    let [r, g, b, _] = color.to_array();
+    egui::Color32::from_rgb(
+        r.saturating_add(64),
+        g.saturating_add(64),
+        b.saturating_add(64),
+    )
 }
 
 fn show_msg_ids_tooltip(
