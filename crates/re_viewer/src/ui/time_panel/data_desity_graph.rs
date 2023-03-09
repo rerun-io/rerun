@@ -1,9 +1,10 @@
 //! Show the data density over time for a data stream.
 
-use std::{collections::BTreeMap, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
-use egui::{epaint::Vertex, pos2, remap, Color32, NumExt as _, Rect, Shape};
+use egui::{epaint::Vertex, pos2, remap, remap_clamp, Color32, NumExt as _, Rect, Shape};
 
+use re_data_store::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 
 use crate::{
@@ -178,7 +179,7 @@ impl DensityGraph {
             let color = if hovered_x_range.contains(&x) {
                 Color32::WHITE
             } else {
-                full_color.gamma_multiply(remap(normalized_density, 0.0..=1.0, 0.35..=1.0))
+                full_color.gamma_multiply(remap_clamp(normalized_density, 0.0..=1.0, 0.35..=1.0))
             };
 
             mesh.vertices.push(Vertex {
@@ -252,7 +253,7 @@ pub fn data_density_graph_ui(
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
     num_timeless_messages: usize,
-    num_messages_at_time: &BTreeMap<TimeInt, usize>,
+    time_histogram: &TimeHistogram,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
     item: Item,
@@ -270,11 +271,11 @@ pub fn data_density_graph_ui(
     let mut hovered_time_range = TimeRange::EMPTY;
 
     {
-        let mut add_data_point = |time_int: TimeInt, count: usize| {
+        let mut add_data_point = |time_range: TimeRange, count: usize| {
             if count == 0 {
                 return;
             }
-            let time_real = TimeReal::from(time_int);
+            let time_real = TimeReal::from(time_range.min); // TODO: center
             if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
                 density_graph.add(x, count as _);
 
@@ -283,20 +284,27 @@ pub fn data_density_graph_ui(
                     let is_hovered = distance_sq < interact_radius_sq;
 
                     if is_hovered {
-                        hovered_time_range = hovered_time_range.union(TimeRange::point(time_int));
+                        hovered_time_range = hovered_time_range.union(time_range);
                         num_hovered_messages += count;
                     }
                 }
             }
         };
-        add_data_point(TimeInt::BEGINNING, num_timeless_messages);
+        add_data_point(TimeRange::point(TimeInt::BEGINNING), num_timeless_messages);
         let visible_time_range = time_ranges_ui.time_range_from_x_range(
             (full_width_rect.left() - MARGIN_X)..=(full_width_rect.right() + MARGIN_X),
         );
-        for (&time, &num_messages_at_time) in
-            num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
-        {
-            add_data_point(time, num_messages_at_time);
+
+        // The more zoomed out we are, the bigger chunks of time_histogram we can process at a time.
+        let time_chunk_size = (1.0 / time_ranges_ui.points_per_time).round() as _;
+        for (time_range, num_messages_at_time) in time_histogram.range(
+            visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
+            time_chunk_size,
+        ) {
+            add_data_point(
+                TimeRange::new(time_range.min.into(), time_range.max.into()),
+                num_messages_at_time as _,
+            );
         }
     }
 

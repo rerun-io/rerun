@@ -75,7 +75,7 @@ pub struct TimeRangesUi {
     /// x distance per time unit inside the segments,
     /// and before/after the last segment.
     /// Between segments time moves faster.
-    points_per_time: f64,
+    pub points_per_time: f64,
 }
 
 impl Default for TimeRangesUi {

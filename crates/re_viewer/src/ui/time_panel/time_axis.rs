@@ -1,7 +1,6 @@
-use std::collections::BTreeMap;
-
 use itertools::Itertools as _;
 
+use re_data_store::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeType};
 
 /// A piece-wise linear view of a single timeline.
@@ -14,7 +13,7 @@ pub(crate) struct TimelineAxis {
 }
 
 impl TimelineAxis {
-    pub fn new<T>(time_type: TimeType, times: &BTreeMap<TimeInt, T>) -> Self {
+    pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
         crate::profile_function!();
         assert!(!times.is_empty());
         let gap_threshold = gap_size_heuristic(time_type, times);
@@ -45,8 +44,8 @@ impl TimelineAxis {
 }
 
 // in seconds or nanos
-fn time_abs_diff(a: TimeInt, b: TimeInt) -> u64 {
-    a.as_i64().abs_diff(b.as_i64())
+fn time_abs_diff(a: i64, b: i64) -> u64 {
+    a.abs_diff(b)
 }
 
 /// First determine the threshold for when a gap should be closed.
@@ -54,19 +53,20 @@ fn time_abs_diff(a: TimeInt, b: TimeInt) -> u64 {
 /// When looking at data recorded over hours, a few minutes of pause may be nothing.
 /// We also don't want to produce a timeline of only gaps.
 /// Finding a perfect heuristic is impossible, but we do our best!
-fn gap_size_heuristic<T>(time_type: TimeType, times: &BTreeMap<TimeInt, T>) -> u64 {
+fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     crate::profile_function!();
 
     assert!(!times.is_empty());
 
-    if times.len() <= 2 {
+    if times.total_count() <= 2 {
         return u64::MAX;
     }
 
-    let total_time_span = time_abs_diff(
-        *times.first_key_value().unwrap().0,
-        *times.last_key_value().unwrap().0,
-    );
+    let total_time_span = time_abs_diff(times.min_key().unwrap(), times.max_key().unwrap());
+
+    if total_time_span == 0 {
+        return u64::MAX;
+    }
 
     // We start off by a minimum gap size - any gap smaller than this will never be collapsed.
     // This is partially an optimization, and partially something that "feels right".
@@ -78,27 +78,28 @@ fn gap_size_heuristic<T>(time_type: TimeType, times: &BTreeMap<TimeInt, T>) -> u
     // Collect all gaps larger than our minimum gap size.
     let mut gap_sizes = {
         crate::profile_scope!("collect_gaps");
+        let cutoff_size = 1; // TODO
         times
-            .keys()
+            .range(.., cutoff_size)
             .tuple_windows()
-            .map(|(a, b)| time_abs_diff(*a, *b))
+            .map(|((a, _), (b, _))| time_abs_diff(a.max, b.min))
             .filter(|&gap_size| gap_size > min_gap_size)
             .collect_vec()
     };
     gap_sizes.sort_unstable();
 
     // Don't collapse too many gaps, because then the timeline is all gaps!
-    let max_collapses: usize = ((times.len() - 1) / 3).min(20);
+    let max_collapses = ((times.total_count() - 1) / 3).min(20);
 
     // Only collapse gaps that take up a significant portion of the total time,
     // measured as the fraction of the total time that the gap represents.
-    let min_collapse_fraction: f64 = (2.0 / (times.len() - 1) as f64).max(0.35);
+    let min_collapse_fraction: f64 = (2.0 / (times.total_count() - 1) as f64).max(0.35);
 
     let mut gap_threshold = u64::MAX;
     let mut uncollapsed_time = total_time_span;
 
     // Go through the gaps, largest to smallest:
-    for &gap in gap_sizes.iter().rev().take(max_collapses) {
+    for &gap in gap_sizes.iter().rev().take(max_collapses as _) {
         // How big is the gap relative to the total uncollapsed time?
         let gap_fraction = gap as f64 / uncollapsed_time as f64;
         if gap_fraction > min_collapse_fraction {
@@ -114,17 +115,24 @@ fn gap_size_heuristic<T>(time_type: TimeType, times: &BTreeMap<TimeInt, T>) -> u
 }
 
 /// Collapse any gaps larger or equals to the given threshold.
-fn create_ranges<T>(times: &BTreeMap<TimeInt, T>, gap_threshold: u64) -> vec1::Vec1<TimeRange> {
+fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRange> {
     crate::profile_function!();
-    let mut values_it = times.keys();
-    let mut ranges = vec1::vec1![TimeRange::point(*values_it.next().unwrap())];
+    let cutoff_size = 1; // TODO
+    let mut it = times.range(.., cutoff_size);
+    let first_range = it.next().unwrap().0;
+    let mut ranges = vec1::vec1![TimeRange::new(
+        first_range.min.into(),
+        first_range.max.into()
+    )];
 
-    for &new_value in values_it {
+    for (new_range, _count) in it {
         let last_max = &mut ranges.last_mut().max;
-        if time_abs_diff(*last_max, new_value) < gap_threshold {
-            *last_max = new_value; // join previous range
+        if time_abs_diff(last_max.as_i64(), new_range.min) < gap_threshold {
+            // join previous range:
+            *last_max = new_range.max.into();
         } else {
-            ranges.push(TimeRange::point(new_value)); // new range
+            // new range:
+            ranges.push(TimeRange::new(new_range.min.into(), new_range.max.into()));
         }
     }
 
@@ -137,12 +145,11 @@ mod tests {
     use re_arrow_store::TimeRange;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<TimeRange> {
-        #[allow(clippy::zero_sized_map_values)]
-        let times: BTreeMap<TimeInt, ()> = times
-            .iter()
-            .map(|&seq| (TimeInt::from_sequence(seq), ()))
-            .collect();
-        TimelineAxis::new(TimeType::Sequence, &times).ranges
+        let mut time_histogram = TimeHistogram::default();
+        for &time in times {
+            time_histogram.increment(time, 1);
+        }
+        TimelineAxis::new(TimeType::Sequence, &time_histogram).ranges
     }
 
     #[test]

@@ -111,6 +111,14 @@ impl Int64Histogram {
             .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
     }
 
+    /// Is the total count zero?
+    ///
+    /// Note that incrementing a key with zero is a no-op and
+    /// will leave an empty histogram still empty.
+    pub fn is_empty(&self) -> bool {
+        self.total_count() == 0
+    }
+
     /// Total count of all the buckets.
     ///
     /// NOTE: this is NOT the number of unique keys.

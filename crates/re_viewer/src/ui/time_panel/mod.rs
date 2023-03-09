@@ -4,11 +4,11 @@ mod time_axis;
 mod time_ranges_ui;
 mod time_selection_ui;
 
-use std::{collections::BTreeMap, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
 use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
 
-use re_data_store::{EntityTree, InstancePath};
+use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
 
 use crate::{Item, TimeControl, TimeView, ViewerContext};
@@ -428,7 +428,7 @@ impl TimePanel {
 
             paint_streams_guide_line(ctx, &item, ui, response_rect);
 
-            let empty = BTreeMap::default();
+            let empty = re_data_store::TimeHistogram::default();
             let num_messages_at_time = tree
                 .prefix_times
                 .get(ctx.rec_cfg.time_ctrl.timeline())
@@ -526,7 +526,7 @@ impl TimePanel {
                     let item = Item::ComponentPath(component_path);
                     paint_streams_guide_line(ctx, &item, ui, response_rect);
 
-                    let empty_messages_over_time = BTreeMap::default();
+                    let empty_messages_over_time = TimeHistogram::default();
                     let messages_over_time = data
                         .times
                         .get(ctx.rec_cfg.time_ctrl.timeline())
@@ -620,13 +620,13 @@ fn is_time_safe_to_show(
     }
 
     if let Some(times) = log_db.entity_db.tree.prefix_times.get(timeline) {
-        if let Some(first_time) = times.keys().next() {
+        if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
                 re_arrow_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
             };
 
-            return *first_time <= time + margin;
+            return TimeInt::from(first_time) <= time + margin;
         }
     }
 
