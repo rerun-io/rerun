@@ -16,6 +16,7 @@ pub trait TensorTrait {
     fn meaning(&self) -> TensorDataMeaning;
     fn get(&self, index: &[u64]) -> Option<TensorElement>;
     fn dtype(&self) -> TensorDataType;
+    fn size_in_bytes(&self) -> usize;
 }
 
 // ----------------------------------------------------------------------------
@@ -404,6 +405,21 @@ impl TensorTrait for Tensor {
             TensorData::F64(_) => TensorDataType::F64,
         }
     }
+
+    fn size_in_bytes(&self) -> usize {
+        match &self.data {
+            TensorData::U8(buf) | TensorData::JPEG(buf) => buf.len(),
+            TensorData::U16(buf) => buf.len(),
+            TensorData::U32(buf) => buf.len(),
+            TensorData::U64(buf) => buf.len(),
+            TensorData::I8(buf) => buf.len(),
+            TensorData::I16(buf) => buf.len(),
+            TensorData::I32(buf) => buf.len(),
+            TensorData::I64(buf) => buf.len(),
+            TensorData::F32(buf) => buf.len(),
+            TensorData::F64(buf) => buf.len(),
+        }
+    }
 }
 
 impl Component for Tensor {
@@ -535,7 +551,7 @@ impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
 
 #[cfg(feature = "image")]
 #[derive(thiserror::Error, Debug)]
-pub enum ImageError {
+pub enum TensorImageError {
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
@@ -575,7 +591,7 @@ impl Tensor {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn tensor_from_jpeg_file(
         image_path: impl AsRef<std::path::Path>,
-    ) -> Result<Self, ImageError> {
+    ) -> Result<Self, TensorImageError> {
         let jpeg_bytes = std::fs::read(image_path)?;
         Self::tensor_from_jpeg_bytes(jpeg_bytes)
     }
@@ -583,12 +599,14 @@ impl Tensor {
     /// Construct a tensor from the contents of a JPEG file.
     ///
     /// Requires the `image` feature.
-    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, ImageError> {
+    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageError> {
         use image::ImageDecoder as _;
         let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
         if jpeg.color_type() != image::ColorType::Rgb8 {
             // TODO(emilk): support gray-scale jpeg as well
-            return Err(ImageError::UnsupportedJpegColorType(jpeg.color_type()));
+            return Err(TensorImageError::UnsupportedJpegColorType(
+                jpeg.color_type(),
+            ));
         }
         let (w, h) = jpeg.dimensions();
 
@@ -608,14 +626,14 @@ impl Tensor {
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, ImageError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageError> {
         Self::from_dynamic_image(image.into())
     }
 
     /// Construct a tensor from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageError> {
         let (w, h) = (image.width(), image.height());
 
         let (depth, data) = match image {
@@ -649,7 +667,7 @@ impl Tensor {
             }
             _ => {
                 // It is very annoying that DynamicImage is #[non_exhaustive]
-                return Err(ImageError::UnsupportedImageColorType(image.color()));
+                return Err(TensorImageError::UnsupportedImageColorType(image.color()));
             }
         };
 
