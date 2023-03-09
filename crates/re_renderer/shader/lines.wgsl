@@ -233,9 +233,6 @@ fn compute_coverage(in: VertexOut) -> f32{
         // If we do only outwards, rectangle outlines won't line up nicely
         let half_pixel_world_size = pixel_world_size * 0.5;
         let signed_distance_to_border = distance_to_skeleton - in.active_radius;
-        if signed_distance_to_border > half_pixel_world_size {
-            discard;
-        }
         coverage = 1.0 - saturate((signed_distance_to_border + half_pixel_world_size) / pixel_world_size);
     }
     return coverage;
@@ -244,6 +241,9 @@ fn compute_coverage(in: VertexOut) -> f32{
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     var coverage = compute_coverage(in);
+    if coverage < 0.00001 {
+        discard;
+    }
 
     // TODO(andreas): lighting setup
     var shading = 1.0;
@@ -259,7 +259,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
     // Output is an integer target, can't use coverage therefore.
-    // But we still want to discard fragments where coverage is 0.
+    // But we still want to discard fragments where coverage low.
     var coverage = compute_coverage(in);
+    if coverage < 0.5 {
+        discard;
+    }
     return batch.outline_mask;
 }
