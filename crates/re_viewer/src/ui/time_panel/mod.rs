@@ -276,26 +276,14 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
-        // All the entity rows:
-        egui::ScrollArea::vertical()
-            .auto_shrink([false; 2])
-            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
-            // the earlier `interact_with_time_area`.
-            // We implement drag-to-scroll manually instead!
-            .drag_to_scroll(false)
-            .show(ui, |ui| {
-                crate::profile_scope!("tree_ui");
-                if time_area_response.dragged_by(PointerButton::Primary) {
-                    ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
-                }
-                self.tree_ui(
-                    ctx,
-                    blueprint,
-                    &time_area_response,
-                    &lower_time_area_painter,
-                    ui,
-                );
-            });
+        // All the entity rows and their data density graphs:
+        self.tree_ui(
+            ctx,
+            blueprint,
+            &time_area_response,
+            &lower_time_area_painter,
+            ui,
+        );
 
         {
             // Paint a shadow between the stream names on the left
@@ -334,6 +322,7 @@ impl TimePanel {
         self.prev_col_width = self.next_col_right - ui.min_rect().left();
     }
 
+    // All the entity rows and their data density graphs:
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -342,14 +331,26 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
-        self.show_children(
-            ctx,
-            blueprint,
-            time_area_response,
-            time_area_painter,
-            &ctx.log_db.entity_db.tree,
-            ui,
-        );
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
+            // the earlier `interact_with_time_area`.
+            // We implement drag-to-scroll manually instead!
+            .drag_to_scroll(false)
+            .show(ui, |ui| {
+                crate::profile_scope!("tree_ui");
+                if time_area_response.dragged_by(PointerButton::Primary) {
+                    ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
+                }
+                self.show_children(
+                    ctx,
+                    blueprint,
+                    time_area_response,
+                    time_area_painter,
+                    &ctx.log_db.entity_db.tree,
+                    ui,
+                );
+            });
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -432,7 +433,7 @@ impl TimePanel {
                 .get(ctx.rec_cfg.time_ctrl.timeline())
                 .unwrap_or(&empty);
 
-            data_desity_graph::show_data_over_time(
+            data_desity_graph::data_density_graph_ui(
                 ctx,
                 blueprint,
                 time_area_response,
@@ -535,7 +536,7 @@ impl TimePanel {
                         .get(ctx.rec_cfg.time_ctrl.timeline())
                         .unwrap_or(&empty_messages_over_time);
 
-                    data_desity_graph::show_data_over_time(
+                    data_desity_graph::data_density_graph_ui(
                         ctx,
                         blueprint,
                         time_area_response,

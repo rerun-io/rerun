@@ -171,7 +171,7 @@ impl DensityGraph {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn show_data_over_time(
+pub fn data_density_graph_ui(
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
     time_area_response: &egui::Response,
