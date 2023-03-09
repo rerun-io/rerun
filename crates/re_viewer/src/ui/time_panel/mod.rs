@@ -1,4 +1,4 @@
-mod data_desity_graph;
+mod data_density_graph;
 mod paint_ticks;
 mod time_axis;
 mod time_ranges_ui;
@@ -24,7 +24,7 @@ use time_ranges_ui::TimeRangesUi;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
-    data_dentity_graph_painter: data_desity_graph::DataDensityGraphPainter,
+    data_dentity_graph_painter: data_density_graph::DataDensityGraphPainter,
 
     /// Width of the entity name columns previous frame.
     prev_col_width: f32,
@@ -438,7 +438,7 @@ impl TimePanel {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
 
-            data_desity_graph::data_density_graph_ui(
+            data_density_graph::data_density_graph_ui(
                 &mut self.data_dentity_graph_painter,
                 ctx,
                 blueprint,
@@ -542,7 +542,7 @@ impl TimePanel {
                         response_rect.y_range(),
                     );
 
-                    data_desity_graph::data_density_graph_ui(
+                    data_density_graph::data_density_graph_ui(
                         &mut self.data_dentity_graph_painter,
                         ctx,
                         blueprint,
