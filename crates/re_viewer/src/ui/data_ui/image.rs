@@ -24,7 +24,19 @@ impl DataUi for Tensor {
         verbosity: crate::ui::UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
+        let decoded = ctx
+            .cache
+            .decode
+            .try_decode_tensor_if_necessary(self.clone());
+
+        let tensor_view = match &decoded {
+            Ok(decoded) => ctx.cache.image.get_view(decoded, ctx.render_ctx),
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
+                return;
+            }
+        };
+
         let tensor_stats = ctx.cache.tensor_stats.get(&self.id());
 
         match verbosity {

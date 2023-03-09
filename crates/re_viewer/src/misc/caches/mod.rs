@@ -10,7 +10,7 @@ pub use tensor_image_cache::{AsDynamicImage, TensorImageView};
 pub struct Caches {
     /// For displaying images efficiently in immediate mode.
     pub image: tensor_image_cache::ImageCache,
-    pub jpeg: tensor_decode_cache::DecodeCache,
+    pub decode: tensor_decode_cache::DecodeCache,
 
     /// For displaying meshes efficiently in immediate mode.
     pub mesh: mesh_cache::MeshCache,
@@ -28,12 +28,12 @@ impl Caches {
     pub fn purge_memory(&mut self) {
         let Self {
             image,
-            jpeg,
+            decode,
             tensor_stats,
             mesh: _, // TODO(emilk)
         } = self;
         image.purge_memory();
-        jpeg.purge_memory();
+        decode.purge_memory();
         tensor_stats.clear();
     }
 

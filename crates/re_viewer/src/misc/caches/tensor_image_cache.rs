@@ -424,26 +424,8 @@ impl AsDynamicImage for component_types::Tensor {
                     .context("Bad RGBA f32")
                     .map(DynamicImage::ImageRgba8)
             }
-            (depth, TensorData::JPEG(buf), _) => {
-                use image::io::Reader as ImageReader;
-                let mut reader = ImageReader::new(std::io::Cursor::new(buf));
-                reader.set_format(image::ImageFormat::Jpeg);
-                // TODO(emilk): handle grayscale JPEG:s (depth == 1)
-                let img = {
-                    crate::profile_scope!("decode_jpeg");
-                    reader.decode()?
-                }
-                .into_rgb8();
-
-                if depth != 3 || img.width() != width || img.height() != height {
-                    anyhow::bail!(
-                        "Tensor shape ({shape:?}) did not match jpeg dimensions ({}x{})",
-                        img.width(),
-                        img.height()
-                    )
-                }
-
-                Ok(DynamicImage::ImageRgb8(img))
+            (_, TensorData::JPEG(_), _) => {
+                anyhow::bail!("JPEG tensor should have been decoded before using TensorImageCache")
             }
 
             (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {

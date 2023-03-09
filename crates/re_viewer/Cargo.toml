@@ -100,6 +100,7 @@ serde = { version = "1", features = ["derive"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.10", features = ["serde"] }
 time = { workspace = true, default-features = false, features = ["formatting"] }
+thiserror.workspace = true
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu.workspace = true
