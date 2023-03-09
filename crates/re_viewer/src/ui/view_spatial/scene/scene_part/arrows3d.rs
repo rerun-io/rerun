@@ -34,8 +34,6 @@ impl Arrows3DPart {
         let default_color = DefaultColor::EntityPath(ent_path);
 
         let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-        scene.primitives.any_outlines |= entity_highlight.any_outlines();
-        let any_part_selected = entity_highlight.any_selection_highlight;
 
         let mut line_batch = scene
             .primitives
@@ -49,12 +47,12 @@ impl Arrows3DPart {
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
-            let instance_hash = instance_path_hash_for_picking(
+            let picking_instance_hash = instance_path_hash_for_picking(
                 ent_path,
                 instance_key,
                 entity_view,
                 props,
-                any_part_selected,
+                entity_highlight.any_selection_highlight,
             );
 
             // TODO(andreas): support labels
@@ -74,12 +72,16 @@ impl Arrows3DPart {
             let vector_len = vector.length();
             let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
-            line_batch
+            let segment = line_batch
                 .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
-                .user_data(instance_hash);
+                .user_data(picking_instance_hash);
+
+            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
+                segment.outline_mask(*outline_mask);
+            }
         };
 
         entity_view.visit4(visitor)?;

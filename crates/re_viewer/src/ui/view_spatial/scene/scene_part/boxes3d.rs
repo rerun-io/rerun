@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
@@ -28,19 +28,18 @@ impl Boxes3DPart {
         entity_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
-        let any_part_selected = entity_highlight.any_selection_highlight();
-
         let mut line_batch = scene
             .primitives
             .line_strips
             .batch("box 3d")
-            .world_from_obj(world_from_obj);
+            .world_from_obj(world_from_obj)
+            .outline_mask(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        half_size: Box3D,
@@ -55,32 +54,29 @@ impl Boxes3DPart {
                 instance_key,
                 entity_view,
                 props,
-                any_part_selected,
+                entity_highlight.any_selection_highlight,
             );
 
             let class_description = annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();
 
-            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-            let mut color =
+            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+            let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-
-            SceneSpatial::apply_hover_and_selection_effect(
-                &mut radius,
-                &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_key),
-            );
 
             let scale = glam::Vec3::from(half_size);
             let rot = rotation.map(glam::Quat::from).unwrap_or_default();
             let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
             let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
 
-            line_batch
+            let box_lines = line_batch
                 .add_box_outline(transform)
                 .radius(radius)
                 .color(color)
                 .user_data(instance_hash);
+            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
+                box_lines.outline_mask(*outline_mask);
+            }
 
             if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {
                 scene.ui.labels.push(UiLabel {
@@ -111,7 +107,7 @@ impl ScenePart for Boxes3DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let entity_highlight = highlights.entity_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Box3D, 8>(
                 &ctx.log_db.entity_db.data_store,

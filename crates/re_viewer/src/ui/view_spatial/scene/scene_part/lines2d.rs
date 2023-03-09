@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
-    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
@@ -26,50 +26,47 @@ impl Lines2DPart {
         entity_view: &EntityView<LineStrip2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
-        let any_part_selected = entity_highlight.any_selection_highlight();
 
         let mut line_batch = scene
             .primitives
             .line_strips
             .batch("lines 2d")
-            .world_from_obj(world_from_obj);
+            .world_from_obj(world_from_obj)
+            .outline_mask(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip2D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let instance_hash = instance_path_hash_for_picking(
+            let picking_instance_hash = instance_path_hash_for_picking(
                 ent_path,
                 instance_key,
                 entity_view,
                 props,
-                any_part_selected,
+                entity_highlight.any_selection_highlight,
             );
 
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();
-            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-            let mut color =
+            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+            let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            SceneSpatial::apply_hover_and_selection_effect(
-                &mut radius,
-                &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_key),
-            );
-
-            line_batch
+            let lines = line_batch
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)
                 .flags(LineStripFlags::NO_COLOR_GRADIENT)
-                .user_data(instance_hash);
+                .user_data(picking_instance_hash);
+            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
+                lines.outline_mask(*outline_mask);
+            }
         };
 
         entity_view.visit3(visitor)?;
@@ -93,7 +90,7 @@ impl ScenePart for Lines2DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let entity_highlight = highlights.entity_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<LineStrip2D, 4>(
                 &ctx.log_db.entity_db.data_store,

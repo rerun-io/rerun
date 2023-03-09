@@ -8,7 +8,7 @@ use re_renderer::renderer::LineStripFlags;
 
 use crate::{
     misc::{
-        space_info::query_view_coordinates, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
+        space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
         TransformCache, ViewerContext,
     },
     ui::{
@@ -65,7 +65,7 @@ impl CamerasPart {
         instance_path_hash: InstancePathHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) {
         // The transform *at* this entity path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -141,19 +141,15 @@ impl CamerasPart {
             (up_triangle[2], up_triangle[0]),
         ];
 
-        let mut radius = re_renderer::Size::new_points(1.0);
-        let mut color = SceneSpatial::CAMERA_COLOR;
-        SceneSpatial::apply_hover_and_selection_effect(
-            &mut radius,
-            &mut color,
-            entity_highlight.index_highlight(instance_path_hash.instance_key),
-        );
+        let radius = re_renderer::Size::new_points(1.0);
+        let color = SceneSpatial::CAMERA_COLOR;
 
         scene
             .primitives
             .line_strips
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
+            .outline_mask(entity_highlight.overall)
             .add_segments(segments.into_iter())
             .radius(radius)
             .color(color)
@@ -191,13 +187,13 @@ impl ScenePart for CamerasPart {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
-                    let entity_highlight = highlights.entity_highlight(ent_path.hash());
+                    let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
                     let instance_hash = instance_path_hash_for_picking(
                         ent_path,
                         instance_key,
                         &entity_view,
                         &props,
-                        entity_highlight.any_selection_highlight(),
+                        entity_highlight.any_selection_highlight,
                     );
 
                     let view_coordinates = determine_view_coordinates(

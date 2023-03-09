@@ -158,10 +158,6 @@ impl SpaceViewOutlineMasks {
             .unwrap_or_default()
             .with_fallback_to(self.overall)
     }
-
-    pub fn any_outlines(&self) -> bool {
-        self.overall.is_some() || !self.instances.is_empty()
-    }
 }
 
 /// Highlights in a specific space view.
@@ -185,6 +181,10 @@ impl SpaceViewHighlights {
         self.outlines_masks
             .get(&entity_path_hash)
             .unwrap_or(&SPACEVIEW_OUTLINE_MASK_NONE)
+    }
+
+    pub fn any_outlines(&self) -> bool {
+        !self.outlines_masks.is_empty()
     }
 }
 

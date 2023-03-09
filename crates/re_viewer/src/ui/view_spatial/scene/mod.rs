@@ -184,6 +184,7 @@ impl SceneSpatial {
             part.load(self, ctx, query, transforms, highlights);
         }
 
+        self.primitives.any_outlines = highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
     }
 
