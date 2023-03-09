@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_renderer::{
-    renderer::{MeshInstance, OutlineConfig},
+    renderer::{MeshInstance, OutlineConfig, OutlineMaskPreference},
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
 use winit::event::{ElementState, VirtualKeyCode};
@@ -14,7 +14,7 @@ struct Outlines {
 }
 
 struct MeshProperties {
-    outline_mask: Option<glam::UVec2>,
+    outline_mask: OutlineMaskPreference,
     position: glam::Vec3,
     rotation: glam::Quat,
 }
@@ -36,13 +36,13 @@ impl framework::Example for Outlines {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        _time: &framework::Time,
+        time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let mut view_builder = ViewBuilder::default();
 
         if !self.is_paused {
-            self.seconds_since_startup += 0.3 / 1000.0;
+            self.seconds_since_startup += time.last_frame_duration.as_secs_f32();
         }
         let seconds_since_startup = self.seconds_since_startup;
         // TODO(#1426): unify camera logic between examples.
@@ -57,7 +57,7 @@ impl framework::Example for Outlines {
             .setup_view(
                 re_ctx,
                 TargetConfiguration {
-                    name: "2D".into(),
+                    name: "OutlinesDemo".into(),
                     resolution_in_pixel: resolution,
                     view_from_world: macaw::IsoTransform::look_at_rh(
                         camera_position,
@@ -84,11 +84,11 @@ impl framework::Example for Outlines {
             .unwrap();
 
         let outline_mask_large_mesh = match ((seconds_since_startup * 0.5) as u64) % 5 {
-            0 => None,
-            1 => Some(glam::uvec2(1, 0)), // Same as the the y spinning mesh.
-            2 => Some(glam::uvec2(2, 0)), // Different than both meshes, outline A.
-            3 => Some(glam::uvec2(0, 1)), // Same as the the x spinning mesh.
-            4 => Some(glam::uvec2(0, 2)), // Different than both meshes, outline B.
+            0 => OutlineMaskPreference::None,
+            1 => Some([1, 0]), // Same as the the y spinning mesh.
+            2 => Some([2, 0]), // Different than both meshes, outline A.
+            3 => Some([0, 1]), // Same as the the x spinning mesh.
+            4 => Some([0, 2]), // Different than both meshes, outline B.
             _ => unreachable!(),
         };
 
@@ -99,12 +99,12 @@ impl framework::Example for Outlines {
                 rotation: glam::Quat::IDENTITY,
             },
             MeshProperties {
-                outline_mask: Some(glam::uvec2(1, 0)),
+                outline_mask: Some([1, 0]),
                 position: glam::vec3(2.0, 0.0, -3.0),
                 rotation: glam::Quat::from_rotation_y(seconds_since_startup),
             },
             MeshProperties {
-                outline_mask: Some(glam::uvec2(0, 1)),
+                outline_mask: Some([0, 1]),
                 position: glam::vec3(-2.0, 1.0, 3.0),
                 rotation: glam::Quat::from_rotation_x(seconds_since_startup),
             },

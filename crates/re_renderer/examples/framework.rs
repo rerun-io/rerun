@@ -71,6 +71,7 @@ pub fn split_resolution(
 pub struct Time {
     start_time: Instant,
     last_draw_time: Instant,
+    pub last_frame_duration: instant::Duration,
 }
 
 impl Time {
@@ -175,6 +176,7 @@ impl<E: Example + 'static> Application<E> {
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
+                last_frame_duration: instant::Duration::from_secs(0),
             },
 
             example,
@@ -305,6 +307,7 @@ impl<E: Example + 'static> Application<E> {
                     let current_time = Instant::now();
                     let time_passed = current_time - self.time.last_draw_time;
                     self.time.last_draw_time = current_time;
+                    self.time.last_frame_duration = time_passed;
 
                     // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
                     // Do it only every second.

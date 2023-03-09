@@ -67,7 +67,7 @@ use smallvec::smallvec;
 ///
 /// Object index 0 is special: It is the default background of each outline channel, thus rendering with it
 /// is a form of "active no outline", effectively subtracting from the outline channel.
-pub type OutlineMaskPreference = Option<glam::UVec2>;
+pub type OutlineMaskPreference = Option<[u8; 2]>;
 
 #[derive(Clone, Debug)]
 pub struct OutlineConfig {

@@ -192,25 +192,12 @@ impl MeshDrawData {
                 let mut count_with_outlines = 0;
 
                 // Put all instances with outlines at the start of the instance buffer range.
-                let instances = instances.sorted_by(|a, b| {
-                    if a.outline_mask.is_some() {
-                        if b.outline_mask.is_some() {
-                            std::cmp::Ordering::Equal
-                        } else {
-                            std::cmp::Ordering::Less
-                        }
-                    } else if b.outline_mask.is_none() {
-                        std::cmp::Ordering::Equal
-                    } else {
-                        std::cmp::Ordering::Greater
-                    }
-                });
+                let instances = instances
+                    .sorted_by(|a, b| a.outline_mask.is_none().cmp(&b.outline_mask.is_none()));
 
                 for instance in instances {
                     count += 1;
-                    if instance.outline_mask.is_some() {
-                        count_with_outlines += 1;
-                    }
+                    count_with_outlines += instance.outline_mask.is_some() as u32;
 
                     let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
                     let world_from_mesh_normal =
@@ -234,7 +221,7 @@ impl MeshDrawData {
                         additive_tint: instance.additive_tint,
                         outline_mask: instance
                             .outline_mask
-                            .map_or([0, 0, 0, 0], |mask| [mask.x as u8, mask.y as u8, 0, 0]),
+                            .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
                     });
                 }
                 num_processed_instances += count;

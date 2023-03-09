@@ -19,61 +19,61 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
     let mask_center = textureLoad(mask_texture, center_coord, 0).xy;
 
     var edge_pos_a_and_b = Vec4(0.0);
-    var num_edges_and_b = Vec2(0.0);
+    var num_edges_a_and_b = Vec2(0.0);
 
     // A lot of this code is repetetive, but wgsl/naga doesn't know yet how to do static indexing from unrolled loops.
 
     // Sample closest neighbors top/bottom/left/right
     { // right
-        let has_edge = has_edge(mask_center, center_coord + IVec2(1, 0));
+        let edge = has_edge(mask_center, center_coord + IVec2(1, 0));
         let edge_pos = Vec2(1.0, 0.5);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
     { // bottom
-        let has_edge = has_edge(mask_center, center_coord + IVec2(0, 1));
+        let edge = has_edge(mask_center, center_coord + IVec2(0, 1));
         let edge_pos = Vec2(0.5, 1.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
     { // left
-        let has_edge = has_edge(mask_center, center_coord + IVec2(-1, 0));
+        let edge = has_edge(mask_center, center_coord + IVec2(-1, 0));
         let edge_pos = Vec2(0.0, 0.5);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
     { // top
-        let has_edge = has_edge(mask_center, center_coord + IVec2(0, -1));
+        let edge = has_edge(mask_center, center_coord + IVec2(0, -1));
         let edge_pos = Vec2(0.5, 0.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
 
     // Sample closest neighbors diagonally.
     { // top-right
-        let has_edge = has_edge(mask_center, center_coord + IVec2(1, -1));
+        let edge = has_edge(mask_center, center_coord + IVec2(1, -1));
         let edge_pos = Vec2(1.0, 0.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
     { // bottom-right
-        let has_edge = has_edge(mask_center, center_coord + IVec2(1, 1));
+        let edge = has_edge(mask_center, center_coord + IVec2(1, 1));
         let edge_pos = Vec2(1.0, 1.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
     { // bottom-left
-        let has_edge = has_edge(mask_center, center_coord + IVec2(-1, 1));
+        let edge = has_edge(mask_center, center_coord + IVec2(-1, 1));
         let edge_pos = Vec2(0.0, 1.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        num_edges_a_and_b += edge;
     }
     { // top-left
-        let has_edge = has_edge(mask_center, center_coord + IVec2(-1, -1));
-        //let edge_pos = Vec2(0.0, 0.0);
-        //edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * has_edge.xxyy;
-        num_edges_and_b += has_edge;
+        let edge = has_edge(mask_center, center_coord + IVec2(-1, -1));
+        let edge_pos = Vec2(0.0, 0.0);
+        //edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy; // multiplied by zero, optimize out
+        num_edges_a_and_b += edge;
     }
 
-    return compute_pixel_coords(center_coord, edge_pos_a_and_b, num_edges_and_b);
+    return compute_pixel_coords(center_coord, edge_pos_a_and_b, num_edges_a_and_b);
 }
