@@ -159,7 +159,7 @@ impl DensityGraph {
         mesh.indices.reserve(6 * (self.density.len() - 1));
 
         for (i, &density) in self.density.iter().enumerate() {
-            // TODO: early-out if density is 0 for long stretches
+            // TODO(emilk): early-out if density is 0 for long stretches
 
             // let x = self.min_x + i as f32;
             let x = remap(
@@ -277,7 +277,8 @@ pub fn data_density_graph_ui(
             if count == 0 {
                 return;
             }
-            let time_real = TimeReal::from(time_range.min); // TODO: center
+            // We (correctly) assume the time range is narrow, and can be approximated with its center:
+            let time_real = TimeReal::from(time_range.center());
             if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
                 density_graph.add(x, count as _);
 
