@@ -32,6 +32,7 @@ impl Lines2DPart {
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
+        let any_part_selected = entity_highlight.any_selection_highlight();
 
         let mut line_batch = scene
             .primitives
@@ -48,7 +49,7 @@ impl Lines2DPart {
                 instance_key,
                 entity_view,
                 props,
-                entity_highlight,
+                any_part_selected,
             );
 
             // TODO(andreas): support class ids for lines

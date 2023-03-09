@@ -6,7 +6,7 @@ use re_log_types::{
     component_types::{ClassId, KeypointId, Tensor},
     MeshId,
 };
-use re_renderer::{Color32, Size};
+use re_renderer::{renderer::OutlineMaskPreference, Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
@@ -55,7 +55,7 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
-    pub additive_tint: Color32,
+    pub outline_mask: OutlineMaskPreference,
 }
 
 pub struct Image {

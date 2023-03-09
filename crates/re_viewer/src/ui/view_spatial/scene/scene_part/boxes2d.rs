@@ -125,7 +125,7 @@ impl ScenePart for Boxes2DPart {
                             instance_key,
                             &entity_view,
                             &props,
-                            entity_highlight,
+                            entity_highlight.any_selection_highlight(),
                         );
                         Self::visit_instance(
                             scene,

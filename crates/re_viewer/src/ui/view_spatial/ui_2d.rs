@@ -13,6 +13,7 @@ use crate::{
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
+            ui::outline_config,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial,
         },
@@ -432,6 +433,9 @@ fn view_2d_scrollable(
             space_from_pixel,
             &space.to_string(),
             state.auto_size_config(response.rect.size()),
+            scene
+                .primitives
+                .any_outlines,
         ) else {
             return response;
         };
@@ -468,6 +472,7 @@ fn setup_target_config(
     space_from_pixel: f32,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
+    any_outlines: bool,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -490,7 +495,7 @@ fn setup_target_config(
             },
             pixels_from_point: pixels_from_points,
             auto_size_config,
-            ..Default::default()
+            outline_config: any_outlines.then(|| outline_config(painter.ctx())),
         }
     })
 }

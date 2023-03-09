@@ -197,7 +197,7 @@ impl ScenePart for CamerasPart {
                         instance_key,
                         &entity_view,
                         &props,
-                        entity_highlight,
+                        entity_highlight.any_selection_highlight(),
                     );
 
                     let view_coordinates = determine_view_coordinates(

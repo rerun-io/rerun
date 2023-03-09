@@ -16,7 +16,7 @@ use crate::{
         data_ui::{self, DataUi},
         view_spatial::{
             scene::AdditionalPickingInfo,
-            ui::create_labels,
+            ui::{create_labels, outline_config},
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial, SpaceCamera3D,
         },
@@ -515,6 +515,7 @@ fn paint_view(
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
         return;
     }
+
     let target_config = TargetConfiguration {
         name: name.into(),
 
@@ -529,7 +530,10 @@ fn paint_view(
         pixels_from_point,
         auto_size_config,
 
-        ..Default::default()
+        outline_config: scene
+            .primitives
+            .any_outlines
+            .then(|| outline_config(ui.ctx())),
     };
 
     let Ok(callback) = create_scene_paint_callback(

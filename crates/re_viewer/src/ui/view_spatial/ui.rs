@@ -5,6 +5,7 @@ use re_format::format_f32;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
+use re_renderer::renderer::OutlineConfig;
 
 use crate::{
     misc::{
@@ -618,4 +619,18 @@ pub fn create_labels(
     }
 
     label_shapes
+}
+
+pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
+    // Brighten up our regular selection color a bit, otherwise it's too hard to see.
+    // (which would require us making the outlines *even* thicker)
+    let selection_outline_color =
+        re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill) * 1.5;
+    let hover_outline_color = (selection_outline_color * 1.5).additive();
+
+    OutlineConfig {
+        outline_radius_pixel: (gui_ctx.pixels_per_point() * 2.5).at_least(1.0),
+        color_layer_a: selection_outline_color,
+        color_layer_b: hover_outline_color,
+    }
 }

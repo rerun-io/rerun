@@ -175,6 +175,7 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) =
             Self::process_annotations(query, entity_view, &annotations)?;
+        let any_part_selected = entity_highlight.any_selection_highlight();
         let instance_path_hashes = {
             crate::profile_scope!("instance_hashes");
             entity_view
@@ -185,7 +186,7 @@ impl Points3DPart {
                         instance_key,
                         entity_view,
                         properties,
-                        entity_highlight,
+                        any_part_selected,
                     )
                 })
                 .collect::<Vec<_>>()

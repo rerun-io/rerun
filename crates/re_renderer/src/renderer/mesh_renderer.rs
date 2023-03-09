@@ -130,7 +130,7 @@ impl Default for MeshInstance {
             mesh: None,
             world_from_mesh: macaw::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
-            outline_mask: None,
+            outline_mask: OutlineMaskPreference::NONE,
         }
     }
 }
@@ -221,6 +221,7 @@ impl MeshDrawData {
                         additive_tint: instance.additive_tint,
                         outline_mask: instance
                             .outline_mask
+                            .0
                             .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
                     });
                 }
