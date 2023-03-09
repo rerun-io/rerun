@@ -57,11 +57,9 @@ impl TextureDesc {
 
     /// Copies the desc but adds a string to the label.
     pub fn with_label_push(&self, append_this: &str) -> Self {
-        let copy = self.clone();
-        Self {
-            label: copy.label.push_str(append_this),
-            ..copy
-        }
+        let mut copy = self.clone();
+        copy.label = copy.label.push_str(append_this);
+        copy
     }
 }
 
