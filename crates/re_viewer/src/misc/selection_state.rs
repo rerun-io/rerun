@@ -181,10 +181,7 @@ impl SpaceViewHighlights {
         OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
     }
 
-    pub fn entity_outline_mask<'a>(
-        &'a self,
-        entity_path_hash: EntityPathHash,
-    ) -> &'a SpaceViewOutlineMasks {
+    pub fn entity_outline_mask(&self, entity_path_hash: EntityPathHash) -> &SpaceViewOutlineMasks {
         self.outlines_masks
             .get(&entity_path_hash)
             .unwrap_or(&SPACEVIEW_OUTLINE_MASK_NONE)
