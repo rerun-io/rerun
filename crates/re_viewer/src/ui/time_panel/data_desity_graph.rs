@@ -60,9 +60,9 @@ pub fn show_data_over_time(
 
     let mut shapes = vec![];
     let mut scatter = BallScatterer::default();
-    // Time x number of messages at that time point
-    let mut hovered_messages: Vec<(TimeInt, usize)> = vec![];
-    let mut hovered_time = None;
+
+    let mut num_hovered_messages = 0;
+    let mut hovered_time_range = TimeRange::EMPTY;
 
     let mut paint_stretch = |stretch: &Stretch| {
         let stop_x = time_ranges_ui
@@ -101,8 +101,12 @@ pub fn show_data_over_time(
         shapes.push(Shape::circle_filled(pos, radius, color));
 
         if is_hovered {
-            hovered_messages.extend(stretch.time_points.iter().copied());
-            hovered_time.get_or_insert(stretch.time_range.min);
+            hovered_time_range = hovered_time_range.union(stretch.time_range);
+            num_hovered_messages += stretch
+                .time_points
+                .iter()
+                .map(|(_, count)| *count)
+                .sum::<usize>();
         }
     };
 
@@ -180,21 +184,19 @@ pub fn show_data_over_time(
 
     time_area_painter.extend(shapes);
 
-    if !hovered_messages.is_empty() {
+    if 0 < num_hovered_messages {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.set_single_selection(select_on_click);
-
-            if let Some(hovered_time) = hovered_time {
-                ctx.rec_cfg.time_ctrl.set_time(hovered_time);
-                ctx.rec_cfg.time_ctrl.pause();
-            }
+            ctx.rec_cfg.time_ctrl.set_time(hovered_time_range.min);
+            ctx.rec_cfg.time_ctrl.pause();
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
             show_msg_ids_tooltip(
                 ctx,
                 blueprint,
                 ui.ctx(),
                 &select_on_click,
-                &hovered_messages,
+                hovered_time_range,
+                num_hovered_messages,
             );
         }
     }
@@ -205,15 +207,13 @@ fn show_msg_ids_tooltip(
     blueprint: &mut Blueprint,
     egui_ctx: &egui::Context,
     item: &Item,
-    time_points: &[(TimeInt, usize)],
+    time_range: TimeRange,
+    num_messages: usize,
 ) {
     use crate::ui::data_ui::DataUi as _;
 
     egui::show_tooltip_at_pointer(egui_ctx, egui::Id::new("data_tooltip"), |ui| {
-        let num_times = time_points.len();
-        let num_messages: usize = time_points.iter().map(|(_time, count)| *count).sum();
-
-        if num_times == 1 {
+        if time_range.min == time_range.max {
             if num_messages > 1 {
                 ui.label(format!("{num_messages} messages"));
                 ui.add_space(8.0);
@@ -224,13 +224,10 @@ fn show_msg_ids_tooltip(
             ui.add_space(8.0);
 
             let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-            let time_int = time_points[0].0; // We want to show the item at the time of whatever point we are hovering
-            let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
+            let query = re_arrow_store::LatestAtQuery::new(timeline, time_range.min);
             item.data_ui(ctx, ui, crate::ui::UiVerbosity::Reduced, &query);
         } else {
-            ui.label(format!(
-                "{num_messages} messages at {num_times} points in time"
-            ));
+            ui.label(format!("{num_messages} messages"));
         }
     });
 }

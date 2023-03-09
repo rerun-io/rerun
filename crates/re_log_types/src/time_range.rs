@@ -12,6 +12,12 @@ pub struct TimeRange {
 }
 
 impl TimeRange {
+    /// Contains no time at all.
+    pub const EMPTY: Self = Self {
+        min: TimeInt::MAX,
+        max: TimeInt::MIN,
+    };
+
     #[inline]
     pub fn new(min: TimeInt, max: TimeInt) -> Self {
         Self { min, max }
@@ -35,6 +41,14 @@ impl TimeRange {
     #[inline]
     pub fn contains(&self, time: TimeInt) -> bool {
         self.min <= time && time <= self.max
+    }
+
+    #[inline]
+    pub fn union(&self, other: Self) -> Self {
+        Self {
+            min: self.min.min(other.min),
+            max: self.max.max(other.max),
+        }
     }
 }
 
