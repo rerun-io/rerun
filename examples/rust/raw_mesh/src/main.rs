@@ -197,7 +197,7 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("objectron_rs", default_enabled, move |session| {
+        .run("raw_mesh_rs", default_enabled, move |session| {
             run(&session, &args).unwrap();
         })
 }
