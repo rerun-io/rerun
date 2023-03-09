@@ -43,7 +43,7 @@ web-sys = { version = "0.3.58", features = ["Storage"] }
 
 
 [dev-dependencies]
-tracing-subscriber = "0.3"
+tracing-subscriber.workspace = true
 
 
 [build-dependencies]

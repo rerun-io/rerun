@@ -17,7 +17,7 @@ all-features = true
 
 
 [dependencies]
-ahash = "0.8"
+ahash.workspace = true
 nohash-hasher = "0.2"
 once_cell = "1.12"
 parking_lot.workspace = true

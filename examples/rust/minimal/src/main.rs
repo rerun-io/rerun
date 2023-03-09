@@ -1,14 +1,14 @@
 //! Demonstrates the most barebone usage of the Rerun SDK.
 
-use rerun::demo_util::grid;
-use rerun::external::glam;
 use rerun::{
     components::{ColorRGBA, Point3D},
-    MsgSender, Session,
+    demo_util::grid,
+    external::glam,
+    MsgSender, SessionBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut session = Session::init("minimal_rs", true);
+    let session = SessionBuilder::new("minimal_rs").buffered();
 
     let points = grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 10)
         .map(Point3D::from)
@@ -20,9 +20,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
-        .send(&mut session)?;
+        .send(&session)?;
 
-    rerun::native_viewer::show(&mut session)?;
+    rerun::native_viewer::show(&session)?;
 
     Ok(())
 }

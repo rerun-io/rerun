@@ -2,6 +2,8 @@
 #
 # Then run `just --list` to see the available commands
 
+export RUSTDOCFLAGS := "--deny warnings --deny rustdoc::missing_crate_level_docs"
+
 default:
   @just --list
 
@@ -12,10 +14,7 @@ format: toml-format py-format
     cargo fmt --all
 
 # Lint all of our code
-lint: toml-lint py-lint
-    cargo cranky
-    scripts/lint.py
-
+lint: toml-lint py-lint rs-lint
 
 ### Python
 
@@ -25,7 +24,7 @@ py_folders := "examples rerun_py scripts"
 py-dev-env:
     #!/usr/bin/env bash
     echo "Setting up Python virtual environment in venv"
-    # set -euxo pipefail
+    set -euxo pipefail
     python3 -m venv venv
     venv/bin/pip install --upgrade pip
     venv/bin/pip install -r rerun_py/requirements-build.txt
@@ -34,11 +33,14 @@ py-dev-env:
 
 # Run all examples
 py-run-all: py-build
+    #!/usr/bin/env bash
+    set -euo pipefail
     fd main.py | xargs -I _ sh -c "echo _ && python3 _"
 
 # Build and install the package into the venv
 py-build:
     #!/usr/bin/env bash
+    set -euo pipefail
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
         maturin develop \
@@ -47,6 +49,8 @@ py-build:
 
 # Run autoformatting
 py-format:
+    #!/usr/bin/env bash
+    set -euxo pipefail
     black --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}
     pyupgrade --py37-plus `find rerun_py/rerun/ -name "*.py" -type f`
@@ -54,10 +58,14 @@ py-format:
 
 # Check that all the requirements.txt files for all the examples are correct
 py-requirements:
+    #!/usr/bin/env bash
+    set -euo pipefail
     find examples/python/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && pip-missing-reqs . || exit 255'
 
 # Run linting
 py-lint:
+    #!/usr/bin/env bash
+    set -euxo pipefail
     black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
     blackdoc --check {{py_folders}}
     ruff check --config rerun_py/pyproject.toml  {{py_folders}}
@@ -79,6 +87,17 @@ py-docs-serve:
 # This is an unstable flag, available only on nightly.
 rs-doc:
     cargo +nightly doc --all --open --keep-going --all-features -Zunstable-options
+
+# Lint all of Rust code
+rs-lint:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    cargo cranky --quiet --all-features -- --deny warnings
+    typos
+    scripts/lint.py
+    cargo doc --quiet --no-deps --all-features
+    cargo doc --quiet --document-private-items --no-deps --all-features
+    cargo test --quiet --doc --all-features # runs all doc-tests
 
 
 ### TOML

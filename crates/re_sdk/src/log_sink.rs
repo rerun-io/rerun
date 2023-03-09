@@ -1,19 +1,19 @@
 use re_log_types::LogMsg;
 
 /// Where the SDK sends its log messages.
-pub trait LogSink: Send {
+pub trait LogSink: Send + Sync + 'static {
     /// Send this log message.
-    fn send(&mut self, msg: LogMsg);
+    fn send(&self, msg: LogMsg);
 
     /// Send all these log messages.
-    fn send_all(&mut self, messages: Vec<LogMsg>) {
+    fn send_all(&self, messages: Vec<LogMsg>) {
         for msg in messages {
             self.send(msg);
         }
     }
 
     /// Drain all buffered [`LogMsg`]es and return them.
-    fn drain_backlog(&mut self) -> Vec<LogMsg> {
+    fn drain_backlog(&self) -> Vec<LogMsg> {
         vec![]
     }
 
@@ -22,13 +22,38 @@ pub trait LogSink: Send {
 
     /// If the TCP session is disconnected, allow it to quit early and drop unsent messages.
     fn drop_msgs_if_disconnected(&self) {}
+
+    /// Returns `false` if this sink just discards all messages.
+    fn is_enabled(&self) -> bool {
+        true
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+struct DisabledSink;
+
+impl LogSink for DisabledSink {
+    fn send(&self, _msg: LogMsg) {
+        // It's intended that the logging SDK should drop messages earlier than this if logging is disabled.
+        re_log::debug_once!("Logging is disabled, dropping message(s).");
+    }
+
+    fn is_enabled(&self) -> bool {
+        false
+    }
+}
+
+/// A sink that does nothing. All log messages are just dropped.
+pub fn disabled() -> Box<dyn LogSink> {
+    Box::new(DisabledSink)
 }
 
 // ----------------------------------------------------------------------------
 
 /// Store log messages in memory until you call [`LogSink::drain_backlog`].
 #[derive(Default)]
-pub struct BufferedSink(Vec<LogMsg>);
+pub struct BufferedSink(parking_lot::Mutex<Vec<LogMsg>>);
 
 impl BufferedSink {
     /// An empty buffer.
@@ -38,16 +63,16 @@ impl BufferedSink {
 }
 
 impl LogSink for BufferedSink {
-    fn send(&mut self, msg: LogMsg) {
-        self.0.push(msg);
+    fn send(&self, msg: LogMsg) {
+        self.0.lock().push(msg);
     }
 
-    fn send_all(&mut self, mut messages: Vec<LogMsg>) {
-        self.0.append(&mut messages);
+    fn send_all(&self, mut messages: Vec<LogMsg>) {
+        self.0.lock().append(&mut messages);
     }
 
-    fn drain_backlog(&mut self) -> Vec<LogMsg> {
-        std::mem::take(&mut self.0)
+    fn drain_backlog(&self) -> Vec<LogMsg> {
+        std::mem::take(&mut self.0.lock())
     }
 }
 
@@ -69,7 +94,7 @@ impl TcpSink {
 }
 
 impl LogSink for TcpSink {
-    fn send(&mut self, msg: LogMsg) {
+    fn send(&self, msg: LogMsg) {
         self.client.send(msg);
     }
 

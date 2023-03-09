@@ -4011,7 +4011,6 @@ dependencies = [
  "re_sdk_comms",
  "re_smart_channel",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
@@ -4262,6 +4261,7 @@ dependencies = [
  "itertools",
  "libc",
  "mimalloc",
+ "once_cell",
  "parking_lot 0.12.1",
  "puffin",
  "puffin_http",
@@ -4288,6 +4288,7 @@ name = "rerun_py"
 version = "0.3.0"
 dependencies = [
  "ahash 0.8.2",
+ "anyhow",
  "arrow2",
  "bytemuck",
  "crossbeam",

@@ -14,10 +14,10 @@ env:
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: -D warnings -D rustdoc::missing_crate_level_docs
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -122,13 +122,20 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: cranky
-          args: --all-targets --all-features --  -D warnings
+          args: --all-targets --all-features -- --deny warnings
 
       - name: Check no default features
         uses: actions-rs/cargo@v1
         with:
           command: check
           args: --locked --no-default-features --features __ci --lib
+
+      # Check a few important permutations of the feature flags for our `rerun` library:
+      - name: Check rerun with --features sdk
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --no-default-features --features sdk
 
       - name: Test doc-tests
         uses: actions-rs/cargo@v1

@@ -29,7 +29,7 @@ re_log.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_smart_channel.workspace = true
 
-ahash = "0.8"
+ahash.workspace = true
 anyhow.workspace = true
 bincode = "1.3"
 crossbeam = "0.8"

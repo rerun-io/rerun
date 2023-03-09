@@ -40,7 +40,7 @@ fn sim_time(at: f64) -> TimePoint {
     [(timeline_sim_time, time.into())].into()
 }
 
-fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
+fn demo_bbox(session: &Session) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
         .with_timepoint(sim_time(0 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
@@ -68,7 +68,7 @@ fn demo_bbox(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
+fn demo_extension_components(session: &Session) -> anyhow::Result<()> {
     // Hack to establish 2d view bounds
     MsgSender::new("extension_components")
         .with_timepoint(sim_time(0 as _))
@@ -137,10 +137,10 @@ fn demo_extension_components(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
+fn demo_log_cleared(session: &Session) -> anyhow::Result<()> {
     // TODO(cmc): need abstractions for this
     fn log_cleared(
-        session: &mut Session,
+        session: &Session,
         timepoint: &TimePoint,
         ent_path: impl Into<EntityPath>,
         recursive: bool,
@@ -189,7 +189,7 @@ fn demo_log_cleared(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
+fn demo_3d_points(session: &Session) -> anyhow::Result<()> {
     MsgSender::new("3d_points/single_point_unlabeled")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
@@ -242,7 +242,7 @@ fn demo_3d_points(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
+fn demo_rects(session: &Session) -> anyhow::Result<()> {
     use ndarray::prelude::*;
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
@@ -280,13 +280,13 @@ fn demo_rects(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
+fn demo_segmentation(session: &Session) -> anyhow::Result<()> {
     // TODO(cmc): All of these text logs should really be going through `re_log` and automagically
     // fed back into rerun via a `tracing` backend. At the _very_ least we should have a helper
     // available for this.
     // In either case, this raises the question of tracking time at the SDK level, akin to what the
     // python SDK does.
-    fn log_info(session: &mut Session, timepoint: TimePoint, text: &str) -> anyhow::Result<()> {
+    fn log_info(session: &Session, timepoint: TimePoint, text: &str) -> anyhow::Result<()> {
         MsgSender::new("logs/seg_demo_log")
             .with_timepoint(timepoint)
             .with_component(&[TextEntry::new(text, Some("INFO".into()))])?
@@ -433,7 +433,7 @@ fn demo_segmentation(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
+fn demo_text_logs(session: &Session) -> anyhow::Result<()> {
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
@@ -457,7 +457,7 @@ fn demo_text_logs(session: &mut Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
+fn demo_transforms_3d(session: &Session) -> anyhow::Result<()> {
     let sun_to_planet_distance = 6.0;
     let planet_to_moon_distance = 3.0;
     let rotation_speed_planet = 2.0;
@@ -465,7 +465,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
 
     // Planetary motion is typically in the XY plane.
     fn log_coordinate_space(
-        session: &mut Session,
+        session: &Session,
         ent_path: impl Into<EntityPath>,
     ) -> anyhow::Result<()> {
         let view_coords = ViewCoordinates::from_up_and_handedness(
@@ -486,7 +486,7 @@ fn demo_transforms_3d(session: &mut Session) -> anyhow::Result<()> {
 
     // All are in the center of their own space:
     fn log_point(
-        session: &mut Session,
+        session: &Session,
         ent_path: impl Into<EntityPath>,
         radius: f32,
         color: [u8; 3],
@@ -618,7 +618,7 @@ struct Args {
     demo: Option<Vec<Demo>>,
 }
 
-fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
+fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
     use clap::ValueEnum as _;
     let demos: HashSet<Demo> = args.demo.as_ref().map_or_else(
         || Demo::value_variants().iter().copied().collect(),
@@ -647,15 +647,10 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut session = rerun::Session::init("api_demo_rs", true);
-
-    let should_spawn = args.rerun.on_startup(&mut session)?;
-    if should_spawn {
-        rerun::native_viewer::spawn(session, move |mut session| run(&mut session, &args))?;
-    } else {
-        run(&mut session, &args)?;
-        args.rerun.on_teardown();
-    }
-
-    Ok(())
+    let default_enabled = true;
+    args.rerun
+        .clone()
+        .run("api_demo_rs", default_enabled, move |session| {
+            run(&session, &args).unwrap();
+        })
 }

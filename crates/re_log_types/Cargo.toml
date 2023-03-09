@@ -58,7 +58,7 @@ re_string_interner.workspace = true
 re_tuid.workspace = true
 
 # External
-ahash = "0.8"
+ahash.workspace = true
 array-init = "2.1.0"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 arrow2_convert.workspace = true
