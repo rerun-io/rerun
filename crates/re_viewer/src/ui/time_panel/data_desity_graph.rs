@@ -103,7 +103,7 @@ impl DensityGraph {
         }
 
         if false {
-            // nearest neightbor:
+            // nearest neighbor:
             let i = i.round() as usize;
 
             if let Some(bucket) = self.density.get_mut(i) {
@@ -254,7 +254,7 @@ pub fn data_density_graph_ui(
     ui: &mut egui::Ui,
     num_timeless_messages: usize,
     time_histogram: &TimeHistogram,
-    full_width_rect: Rect,
+    row_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
     item: Item,
 ) {
@@ -262,10 +262,10 @@ pub fn data_density_graph_ui(
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
-    let center_y = full_width_rect.center().y;
+    let center_y = row_rect.center().y;
 
     // Density over x-axis in UI points.
-    let mut density_graph = DensityGraph::new(full_width_rect.x_range());
+    let mut density_graph = DensityGraph::new(row_rect.x_range());
 
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = TimeRange::EMPTY;
@@ -293,9 +293,8 @@ pub fn data_density_graph_ui(
             }
         };
         add_data_point(TimeRange::point(TimeInt::BEGINNING), num_timeless_messages);
-        let visible_time_range = time_ranges_ui.time_range_from_x_range(
-            (full_width_rect.left() - MARGIN_X)..=(full_width_rect.right() + MARGIN_X),
-        );
+        let visible_time_range = time_ranges_ui
+            .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
         // The more zoomed out we are, the bigger chunks of time_histogram we can process at a time.
         let time_chunk_size = (2.0 / time_ranges_ui.points_per_time).round() as _;
@@ -324,7 +323,7 @@ pub fn data_density_graph_ui(
     density_graph.density = smooth(&density_graph.density);
     density_graph.paint(
         data_dentity_graph_painter,
-        full_width_rect.y_range(),
+        row_rect.y_range(),
         time_area_painter,
         graph_color,
         hovered_x_range,

@@ -412,6 +412,7 @@ impl TimePanel {
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
+        // From the left of the label, all the way to the rigthmost of the time panel
         let full_width_rect = Rect::from_x_y_ranges(
             response_rect.left()..=ui.max_rect().right(),
             response_rect.y_range(),
@@ -434,6 +435,9 @@ impl TimePanel {
                 .get(ctx.rec_cfg.time_ctrl.timeline())
                 .unwrap_or(&empty);
 
+            let row_rect =
+                Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
+
             data_desity_graph::data_density_graph_ui(
                 &mut self.data_dentity_graph_painter,
                 ctx,
@@ -443,7 +447,7 @@ impl TimePanel {
                 ui,
                 tree.num_timeless_messages(),
                 num_messages_at_time,
-                full_width_rect,
+                row_rect,
                 &self.time_ranges_ui,
                 item,
             );
@@ -507,6 +511,7 @@ impl TimePanel {
 
                 self.next_col_right = self.next_col_right.max(response_rect.right());
 
+                // From the left of the label, all the way to the rigthmost of the time panel
                 let full_width_rect = Rect::from_x_y_ranges(
                     response_rect.left()..=ui.max_rect().right(),
                     response_rect.y_range(),
@@ -532,6 +537,11 @@ impl TimePanel {
                         .get(ctx.rec_cfg.time_ctrl.timeline())
                         .unwrap_or(&empty_messages_over_time);
 
+                    let row_rect = Rect::from_x_y_ranges(
+                        time_area_response.rect.x_range(),
+                        response_rect.y_range(),
+                    );
+
                     data_desity_graph::data_density_graph_ui(
                         &mut self.data_dentity_graph_painter,
                         ctx,
@@ -541,7 +551,7 @@ impl TimePanel {
                         ui,
                         data.num_timeless_messages(),
                         messages_over_time,
-                        full_width_rect,
+                        row_rect,
                         &self.time_ranges_ui,
                         item,
                     );
@@ -916,57 +926,52 @@ fn time_marker_ui(
     // timeline_rect: top part with the second ticks and time marker
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-
-    // ------------------------------------------------
-
     let time_drag_id = ui.id().with("time_drag_id");
+    let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
+    let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
+    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+    let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     let mut is_hovering = false;
-
-    let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
-
-    let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
-
-    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-
-    let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
         if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
-            let line_rect =
-                Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
-                    .expand(interact_radius);
+            if timeline_rect.x_range().contains(&x) {
+                let line_rect =
+                    Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
+                        .expand(interact_radius);
 
-            let response = ui
-                .interact(line_rect, time_drag_id, egui::Sense::drag())
-                .on_hover_and_drag_cursor(timeline_cursor_icon);
+                let response = ui
+                    .interact(line_rect, time_drag_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(timeline_cursor_icon);
 
-            is_hovering = !is_anything_being_dragged && response.hovered();
+                is_hovering = !is_anything_being_dragged && response.hovered();
 
-            if response.dragged() {
-                if let Some(pointer_pos) = pointer_pos {
-                    if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                        let time = time_ranges_ui.clamp_time(time);
-                        time_ctrl.set_time(time);
-                        time_ctrl.pause();
+                if response.dragged() {
+                    if let Some(pointer_pos) = pointer_pos {
+                        if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                            let time = time_ranges_ui.clamp_time(time);
+                            time_ctrl.set_time(time);
+                            time_ctrl.pause();
+                        }
                     }
                 }
-            }
 
-            let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.fg_stroke
-            } else if is_hovering {
-                ui.style().visuals.widgets.hovered.fg_stroke
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke
-            };
-            paint_time_cursor(
-                time_area_painter,
-                x,
-                timeline_rect.top()..=ui.max_rect().bottom(),
-                stroke,
-            );
+                let stroke = if response.dragged() {
+                    ui.style().visuals.widgets.active.fg_stroke
+                } else if is_hovering {
+                    ui.style().visuals.widgets.hovered.fg_stroke
+                } else {
+                    ui.visuals().widgets.inactive.fg_stroke
+                };
+                paint_time_cursor(
+                    time_area_painter,
+                    x,
+                    timeline_rect.top()..=ui.max_rect().bottom(),
+                    stroke,
+                );
+            }
         }
     }
 
