@@ -22,7 +22,7 @@ def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.ArrayLike]:
     Converts trajectory string into translation and rotation matrices.
 
     Args:
-        traj_string (str): A space-delimited file where each line represents a camera position at a particular timestamp.
+        traj_string: A space-delimited file where each line represents a camera position at a particular timestamp.
             The file has seven columns:
             * Column 1: timestamp
             * Columns 2-4: rotation (axis-angle representation in radians)
@@ -201,8 +201,8 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
             quaternion = rot.as_quat()
 
             if orientation == "portrait":
-                # TODO should probably be done via log_view_coordinates? so that rotation image also rotates the intrinsics/extrinsics
-                # for some reason need to rotate the camera parameters counterclockwise, while the image is rotated clockwise
+                # TODO should probably be done via log_view_coordinates? so that rotation image also rotates the
+                # intrinsics/extrinsics
                 translation, quaternion, intrinsic = rotate_camera_90_degrees_counterclockwise(
                     translation, quaternion, intrinsic
                 )

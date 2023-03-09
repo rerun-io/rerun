@@ -223,7 +223,7 @@ def download_data(
     download_dir: the directory to download data to
     keep_zip: whether to keep the downloaded zip files after extracting them
     raw_dataset_assets: a list of asset types to download from the raw dataset, if dataset is "raw"
-    should_download_laser_scanner_point_cloud (bool): whether to download the laser scanner point cloud data, if available
+    should_download_laser_scanner_point_cloud: whether to download the laser scanner point cloud data, if available
 
     Returns: None
     """
