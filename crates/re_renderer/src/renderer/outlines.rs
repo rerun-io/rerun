@@ -67,22 +67,11 @@ use smallvec::smallvec;
 ///
 /// Object index 0 is special: It is the default background of each outline channel, thus rendering with it
 /// is a form of "active no outline", effectively subtracting from the outline channel.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OutlineMaskPreference(pub Option<[u8; 2]>);
 
 impl OutlineMaskPreference {
     pub const NONE: OutlineMaskPreference = OutlineMaskPreference(None);
-
-    #[inline]
-    pub fn max(self, other: OutlineMaskPreference) -> Self {
-        match self.0 {
-            Some(self_val) => match other.0 {
-                Some(other_val) => OutlineMaskPreference(Some(self_val.max(other_val))),
-                None => self,
-            },
-            None => other,
-        }
-    }
 
     #[inline]
     pub fn some(channel_a: u8, channel_b: u8) -> Self {

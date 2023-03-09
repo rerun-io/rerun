@@ -444,7 +444,7 @@ impl SelectionState {
                         } else {
                             &mut outline_mask.overall
                         };
-                        *outline_mask_target = outline_mask_target
+                        *outline_mask_target = (*outline_mask_target)
                             .max(OutlineMaskPreference::some(next_selection_mask_index(), 0));
                     }
                 }
@@ -511,7 +511,7 @@ impl SelectionState {
                         } else {
                             &mut outlined_entity.overall
                         };
-                        *outline_mask_target = outline_mask_target
+                        *outline_mask_target = (*outline_mask_target)
                             .max(OutlineMaskPreference::some(0, next_selection_mask_index()));
                     }
                 }
