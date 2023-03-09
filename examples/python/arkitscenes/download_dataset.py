@@ -60,7 +60,7 @@ missing_3dod_assets_video_ids = [
 ]
 
 
-def raw_files(video_id, assets, metadata):
+def raw_files(video_id: str, assets: List[str], metadata: pd.DataFrame) -> List[str]:
     file_names = []
     for asset in assets:
         if HIGRES_DEPTH_ASSET_NAME == asset:
@@ -97,7 +97,7 @@ def raw_files(video_id, assets, metadata):
     return file_names
 
 
-def download_file(url, file_name, dst):
+def download_file(url: str, file_name: str, dst: Path) -> bool:
     os.makedirs(dst, exist_ok=True)
     filepath = os.path.join(dst, file_name)
 
@@ -115,7 +115,7 @@ def download_file(url, file_name, dst):
     return True
 
 
-def unzip_file(file_name, dst, keep_zip=True):
+def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
     filepath = os.path.join(dst, file_name)
     print(f"Unzipping zip file {filepath}")
     command = f"unzip -oq {filepath} -d {dst}"
@@ -129,7 +129,7 @@ def unzip_file(file_name, dst, keep_zip=True):
     return True
 
 
-def download_laser_scanner_point_clouds_for_video(video_id, metadata, download_dir):
+def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.DataFrame, download_dir: Path) -> None:
     video_metadata = metadata.loc[metadata["video_id"] == float(video_id)]
     visit_id = video_metadata["visit_id"].iat[0]
     has_laser_scanner_point_clouds = video_metadata["has_laser_scanner_point_clouds"].iat[0]
@@ -149,7 +149,7 @@ def download_laser_scanner_point_clouds_for_video(video_id, metadata, download_d
         download_laser_scanner_point_clouds(point_cloud_id, visit_id, download_dir)
 
 
-def laser_scanner_point_clouds_for_visit_id(visit_id, download_dir):
+def laser_scanner_point_clouds_for_visit_id(visit_id: int, download_dir: Path) -> List[str]:
     point_cloud_to_visit_id_mapping_filename = "laser_scanner_point_clouds_mapping.csv"
     if not os.path.exists(point_cloud_to_visit_id_mapping_filename):
         point_cloud_to_visit_id_mapping_url = (
@@ -177,8 +177,8 @@ def laser_scanner_point_clouds_for_visit_id(visit_id, download_dir):
     return point_cloud_ids_list
 
 
-def download_laser_scanner_point_clouds(laser_scanner_point_cloud_id, visit_id, download_dir):
-    laser_scanner_point_clouds_folder_path = os.path.join(download_dir, POINT_CLOUDS_FOLDER, str(visit_id))
+def download_laser_scanner_point_clouds(laser_scanner_point_cloud_id: str, visit_id: int, download_dir: Path) -> None:
+    laser_scanner_point_clouds_folder_path = download_dir / POINT_CLOUDS_FOLDER / str(visit_id)
     os.makedirs(laser_scanner_point_clouds_folder_path, exist_ok=True)
 
     for extension in [".ply", "_pose.txt"]:
@@ -190,11 +190,11 @@ def download_laser_scanner_point_clouds(laser_scanner_point_cloud_id, visit_id, 
         download_file(file_url, filename, laser_scanner_point_clouds_folder_path)
 
 
-def get_metadata(dataset, download_dir):
+def get_metadata(dataset: str, download_dir: Path) -> pd.DataFrame:
     filename = "metadata.csv"
     url = f"{ARkitscense_url}/threedod/{filename}" if "3dod" == dataset else f"{ARkitscense_url}/{dataset}/{filename}"
-    dst_folder = os.path.join(download_dir, dataset)
-    dst_file = os.path.join(dst_folder, filename)
+    dst_folder = download_dir / dataset
+    dst_file = dst_folder / filename
 
     if not download_file(url, filename, dst_folder):
         return
@@ -207,7 +207,7 @@ def download_data(
     dataset: str,
     video_ids: List[str],
     dataset_splits: List[str],
-    download_dir: str,
+    download_dir: Path,
     keep_zip: bool,
     raw_dataset_assets: Optional[List[str]] = None,
     should_download_laser_scanner_point_cloud: bool = False,
@@ -232,17 +232,16 @@ def download_data(
         print(f"Error retrieving metadata for dataset {dataset}")
         return
 
-    download_dir = os.path.abspath(download_dir)
     for video_id in sorted(set(video_ids)):
         split = dataset_splits[video_ids.index(video_id)]
-        dst_dir = os.path.join(download_dir, dataset, split)
+        dst_dir = download_dir / dataset / split
         if dataset == "raw":
             url_prefix = ""
             file_names = []
             if not raw_dataset_assets:
                 print(f"Warning: No raw assets given for video id {video_id}")
             else:
-                dst_dir = os.path.join(dst_dir, str(video_id))
+                dst_dir = dst_dir / str(video_id)
                 url_prefix = f"{ARkitscense_url}/raw/{split}/{video_id}" + "/{}"
                 file_names = raw_files(video_id, raw_dataset_assets, metadata)
         elif dataset == "3dod":
