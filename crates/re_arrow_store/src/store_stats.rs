@@ -69,6 +69,7 @@ impl DataStore {
     /// Returns the number of timeless index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its timeless index tables.
     pub fn total_timeless_index_rows(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_indices
             .values()
             .map(|table| table.total_rows())
@@ -78,6 +79,7 @@ impl DataStore {
     /// Returns the size of the timeless index data stored across this entire store, i.e. the sum
     /// of the size of the data stored across all of its timeless index tables, in bytes.
     pub fn total_timeless_index_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_indices
             .values()
             .map(|table| table.total_size_bytes())
@@ -87,6 +89,7 @@ impl DataStore {
     /// Returns the number of timeless component rows stored across this entire store, i.e. the
     /// sum of the number of rows across all of its timeless component tables.
     pub fn total_timeless_component_rows(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_components
             .values()
             .map(|table| table.total_rows())
@@ -96,6 +99,7 @@ impl DataStore {
     /// Returns the size of the timeless component data stored across this entire store, i.e. the
     /// sum of the size of the data stored across all of its timeless component tables, in bytes.
     pub fn total_timeless_component_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_components
             .values()
             .map(|table| table.total_size_bytes())
@@ -105,12 +109,14 @@ impl DataStore {
     /// Returns the number of temporal index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its temporal index tables.
     pub fn total_temporal_index_rows(&self) -> u64 {
+        crate::profile_function!();
         self.indices.values().map(|table| table.total_rows()).sum()
     }
 
     /// Returns the size of the temporal index data stored across this entire store, i.e. the sum
     /// of the size of the data stored across all of its temporal index tables, in bytes.
     pub fn total_temporal_index_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.indices
             .values()
             .map(|table| table.total_size_bytes())
@@ -120,6 +126,7 @@ impl DataStore {
     /// Returns the number of temporal component rows stored across this entire store, i.e. the
     /// sum of the number of rows across all of its temporal component tables.
     pub fn total_temporal_component_rows(&self) -> u64 {
+        crate::profile_function!();
         self.components
             .values()
             .map(|table| table.total_rows())
@@ -129,6 +136,7 @@ impl DataStore {
     /// Returns the size of the temporal component data stored across this entire store, i.e. the
     /// sum of the size of the data stored across all of its temporal component tables, in bytes.
     pub fn total_temporal_component_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.components
             .values()
             .map(|table| table.total_size_bytes())
