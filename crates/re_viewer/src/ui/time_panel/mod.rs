@@ -24,6 +24,8 @@ use time_ranges_ui::TimeRangesUi;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
+    data_dentity_graph_painter: data_desity_graph::DataDensityGraphPainter,
+
     /// Width of the entity name columns previous frame.
     prev_col_width: f32,
 
@@ -39,6 +41,7 @@ pub(crate) struct TimePanel {
 impl Default for TimePanel {
     fn default() -> Self {
         Self {
+            data_dentity_graph_painter: Default::default(),
             prev_col_width: 400.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
@@ -174,6 +177,8 @@ impl TimePanel {
         ui: &mut egui::Ui,
     ) {
         crate::profile_function!();
+
+        self.data_dentity_graph_painter.begin_frame();
 
         //               |timeline            |
         // ------------------------------------
@@ -435,6 +440,7 @@ impl TimePanel {
                 .unwrap_or(&empty);
 
             data_desity_graph::data_density_graph_ui(
+                &mut self.data_dentity_graph_painter,
                 ctx,
                 blueprint,
                 time_area_response,
@@ -538,6 +544,7 @@ impl TimePanel {
                         .unwrap_or(&empty_messages_over_time);
 
                     data_desity_graph::data_density_graph_ui(
+                        &mut self.data_dentity_graph_painter,
                         ctx,
                         blueprint,
                         time_area_response,

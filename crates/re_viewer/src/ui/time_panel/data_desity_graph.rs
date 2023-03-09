@@ -2,8 +2,7 @@
 
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use egui::{epaint::Vertex, pos2, remap, Color32, NumExt as _, Rect, Shape};
-use itertools::Itertools as _;
+use egui::{epaint::Vertex, pos2, remap, NumExt as _, Rect, Shape};
 
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 
@@ -17,37 +16,44 @@ use super::time_ranges_ui::TimeRangesUi;
 const MARGIN_X: f32 = 5.0;
 const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 
-fn smooth(density: &[f32]) -> Vec<f32> {
-    crate::profile_function!();
+// ----------------------------------------------------------------------------
 
-    fn kernel(x: f32) -> f32 {
-        (0.25 * std::f32::consts::TAU * x).cos()
-    }
+/// Persistent data for painting the data density graph.
+///
+/// Used to dynamically normalize the data density graph based on
+/// the output of the previous frame.
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+pub struct DataDensityGraphPainter {
+    /// The maximum density of the previous frame.
+    previous_max_density: f32,
 
-    let mut kernel = [
-        kernel(-2.0 / 3.0),
-        kernel(-1.0 / 3.0),
-        kernel(0.0 / 3.0),
-        kernel(1.0 / 3.0),
-        kernel(2.0 / 3.0),
-    ];
-    let kernel_sum = kernel.iter().sum::<f32>();
-    for k in &mut kernel {
-        *k /= kernel_sum;
-    }
-
-    (0..density.len())
-        .map(|i| {
-            let mut sum = 0.0;
-            for (j, &k) in kernel.iter().enumerate() {
-                if let Some(&density) = density.get((i + j).saturating_sub(2)) {
-                    sum += k * density;
-                }
-            }
-            sum
-        })
-        .collect()
+    next_max_density: f32,
 }
+
+impl DataDensityGraphPainter {
+    pub fn begin_frame(&mut self) {
+        if self.next_max_density > 0.0 {
+            // TODO(emilk): maybe a smooth transition would be better?
+            self.previous_max_density = self.next_max_density;
+            self.next_max_density = 0.0;
+        }
+    }
+
+    /// Return something in the 0-1 range.
+    pub fn normalize_density(&mut self, density: f32) -> f32 {
+        debug_assert!(density >= 0.0);
+
+        self.next_max_density = self.next_max_density.max(density);
+
+        if self.previous_max_density > 0.0 {
+            (density / self.previous_max_density).at_most(1.0)
+        } else {
+            density
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 struct DensityGraph {
     /// 0 == min_x, n-1 == max_x
@@ -69,11 +75,17 @@ impl DensityGraph {
     }
 
     pub fn add(&mut self, x: f32, count: f32) {
+        debug_assert!(0.0 <= count);
+
         let i = remap(
             x,
             self.min_x..=self.max_x,
             0.0..=(self.density.len() as f32 - 1.0),
         );
+
+        if i <= -1.0 {
+            return;
+        }
 
         if false {
             // nearest neightbor:
@@ -84,7 +96,8 @@ impl DensityGraph {
             }
         } else {
             // linearly interpolate where we add the count:
-            let fract = i.fract();
+            let fract = i - i.floor();
+            debug_assert!(0.0 <= fract && fract <= 1.0);
             let i = i.floor() as usize;
 
             if let Some(bucket) = self.density.get_mut(i) {
@@ -97,12 +110,11 @@ impl DensityGraph {
     }
 
     pub fn paint(
-        mut self,
+        &self,
+        data_dentity_graph_painter: &mut DataDensityGraphPainter,
         y_range: RangeInclusive<f32>,
         painter: &egui::Painter,
-        inactive_color: Color32,
     ) {
-        self.density = smooth(&self.density);
         crate::profile_function!();
 
         let (min_y, max_y) = (*y_range.start(), *y_range.end());
@@ -123,11 +135,6 @@ impl DensityGraph {
         // x
         // 0  1 2   3
 
-        fn height_from_density(density: f32) -> f32 {
-            5.0 * density // TODO
-        }
-
-        let color = inactive_color; // TODO: different color for select regions ?
         let uv = egui::Pos2::ZERO;
 
         let mut mesh = egui::Mesh::default();
@@ -144,8 +151,16 @@ impl DensityGraph {
                 self.min_x..=self.max_x,
             );
 
-            let radius = height_from_density(density).at_most(max_radius);
-            // TODO: color from density
+            let normalized_density = data_dentity_graph_painter.normalize_density(density);
+            let radius = if normalized_density == 0.0 {
+                0.0
+            } else {
+                // Make sure we see small things even when they are dwarfed by the max:
+                const MIN_RADIUS: f32 = 1.0;
+                (max_radius * normalized_density).at_least(MIN_RADIUS)
+            };
+            let color =
+                egui::Color32::from_gray(egui::lerp(128.0..=255.0, normalized_density) as u8);
 
             mesh.vertices.push(Vertex {
                 pos: pos2(x, center_y - radius),
@@ -170,8 +185,48 @@ impl DensityGraph {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+fn smooth(density: &[f32]) -> Vec<f32> {
+    crate::profile_function!();
+
+    fn kernel(x: f32) -> f32 {
+        (0.25 * std::f32::consts::TAU * x).cos()
+    }
+
+    let mut kernel = [
+        kernel(-2.0 / 3.0),
+        kernel(-1.0 / 3.0),
+        kernel(0.0 / 3.0),
+        kernel(1.0 / 3.0),
+        kernel(2.0 / 3.0),
+    ];
+    let kernel_sum = kernel.iter().sum::<f32>();
+    for k in &mut kernel {
+        *k /= kernel_sum;
+        debug_assert!(k.is_finite() && 0.0 < *k);
+    }
+
+    (0..density.len())
+        .map(|i| {
+            let mut sum = 0.0;
+            for (j, &k) in kernel.iter().enumerate() {
+                if let Some(&density) = density.get((i + j).saturating_sub(2)) {
+                    debug_assert!(density >= 0.0);
+                    sum += k * density;
+                }
+            }
+            debug_assert!(sum.is_finite() && 0.0 <= sum);
+            sum
+        })
+        .collect()
+}
+
+// ----------------------------------------------------------------------------
+
 #[allow(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
+    data_dentity_graph_painter: &mut DataDensityGraphPainter,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
     time_area_response: &egui::Response,
@@ -192,25 +247,9 @@ pub fn data_density_graph_ui(
     let mut density_graph = DensityGraph::new(full_width_rect.x_range());
 
     // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
-    let is_selected = ctx.selection().iter().contains(&select_on_click);
-
-    // // painting each data point as a separate circle is slow (too many circles!)
-    // // so we join time points that are close together.
-    // let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f64::INFINITY);
-    // let hovered_color = ui.visuals().widgets.hovered.text_color();
-    // let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
+    // let is_selected = ctx.selection().iter().contains(&select_on_click);
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-
-    let inactive_color = if is_selected {
-        ui.visuals().selection.stroke.color
-    } else {
-        ui.visuals()
-            .widgets
-            .inactive
-            .text_color()
-            .linear_multiply(0.75)
-    };
 
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = TimeRange::EMPTY;
@@ -247,7 +286,12 @@ pub fn data_density_graph_ui(
         add_data_point(time, num_messages_at_time);
     }
 
-    density_graph.paint(full_width_rect.y_range(), time_area_painter, inactive_color);
+    density_graph.density = smooth(&density_graph.density);
+    density_graph.paint(
+        data_dentity_graph_painter,
+        full_width_rect.y_range(),
+        time_area_painter,
+    );
 
     if 0 < num_hovered_messages {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
