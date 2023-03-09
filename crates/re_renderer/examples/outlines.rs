@@ -3,10 +3,13 @@ use re_renderer::{
     renderer::{MeshInstance, OutlineConfig},
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
+use winit::event::{ElementState, VirtualKeyCode};
 
 mod framework;
 
 struct Outlines {
+    is_paused: bool,
+    seconds_since_startup: f32,
     model_mesh_instances: Vec<MeshInstance>,
 }
 
@@ -23,6 +26,8 @@ impl framework::Example for Outlines {
 
     fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         Outlines {
+            is_paused: false,
+            seconds_since_startup: 0.0,
             model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx),
         }
     }
@@ -31,12 +36,15 @@ impl framework::Example for Outlines {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        time: &framework::Time,
+        _time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let mut view_builder = ViewBuilder::default();
 
-        let seconds_since_startup = time.seconds_since_startup();
+        if !self.is_paused {
+            self.seconds_since_startup += 0.3 / 1000.0;
+        }
+        let seconds_since_startup = self.seconds_since_startup;
         // TODO(#1426): unify camera logic between examples.
         // let camera_position = glam::vec3(
         //     (seconds_since_startup * 0.5).sin() * 10.0,
@@ -135,7 +143,15 @@ impl framework::Example for Outlines {
         }]
     }
 
-    fn on_keyboard_input(&mut self, _input: winit::event::KeyboardInput) {}
+    fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
+        #[allow(clippy::single_match)]
+        match (input.state, input.virtual_keycode) {
+            (ElementState::Pressed, Some(VirtualKeyCode::Space)) => {
+                self.is_paused ^= true;
+            }
+            _ => {}
+        }
+    }
 }
 
 fn main() {
