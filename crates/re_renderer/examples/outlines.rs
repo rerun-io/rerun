@@ -46,11 +46,6 @@ impl framework::Example for Outlines {
         }
         let seconds_since_startup = self.seconds_since_startup;
         // TODO(#1426): unify camera logic between examples.
-        // let camera_position = glam::vec3(
-        //     (seconds_since_startup * 0.5).sin() * 10.0,
-        //     2.5,
-        //     (seconds_since_startup * 0.5).cos() * 10.0,
-        // );
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
 
         view_builder
