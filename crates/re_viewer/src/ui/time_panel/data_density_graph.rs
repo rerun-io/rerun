@@ -14,7 +14,11 @@ use crate::{
 
 use super::time_ranges_ui::TimeRangesUi;
 
+// ----------------------------------------------------------------------------
+
 const MARGIN_X: f32 = 2.0;
+
+/// Higher = slower, but more accurate.
 const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 
 // ----------------------------------------------------------------------------
@@ -46,12 +50,15 @@ impl DataDensityGraphPainter {
             egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
         );
 
-        if self.previous_max_density != new {
+        if (self.previous_max_density - new).abs() > 0.01 {
             egui_ctx.request_repaint();
         }
 
         self.previous_max_density = new;
-        self.next_max_density = 0.0;
+
+        // If we set this to zero, then a single data point will look weirdly high,
+        // so we set it to a small value instead.
+        self.next_max_density = 2.0;
     }
 
     /// Return something in the 0-1 range.
@@ -179,7 +186,7 @@ impl DensityGraph {
             let color = if hovered_x_range.contains(&x) {
                 Color32::WHITE
             } else {
-                full_color.gamma_multiply(remap_clamp(normalized_density, 0.0..=1.0, 0.35..=1.0))
+                full_color.gamma_multiply(remap_clamp(normalized_density, 0.0..=1.0, 0.5..=1.0))
             };
 
             mesh.vertices.push(Vertex {
