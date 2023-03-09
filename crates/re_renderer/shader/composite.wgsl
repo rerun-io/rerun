@@ -1,17 +1,13 @@
 #import <./types.wgsl>
 #import <./utils/srgb.wgsl>
 #import <./global_bindings.wgsl>
-
-struct VertexOutput {
-    @builtin(position) position: Vec4,
-    @location(0) texcoord: Vec2,
-};
+#import <./screen_triangle_vertex.wgsl>
 
 @group(1) @binding(0)
 var input_texture: texture_2d<f32>;
 
 @fragment
-fn main(in: VertexOutput) -> @location(0) Vec4 {
+fn main(in: FragmentInput) -> @location(0) Vec4 {
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.

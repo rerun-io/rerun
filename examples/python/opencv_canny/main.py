@@ -31,6 +31,8 @@ def run_canny() -> None:
     # Create a new video capture
     cap = cv2.VideoCapture(0)
 
+    frame_nr = 0
+
     while cap.isOpened():
         # Read the frame
         ret, img = cap.read()
@@ -38,9 +40,13 @@ def run_canny() -> None:
             print("Can't receive frame (stream end?). Exiting ...")
             break
 
-        # Get the current frame time
-        frame_time = cap.get(cv2.CAP_PROP_POS_MSEC)
-        rr.set_time_nanos("frame_time", int(frame_time * 1000000))
+        # Get the current frame time. On some platforms it always returns zero.
+        frame_time_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+        if frame_time_ms != 0:
+            rr.set_time_nanos("frame_time", int(frame_time_ms * 1_000_000))
+
+        rr.set_time_sequence("frame_nr", frame_nr)
+        frame_nr += 1
 
         # Log the original image
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

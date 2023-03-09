@@ -836,6 +836,7 @@ impl IndexBucket {
             return; // early read-only exit
         }
 
+        crate::profile_scope!("sort");
         self.indices.write().sort();
     }
 
@@ -846,6 +847,7 @@ impl IndexBucket {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
+        crate::profile_function!();
         self.sort_indices_if_needed();
 
         let IndexBucketIndices {

@@ -21,6 +21,9 @@ pub enum ResourceHandle<InnerHandle: slotmap::Key> {
         /// Querying it during any other frame will fail.
         valid_frame_index: u64,
     },
+
+    /// No handle, causes error on resolve.
+    Invalid,
 }
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -136,6 +139,7 @@ where
                     }
                 })
             }
+            ResourceHandle::Invalid => Err(ResourceManagerError::NullHandle),
         }
     }
 

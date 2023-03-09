@@ -52,8 +52,8 @@ impl RemoteViewerServer {
     }
 }
 
-impl crate::LogSink for RemoteViewerServer {
-    fn send(&mut self, msg: LogMsg) {
+impl crate::sink::LogSink for RemoteViewerServer {
+    fn send(&self, msg: LogMsg) {
         if let Err(err) = self.sender.send(msg) {
             re_log::error_once!("Failed to send log message to web server: {err}");
         }
@@ -72,14 +72,14 @@ impl crate::LogSink for RemoteViewerServer {
 /// NOTE: you can not connect one `Session` to another.
 ///
 /// This function returns immediately.
-pub fn serve_web_viewer(session: &mut crate::Session, open_browser: bool) {
-    if !session.is_enabled() {
-        re_log::debug!("Rerun disabled - call to serve() ignored");
-        return;
-    }
+#[must_use]
+pub fn new_sink(open_browser: bool) -> Box<dyn crate::sink::LogSink> {
+    // TODO(emilk): creating a tokio runtime on-demand like this is not great. Not sure how this interacts with `#[tokio::main]`, for instance.
+    use once_cell::sync::Lazy;
+    use parking_lot::Mutex;
+    static TOKIO_RUNTIME: Lazy<Mutex<tokio::runtime::Runtime>> = Lazy::new(|| {
+        Mutex::new(tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"))
+    });
 
-    session.set_sink(Box::new(RemoteViewerServer::new(
-        session.tokio_runtime(),
-        open_browser,
-    )));
+    Box::new(RemoteViewerServer::new(&TOKIO_RUNTIME.lock(), open_browser))
 }

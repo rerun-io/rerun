@@ -20,7 +20,7 @@ all-features = true
 re_format.workspace = true
 re_log.workspace = true
 
-ahash = "0.8"
+ahash.workspace = true
 backtrace = { version = "0.3" }
 emath.workspace = true
 instant = { version = "0.1", features = ["wasm-bindgen"] }

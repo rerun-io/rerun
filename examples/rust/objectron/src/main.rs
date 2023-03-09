@@ -18,9 +18,11 @@ use std::{
 
 use anyhow::{anyhow, Context as _};
 
-use rerun::external::re_log;
-use rerun::time::{Time, TimePoint, TimeType, Timeline};
-use rerun::{MsgSender, Session};
+use rerun::{
+    external::re_log,
+    time::{Time, TimePoint, TimeType, Timeline},
+    MsgSender, Session,
+};
 
 // --- Rerun logging ---
 
@@ -70,7 +72,7 @@ impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
 }
 
 fn log_coordinate_space(
-    session: &mut Session,
+    session: &Session,
     ent_path: impl Into<rerun::EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
@@ -85,7 +87,7 @@ fn log_coordinate_space(
 }
 
 fn log_ar_frame(
-    session: &mut Session,
+    session: &Session,
     objects: &[objectron::Object],
     annotations: &AnnotationsPerFrame<'_>,
     ar_frame: &ArFrame,
@@ -109,10 +111,7 @@ fn log_ar_frame(
     Ok(())
 }
 
-fn log_baseline_objects(
-    session: &mut Session,
-    objects: &[objectron::Object],
-) -> anyhow::Result<()> {
+fn log_baseline_objects(session: &Session, objects: &[objectron::Object]) -> anyhow::Result<()> {
     use rerun::components::{Box3D, ColorRGBA, Label, Rigid3, Transform};
 
     let boxes = objects.iter().filter_map(|object| {
@@ -152,7 +151,7 @@ fn log_baseline_objects(
     Ok(())
 }
 
-fn log_video_frame(session: &mut Session, ar_frame: &ArFrame) -> anyhow::Result<()> {
+fn log_video_frame(session: &Session, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
     let tensor = rerun::components::Tensor::tensor_from_jpeg_file(image_path)?;
 
@@ -165,7 +164,7 @@ fn log_video_frame(session: &mut Session, ar_frame: &ArFrame) -> anyhow::Result<
 }
 
 fn log_ar_camera(
-    session: &mut Session,
+    session: &Session,
     timepoint: TimePoint,
     ar_camera: &objectron::ArCamera,
 ) -> anyhow::Result<()> {
@@ -212,7 +211,7 @@ fn log_ar_camera(
 }
 
 fn log_feature_points(
-    session: &mut Session,
+    session: &Session,
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
@@ -245,7 +244,7 @@ fn log_feature_points(
 }
 
 fn log_frame_annotations(
-    session: &mut Session,
+    session: &Session,
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
@@ -363,7 +362,7 @@ fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloat
     Ok(std::time::Duration::from_secs_f64(seconds))
 }
 
-fn run(session: &mut Session, args: &Args) -> anyhow::Result<()> {
+fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
     // Parse protobuf dataset
     let rec_info = args.recording.info().with_context(|| {
         use clap::ValueEnum as _;
@@ -433,16 +432,12 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let mut session = Session::init("objectron_rs", true);
-
-    let should_spawn = args.rerun.on_startup(&mut session)?;
-    if should_spawn {
-        rerun::native_viewer::spawn(session, move |mut session| run(&mut session, &args))?;
-    } else {
-        run(&mut session, &args)?;
-        args.rerun.on_teardown();
-    }
-    Ok(())
+    let default_enabled = true;
+    args.rerun
+        .clone()
+        .run("objectron_rs", default_enabled, move |session| {
+            run(&session, &args).unwrap();
+        })
 }
 
 // --- Protobuf parsing ---

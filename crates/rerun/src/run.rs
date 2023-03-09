@@ -232,7 +232,7 @@ fn profiler(args: &Args) -> re_viewer::Profiler {
 }
 
 async fn run_impl(
-    build_info: re_build_info::BuildInfo,
+    _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
 ) -> anyhow::Result<()> {
@@ -264,7 +264,7 @@ async fn run_impl(
             } else {
                 #[cfg(feature = "native_viewer")]
                 return native_viewer_connect_to_ws_url(
-                    build_info,
+                    _build_info,
                     call_source.app_env(),
                     startup_options,
                     profiler,
@@ -330,7 +330,7 @@ async fn run_impl(
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
-                build_info,
+                _build_info,
                 &call_source.app_env(),
                 startup_options,
                 re_ui,

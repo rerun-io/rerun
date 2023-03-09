@@ -24,9 +24,12 @@
     "cSpell.words": [
         "andreas",
         "bbox",
+        "bindgroup",
         "emath",
         "framebuffer",
         "hoverable",
+        "ilog",
+        "jumpflooding",
         "Keypoint",
         "memoffset",
         "nyud",
@@ -37,6 +40,7 @@
         "texcoords",
         "Tonemapper",
         "tonemapping",
+        "voronoi",
         "vram",
         "Wgsl"
     ],

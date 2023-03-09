@@ -20,6 +20,14 @@ use crate::msg_bundle::Component;
 #[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq, Eq)]
 pub struct TextEntry {
     pub body: String,
+
+    // Recommended to be one of:
+    // * `"CRITICAL"`
+    // * `"ERROR"`
+    // * `"WARN"`
+    // * `"INFO"`
+    // * `"DEBUG"`
+    // * `"TRACE"`
     pub level: Option<String>,
 }
 

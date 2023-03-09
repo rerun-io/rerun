@@ -7,9 +7,22 @@ pub enum HardwareTier {
     /// Maintains strict WebGL capability.
     Web,
     // Run natively with Vulkan/Metal but don't demand anything that isn't widely available.
-    //Native,
+    Native,
     // Run natively with Vulkan/Metal and require additional features.
     //HighEnd
+}
+
+impl Default for HardwareTier {
+    fn default() -> Self {
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self::Web
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Self::Native
+        }
+    }
 }
 
 impl HardwareTier {

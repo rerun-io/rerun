@@ -528,6 +528,8 @@ fn paint_view(
 
         pixels_from_point,
         auto_size_config,
+
+        ..Default::default()
     };
 
     let Ok(callback) = create_scene_paint_callback(

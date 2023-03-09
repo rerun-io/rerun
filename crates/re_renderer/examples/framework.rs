@@ -39,11 +39,13 @@ pub trait Example {
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput);
 }
 
+#[allow(dead_code)]
 pub struct SplitView {
     pub target_location: glam::Vec2,
     pub resolution_in_pixel: [u32; 2],
 }
 
+#[allow(dead_code)]
 pub fn split_resolution(
     resolution: [u32; 2],
     num_rows: usize,
@@ -69,6 +71,7 @@ pub fn split_resolution(
 pub struct Time {
     start_time: Instant,
     last_draw_time: Instant,
+    pub last_frame_duration: instant::Duration,
 }
 
 impl Time {
@@ -120,7 +123,7 @@ impl<E: Example + 'static> Application<E> {
             .await
             .context("failed to find an appropriate adapter")?;
 
-        let hardware_tier = HardwareTier::Web;
+        let hardware_tier = HardwareTier::default();
         hardware_tier.check_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
         let (device, queue) = adapter
             .request_device(
@@ -173,6 +176,7 @@ impl<E: Example + 'static> Application<E> {
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
+                last_frame_duration: instant::Duration::from_secs(0),
             },
 
             example,
@@ -303,6 +307,7 @@ impl<E: Example + 'static> Application<E> {
                     let current_time = Instant::now();
                     let time_passed = current_time - self.time.last_draw_time;
                     self.time.last_draw_time = current_time;
+                    self.time.last_frame_duration = time_passed;
 
                     // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
                     // Do it only every second.
@@ -327,6 +332,21 @@ impl<E: Example + 'static> Application<E> {
             }
         });
     }
+}
+
+#[allow(dead_code)]
+pub fn load_rerun_mesh(re_ctx: &mut RenderContext) -> Vec<re_renderer::renderer::MeshInstance> {
+    let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
+    let mut zip = zip::ZipArchive::new(reader).unwrap();
+    let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
+    let mut obj_data = Vec::new();
+    std::io::Read::read_to_end(&mut zipped_obj, &mut obj_data).unwrap();
+    re_renderer::importer::obj::load_obj_from_buffer(
+        &obj_data,
+        re_renderer::resource_managers::ResourceLifeTime::LongLived,
+        re_ctx,
+    )
+    .unwrap()
 }
 
 async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
