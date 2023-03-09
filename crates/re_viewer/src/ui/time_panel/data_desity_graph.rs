@@ -1,25 +1,157 @@
 //! Show the data density over time for a data stream.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use egui::{NumExt as _, Rect, Shape};
+use egui::{epaint::Vertex, pos2, remap, Color32, Rect, Shape};
 use itertools::Itertools as _;
 
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 
 use crate::{
     misc::{Item, ViewerContext},
-    ui::{time_panel::ball_scatterer::BallScatterer, Blueprint},
+    ui::Blueprint,
 };
 
 use super::time_ranges_ui::TimeRangesUi;
 
-struct Stretch {
-    start_x: f32,
-    time_range: TimeRange,
-    selected: bool,
-    /// Times x count at the given time
-    time_points: Vec<(TimeInt, usize)>,
+const MARGIN_X: f32 = 5.0;
+
+fn smooth(density: &[f32]) -> Vec<f32> {
+    fn kernel(x: f32) -> f32 {
+        (0.25 * std::f32::consts::TAU * x).cos()
+    }
+
+    let mut kernel = [
+        kernel(-2.0 / 3.0),
+        kernel(-1.0 / 3.0),
+        kernel(0.0 / 3.0),
+        kernel(1.0 / 3.0),
+        kernel(2.0 / 3.0),
+    ];
+    let kernel_sum = kernel.iter().sum::<f32>();
+    for k in &mut kernel {
+        *k /= kernel_sum;
+    }
+
+    (0..density.len())
+        .map(|i| {
+            let mut sum = 0.0;
+            for (j, &k) in kernel.iter().enumerate() {
+                if let Some(&density) = density.get((i + j).saturating_sub(2)) {
+                    sum += k * density;
+                }
+            }
+            sum
+        })
+        .collect()
+}
+
+struct DensityGraph {
+    /// 0 == min_x, n-1 == max_x
+    density: Vec<f32>,
+    min_x: f32,
+    max_x: f32,
+}
+
+impl DensityGraph {
+    pub fn new(x_range: RangeInclusive<f32>) -> Self {
+        let min_x = *x_range.start() - MARGIN_X;
+        let max_x = *x_range.end() + MARGIN_X;
+        let n = (max_x - min_x).ceil() as usize;
+        Self {
+            density: vec![0.0; n],
+            min_x,
+            max_x,
+        }
+    }
+
+    pub fn add(&mut self, x: f32, count: f32) {
+        let i = remap(
+            x,
+            self.min_x..=self.max_x,
+            0.0..=(self.density.len() as f32 - 1.0),
+        );
+
+        if false {
+            // nearest neightbor:
+            let i = i.round() as usize;
+
+            if let Some(bucket) = self.density.get_mut(i) {
+                *bucket += count;
+            }
+        } else {
+            // linearly interpolate where we add the count:
+            let fract = i.fract();
+            let i = i.floor() as usize;
+
+            if let Some(bucket) = self.density.get_mut(i) {
+                *bucket += (1.0 - fract) * count;
+            }
+            if let Some(bucket) = self.density.get_mut(i + 1) {
+                *bucket += fract * count;
+            }
+        }
+    }
+
+    pub fn paint(mut self, center_y: f32, painter: &egui::Painter, inactive_color: Color32) {
+        // We paint a symmetric thing, like so:
+        //
+        // 0  1 2   3
+        // x
+        //  \   x---x
+        //   \ /
+        //    x
+        //
+        //    x
+        //   / \
+        //  /   x---x
+        // x
+        // 0  1 2   3
+
+        self.density = smooth(&self.density);
+
+        fn height_from_density(density: f32) -> f32 {
+            5.0 * density // TODO
+        }
+
+        let color = inactive_color; // TODO: different color for select regions ?
+        let uv = egui::Pos2::ZERO;
+
+        let mut mesh = egui::Mesh::default();
+        mesh.vertices.reserve(2 * self.density.len());
+        mesh.indices.reserve(6 * (self.density.len() - 1));
+
+        for (i, &density) in self.density.iter().enumerate() {
+            // let x = self.min_x + i as f32;
+            let x = remap(
+                i as f32,
+                0.0..=(self.density.len() as f32 - 1.0),
+                self.min_x..=self.max_x,
+            );
+
+            let radiius = height_from_density(density);
+
+            mesh.vertices.push(Vertex {
+                pos: pos2(x, center_y - radiius),
+                color,
+                uv,
+            });
+            mesh.vertices.push(Vertex {
+                pos: pos2(x, center_y + radiius),
+                color,
+                uv,
+            });
+
+            if 0 < i {
+                let i = i as u32;
+                let base = 2 * (i - 1);
+                mesh.add_triangle(base, base + 1, base + 2);
+                mesh.add_triangle(base + 1, base + 2, base + 3);
+            }
+        }
+
+        painter.add(Shape::Mesh(mesh));
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -37,13 +169,18 @@ pub fn show_data_over_time(
 ) {
     crate::profile_function!();
 
+    let hover_radius = 5.0; // TODO
+    let center_y = full_width_rect.center().y;
+
+    // Density over x-axis in UI points.
+    let mut density_graph = DensityGraph::new(full_width_rect.x_range());
+
     // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
     let is_selected = ctx.selection().iter().contains(&select_on_click);
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
     let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f64::INFINITY);
-    let max_stretch_length_in_time = 1.0 / points_per_time; // TODO(emilk)
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
@@ -58,131 +195,49 @@ pub fn show_data_over_time(
             .linear_multiply(0.75)
     };
 
-    let mut shapes = vec![];
-    let mut scatter = BallScatterer::default();
-
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = TimeRange::EMPTY;
 
-    let mut paint_stretch = |stretch: &Stretch| {
-        let stop_x = time_ranges_ui
-            .x_from_time_f32(stretch.time_range.max.into())
-            .unwrap_or(stretch.start_x);
+    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
-        let num_messages: usize = stretch.time_points.iter().map(|(_time, count)| count).sum();
-        let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
-        let radius = radius.at_most(full_width_rect.height() / 3.0);
-        debug_assert!(radius.is_finite());
-
-        let x = (stretch.start_x + stop_x) * 0.5;
-        let pos = scatter.add(x, radius, (full_width_rect.top(), full_width_rect.bottom()));
-
-        let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
-            pos.distance(pointer_pos) < radius + 1.0
-        });
-
-        let mut color = if is_hovered {
-            hovered_color
-        } else {
-            inactive_color
-        };
-        if ui.visuals().dark_mode {
-            color = color.additive();
+    let mut add_data_point = |time_int: TimeInt, count: usize| {
+        if count == 0 {
+            return;
         }
+        let time_real = TimeReal::from(time_int);
+        if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
+            density_graph.add(x, num_timeless_messages as _);
 
-        let radius = if is_hovered {
-            1.75 * radius
-        } else if stretch.selected {
-            1.25 * radius
-        } else {
-            radius
-        };
-
-        shapes.push(Shape::circle_filled(pos, radius, color));
-
-        if is_hovered {
-            hovered_time_range = hovered_time_range.union(stretch.time_range);
-            num_hovered_messages += stretch
-                .time_points
-                .iter()
-                .map(|(_, count)| *count)
-                .sum::<usize>();
+            // TODO(emilk): handle hovering better
+            let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
+                pos2(x, center_y).distance(pointer_pos) < hover_radius
+            });
+            if is_hovered {
+                hovered_time_range = hovered_time_range.union(TimeRange::point(time_int));
+                num_hovered_messages += num_timeless_messages;
+            }
         }
     };
 
-    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
+    add_data_point(TimeInt::BEGINNING, num_timeless_messages);
 
-    if num_timeless_messages > 0 {
-        let time_int = TimeInt::BEGINNING;
-        let time_real = TimeReal::from(time_int);
-        if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-            let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
-            paint_stretch(&Stretch {
-                start_x: x,
-                time_range: TimeRange::point(time_int),
-                selected,
-                time_points: vec![(time_int, num_timeless_messages)],
-            });
-        }
-    }
-
-    let mut stretch: Option<Stretch> = None;
-
-    let margin = 5.0;
     let visible_time_range = TimeRange {
         min: time_ranges_ui
-            .time_from_x_f32(time_area_painter.clip_rect().left() - margin)
+            .time_from_x_f32(time_area_painter.clip_rect().left() - MARGIN_X)
             .map_or(TimeInt::MIN, |tf| tf.floor()),
 
         max: time_ranges_ui
-            .time_from_x_f32(time_area_painter.clip_rect().right() + margin)
+            .time_from_x_f32(time_area_painter.clip_rect().right() + MARGIN_X)
             .map_or(TimeInt::MAX, |tf| tf.ceil()),
     };
 
     for (&time, &num_messages_at_time) in
         num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
     {
-        if num_messages_at_time == 0 {
-            continue;
-        }
-        let time_real = TimeReal::from(time);
-
-        let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
-
-        if let Some(current_stretch) = &mut stretch {
-            if current_stretch.selected == selected
-                && (time - current_stretch.time_range.min).as_f64() < max_stretch_length_in_time
-            {
-                // extend:
-                current_stretch.time_range.max = time;
-                current_stretch
-                    .time_points
-                    .push((time, num_messages_at_time));
-            } else {
-                // stop the previous…
-                paint_stretch(current_stretch);
-
-                stretch = None;
-            }
-        }
-
-        if stretch.is_none() {
-            if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-                stretch = Some(Stretch {
-                    start_x: x,
-                    time_range: TimeRange::point(time),
-                    selected,
-                    time_points: vec![(time, num_messages_at_time)],
-                });
-            }
-        }
+        add_data_point(time, num_messages_at_time);
     }
 
-    if let Some(stretch) = stretch {
-        paint_stretch(&stretch);
-    }
-
-    time_area_painter.extend(shapes);
+    density_graph.paint(center_y, time_area_painter, inactive_color);
 
     if 0 < num_hovered_messages {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {

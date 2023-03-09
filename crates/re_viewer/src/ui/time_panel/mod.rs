@@ -1,4 +1,3 @@
-mod ball_scatterer;
 mod data_desity_graph;
 mod paint_ticks;
 mod time_axis;
