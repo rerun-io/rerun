@@ -178,6 +178,9 @@ pub struct DataStoreConfig {
     ///
     /// See [`DataStore::insert_id_key`].
     pub store_insert_ids: bool,
+
+    /// Should soon-to-be inactive buckets be compacted before being archived?
+    pub enable_compaction: bool,
 }
 
 impl Default for DataStoreConfig {
@@ -193,6 +196,11 @@ impl DataStoreConfig {
         index_bucket_size_bytes: 32 * 1024, // 32kiB
         index_bucket_nb_rows: 1024,
         store_insert_ids: cfg!(debug_assertions),
+        // TODO(cmc): Compaction is disabled until we implement batching.
+        // See https://github.com/rerun-io/rerun/pull/1535 for rationale.
+        //
+        // This has no noticeable impact on performance.
+        enable_compaction: false,
     };
 }
 

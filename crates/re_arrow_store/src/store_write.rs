@@ -1107,13 +1107,9 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            // TODO(cmc): Compaction is disabled until we implement batching.
-            // See https://github.com/rerun-io/rerun/pull/1535 for rationale.
-            //
-            // This has no noticeable impact on importance.
-            //
-            // // Archive currently active bucket.
-            // active_bucket.archive();
+            if config.enable_compaction {
+                active_bucket.archive();
+            }
 
             let row_offset = active_bucket.row_offset + len;
             self.buckets
