@@ -86,7 +86,6 @@ ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false, features = [
   "jpeg",
-  # "jpeg_rayon", # TODO(emilk): when https://github.com/rayon-rs/rayon/pull/1019 is released
 ] }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
