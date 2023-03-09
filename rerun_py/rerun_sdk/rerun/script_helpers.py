@@ -95,4 +95,4 @@ def script_teardown(args: Namespace) -> None:
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
         with contextlib.suppress(Exception):
-            sleep(100_000)
+            sleep(1_000_000_000)

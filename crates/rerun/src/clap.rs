@@ -107,7 +107,7 @@ impl RerunArgs {
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
             eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
-            std::thread::sleep(std::time::Duration::from_secs(1_000_000));
+            std::thread::sleep(std::time::Duration::from_secs(1_000_000_000));
         }
 
         Ok(())
