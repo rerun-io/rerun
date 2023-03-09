@@ -622,11 +622,10 @@ pub fn create_labels(
 }
 
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
-    // Brighten up our regular selection color a bit, otherwise it's too hard to see.
-    // (which would require us making the outlines *even* thicker)
     let selection_outline_color =
-        re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill) * 1.5;
-    let hover_outline_color = (selection_outline_color * 1.5).additive();
+        re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill);
+    let selection_outline_color = selection_outline_color * 0.75; // Three-quarter-transparent
+    let hover_outline_color = (selection_outline_color * 2.0).additive();
 
     OutlineConfig {
         outline_radius_pixel: (gui_ctx.pixels_per_point() * 2.5).at_least(1.0),
