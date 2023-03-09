@@ -376,18 +376,6 @@ impl TimeRangesUi {
             time_spanned: self.time_view.time_spanned / zoom_factor,
         })
     }
-
-    /// How many egui points for each time unit?
-    pub fn points_per_time(&self) -> Option<f64> {
-        for segment in &self.segments {
-            let dx = *segment.x.end() - *segment.x.start();
-            let dt = segment.time.length().as_f64();
-            if dx > 0.0 && dt > 0.0 {
-                return Some(dx / dt);
-            }
-        }
-        None
-    }
 }
 
 // ----------------------------------------------------------------------------
