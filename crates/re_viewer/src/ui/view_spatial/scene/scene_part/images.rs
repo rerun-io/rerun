@@ -224,30 +224,37 @@ impl ImagesPart {
 
         let outline_mask = entity_highlight.index_outline_mask(instance_path_hash.instance_key);
 
-        let tensor = ctx.cache.decode.try_decode_tensor_if_necessary(tensor);
+        match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+            Ok(tensor) => {
+                push_tensor_texture(
+                    scene,
+                    ctx,
+                    &annotations,
+                    world_from_obj,
+                    instance_path_hash,
+                    &tensor,
+                    color.into(),
+                    outline_mask,
+                );
 
-        // TODO(jleibs) how do we handle tensors that can't be decoded?
-        if let Ok(tensor) = tensor {
-            push_tensor_texture(
-                scene,
-                ctx,
-                &annotations,
-                world_from_obj,
-                instance_path_hash,
-                &tensor,
-                color.into(),
-                outline_mask,
-            );
+                // TODO(jleibs): Meter should really be its own component
+                let meter = tensor.meter;
 
-            // TODO(jleibs): Meter should really be its own component
-            let meter = tensor.meter;
-
-            scene.ui.images.push(Image {
-                instance_path_hash,
-                tensor: tensor.clone(),
-                meter,
-                annotations,
-            });
+                scene.ui.images.push(Image {
+                    instance_path_hash,
+                    tensor: tensor.clone(),
+                    meter,
+                    annotations,
+                });
+            }
+            Err(err) => {
+                // TODO(jleibs): Would be nice to surface these through the UI instead
+                re_log::warn_once!(
+                    "Encountered problem decoding tensor at path {}: {}",
+                    ent_path,
+                    err
+                );
+            }
         }
     }
 

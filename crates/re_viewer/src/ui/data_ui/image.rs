@@ -32,7 +32,10 @@ impl DataUi for Tensor {
         let tensor_view = match &decoded {
             Ok(decoded) => ctx.cache.image.get_view(decoded, ctx.render_ctx),
             Err(err) => {
-                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
+                ui.label(
+                    ctx.re_ui
+                        .error_text(format!("Error Decoding Tensor: {err}")),
+                );
                 return;
             }
         };
