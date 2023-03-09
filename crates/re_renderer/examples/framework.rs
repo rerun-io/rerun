@@ -122,7 +122,7 @@ impl<E: Example + 'static> Application<E> {
             .await
             .context("failed to find an appropriate adapter")?;
 
-        let hardware_tier = HardwareTier::Web;
+        let hardware_tier = HardwareTier::default();
         hardware_tier.check_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
         let (device, queue) = adapter
             .request_device(

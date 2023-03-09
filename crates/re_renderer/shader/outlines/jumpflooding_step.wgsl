@@ -8,6 +8,9 @@ var voronoi_sampler: sampler;
 
 struct FrameUniformBuffer {
     step_width: i32,
+    // There is actually more padding here. We're only putting this to satisfy lack of
+    // wgt::DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED
+    padding: IVec3,
 };
 @group(0) @binding(2)
 var<uniform> uniforms: FrameUniformBuffer;

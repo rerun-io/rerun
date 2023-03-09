@@ -46,6 +46,7 @@
 use super::{screen_triangle_vertex_shader, DrawData, DrawPhase, Renderer};
 use crate::{
     allocator::{create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch},
+    config::HardwareTier,
     context::SharedRendererData,
     include_file,
     view_builder::ViewBuilder,
@@ -125,18 +126,31 @@ impl OutlineMaskProcessor {
     ///
     /// Two channels with each 256 object ids.
     pub const MASK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Uint;
-
-    pub const MASK_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
-        count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
-        mask: !0,
-        alpha_to_coverage_enabled: false,
-    };
     pub const MASK_DEPTH_FORMAT: wgpu::TextureFormat = ViewBuilder::MAIN_TARGET_DEPTH_FORMAT;
     pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> =
         ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
 
     /// Holds two pairs of pixel coordinates (one for each layer).
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+    /// Default MSAA state for the outline mask target.
+    pub fn get_mask_default_msaa_state(tier: HardwareTier) -> wgpu::MultisampleState {
+        wgpu::MultisampleState {
+            count: Self::get_mask_sample_count(tier),
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        }
+    }
+
+    /// Number of MSAA samples used for the outline mask target.
+    pub fn get_mask_sample_count(tier: HardwareTier) -> u32 {
+        match tier {
+            HardwareTier::Web => 1,
+            // The MSAA shader variant deals with *exactly* 4 samples.
+            // See `jumpflooding_step_msaa.wgsl`.
+            HardwareTier::Native => 4,
+        }
+    }
 
     pub fn new(
         ctx: &mut RenderContext,
@@ -145,12 +159,13 @@ impl OutlineMaskProcessor {
         resolution_in_pixel: [u32; 2],
     ) -> Self {
         crate::profile_function!();
-
         let instance_label = view_name.clone().push_str(" - OutlineMaskProcessor");
 
         // ------------- Textures -------------
         let texture_pool = &ctx.gpu_resources.textures;
 
+        let mask_sample_count =
+            Self::get_mask_sample_count(ctx.shared_renderer_data.config.hardware_tier);
         let mask_texture_desc = crate::wgpu_resources::TextureDesc {
             label: instance_label.clone().push_str("::mask_texture"),
             size: wgpu::Extent3d {
@@ -159,7 +174,7 @@ impl OutlineMaskProcessor {
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
-            sample_count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+            sample_count: mask_sample_count,
             dimension: wgpu::TextureDimension::D2,
             format: Self::MASK_FORMAT,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -245,7 +260,11 @@ impl OutlineMaskProcessor {
                 &mut ctx.resolver,
                 &ShaderModuleDesc {
                     label: "jumpflooding_init".into(),
-                    source: include_file!("../../shader/outlines/jumpflooding_init.wgsl"),
+                    source: if mask_sample_count == 1 {
+                        include_file!("../../shader/outlines/jumpflooding_init.wgsl")
+                    } else {
+                        include_file!("../../shader/outlines/jumpflooding_init_msaa.wgsl")
+                    },
                 },
             ),
             vertex_buffers: smallvec![],
@@ -400,7 +419,7 @@ impl OutlineMaskProcessor {
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Uint,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: true,
+                            multisampled: mask_texture.texture.sample_count() > 1,
                         },
                         count: None,
                     }],
