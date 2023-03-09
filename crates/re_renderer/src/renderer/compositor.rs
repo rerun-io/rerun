@@ -8,7 +8,10 @@ use crate::{
     },
 };
 
-use super::{DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{
+    screen_triangle_vertex_shader, DrawData, DrawPhase, FileResolver, FileSystem, RenderContext,
+    Renderer,
+};
 
 use smallvec::smallvec;
 
@@ -77,6 +80,7 @@ impl Renderer for Compositor {
             },
         );
 
+        let vertex_handle = screen_triangle_vertex_shader(pools, device, resolver);
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
@@ -90,14 +94,7 @@ impl Renderer for Compositor {
                     &pools.bind_group_layouts,
                 ),
                 vertex_entrypoint: "main".into(),
-                vertex_handle: pools.shader_modules.get_or_create(
-                    device,
-                    resolver,
-                    &ShaderModuleDesc {
-                        label: "screen_triangle (vertex)".into(),
-                        source: include_file!("../../shader/screen_triangle.wgsl"),
-                    },
-                ),
+                vertex_handle,
                 fragment_entrypoint: "main".into(),
                 fragment_handle: pools.shader_modules.get_or_create(
                     device,

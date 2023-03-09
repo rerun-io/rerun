@@ -490,6 +490,7 @@ fn setup_target_config(
             },
             pixels_from_point: pixels_from_points,
             auto_size_config,
+            ..Default::default()
         }
     })
 }

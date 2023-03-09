@@ -84,7 +84,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
 
 /// See [`create_and_fill_uniform_buffer`].
 pub fn create_and_fill_uniform_buffer<T: bytemuck::Pod>(
-    ctx: &mut RenderContext,
+    ctx: &RenderContext,
     label: DebugLabel,
     content: T,
 ) -> BindGroupEntry {

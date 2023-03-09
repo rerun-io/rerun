@@ -1,12 +1,5 @@
 #import <./types.wgsl>
-
-struct VertexOutput {
-    // Mark output position as invariant so it's safe to use it with depth test Equal.
-    // Without @invariant, different usages in different render pipelines might optimize differently,
-    // causing slightly different results.
-    @invariant @builtin(position) position: Vec4,
-    @location(0) texcoord: Vec2,
-};
+#import <./screen_triangle_vertex.wgsl>
 
 var<private> positions: array<Vec2, 3> = array<Vec2, 3>(
     Vec2(-1.0, -3.0),

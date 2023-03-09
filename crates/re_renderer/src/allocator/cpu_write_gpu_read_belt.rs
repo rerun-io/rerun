@@ -40,7 +40,12 @@ where
     #[inline(always)]
     fn as_slice(&mut self) -> &mut [T] {
         // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
-        &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.unwritten_element_range.clone()]
+        // `write_view` may have padding at the end that isn't a multiple of T's size.
+        // Bytemuck get's unhappy about that, so cast the correct range.
+        bytemuck::cast_slice_mut(
+            &mut self.write_view[self.unwritten_element_range.start * std::mem::size_of::<T>()
+                ..self.unwritten_element_range.end * std::mem::size_of::<T>()],
+        )
     }
 
     /// Pushes a slice of elements into the buffer.

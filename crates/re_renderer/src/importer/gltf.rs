@@ -12,7 +12,7 @@ use crate::{
         GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
         TextureManager2D,
     },
-    Color32, RenderContext,
+    RenderContext,
 };
 
 /// Loads both gltf and glb into the mesh & texture manager.
@@ -289,7 +289,7 @@ fn gather_instances_recursive(
                 gpu_mesh: gpu_mesh.clone(),
                 mesh: Some(mesh.clone()),
                 world_from_mesh: transform,
-                additive_tint: Color32::TRANSPARENT,
+                ..Default::default()
             });
         }
     }
