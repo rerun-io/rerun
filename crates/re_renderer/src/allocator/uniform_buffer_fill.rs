@@ -46,6 +46,10 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     #[allow(clippy::let_unit_value)]
     let _ = UniformBufferAlignmentCheck::<T>::CHECK;
 
+    if content.len() == 0 {
+        return vec![];
+    }
+
     let num_buffers = content.len() as u64;
     let element_size = std::mem::size_of::<T>() as u64;
 

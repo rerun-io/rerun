@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::{
     renderer::{
         LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex,
@@ -36,8 +38,8 @@ where
             label: label.into(),
             world_from_obj: glam::Mat4::IDENTITY,
             line_vertex_count: 0,
-            outline_mask: OutlineMaskPreference::NONE,
-            skip_color_rendering: false,
+            overall_outline_mask: OutlineMaskPreference::NONE,
+            additional_outline_mask_vertex_ranges: Vec::new(),
         });
 
         LineBatchBuilder(self)
@@ -143,7 +145,7 @@ where
     /// Sets an outline mask for every element in the batch.
     #[inline]
     pub fn outline_mask(mut self, outline_mask: OutlineMaskPreference) -> Self {
-        self.batch_mut().outline_mask = outline_mask;
+        self.batch_mut().overall_outline_mask = outline_mask;
         self
     }
 
@@ -152,18 +154,23 @@ where
         &mut self,
         points: impl Iterator<Item = glam::Vec3>,
     ) -> LineStripBuilder<'_, PerStripUserData> {
-        let old_len = self.0.strips.len();
-        let strip_index = old_len as _;
+        let old_strip_count = self.0.strips.len();
+        let old_vertex_count = self.0.vertices.len();
+        let strip_index = old_strip_count as _;
 
         self.add_vertices(points, strip_index);
+        let new_vertex_count = self.0.vertices.len();
 
         debug_assert_eq!(self.0.strips.len(), self.0.strip_user_data.len());
         self.0.strips.push(LineStripInfo::default());
         self.0.strip_user_data.push(PerStripUserData::default());
+        let new_strip_count = self.0.strips.len();
 
         LineStripBuilder {
-            strips: &mut self.0.strips[old_len..],
-            user_data: &mut self.0.strip_user_data[old_len..],
+            builder: self.0,
+            outline_mask: OutlineMaskPreference::NONE,
+            vertex_range: old_vertex_count..new_vertex_count,
+            strip_range: old_strip_count..new_strip_count,
         }
     }
 
@@ -182,18 +189,19 @@ where
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_, PerStripUserData> {
-        let mut num_strips = self.0.strips.len() as u32;
+        let old_strip_count = self.0.strips.len();
+        let old_vertex_count = self.0.vertices.len();
+        let mut strip_index = old_strip_count as u32;
 
         // It's tempting to assign the same strip to all vertices, after all they share
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
         for (a, b) in segments {
-            self.add_vertices([a, b].into_iter(), num_strips);
-            num_strips += 1;
+            self.add_vertices([a, b].into_iter(), strip_index);
+            strip_index += 1;
         }
-
-        let old_len = self.0.strips.len();
-        let num_strips_added = num_strips as usize - old_len;
+        let new_vertex_count = self.0.vertices.len();
+        let num_strips_added = strip_index as usize - old_strip_count;
 
         debug_assert_eq!(self.0.strips.len(), self.0.strip_user_data.len());
         self.0
@@ -202,10 +210,13 @@ where
         self.0
             .strip_user_data
             .extend(std::iter::repeat(PerStripUserData::default()).take(num_strips_added));
+        let new_strip_count = self.0.strips.len();
 
         LineStripBuilder {
-            strips: &mut self.0.strips[old_len..],
-            user_data: &mut self.0.strip_user_data[old_len..],
+            builder: self.0,
+            outline_mask: OutlineMaskPreference::NONE,
+            vertex_range: old_vertex_count..new_vertex_count,
+            strip_range: old_strip_count..new_strip_count,
         }
     }
 
@@ -357,8 +368,10 @@ where
 }
 
 pub struct LineStripBuilder<'a, PerStripUserData> {
-    strips: &'a mut [LineStripInfo],
-    user_data: &'a mut [PerStripUserData],
+    builder: &'a mut LineStripSeriesBuilder<PerStripUserData>,
+    outline_mask: OutlineMaskPreference,
+    vertex_range: Range<usize>,
+    strip_range: Range<usize>,
 }
 
 impl<'a, PerStripUserData> LineStripBuilder<'a, PerStripUserData>
@@ -367,7 +380,7 @@ where
 {
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
-        for strip in self.strips.iter_mut() {
+        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
             strip.radius = radius;
         }
         self
@@ -375,7 +388,7 @@ where
 
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        for strip in self.strips.iter_mut() {
+        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
             strip.color = color;
         }
         self
@@ -383,9 +396,17 @@ where
 
     #[inline]
     pub fn flags(self, flags: LineStripFlags) -> Self {
-        for strip in self.strips.iter_mut() {
+        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
             strip.flags = flags;
         }
+        self
+    }
+
+    /// Sets an individual outline mask.
+    /// Note that this has a relatively high performance impact.
+    #[inline]
+    pub fn outline_mask(mut self, outline_mask: OutlineMaskPreference) -> Self {
+        self.outline_mask = outline_mask;
         self
     }
 
@@ -394,9 +415,25 @@ where
     /// User data is currently not available on the GPU.
     #[inline]
     pub fn user_data(self, user_data: PerStripUserData) -> Self {
-        for d in self.user_data.iter_mut() {
+        for d in self.builder.strip_user_data[self.strip_range.clone()].iter_mut() {
             *d = user_data.clone();
         }
         self
+    }
+}
+
+impl<'a, PerStripUserData> Drop for LineStripBuilder<'a, PerStripUserData> {
+    fn drop(&mut self) {
+        if self.outline_mask.is_some() {
+            self.builder
+                .batches
+                .last_mut()
+                .unwrap()
+                .additional_outline_mask_vertex_ranges
+                .push((
+                    self.vertex_range.start as u32..self.vertex_range.end as u32,
+                    self.outline_mask,
+                ));
+        }
     }
 }
