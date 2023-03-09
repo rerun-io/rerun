@@ -271,6 +271,8 @@ pub fn data_density_graph_ui(
     let mut hovered_time_range = TimeRange::EMPTY;
 
     {
+        crate::profile_scope!("collect_data");
+
         let mut add_data_point = |time_range: TimeRange, count: usize| {
             if count == 0 {
                 return;
@@ -296,7 +298,7 @@ pub fn data_density_graph_ui(
         );
 
         // The more zoomed out we are, the bigger chunks of time_histogram we can process at a time.
-        let time_chunk_size = (1.0 / time_ranges_ui.points_per_time).round() as _;
+        let time_chunk_size = (2.0 / time_ranges_ui.points_per_time).round() as _;
         for (time_range, num_messages_at_time) in time_histogram.range(
             visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
             time_chunk_size,

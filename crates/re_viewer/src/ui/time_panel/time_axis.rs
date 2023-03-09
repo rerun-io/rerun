@@ -43,11 +43,6 @@ impl TimelineAxis {
     // }
 }
 
-// in seconds or nanos
-fn time_abs_diff(a: i64, b: i64) -> u64 {
-    a.abs_diff(b)
-}
-
 /// First determine the threshold for when a gap should be closed.
 /// Sometimes, looking at data spanning milliseconds, a single second pause can be an eternity.
 /// When looking at data recorded over hours, a few minutes of pause may be nothing.
@@ -62,7 +57,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
         return u64::MAX;
     }
 
-    let total_time_span = time_abs_diff(times.min_key().unwrap(), times.max_key().unwrap());
+    let total_time_span = times.min_key().unwrap().abs_diff(times.max_key().unwrap());
 
     if total_time_span == 0 {
         return u64::MAX;
@@ -72,7 +67,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     // This is partially an optimization, and partially something that "feels right".
     let min_gap_size: u64 = match time_type {
         TimeType::Sequence => 9,
-        TimeType::Time => 100_000_000, // nanos!
+        TimeType::Time => TimeInt::from_milliseconds(100).as_i64() as _,
     };
 
     // Collect all gaps larger than our minimum gap size.
@@ -82,8 +77,8 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
         times
             .range(.., cutoff_size)
             .tuple_windows()
-            .map(|((a, _), (b, _))| time_abs_diff(a.max, b.min))
-            .filter(|&gap_size| gap_size > min_gap_size)
+            .map(|((a, _), (b, _))| a.max.abs_diff(b.min))
+            .filter(|&gap_size| min_gap_size < gap_size)
             .collect_vec()
     };
     gap_sizes.sort_unstable();
@@ -127,7 +122,7 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRa
 
     for (new_range, _count) in it {
         let last_max = &mut ranges.last_mut().max;
-        if time_abs_diff(last_max.as_i64(), new_range.min) < gap_threshold {
+        if last_max.as_i64().abs_diff(new_range.min) < gap_threshold {
             // join previous range:
             *last_max = new_range.max.into();
         } else {
