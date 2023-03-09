@@ -14,7 +14,7 @@ struct OutlineConfigUniformBuffer {
 var<uniform> uniforms: OutlineConfigUniformBuffer;
 
 @fragment
-fn main(in: VertexOutput) -> @location(0) Vec4 {
+fn main(in: FragmentInput) -> @location(0) Vec4 {
     let resolution = Vec2(textureDimensions(voronoi_texture).xy);
     let pixel_coordinates = resolution * in.texcoord;
     let closest_positions = textureSample(voronoi_texture, nearest_sampler, in.texcoord);

@@ -14,7 +14,7 @@ var<uniform> uniforms: FrameUniformBuffer;
 
 
 @fragment
-fn main(in: VertexOutput) -> @location(0) Vec4 {
+fn main(in: FragmentInput) -> @location(0) Vec4 {
     let resolution = Vec2(textureDimensions(voronoi_texture).xy);
     let pixel_step = Vec2(f32(uniforms.step_width), f32(uniforms.step_width)) / resolution;
     let pixel_coordinates = resolution * in.texcoord;

@@ -10,7 +10,7 @@ fn has_edge(closest_center_sample: UVec2, sample_coord: IVec2, sample_idx: i32) 
 }
 
 @fragment
-fn main(in: VertexOutput) -> @location(0) Vec4 {
+fn main(in: FragmentInput) -> @location(0) Vec4 {
     let resolution = textureDimensions(mask_texture).xy;
 
     // Determine *where* in texture coordinates (with sub-pixel accuracy!) the closest edge to the center is.
