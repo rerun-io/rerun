@@ -3944,6 +3944,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "ecolor",
+ "enumset",
  "getrandom",
  "glam",
  "glob",

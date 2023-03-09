@@ -111,6 +111,7 @@ use std::{
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
+use enumset::EnumSet;
 use smallvec::smallvec;
 
 use crate::{
@@ -127,8 +128,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, LineVertex, RenderContext, Renderer,
-    SharedRendererData, WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, LineVertex, OutlineMaskPreference,
+    OutlineMaskProcessor, RenderContext, Renderer, SharedRendererData, WgpuResourcePools,
 };
 
 pub mod gpu_data {
@@ -164,8 +165,9 @@ pub mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
+        pub outline_mask: wgpu_buffer_types::UVec2RowPadded,
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
 }
 
@@ -174,6 +176,7 @@ pub mod gpu_data {
 struct LineStripBatch {
     bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
+    active_phases: EnumSet<DrawPhase>,
 }
 
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
@@ -235,6 +238,16 @@ pub struct LineBatchInfo {
     /// The batch will start with the next vertex after the one the previous batch ended with.
     /// It is expected that this vertex is the first vertex of a new batch.
     pub line_vertex_count: u32,
+
+    /// Optional outline mask setting for the entire batch.
+    ///
+    /// If only some of the lines in this batch should have an outline, you need to create a second batch
+    /// with `skip_color_rendering` set to true
+    pub outline_mask: OutlineMaskPreference,
+
+    /// Don't render this batch to any color target (i.e. skip opaque/transparent draw phases)
+    /// This is useful if you only want to render an outline for this batch.
+    pub skip_color_rendering: bool,
 }
 
 /// Style information for a line strip.
@@ -320,6 +333,8 @@ impl LineDrawData {
             world_from_obj: glam::Mat4::IDENTITY,
             label: "all lines".into(),
             line_vertex_count: vertices.len() as _,
+            outline_mask: OutlineMaskPreference::NONE,
+            skip_color_rendering: false,
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -501,6 +516,7 @@ impl LineDrawData {
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
+                        outline_mask: batch_info.outline_mask.0.unwrap_or_default().into(),
                         end_padding: Default::default(),
                     }),
             );
@@ -522,12 +538,24 @@ impl LineDrawData {
                     },
                 );
 
+                let mut active_phases = EnumSet::new();
+                if !batch_info.skip_color_rendering {
+                    active_phases.insert(DrawPhase::Opaque);
+                }
+                if batch_info.outline_mask.is_some() {
+                    active_phases.insert(DrawPhase::OutlineMask);
+                }
+                if active_phases.is_empty() {
+                    re_log::warn_once!("Line batch has no active draw phases - no outlines and skips color rendering.");
+                }
+
                 batches_internal.push(LineStripBatch {
                     bind_group,
                     // We spawn a quad for every line skeleton vertex. Naturally, this yields one extra quad in total.
                     // Which is rather convenient because we need to ensure there are start and end triangles,
                     // so just from a number-of=vertices perspective this is correct already and the shader can take care of offsets.
                     vertex_range: (start_vertex_for_next_batch * 6)..(line_vertex_range_end * 6),
+                    active_phases,
                 });
 
                 start_vertex_for_next_batch = line_vertex_range_end;
@@ -547,13 +575,18 @@ impl LineDrawData {
 }
 
 pub struct LineRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_lines: GpuBindGroupLayoutHandle,
     bind_group_layout_batch: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for LineRenderer {
     type RendererDrawData = LineDrawData;
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::Opaque, DrawPhase::OutlineMask]
+    }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -596,7 +629,7 @@ impl Renderer for LineRenderer {
                 label: "line renderer - batch".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -631,10 +664,10 @@ impl Renderer for LineRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let render_pipeline_color = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "LineRenderer".into(),
+                label: "LineRenderer::render_pipeline_color".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,
@@ -656,9 +689,34 @@ impl Renderer for LineRenderer {
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "LineRenderer::render_pipeline_outline_mask".into(),
+                pipeline_layout,
+                vertex_entrypoint: "vs_main".into(),
+                vertex_handle: shader_module,
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                fragment_handle: shader_module,
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                // Alpha to coverage doesn't work with the mask integer target.
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
+                    shared_data.config.hardware_tier,
+                ),
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
 
         LineRenderer {
-            render_pipeline,
+            render_pipeline_color,
+            render_pipeline_outline_mask,
             bind_group_layout_all_lines,
             bind_group_layout_batch,
         }
@@ -667,22 +725,29 @@ impl Renderer for LineRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
-        _phase: DrawPhase,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         let Some(bind_group_all_lines) = &draw_data.bind_group_all_lines else {
             return Ok(()); // No lines submitted.
         };
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+
+        let pipeline_handle = if phase == DrawPhase::OutlineMask {
+            self.render_pipeline_outline_mask
+        } else {
+            self.render_pipeline_color
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
-
         pass.set_bind_group(1, bind_group_all_lines, &[]);
 
         for batch in &draw_data.batches {
-            pass.set_bind_group(2, &batch.bind_group, &[]);
-            pass.draw(batch.vertex_range.clone(), 0..1);
+            if batch.active_phases.contains(phase) {
+                pass.set_bind_group(2, &batch.bind_group, &[]);
+                pass.draw(batch.vertex_range.clone(), 0..1);
+            }
         }
 
         Ok(())

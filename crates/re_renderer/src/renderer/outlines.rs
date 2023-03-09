@@ -171,16 +171,16 @@ impl OutlineMaskProcessor {
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     /// Default MSAA state for the outline mask target.
-    pub fn get_mask_default_msaa_state(tier: HardwareTier) -> wgpu::MultisampleState {
+    pub fn mask_default_msaa_state(tier: HardwareTier) -> wgpu::MultisampleState {
         wgpu::MultisampleState {
-            count: Self::get_mask_sample_count(tier),
+            count: Self::mask_sample_count(tier),
             mask: !0,
             alpha_to_coverage_enabled: false,
         }
     }
 
     /// Number of MSAA samples used for the outline mask target.
-    pub fn get_mask_sample_count(tier: HardwareTier) -> u32 {
+    pub fn mask_sample_count(tier: HardwareTier) -> u32 {
         match tier {
             HardwareTier::Web => 1,
             // The MSAA shader variant deals with *exactly* 4 samples.
@@ -202,7 +202,7 @@ impl OutlineMaskProcessor {
         let texture_pool = &ctx.gpu_resources.textures;
 
         let mask_sample_count =
-            Self::get_mask_sample_count(ctx.shared_renderer_data.config.hardware_tier);
+            Self::mask_sample_count(ctx.shared_renderer_data.config.hardware_tier);
         let mask_texture_desc = crate::wgpu_resources::TextureDesc {
             label: instance_label.clone().push_str("::mask_texture"),
             size: wgpu::Extent3d {

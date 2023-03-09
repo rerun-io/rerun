@@ -1,5 +1,8 @@
 use crate::{
-    renderer::{LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
+    renderer::{
+        LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex,
+        OutlineMaskPreference,
+    },
     Color32, DebugLabel, Size,
 };
 
@@ -33,6 +36,8 @@ where
             label: label.into(),
             world_from_obj: glam::Mat4::IDENTITY,
             line_vertex_count: 0,
+            outline_mask: OutlineMaskPreference::NONE,
+            skip_color_rendering: false,
         });
 
         LineBatchBuilder(self)
@@ -132,6 +137,13 @@ where
     #[inline]
     pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
         self.batch_mut().world_from_obj = world_from_obj;
+        self
+    }
+
+    /// Sets an outline mask for every element in the batch.
+    #[inline]
+    pub fn outline_mask(mut self, outline_mask: OutlineMaskPreference) -> Self {
+        self.batch_mut().outline_mask = outline_mask;
         self
     }
 
