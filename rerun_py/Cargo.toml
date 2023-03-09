@@ -59,9 +59,7 @@ crossbeam = "0.8"
 document-features = "0.2"
 glam.workspace = true
 half.workspace = true
-image = { workspace = true, default-features = false, features = [
-  "jpeg_rayon",
-] }
+image = { workspace = true, default-features = false, features = ["jpeg"] }
 itertools = "0.10"
 macaw.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
