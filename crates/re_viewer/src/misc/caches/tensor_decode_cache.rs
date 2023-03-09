@@ -69,6 +69,7 @@ impl DecodeCache {
                             Ok(tensor) => tensor.size_in_bytes() as u64,
                             Err(_) => 0,
                         };
+                        self.memory_used += memory_used;
                         let last_use_generation = 0;
                         CachedTensor {
                             tensor,
@@ -80,6 +81,15 @@ impl DecodeCache {
             }
             _ => Ok(maybe_encoded_tensor),
         }
+    }
+
+    /// Call once per frame to (potentially) flush the cache.
+    pub fn new_frame(&mut self, max_memory_use: u64) {
+        if self.memory_used > max_memory_use {
+            self.purge_memory();
+        }
+
+        self.generation += 1;
     }
 
     pub fn purge_memory(&mut self) {

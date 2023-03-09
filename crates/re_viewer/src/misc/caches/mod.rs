@@ -22,7 +22,9 @@ impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn new_frame(&mut self) {
         let max_image_cache_use = 1_000_000_000;
+        let max_decode_cache_use = 1_000_000_000;
         self.image.new_frame(max_image_cache_use);
+        self.decode.new_frame(max_decode_cache_use);
     }
 
     pub fn purge_memory(&mut self) {
