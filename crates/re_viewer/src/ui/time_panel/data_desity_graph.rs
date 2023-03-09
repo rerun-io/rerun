@@ -221,7 +221,7 @@ pub fn show_data_over_time(
         }
         let time_real = TimeReal::from(time_int);
         if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-            density_graph.add(x, num_timeless_messages as _);
+            density_graph.add(x, count as _);
 
             // TODO(emilk): handle hovering better
             let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
@@ -229,7 +229,7 @@ pub fn show_data_over_time(
             });
             if is_hovered {
                 hovered_time_range = hovered_time_range.union(TimeRange::point(time_int));
-                num_hovered_messages += num_timeless_messages;
+                num_hovered_messages += count;
             }
         }
     };
