@@ -88,12 +88,9 @@ fn log_coordinate_space(
 
 fn log_ar_frame(
     session: &Session,
-    objects: &[objectron::Object],
     annotations: &AnnotationsPerFrame<'_>,
     ar_frame: &ArFrame,
 ) -> anyhow::Result<()> {
-    log_baseline_objects(session, objects)?;
-
     log_video_frame(session, ar_frame)?;
 
     if let Some(ar_camera) = ar_frame.data.camera.as_ref() {
@@ -379,6 +376,8 @@ fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
     log_coordinate_space(session, "world", "RUB")?;
     log_coordinate_space(session, "world/camera", "RDF")?;
 
+    log_baseline_objects(session, &annotations.objects)?;
+
     let mut global_frame_offset = 0;
     let mut global_time_offset = 0.0;
 
@@ -403,9 +402,8 @@ fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
                 ),
                 ar_frame,
             );
-            let objects = &annotations.objects;
             let annotations = annotations.frame_annotations.as_slice().into();
-            log_ar_frame(session, objects, &annotations, &ar_frame)?;
+            log_ar_frame(session, &annotations, &ar_frame)?;
 
             if let Some(d) = args.per_frame_sleep {
                 std::thread::sleep(d);
