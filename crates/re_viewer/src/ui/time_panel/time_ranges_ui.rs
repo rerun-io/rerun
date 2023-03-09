@@ -141,7 +141,7 @@ impl TimeRangesUi {
         let segments = time_ranges
             .iter()
             .map(|&tight_time_range| {
-                let range_width = tight_time_range.length().as_f64() * points_per_time;
+                let range_width = tight_time_range.abs_length() as f64 * points_per_time;
                 let right = left + range_width;
                 let x_range = left..=right;
                 left = right + gap_width_in_ui;

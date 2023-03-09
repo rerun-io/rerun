@@ -34,8 +34,8 @@ impl TimeRange {
 
     /// The amount of time or sequences covered by this range.
     #[inline]
-    pub fn length(&self) -> TimeInt {
-        self.max - self.min
+    pub fn abs_length(&self) -> u64 {
+        self.min.as_i64().abs_diff(self.max.as_i64())
     }
 
     #[inline]

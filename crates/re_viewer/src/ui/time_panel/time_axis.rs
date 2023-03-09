@@ -23,8 +23,8 @@ impl TimelineAxis {
     }
 
     /// Total uncollapsed time.
-    pub fn sum_time_lengths(&self) -> TimeInt {
-        self.ranges.iter().map(|t| t.length()).sum()
+    pub fn sum_time_lengths(&self) -> u64 {
+        self.ranges.iter().map(|t| t.abs_length()).sum()
     }
 
     // pub fn range(&self) -> TimeRange {

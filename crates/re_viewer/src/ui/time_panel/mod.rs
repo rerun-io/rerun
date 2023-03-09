@@ -708,7 +708,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) 
     };
 
     let min = timeline_axis.min();
-    let time_spanned = timeline_axis.sum_time_lengths().as_f64() * factor as f64;
+    let time_spanned = timeline_axis.sum_time_lengths() as f64 * factor as f64;
 
     TimeView {
         min: min.into(),
