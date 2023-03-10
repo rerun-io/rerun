@@ -12,8 +12,8 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData},
-    ColorMap, Size,
+    renderer::{DepthCloud, DepthCloudDepthData, OutlineMaskPreference},
+    ColorMap,
 };
 
 use crate::{
@@ -27,6 +27,7 @@ use crate::{
 
 use super::ScenePart;
 
+#[allow(clippy::too_many_arguments)]
 fn push_tensor_texture<T: AsDynamicImage>(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
@@ -35,6 +36,7 @@ fn push_tensor_texture<T: AsDynamicImage>(
     instance_path_hash: InstancePathHash,
     tensor: &T,
     tint: egui::Rgba,
+    outline_mask: OutlineMaskPreference,
 ) {
     crate::profile_function!();
 
@@ -58,6 +60,7 @@ fn push_tensor_texture<T: AsDynamicImage>(
                 multiplicative_tint: tint,
                 // Push to background. Mostly important for mouse picking order!
                 depth_offset: -1,
+                outline_mask,
             });
         scene
             .primitives
@@ -202,14 +205,14 @@ impl ImagesPart {
     ) {
         crate::profile_function!();
 
-        let entity_highlight = highlights.entity_highlight(ent_path.hash());
+        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
         let instance_path_hash = instance_path_hash_for_picking(
             ent_path,
             instance_key,
             entity_view,
             properties,
-            entity_highlight.any_selection_highlight(),
+            entity_highlight.any_selection_highlight,
         );
 
         let annotations = scene.annotation_map.find(ent_path);
@@ -219,23 +222,7 @@ impl ImagesPart {
             DefaultColor::OpaqueWhite,
         );
 
-        let highlight = entity_highlight.index_highlight(instance_path_hash.instance_key);
-        if highlight.is_some() {
-            let color = SceneSpatial::apply_hover_and_selection_effect_color(
-                re_renderer::Color32::TRANSPARENT,
-                highlight,
-            );
-            let rect = glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
-            scene
-                .primitives
-                .line_strips
-                .batch("image outlines")
-                .world_from_obj(world_from_obj)
-                .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
-                .color(color)
-                .radius(Size::new_points(1.0));
-        }
-
+        let outline_mask = entity_highlight.index_outline_mask(instance_path_hash.instance_key);
         push_tensor_texture(
             scene,
             ctx,
@@ -244,6 +231,7 @@ impl ImagesPart {
             instance_path_hash,
             &tensor,
             color.into(),
+            outline_mask,
         );
 
         // TODO(jleibs): Meter should really be its own component

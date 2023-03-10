@@ -16,6 +16,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     include_file,
+    renderer::OutlineMaskProcessor,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -27,8 +28,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 mod gpu_data {
@@ -43,8 +44,9 @@ mod gpu_data {
         pub extent_v: wgpu_buffer_types::Vec3Unpadded,
         pub depth_offset: f32,
         pub multiplicative_tint: crate::Rgba,
+        pub outline_mask: wgpu_buffer_types::UVec2RowPadded,
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
 }
 
@@ -84,6 +86,9 @@ pub struct TexturedRect {
     pub multiplicative_tint: Rgba,
 
     pub depth_offset: DepthOffset,
+
+    /// Optional outline mask.
+    pub outline_mask: OutlineMaskPreference,
 }
 
 impl Default for TexturedRect {
@@ -97,13 +102,20 @@ impl Default for TexturedRect {
             texture_filter_minification: TextureFilterMin::Linear,
             multiplicative_tint: Rgba::WHITE,
             depth_offset: 0,
+            outline_mask: OutlineMaskPreference::NONE,
         }
     }
 }
 
 #[derive(Clone)]
+struct RectangleInstance {
+    bind_group: GpuBindGroup,
+    draw_outline_mask: bool,
+}
+
+#[derive(Clone)]
 pub struct RectangleDrawData {
-    bind_groups: Vec<GpuBindGroup>,
+    instances: Vec<RectangleInstance>,
 }
 
 impl DrawData for RectangleDrawData {
@@ -127,7 +139,7 @@ impl RectangleDrawData {
 
         if rectangles.is_empty() {
             return Ok(RectangleDrawData {
-                bind_groups: Vec::new(),
+                instances: Vec::new(),
             });
         }
 
@@ -140,11 +152,12 @@ impl RectangleDrawData {
                 extent_v: rectangle.extent_v.into(),
                 depth_offset: rectangle.depth_offset as f32,
                 multiplicative_tint: rectangle.multiplicative_tint,
+                outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
                 end_padding: Default::default(),
             }),
         );
 
-        let mut bind_groups = Vec::with_capacity(rectangles.len());
+        let mut instances = Vec::with_capacity(rectangles.len());
         for (rectangle, uniform_buffer) in
             rectangles.iter().zip(uniform_buffer_bindings.into_iter())
         {
@@ -172,27 +185,31 @@ impl RectangleDrawData {
                 },
             );
 
-            bind_groups.push(ctx.gpu_resources.bind_groups.alloc(
-                &ctx.device,
-                &ctx.gpu_resources,
-                &BindGroupDesc {
-                    label: "rectangle".into(),
-                    entries: smallvec![
-                        uniform_buffer,
-                        BindGroupEntry::DefaultTextureView(texture.handle),
-                        BindGroupEntry::Sampler(sampler)
-                    ],
-                    layout: rectangle_renderer.bind_group_layout,
-                },
-            ));
+            instances.push(RectangleInstance {
+                bind_group: ctx.gpu_resources.bind_groups.alloc(
+                    &ctx.device,
+                    &ctx.gpu_resources,
+                    &BindGroupDesc {
+                        label: "rectangle".into(),
+                        entries: smallvec![
+                            uniform_buffer,
+                            BindGroupEntry::DefaultTextureView(texture.handle),
+                            BindGroupEntry::Sampler(sampler)
+                        ],
+                        layout: rectangle_renderer.bind_group_layout,
+                    },
+                ),
+                draw_outline_mask: rectangle.outline_mask.is_some(),
+            });
         }
 
-        Ok(RectangleDrawData { bind_groups })
+        Ok(RectangleDrawData { instances })
     }
 }
 
 pub struct RectangleRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
@@ -265,36 +282,54 @@ impl Renderer for RectangleRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let render_pipeline_desc_color = RenderPipelineDesc {
+            label: "RectangleRenderer::render_pipeline_color".into(),
+            pipeline_layout,
+            vertex_entrypoint: "vs_main".into(),
+            vertex_handle: shader_module,
+            fragment_entrypoint: "fs_main".into(),
+            fragment_handle: shader_module,
+            vertex_buffers: smallvec![],
+            render_targets: smallvec![Some(wgpu::ColorTargetState {
+                format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                // TODO(andreas): have two render pipelines, an opaque one and a transparent one. Transparent shouldn't write depth!
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+        };
+        let render_pipeline_color = pools.render_pipelines.get_or_create(
+            device,
+            &render_pipeline_desc_color,
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "rectangle".into(),
-                pipeline_layout,
-                vertex_entrypoint: "vs_main".into(),
-                vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main".into(),
-                fragment_handle: shader_module,
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(wgpu::ColorTargetState {
-                    format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
-                    // TODO(andreas): have two render pipelines, an opaque one and a transparent one. Transparent shouldn't write depth!
-                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleStrip,
-                    cull_mode: None,
-                    ..Default::default()
-                },
-                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+                label: "RectangleRenderer::render_pipeline_outline_mask".into(),
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
+                    shared_data.config.hardware_tier,
+                ),
+                ..render_pipeline_desc_color
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
 
         RectangleRenderer {
-            render_pipeline,
+            render_pipeline_color,
+            render_pipeline_outline_mask,
             bind_group_layout,
         }
     }
@@ -302,20 +337,29 @@ impl Renderer for RectangleRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
-        _phase: DrawPhase,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
-        if draw_data.bind_groups.is_empty() {
+        if draw_data.instances.is_empty() {
             return Ok(());
         }
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline_handle = if phase == DrawPhase::OutlineMask {
+            self.render_pipeline_outline_mask
+        } else {
+            self.render_pipeline_color
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+
         pass.set_pipeline(pipeline);
 
-        for bind_group in &draw_data.bind_groups {
-            pass.set_bind_group(1, bind_group, &[]);
+        for rectangles in &draw_data.instances {
+            if phase == DrawPhase::OutlineMask && !rectangles.draw_outline_mask {
+                continue;
+            }
+            pass.set_bind_group(1, &rectangles.bind_group, &[]);
             pass.draw(0..4, 0..1);
         }
 
@@ -324,6 +368,6 @@ impl Renderer for RectangleRenderer {
 
     fn participated_phases() -> &'static [DrawPhase] {
         // TODO(andreas): This a hack. We have both opaque and transparent.
-        &[DrawPhase::Opaque]
+        &[DrawPhase::OutlineMask, DrawPhase::Opaque]
     }
 }
