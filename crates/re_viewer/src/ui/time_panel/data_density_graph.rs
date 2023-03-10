@@ -278,8 +278,6 @@ pub fn data_density_graph_ui(
     let mut hovered_time_range = TimeRange::EMPTY;
 
     {
-        crate::profile_scope!("collect_data");
-
         let mut add_data_point = |time_range: TimeRange, count: usize| {
             if count == 0 {
                 return;
@@ -305,11 +303,20 @@ pub fn data_density_graph_ui(
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
         // The more zoomed out we are, the bigger chunks of time_histogram we can process at a time.
-        let time_chunk_size = (2.0 / time_ranges_ui.points_per_time).round() as _;
-        for (time_range, num_messages_at_time) in time_histogram.range(
-            visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
-            time_chunk_size,
-        ) {
+        // Larger chunks is faster.
+        let time_chunk_size = (3.0 / time_ranges_ui.points_per_time).round() as _;
+        let ranges: Vec<_> = {
+            crate::profile_scope!("time_histogram.range");
+            time_histogram
+                .range(
+                    visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
+                    time_chunk_size,
+                )
+                .collect()
+        };
+
+        crate::profile_scope!("add_data_point");
+        for (time_range, num_messages_at_time) in ranges {
             add_data_point(
                 TimeRange::new(time_range.min.into(), time_range.max.into()),
                 num_messages_at_time as _,
