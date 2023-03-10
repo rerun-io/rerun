@@ -55,7 +55,7 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
-    pub outline_mask: OutlineMaskPreference,
+    pub outline_mask_ids: OutlineMaskPreference,
 }
 
 pub struct Image {

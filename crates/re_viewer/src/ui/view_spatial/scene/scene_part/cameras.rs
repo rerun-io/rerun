@@ -149,7 +149,7 @@ impl CamerasPart {
             .line_strips
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
-            .outline_mask(entity_highlight.overall)
+            .outline_mask_ids(entity_highlight.overall)
             .add_segments(segments.into_iter())
             .radius(radius)
             .color(color)

@@ -13,7 +13,7 @@ var position_data_texture: texture_2d<u32>;
 
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
-    outline_mask: UVec2,
+    outline_mask_ids: UVec2,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -265,5 +265,5 @@ fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
     if coverage < 1.0 {
         discard;
     }
-    return batch.outline_mask;
+    return batch.outline_mask_ids;
 }

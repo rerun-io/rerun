@@ -165,7 +165,7 @@ pub mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-        pub outline_mask: wgpu_buffer_types::UVec2RowPadded,
+        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded,
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
@@ -240,7 +240,7 @@ pub struct LineBatchInfo {
     pub line_vertex_count: u32,
 
     /// Optional outline mask setting for the entire batch.
-    pub overall_outline_mask: OutlineMaskPreference,
+    pub overall_outline_mask_ids: OutlineMaskPreference,
 
     /// Defines an outline mask for an individual vertex ranges (can span several line strips!)
     ///
@@ -249,7 +249,7 @@ pub struct LineBatchInfo {
     /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
     /// This feature is meant for a limited number of "extra selections"
     /// If an overall mask is defined as well, the per-strip masks is overwriting the overall mask.
-    pub additional_outline_mask_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
+    pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 }
 
 /// Style information for a line strip.
@@ -335,8 +335,8 @@ impl LineDrawData {
             world_from_obj: glam::Mat4::IDENTITY,
             label: "all lines".into(),
             line_vertex_count: vertices.len() as _,
-            overall_outline_mask: OutlineMaskPreference::NONE,
-            additional_outline_mask_vertex_ranges: Vec::new(),
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -518,7 +518,11 @@ impl LineDrawData {
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
-                        outline_mask: batch_info.overall_outline_mask.0.unwrap_or_default().into(),
+                        outline_mask_ids: batch_info
+                            .overall_outline_mask_ids
+                            .0
+                            .unwrap_or_default()
+                            .into(),
                         end_padding: Default::default(),
                     }),
             );
@@ -532,13 +536,14 @@ impl LineDrawData {
                     batches
                         .iter()
                         .flat_map(|batch_info| {
-                            batch_info.additional_outline_mask_vertex_ranges.iter().map(
-                                |(_, mask)| gpu_data::BatchUniformBuffer {
+                            batch_info
+                                .additional_outline_mask_ids_vertex_ranges
+                                .iter()
+                                .map(|(_, mask)| gpu_data::BatchUniformBuffer {
                                     world_from_obj: batch_info.world_from_obj.into(),
-                                    outline_mask: mask.0.unwrap_or_default().into(),
+                                    outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     end_padding: Default::default(),
-                                },
-                            )
+                                })
                         })
                         .collect::<Vec<_>>()
                         .into_iter(),
@@ -554,7 +559,7 @@ impl LineDrawData {
                     .min(Self::MAX_NUM_VERTICES as u32);
                 let mut active_phases = enum_set![DrawPhase::Opaque];
                 // Does the entire batch participate in the outline mask phase?
-                if batch_info.overall_outline_mask.is_some() {
+                if batch_info.overall_outline_mask_ids.is_some() {
                     active_phases.insert(DrawPhase::OutlineMask);
                 }
 
@@ -566,7 +571,7 @@ impl LineDrawData {
                     active_phases,
                 ));
 
-                for (range, _) in &batch_info.additional_outline_mask_vertex_ranges {
+                for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
                     batches_internal.push(
                         line_renderer.create_linestrip_batch(
                             ctx,

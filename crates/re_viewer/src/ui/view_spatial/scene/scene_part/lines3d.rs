@@ -37,7 +37,7 @@ impl Lines3DPart {
             .line_strips
             .batch("lines 3d")
             .world_from_obj(world_from_obj)
-            .outline_mask(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip3D,
@@ -63,8 +63,8 @@ impl Lines3DPart {
                 .radius(radius)
                 .color(color)
                 .user_data(picking_instance_hash);
-            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
-                lines.outline_mask(*outline_mask);
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+                lines.outline_mask_ids(*outline_mask_ids);
             }
         };
 

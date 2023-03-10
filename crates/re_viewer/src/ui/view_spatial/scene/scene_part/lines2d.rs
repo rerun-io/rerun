@@ -38,7 +38,7 @@ impl Lines2DPart {
             .line_strips
             .batch("lines 2d")
             .world_from_obj(world_from_obj)
-            .outline_mask(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip2D,
@@ -64,8 +64,8 @@ impl Lines2DPart {
                 .radius(radius)
                 .flags(LineStripFlags::NO_COLOR_GRADIENT)
                 .user_data(picking_instance_hash);
-            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
-                lines.outline_mask(*outline_mask);
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+                lines.outline_mask_ids(*outline_mask_ids);
             }
         };
 

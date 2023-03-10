@@ -146,7 +146,7 @@ impl SceneSpatialPrimitives {
                     .map(move |mesh_instance| MeshInstance {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),
                         world_from_mesh: base_transform * mesh_instance.world_from_mesh,
-                        outline_mask: mesh.outline_mask,
+                        outline_mask_ids: mesh.outline_mask_ids,
                         ..Default::default()
                     })
             })

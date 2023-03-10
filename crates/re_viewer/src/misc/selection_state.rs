@@ -396,11 +396,11 @@ impl SelectionState {
                                         .or_default()
                                         .overall
                                         .selection = SelectionHighlight::SiblingSelection;
-                                    let outline_mask =
+                                    let outline_mask_ids =
                                         outlines_masks.entry(entity_path.hash()).or_default();
-                                    outline_mask.overall =
-                                        selection_mask.with_fallback_to(outline_mask.overall);
-                                    outline_mask.any_selection_highlight = true;
+                                    outline_mask_ids.overall =
+                                        selection_mask.with_fallback_to(outline_mask_ids.overall);
+                                    outline_mask_ids.any_selection_highlight = true;
                                 },
                             );
                         }
@@ -432,16 +432,19 @@ impl SelectionState {
                         *highlight_target = (*highlight_target).max(highlight);
                     }
                     {
-                        let outline_mask = outlines_masks
+                        let outline_mask_ids = outlines_masks
                             .entry(selected_instance.entity_path.hash())
                             .or_default();
-                        outline_mask.any_selection_highlight = true;
+                        outline_mask_ids.any_selection_highlight = true;
                         let outline_mask_target = if let Some(selected_index) =
                             selected_instance.instance_key.specific_index()
                         {
-                            outline_mask.instances.entry(selected_index).or_default()
+                            outline_mask_ids
+                                .instances
+                                .entry(selected_index)
+                                .or_default()
                         } else {
-                            &mut outline_mask.overall
+                            &mut outline_mask_ids.overall
                         };
                         *outline_mask_target =
                             next_selection_mask().with_fallback_to(*outline_mask_target);

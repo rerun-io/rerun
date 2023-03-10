@@ -39,7 +39,7 @@ impl Boxes3DPart {
             .line_strips
             .batch("box 3d")
             .world_from_obj(world_from_obj)
-            .outline_mask(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        half_size: Box3D,
@@ -74,8 +74,8 @@ impl Boxes3DPart {
                 .radius(radius)
                 .color(color)
                 .user_data(instance_hash);
-            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
-                box_lines.outline_mask(*outline_mask);
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+                box_lines.outline_mask_ids(*outline_mask_ids);
             }
 
             if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {

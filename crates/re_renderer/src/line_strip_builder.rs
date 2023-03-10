@@ -38,8 +38,8 @@ where
             label: label.into(),
             world_from_obj: glam::Mat4::IDENTITY,
             line_vertex_count: 0,
-            overall_outline_mask: OutlineMaskPreference::NONE,
-            additional_outline_mask_vertex_ranges: Vec::new(),
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         });
 
         LineBatchBuilder(self)
@@ -144,8 +144,8 @@ where
 
     /// Sets an outline mask for every element in the batch.
     #[inline]
-    pub fn outline_mask(mut self, outline_mask: OutlineMaskPreference) -> Self {
-        self.batch_mut().overall_outline_mask = outline_mask;
+    pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
+        self.batch_mut().overall_outline_mask_ids = outline_mask_ids;
         self
     }
 
@@ -168,7 +168,7 @@ where
 
         LineStripBuilder {
             builder: self.0,
-            outline_mask: OutlineMaskPreference::NONE,
+            outline_mask_ids: OutlineMaskPreference::NONE,
             vertex_range: old_vertex_count..new_vertex_count,
             strip_range: old_strip_count..new_strip_count,
         }
@@ -214,7 +214,7 @@ where
 
         LineStripBuilder {
             builder: self.0,
-            outline_mask: OutlineMaskPreference::NONE,
+            outline_mask_ids: OutlineMaskPreference::NONE,
             vertex_range: old_vertex_count..new_vertex_count,
             strip_range: old_strip_count..new_strip_count,
         }
@@ -369,7 +369,7 @@ where
 
 pub struct LineStripBuilder<'a, PerStripUserData> {
     builder: &'a mut LineStripSeriesBuilder<PerStripUserData>,
-    outline_mask: OutlineMaskPreference,
+    outline_mask_ids: OutlineMaskPreference,
     vertex_range: Range<usize>,
     strip_range: Range<usize>,
 }
@@ -402,11 +402,11 @@ where
         self
     }
 
-    /// Sets an individual outline mask.
+    /// Sets an individual outline mask ids.
     /// Note that this has a relatively high performance impact.
     #[inline]
-    pub fn outline_mask(mut self, outline_mask: OutlineMaskPreference) -> Self {
-        self.outline_mask = outline_mask;
+    pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
+        self.outline_mask_ids = outline_mask_ids;
         self
     }
 
@@ -424,15 +424,15 @@ where
 
 impl<'a, PerStripUserData> Drop for LineStripBuilder<'a, PerStripUserData> {
     fn drop(&mut self) {
-        if self.outline_mask.is_some() {
+        if self.outline_mask_ids.is_some() {
             self.builder
                 .batches
                 .last_mut()
                 .unwrap()
-                .additional_outline_mask_vertex_ranges
+                .additional_outline_mask_ids_vertex_ranges
                 .push((
                     self.vertex_range.start as u32..self.vertex_range.end as u32,
-                    self.outline_mask,
+                    self.outline_mask_ids,
                 ));
         }
     }

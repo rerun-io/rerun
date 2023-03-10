@@ -53,7 +53,7 @@ impl Boxes2DPart {
             .line_strips
             .batch("2d box")
             .world_from_obj(world_from_obj)
-            .outline_mask(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall);
 
         let rectangle = line_batch
             .add_rectangle_outline_2d(
@@ -65,11 +65,11 @@ impl Boxes2DPart {
             .radius(radius)
             .user_data(instance_path_hash);
 
-        if let Some(outline_mask) = entity_highlight
+        if let Some(outline_mask_ids) = entity_highlight
             .instances
             .get(&instance_path_hash.instance_key)
         {
-            rectangle.outline_mask(*outline_mask);
+            rectangle.outline_mask_ids(*outline_mask_ids);
         }
 
         if let Some(label) = label {

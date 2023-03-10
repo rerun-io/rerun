@@ -40,7 +40,7 @@ impl Arrows3DPart {
             .line_strips
             .batch("arrows")
             .world_from_obj(world_from_obj)
-            .outline_mask(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
@@ -79,8 +79,8 @@ impl Arrows3DPart {
                 .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
                 .user_data(picking_instance_hash);
 
-            if let Some(outline_mask) = entity_highlight.instances.get(&instance_key) {
-                segment.outline_mask(*outline_mask);
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+                segment.outline_mask_ids(*outline_mask_ids);
             }
         };
 

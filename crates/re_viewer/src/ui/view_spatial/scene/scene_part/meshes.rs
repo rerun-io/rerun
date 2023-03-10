@@ -49,7 +49,7 @@ impl MeshPart {
                     entity_highlight.any_selection_highlight,
                 );
 
-                let outline_mask = entity_highlight.index_outline_mask(instance_key);
+                let outline_mask_ids = entity_highlight.index_outline_mask(instance_key);
 
                 if let Some(mesh) = ctx
                     .cache
@@ -63,7 +63,7 @@ impl MeshPart {
                         instance_path_hash: picking_instance_hash,
                         world_from_mesh: world_from_obj_affine,
                         mesh: cpu_mesh,
-                        outline_mask,
+                        outline_mask_ids,
                     })
                 {
                     scene.primitives.meshes.push(mesh);
