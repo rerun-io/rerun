@@ -88,8 +88,9 @@ impl OutlineMaskPreference {
         self.0.is_none()
     }
 
+    /// Uses current outline and falls back to `other` if current is `None` or has a zero on any channel.
     #[inline]
-    pub fn combine(self, other: Self) -> Self {
+    pub fn with_fallback_to(self, other: Self) -> Self {
         if let Some([a, b]) = self.0 {
             if let Some([other_a, other_b]) = other.0 {
                 OutlineMaskPreference::some(

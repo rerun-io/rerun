@@ -155,7 +155,7 @@ impl<'a> OptionalSpaceViewOutlineMask<'a> {
                     .get(&instance_key)
                     .cloned()
                     .unwrap_or_default()
-                    .combine(entity_outline_mask.overall)
+                    .with_fallback_to(entity_outline_mask.overall)
             })
     }
 
@@ -400,7 +400,7 @@ impl SelectionState {
                                     let outline_mask =
                                         outlines_masks.entry(entity_path.hash()).or_default();
                                     outline_mask.overall =
-                                        outline_mask.overall.combine(selection_mask);
+                                        selection_mask.with_fallback_to(outline_mask.overall);
                                     outline_mask.any_selection_highlight = true;
                                 },
                             );
@@ -444,7 +444,8 @@ impl SelectionState {
                         } else {
                             &mut outline_mask.overall
                         };
-                        *outline_mask_target = outline_mask_target.combine(next_selection_mask());
+                        *outline_mask_target =
+                            next_selection_mask().with_fallback_to(*outline_mask_target);
                     }
                 }
             };
@@ -472,7 +473,7 @@ impl SelectionState {
                                         .hover = HoverHighlight::Hovered;
                                     let mask =
                                         outlines_masks.entry(entity_path.hash()).or_default();
-                                    mask.overall = mask.overall.combine(hover_mask);
+                                    mask.overall = hover_mask.with_fallback_to(mask.overall);
                                 },
                             );
                         }
@@ -509,7 +510,8 @@ impl SelectionState {
                         } else {
                             &mut outlined_entity.overall
                         };
-                        *outline_mask_target = outline_mask_target.combine(next_hover_mask());
+                        *outline_mask_target =
+                            next_hover_mask().with_fallback_to(*outline_mask_target);
                     }
                 }
             };
