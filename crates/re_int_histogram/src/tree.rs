@@ -149,10 +149,17 @@ impl Int64Histogram {
     /// Iterate over a certain range, returning ranges that are at most `cutoff_size` long.
     ///
     /// To get all individual entries, use `cutoff_size<=1`.
-    /// When `cutoff_size > 1` you will get approximate ranges, which may cover elements that has no count.
+    ///
+    /// When `cutoff_size > 1` you MAY get ranges which include keys that has no count.
+    /// However, the ends (min/max) of all returned ranges will be keys with a non-zero count.
+    ///
+    /// In other words, gaps in the key-space smaller than `cutoff_size` MAY be ignored by this iterator.
     ///
     /// For example, inserting two elements at `10` and `15` and setting a `cutoff_size=10`
-    /// you may get a single range `[8, 16]` with the total count.
+    /// you may get a single range `[10, 15]` with the total count.
+    /// You may also get two ranges of `[10, 10]` and `[15, 15]`.
+    ///
+    /// A larger `cutoff_size` will generally yield fewer ranges, and will be faster.
     pub fn range(&self, range: impl std::ops::RangeBounds<i64>, cutoff_size: u64) -> Iter<'_> {
         let range = range_u64_from_range_bounds(range);
         Iter {
@@ -631,8 +638,18 @@ impl<'a> Iterator for TreeIterator<'a> {
                                 if child_size <= self.cutoff_size
                                     && self.range.contains_all_of(child_range)
                                 {
-                                    let count = child.total_count();
-                                    return Some((child_range, count));
+                                    // We can return the whole child, but first find a tight range of i:
+                                    if let (Some(min_key), Some(max_key)) = (
+                                        child.min_key(child_addr, child_level),
+                                        child.max_key(child_addr, child_level),
+                                    ) {
+                                        return Some((
+                                            RangeU64::new(min_key, max_key),
+                                            child.total_count(),
+                                        ));
+                                    } else {
+                                        panic!("We should only have non-empty children");
+                                    }
                                 }
 
                                 self.stack.push(NodeIterator {
@@ -675,150 +692,203 @@ impl<'a> Iterator for TreeIterator<'a> {
 
 // ----------------------------------------------------------------------------
 
-#[test]
-fn test_dense() {
-    let mut set = Int64Histogram::default();
-    debug_assert_eq!(set.min_key(), None);
-    debug_assert_eq!(set.max_key(), None);
-    let mut expected_ranges = vec![];
-    for i in 0..100 {
-        debug_assert_eq!(set.total_count(), i);
-        debug_assert_eq!(set.range_count(-10000..10000), i);
-        let key = i as i64;
-        set.increment(key, 1);
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        expected_ranges.push((RangeI64::single(key), 1));
+    #[test]
+    fn test_dense() {
+        let mut set = Int64Histogram::default();
+        debug_assert_eq!(set.min_key(), None);
+        debug_assert_eq!(set.max_key(), None);
+        let mut expected_ranges = vec![];
+        for i in 0..100 {
+            debug_assert_eq!(set.total_count(), i);
+            debug_assert_eq!(set.range_count(-10000..10000), i);
+            let key = i as i64;
+            set.increment(key, 1);
 
-        debug_assert_eq!(set.min_key(), Some(0));
-        debug_assert_eq!(set.max_key(), Some(key));
+            expected_ranges.push((RangeI64::single(key), 1));
+
+            debug_assert_eq!(set.min_key(), Some(0));
+            debug_assert_eq!(set.max_key(), Some(key));
+        }
+
+        assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
+        assert_eq!(set.range(..10, 1).count(), 10);
     }
 
-    assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
-    assert_eq!(set.range(..10, 1).count(), 10);
-}
+    #[test]
+    fn test_sparse() {
+        let inc = 2;
+        let spacing = 1_000_000;
+        let mut set = Int64Histogram::default();
+        let mut expected_ranges = vec![];
+        for i in 0..100 {
+            debug_assert_eq!(set.total_count(), inc * i);
+            debug_assert_eq!(set.range_count(-10000..10000 * spacing), inc * i);
+            let key = i as i64 * spacing;
+            set.increment(key, inc as u32);
+            expected_ranges.push((RangeI64::single(key), inc));
 
-#[test]
-fn test_sparse() {
-    let inc = 2;
-    let spacing = 1_000_000;
-    let mut set = Int64Histogram::default();
-    let mut expected_ranges = vec![];
-    for i in 0..100 {
-        debug_assert_eq!(set.total_count(), inc * i);
-        debug_assert_eq!(set.range_count(-10000..10000 * spacing), inc * i);
-        let key = i as i64 * spacing;
-        set.increment(key, inc as u32);
-        expected_ranges.push((RangeI64::single(key), inc));
+            debug_assert_eq!(set.min_key(), Some(0));
+            debug_assert_eq!(set.max_key(), Some(key));
+        }
 
-        debug_assert_eq!(set.min_key(), Some(0));
-        debug_assert_eq!(set.max_key(), Some(key));
+        assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
+        assert_eq!(set.range(..10 * spacing, 1).count(), 10);
     }
 
-    assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
-    assert_eq!(set.range(..10 * spacing, 1).count(), 10);
-}
+    #[test]
+    fn test_two_dense_ranges() {
+        let mut set = Int64Histogram::default();
+        for i in 0..100 {
+            set.increment(i, 1);
+            set.increment(10_000 + i, 1);
+            set.increment(20_000 + i, 1);
 
-#[test]
-fn test_two_dense_ranges() {
-    let mut set = Int64Histogram::default();
-    for i in 0..100 {
-        set.increment(i, 1);
-        set.increment(10_000 + i, 1);
-        set.increment(20_000 + i, 1);
+            debug_assert_eq!(set.min_key(), Some(0));
+            debug_assert_eq!(set.max_key(), Some(20_000 + i));
+        }
 
-        debug_assert_eq!(set.min_key(), Some(0));
-        debug_assert_eq!(set.max_key(), Some(20_000 + i));
+        assert_eq!(set.range(..15_000, 1000).count(), 2);
+
+        assert_eq!(set.total_count(), 300);
+        assert_eq!(set.remove(..10_020), 120);
+        assert_eq!(set.total_count(), 180);
     }
 
-    assert_eq!(set.range(..15_000, 1000).count(), 2);
+    #[test]
+    fn test_two_sparse_ranges() {
+        let mut set = Int64Histogram::default();
+        let mut should_contain = vec![];
+        let mut should_not_contain = vec![];
+        for i in 0..100 {
+            let a = -1_000_000_000 + i * 1_000;
+            let b = (i - 50) * 1_000;
+            let c = 1_000_000_000 + i * 1_000;
+            set.increment(a, 1);
+            set.increment(b, 1);
+            set.increment(c, 1);
 
-    assert_eq!(set.total_count(), 300);
-    assert_eq!(set.remove(..10_020), 120);
-    assert_eq!(set.total_count(), 180);
-}
+            should_contain.push(a);
+            should_contain.push(b);
+            should_not_contain.push(c);
+        }
 
-#[test]
-fn test_two_sparse_ranges() {
-    let mut set = Int64Histogram::default();
-    let mut should_contain = vec![];
-    let mut should_not_contain = vec![];
-    for i in 0..100 {
-        let a = -1_000_000_000 + i * 1_000;
-        let b = (i - 50) * 1_000;
-        let c = 1_000_000_000 + i * 1_000;
-        set.increment(a, 1);
-        set.increment(b, 1);
-        set.increment(c, 1);
+        let ranges = set.range(..1_000_000_000, 1_000_000).collect::<Vec<_>>();
 
-        should_contain.push(a);
-        should_contain.push(b);
-        should_not_contain.push(c);
+        assert!(ranges.len() < 10, "We shouldn't get too many ranges");
+
+        let ranges_contains = |value| ranges.iter().any(|(range, _count)| range.contains(value));
+
+        for value in should_contain {
+            assert!(ranges_contains(value));
+        }
+        for value in should_not_contain {
+            assert!(!ranges_contains(value));
+        }
+
+        assert_eq!(set.total_count(), 300);
+        assert_eq!(set.remove(..0), 150);
+        assert_eq!(set.total_count(), 150);
     }
 
-    let ranges = set.range(..1_000_000_000, 1_000_000).collect::<Vec<_>>();
+    /// adjacent ranges closer that the given cutoff are treated as one
+    fn glue_adjacent_ranges(ranges: &[(RangeI64, u64)], cutoff_size: u64) -> Vec<(RangeI64, u64)> {
+        if ranges.is_empty() {
+            return vec![];
+        }
 
-    assert!(ranges.len() < 10, "We shouldn't get too many ranges");
-
-    let ranges_contains = |value| ranges.iter().any(|(range, _count)| range.contains(value));
-
-    for value in should_contain {
-        assert!(ranges_contains(value));
+        let mut it = ranges.iter();
+        let mut result = vec![*it.next().unwrap()];
+        for &(new_range, new_count) in it {
+            let (last_range, last_count) = result.last_mut().unwrap();
+            if new_range.min.abs_diff(last_range.max) < cutoff_size {
+                *last_count += new_count;
+                last_range.max = new_range.max;
+            } else {
+                result.push((new_range, new_count));
+            }
+        }
+        result
     }
-    for value in should_not_contain {
-        assert!(!ranges_contains(value));
+
+    #[test]
+    fn test_ranges_are_tight() {
+        let mut set = Int64Histogram::default();
+        for i in 1..=99 {
+            set.increment(10_000_000 + i * 1000, 1);
+            set.increment(500_000_000 + i * 1000, 1);
+            set.increment(9_000_000_000 + i * 1000, 1);
+        }
+
+        let cutoff_size = 100_000;
+        let ranges = set.range(.., cutoff_size).collect::<Vec<_>>();
+        assert!(ranges.len() <= 10, "We shouldn't get too many ranges");
+
+        // The Int64Histogram is allowed to split tight ranges
+        //  if they hit a binary split-line, so we do a pass where we glue
+        // adjacent ranges together.
+        let ranges = glue_adjacent_ranges(&ranges, cutoff_size);
+
+        assert_eq!(
+            ranges,
+            vec![
+                (RangeI64::new(10_001_000, 10_099_000), 99),
+                (RangeI64::new(500_001_000, 500_099_000), 99),
+                (RangeI64::new(9_000_001_000, 9_000_099_000), 99),
+            ]
+        );
     }
 
-    assert_eq!(set.total_count(), 300);
-    assert_eq!(set.remove(..0), 150);
-    assert_eq!(set.total_count(), 150);
-}
+    #[test]
+    fn test_removal() {
+        let mut set = Int64Histogram::default();
+        set.increment(i64::MAX, 1);
+        set.increment(i64::MAX - 1, 2);
+        set.increment(i64::MAX - 2, 3);
+        set.increment(i64::MIN + 2, 3);
+        set.increment(i64::MIN + 1, 2);
+        set.increment(i64::MIN, 1);
 
-#[test]
-fn test_removal() {
-    let mut set = Int64Histogram::default();
-    set.increment(i64::MAX, 1);
-    set.increment(i64::MAX - 1, 2);
-    set.increment(i64::MAX - 2, 3);
-    set.increment(i64::MIN + 2, 3);
-    set.increment(i64::MIN + 1, 2);
-    set.increment(i64::MIN, 1);
+        debug_assert_eq!(set.min_key(), Some(i64::MIN));
+        debug_assert_eq!(set.max_key(), Some(i64::MAX));
 
-    debug_assert_eq!(set.min_key(), Some(i64::MIN));
-    debug_assert_eq!(set.max_key(), Some(i64::MAX));
+        debug_assert_eq!(set.range_count((i64::MAX - 1)..=i64::MAX), 3);
+        debug_assert_eq!(
+            set.range(0.., 1).collect::<Vec<_>>(),
+            vec![
+                (RangeI64::single(i64::MAX - 2), 3),
+                (RangeI64::single(i64::MAX - 1), 2),
+                (RangeI64::single(i64::MAX), 1),
+            ]
+        );
 
-    debug_assert_eq!(set.range_count((i64::MAX - 1)..=i64::MAX), 3);
-    debug_assert_eq!(
-        set.range(0.., 1).collect::<Vec<_>>(),
-        vec![
-            (RangeI64::single(i64::MAX - 2), 3),
-            (RangeI64::single(i64::MAX - 1), 2),
-            (RangeI64::single(i64::MAX), 1),
-        ]
-    );
+        set.remove(i64::MAX..=i64::MAX);
 
-    set.remove(i64::MAX..=i64::MAX);
+        debug_assert_eq!(set.min_key(), Some(i64::MIN));
+        debug_assert_eq!(set.max_key(), Some(i64::MAX - 1));
 
-    debug_assert_eq!(set.min_key(), Some(i64::MIN));
-    debug_assert_eq!(set.max_key(), Some(i64::MAX - 1));
+        debug_assert_eq!(
+            set.range(.., 1).collect::<Vec<_>>(),
+            vec![
+                (RangeI64::single(i64::MIN), 1),
+                (RangeI64::single(i64::MIN + 1), 2),
+                (RangeI64::single(i64::MIN + 2), 3),
+                (RangeI64::single(i64::MAX - 2), 3),
+                (RangeI64::single(i64::MAX - 1), 2),
+            ]
+        );
 
-    debug_assert_eq!(
-        set.range(.., 1).collect::<Vec<_>>(),
-        vec![
-            (RangeI64::single(i64::MIN), 1),
-            (RangeI64::single(i64::MIN + 1), 2),
-            (RangeI64::single(i64::MIN + 2), 3),
-            (RangeI64::single(i64::MAX - 2), 3),
-            (RangeI64::single(i64::MAX - 1), 2),
-        ]
-    );
+        set.remove(i64::MIN..=(i64::MAX - 2));
 
-    set.remove(i64::MIN..=(i64::MAX - 2));
+        debug_assert_eq!(set.min_key(), Some(i64::MAX - 1));
+        debug_assert_eq!(set.max_key(), Some(i64::MAX - 1));
 
-    debug_assert_eq!(set.min_key(), Some(i64::MAX - 1));
-    debug_assert_eq!(set.max_key(), Some(i64::MAX - 1));
-
-    debug_assert_eq!(
-        set.range(.., 1).collect::<Vec<_>>(),
-        vec![(RangeI64::single(i64::MAX - 1), 2),]
-    );
+        debug_assert_eq!(
+            set.range(.., 1).collect::<Vec<_>>(),
+            vec![(RangeI64::single(i64::MAX - 1), 2),]
+        );
+    }
 }

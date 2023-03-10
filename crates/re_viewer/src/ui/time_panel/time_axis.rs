@@ -112,7 +112,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
 /// Collapse any gaps larger or equals to the given threshold.
 fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRange> {
     crate::profile_function!();
-    let cutoff_size = 1; // TODO(emilk): take larger steps when possible, to speed up the case when we have many data points
+    let cutoff_size = gap_threshold;
     let mut it = times.range(.., cutoff_size);
     let first_range = it.next().unwrap().0;
     let mut ranges = vec1::vec1![TimeRange::new(
