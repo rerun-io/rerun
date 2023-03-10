@@ -164,8 +164,24 @@ impl OutlineMaskProcessor {
     /// Two channels with each 256 object ids.
     pub const MASK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Uint;
     pub const MASK_DEPTH_FORMAT: wgpu::TextureFormat = ViewBuilder::MAIN_TARGET_DEPTH_FORMAT;
-    pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> =
-        ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
+    pub const MASK_DEPTH_STATE: Option<wgpu::DepthStencilState> = Some(wgpu::DepthStencilState {
+        format: Self::MASK_DEPTH_FORMAT,
+        // Use GreaterEQUAL in order to make outlines overridable.
+        // This is useful when a large batch shares a common outline, but some of the items in the batch are rendered again with different outlines.
+        depth_compare: wgpu::CompareFunction::GreaterEqual,
+        depth_write_enabled: true,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState::IGNORE,
+            back: wgpu::StencilFaceState::IGNORE,
+            read_mask: 0,
+            write_mask: 0,
+        },
+        bias: wgpu::DepthBiasState {
+            constant: 0,
+            slope_scale: 0.0,
+            clamp: 0.0,
+        },
+    });
 
     /// Holds two pairs of pixel coordinates (one for each layer).
     const VORONOI_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
