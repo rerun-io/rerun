@@ -317,8 +317,6 @@ pub fn data_density_graph_ui(
         }
     }
 
-    let graph_color = graph_color(ctx, &item, ui);
-
     let hovered_x_range = (time_ranges_ui
         .x_from_time_f32(hovered_time_range.min.into())
         .unwrap_or(f32::MAX)
@@ -333,7 +331,7 @@ pub fn data_density_graph_ui(
         data_dentity_graph_painter,
         row_rect.y_range(),
         time_area_painter,
-        graph_color,
+        graph_color(ctx, &item, ui),
         hovered_x_range,
     );
 
@@ -365,7 +363,7 @@ fn graph_color(ctx: &mut ViewerContext<'_>, item: &Item, ui: &mut egui::Ui) -> C
     if is_selected {
         make_brighter(ui.visuals().selection.bg_fill)
     } else {
-        Color32::from_gray(196)
+        Color32::from_gray(225)
     }
 }
 
