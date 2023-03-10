@@ -79,7 +79,7 @@ impl DataDensityGraphPainter {
 
 struct DensityGraph {
     /// 0 == min_x, n-1 == max_x
-    density: Vec<f32>,
+    buckets: Vec<f32>,
     min_x: f32,
     max_x: f32,
 }
@@ -90,43 +90,94 @@ impl DensityGraph {
         let max_x = *x_range.end() + MARGIN_X;
         let n = ((max_x - min_x) * DENSITIES_PER_UI_PIXEL).ceil() as usize;
         Self {
-            density: vec![0.0; n],
+            buckets: vec![0.0; n],
             min_x,
             max_x,
         }
     }
 
+    fn bucket_index_from_x(&self, x: f32) -> f32 {
+        remap(
+            x,
+            self.min_x..=self.max_x,
+            0.0..=(self.buckets.len() as f32 - 1.0),
+        )
+    }
+
+    fn x_from_bucket_index(&self, i: usize) -> f32 {
+        remap(
+            i as f32,
+            0.0..=(self.buckets.len() as f32 - 1.0),
+            self.min_x..=self.max_x,
+        )
+    }
+
     pub fn add(&mut self, x: f32, count: f32) {
         debug_assert!(0.0 <= count);
 
-        let i = remap(
-            x,
-            self.min_x..=self.max_x,
-            0.0..=(self.density.len() as f32 - 1.0),
-        );
+        let i = self.bucket_index_from_x(x);
 
-        if i <= -1.0 {
+        // linearly interpolate where we add the count:
+        let fract = i - i.floor();
+        debug_assert!(0.0 <= fract && fract <= 1.0);
+        let i = i.floor() as i64;
+
+        if let Ok(i) = usize::try_from(i) {
+            if let Some(bucket) = self.buckets.get_mut(i) {
+                *bucket += (1.0 - fract) * count;
+            }
+        }
+        if let Ok(i) = usize::try_from(i + 1) {
+            if let Some(bucket) = self.buckets.get_mut(i) {
+                *bucket += fract * count;
+            }
+        }
+    }
+
+    pub fn add_range(&mut self, (min_x, max_x): (f32, f32), count: f32) {
+        debug_assert!(min_x <= max_x);
+
+        if min_x == max_x {
+            let center_x = egui::lerp(min_x..=max_x, 0.5);
+            self.add(center_x, count);
             return;
         }
 
-        if false {
-            // nearest neighbor:
-            let i = i.round() as usize;
+        // box filter:
 
-            if let Some(bucket) = self.density.get_mut(i) {
-                *bucket += count;
-            }
-        } else {
-            // linearly interpolate where we add the count:
-            let fract = i - i.floor();
-            debug_assert!(0.0 <= fract && fract <= 1.0);
-            let i = i.floor() as usize;
+        let min_bucket = self.bucket_index_from_x(min_x);
+        let max_bucket = self.bucket_index_from_x(max_x);
 
-            if let Some(bucket) = self.density.get_mut(i) {
-                *bucket += (1.0 - fract) * count;
+        // example: we want to add to the range [3.7, 5.2].
+        // We then want to add to the buckets [3, 4, 5, 6],
+        // but not in equal amounts.
+
+        let first_bucket_factor = 1.0 - (min_bucket - min_bucket.floor());
+        let num_full_buckets = 1.0 + max_bucket.floor() - min_bucket.ceil();
+        let last_bucket_factor = 1.0 - (max_bucket.ceil() - max_bucket);
+        let count_per_bucket =
+            count / (first_bucket_factor + num_full_buckets + last_bucket_factor);
+
+        // first bucket, partially filled:
+        if let Ok(i) = usize::try_from(min_bucket.floor() as i64) {
+            if let Some(bucket) = self.buckets.get_mut(i) {
+                *bucket += first_bucket_factor * count_per_bucket;
             }
-            if let Some(bucket) = self.density.get_mut(i + 1) {
-                *bucket += fract * count;
+        }
+
+        // full buckets:
+        for i in (min_bucket.ceil() as i64)..=(max_bucket.floor() as i64) {
+            if 0 <= i {
+                if let Some(bucket) = self.buckets.get_mut(i as usize) {
+                    *bucket += count_per_bucket;
+                }
+            }
+        }
+
+        // last bucket, partially filled:
+        if let Ok(i) = usize::try_from(max_bucket.ceil() as i64) {
+            if let Some(bucket) = self.buckets.get_mut(i) {
+                *bucket += last_bucket_factor * count_per_bucket;
             }
         }
     }
@@ -143,7 +194,7 @@ impl DensityGraph {
 
         let (min_y, max_y) = (*y_range.start(), *y_range.end());
         let center_y = (min_y + max_y) / 2.0;
-        let max_radius = 0.9 * (max_y - min_y) / 2.0;
+        let max_radius = (max_y - min_y) / 2.0;
 
         // We paint a symmetric thing, like so:
         //
@@ -162,18 +213,13 @@ impl DensityGraph {
         let uv = egui::Pos2::ZERO;
 
         let mut mesh = egui::Mesh::default();
-        mesh.vertices.reserve(2 * self.density.len());
-        mesh.indices.reserve(6 * (self.density.len() - 1));
+        mesh.vertices.reserve(2 * self.buckets.len());
+        mesh.indices.reserve(6 * (self.buckets.len() - 1));
 
-        for (i, &density) in self.density.iter().enumerate() {
+        for (i, &density) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
 
-            // let x = self.min_x + i as f32;
-            let x = remap(
-                i as f32,
-                0.0..=(self.density.len() as f32 - 1.0),
-                self.min_x..=self.max_x,
-            );
+            let x = self.x_from_bucket_index(i);
 
             let normalized_density = data_dentity_graph_painter.normalize_density(density);
             let radius = if normalized_density == 0.0 {
@@ -282,18 +328,38 @@ pub fn data_density_graph_ui(
             if count == 0 {
                 return;
             }
-            // We (correctly) assume the time range is narrow, and can be approximated with its center:
-            let time_real = TimeReal::from(time_range.center());
-            if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-                density_graph.add(x, count as _);
 
+            if let (Some(min_x), Some(max_x)) = (
+                time_ranges_ui.x_from_time_f32(time_range.min.into()),
+                time_ranges_ui.x_from_time_f32(time_range.max.into()),
+            ) {
+                density_graph.add_range((min_x, max_x), count as _);
+
+                // Hover:
                 if let Some(pointer_pos) = pointer_pos {
-                    let distance_sq = pos2(x, center_y).distance_sq(pointer_pos);
+                    let center_x = (min_x + max_x) / 2.0;
+                    let distance_sq = pos2(center_x, center_y).distance_sq(pointer_pos);
                     let is_hovered = distance_sq < interact_radius_sq;
 
                     if is_hovered {
                         hovered_time_range = hovered_time_range.union(time_range);
                         num_hovered_messages += count;
+                    }
+                }
+            } else {
+                // We (correctly) assume the time range is narrow, and can be approximated with its center:
+                let time_real = TimeReal::from(time_range.center());
+                if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
+                    density_graph.add(x, count as _);
+
+                    if let Some(pointer_pos) = pointer_pos {
+                        let distance_sq = pos2(x, center_y).distance_sq(pointer_pos);
+                        let is_hovered = distance_sq < interact_radius_sq;
+
+                        if is_hovered {
+                            hovered_time_range = hovered_time_range.union(time_range);
+                            num_hovered_messages += count;
+                        }
                     }
                 }
             }
@@ -304,7 +370,9 @@ pub fn data_density_graph_ui(
 
         // The more zoomed out we are, the bigger chunks of time_histogram we can process at a time.
         // Larger chunks is faster.
-        let time_chunk_size = (3.0 / time_ranges_ui.points_per_time).round() as _;
+        let chunk_size_in_ui_points = 4.0;
+        let time_chunk_size =
+            (chunk_size_in_ui_points / time_ranges_ui.points_per_time).round() as _;
         let ranges: Vec<_> = {
             crate::profile_scope!("time_histogram.range");
             time_histogram
@@ -333,7 +401,7 @@ pub fn data_density_graph_ui(
             .unwrap_or(f32::MIN)
             + MARGIN_X);
 
-    density_graph.density = smooth(&density_graph.density);
+    density_graph.buckets = smooth(&density_graph.buckets);
     density_graph.paint(
         data_dentity_graph_painter,
         row_rect.y_range(),
