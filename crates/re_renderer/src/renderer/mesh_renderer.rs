@@ -49,7 +49,7 @@ mod gpu_data {
 
         pub additive_tint: Color32,
         // Need only the first two bytes, but we want to keep everything aligned to at least 4 bytes.
-        pub outline_mask: [u8; 4],
+        pub outline_mask_ids: [u8; 4],
     }
 
     impl InstanceData {
@@ -120,7 +120,7 @@ pub struct MeshInstance {
     pub additive_tint: Color32,
 
     /// Optional outline mask setting for this instance.
-    pub outline_mask: OutlineMaskPreference,
+    pub outline_mask_ids: OutlineMaskPreference,
 }
 
 impl Default for MeshInstance {
@@ -130,7 +130,7 @@ impl Default for MeshInstance {
             mesh: None,
             world_from_mesh: macaw::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
-            outline_mask: OutlineMaskPreference::NONE,
+            outline_mask_ids: OutlineMaskPreference::NONE,
         }
     }
 }
@@ -192,12 +192,15 @@ impl MeshDrawData {
                 let mut count_with_outlines = 0;
 
                 // Put all instances with outlines at the start of the instance buffer range.
-                let instances = instances
-                    .sorted_by(|a, b| a.outline_mask.is_none().cmp(&b.outline_mask.is_none()));
+                let instances = instances.sorted_by(|a, b| {
+                    a.outline_mask_ids
+                        .is_none()
+                        .cmp(&b.outline_mask_ids.is_none())
+                });
 
                 for instance in instances {
                     count += 1;
-                    count_with_outlines += instance.outline_mask.is_some() as u32;
+                    count_with_outlines += instance.outline_mask_ids.is_some() as u32;
 
                     let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
                     let world_from_mesh_normal =
@@ -219,8 +222,8 @@ impl MeshDrawData {
                         world_from_mesh_normal_row_1: world_from_mesh_normal.row(1).to_array(),
                         world_from_mesh_normal_row_2: world_from_mesh_normal.row(2).to_array(),
                         additive_tint: instance.additive_tint,
-                        outline_mask: instance
-                            .outline_mask
+                        outline_mask_ids: instance
+                            .outline_mask_ids
                             .0
                             .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
                     });
@@ -362,7 +365,7 @@ impl Renderer for MeshRenderer {
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 primitive,
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
-                multisample: OutlineMaskProcessor::get_mask_default_msaa_state(
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
                     shared_data.config.hardware_tier,
                 ),
             },

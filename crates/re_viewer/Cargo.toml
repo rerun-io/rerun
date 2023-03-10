@@ -76,7 +76,7 @@ egui_dock = { workspace = true, features = ["serde"] }
 egui_extras = { workspace = true, features = ["tracing"] }
 egui-notify = "0.6"
 egui-wgpu.workspace = true
-enumset = "1.0.12"
+enumset.workspace = true
 glam = { workspace = true, features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released

@@ -82,7 +82,7 @@ pub trait Renderer {
 /// Currently we do not support sorting *within* a rendering phase!
 /// See [#702](https://github.com/rerun-io/rerun/issues/702)
 /// Within a phase `DrawData` are drawn in the order they are submitted in.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[derive(Debug, enumset::EnumSetType)]
 pub enum DrawPhase {
     /// Opaque objects, performing reads/writes to the depth buffer.
     ///

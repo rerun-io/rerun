@@ -14,7 +14,7 @@ struct Outlines {
 }
 
 struct MeshProperties {
-    outline_mask: OutlineMaskPreference,
+    outline_mask_ids: OutlineMaskPreference,
     position: glam::Vec3,
     rotation: glam::Quat,
 }
@@ -89,17 +89,17 @@ impl framework::Example for Outlines {
 
         let mesh_properties = [
             MeshProperties {
-                outline_mask: outline_mask_large_mesh,
+                outline_mask_ids: outline_mask_large_mesh,
                 position: glam::Vec3::ZERO,
                 rotation: glam::Quat::IDENTITY,
             },
             MeshProperties {
-                outline_mask: OutlineMaskPreference::some(1, 0),
+                outline_mask_ids: OutlineMaskPreference::some(1, 0),
                 position: glam::vec3(2.0, 0.0, -3.0),
                 rotation: glam::Quat::from_rotation_y(seconds_since_startup),
             },
             MeshProperties {
-                outline_mask: OutlineMaskPreference::some(0, 1),
+                outline_mask_ids: OutlineMaskPreference::some(0, 1),
                 position: glam::vec3(-2.0, 1.0, 3.0),
                 rotation: glam::Quat::from_rotation_x(seconds_since_startup),
             },
@@ -117,7 +117,7 @@ impl framework::Example for Outlines {
                             props.rotation,
                             props.position,
                         ) * instance.world_from_mesh,
-                        outline_mask: props.outline_mask,
+                        outline_mask_ids: props.outline_mask_ids,
                         ..Default::default()
                     })
             })

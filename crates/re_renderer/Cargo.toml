@@ -50,6 +50,7 @@ bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
 document-features = "0.2"
 ecolor = { workspace = true, features = ["bytemuck"] }
+enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools = "0.10"

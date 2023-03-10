@@ -33,32 +33,32 @@ impl Arrows3DPart {
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
 
-        let entity_highlight = highlights.entity_highlight(ent_path.hash());
-        let any_part_selected = entity_highlight.any_selection_highlight();
+        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
         let mut line_batch = scene
             .primitives
             .line_strips
             .batch("arrows")
-            .world_from_obj(world_from_obj);
+            .world_from_obj(world_from_obj)
+            .outline_mask_ids(entity_highlight.overall);
 
         let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
-            let instance_hash = instance_path_hash_for_picking(
+            let picking_instance_hash = instance_path_hash_for_picking(
                 ent_path,
                 instance_key,
                 entity_view,
                 props,
-                any_part_selected,
+                entity_highlight.any_selection_highlight,
             );
 
             // TODO(andreas): support labels
             // TODO(andreas): support class ids for arrows
             let annotation_info = annotations.class_description(None).annotation_info();
-            let mut color =
+            let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
             //let label = annotation_info.label(label);
 
@@ -67,23 +67,21 @@ impl Arrows3DPart {
             let vector = glam::Vec3::from(vector);
             let origin = glam::Vec3::from(origin);
 
-            let mut radius = radius.map_or(Size::AUTO, |r| Size(r.0));
+            let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
             let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
             let vector_len = vector.length();
             let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
-            SceneSpatial::apply_hover_and_selection_effect(
-                &mut radius,
-                &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_key),
-            );
-
-            line_batch
+            let segment = line_batch
                 .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
-                .user_data(instance_hash);
+                .user_data(picking_instance_hash);
+
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+                segment.outline_mask_ids(*outline_mask_ids);
+            }
         };
 
         entity_view.visit4(visitor)?;
