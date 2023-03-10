@@ -175,7 +175,45 @@ impl MemoryPanel {
     }
 
     fn store_stats(ui: &mut egui::Ui, store_stats: &DataStoreStats) {
-        egui::Grid::new("gpu resource grid")
+        egui::Grid::new("store config grid")
+            .num_columns(3)
+            .show(ui, |ui| {
+                let DataStoreStats { config, .. } = store_stats;
+
+                ui.label(egui::RichText::new("Limits").italics());
+                ui.label("Row limit");
+                ui.label("Size limit");
+                ui.end_row();
+
+                let label_rows = |ui: &mut egui::Ui, num_rows| {
+                    if num_rows == u64::MAX {
+                        ui.label("+∞")
+                    } else {
+                        ui.label(re_format::format_number(num_rows as _))
+                    }
+                };
+                let label_size = |ui: &mut egui::Ui, size| {
+                    if size == u64::MAX {
+                        ui.label("+∞")
+                    } else {
+                        ui.label(re_format::format_bytes(size as _))
+                    }
+                };
+
+                ui.label("Indices:");
+                label_rows(ui, config.index_bucket_nb_rows);
+                label_size(ui, config.index_bucket_size_bytes);
+                ui.end_row();
+
+                ui.label("Components:");
+                label_rows(ui, config.component_bucket_nb_rows);
+                label_size(ui, config.component_bucket_size_bytes);
+                ui.end_row();
+            });
+
+        ui.separator();
+
+        egui::Grid::new("store stats grid")
             .num_columns(3)
             .show(ui, |ui| {
                 let DataStoreStats {
@@ -193,9 +231,10 @@ impl MemoryPanel {
                     total_index_size_bytes,
                     total_component_rows,
                     total_component_size_bytes,
+                    config: _,
                 } = *store_stats;
 
-                ui.label("");
+                ui.label(egui::RichText::new("Stats").italics());
                 ui.label("Buckets");
                 ui.label("Rows");
                 ui.label("Size");

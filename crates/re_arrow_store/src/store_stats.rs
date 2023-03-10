@@ -1,6 +1,6 @@
 use crate::{
-    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
-    PersistentComponentTable, PersistentIndexTable,
+    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+    IndexTable, PersistentComponentTable, PersistentIndexTable,
 };
 
 // ---
@@ -24,6 +24,8 @@ pub struct DataStoreStats {
     pub total_index_size_bytes: u64,
     pub total_component_rows: u64,
     pub total_component_size_bytes: u64,
+
+    pub config: DataStoreConfig,
 }
 
 impl DataStoreStats {
@@ -66,6 +68,8 @@ impl DataStoreStats {
             total_index_size_bytes,
             total_component_rows,
             total_component_size_bytes,
+
+            config: store.config.clone(),
         }
     }
 }
