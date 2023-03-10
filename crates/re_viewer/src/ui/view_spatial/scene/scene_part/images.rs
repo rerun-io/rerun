@@ -242,7 +242,7 @@ impl ImagesPart {
 
                 scene.ui.images.push(Image {
                     instance_path_hash,
-                    tensor: tensor.clone(),
+                    tensor,
                     meter,
                     annotations,
                 });
