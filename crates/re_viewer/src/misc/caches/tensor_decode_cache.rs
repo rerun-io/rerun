@@ -1,16 +1,19 @@
-use re_log_types::component_types::{Tensor, TensorId, TensorTrait};
+use re_log_types::component_types::{Tensor, TensorDimension, TensorId, TensorTrait};
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum TensorDecodeError {
     // TODO(jleibs): It would be nice to just transparently wrap
     // `image::ImageError` and `tensor::TensorImageError` but neither implements
-    // `Clone`, which we need if we ant to cache the Result.
+    // `Clone`, which we need if we want to cache the Result.
     #[error("Failed to decode bytes as tensor")]
     CouldNotDecode,
     #[error("Failed to interpret image as tensor")]
     InvalidImage,
-    #[error("The encoded tensor did not match its metadata")]
-    InvalidMetaData,
+    #[error("The encoded tensor did not match its metadata {expected:?} != {found:?}")]
+    InvalidMetaData {
+        expected: Vec<TensorDimension>,
+        found: Vec<TensorDimension>,
+    },
 }
 
 #[derive(Clone)]
@@ -64,7 +67,10 @@ impl DecodeCache {
                                     if tensor.shape() == maybe_encoded_tensor.shape() {
                                         Ok(tensor)
                                     } else {
-                                        Err(TensorDecodeError::InvalidMetaData)
+                                        Err(TensorDecodeError::InvalidMetaData {
+                                            expected: maybe_encoded_tensor.shape().into(),
+                                            found: tensor.shape().into(),
+                                        })
                                     }
                                 }
                                 Err(_) => Err(TensorDecodeError::InvalidImage),
@@ -93,7 +99,7 @@ impl DecodeCache {
     }
 
     /// Call once per frame to (potentially) flush the cache.
-    pub fn new_frame(&mut self, max_memory_use: u64) {
+    pub fn begin_frame(&mut self, max_memory_use: u64) {
         // TODO(jleibs): a more incremental purging mechanism, maybe switching to an LRU Cache
         // would likely improve the behavior.
 

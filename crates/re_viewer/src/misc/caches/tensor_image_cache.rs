@@ -110,7 +110,7 @@ impl ImageCache {
     }
 
     /// Call once per frame to (potentially) flush the cache.
-    pub fn new_frame(&mut self, max_memory_use: u64) {
+    pub fn begin_frame(&mut self, max_memory_use: u64) {
         if self.memory_used > max_memory_use {
             self.purge_memory();
         }
