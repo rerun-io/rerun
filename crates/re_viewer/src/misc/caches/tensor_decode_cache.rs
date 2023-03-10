@@ -24,7 +24,7 @@ struct DecodedTensor {
     /// Total memory used by this image.
     memory_used: u64,
 
-    /// When [`ImageCache::generation`] was we last used?
+    /// Which [`DecodeCache::generation`] was this `Tensor` last used?
     last_use_generation: u64,
 }
 
