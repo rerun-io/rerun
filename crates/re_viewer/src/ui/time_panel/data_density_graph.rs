@@ -47,7 +47,7 @@ impl DataDensityGraphPainter {
 
         let new = egui::lerp(
             self.previous_max_density..=self.next_max_density,
-            egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
+            egui::emath::exponential_smooth_factor(0.90, 0.1, dt),
         );
 
         if (self.previous_max_density - new).abs() > 0.01 {
