@@ -161,7 +161,7 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) =
             Self::process_annotations(query, entity_view, &annotations)?;
-        let instance_path_hashes = {
+        let instance_path_hashes_for_picking = {
             crate::profile_scope!("instance_hashes");
             entity_view
                 .iter_instance_keys()?
@@ -177,42 +177,54 @@ impl Points3DPart {
                 .collect::<Vec<_>>()
         };
 
-        // TODO:
-        // let highlights = {
-        //     crate::profile_scope!("highlights");
-        //     instance_path_hashes
-        //         .iter()
-        //         .map(|hash| entity_highlight.index_highlight(hash.instance_key))
-        //         .collect::<Vec<_>>()
-        // };
-
         let colors = Self::process_colors(entity_view, ent_path, &annotation_infos)?;
         let radii = Self::process_radii(entity_view)?;
 
-        if show_labels && instance_path_hashes.len() <= self.max_labels {
+        if show_labels && instance_path_hashes_for_picking.len() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
                 Self::process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             scene.ui.labels.extend(Self::process_labels(
                 entity_view,
-                &instance_path_hashes,
+                &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
                 world_from_obj,
             )?);
         }
 
-        scene
-            .primitives
-            .points
-            .batch("3d points")
-            .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall)
-            .add_points(entity_view.num_instances(), point_positions)
-            .colors(colors)
-            .radii(radii)
-            .user_data(instance_path_hashes.into_iter());
+        {
+            let mut point_batch = scene
+                .primitives
+                .points
+                .batch("3d points")
+                .world_from_obj(world_from_obj)
+                .outline_mask_ids(entity_highlight.overall);
+            let mut point_range_builder = point_batch
+                .add_points(entity_view.num_instances(), point_positions)
+                .colors(colors)
+                .radii(radii)
+                .user_data(instance_path_hashes_for_picking.into_iter());
+
+            // Determine if there's any subranges that need extra highlighting.
+            {
+                crate::profile_scope!("marking additional highlight points");
+                for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
+                    // TODO(andreas/jeremy): We can do this much more efficiently
+                    let highlighted_point_index = entity_view
+                        .iter_instance_keys()?
+                        .position(|key| key == *highlighted_key);
+                    if let Some(highlighted_point_index) = highlighted_point_index {
+                        point_range_builder = point_range_builder
+                            .push_additional_outline_mask_ids_for_range(
+                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
+                                *instance_mask_ids,
+                            );
+                    }
+                }
+            }
+        }
 
         scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
 

@@ -52,6 +52,7 @@ where
             flags: PointCloudBatchFlags::ENABLE_SHADING,
             point_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         });
 
         PointCloudBatchBuilder(self)
@@ -223,6 +224,13 @@ where
             max_points,
             colors: &mut self.0.color_buffer,
             user_data: &mut self.0.user_data,
+            additional_outline_mask_ids: &mut self
+                .0
+                .batches
+                .last_mut()
+                .unwrap()
+                .additional_outline_mask_ids_vertex_ranges, // TODO: less weird borrows?
+            start_vertex_index: old_size as _,
         }
     }
 
@@ -307,12 +315,11 @@ where
 pub struct PointsBuilder<'a, PerPointUserData> {
     // Vertices is a slice, which radii will update
     vertices: &'a mut [PointCloudVertex],
-
-    // Colors and user-data are the Vec we append
-    // the data to if provided.
     max_points: usize,
     colors: &'a mut CpuWriteGpuReadBuffer<Color32>,
     user_data: &'a mut Vec<PerPointUserData>,
+    additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
+    start_vertex_index: u32,
 }
 
 impl<'a, PerPointUserData> PointsBuilder<'a, PerPointUserData>
@@ -360,6 +367,23 @@ where
         crate::profile_function!();
         self.user_data
             .extend(data.take(self.max_points - self.user_data.len()));
+        self
+    }
+
+    /// Pushes additional outline mask ids for a specific range of points.
+    /// The range is relative to this builder's range, not the entire batch.
+    ///
+    /// Prefer the `overall_outline_mask_ids` setting to set the outline mask ids for the entire batch whenever possible!
+    #[inline]
+    pub fn push_additional_outline_mask_ids_for_range(
+        self,
+        range: std::ops::Range<u32>,
+        ids: OutlineMaskPreference,
+    ) -> Self {
+        self.additional_outline_mask_ids.push((
+            (range.start + self.start_vertex_index)..(range.end + self.start_vertex_index),
+            ids,
+        ));
         self
     }
 }

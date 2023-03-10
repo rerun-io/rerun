@@ -24,6 +24,7 @@ use crate::{
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable;
+use enumset::{enum_set, EnumSet};
 use itertools::Itertools;
 use smallvec::smallvec;
 
@@ -73,7 +74,7 @@ mod gpu_data {
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
         pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
-        pub outline_mask: wgpu_buffer_types::UVec2RowPadded, // Could pack into above, but this is easier to deal with.
+        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded, // Could pack into above, but this is easier to deal with.
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -84,7 +85,7 @@ mod gpu_data {
 struct PointCloudBatch {
     bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
-    draw_outline_mask: bool,
+    active_phases: EnumSet<DrawPhase>,
 }
 
 /// A point cloud drawing operation.
@@ -120,6 +121,15 @@ pub struct PointCloudBatchInfo {
 
     /// Optional outline mask setting for the entire batch.
     pub overall_outline_mask_ids: OutlineMaskPreference,
+
+    /// Defines an outline mask for an individual vertex ranges.
+    ///
+    /// Vertex ranges are *not* relative within the current batch, but relates to the draw data vertex buffer.
+    ///
+    /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
+    /// This feature is meant for a limited number of "extra selections"
+    /// If an overall mask is defined as well, the per-point-range masks is overwriting the overall mask.
+    pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 }
 
 /// Description of a point cloud.
@@ -184,6 +194,7 @@ impl PointCloudDrawData {
             flags: PointCloudBatchFlags::empty(),
             point_count: vertices.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -328,7 +339,7 @@ impl PointCloudDrawData {
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
                         flags: batch_info.flags.bits.into(),
-                        outline_mask: batch_info
+                        outline_mask_ids: batch_info
                             .overall_outline_mask_ids
                             .0
                             .unwrap_or_default()
@@ -337,29 +348,64 @@ impl PointCloudDrawData {
                     }),
             );
 
+            // Generate additional "micro batches" for each point range that has a unique outline setting.
+            // This is fairly costly if there's many, but easy and low-overhead if there's only few, which is usually what we expect!
+            let mut uniform_buffer_bindings_mask_only_batches =
+                create_and_fill_uniform_buffer_batch(
+                    ctx,
+                    "lines batch uniform buffers - mask only".into(),
+                    batches
+                        .iter()
+                        .flat_map(|batch_info| {
+                            batch_info
+                                .additional_outline_mask_ids_vertex_ranges
+                                .iter()
+                                .map(|(_, mask)| gpu_data::BatchUniformBuffer {
+                                    world_from_obj: batch_info.world_from_obj.into(),
+                                    flags: batch_info.flags.bits.into(),
+                                    outline_mask_ids: mask.0.unwrap_or_default().into(),
+                                    end_padding: Default::default(),
+                                })
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                )
+                .into_iter();
+
             let mut start_point_for_next_batch = 0;
             for (batch_info, uniform_buffer_binding) in
                 batches.iter().zip(uniform_buffer_bindings.into_iter())
             {
-                let bind_group = ctx.gpu_resources.bind_groups.alloc(
-                    &ctx.device,
-                    &ctx.gpu_resources,
-                    &BindGroupDesc {
-                        label: batch_info.label.clone(),
-                        entries: smallvec![uniform_buffer_binding],
-                        layout: point_renderer.bind_group_layout_batch,
-                    },
-                );
-
                 let point_vertex_range_end = (start_point_for_next_batch + batch_info.point_count)
                     .min(Self::MAX_NUM_POINTS as u32);
+                let mut active_phases = enum_set![DrawPhase::Opaque];
+                // Does the entire batch participate in the outline mask phase?
+                if batch_info.overall_outline_mask_ids.is_some() {
+                    active_phases.insert(DrawPhase::OutlineMask);
+                }
 
-                batches_internal.push(PointCloudBatch {
-                    bind_group,
-                    vertex_range: (start_point_for_next_batch * 6)
-                        ..((start_point_for_next_batch + batch_info.point_count) * 6),
-                    draw_outline_mask: batch_info.overall_outline_mask_ids.is_some(),
-                });
+                batches_internal.push(point_renderer.create_point_cloud_batch(
+                    ctx,
+                    batch_info.label.clone(),
+                    uniform_buffer_binding,
+                    start_point_for_next_batch..point_vertex_range_end,
+                    active_phases,
+                ));
+
+                for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
+                    batches_internal.push(
+                        point_renderer.create_point_cloud_batch(
+                            ctx,
+                            batch_info
+                                .label
+                                .clone()
+                                .push_str(&format!("strip-only {range:?}")),
+                            uniform_buffer_bindings_mask_only_batches.next().unwrap(),
+                            range.clone(),
+                            enum_set![DrawPhase::OutlineMask],
+                        ),
+                    );
+                }
 
                 start_point_for_next_batch = point_vertex_range_end;
 
@@ -382,6 +428,34 @@ pub struct PointCloudRenderer {
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_points: GpuBindGroupLayoutHandle,
     bind_group_layout_batch: GpuBindGroupLayoutHandle,
+}
+
+impl PointCloudRenderer {
+    fn create_point_cloud_batch(
+        &self,
+        ctx: &RenderContext,
+        label: DebugLabel,
+        uniform_buffer_binding: BindGroupEntry,
+        vertex_range: Range<u32>,
+        active_phases: EnumSet<DrawPhase>,
+    ) -> PointCloudBatch {
+        // TODO(andreas): There should be only a single bindgroup with dynamic indices here.
+        let bind_group = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &ctx.gpu_resources,
+            &BindGroupDesc {
+                label,
+                entries: smallvec![uniform_buffer_binding],
+                layout: self.bind_group_layout_batch,
+            },
+        );
+
+        PointCloudBatch {
+            bind_group,
+            vertex_range: (vertex_range.start * 6)..(vertex_range.end * 6),
+            active_phases,
+        }
+    }
 }
 
 impl Renderer for PointCloudRenderer {
@@ -544,12 +618,10 @@ impl Renderer for PointCloudRenderer {
         pass.set_bind_group(1, bind_group_all_points, &[]);
 
         for batch in &draw_data.batches {
-            if phase == DrawPhase::OutlineMask && !batch.draw_outline_mask {
-                continue;
+            if batch.active_phases.contains(phase) {
+                pass.set_bind_group(2, &batch.bind_group, &[]);
+                pass.draw(batch.vertex_range.clone(), 0..1);
             }
-
-            pass.set_bind_group(2, &batch.bind_group, &[]);
-            pass.draw(batch.vertex_range.clone(), 0..1);
         }
 
         Ok(())

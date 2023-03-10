@@ -248,7 +248,7 @@ pub struct LineBatchInfo {
     ///
     /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
     /// This feature is meant for a limited number of "extra selections"
-    /// If an overall mask is defined as well, the per-strip masks is overwriting the overall mask.
+    /// If an overall mask is defined as well, the per-vertex-range masks is overwriting the overall mask.
     pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 }
 
@@ -527,7 +527,7 @@ impl LineDrawData {
                     }),
             );
 
-            // Generate additional "micro batches" for each line strip that has a unique outline setting.
+            // Generate additional "micro batches" for each line vertex range that has a unique outline setting.
             // This is fairly costly if there's many, but easy and low-overhead if there's only few, which is usually what we expect!
             let mut uniform_buffer_bindings_mask_only_batches =
                 create_and_fill_uniform_buffer_batch(
