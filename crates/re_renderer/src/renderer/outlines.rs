@@ -66,8 +66,8 @@ use smallvec::smallvec;
 /// Each channel can distinguish up 255 different objects, each getting their own outline.
 ///
 /// Object index 0 is special: It is the default background of each outline channel, thus rendering with it
-/// is a form of "active no outline", effectively subtracting from the outline channel.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+/// is a form of "active no outline", effectively subtracting from any outline channel.
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub struct OutlineMaskPreference(pub Option<[u8; 2]>);
 
 impl OutlineMaskPreference {
@@ -86,6 +86,22 @@ impl OutlineMaskPreference {
     #[inline]
     pub fn is_none(self) -> bool {
         self.0.is_none()
+    }
+
+    #[inline]
+    pub fn combine(self, other: Self) -> Self {
+        if let Some([a, b]) = self.0 {
+            if let Some([other_a, other_b]) = other.0 {
+                OutlineMaskPreference::some(
+                    if a == 0 { other_a } else { a },
+                    if b == 0 { other_b } else { b },
+                )
+            } else {
+                self
+            }
+        } else {
+            other
+        }
     }
 }
 
