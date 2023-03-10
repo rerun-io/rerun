@@ -13,6 +13,8 @@ use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
 /// So `1 << ROOT_LEVEL` is the size of the range of each children of the root.
 type Level = u64;
 
+// ----------------------------------------------------------------------------
+
 // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
 // 20x 3-bit + 4-bit = 64 bit.
 // level 1, 4, 7, …, 58, 61
@@ -20,14 +22,16 @@ type Level = u64;
 // 5.7 B/dense entry
 // 25-35 B/sparse entry
 
-/// How many bits we progress in each [`BranchNode`]
-const LEVEL_STEP: u64 = 3;
+// /// How many bits we progress in each [`BranchNode`]
+// const LEVEL_STEP: u64 = 3;
 
-/// The level used for [`DenseLeaf`].
-const BOTTOM_LEVEL: Level = 1;
+// /// The level used for [`DenseLeaf`].
+// const BOTTOM_LEVEL: Level = 1;
 
-/// Number of children in [`DenseLeaf`].
-const NUM_CHILDREN_IN_DENSE: u64 = 16;
+// /// Number of children in [`DenseLeaf`].
+// const NUM_CHILDREN_IN_DENSE: u64 = 16;
+
+// ----------------------------------------------------------------------------
 
 // High memory use, faster
 // I believe we could trim this path to use much less memory
@@ -36,12 +40,16 @@ const NUM_CHILDREN_IN_DENSE: u64 = 16;
 // 9.6 B/dense entry
 // 26-73 B/sparse entry
 
-// /// How many bits we progress in each [`BranchNode`]
-// const LEVEL_STEP: u64 = 4;
-// /// The level used for [`DenseLeaf`].
-// const BOTTOM_LEVEL: Level = 0;
-// /// Number of children in [`DenseLeaf`].
-// const NUM_CHILDREN_IN_DENSE: u64 = 16;
+/// How many bits we progress in each [`BranchNode`]
+const LEVEL_STEP: u64 = 4;
+
+/// The level used for [`DenseLeaf`].
+const BOTTOM_LEVEL: Level = 0;
+
+/// Number of children in [`DenseLeaf`].
+const NUM_CHILDREN_IN_DENSE: u64 = 16;
+
+// ----------------------------------------------------------------------------
 
 const ROOT_LEVEL: Level = 64 - LEVEL_STEP;
 static_assertions::const_assert_eq!(ROOT_LEVEL + LEVEL_STEP, 64);
