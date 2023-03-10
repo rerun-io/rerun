@@ -223,7 +223,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
-fn compute_coverage(in: VertexOut) -> f32{
+fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
     if has_any_flag(in.currently_active_flags, CAP_START_ROUND | CAP_END_ROUND) {
         let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
@@ -241,7 +241,7 @@ fn compute_coverage(in: VertexOut) -> f32{
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     var coverage = compute_coverage(in);
-    if coverage < 0.00001 {
+    if coverage < 0.001 {
         discard;
     }
 

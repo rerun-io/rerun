@@ -106,23 +106,9 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // There's easier ways to compute anti-aliasing for when we are in ortho mode since it's
-    // just circles.
-    // But it's very nice to have mostly the same code path and this gives us the sphere world
-    // position along the way.
-    let ray_in_world = camera_ray_to_world_pos(in.pos_in_world);
-
-    // Sphere intersection with anti-aliasing as described by Iq here
-    // https://www.shadertoy.com/view/MsSSWV
-    // (but rearranged and labeled to it's easier to understand!)
-    let d = ray_sphere_distance(ray_in_world, in.point_pos_in_world, in.point_radius);
-    let smallest_distance_to_sphere = d.x;
-    let closest_ray_dist = d.y;
-    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
-    if smallest_distance_to_sphere > pixel_world_size {
+    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    if coverage < 0.001 {
         discard;
     }
-    let coverage = 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
-
     return vec4(in.point_color.rgb, coverage);
 }

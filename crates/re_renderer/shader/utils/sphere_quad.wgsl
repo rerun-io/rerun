@@ -89,3 +89,19 @@ fn sphere_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f
 
     return SphereQuadData(pos, radius);
 }
+
+fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
+    // There's easier ways to compute anti-aliasing for when we are in ortho mode since it's just circles.
+    // But it's very nice to have mostly the same code path and this gives us the sphere world position along the way.
+    let ray = camera_ray_to_world_pos(world_position);
+
+    // Sphere intersection with anti-aliasing as described by Iq here
+    // https://www.shadertoy.com/view/MsSSWV
+    // (but rearranged and labeled to it's easier to understand!)
+    let d = ray_sphere_distance(ray, point_center, radius);
+    let smallest_distance_to_sphere = d.x;
+    let closest_ray_dist = d.y;
+    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
+
+    return 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
+}

@@ -73,7 +73,7 @@ mod gpu_data {
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
         pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
-        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded, // Could pack into above, but this is easier to deal with.
+        pub outline_mask: wgpu_buffer_types::UVec2RowPadded, // Could pack into above, but this is easier to deal with.
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -328,7 +328,7 @@ impl PointCloudDrawData {
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
                         flags: batch_info.flags.bits.into(),
-                        outline_mask_ids: batch_info
+                        outline_mask: batch_info
                             .overall_outline_mask_ids
                             .0
                             .unwrap_or_default()
