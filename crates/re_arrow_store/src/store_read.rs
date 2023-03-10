@@ -657,6 +657,11 @@ impl IndexTable {
     ) -> Option<[Option<RowIndex>; N]> {
         crate::profile_function!();
 
+        // Early-exit if this entire table is unaware of this component.
+        if !self.all_components.contains(&primary) {
+            return None;
+        }
+
         let timeline = self.timeline;
 
         // The time we're looking for gives us an upper bound: all components must be indexed
