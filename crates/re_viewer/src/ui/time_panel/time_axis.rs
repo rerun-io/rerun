@@ -103,8 +103,8 @@ fn collect_gaps(times: &TimeHistogram, min_gap_size: u64, max_collapses: usize) 
     crate::profile_function!();
     // We want this to be fast, even when we have _a lot_ of times.
     // `TimeHistogram::range` has a granularity argument:
-    // - if it make it too small, we get too many gaps and run vewry slow
-    // - if it is too large, we will missing gaps that could be important.
+    // - if it make it too small, we get too many gaps and run very slow
+    // - if it is too large, we will miss gaps that could be important.
     // So we start with a large granularity, and then we reduce it until we get enough gaps.
     // This ensures a logarithmic runtime.
 
