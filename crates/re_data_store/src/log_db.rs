@@ -38,7 +38,15 @@ impl Default for EntityDb {
                 InstanceKey::name(),
                 DataStoreConfig {
                     component_bucket_size_bytes: 1024 * 1024, // 1 MiB
-                    index_bucket_size_bytes: 1024,            // 1KiB
+                    // We do not garbage collect index buckets at the moment, and so the size of
+                    // individual index buckets is irrelevant, only their total number of rows
+                    // matter.
+                    // See <pr-link> for details.
+                    //
+                    // TODO(cmc): Bring back index GC once the whole `MsgId` mismatch issue is
+                    // resolved (probably once batching is implemented).
+                    index_bucket_size_bytes: u64::MAX,
+                    index_bucket_nb_rows: 2048,
                     ..Default::default()
                 },
             ),
