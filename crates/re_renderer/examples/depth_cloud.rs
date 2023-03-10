@@ -328,6 +328,7 @@ impl framework::Example for RenderDepthClouds {
                 texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
                 multiplicative_tint: Rgba::from_white_alpha(0.5),
                 depth_offset: -1,
+                ..Default::default()
             }],
         )
         .unwrap();
