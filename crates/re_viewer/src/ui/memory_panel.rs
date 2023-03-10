@@ -185,46 +185,62 @@ impl MemoryPanel {
                     total_timeless_component_size_bytes,
                     total_temporal_index_rows,
                     total_temporal_index_size_bytes,
+                    total_temporal_index_buckets,
                     total_temporal_component_rows,
                     total_temporal_component_size_bytes,
+                    total_temporal_component_buckets,
                     total_index_rows,
                     total_index_size_bytes,
                     total_component_rows,
                     total_component_size_bytes,
                 } = *store_stats;
 
-                let label_rows = |ui: &mut egui::Ui, num_rows| {
-                    ui.label(format!("rows: {}", re_format::format_number(num_rows as _)))
+                ui.label("");
+                ui.label("Buckets");
+                ui.label("Rows");
+                ui.label("Size");
+                ui.end_row();
+
+                let label_buckets = |ui: &mut egui::Ui, num_buckets| {
+                    ui.label(re_format::format_number(num_buckets as _))
                 };
+                let label_rows =
+                    |ui: &mut egui::Ui, num_rows| ui.label(re_format::format_number(num_rows as _));
                 let label_size =
                     |ui: &mut egui::Ui, size| ui.label(re_format::format_bytes(size as _));
 
                 ui.label("Indices (timeless):");
+                ui.label("");
                 label_rows(ui, total_timeless_index_rows);
                 label_size(ui, total_timeless_index_size_bytes);
                 ui.end_row();
 
                 ui.label("Indices (temporal):");
+                label_buckets(ui, total_temporal_index_buckets);
                 label_rows(ui, total_temporal_index_rows);
                 label_size(ui, total_temporal_index_size_bytes);
                 ui.end_row();
 
                 ui.label("Indices (total):");
+                label_buckets(ui, total_temporal_index_buckets);
                 label_rows(ui, total_index_rows);
                 label_size(ui, total_index_size_bytes);
                 ui.end_row();
 
                 ui.label("Components (timeless):");
+                ui.label("");
                 label_rows(ui, total_timeless_component_rows);
                 label_size(ui, total_timeless_component_size_bytes);
                 ui.end_row();
 
                 ui.label("Components (temporal):");
+                label_buckets(ui, total_temporal_component_buckets);
                 label_rows(ui, total_temporal_component_rows);
                 label_size(ui, total_temporal_component_size_bytes);
                 ui.end_row();
 
                 ui.label("Components (total):");
+                label_buckets(ui, total_temporal_component_buckets);
                 label_rows(ui, total_component_rows);
                 label_size(ui, total_component_size_bytes);
                 ui.end_row();
