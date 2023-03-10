@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use re_log_types::component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait};
 
 use crate::misc::{
-    caches::{TensorImageView, TensorStats},
+    caches::{ColoredTensorView, TensorStats},
     ViewerContext,
 };
 
@@ -30,7 +30,7 @@ impl DataUi for Tensor {
             .try_decode_tensor_if_necessary(self.clone());
 
         let tensor_view = match &decoded {
-            Ok(decoded) => ctx.cache.image.get_view(decoded, ctx.render_ctx),
+            Ok(decoded) => ctx.cache.image.get_view(decoded),
             Err(err) => {
                 ui.label(
                     ctx.re_ui
@@ -45,7 +45,7 @@ impl DataUi for Tensor {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.horizontal_centered(|ui| {
-                    if let Some(retained_img) = tensor_view.retained_img {
+                    if let Some(retained_img) = tensor_view.retained_img() {
                         let max_height = match verbosity {
                             UiVerbosity::Small => 24.0,
                             UiVerbosity::All | UiVerbosity::Reduced => 128.0,
@@ -72,7 +72,7 @@ impl DataUi for Tensor {
                     ui.set_min_width(100.0);
                     tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats);
 
-                    if let Some(retained_img) = tensor_view.retained_img {
+                    if let Some(retained_img) = tensor_view.retained_img() {
                         let max_size = ui
                             .available_size()
                             .min(retained_img.size_vec2())
@@ -93,15 +93,15 @@ impl DataUi for Tensor {
                         }
                     }
 
-                    if let Some(dynamic_img) = tensor_view.dynamic_img {
+                    if let Some(dynamic_img) = tensor_view.dynamic_img() {
                         // TODO(emilk): support copying and saving images on web
                         #[cfg(not(target_arch = "wasm32"))]
-                        ui.horizontal(|ui| image_options(ui, self, dynamic_img));
+                        ui.horizontal(|ui| image_options(ui, self, &dynamic_img));
 
                         // TODO(emilk): support histograms of non-RGB images too
                         if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
                             ui.collapsing("Histogram", |ui| {
-                                histogram_ui(ui, rgb_image);
+                                histogram_ui(ui, &rgb_image);
                             });
                         }
                     }
@@ -171,7 +171,7 @@ pub fn tensor_dtype_and_shape_ui(
 fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &ColoredTensorView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -181,7 +181,7 @@ fn show_zoomed_image_region_tooltip(
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {
-                let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+                let Some(dynamic_img) = tensor_view.dynamic_img() else { return };
                 let w = dynamic_img.width() as _;
                 let h = dynamic_img.height() as _;
 
@@ -204,11 +204,11 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &ColoredTensorView<'_, '_>,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+    let Some(dynamic_img) = tensor_view.dynamic_img() else { return };
 
     use egui::{pos2, remap, Color32, Rect};
 
@@ -236,11 +236,11 @@ pub fn show_zoomed_image_region_area_outline(
 /// `meter`: iff this is a depth map, how long is one meter?
 pub fn show_zoomed_image_region(
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &ColoredTensorView<'_, '_>,
     image_position: [isize; 2],
     meter: Option<f32>,
 ) {
-    let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+    let Some(dynamic_img) = tensor_view.dynamic_img() else { return };
 
     use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
 
@@ -258,7 +258,7 @@ pub fn show_zoomed_image_region(
         for dy in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
             let x = image_position[0] + dx;
             let y = image_position[1] + dy;
-            let color = get_pixel(dynamic_img, [x, y]);
+            let color = get_pixel(&dynamic_img, [x, y]);
             if let Some(color) = color {
                 let image::Rgba([r, g, b, a]) = color;
                 let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
@@ -290,7 +290,7 @@ pub fn show_zoomed_image_region(
         painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
     }
 
-    if let Some(color) = get_pixel(dynamic_img, image_position) {
+    if let Some(color) = get_pixel(&dynamic_img, image_position) {
         tooltip_ui.separator();
         let (x, y) = (image_position[0] as _, image_position[1] as _);
 

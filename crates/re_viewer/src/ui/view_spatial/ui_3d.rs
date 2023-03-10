@@ -344,11 +344,10 @@ pub fn view_3d(
                                 &ctx.current_query(),
                             );
 
-                            let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
-                                &image.annotations,
-                                ctx.render_ctx,
-                            );
+                            let tensor_view = ctx
+                                .cache
+                                .image
+                                .get_colormapped_view(&image.tensor, &image.annotations);
 
                             if let [h, w, ..] = &image.tensor.shape[..] {
                                 ui.separator();
