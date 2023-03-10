@@ -364,7 +364,9 @@ pub fn data_density_graph_ui(
                 }
             }
         };
+
         add_data_point(TimeRange::point(TimeInt::BEGINNING), num_timeless_messages);
+
         let visible_time_range = time_ranges_ui
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
@@ -402,6 +404,7 @@ pub fn data_density_graph_ui(
             + MARGIN_X);
 
     density_graph.buckets = smooth(&density_graph.buckets);
+
     density_graph.paint(
         data_dentity_graph_painter,
         row_rect.y_range(),
