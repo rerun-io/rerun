@@ -58,7 +58,7 @@ pub(crate) fn view_bar_chart(
             for ((ent_path, instance_key), tensor) in &scene.charts {
                 let chart = match &tensor.data {
                     component_types::TensorData::U8(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, instance_key, data.0.iter().copied())
                     }
                     component_types::TensorData::U16(data) => {
                         create_bar_chart(ent_path, instance_key, data.iter().copied())

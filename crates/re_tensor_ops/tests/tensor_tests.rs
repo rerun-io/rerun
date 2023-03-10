@@ -11,7 +11,7 @@ fn convert_tensor_to_ndarray_u8() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U8(vec![0; 60]),
+        TensorData::U8(vec![0; 60].into()),
         TensorDataMeaning::Unknown,
         None,
     );
@@ -130,7 +130,7 @@ fn check_tensor_shape_error() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U8(vec![0; 59]),
+        TensorData::U8(vec![0; 59].into()),
         TensorDataMeaning::Unknown,
         None,
     );

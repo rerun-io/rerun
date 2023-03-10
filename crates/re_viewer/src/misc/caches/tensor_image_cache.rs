@@ -293,6 +293,7 @@ impl AsDynamicImage for component_types::Tensor {
                     })
                     .collect();
                 let color_bytes = buf
+                    .0
                     .iter()
                     .flat_map(|p: &u8| color_lookup[*p as usize])
                     .collect();
@@ -323,7 +324,7 @@ impl AsDynamicImage for component_types::Tensor {
             }
             (1, TensorData::U8(buf), _) => {
                 // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-                image::GrayImage::from_raw(width, height, buf.clone())
+                image::GrayImage::from_raw(width, height, buf.0.to_vec())
                     .context("Bad Luminance8")
                     .map(DynamicImage::ImageLuma8)
             }
@@ -380,7 +381,7 @@ impl AsDynamicImage for component_types::Tensor {
                     .context("Bad Luminance f32")
                     .map(DynamicImage::ImageLuma8)
             }
-            (3, TensorData::U8(buf), _) => image::RgbImage::from_raw(width, height, buf.clone())
+            (3, TensorData::U8(buf), _) => image::RgbImage::from_raw(width, height, buf.0.to_vec())
                 .context("Bad RGB8")
                 .map(DynamicImage::ImageRgb8),
             (3, TensorData::U16(buf), _) => Rgb16Image::from_raw(width, height, buf.to_vec())
@@ -402,9 +403,11 @@ impl AsDynamicImage for component_types::Tensor {
                     .map(DynamicImage::ImageRgb8)
             }
 
-            (4, TensorData::U8(buf), _) => image::RgbaImage::from_raw(width, height, buf.clone())
-                .context("Bad RGBA8")
-                .map(DynamicImage::ImageRgba8),
+            (4, TensorData::U8(buf), _) => {
+                image::RgbaImage::from_raw(width, height, buf.0.to_vec())
+                    .context("Bad RGBA8")
+                    .map(DynamicImage::ImageRgba8)
+            }
             (4, TensorData::U16(buf), _) => Rgba16Image::from_raw(width, height, buf.to_vec())
                 .context("Bad RGBA16 image")
                 .map(DynamicImage::ImageRgba16),

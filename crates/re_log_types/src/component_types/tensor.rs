@@ -7,6 +7,8 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 use crate::msg_bundle::Component;
 use crate::{TensorDataType, TensorElement};
 
+use super::arrow_convert_shims::BinaryBuffer;
+
 pub trait TensorTrait {
     fn id(&self) -> TensorId;
     fn shape(&self) -> &[TensorDimension];
@@ -155,7 +157,7 @@ impl ArrowDeserialize for TensorId {
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
-    U8(Vec<u8>),
+    U8(BinaryBuffer),
     U16(Buffer<u16>),
     U32(Buffer<u32>),
     U64(Buffer<u64>),
@@ -169,7 +171,7 @@ pub enum TensorData {
     //F16(Vec<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
-    JPEG(Vec<u8>),
+    JPEG(BinaryBuffer),
 }
 
 /// Flattened `Tensor` data payload
@@ -408,7 +410,7 @@ impl TensorTrait for Tensor {
 
     fn size_in_bytes(&self) -> usize {
         match &self.data {
-            TensorData::U8(buf) | TensorData::JPEG(buf) => buf.len(),
+            TensorData::U8(buf) | TensorData::JPEG(buf) => buf.0.len(),
             TensorData::U16(buf) => buf.len(),
             TensorData::U32(buf) => buf.len(),
             TensorData::U64(buf) => buf.len(),
@@ -617,7 +619,7 @@ impl Tensor {
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            data: TensorData::JPEG(jpeg_bytes),
+            data: TensorData::JPEG(jpeg_bytes.into()),
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         })
@@ -637,9 +639,9 @@ impl Tensor {
         let (w, h) = (image.width(), image.height());
 
         let (depth, data) = match image {
-            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw())),
-            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw())),
-            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw().into())),
+            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw().into())),
+            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw().into())),
             image::DynamicImage::ImageLuma16(image) => {
                 (1, TensorData::U16(image.into_raw().into()))
             }
@@ -759,7 +761,7 @@ fn test_concat_and_slice() {
             size: 4,
             name: None,
         }],
-        data: TensorData::JPEG(vec![1, 2, 3, 4]),
+        data: TensorData::JPEG(vec![1, 2, 3, 4].into()),
         meaning: TensorDataMeaning::Unknown,
         meter: Some(1000.0),
     }];
@@ -770,7 +772,7 @@ fn test_concat_and_slice() {
             size: 4,
             name: None,
         }],
-        data: TensorData::JPEG(vec![5, 6, 7, 8]),
+        data: TensorData::JPEG(vec![5, 6, 7, 8].into()),
         meaning: TensorDataMeaning::Unknown,
         meter: None,
     }];

@@ -44,6 +44,7 @@ impl DecodeCache {
         &mut self,
         maybe_encoded_tensor: Tensor,
     ) -> Result<Tensor, TensorDecodeError> {
+        crate::profile_function!();
         match &maybe_encoded_tensor.data {
             re_log_types::component_types::TensorData::JPEG(buf) => {
                 let lookup = self
@@ -51,7 +52,7 @@ impl DecodeCache {
                     .entry(maybe_encoded_tensor.id())
                     .or_insert_with(|| {
                         use image::io::Reader as ImageReader;
-                        let mut reader = ImageReader::new(std::io::Cursor::new(buf));
+                        let mut reader = ImageReader::new(std::io::Cursor::new(buf.0.as_slice()));
                         reader.set_format(image::ImageFormat::Jpeg);
                         let img = {
                             crate::profile_scope!("decode_jpeg");
@@ -84,6 +85,7 @@ impl DecodeCache {
                         }
                     });
                 lookup.last_use_generation = self.generation;
+
                 lookup.tensor.clone()
             }
             _ => Ok(maybe_encoded_tensor),
