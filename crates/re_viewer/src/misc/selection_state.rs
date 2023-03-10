@@ -155,7 +155,7 @@ impl<'a> OptionalSpaceViewOutlineMask<'a> {
                     .get(&instance_key)
                     .cloned()
                     .unwrap_or_default()
-                    .max(entity_outline_mask.overall)
+                    .with_fallback_to(entity_outline_mask.overall)
             })
     }
 
@@ -367,15 +367,15 @@ impl SelectionState {
 
         let mut selection_mask_index: u8 = 0;
         let mut hover_mask_index: u8 = 0;
-        let mut next_selection_mask_index = || {
+        let mut next_selection_mask = || {
             // We don't expect to overflow u8, but if we do, don't use the "background mask".
             selection_mask_index = selection_mask_index.wrapping_add(1).at_least(1);
-            selection_mask_index
+            OutlineMaskPreference::some(selection_mask_index, 0)
         };
-        let mut next_hover_mask_index = || {
+        let mut next_hover_mask = || {
             // We don't expect to overflow u8, but if we do, don't use the "background mask".
             hover_mask_index = hover_mask_index.wrapping_add(1).at_least(1);
-            hover_mask_index
+            OutlineMaskPreference::some(0, hover_mask_index)
         };
 
         for current_selection in self.selection.iter() {
@@ -387,8 +387,7 @@ impl SelectionState {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             // Everything in the same group should receive the same selection outline.
                             // (Due to the way outline masks work in re_renderer, we can't leave the hover channel empty)
-                            let selection_mask =
-                                OutlineMaskPreference::some(next_selection_mask_index(), 0);
+                            let selection_mask = next_selection_mask();
 
                             space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
@@ -400,7 +399,8 @@ impl SelectionState {
                                         .selection = SelectionHighlight::SiblingSelection;
                                     let outline_mask =
                                         outlines_masks.entry(entity_path.hash()).or_default();
-                                    outline_mask.overall = outline_mask.overall.max(selection_mask);
+                                    outline_mask.overall =
+                                        selection_mask.with_fallback_to(outline_mask.overall);
                                     outline_mask.any_selection_highlight = true;
                                 },
                             );
@@ -444,8 +444,8 @@ impl SelectionState {
                         } else {
                             &mut outline_mask.overall
                         };
-                        *outline_mask_target = (*outline_mask_target)
-                            .max(OutlineMaskPreference::some(next_selection_mask_index(), 0));
+                        *outline_mask_target =
+                            next_selection_mask().with_fallback_to(*outline_mask_target);
                     }
                 }
             };
@@ -461,8 +461,7 @@ impl SelectionState {
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
                             // Everything in the same group should receive the same selection outline.
-                            let hover_mask =
-                                OutlineMaskPreference::some(0, next_hover_mask_index());
+                            let hover_mask = next_hover_mask();
 
                             space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
@@ -474,7 +473,7 @@ impl SelectionState {
                                         .hover = HoverHighlight::Hovered;
                                     let mask =
                                         outlines_masks.entry(entity_path.hash()).or_default();
-                                    mask.overall = mask.overall.max(hover_mask);
+                                    mask.overall = hover_mask.with_fallback_to(mask.overall);
                                 },
                             );
                         }
@@ -511,8 +510,8 @@ impl SelectionState {
                         } else {
                             &mut outlined_entity.overall
                         };
-                        *outline_mask_target = (*outline_mask_target)
-                            .max(OutlineMaskPreference::some(0, next_selection_mask_index()));
+                        *outline_mask_target =
+                            next_hover_mask().with_fallback_to(*outline_mask_target);
                     }
                 }
             };

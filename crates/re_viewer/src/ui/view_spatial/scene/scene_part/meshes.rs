@@ -37,19 +37,19 @@ impl MeshPart {
 
         let _default_color = DefaultColor::EntityPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-        let entity_outlines = highlights.entity_outline_mask(ent_path.hash());
+        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
         let visitor =
             |instance_key: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
-                let instance_path_hash = instance_path_hash_for_picking(
+                let picking_instance_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance_key,
                     entity_view,
                     props,
-                    entity_outlines.any_selection_highlight(),
+                    entity_highlight.any_selection_highlight(),
                 );
 
-                let outline_mask = entity_outlines.index_outline_mask(instance_key);
+                let outline_mask = entity_highlight.index_outline_mask(instance_key);
                 scene.primitives.any_outlines |= outline_mask.is_some();
 
                 if let Some(mesh) = ctx
@@ -61,10 +61,10 @@ impl MeshPart {
                         ctx.render_ctx,
                     )
                     .map(|cpu_mesh| MeshSource {
-                        instance_path_hash,
+                        instance_path_hash: picking_instance_hash,
                         world_from_mesh: world_from_obj_affine,
                         mesh: cpu_mesh,
-                        outline_mask: entity_outlines.index_outline_mask(instance_key),
+                        outline_mask,
                     })
                 {
                     scene.primitives.meshes.push(mesh);
