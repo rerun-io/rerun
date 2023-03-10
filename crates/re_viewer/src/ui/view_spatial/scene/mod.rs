@@ -247,13 +247,6 @@ impl SceneSpatial {
         color
     }
 
-    fn apply_hover_and_selection_effect_size(size: Size, highlight: InteractionHighlight) -> Size {
-        let mut size = size;
-        // (counting on inlining to remove unused fields!)
-        Self::apply_hover_and_selection_effect(&mut size, &mut Color32::WHITE.clone(), highlight);
-        size
-    }
-
     fn load_keypoint_connections(
         &mut self,
         entity_path: &re_data_store::EntityPath,

@@ -1,8 +1,8 @@
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PointCloudVertex,
+        OutlineMaskPreference, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
+        PointCloudDrawDataError, PointCloudVertex,
     },
     Color32, DebugLabel, RenderContext, Size,
 };
@@ -51,6 +51,7 @@ where
             world_from_obj: glam::Mat4::IDENTITY,
             flags: PointCloudBatchFlags::ENABLE_SHADING,
             point_count: 0,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
         });
 
         PointCloudBatchBuilder(self)
@@ -147,6 +148,13 @@ where
     #[inline]
     pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
         self.batch_mut().world_from_obj = world_from_obj;
+        self
+    }
+
+    /// Sets an outline mask for every element in the batch.
+    #[inline]
+    pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
+        self.batch_mut().overall_outline_mask_ids = outline_mask_ids;
         self
     }
 

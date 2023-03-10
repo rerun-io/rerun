@@ -13,6 +13,8 @@ var color_texture: texture_2d<f32>;
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     flags: u32,
+    _padding: UVec2, // UVec3 would take its own 4xf32 row, UVec2 is on the same as flags
+    outline_mask_ids: UVec2,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -101,4 +103,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
     return vec4(in.color.rgb * shading, coverage);
+}
+
+@fragment
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+    // TODO: Coverage
+    return batch.outline_mask_ids;
 }

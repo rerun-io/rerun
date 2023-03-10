@@ -18,7 +18,10 @@ use std::{
     ops::Range,
 };
 
-use crate::{allocator::create_and_fill_uniform_buffer_batch, DebugLabel, PointCloudBuilder};
+use crate::{
+    allocator::create_and_fill_uniform_buffer_batch, renderer::OutlineMaskProcessor, DebugLabel,
+    PointCloudBuilder,
+};
 use bitflags::bitflags;
 use bytemuck::Zeroable;
 use itertools::Itertools;
@@ -36,8 +39,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 bitflags! {
@@ -64,15 +67,15 @@ mod gpu_data {
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 
-    /// Uniform buffer that changes for every batch of line strips.
+    /// Uniform buffer that changes for every batch of points.
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-
         pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
+        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded, // Could pack into above, but this is easier to deal with.
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
 }
 
@@ -81,6 +84,7 @@ mod gpu_data {
 struct PointCloudBatch {
     bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
+    draw_outline_mask: bool,
 }
 
 /// A point cloud drawing operation.
@@ -113,6 +117,9 @@ pub struct PointCloudBatchInfo {
     ///
     /// The batch will start with the next point after the one the previous batch ended with.
     pub point_count: u32,
+
+    /// Optional outline mask setting for the entire batch.
+    pub overall_outline_mask_ids: OutlineMaskPreference,
 }
 
 /// Description of a point cloud.
@@ -176,6 +183,7 @@ impl PointCloudDrawData {
             world_from_obj: glam::Mat4::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
             point_count: vertices.len() as _,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -320,6 +328,11 @@ impl PointCloudDrawData {
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
                         flags: batch_info.flags.bits.into(),
+                        outline_mask_ids: batch_info
+                            .overall_outline_mask_ids
+                            .0
+                            .unwrap_or_default()
+                            .into(),
                         end_padding: Default::default(),
                     }),
             );
@@ -345,6 +358,7 @@ impl PointCloudDrawData {
                     bind_group,
                     vertex_range: (start_point_for_next_batch * 6)
                         ..((start_point_for_next_batch + batch_info.point_count) * 6),
+                    draw_outline_mask: batch_info.overall_outline_mask_ids.is_some(),
                 });
 
                 start_point_for_next_batch = point_vertex_range_end;
@@ -364,13 +378,18 @@ impl PointCloudDrawData {
 }
 
 pub struct PointCloudRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_points: GpuBindGroupLayoutHandle,
     bind_group_layout_batch: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for PointCloudRenderer {
     type RendererDrawData = PointCloudDrawData;
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::OutlineMask, DrawPhase::Opaque]
+    }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -450,35 +469,54 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let render_pipeline_desc_color = RenderPipelineDesc {
+            label: "PointCloudRenderer::render_pipeline_color".into(),
+            pipeline_layout,
+            vertex_entrypoint: "vs_main".into(),
+            vertex_handle: shader_module,
+            fragment_entrypoint: "fs_main".into(),
+            fragment_handle: shader_module,
+            vertex_buffers: smallvec![],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            multisample: wgpu::MultisampleState {
+                // We discard pixels to do the round cutout, therefore we need to calculate
+                // our own sampling mask.
+                alpha_to_coverage_enabled: true,
+                ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+            },
+        };
+        let render_pipeline_color = pools.render_pipelines.get_or_create(
+            device,
+            &render_pipeline_desc_color,
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "point cloud".into(),
-                pipeline_layout,
-                vertex_entrypoint: "vs_main".into(),
-                vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main".into(),
-                fragment_handle: shader_module,
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: wgpu::MultisampleState {
-                    // We discard pixels to do the round cutout, therefore we need to calculate
-                    // our own sampling mask.
-                    alpha_to_coverage_enabled: true,
-                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
-                },
+                label: "PointCloudRenderer::render_pipeline_outline_mask".into(),
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                // Alpha to coverage doesn't work with the mask integer target.
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
+                    shared_data.config.hardware_tier,
+                ),
+                ..render_pipeline_desc_color
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
 
         PointCloudRenderer {
-            render_pipeline,
+            render_pipeline_color,
+            render_pipeline_outline_mask,
             bind_group_layout_all_points,
             bind_group_layout_batch,
         }
@@ -487,19 +525,29 @@ impl Renderer for PointCloudRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
-        _phase: DrawPhase,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         let Some(bind_group_all_points) = &draw_data.bind_group_all_points else {
             return Ok(()); // No points submitted.
         };
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+
+        let pipeline_handle = if phase == DrawPhase::OutlineMask {
+            self.render_pipeline_outline_mask
+        } else {
+            self.render_pipeline_color
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, bind_group_all_points, &[]);
 
         for batch in &draw_data.batches {
+            if phase == DrawPhase::OutlineMask && !batch.draw_outline_mask {
+                continue;
+            }
+
             pass.set_bind_group(2, &batch.bind_group, &[]);
             pass.draw(batch.vertex_range.clone(), 0..1);
         }

@@ -12,10 +12,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{
-        InteractionHighlight, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
-        TransformCache, ViewerContext,
-    },
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
@@ -81,38 +78,27 @@ impl Points3DPart {
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
         ent_path: &'a EntityPath,
-        highlights: &'a [InteractionHighlight],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         crate::profile_function!();
         let default_color = DefaultColor::EntityPath(ent_path);
 
         let colors = itertools::izip!(
-            highlights.iter(),
             annotation_infos.iter(),
             entity_view.iter_component::<ColorRGBA>()?,
         )
-        .map(move |(highlight, annotation_info, color)| {
-            SceneSpatial::apply_hover_and_selection_effect_color(
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                *highlight,
-            )
+        .map(move |(annotation_info, color)| {
+            annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
         });
         Ok(colors)
     }
 
-    fn process_radii<'a>(
-        entity_view: &'a EntityView<Point3D>,
-        highlights: &'a [InteractionHighlight],
-    ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
-        let radii = itertools::izip!(highlights.iter(), entity_view.iter_component::<Radius>()?,)
-            .map(move |(highlight, radius)| {
-                SceneSpatial::apply_hover_and_selection_effect_size(
-                    radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0)),
-                    *highlight,
-                )
-            });
-        Ok(radii)
+    fn process_radii(
+        entity_view: &EntityView<Point3D>,
+    ) -> Result<impl Iterator<Item = Size> + '_, QueryError> {
+        Ok(entity_view
+            .iter_component::<Radius>()?
+            .map(|radius| radius.map_or(Size::AUTO, |r| Size::new_scene(r.0))))
     }
 
     fn process_labels<'a>(
@@ -157,7 +143,7 @@ impl Points3DPart {
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -175,7 +161,6 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) =
             Self::process_annotations(query, entity_view, &annotations)?;
-        let any_part_selected = entity_highlight.any_selection_highlight();
         let instance_path_hashes = {
             crate::profile_scope!("instance_hashes");
             entity_view
@@ -186,29 +171,28 @@ impl Points3DPart {
                         instance_key,
                         entity_view,
                         properties,
-                        any_part_selected,
+                        entity_highlight.any_selection_highlight,
                     )
                 })
                 .collect::<Vec<_>>()
         };
 
-        let highlights = {
-            crate::profile_scope!("highlights");
-            instance_path_hashes
-                .iter()
-                .map(|hash| entity_highlight.index_highlight(hash.instance_key))
-                .collect::<Vec<_>>()
-        };
+        // TODO:
+        // let highlights = {
+        //     crate::profile_scope!("highlights");
+        //     instance_path_hashes
+        //         .iter()
+        //         .map(|hash| entity_highlight.index_highlight(hash.instance_key))
+        //         .collect::<Vec<_>>()
+        // };
 
-        let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
-
-        let radii = Self::process_radii(entity_view, &highlights)?;
+        let colors = Self::process_colors(entity_view, ent_path, &annotation_infos)?;
+        let radii = Self::process_radii(entity_view)?;
 
         if show_labels && instance_path_hashes.len() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
-                Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?
-                    .collect::<Vec<_>>();
+                Self::process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             scene.ui.labels.extend(Self::process_labels(
                 entity_view,
@@ -224,6 +208,7 @@ impl Points3DPart {
             .points
             .batch("3d points")
             .world_from_obj(world_from_obj)
+            .outline_mask_ids(entity_highlight.overall)
             .add_points(entity_view.num_instances(), point_positions)
             .colors(colors)
             .radii(radii)
@@ -250,7 +235,7 @@ impl ScenePart for Points3DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let entity_highlight = highlights.entity_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.entity_db.data_store,
