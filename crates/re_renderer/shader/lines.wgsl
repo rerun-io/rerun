@@ -260,8 +260,9 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
     // Output is an integer target, can't use coverage therefore.
     // But we still want to discard fragments where coverage is low.
+    // Since the outline extends a bit, a very low cut off tends to look better.
     var coverage = compute_coverage(in);
-    if coverage < 0.5 {
+    if coverage < 1.0 {
         discard;
     }
     return batch.outline_mask;
