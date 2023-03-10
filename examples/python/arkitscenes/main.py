@@ -12,7 +12,7 @@ from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
-ORIENTATION = {"42444949": "portrait", "48458663": "landscape", "41069046": "portrait"}
+ORIENTATION = {"48458663": "landscape", "42444949": "portrait", "41069046": "portrait"}
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
@@ -58,43 +58,12 @@ def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.NDArray[np.float64
     return (ts, Rt)
 
 
-def rotate_camera_90_degrees_counterclockwise(
-    translation: npt.NDArray[np.float64], quaternion: npt.NDArray[np.float64], intrinsics: npt.NDArray[np.float64]
-) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-    """
-    Rotates the camera position by 90 degrees counterclockwise.
-
-    Args:
-        translation: Translation vector representing the camera position.
-        quaternion: Quaternion representing the camera orientation.
-        intrinsics: Intrinsic matrix representing the camera parameters.
-
-    Returns
-    -------
-        tuple: A tuple containing the rotated translation, quaternion and intrinsics.
-
-    """
-    # Rotate the quaternion by 90 degrees around the z-axis
-    rotation_quaternion = R.from_rotvec([0, 0, -np.pi / 2]).as_quat()
-    quaternion = (R.from_quat(quaternion) * R.from_quat(rotation_quaternion)).as_quat()
-
-    # Apply a translation in the rotated coordinate system
-    translation = np.array([-1, 1, 1]) * np.array(translation)[[1, 0, 2]]
-
-    # Apply a rotation to the intrinsics matrix
-    swizzle_x_y = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-    intrinsics = swizzle_x_y @ intrinsics @ swizzle_x_y
-
-    return translation, quaternion, intrinsics
-
-
-def log_arkit(recording_path: Path, orientation: str) -> None:
+def log_arkit(recording_path: Path) -> None:
     """
     Logs ARKit recording data using Rerun.
 
     Args:
         recording_path (Path): The path to the ARKit recording.
-        orientation (str): The orientation of the recording, either "landscape" or "portrait".
 
     Returns
     -------
@@ -124,7 +93,7 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
     # This causes the camera to expand in the beginning otherwise
     init_traj_found = False
     for frame_id in tqdm(frame_ids):
-        rr.set_time_seconds("timeline", float(frame_id))
+        rr.set_time_seconds("time", float(frame_id))
         bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
         depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
         # Log the camera transforms:
@@ -142,14 +111,7 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
             rot = R.from_matrix(rot_matrix[0:3, 0:3])
             quaternion = rot.as_quat()
 
-            if orientation == "portrait":
-                # TODO(pablovela5620) should probably be done via log_view_coordinates?
-                # so that rotation image also rotates the intrinsics/extrinsics
-                translation, quaternion, intrinsic = rotate_camera_90_degrees_counterclockwise(
-                    translation, quaternion, intrinsic
-                )
-                w, h = h, w
-
+            # TODO(pablovela5620): Fix orientation for portrait captures in 2D view once #1387 is closed.
             rr.log_rigid3(
                 "world/camera",
                 parent_from_child=(translation, quaternion),
@@ -159,9 +121,6 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
 
         if not init_traj_found:
             continue
-        if orientation == "portrait":
-            bgr = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
-            depth = cv2.rotate(depth, cv2.ROTATE_90_CLOCKWISE)
 
         rr.log_image("world/camera/image/rgb", bgr[..., ::-1])
         # TODO(pablovela5620): no clear way to change colormap for depth via log function
@@ -182,7 +141,6 @@ if __name__ == "__main__":
 
     rr.script_setup(args, "arkitscenes")
     recording_path = dir = ensure_recording_available(args.video_id)
-    orientation = ORIENTATION[args.video_id]
-    log_arkit(recording_path, orientation)
+    log_arkit(recording_path)
 
     rr.script_teardown(args)
