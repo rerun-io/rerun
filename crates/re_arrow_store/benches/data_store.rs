@@ -4,7 +4,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use arrow2::array::{Array, UnionArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
+use re_arrow_store::{DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
 use re_log_types::{
     component_types::{InstanceKey, Rect2D},
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
@@ -35,7 +35,7 @@ fn insert(c: &mut Criterion) {
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(InstanceKey::name(), msgs.iter()));
+            b.iter(|| insert_messages(Default::default(), InstanceKey::name(), msgs.iter()));
         });
     }
 }
@@ -43,7 +43,7 @@ fn insert(c: &mut Criterion) {
 fn latest_at_batch(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(InstanceKey::name(), msgs.iter());
+        let store = insert_messages(Default::default(), InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
@@ -62,9 +62,16 @@ fn latest_at_batch(c: &mut Criterion) {
 }
 
 fn latest_at_missing_components(c: &mut Criterion) {
+    // Simulate the worst possible case: many many buckets.
+    let config = DataStoreConfig {
+        index_bucket_size_bytes: 0,
+        index_bucket_nb_rows: 0,
+        ..Default::default()
+    };
+
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(InstanceKey::name(), msgs.iter());
+        let store = insert_messages(config.clone(), InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("primary", |b| {
@@ -78,7 +85,7 @@ fn latest_at_missing_components(c: &mut Criterion) {
 
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(InstanceKey::name(), msgs.iter());
+        let store = insert_messages(config, InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("secondaries", |b| {
@@ -103,7 +110,7 @@ fn latest_at_missing_components(c: &mut Criterion) {
 fn range_batch(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(InstanceKey::name(), msgs.iter());
+        let store = insert_messages(Default::default(), InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/range/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
@@ -155,10 +162,11 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
 }
 
 fn insert_messages<'a>(
+    config: DataStoreConfig,
     cluster_key: ComponentName,
     msgs: impl Iterator<Item = &'a MsgBundle>,
 ) -> DataStore {
-    let mut store = DataStore::new(cluster_key, Default::default());
+    let mut store = DataStore::new(cluster_key, config);
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
