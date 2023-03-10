@@ -120,11 +120,17 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
         ts = f"{round(float(ts), 3):.3f}"
         poses_from_traj[ts] = Rt
 
-    for num, frame_id in enumerate(tqdm(frame_ids)):
+    # To avoid logging image frames in the beginning that dont' have a trajectory
+    # This causes the camera to expand in the beginning otherwise
+    init_traj_found = False
+    for frame_id in tqdm(frame_ids):
+        rr.set_time_seconds("timeline", float(frame_id))
         bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
         depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
         # Log the camera transforms:
         if str(frame_id) in poses_from_traj:
+            if not init_traj_found:
+                init_traj_found = True
             intrinsic_fn = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
             w, h, fx, fy, cx, cy = np.loadtxt(intrinsic_fn)
             intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
@@ -143,20 +149,23 @@ def log_arkit(recording_path: Path, orientation: str) -> None:
                     translation, quaternion, intrinsic
                 )
                 w, h = h, w
-                bgr = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
-                depth = cv2.rotate(depth, cv2.ROTATE_90_CLOCKWISE)
 
-            rr.set_time_sequence("frame_id", num)
-            rr.log_image("world/camera/image/rgb", bgr[..., ::-1])
-            # TODO(pablovela5620): no clear way to change colormap for depth via log function
-            # (only back projected points?)
-            rr.log_depth_image("world/camera/image/depth", depth, meter=1000)
             rr.log_rigid3(
                 "world/camera",
                 parent_from_child=(translation, quaternion),
                 xyz="RDF",  # X=Right, Y=Down, Z=Forward
             )
             rr.log_pinhole("world/camera/image", child_from_parent=intrinsic, width=w, height=h)
+
+        if not init_traj_found:
+            continue
+        if orientation == "portrait":
+            bgr = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
+            depth = cv2.rotate(depth, cv2.ROTATE_90_CLOCKWISE)
+
+        rr.log_image("world/camera/image/rgb", bgr[..., ::-1])
+        # TODO(pablovela5620): no clear way to change colormap for depth via log function
+        rr.log_depth_image("world/camera/image/depth", depth, meter=1000)
 
 
 if __name__ == "__main__":
