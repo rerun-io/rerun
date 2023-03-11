@@ -40,10 +40,9 @@ fn install_panic_hook(_build_info: BuildInfo) {
                     .with_build_info(&_build_info)
                     .with_prop("callstack", callstack);
                 if let Some(location) = panic_info.location() {
-                    event = event.with_prop(
-                        "location",
-                        format!("{}:{}", location.file(), location.line()),
-                    );
+                    let file =
+                        anonymize_source_file_path(&std::path::PathBuf::from(location.file()));
+                    event = event.with_prop("location", format!("{file}:{}", location.line()));
                 }
                 analytics.record(event);
 
