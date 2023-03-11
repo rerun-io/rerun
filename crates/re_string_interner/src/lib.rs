@@ -166,8 +166,8 @@ impl StringInterner {
 
     pub fn bytes_used(&self) -> usize {
         self.map
-            .iter()
-            .map(|(k, v)| std::mem::size_of_val(k) + std::mem::size_of_val(v) + v.len())
+            .values()
+            .map(|string| std::mem::size_of::<u64>() + std::mem::size_of::<&str>() + string.len())
             .sum()
     }
 }
