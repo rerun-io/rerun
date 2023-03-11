@@ -199,13 +199,13 @@ fn realtime_pipeline(
         }
 
         if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink) {
-            warn!(%err, %analytics_id, %session_id, "couldn't flush analytics data file");
+            re_log::debug_once!("couldn't flush analytics data file: {err}");
             // We couldn't flush the session file: keep it intact so that we can retry later.
             return;
         }
 
         if let Err(err) = session_file.set_len(0) {
-            warn!(%err, %analytics_id, %session_id, "couldn't truncate analytics data file");
+            re_log::warn_once!("couldn't truncate analytics data file: {err}");
             // We couldn't truncate the session file: we'll have to keep it intact for now, which
             // will result in duplicated data that we'll be able to deduplicate at query time.
             return;
@@ -214,7 +214,7 @@ fn realtime_pipeline(
             // We couldn't reset the session file... That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
-            warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+            re_log::warn_once!("couldn't seek into analytics data file: {err}");
         }
     };
 
