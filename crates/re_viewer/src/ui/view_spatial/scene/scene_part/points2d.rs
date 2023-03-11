@@ -88,7 +88,7 @@ impl Points2DPart {
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-            let mut point_range_builder = point_batch
+            let point_range_builder = point_batch
                 .add_point_2d(pos)
                 .color(color)
                 .radius(radius)
@@ -96,7 +96,7 @@ impl Points2DPart {
 
             // Check if this point is individually highlighted.
             if let Some(instance_mask_ids) = entity_highlight.instances.get(&instance_key) {
-                point_range_builder = point_range_builder.outline_mask_id(*instance_mask_ids);
+                point_range_builder.outline_mask_id(*instance_mask_ids);
             }
 
             if let Some(label) = label {
