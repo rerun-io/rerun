@@ -16,13 +16,13 @@ struct Url(String);
 
 #[derive(thiserror::Error, Debug)]
 pub enum SinkError {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[error("File seek error: {0}")]
+    FileSeek(std::io::Error),
 
-    #[error(transparent)]
+    #[error("JSON: {0}")]
     Serde(#[from] serde_json::Error),
 
-    #[error(transparent)]
+    #[error("HTTP transport: {0}")]
     HttpTransport(Box<ureq::Transport>),
 
     #[error("HTTP status {status_code} {status_text}: {body}")]

@@ -288,7 +288,7 @@ fn flush_events(
 ) -> Result<(), SinkError> {
     if let Err(err) = session_file.rewind() {
         warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
-        return Err(err.into());
+        return Err(SinkError::FileSeek(err));
     }
 
     let events = BufReader::new(&*session_file)
