@@ -656,7 +656,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                                             child.total_count(),
                                         ));
                                     } else {
-                                        panic!("We should only have non-empty children");
+                                        unreachable!("We only have non-empty children");
                                     }
                                 }
 

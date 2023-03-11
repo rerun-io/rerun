@@ -1,8 +1,11 @@
 //! Show the data density over time for a data stream.
+//!
+//! The data density is the number of data points per unit of time.
+//! We collect this into a histogram, blur it, and then paint it.
 
 use std::ops::RangeInclusive;
 
-use egui::{epaint::Vertex, pos2, remap, remap_clamp, Color32, NumExt as _, Rect, Shape};
+use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_data_store::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeReal};
@@ -16,6 +19,7 @@ use super::time_ranges_ui::TimeRangesUi;
 
 // ----------------------------------------------------------------------------
 
+/// We need some margin because of the blurring.
 const MARGIN_X: f32 = 2.0;
 
 /// Higher = slower, but more accurate.
@@ -43,9 +47,9 @@ impl DataDensityGraphPainter {
             return;
         }
 
-        let dt = egui_ctx.input(|input| input.stable_dt.at_most(0.1));
+        let dt = egui_ctx.input(|input| input.stable_dt).at_most(0.1);
 
-        let new = egui::lerp(
+        let new = lerp(
             self.previous_max_density..=self.next_max_density,
             egui::emath::exponential_smooth_factor(0.90, 0.1, dt),
         );
@@ -70,7 +74,7 @@ impl DataDensityGraphPainter {
         if self.previous_max_density > 0.0 {
             (density / self.previous_max_density).at_most(1.0)
         } else {
-            density
+            density.at_most(1.0)
         }
     }
 }
@@ -78,7 +82,8 @@ impl DataDensityGraphPainter {
 // ----------------------------------------------------------------------------
 
 struct DensityGraph {
-    /// 0 == min_x, n-1 == max_x
+    /// Number of datapoints per bucket.
+    /// 0 == min_x, n-1 == max_x.
     buckets: Vec<f32>,
     min_x: f32,
     max_x: f32,
@@ -112,7 +117,7 @@ impl DensityGraph {
         )
     }
 
-    pub fn add(&mut self, x: f32, count: f32) {
+    pub fn add_point(&mut self, x: f32, count: f32) {
         debug_assert!(0.0 <= count);
 
         let i = self.bucket_index_from_x(x);
@@ -138,8 +143,8 @@ impl DensityGraph {
         debug_assert!(min_x <= max_x);
 
         if min_x == max_x {
-            let center_x = egui::lerp(min_x..=max_x, 0.5);
-            self.add(center_x, count);
+            let center_x = lerp(min_x..=max_x, 0.5);
+            self.add_point(center_x, count);
             return;
         }
 
@@ -225,14 +230,15 @@ impl DensityGraph {
             let radius = if normalized_density == 0.0 {
                 0.0
             } else {
-                // Make sure we see small things even when they are dwarfed by the max:
+                // Make sure we see small things even when they are dwarfed
+                // by the max due to the normalization:
                 const MIN_RADIUS: f32 = 1.5;
                 (max_radius * normalized_density).at_least(MIN_RADIUS)
             };
             let color = if hovered_x_range.contains(&x) {
                 Color32::WHITE
             } else {
-                full_color.gamma_multiply(remap_clamp(normalized_density, 0.0..=1.0, 0.5..=1.0))
+                full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density))
             };
 
             mesh.vertices.push(Vertex {
@@ -260,6 +266,7 @@ impl DensityGraph {
 
 // ----------------------------------------------------------------------------
 
+/// Blur the input slightly.
 fn smooth(density: &[f32]) -> Vec<f32> {
     crate::profile_function!();
 
@@ -350,7 +357,7 @@ pub fn data_density_graph_ui(
                 // We (correctly) assume the time range is narrow, and can be approximated with its center:
                 let time_real = TimeReal::from(time_range.center());
                 if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-                    density_graph.add(x, count as _);
+                    density_graph.add_point(x, count as _);
 
                     if let Some(pointer_pos) = pointer_pos {
                         let distance_sq = pos2(x, center_y).distance_sq(pointer_pos);
@@ -437,7 +444,6 @@ pub fn data_density_graph_ui(
 
 fn graph_color(ctx: &mut ViewerContext<'_>, item: &Item, ui: &mut egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains(item);
-    // let hovered_color = ui.visuals().widgets.hovered.text_color();
     if is_selected {
         make_brighter(ui.visuals().selection.bg_fill)
     } else {

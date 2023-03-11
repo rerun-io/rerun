@@ -111,22 +111,22 @@ fn collect_gaps(times: &TimeHistogram, min_gap_size: u64, max_collapses: usize) 
     let max_gap_size = times.max_key().unwrap() - times.min_key().unwrap();
     let mut granularity = max_gap_size as u64;
 
-    let mut gaps = collect_gaps_with_cutoff_size(times, granularity, min_gap_size);
+    let mut gaps = collect_gaps_with_granularity(times, granularity, min_gap_size);
     while gaps.len() < max_collapses && min_gap_size < granularity {
         granularity /= 2;
-        gaps = collect_gaps_with_cutoff_size(times, granularity, min_gap_size);
+        gaps = collect_gaps_with_granularity(times, granularity, min_gap_size);
     }
     gaps
 }
 
-fn collect_gaps_with_cutoff_size(
+fn collect_gaps_with_granularity(
     times: &TimeHistogram,
-    cutoff_size: u64,
+    granularity: u64,
     min_gap_size: u64,
 ) -> Vec<u64> {
     crate::profile_function!();
     times
-        .range(.., cutoff_size)
+        .range(.., granularity)
         .tuple_windows()
         .map(|((a, _), (b, _))| a.max.abs_diff(b.min))
         .filter(|&gap_size| min_gap_size < gap_size)
