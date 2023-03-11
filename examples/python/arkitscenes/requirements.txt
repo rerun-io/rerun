@@ -1,5 +1,7 @@
 rerun-sdk
+numpy
 pandas
 opencv-python
 tqdm
 scipy
+trimesh
