@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::Keypoints, SceneSpatial, UiLabel, UiLabelTarget},
@@ -30,7 +30,7 @@ impl Points2DPart {
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
@@ -39,8 +39,6 @@ impl Points2DPart {
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
-        let any_part_selected = entity_highlight.any_selection_highlight();
-
         // If keypoints ids show up we may need to connect them later!
         // We include time in the key, so that the "Visible history" (time range queries) feature works.
         let mut keypoints: Keypoints = Default::default();
@@ -49,8 +47,10 @@ impl Points2DPart {
             .primitives
             .points
             .batch("2d points")
-            .world_from_obj(world_from_obj);
+            .world_from_obj(world_from_obj)
+            .outline_mask_ids(entity_highlight.overall);
 
+        // TODO(andreas): This should follow the sample batch processing ans points3d.
         let visitor = |instance_key: InstanceKey,
                        pos: Point2D,
                        color: Option<ColorRGBA>,
@@ -58,12 +58,12 @@ impl Points2DPart {
                        label: Option<Label>,
                        class_id: Option<ClassId>,
                        keypoint_id: Option<KeypointId>| {
-            let instance_hash = instance_path_hash_for_picking(
+            let picking_instance_hash = instance_path_hash_for_picking(
                 ent_path,
                 instance_key,
                 entity_view,
                 props,
-                any_part_selected,
+                entity_highlight.any_selection_highlight,
             );
 
             let pos: glam::Vec2 = pos.into();
@@ -83,22 +83,21 @@ impl Points2DPart {
                 },
             );
 
-            let mut color =
+            let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-            SceneSpatial::apply_hover_and_selection_effect(
-                &mut radius,
-                &mut color,
-                entity_highlight.index_highlight(instance_hash.instance_key),
-            );
-
-            point_batch
+            let mut point_range_builder = point_batch
                 .add_point_2d(pos)
                 .color(color)
                 .radius(radius)
-                .user_data(instance_hash);
+                .user_data(picking_instance_hash);
+
+            // Check if this point is individually highlighted.
+            if let Some(instance_mask_ids) = entity_highlight.instances.get(&instance_key) {
+                point_range_builder = point_range_builder.outline_mask_id(*instance_mask_ids);
+            }
 
             if let Some(label) = label {
                 if label_batch.len() < max_num_labels {
@@ -106,7 +105,7 @@ impl Points2DPart {
                         text: label,
                         color,
                         target: UiLabelTarget::Point2D(egui::pos2(pos.x, pos.y)),
-                        labeled_instance: instance_hash,
+                        labeled_instance: picking_instance_hash,
                     });
                 }
             }
@@ -141,7 +140,7 @@ impl ScenePart for Points2DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let entity_highlight = highlights.entity_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Point2D, 7>(
                 &ctx.log_db.entity_db.data_store,

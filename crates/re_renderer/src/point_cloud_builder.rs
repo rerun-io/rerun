@@ -241,6 +241,7 @@ where
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
+        let vertex_index = self.0.vertices.len() as u32;
         self.0.vertices.push(PointCloudVertex {
             position,
             radius: Size::AUTO,
@@ -252,6 +253,14 @@ where
             vertex: self.0.vertices.last_mut().unwrap(),
             color: &mut self.0.color_buffer,
             user_data: self.0.user_data.last_mut().unwrap(),
+            vertex_index,
+            additional_outline_mask_ids: &mut self
+                .0
+                .batches
+                .last_mut()
+                .unwrap()
+                .additional_outline_mask_ids_vertex_ranges, // TODO: less weird borrows?
+            outline_mask_id: OutlineMaskPreference::NONE,
         }
     }
 
@@ -283,10 +292,14 @@ where
     }
 }
 
+// TODO(andreas): Should remove single-point builder, practically this never makes sense as we're almost always dealing with arrays of points.
 pub struct PointBuilder<'a, PerPointUserData> {
     vertex: &'a mut PointCloudVertex,
     color: &'a mut CpuWriteGpuReadBuffer<Color32>,
     user_data: &'a mut PerPointUserData,
+    vertex_index: u32,
+    additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
+    outline_mask_id: OutlineMaskPreference,
 }
 
 impl<'a, PerPointUserData> PointBuilder<'a, PerPointUserData>
@@ -309,6 +322,25 @@ where
     pub fn user_data(self, data: PerPointUserData) -> Self {
         *self.user_data = data;
         self
+    }
+
+    /// Pushes additional outline mask ids for this point
+    ///
+    /// Prefer the `overall_outline_mask_ids` setting to set the outline mask ids for the entire batch whenever possible!
+    pub fn outline_mask_id(mut self, outline_mask_id: OutlineMaskPreference) -> Self {
+        self.outline_mask_id = outline_mask_id;
+        self
+    }
+}
+
+impl<'a, PerPointUserData> Drop for PointBuilder<'a, PerPointUserData> {
+    fn drop(&mut self) {
+        if self.outline_mask_id.is_some() {
+            self.additional_outline_mask_ids.push((
+                self.vertex_index..self.vertex_index + 1,
+                self.outline_mask_id,
+            ));
+        }
     }
 }
 
