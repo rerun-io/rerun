@@ -19,25 +19,21 @@ use crate::{msg_bundle::Component, ComponentName};
 /// );
 /// ```
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Hash,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
+    Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, ArrowField, ArrowSerialize, ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct MsgId(re_tuid::Tuid);
 
+impl std::fmt::Debug for MsgId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:032X}", self.0.as_u128())
+    }
+}
+
 impl std::fmt::Display for MsgId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x}", self.0.as_u128())
+        write!(f, "{:032X}", self.0.as_u128())
     }
 }
 
