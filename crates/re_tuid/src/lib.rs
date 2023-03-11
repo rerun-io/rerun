@@ -9,17 +9,7 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ArrowField, ArrowSerialize, ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
@@ -29,6 +19,12 @@ pub struct Tuid {
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
     inc: u64,
+}
+
+impl std::fmt::Debug for Tuid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:032X}", self.as_u128())
+    }
 }
 
 impl Tuid {
