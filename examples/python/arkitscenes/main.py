@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import rerun as rr
+import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
@@ -88,6 +89,26 @@ def log_arkit(recording_path: Path) -> None:
         # round timestamp to 3 decimal places
         ts = f"{round(float(ts), 3):.3f}"
         poses_from_traj[ts] = Rt
+
+    # TODO(pablovela5620): Wait for resolution of either #1570 or #1571 for textured mesh
+    # for now just use the untextered/uncolored mesh
+    ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
+    # obj_path = recording_path / f"{recording_path.stem}_3dod_mesh.obj"
+    # bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
+    # # convert ply to obj
+    # if not obj_path.exists():
+    #     mesh = o3d.io.read_triangle_mesh(str(ply_path))
+    #     o3d.io.write_triangle_mesh(str(obj_path), mesh)
+
+    ply = trimesh.load(str(ply_path))
+    verts = ply.vertices
+    faces = ply.faces
+
+    # Log the mesh
+    rr.log_mesh("world/mesh_log", positions=verts, indices=faces, timeless=True)
+
+    # with open(obj_path, mode="rb") as file:
+    #     rr.log_mesh_file("world/mesh_log_file", MeshFormat.OBJ, file.read(), timeless=True)
 
     # To avoid logging image frames in the beginning that dont' have a trajectory
     # This causes the camera to expand in the beginning otherwise
