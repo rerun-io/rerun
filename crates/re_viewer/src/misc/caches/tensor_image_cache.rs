@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{hash::Hash, sync::Arc};
 
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
@@ -24,6 +24,9 @@ use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 /// In the case of images that leverage a `ColorMapping` this includes conversion from
 /// the native Tensor type A -> Color32.
 pub struct ColoredTensorView<'store, 'cache> {
+    /// Key used to retrieve this cached view
+    key: ImageCacheKey,
+
     /// Borrowed tensor from the data store
     pub tensor: &'store Tensor,
 
@@ -32,28 +35,24 @@ pub struct ColoredTensorView<'store, 'cache> {
 
     /// Image with annotations applied and converted to Srgb
     pub colored_image: Option<&'cache ColorImage>,
+
+    // For egui
+    // TODO(jleibs): This should go away. See [#506](https://github.com/rerun-io/rerun/issues/506)
+    pub retained_image: Option<&'cache RetainedImage>,
 }
 
 impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
-    pub fn retained_img(&self) -> Option<RetainedImage> {
-        crate::profile_function!();
-        self.colored_image.map(|i| {
-            let debug_name = format!("tensor {:?}", self.tensor.shape());
-            let options = egui::TextureOptions {
-                // This is best for low-res depth-images and the like
-                magnification: egui::TextureFilter::Nearest,
-                minification: egui::TextureFilter::Linear,
-            };
-            RetainedImage::from_color_image(debug_name, i.clone()).with_options(options)
-        })
-    }
-
     pub fn texture_handle(&self, render_ctx: &mut RenderContext) -> Option<GpuTexture2DHandle> {
         crate::profile_function!();
         self.colored_image.map(|i| {
+            let mut s = nohash_hasher::NoHashHasher::<u64>::default();
+            self.key.hash(&mut s);
+            let texture_key = std::hash::Hasher::finish(&s);
+
             let debug_name = format!("tensor {:?}", self.tensor.shape());
             // TODO(andreas): The renderer should ingest images with less conversion (e.g. keep luma as 8bit texture, don't flip bits on bgra etc.)
-            render_ctx.texture_manager_2d.create(
+            render_ctx.texture_manager_2d.get_or_create(
+                texture_key,
                 &mut render_ctx.gpu_resources.textures,
                 &Texture2DCreationDesc {
                     label: debug_name.into(),
@@ -88,7 +87,7 @@ impl nohash_hasher::IsEnabled for ImageCacheKey {}
 
 // required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for ImageCacheKey {
+impl Hash for ImageCacheKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let msg_hash = self.tensor_id.0.as_u128() as u64;
@@ -110,24 +109,24 @@ impl ImageCache {
         tensor: &'store Tensor,
         annotations: &'store Arc<Annotations>,
     ) -> ColoredTensorView<'store, 'cache> {
-        let ci = self
-            .images
-            .entry(ImageCacheKey {
-                tensor_id: tensor.id(),
-                annotation_msg_id: annotations.msg_id,
-            })
-            .or_insert_with(|| {
-                let debug_name = format!("tensor {:?}", tensor.shape());
-                let ci = CachedImage::from_tensor(&debug_name, tensor, annotations);
-                self.memory_used += ci.memory_used;
-                ci
-            });
+        let key = ImageCacheKey {
+            tensor_id: tensor.id(),
+            annotation_msg_id: annotations.msg_id,
+        };
+        let ci = self.images.entry(key).or_insert_with(|| {
+            let debug_name = format!("tensor {:?}", tensor.shape());
+            let ci = CachedImage::from_tensor(&debug_name, tensor, annotations);
+            self.memory_used += ci.memory_used;
+            ci
+        });
         ci.last_use_generation = self.generation;
 
         ColoredTensorView::<'store, '_> {
+            key,
             tensor,
             annotations,
             colored_image: ci.colored_image.as_ref(),
+            retained_image: ci.retained_image.as_ref(),
         }
     }
 
@@ -175,6 +174,10 @@ struct CachedImage {
     /// For uploading to GPU
     colored_image: Option<ColorImage>,
 
+    // For egui
+    // TODO(jleibs): This should go away. See [#506](https://github.com/rerun-io/rerun/issues/506)
+    retained_image: Option<RetainedImage>,
+
     /// Total memory used by this image.
     memory_used: u64,
 
@@ -189,8 +192,22 @@ impl CachedImage {
         match apply_color_map(tensor, annotations) {
             Ok(colored_image) => {
                 let memory_used = colored_image.pixels.len() * std::mem::size_of::<egui::Color32>();
+
+                let retained_image = {
+                    crate::profile_scope!("retained_image");
+                    let debug_name = format!("tensor {:?}", tensor.shape());
+                    let options = egui::TextureOptions {
+                        // This is best for low-res depth-images and the like
+                        magnification: egui::TextureFilter::Nearest,
+                        minification: egui::TextureFilter::Linear,
+                    };
+                    RetainedImage::from_color_image(debug_name, colored_image.clone())
+                        .with_options(options)
+                };
+
                 Self {
                     colored_image: Some(colored_image),
+                    retained_image: Some(retained_image),
                     memory_used: memory_used as u64,
                     last_use_generation: 0,
                 }
@@ -200,6 +217,7 @@ impl CachedImage {
 
                 Self {
                     colored_image: None,
+                    retained_image: None,
                     memory_used: 0,
                     last_use_generation: 0,
                 }

@@ -62,6 +62,16 @@ pub struct TextureManager2D {
     // For convenience to reduce amount of times we need to pass them around
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
+
+    // Cache the texture using a user-provided u64 id. This is expected
+    // to be derived from the `TensorId` which isn't available here for
+    // dependency reasons.
+    // TODO(jleibs): Introduce a proper key here.
+    //
+    // Any texture which wasn't accessed on the previous frame
+    // is ejected from the cache during [`begin_frame`].
+    texture_cache: nohash_hasher::IntMap<u64, GpuTexture2DHandle>,
+    accessed_textures: nohash_hasher::IntSet<u64>,
 }
 
 impl TextureManager2D {
@@ -87,11 +97,12 @@ impl TextureManager2D {
             white_texture,
             device,
             queue,
+            texture_cache: Default::default(),
+            accessed_textures: Default::default(),
         }
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU.
-    #[allow(clippy::unused_self)]
     pub fn create(
         &mut self,
         texture_pool: &mut GpuTexturePool,
@@ -114,6 +125,21 @@ impl TextureManager2D {
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
         Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)
+    }
+
+    /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
+    /// wasn't already created using the same key.
+    pub fn get_or_create(
+        &mut self,
+        key: u64,
+        texture_pool: &mut GpuTexturePool,
+        creation_desc: &Texture2DCreationDesc<'_>,
+    ) -> GpuTexture2DHandle {
+        let texture_handle = self.texture_cache.entry(key).or_insert_with(|| {
+            Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)
+        });
+        self.accessed_textures.insert(key);
+        texture_handle.clone()
     }
 
     /// Returns a single pixel white pixel.
@@ -193,9 +219,10 @@ impl TextureManager2D {
             .map(|h| h.clone())
     }
 
-    #[allow(clippy::unused_self)]
     pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
-        // no-op.
-        // In the future we might add handling of background processing or introduce frame-lived textures.
+        // Drop any textures that weren't accessed in the last frame
+        self.texture_cache
+            .retain(|k, _| self.accessed_textures.contains(k));
+        self.accessed_textures.clear();
     }
 }

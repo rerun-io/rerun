@@ -56,6 +56,7 @@ half = { workspace = true, features = ["bytemuck"] }
 itertools = "0.10"
 macaw.workspace = true
 memoffset = "0.8"
+nohash-hasher = "0.2"
 ordered-float = "3.2"
 parking_lot.workspace = true
 slotmap = "1.0.6"

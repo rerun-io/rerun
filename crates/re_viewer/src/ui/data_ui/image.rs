@@ -45,7 +45,7 @@ impl DataUi for Tensor {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.horizontal_centered(|ui| {
-                    if let Some(retained_img) = tensor_view.retained_img() {
+                    if let Some(retained_img) = tensor_view.retained_image {
                         let max_height = match verbosity {
                             UiVerbosity::Small => 24.0,
                             UiVerbosity::All | UiVerbosity::Reduced => 128.0,
@@ -72,7 +72,7 @@ impl DataUi for Tensor {
                     ui.set_min_width(100.0);
                     tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats);
 
-                    if let Some(retained_img) = tensor_view.retained_img() {
+                    if let Some(retained_img) = tensor_view.retained_image {
                         let max_size = ui
                             .available_size()
                             .min(retained_img.size_vec2())
