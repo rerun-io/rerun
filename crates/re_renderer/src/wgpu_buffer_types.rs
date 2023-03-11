@@ -82,6 +82,30 @@ impl From<glam::Vec2> for Vec2RowPadded {
     }
 }
 
+#[repr(C, align(8))]
+#[derive(Clone, Copy, Zeroable, Pod)]
+pub struct UVec2 {
+    pub x: u32,
+    pub y: u32,
+}
+
+impl From<glam::UVec2> for UVec2 {
+    #[inline]
+    fn from(v: glam::UVec2) -> Self {
+        UVec2 { x: v.x, y: v.y }
+    }
+}
+
+impl From<[u8; 2]> for UVec2 {
+    #[inline]
+    fn from(v: [u8; 2]) -> Self {
+        UVec2 {
+            x: v[0] as u32,
+            y: v[1] as u32,
+        }
+    }
+}
+
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct UVec2RowPadded {

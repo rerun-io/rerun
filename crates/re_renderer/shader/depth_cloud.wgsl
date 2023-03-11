@@ -63,12 +63,12 @@ struct DepthCloudInfo {
 
     /// The scale to apply to the radii of the backprojected points.
     radius_scale: f32,
-    radius_scale_row_pad0: f32,
-    radius_scale_row_pad1: f32,
-    radius_scale_row_pad2: f32,
 
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,
+
+    /// Outline mask id for the outline mask pass.
+    outline_mask_id: UVec2,
 };
 @group(1) @binding(0)
 var<uniform> depth_cloud_info: DepthCloudInfo;
@@ -111,4 +111,16 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         discard;
     }
     return vec4(in.point_color.rgb, coverage);
+}
+
+@fragment
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+    // Output is an integer target, can't use coverage therefore.
+    // But we still want to discard fragments where coverage is low.
+    // Since the outline extends a bit, a very low cut off tends to look better.
+    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    if coverage < 1.0 {
+        discard;
+    }
+    return depth_cloud_info.outline_mask_id;
 }
