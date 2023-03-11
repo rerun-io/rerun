@@ -201,25 +201,34 @@ impl DensityGraph {
         let center_y = (min_y + max_y) / 2.0;
         let max_radius = (max_y - min_y) / 2.0;
 
-        // We paint a symmetric thing, like so:
+        // We paint a symmetric plot, with extra feathering for anti-aliasing:
         //
         // 0  1 2   3
         // x
         //  \   x---x
+        // x \ /
+        //  \ x x---x
         //   \ /
         //    x
         //
         //    x
         //   / \
+        //  / x x---x
+        // x / \
         //  /   x---x
         // x
         // 0  1 2   3
+        //
+        // This means we have an inner radius, and an outer radius.
+        // We have four vertices per bucket, and six triangles.
+
+        let pixel_size = 1.0 / painter.ctx().pixels_per_point();
+        let feather_radius = 0.5 * pixel_size;
 
         let uv = egui::Pos2::ZERO;
 
         let mut mesh = egui::Mesh::default();
-        mesh.vertices.reserve(2 * self.buckets.len());
-        mesh.indices.reserve(6 * (self.buckets.len() - 1));
+        mesh.vertices.reserve(4 * self.buckets.len());
 
         for (i, &density) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
@@ -227,36 +236,80 @@ impl DensityGraph {
             let x = self.x_from_bucket_index(i);
 
             let normalized_density = data_dentity_graph_painter.normalize_density(density);
-            let radius = if normalized_density == 0.0 {
-                0.0
+
+            let (inner_radius, inner_color) = if normalized_density == 0.0 {
+                (0.0, Color32::TRANSPARENT)
             } else {
                 // Make sure we see small things even when they are dwarfed
                 // by the max due to the normalization:
                 const MIN_RADIUS: f32 = 1.5;
-                (max_radius * normalized_density).at_least(MIN_RADIUS)
-            };
-            let color = if hovered_x_range.contains(&x) {
-                Color32::WHITE
-            } else {
-                full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density))
-            };
+                let inner_radius =
+                    (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
-            mesh.vertices.push(Vertex {
-                pos: pos2(x, center_y - radius),
-                color,
-                uv,
-            });
-            mesh.vertices.push(Vertex {
-                pos: pos2(x, center_y + radius),
-                color,
-                uv,
-            });
+                let inner_color = if hovered_x_range.contains(&x) {
+                    Color32::WHITE
+                } else {
+                    full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density))
+                };
+                (inner_radius, inner_color)
+            };
+            let outer_radius = inner_radius + feather_radius;
 
-            if 0 < i {
+            mesh.vertices.extend_from_slice(&[
+                Vertex {
+                    pos: pos2(x, center_y - outer_radius),
+                    color: Color32::TRANSPARENT,
+                    uv,
+                },
+                Vertex {
+                    pos: pos2(x, center_y - inner_radius),
+                    color: inner_color,
+                    uv,
+                },
+                Vertex {
+                    pos: pos2(x, center_y + inner_radius),
+                    color: inner_color,
+                    uv,
+                },
+                Vertex {
+                    pos: pos2(x, center_y + outer_radius),
+                    color: Color32::TRANSPARENT,
+                    uv,
+                },
+            ]);
+        }
+
+        {
+            // I also tried writing this as `flat_map + collect`, but it got much slower in debug builds.
+            crate::profile_scope!("triangles");
+            mesh.indices.reserve(6 * 3 * (self.buckets.len() - 1));
+            for i in 1..self.buckets.len() {
                 let i = i as u32;
-                let base = 2 * (i - 1);
-                mesh.add_triangle(base, base + 1, base + 2);
-                mesh.add_triangle(base + 1, base + 2, base + 3);
+                let base = 4 * (i - 1);
+
+                mesh.indices.extend_from_slice(&[
+                    // top:
+                    base,
+                    base + 1,
+                    base + 4,
+                    base + 1,
+                    base + 4,
+                    base + 5,
+                    // middle:
+                    base + 1,
+                    base + 2,
+                    base + 5,
+                    base + 2,
+                    base + 5,
+                    base + 6,
+                    // bottom:
+                    base + 2,
+                    base + 3,
+                    base + 6,
+                    base + 3,
+                    base + 6,
+                    base + 7,
+                ]);
             }
         }
 
