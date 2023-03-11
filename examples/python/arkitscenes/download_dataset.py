@@ -289,7 +289,14 @@ def ensure_recording_downloaded(video_id: str) -> Path:
             dataset_splits=[VALIDATION],
             download_dir=DATASET_DIR,
             keep_zip=False,
-            raw_dataset_assets=["lowres_wide", "lowres_depth", "lowres_wide_intrinsics", "lowres_wide.traj"],
+            raw_dataset_assets=[
+                "lowres_wide",
+                "lowres_depth",
+                "lowres_wide_intrinsics",
+                "lowres_wide.traj",
+                "annotation",
+                "mesh",
+            ],
             should_download_laser_scanner_point_cloud=False,
         )
     return data_path
