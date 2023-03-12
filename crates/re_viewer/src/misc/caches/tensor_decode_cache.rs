@@ -5,10 +5,12 @@ pub enum TensorDecodeError {
     // TODO(jleibs): It would be nice to just transparently wrap
     // `image::ImageError` and `tensor::TensorImageError` but neither implements
     // `Clone`, which we need if we want to cache the Result.
-    #[error("Failed to decode bytes as tensor")]
-    CouldNotDecode,
-    #[error("Failed to interpret image as tensor")]
-    InvalidImage,
+    #[error("Failed to decode bytes as tensor: {0}")]
+    CouldNotDecode(String),
+
+    #[error("Failed to interpret image as tensor: {0}")]
+    InvalidImage(String),
+
     #[error("The encoded tensor did not match its metadata {expected:?} != {found:?}")]
     InvalidMetaData {
         expected: Vec<TensorDimension>,
@@ -18,10 +20,10 @@ pub enum TensorDecodeError {
 
 #[derive(Clone)]
 struct DecodedTensor {
-    /// `None` if the tensor was not successfully decoded
+    /// Cached `Result` from decoding the `Tensor`
     tensor: Result<Tensor, TensorDecodeError>,
 
-    /// Total memory used by this image.
+    /// Total memory used by this `Tensor`.
     memory_used: u64,
 
     /// Which [`DecodeCache::generation`] was this `Tensor` last used?
@@ -73,9 +75,9 @@ impl DecodeCache {
                                         })
                                     }
                                 }
-                                Err(_) => Err(TensorDecodeError::InvalidImage),
+                                Err(err) => Err(TensorDecodeError::InvalidImage(err.to_string())),
                             },
-                            Err(_) => Err(TensorDecodeError::CouldNotDecode),
+                            Err(err) => Err(TensorDecodeError::CouldNotDecode(err.to_string())),
                         };
 
                         let memory_used = match &tensor {
