@@ -132,18 +132,22 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
 
     """Only for Rust files."""
     if re_declaration.match(line) or re_attribute.match(line) or re_docstring.match(line):
+        line = line.strip()
         prev_line = prev_line.strip()
 
         if is_empty(prev_line):
             return False
 
-        if line.strip().endswith(";"):
+        if line.startswith('fn ') and line.endswith(";"):
             return False  # maybe a trait function
 
-        if prev_line.endswith(",") and line.strip().startswith("impl"):
+        if line.startswith('type ') and prev_line.endswith(";"):
+            return False  # many type declarations in a row is fine
+
+        if prev_line.endswith(",") and line.startswith("impl"):
             return False
 
-        if prev_line.strip().endswith("*"):
+        if prev_line.endswith("*"):
             return False  # maybe in a macro
 
         return True
@@ -198,6 +202,10 @@ def test_lint_vertical_spacing() -> None:
             impl Iterator<Item = &PointCloudVertex>,
         ),
         """,
+        """
+        type Response = Response<Body>;
+        type Error = hyper::Error;
+        """,
     ]
 
     should_fail = [
@@ -211,6 +219,10 @@ def test_lint_vertical_spacing() -> None:
         Foo,
         #[error]
         Bar,
+        """,
+        """
+        slotmap::new_key_type! { pub struct ViewBuilderHandle; }
+        type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
         """,
     ]
 

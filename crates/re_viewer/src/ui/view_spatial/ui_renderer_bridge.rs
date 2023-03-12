@@ -73,6 +73,7 @@ fn create_and_fill_view_builder(
 }
 
 slotmap::new_key_type! { pub struct ViewBuilderHandle; }
+
 type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
 
 fn renderer_paint_callback(
