@@ -448,6 +448,8 @@ impl ViewBuilder {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
     ) {
+        crate::profile_function!();
+
         for queued_draw in &self.queued_draws {
             if queued_draw.participated_phases.contains(&phase) {
                 let res = (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
