@@ -202,6 +202,7 @@ where
             .load(std::sync::atomic::Ordering::Relaxed)
     }
 }
+
 impl<Handle, Desc, Res> Drop for DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,

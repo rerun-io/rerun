@@ -32,6 +32,7 @@ struct ArFrame {
     index: usize,
     timepoint: TimePoint,
 }
+
 impl ArFrame {
     fn from_raw(
         dir: PathBuf,

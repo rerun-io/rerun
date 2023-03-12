@@ -115,6 +115,7 @@ pub struct OutlineConfig {
 
     /// Premultiplied RGBA color for the first outline layer.
     pub color_layer_a: crate::Rgba,
+
     /// Premultiplied RGBA color for the second outline layer.
     pub color_layer_b: crate::Rgba,
 }
@@ -143,6 +144,7 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct JumpfloodingStepUniformBuffer {
         pub step_width: wgpu_buffer_types::U32RowPadded,
+
         /// All this padding hurts. `step_width` be a PushConstant but they are not widely supported enough!
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
