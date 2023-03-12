@@ -1,7 +1,10 @@
 use egui::{ColorImage, Vec2};
 use itertools::Itertools as _;
 
-use re_log_types::component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait};
+use re_log_types::{
+    component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait},
+    TensorElement,
+};
 
 use crate::misc::{
     caches::{ColoredTensorView, TensorStats},
@@ -336,43 +339,75 @@ pub fn show_zoomed_image_region(
                     }
                 });
 
-                /*
-                let text = match dynamic_img {
-                    DynamicImage::ImageLuma8(_) => {
-                        format!("L: {r}")
-                    }
+                let tensor = tensor_view.tensor;
 
-                    DynamicImage::ImageLuma16(image) => {
-                        let l = image.get_pixel(x as _, y as _)[0];
-                        format!("L: {} ({:.5})", l, l as f32 / 65535.0)
-                    }
-
-                    DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
-                        format!("L: {r}, A: {a}")
-                    }
-
-                    DynamicImage::ImageRgb8(_)
-                    | DynamicImage::ImageRgb16(_)
-                    | DynamicImage::ImageRgb32F(_) => {
-                        // TODO(emilk): show 16-bit and 32f values differently
-                        format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}")
-                    }
-
-                    DynamicImage::ImageRgba8(_)
-                    | DynamicImage::ImageRgba16(_)
-                    | DynamicImage::ImageRgba32F(_) => {
-                        // TODO(emilk): show 16-bit and 32f values differently
-                        format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}")
-                    }
-
-                    _ => {
-                        re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
-                        format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}")
+                let text = match tensor.num_dim() {
+                    2 => tensor.get(&[x, y]).map(|v| format!("Val: {}", v)),
+                    3 => match tensor.shape()[2].size {
+                        0 => Some("Cannot preview 0-size channel".to_owned()),
+                        1 => tensor.get(&[x, y, 0]).map(|v| format!("Val: {}", v)),
+                        3 => {
+                            // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                            if let (Some(r), Some(g), Some(b)) = (
+                                tensor_view.tensor.get(&[x, y, 0]),
+                                tensor_view.tensor.get(&[x, y, 1]),
+                                tensor_view.tensor.get(&[x, y, 2]),
+                            ) {
+                                match (r, g, b) {
+                                    (
+                                        TensorElement::U8(r),
+                                        TensorElement::U8(g),
+                                        TensorElement::U8(b),
+                                    ) => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
+                                    }
+                                    _ => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}"))
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        },
+                        4 => {
+                            // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                            if let (Some(r), Some(g), Some(b), Some(a)) = (
+                                tensor_view.tensor.get(&[x, y, 0]),
+                                tensor_view.tensor.get(&[x, y, 1]),
+                                tensor_view.tensor.get(&[x, y, 2]),
+                                tensor_view.tensor.get(&[x, y, 3]),
+                            ) {
+                                match (r, g, b, a) {
+                                    (
+                                        TensorElement::U8(r),
+                                        TensorElement::U8(g),
+                                        TensorElement::U8(b),
+                                        TensorElement::U8(a),
+                                    ) => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"))
+                                    }
+                                    _ => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}, A: {a}"))
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        },
+                        channels => {
+                            Some(format!("Cannot preview {}-channel image", channels))
+                        }
+                    },
+                    dims => {
+                        Some(format!("Cannot preview {}-dimensional image", dims))
                     }
                 };
-                ui.label(text);
-                */
-                ui.label("TODO(jleibs): Hover-value");
+
+                if let Some(text) = text {
+                    ui.label(text);
+                } else {
+                    ui.label("No Value");
+                }
 
                 color_picker::show_color(ui, color, Vec2::splat(ui.available_height()));
             });
