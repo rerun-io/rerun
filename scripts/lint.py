@@ -110,6 +110,7 @@ def test_lint_line() -> None:
     for line in should_error:
         assert lint_line(line) is not None, f'expected "{line}" to fail'
 
+
 # -----------------------------------------------------------------------------
 
 re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?((impl|fn|struct|enum|union|trait|type)\b))")
@@ -138,10 +139,10 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         if is_empty(prev_line):
             return False
 
-        if line.startswith('fn ') and line.endswith(";"):
+        if line.startswith("fn ") and line.endswith(";"):
             return False  # maybe a trait function
 
-        if line.startswith('type ') and prev_line.endswith(";"):
+        if line.startswith("type ") and prev_line.endswith(";"):
             return False  # many type declarations in a row is fine
 
         if prev_line.endswith(",") and line.startswith("impl"):
@@ -235,6 +236,7 @@ def test_lint_vertical_spacing() -> None:
         assert len(errors) > 0, f"expected this to fail:\n{code}"
 
     pass
+
 
 # -----------------------------------------------------------------------------
 
