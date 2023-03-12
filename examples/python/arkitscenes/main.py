@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import json
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Tuple
 
 import cv2
 import numpy as np
@@ -16,6 +17,33 @@ from tqdm import tqdm
 ORIENTATION = {"48458663": "landscape", "42444949": "portrait", "41069046": "portrait"}
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
+
+
+def load_json(js_path: Path) -> dict[str, Any]:
+    with open(js_path, "r") as f:
+        json_data = json.load(f)
+    return dict(json_data)
+
+
+def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
+    """Logs annotated bounding boxes to Rerun."""
+    for label_info in annotation["data"]:
+        object_id = label_info["objectId"]
+        label = label_info["label"]
+        rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
+        transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
+        scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
+
+        rot = R.from_matrix(rotation)
+        rr.log_obb(
+            f"world/annotations/box-{object_id}-{label}",
+            half_size=scale,
+            position=transform,
+            rotation_q=rot.as_quat(),
+            color=[160, 230, 130, 0],
+            label=label,
+            timeless=True,
+        )
 
 
 def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.NDArray[np.float64]]:
@@ -90,12 +118,15 @@ def log_arkit(recording_path: Path) -> None:
         ts = f"{round(float(ts), 3):.3f}"
         poses_from_traj[ts] = Rt
 
+    ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
+    bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
+    annotation = load_json(bbox_annotations_path)
+    log_annotated_bboxes(annotation)
+
     # TODO(pablovela5620): Wait for resolution of either #1570 or #1571 for textured mesh
     # for now just use the untextered/uncolored mesh
-    ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
-    # obj_path = recording_path / f"{recording_path.stem}_3dod_mesh.obj"
-    # bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     # # convert ply to obj
+    # obj_path = recording_path / f"{recording_path.stem}_3dod_mesh.obj"
     # if not obj_path.exists():
     #     mesh = o3d.io.read_triangle_mesh(str(ply_path))
     #     o3d.io.write_triangle_mesh(str(obj_path), mesh)
