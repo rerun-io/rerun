@@ -9,6 +9,7 @@ pub struct RemoteViewerApp {
 
     /// The url of the remote server.
     url: String,
+
     app: Option<(re_ws_comms::Connection, App)>,
 }
 

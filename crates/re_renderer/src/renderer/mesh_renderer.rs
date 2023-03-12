@@ -86,6 +86,7 @@ mod gpu_data {
 #[derive(Clone)]
 struct MeshBatch {
     mesh: GpuMesh,
+
     count: u32,
 
     /// Number of meshes out of `count` which have outlines.
