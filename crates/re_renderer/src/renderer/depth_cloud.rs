@@ -441,10 +441,10 @@ impl Renderer for DepthCloudRenderer {
             return Ok(());
         }
 
-        let pipeline_handle = if phase == DrawPhase::OutlineMask {
-            self.render_pipeline_outline_mask
-        } else {
-            self.render_pipeline_color
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
