@@ -50,7 +50,7 @@ impl Points2DPart {
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall);
 
-        // TODO(andreas): This should follow the sample batch processing ans points3d.
+        // TODO(andreas): This should follow the same batch processing as points3d.
         let visitor = |instance_key: InstanceKey,
                        pos: Point2D,
                        color: Option<ColorRGBA>,

@@ -393,18 +393,13 @@ impl PointCloudDrawData {
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
-                    batches_internal.push(
-                        point_renderer.create_point_cloud_batch(
-                            ctx,
-                            batch_info
-                                .label
-                                .clone()
-                                .push_str(&format!("strip-only {range:?}")),
-                            uniform_buffer_bindings_mask_only_batches.next().unwrap(),
-                            range.clone(),
-                            enum_set![DrawPhase::OutlineMask],
-                        ),
-                    );
+                    batches_internal.push(point_renderer.create_point_cloud_batch(
+                        ctx,
+                        format!("{:?} strip-only {:?}", batch_info.label, range).into(),
+                        uniform_buffer_bindings_mask_only_batches.next().unwrap(),
+                        range.clone(),
+                        enum_set![DrawPhase::OutlineMask],
+                    ));
                 }
 
                 start_point_for_next_batch = point_vertex_range_end;
@@ -439,7 +434,8 @@ impl PointCloudRenderer {
         vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,
     ) -> PointCloudBatch {
-        // TODO(andreas): There should be only a single bindgroup with dynamic indices here.
+        // TODO(andreas): There should be only a single bindgroup with dynamic indices for all batches.
+        //                  (each batch would then know which dynamic indices to use in the bindgroup)
         let bind_group = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &ctx.gpu_resources,

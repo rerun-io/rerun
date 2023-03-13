@@ -618,7 +618,8 @@ impl LineRenderer {
         line_vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,
     ) -> LineStripBatch {
-        // TODO(andreas): There should be only a single bindgroup with dynamic indices here.
+        // TODO(andreas): There should be only a single bindgroup with dynamic indices for all batches.
+        //                  (each batch would then know which dynamic indices to use in the bindgroup)
         let bind_group = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &ctx.gpu_resources,
