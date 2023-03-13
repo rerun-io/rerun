@@ -108,6 +108,8 @@ impl RenderContext {
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
     ) -> Self {
+        crate::profile_function!();
+
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
 
@@ -310,6 +312,7 @@ impl RenderContext {
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self.active_frame.encoder.lock().0.take() {
+            crate::profile_scope!("finish & submit frame-global encoder");
             let command_buffer = command_encoder.finish();
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.

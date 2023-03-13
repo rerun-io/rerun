@@ -301,6 +301,8 @@ impl CpuWriteGpuReadBelt {
         buffer_pool: &GpuBufferPool,
         num_elements: usize,
     ) -> CpuWriteGpuReadBuffer<T> {
+        crate::profile_function!();
+
         // Potentially overestimate alignment with Self::MIN_ALIGNMENT, see Self::MIN_ALIGNMENT doc string.
         let alignment = (std::mem::align_of::<T>() as wgpu::BufferAddress).max(Self::MIN_ALIGNMENT);
         // Pad out the size of the used buffer to a multiple of Self::MIN_ALIGNMENT.
@@ -377,6 +379,8 @@ impl CpuWriteGpuReadBelt {
     /// further writes) until after [`CpuWriteGpuReadBelt::after_queue_submit`] is called *and* the GPU is done
     /// copying the data from them.
     pub fn before_queue_submit(&mut self) {
+        crate::profile_function!();
+
         // This would be a great usecase for persistent memory mapping, i.e. mapping without the need to unmap
         // https://github.com/gfx-rs/wgpu/issues/1468
         // However, WebGPU does not support this!
@@ -393,6 +397,7 @@ impl CpuWriteGpuReadBelt {
     /// copy operations are submitted. Additional calls are harmless.
     /// Not calling this as soon as possible may result in increased buffer memory usage.
     pub fn after_queue_submit(&mut self) {
+        crate::profile_function!();
         self.receive_chunks();
 
         let sender = &self.sender;
