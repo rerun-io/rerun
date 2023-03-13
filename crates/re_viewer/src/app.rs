@@ -133,6 +133,10 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
+        if let Some(mem_limit) = startup_options.memory_limit.limit {
+            re_log::info!(limit=re_format::format_bytes(mem_limit as _), "A memory limit has been set, the viewer will automatically start dropping old data if it's exceeded");
+        }
+
         Self {
             build_info,
             startup_options,

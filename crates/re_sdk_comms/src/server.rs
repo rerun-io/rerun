@@ -69,6 +69,11 @@ pub fn serve(port: u16, options: ServerOptions) -> anyhow::Result<Receiver<LogMs
         );
     }
 
+    if options.max_latency_sec != f32::INFINITY {
+        let d = re_log_types::Duration::from_secs(options.max_latency_sec);
+        re_log::info!(limit=%d, "A latency limit has been set, the server will automatically start dropping packets if it's exceeded");
+    }
+
     Ok(rx)
 }
 
