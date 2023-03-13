@@ -91,9 +91,7 @@ impl<'a> IntoIterator for &'a BufferBinaryArray {
     // We'll still catch the issue on build in Linux, but on windows just fall back to panic.
     #[cfg(target_os = "windows")]
     fn into_iter(self) -> Self::IntoIter {
-        panic!(
-        "Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert."
-    );
+        panic!("Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert.");
     }
 }
 
