@@ -17,10 +17,7 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{
-        caches::AsDynamicImage, SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
-        ViewerContext,
-    },
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
@@ -31,24 +28,21 @@ use crate::{
 use super::ScenePart;
 
 #[allow(clippy::too_many_arguments)]
-fn push_tensor_texture<T: AsDynamicImage>(
+fn push_tensor_texture(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
     instance_path_hash: InstancePathHash,
-    tensor: &T,
+    tensor: &Tensor,
     tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
 ) {
     crate::profile_function!();
 
-    let tensor_view =
-        ctx.cache
-            .image
-            .get_view_with_annotations(tensor, annotations, ctx.render_ctx);
+    let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
 
-    if let Some(texture_handle) = tensor_view.texture_handle {
+    if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
         let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
         scene
             .primitives

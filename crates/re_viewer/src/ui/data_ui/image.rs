@@ -1,10 +1,13 @@
-use egui::Vec2;
+use egui::{ColorImage, Vec2};
 use itertools::Itertools as _;
 
-use re_log_types::component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait};
+use re_log_types::{
+    component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait},
+    TensorElement,
+};
 
 use crate::misc::{
-    caches::{TensorImageView, TensorStats},
+    caches::{ColoredTensorView, TensorStats},
     ViewerContext,
 };
 
@@ -30,7 +33,7 @@ impl DataUi for Tensor {
             .try_decode_tensor_if_necessary(self.clone());
 
         let tensor_view = match &decoded {
-            Ok(decoded) => ctx.cache.image.get_view(decoded, ctx.render_ctx),
+            Ok(decoded) => ctx.cache.image.get_view(decoded),
             Err(err) => {
                 ui.label(
                     ctx.re_ui
@@ -45,7 +48,7 @@ impl DataUi for Tensor {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
                 ui.horizontal_centered(|ui| {
-                    if let Some(retained_img) = tensor_view.retained_img {
+                    if let Some(retained_img) = tensor_view.retained_image {
                         let max_height = match verbosity {
                             UiVerbosity::Small => 24.0,
                             UiVerbosity::All | UiVerbosity::Reduced => 128.0,
@@ -72,7 +75,7 @@ impl DataUi for Tensor {
                     ui.set_min_width(100.0);
                     tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats);
 
-                    if let Some(retained_img) = tensor_view.retained_img {
+                    if let Some(retained_img) = tensor_view.retained_image {
                         let max_size = ui
                             .available_size()
                             .min(retained_img.size_vec2())
@@ -93,15 +96,15 @@ impl DataUi for Tensor {
                         }
                     }
 
-                    if let Some(dynamic_img) = tensor_view.dynamic_img {
+                    if let Some(dynamic_img) = tensor_view.dynamic_img() {
                         // TODO(emilk): support copying and saving images on web
                         #[cfg(not(target_arch = "wasm32"))]
-                        ui.horizontal(|ui| image_options(ui, self, dynamic_img));
+                        ui.horizontal(|ui| image_options(ui, self, &dynamic_img));
 
                         // TODO(emilk): support histograms of non-RGB images too
-                        if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
+                        if let image::DynamicImage::ImageRgba8(rgba_image) = dynamic_img {
                             ui.collapsing("Histogram", |ui| {
-                                histogram_ui(ui, rgb_image);
+                                histogram_ui(ui, &rgba_image);
                             });
                         }
                     }
@@ -171,7 +174,7 @@ pub fn tensor_dtype_and_shape_ui(
 fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &ColoredTensorView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -181,20 +184,26 @@ fn show_zoomed_image_region_tooltip(
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {
-                let Some(dynamic_img) = tensor_view.dynamic_img else { return };
-                let w = dynamic_img.width() as _;
-                let h = dynamic_img.height() as _;
+                if tensor_view.tensor.is_shaped_like_an_image() {
+                    let h = tensor_view.tensor.shape()[0].size as _;
+                    let w = tensor_view.tensor.shape()[1].size as _;
 
-                use egui::NumExt;
+                    use egui::NumExt;
 
-                let center = [
-                    (egui::remap(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize)
-                        .at_most(w),
-                    (egui::remap(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize)
-                        .at_most(h),
-                ];
-                show_zoomed_image_region_area_outline(parent_ui, tensor_view, center, image_rect);
-                show_zoomed_image_region(ui, tensor_view, center, meter);
+                    let center = [
+                        (egui::remap(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize)
+                            .at_most(w),
+                        (egui::remap(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize)
+                            .at_most(h),
+                    ];
+                    show_zoomed_image_region_area_outline(
+                        parent_ui,
+                        tensor_view,
+                        center,
+                        image_rect,
+                    );
+                    show_zoomed_image_region(ui, tensor_view, center, meter);
+                }
             });
         })
 }
@@ -204,202 +213,224 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &ColoredTensorView<'_, '_>,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+    if tensor_view.tensor.is_shaped_like_an_image() {
+        use egui::{pos2, remap, Color32, Rect};
 
-    use egui::{pos2, remap, Color32, Rect};
+        let h = tensor_view.tensor.shape()[0].size as _;
+        let w = tensor_view.tensor.shape()[1].size as _;
 
-    let w = dynamic_img.width() as _;
-    let h = dynamic_img.height() as _;
+        // Show where on the original image the zoomed-in region is at:
+        let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
 
-    // Show where on the original image the zoomed-in region is at:
-    let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let left = remap(left, 0.0..=w, image_rect.x_range());
+        let right = remap(right, 0.0..=w, image_rect.x_range());
+        let top = remap(top, 0.0..=h, image_rect.y_range());
+        let bottom = remap(bottom, 0.0..=h, image_rect.y_range());
 
-    let left = remap(left, 0.0..=w, image_rect.x_range());
-    let right = remap(right, 0.0..=w, image_rect.x_range());
-    let top = remap(top, 0.0..=h, image_rect.y_range());
-    let bottom = remap(bottom, 0.0..=h, image_rect.y_range());
-
-    let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
-    // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
-    let painter = ui.ctx().debug_painter();
-    painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
-    painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
+        let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
+        // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
+        let painter = ui.ctx().debug_painter();
+        painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
+        painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
+    }
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
 pub fn show_zoomed_image_region(
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &ColoredTensorView<'_, '_>,
     image_position: [isize; 2],
     meter: Option<f32>,
 ) {
-    let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+    if let Some(colored_image) = tensor_view.colored_image {
+        use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
 
-    use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
+        const POINTS_PER_TEXEL: f32 = 5.0;
+        let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
 
-    const POINTS_PER_TEXEL: f32 = 5.0;
-    let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
+        let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
+        let painter = tooltip_ui.painter();
 
-    let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
-    let painter = tooltip_ui.painter();
+        painter.rect_filled(zoom_rect, 0.0, tooltip_ui.visuals().extreme_bg_color);
 
-    painter.rect_filled(zoom_rect, 0.0, tooltip_ui.visuals().extreme_bg_color);
+        let mut mesh = Mesh::default();
+        let mut center_texel_rect = None;
+        for dx in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
+            for dy in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
+                let x = image_position[0] + dx;
+                let y = image_position[1] + dy;
+                let color = get_pixel(colored_image, [x, y]);
+                if let Some(color) = color {
+                    if color != Color32::TRANSPARENT {
+                        let tr = ZOOMED_IMAGE_TEXEL_RADIUS as f32;
+                        let left = remap(dx as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
+                        let right = remap((dx + 1) as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
+                        let top = remap(dy as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
+                        let bottom = remap((dy + 1) as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
+                        let rect = Rect {
+                            min: pos2(left, top),
+                            max: pos2(right, bottom),
+                        };
+                        mesh.add_colored_rect(rect, color);
 
-    let mut mesh = Mesh::default();
-    let mut center_texel_rect = None;
-    for dx in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
-        for dy in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
-            let x = image_position[0] + dx;
-            let y = image_position[1] + dy;
-            let color = get_pixel(dynamic_img, [x, y]);
-            if let Some(color) = color {
-                let image::Rgba([r, g, b, a]) = color;
-                let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
-
-                if color != Color32::TRANSPARENT {
-                    let tr = ZOOMED_IMAGE_TEXEL_RADIUS as f32;
-                    let left = remap(dx as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
-                    let right = remap((dx + 1) as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
-                    let top = remap(dy as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
-                    let bottom = remap((dy + 1) as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
-                    let rect = Rect {
-                        min: pos2(left, top),
-                        max: pos2(right, bottom),
-                    };
-                    mesh.add_colored_rect(rect, color);
-
-                    if dx == 0 && dy == 0 {
-                        center_texel_rect = Some(rect);
+                        if dx == 0 && dy == 0 {
+                            center_texel_rect = Some(rect);
+                        }
                     }
                 }
             }
         }
-    }
 
-    painter.add(mesh);
+        painter.add(mesh);
 
-    if let Some(center_texel_rect) = center_texel_rect {
-        painter.rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
-        painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
-    }
+        if let Some(center_texel_rect) = center_texel_rect {
+            painter.rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
+            painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
+        }
 
-    if let Some(color) = get_pixel(dynamic_img, image_position) {
-        tooltip_ui.separator();
-        let (x, y) = (image_position[0] as _, image_position[1] as _);
+        if let Some(color) = get_pixel(colored_image, image_position) {
+            tooltip_ui.separator();
+            let (x, y) = (image_position[0] as _, image_position[1] as _);
 
-        tooltip_ui.vertical(|ui| {
-            egui::Grid::new("hovered pixel properties").show(ui, |ui| {
-                ui.label("Position:");
-                ui.label(format!("{}, {}", image_position[0], image_position[1]));
-                ui.end_row();
+            tooltip_ui.vertical(|ui| {
+                egui::Grid::new("hovered pixel properties").show(ui, |ui| {
+                    ui.label("Position:");
+                    ui.label(format!("{}, {}", image_position[0], image_position[1]));
+                    ui.end_row();
 
-                if tensor_view.tensor.num_dim() == 2 {
-                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                        if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
-                            tensor_view.tensor.meaning(),
-                            tensor_view.annotations,
-                            raw_value.try_as_u16(),
-                        ) {
-                            ui.label("Label:");
-                            ui.label(
-                                annotations
-                                    .class_description(Some(ClassId(u16_val)))
-                                    .annotation_info()
-                                    .label(None)
-                                    .unwrap_or_default(),
-                            );
-                            ui.end_row();
-                        };
-                    }
-                }
-                if let Some(meter) = meter {
-                    // This is a depth map
-                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                        let raw_value = raw_value.as_f64();
-                        let meters = raw_value / meter as f64;
-                        ui.label("Depth:");
-                        if meters < 1.0 {
-                            ui.monospace(format!("{:.1} mm", meters * 1e3));
-                        } else {
-                            ui.monospace(format!("{meters:.3} m"));
+                    if tensor_view.tensor.num_dim() == 2 {
+                        if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
+                            if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
+                                tensor_view.tensor.meaning(),
+                                tensor_view.annotations,
+                                raw_value.try_as_u16(),
+                            ) {
+                                ui.label("Label:");
+                                ui.label(
+                                    annotations
+                                        .class_description(Some(ClassId(u16_val)))
+                                        .annotation_info()
+                                        .label(None)
+                                        .unwrap_or_default(),
+                                );
+                                ui.end_row();
+                            };
                         }
                     }
+                    if let Some(meter) = meter {
+                        // This is a depth map
+                        if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
+                            let raw_value = raw_value.as_f64();
+                            let meters = raw_value / meter as f64;
+                            ui.label("Depth:");
+                            if meters < 1.0 {
+                                ui.monospace(format!("{:.1} mm", meters * 1e3));
+                            } else {
+                                ui.monospace(format!("{meters:.3} m"));
+                            }
+                        }
+                    }
+                });
+
+                let tensor = tensor_view.tensor;
+
+                let text = match tensor.num_dim() {
+                    2 => tensor.get(&[x, y]).map(|v| format!("Val: {}", v)),
+                    3 => match tensor.shape()[2].size {
+                        0 => Some("Cannot preview 0-size channel".to_owned()),
+                        1 => tensor.get(&[x, y, 0]).map(|v| format!("Val: {}", v)),
+                        3 => {
+                            // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                            if let (Some(r), Some(g), Some(b)) = (
+                                tensor_view.tensor.get(&[x, y, 0]),
+                                tensor_view.tensor.get(&[x, y, 1]),
+                                tensor_view.tensor.get(&[x, y, 2]),
+                            ) {
+                                match (r, g, b) {
+                                    (
+                                        TensorElement::U8(r),
+                                        TensorElement::U8(g),
+                                        TensorElement::U8(b),
+                                    ) => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
+                                    }
+                                    _ => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}"))
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        },
+                        4 => {
+                            // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                            if let (Some(r), Some(g), Some(b), Some(a)) = (
+                                tensor_view.tensor.get(&[x, y, 0]),
+                                tensor_view.tensor.get(&[x, y, 1]),
+                                tensor_view.tensor.get(&[x, y, 2]),
+                                tensor_view.tensor.get(&[x, y, 3]),
+                            ) {
+                                match (r, g, b, a) {
+                                    (
+                                        TensorElement::U8(r),
+                                        TensorElement::U8(g),
+                                        TensorElement::U8(b),
+                                        TensorElement::U8(a),
+                                    ) => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"))
+                                    }
+                                    _ => {
+                                        Some(format!("R: {r}, G: {g}, B: {b}, A: {a}"))
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        },
+                        channels => {
+                            Some(format!("Cannot preview {}-channel image", channels))
+                        }
+                    },
+                    dims => {
+                        Some(format!("Cannot preview {}-dimensional image", dims))
+                    }
+                };
+
+                if let Some(text) = text {
+                    ui.label(text);
+                } else {
+                    ui.label("No Value");
                 }
+
+                color_picker::show_color(ui, color, Vec2::splat(ui.available_height()));
             });
-
-            use image::DynamicImage;
-
-            let image::Rgba([r, g, b, a]) = color;
-
-            let text = match dynamic_img {
-                DynamicImage::ImageLuma8(_) => {
-                    format!("L: {r}")
-                }
-
-                DynamicImage::ImageLuma16(image) => {
-                    let l = image.get_pixel(x as _, y as _)[0];
-                    format!("L: {} ({:.5})", l, l as f32 / 65535.0)
-                }
-
-                DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
-                    format!("L: {r}, A: {a}")
-                }
-
-                DynamicImage::ImageRgb8(_)
-                | DynamicImage::ImageRgb16(_)
-                | DynamicImage::ImageRgb32F(_) => {
-                    // TODO(emilk): show 16-bit and 32f values differently
-                    format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}")
-                }
-
-                DynamicImage::ImageRgba8(_)
-                | DynamicImage::ImageRgba16(_)
-                | DynamicImage::ImageRgba32F(_) => {
-                    // TODO(emilk): show 16-bit and 32f values differently
-                    format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}")
-                }
-
-                _ => {
-                    re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
-                    format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}")
-                }
-            };
-            ui.label(text);
-
-            color_picker::show_color(
-                ui,
-                Color32::from_rgba_unmultiplied(r, g, b, a),
-                Vec2::splat(ui.available_height()),
-            );
-        });
+        }
     }
 }
 
-fn get_pixel(image: &image::DynamicImage, [x, y]: [isize; 2]) -> Option<image::Rgba<u8>> {
-    use image::GenericImageView;
-
-    if x < 0 || y < 0 || image.width() <= x as u32 || image.height() <= y as u32 {
+fn get_pixel(image: &ColorImage, [x, y]: [isize; 2]) -> Option<egui::Color32> {
+    if x < 0 || y < 0 || image.width() as isize <= x || image.height() as isize <= y {
         None
     } else {
-        Some(image.get_pixel(x as u32, y as u32))
+        Some(image[(x as _, y as _)])
     }
 }
 
-fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Response {
+fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Response {
     crate::profile_function!();
 
     let mut histograms = [[0_u64; 256]; 3];
     {
         // TODO(emilk): this is slow, so cache the results!
         crate::profile_scope!("build");
-        for pixel in rgb_image.pixels() {
+        for pixel in rgba_image.pixels() {
             for c in 0..3 {
                 histograms[c][pixel[c] as usize] += 1;
             }

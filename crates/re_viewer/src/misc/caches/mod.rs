@@ -3,7 +3,7 @@ mod tensor_decode_cache;
 mod tensor_image_cache;
 
 use re_log_types::component_types::{self, TensorTrait};
-pub use tensor_image_cache::{AsDynamicImage, TensorImageView};
+pub use tensor_image_cache::ColoredTensorView;
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
