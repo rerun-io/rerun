@@ -16,7 +16,7 @@ use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 
 // ---
 
-/// The [`ColoredTensorView`] is a wrapper on top of [`re_log_types::Tensor`]
+/// The [`ColoredTensorView`] is a wrapper on top of [`Tensor`]
 ///
 /// It consolidates the common operations of going from the raw tensor storage
 /// into an object that can be more natively displayed as an Image.
