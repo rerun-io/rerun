@@ -547,12 +547,10 @@ impl OutlineMaskProcessor {
         let uniform_buffer_jumpflooding_steps_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
             "jumpflooding uniformbuffer".into(),
-            (0..num_steps)
-                .into_iter()
-                .map(|step| gpu_data::JumpfloodingStepUniformBuffer {
-                    step_width: (max_step_width >> step).into(),
-                    end_padding: Default::default(),
-                }),
+            (0..num_steps).map(|step| gpu_data::JumpfloodingStepUniformBuffer {
+                step_width: (max_step_width >> step).into(),
+                end_padding: Default::default(),
+            }),
         );
         let sampler = ctx.gpu_resources.samplers.get_or_create(
             &ctx.device,

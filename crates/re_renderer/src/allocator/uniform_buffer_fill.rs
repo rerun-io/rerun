@@ -77,7 +77,6 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     staging_buffer.copy_to_buffer(ctx.active_frame.encoder.lock().get(), &buffer, 0);
 
     (0..num_buffers)
-        .into_iter()
         .map(|i| BindGroupEntry::Buffer {
             handle: buffer.handle,
             offset: i * element_size,

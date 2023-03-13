@@ -32,10 +32,12 @@ pub struct View2DState {
     zoom: ZoomState2D,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
 pub enum ZoomState2D {
+    #[default]
     Auto,
+
     Scaled {
         /// Number of ui points per scene unit
         scale: f32,
@@ -46,12 +48,6 @@ pub enum ZoomState2D {
         /// Whether to allow the state to be updated by the current `ScrollArea` offsets
         accepting_scroll: bool,
     },
-}
-
-impl Default for ZoomState2D {
-    fn default() -> Self {
-        ZoomState2D::Auto
-    }
 }
 
 impl View2DState {

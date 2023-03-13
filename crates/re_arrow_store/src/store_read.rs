@@ -116,9 +116,7 @@ impl DataStore {
         let components = match (timeless, temporal) {
             (None, Some(temporal)) => temporal.iter().cloned().collect_vec(),
             (Some(timeless), None) => timeless.iter().cloned().collect_vec(),
-            (Some(timeless), Some(temporal)) => {
-                timeless.union(temporal).cloned().into_iter().collect_vec()
-            }
+            (Some(timeless), Some(temporal)) => timeless.union(temporal).cloned().collect_vec(),
             (None, None) => return None,
         };
 

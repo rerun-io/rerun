@@ -148,7 +148,6 @@ criterion_main!(benches);
 
 fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
-        .into_iter()
         .map(move |frame_idx| {
             try_build_msg_bundle2(
                 MsgId::ZERO,
