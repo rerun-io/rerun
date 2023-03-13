@@ -54,7 +54,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
                 if let Some(location) = panic_info.location() {
                     let file =
                         anonymize_source_file_path(&std::path::PathBuf::from(location.file()));
-                    event = event.with_prop("location", format!("{file}:{}", location.line()));
+                    event = event.with_prop("file_line", format!("{file}:{}", location.line()));
                 }
 
                 analytics.record(event);

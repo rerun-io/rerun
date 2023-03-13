@@ -95,12 +95,20 @@ impl Event {
         }
     }
 
+    /// NOTE: due to an earlier snafu, we filter out all properties called
+    /// `git_branch` and `location` on the server-end, so don't use those property names!
+    /// See <https://github.com/rerun-io/rerun/pull/1563> for details.
     pub fn with_prop(
         mut self,
         name: impl Into<Cow<'static, str>>,
         value: impl Into<Property>,
     ) -> Self {
-        self.props.insert(name.into(), value.into());
+        let name = name.into();
+        debug_assert!(
+            name != "git_branch" && name != "location",
+            "We filter out the property name {name:?} on the server-end. Pick a different name."
+        );
+        self.props.insert(name, value.into());
         self
     }
 
