@@ -17,6 +17,9 @@ type Level = u64;
 
 #[allow(dead_code)]
 mod small_and_slow {
+    #[allow(clippy::wildcard_imports)]
+    use super::*;
+
     // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
     // 20x 3-bit + 4-bit = 64 bit.
     // level 1, 4, 7, …, 58, 61
@@ -28,7 +31,7 @@ mod small_and_slow {
     pub const LEVEL_STEP: u64 = 3;
 
     /// The level used for [`DenseLeaf`].
-    pub const BOTTOM_LEVEL: super::Level = 1;
+    pub const BOTTOM_LEVEL: Level = 1;
 
     /// Number of children in [`DenseLeaf`].
     pub const NUM_CHILDREN_IN_DENSE: u64 = 16;
@@ -37,6 +40,9 @@ mod small_and_slow {
 // ----------------------------------------------------------------------------
 
 mod large_and_fast {
+    #[allow(clippy::wildcard_imports)]
+    use super::*;
+
     // High memory use, faster
     // I believe we could trim this path to use much less memory
     // by using dynamically sized nodes (no enum, no Vec/SmallVec),
@@ -48,7 +54,7 @@ mod large_and_fast {
     pub const LEVEL_STEP: u64 = 4;
 
     /// The level used for [`DenseLeaf`].
-    pub const BOTTOM_LEVEL: super::Level = 0;
+    pub const BOTTOM_LEVEL: Level = 0;
 
     /// Number of children in [`DenseLeaf`].
     pub const NUM_CHILDREN_IN_DENSE: u64 = 16;
