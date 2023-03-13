@@ -112,18 +112,19 @@ impl Event {
             rustc_version,
             llvm_version,
             git_hash: _,
-            git_branch,
+            git_branch: _,
             is_in_rerun_workspace,
             target_triple,
             datetime,
         } = build_info;
+
+        // We intentionally don't include the branch name, because it can contain sensitive user-stuff.
 
         self.with_prop("rerun_version", version.to_string())
             .with_prop("rust_version", (*rustc_version).to_owned())
             .with_prop("llvm_version", (*llvm_version).to_owned())
             .with_prop("target", *target_triple)
             .with_prop("git_hash", build_info.git_hash_or_tag())
-            .with_prop("git_branch", *git_branch)
             .with_prop("build_date", *datetime)
             .with_prop("debug", cfg!(debug_assertions)) // debug-build?
             .with_prop("rerun_workspace", *is_in_rerun_workspace)
