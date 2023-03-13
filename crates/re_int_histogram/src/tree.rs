@@ -808,7 +808,7 @@ mod tests {
         assert_eq!(set.total_count(), 150);
     }
 
-    /// adjacent ranges closer that the given cutoff are treated as one
+    /// adjacent ranges closer than the given cutoff are treated as one
     fn glue_adjacent_ranges(ranges: &[(RangeI64, u64)], cutoff_size: u64) -> Vec<(RangeI64, u64)> {
         if ranges.is_empty() {
             return vec![];
