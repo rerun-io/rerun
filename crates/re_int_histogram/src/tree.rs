@@ -17,7 +17,6 @@ type Level = u64;
 
 #[allow(dead_code)]
 mod small_and_slow {
-
     // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
     // 20x 3-bit + 4-bit = 64 bit.
     // level 1, 4, 7, …, 58, 61
@@ -254,7 +253,6 @@ enum Node {
     /// Always at the [`BOTTOM_LEVEL`] level.
     DenseLeaf(DenseLeaf),
 }
-// static_assertions::assert_eq_size!(Node, (u64, BranchNode), [u8; 80]); // 8-way tree
 
 #[derive(Clone, Debug, Default)]
 struct BranchNode {
