@@ -110,7 +110,7 @@ impl ImageCache {
     }
 
     /// Call once per frame to (potentially) flush the cache.
-    pub fn new_frame(&mut self, max_memory_use: u64) {
+    pub fn begin_frame(&mut self, max_memory_use: u64) {
         if self.memory_used > max_memory_use {
             self.purge_memory();
         }
@@ -293,6 +293,7 @@ impl AsDynamicImage for component_types::Tensor {
                     })
                     .collect();
                 let color_bytes = buf
+                    .0
                     .iter()
                     .flat_map(|p: &u8| color_lookup[*p as usize])
                     .collect();
@@ -323,7 +324,7 @@ impl AsDynamicImage for component_types::Tensor {
             }
             (1, TensorData::U8(buf), _) => {
                 // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-                image::GrayImage::from_raw(width, height, buf.clone())
+                image::GrayImage::from_raw(width, height, buf.0.to_vec())
                     .context("Bad Luminance8")
                     .map(DynamicImage::ImageLuma8)
             }
@@ -380,7 +381,7 @@ impl AsDynamicImage for component_types::Tensor {
                     .context("Bad Luminance f32")
                     .map(DynamicImage::ImageLuma8)
             }
-            (3, TensorData::U8(buf), _) => image::RgbImage::from_raw(width, height, buf.clone())
+            (3, TensorData::U8(buf), _) => image::RgbImage::from_raw(width, height, buf.0.to_vec())
                 .context("Bad RGB8")
                 .map(DynamicImage::ImageRgb8),
             (3, TensorData::U16(buf), _) => Rgb16Image::from_raw(width, height, buf.to_vec())
@@ -402,9 +403,11 @@ impl AsDynamicImage for component_types::Tensor {
                     .map(DynamicImage::ImageRgb8)
             }
 
-            (4, TensorData::U8(buf), _) => image::RgbaImage::from_raw(width, height, buf.clone())
-                .context("Bad RGBA8")
-                .map(DynamicImage::ImageRgba8),
+            (4, TensorData::U8(buf), _) => {
+                image::RgbaImage::from_raw(width, height, buf.0.to_vec())
+                    .context("Bad RGBA8")
+                    .map(DynamicImage::ImageRgba8)
+            }
             (4, TensorData::U16(buf), _) => Rgba16Image::from_raw(width, height, buf.to_vec())
                 .context("Bad RGBA16 image")
                 .map(DynamicImage::ImageRgba16),
@@ -424,26 +427,8 @@ impl AsDynamicImage for component_types::Tensor {
                     .context("Bad RGBA f32")
                     .map(DynamicImage::ImageRgba8)
             }
-            (depth, TensorData::JPEG(buf), _) => {
-                use image::io::Reader as ImageReader;
-                let mut reader = ImageReader::new(std::io::Cursor::new(buf));
-                reader.set_format(image::ImageFormat::Jpeg);
-                // TODO(emilk): handle grayscale JPEG:s (depth == 1)
-                let img = {
-                    crate::profile_scope!("decode_jpeg");
-                    reader.decode()?
-                }
-                .into_rgb8();
-
-                if depth != 3 || img.width() != width || img.height() != height {
-                    anyhow::bail!(
-                        "Tensor shape ({shape:?}) did not match jpeg dimensions ({}x{})",
-                        img.width(),
-                        img.height()
-                    )
-                }
-
-                Ok(DynamicImage::ImageRgb8(img))
+            (_, TensorData::JPEG(_), _) => {
+                anyhow::bail!("JPEG tensor should have been decoded before using TensorImageCache")
             }
 
             (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {

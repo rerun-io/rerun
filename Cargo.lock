@@ -4140,6 +4140,7 @@ dependencies = [
  "serde",
  "slotmap",
  "smallvec",
+ "thiserror",
  "time 0.3.20",
  "tracing",
  "uuid",
