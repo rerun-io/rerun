@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use arrow2::array::{Array, ListArray};
-use re_log::info;
+use re_log::{info, trace};
 use re_log_types::{ComponentName, TimeRange, Timeline};
 
 use crate::{ComponentBucket, DataStore};
@@ -110,6 +110,7 @@ impl DataStore {
     ) -> Vec<Box<dyn Array>> {
         let mut dropped = Vec::<Box<dyn Array>>::new();
 
+        let mut i = 0usize;
         while drop_at_least_size_bytes > 0.0 {
             // Find and drop the earliest (in terms of _insertion order_) primary component bucket
             // that we can find.
@@ -119,10 +120,30 @@ impl DataStore {
                 .and_then(|table| (table.buckets.len() > 1).then(|| table.buckets.pop_front()))
                 .flatten()
             else {
+                trace!(
+                    kind = "gc",
+                    id = self.gc_id,
+                    timeline = %primary_timeline.name(),
+                    %primary_component,
+                    iter = i,
+                    remaining = re_format::format_bytes(drop_at_least_size_bytes),
+                    "no more primary buckets, giving up"
+                );
                 break;
             };
 
             drop_at_least_size_bytes -= primary_bucket.total_size_bytes() as f64;
+
+            trace!(
+                kind = "gc",
+                id = self.gc_id,
+                timeline = %primary_timeline.name(),
+                %primary_component,
+                iter = i,
+                reclaimed = re_format::format_bytes(primary_bucket.total_size_bytes() as f64),
+                remaining = re_format::format_bytes(drop_at_least_size_bytes),
+                "found & dropped primary component bucket"
+            );
 
             // From there, find and drop all component buckets (in _insertion order_) that do not
             // contain any data more recent than the time range covered by the primary
@@ -137,10 +158,22 @@ impl DataStore {
                     if primary_bucket.encompasses(primary_timeline, &bucket.time_ranges) {
                         let bucket = table.buckets.pop_front().unwrap();
                         drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
+                        trace!(
+                            kind = "gc",
+                            id = self.gc_id,
+                            timeline = %primary_timeline.name(),
+                            %primary_component,
+                            iter = i,
+                            reclaimed = re_format::format_bytes(bucket.total_size_bytes() as f64),
+                            remaining = re_format::format_bytes(drop_at_least_size_bytes),
+                            "found & dropped secondary component bucket"
+                        );
                     } else {
                         break;
                     }
                 }
+
+                i += 1;
             }
 
             // We don't collect indices: they behave as tombstones.
