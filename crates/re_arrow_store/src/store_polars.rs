@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use arrow2::{
     array::{new_empty_array, Array, BooleanArray, ListArray, UInt64Array, Utf8Array},
     bitmap::Bitmap,
@@ -104,15 +106,18 @@ impl DataStore {
         let df = diag_concat_df(dfs.as_slice()).unwrap();
 
         // Arrange the columns in the order that makes the most sense as a user.
-        let df = sort_df_columns(&df, self.config.store_insert_ids);
+        let timelines: BTreeSet<&str> = self
+            .indices
+            .keys()
+            .map(|(timeline, _)| timeline.name().as_str())
+            .collect();
+        let df = sort_df_columns(&df, self.config.store_insert_ids, &timelines);
 
         let has_timeless = df.column(TIMELESS_COL).is_ok();
         let insert_id_col = DataStore::insert_id_key().as_str();
 
-        enum SortOrder {
-            Ascending = false,
-            Descending = true,
-        }
+        const ASCENDING: bool = false;
+        const DESCENDING: bool = true;
 
         // Now we want to sort based on _the contents_ of the columns, and we need to make sure
         // we do so in as stable a way as possible given our constraints: we cannot actually sort
@@ -120,10 +125,10 @@ impl DataStore {
         let (sort_cols, sort_orders): (Vec<_>, Vec<_>) = [
             df.column(TIMELESS_COL)
                 .is_ok()
-                .then_some((TIMELESS_COL, SortOrder::Descending)),
+                .then_some((TIMELESS_COL, DESCENDING)),
             df.column(insert_id_col)
                 .is_ok()
-                .then_some((insert_id_col, SortOrder::Ascending)),
+                .then_some((insert_id_col, ASCENDING)),
         ]
         .into_iter()
         .flatten()
@@ -133,8 +138,8 @@ impl DataStore {
                 .into_iter()
                 .filter(|col| *col != TIMELESS_COL) // we handle this one separately
                 .filter(|col| *col != insert_id_col) // we handle this one separately
-                .filter(|col| !df.column(col).unwrap().list().is_ok()) // lists cannot be sorted
-                .map(|col| (col, SortOrder::Ascending)),
+                .filter(|col| df.column(col).unwrap().list().is_err()) // lists cannot be sorted
+                .map(|col| (col, ASCENDING)),
         )
         .unzip();
 
@@ -336,8 +341,13 @@ fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
 // - insert ID comes first if it's available,
 // - followed by lexically sorted timelines,
 // - followed by the entity path,
-// - and finally all components in lexical order.
-fn sort_df_columns(df: &DataFrame, store_insert_ids: bool) -> DataFrame {
+// - followed by native components (i.e. "rerun.XXX") in lexical order,
+// - and finally extension components (i.e. "ext.XXX") in lexical order.
+fn sort_df_columns(
+    df: &DataFrame,
+    store_insert_ids: bool,
+    timelines: &BTreeSet<&str>,
+) -> DataFrame {
     crate::profile_function!();
 
     let columns: Vec<_> = {
@@ -353,17 +363,19 @@ fn sort_df_columns(df: &DataFrame, store_insert_ids: bool) -> DataFrame {
             );
         }
 
-        let timelines = all
-            .iter()
-            .copied()
-            .filter(|name| !name.starts_with("rerun."))
-            .map(Some)
-            .collect::<Vec<_>>();
+        let timelines = timelines.iter().copied().map(Some).collect::<Vec<_>>();
 
-        let components = all
+        let native_components = all
             .iter()
             .copied()
             .filter(|name| name.starts_with("rerun."))
+            .map(Some)
+            .collect::<Vec<_>>();
+
+        let extension_components = all
+            .iter()
+            .copied()
+            .filter(|name| name.starts_with("ext."))
             .map(Some)
             .collect::<Vec<_>>();
 
@@ -371,7 +383,8 @@ fn sort_df_columns(df: &DataFrame, store_insert_ids: bool) -> DataFrame {
             vec![store_insert_ids.then(|| DataStore::insert_id_key().as_str())],
             timelines,
             vec![Some("entity")],
-            components,
+            native_components,
+            extension_components,
         ]
         .into_iter()
         .flatten() // flatten vectors
