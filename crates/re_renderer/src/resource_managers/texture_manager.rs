@@ -1,5 +1,7 @@
 use std::{num::NonZeroU32, sync::Arc};
 
+use ahash::{HashMap, HashSet};
+
 use crate::{
     wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
     DebugLabel,
@@ -70,8 +72,8 @@ pub struct TextureManager2D {
     //
     // Any texture which wasn't accessed on the previous frame
     // is ejected from the cache during [`begin_frame`].
-    texture_cache: nohash_hasher::IntMap<u64, GpuTexture2DHandle>,
-    accessed_textures: nohash_hasher::IntSet<u64>,
+    texture_cache: HashMap<u64, GpuTexture2DHandle>,
+    accessed_textures: HashSet<u64>,
 }
 
 impl TextureManager2D {
@@ -103,6 +105,7 @@ impl TextureManager2D {
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU.
+    /// TODO(jleibs): All usages of this should be be replaced with `get_or_create`, which is strictly preferable
     pub fn create(
         &mut self,
         texture_pool: &mut GpuTexturePool,

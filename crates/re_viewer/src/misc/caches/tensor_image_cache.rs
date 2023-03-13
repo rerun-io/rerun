@@ -16,7 +16,7 @@ use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 
 // ---
 
-/// The `ColoredTensorView` is a wrapper on top of `re_log_types::Tensor`
+/// The [`ColoredTensorView`] is a wrapper on top of [`re_log_types::Tensor`]
 ///
 /// It consolidates the common operations of going from the raw tensor storage
 /// into an object that can be more natively displayed as an Image.
@@ -42,12 +42,13 @@ pub struct ColoredTensorView<'store, 'cache> {
 }
 
 impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
+    /// Try to get a [`GpuTexture2DHandle`] for the cached [`Tensor`].
+    ///
+    /// Will return None if a valid [`ColorImage`] could not be derived from the [`Tensor`].
     pub fn texture_handle(&self, render_ctx: &mut RenderContext) -> Option<GpuTexture2DHandle> {
         crate::profile_function!();
         self.colored_image.map(|i| {
-            let mut s = nohash_hasher::NoHashHasher::<u64>::default();
-            self.key.hash(&mut s);
-            let texture_key = std::hash::Hasher::finish(&s);
+            let texture_key = self.key.hash64();
 
             let debug_name = format!("tensor {:?}", self.tensor.shape());
             // TODO(andreas): The renderer should ingest images with less conversion (e.g. keep luma as 8bit texture, don't flip bits on bgra etc.)
@@ -65,6 +66,12 @@ impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
         })
     }
 
+    /// Try to get a [`DynamicImage`] for the the cached [`Tensor`].
+    ///
+    /// Note: this is a `DynamicImage` created from the cached [`ColorImage`], not from the
+    /// raw [`Tensor`], as such it will always be a [`DynamicImage::ImageRgba8`].
+    ///
+    /// Will return None if a valid [`ColorImage`] could not be derived from the [`Tensor`].
     pub fn dynamic_img(&self) -> Option<DynamicImage> {
         crate::profile_function!();
         self.colored_image.and_then(|i| {
@@ -83,6 +90,14 @@ struct ImageCacheKey {
     annotation_msg_id: MsgId,
 }
 
+impl ImageCacheKey {
+    fn hash64(&self) -> u64 {
+        let msg_hash = self.tensor_id.0.as_u128() as u64;
+        let annotation_hash = (self.annotation_msg_id.as_u128() >> 1) as u64;
+        msg_hash ^ annotation_hash
+    }
+}
+
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
 
 // required for [`nohash_hasher`].
@@ -90,9 +105,7 @@ impl nohash_hasher::IsEnabled for ImageCacheKey {}
 impl Hash for ImageCacheKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let msg_hash = self.tensor_id.0.as_u128() as u64;
-        let annotation_hash = (self.annotation_msg_id.as_u128() >> 1) as u64;
-        state.write_u64(msg_hash ^ annotation_hash);
+        state.write_u64(self.hash64());
     }
 }
 
@@ -195,7 +208,6 @@ impl CachedImage {
 
                 let retained_image = {
                     crate::profile_scope!("retained_image");
-                    let debug_name = format!("tensor {:?}", tensor.shape());
                     let options = egui::TextureOptions {
                         // This is best for low-res depth-images and the like
                         magnification: egui::TextureFilter::Nearest,

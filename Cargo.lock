@@ -3943,7 +3943,6 @@ dependencies = [
  "log",
  "macaw",
  "memoffset 0.8.0",
- "nohash-hasher",
  "notify",
  "ordered-float",
  "parking_lot 0.12.1",
