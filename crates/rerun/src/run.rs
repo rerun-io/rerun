@@ -18,16 +18,29 @@ use clap::Subcommand;
 ///
 /// Environment variables:
 ///
-/// * `RERUN`: force enable/disable logging with rerun (only relevant for the Rerun API, not the Viewer itself). Either `on`/`1`/`true` or `off`/`0`/`false`
+/// * `RERUN`: force enable/disable logging with rerun (only relevant for the Rerun API, not the
+/// Viewer itself). Either `on`/`1`/`true` or `off`/`0`/`false`
 ///
-/// * `RERUN_SHADER_PATH`: change the search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
+/// * `RERUN_MEMORY_LIMIT`: set an upper limit on how much memory the Rerun Viewer should use,
+/// e.g. e.g. "10MiB" or "2GiB", above which it'll start dropping old data (according to the order
+/// it was received in).
 ///
-/// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+/// * `RERUN_DROP_AT_LATENCY`: set a maximum input latency, e.g. "200ms" or "10s", above which
+/// the Rerun server will start dropping packets.
 ///
-/// * `WGPU_BACKEND`: overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
-///     Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
+/// * `RERUN_SHADER_PATH`: change the search path for shader/shader-imports.
+/// WARNING: Shaders are embedded in some build configurations.
 ///
-/// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+/// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer.
+/// WARNING: slows down the viewer by a lot!
+///
+/// * `WGPU_BACKEND`: overwrites the graphics backend used, must be one of `vulkan`, `metal`,
+/// `dx12`, `dx11`, or `gl`.
+/// Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we
+/// use `metal`.
+///
+/// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter,
+/// must be `high` or `low`. (Default is `high`)
 #[derive(Debug, clap::Parser)]
 #[clap(author, about)]
 struct Args {
@@ -241,10 +254,14 @@ async fn run_impl(
 
     #[cfg(feature = "native_viewer")]
     let startup_options = re_viewer::StartupOptions {
-        memory_limit: args.memory_limit.as_ref().map_or(Default::default(), |l| {
-            re_memory::MemoryLimit::parse(l)
-                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
-        }),
+        memory_limit: args
+            .memory_limit
+            .clone()
+            .or(std::env::var(re_viewer::env_vars::RERUN_MEMORY_LIMIT).ok())
+            .map_or(Default::default(), |l| {
+                re_memory::MemoryLimit::parse(l.as_str())
+                    .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
+            }),
     };
 
     // Where do we get the data from?
@@ -282,7 +299,12 @@ async fn run_impl(
         #[cfg(feature = "server")]
         {
             let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+                max_latency_sec: parse_max_latency(
+                    args.drop_at_latency
+                        .clone()
+                        .or(std::env::var(re_viewer::env_vars::RERUN_DROP_AT_LATENCY).ok())
+                        .as_ref(),
+                ),
 
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
