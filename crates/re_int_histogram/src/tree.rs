@@ -15,39 +15,47 @@ type Level = u64;
 
 // ----------------------------------------------------------------------------
 
-// Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
-// 20x 3-bit + 4-bit = 64 bit.
-// level 1, 4, 7, …, 58, 61
-// This uses about half the memory of 16-way branching, but is also half as fast.
-// 5.7 B/dense entry
-// 25-35 B/sparse entry
+#[allow(dead_code)]
+mod small_and_slow {
 
-// /// How many bits we progress in each [`BranchNode`]
-// const LEVEL_STEP: u64 = 3;
+    // Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
+    // 20x 3-bit + 4-bit = 64 bit.
+    // level 1, 4, 7, …, 58, 61
+    // This uses about half the memory of 16-way branching, but is also half as fast.
+    // 5.7 B/dense entry
+    // 25-35 B/sparse entry
 
-// /// The level used for [`DenseLeaf`].
-// const BOTTOM_LEVEL: Level = 1;
+    /// How many bits we progress in each [`BranchNode`]
+    pub const LEVEL_STEP: u64 = 3;
 
-// /// Number of children in [`DenseLeaf`].
-// const NUM_CHILDREN_IN_DENSE: u64 = 16;
+    /// The level used for [`DenseLeaf`].
+    pub const BOTTOM_LEVEL: super::Level = 1;
+
+    /// Number of children in [`DenseLeaf`].
+    pub const NUM_CHILDREN_IN_DENSE: u64 = 16;
+}
 
 // ----------------------------------------------------------------------------
 
-// High memory use, faster
-// I believe we could trim this path to use much less memory
-// by using dynamically sized nodes (no enum, no Vec/SmallVec),
-// but that's left as an exercise for later.
-// 9.6 B/dense entry
-// 26-73 B/sparse entry
+mod large_and_fast {
+    // High memory use, faster
+    // I believe we could trim this path to use much less memory
+    // by using dynamically sized nodes (no enum, no Vec/SmallVec),
+    // but that's left as an exercise for later.
+    // 9.6 B/dense entry
+    // 26-73 B/sparse entry
 
-/// How many bits we progress in each [`BranchNode`]
-const LEVEL_STEP: u64 = 4;
+    /// How many bits we progress in each [`BranchNode`]
+    pub const LEVEL_STEP: u64 = 4;
 
-/// The level used for [`DenseLeaf`].
-const BOTTOM_LEVEL: Level = 0;
+    /// The level used for [`DenseLeaf`].
+    pub const BOTTOM_LEVEL: super::Level = 0;
 
-/// Number of children in [`DenseLeaf`].
-const NUM_CHILDREN_IN_DENSE: u64 = 16;
+    /// Number of children in [`DenseLeaf`].
+    pub const NUM_CHILDREN_IN_DENSE: u64 = 16;
+}
+
+use large_and_fast::{BOTTOM_LEVEL, LEVEL_STEP, NUM_CHILDREN_IN_DENSE};
 
 // ----------------------------------------------------------------------------
 
