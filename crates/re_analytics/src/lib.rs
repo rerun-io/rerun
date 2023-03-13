@@ -106,10 +106,11 @@ impl Event {
 
     /// Adds Rerun version, git hash, build date and similar as properties to the event.
     pub fn with_build_info(self, build_info: &re_build_info::BuildInfo) -> Event {
+        // We intentionally don't include the branch name, because it can contain sensitive user-stuff.
+
         self.with_prop("rerun_version", build_info.version.to_string())
             .with_prop("target", build_info.target_triple)
             .with_prop("git_hash", build_info.git_hash_or_tag())
-            .with_prop("git_branch", build_info.git_branch)
             .with_prop("build_date", build_info.datetime)
             .with_prop("debug", cfg!(debug_assertions)) // debug-build?
             .with_prop("rerun_workspace", build_info.is_in_rerun_workspace)
