@@ -229,7 +229,7 @@ where
                 .batches
                 .last_mut()
                 .unwrap()
-                .additional_outline_mask_ids_vertex_ranges, // TODO: less weird borrows?
+                .additional_outline_mask_ids_vertex_ranges,
             start_vertex_index: old_size as _,
         }
     }
@@ -259,7 +259,7 @@ where
                 .batches
                 .last_mut()
                 .unwrap()
-                .additional_outline_mask_ids_vertex_ranges, // TODO: less weird borrows?
+                .additional_outline_mask_ids_vertex_ranges,
             outline_mask_id: OutlineMaskPreference::NONE,
         }
     }
