@@ -3,6 +3,7 @@ This document describes the technical architecture of Rerun.
 
 ## See also
 * [`BUILD.md`](BUILD.md)
+* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)

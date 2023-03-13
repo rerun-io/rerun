@@ -457,7 +457,7 @@ impl eframe::App for App {
 
         self.purge_memory_if_needed();
 
-        self.state.cache.new_frame();
+        self.state.cache.begin_frame();
 
         self.receive_messages(egui_ctx);
 

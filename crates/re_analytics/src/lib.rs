@@ -95,12 +95,20 @@ impl Event {
         }
     }
 
+    /// NOTE: due to an earlier snafu, we filter out all properties called
+    /// `git_branch` and `location` on the server-end, so don't use those property names!
+    /// See <https://github.com/rerun-io/rerun/pull/1563> for details.
     pub fn with_prop(
         mut self,
         name: impl Into<Cow<'static, str>>,
         value: impl Into<Property>,
     ) -> Self {
-        self.props.insert(name.into(), value.into());
+        let name = name.into();
+        debug_assert!(
+            name != "git_branch" && name != "location",
+            "We filter out the property name {name:?} on the server-end. Pick a different name."
+        );
+        self.props.insert(name, value.into());
         self
     }
 
@@ -112,18 +120,19 @@ impl Event {
             rustc_version,
             llvm_version,
             git_hash: _,
-            git_branch,
+            git_branch: _,
             is_in_rerun_workspace,
             target_triple,
             datetime,
         } = build_info;
+
+        // We intentionally don't include the branch name, because it can contain sensitive user-stuff.
 
         self.with_prop("rerun_version", version.to_string())
             .with_prop("rust_version", (*rustc_version).to_owned())
             .with_prop("llvm_version", (*llvm_version).to_owned())
             .with_prop("target", *target_triple)
             .with_prop("git_hash", build_info.git_hash_or_tag())
-            .with_prop("git_branch", *git_branch)
             .with_prop("build_date", *datetime)
             .with_prop("debug", cfg!(debug_assertions)) // debug-build?
             .with_prop("rerun_workspace", *is_in_rerun_workspace)

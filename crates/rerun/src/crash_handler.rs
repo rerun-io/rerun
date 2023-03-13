@@ -39,12 +39,24 @@ fn install_panic_hook(_build_info: BuildInfo) {
                 let mut event = re_analytics::Event::append("crash-panic")
                     .with_build_info(&_build_info)
                     .with_prop("callstack", callstack);
-                if let Some(location) = panic_info.location() {
-                    event = event.with_prop(
-                        "location",
-                        format!("{}:{}", location.file(), location.line()),
-                    );
+
+                let include_panic_message = false; // Don't include it, because it can contain sensitive information (`panic!("Couldn't read {file_path}")`)
+                if include_panic_message {
+                    // `panic_info.message` is unstable, so this is the recommended way of getting
+                    // the panic message out. We need both the `&str` and `String` variants.
+                    if let Some(msg) = panic_info.payload().downcast_ref::<&str>() {
+                        event = event.with_prop("message", *msg);
+                    } else if let Some(msg) = panic_info.payload().downcast_ref::<String>() {
+                        event = event.with_prop("message", msg.clone());
+                    }
                 }
+
+                if let Some(location) = panic_info.location() {
+                    let file =
+                        anonymize_source_file_path(&std::path::PathBuf::from(location.file()));
+                    event = event.with_prop("file_line", format!("{file}:{}", location.line()));
+                }
+
                 analytics.record(event);
 
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event

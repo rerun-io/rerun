@@ -17,7 +17,10 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{
+        caches::AsDynamicImage, SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
+        ViewerContext,
+    },
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
@@ -154,6 +157,8 @@ impl ImagesPart {
                     return Ok(());
                 }
 
+                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+
                 if tensor.meaning == TensorDataMeaning::Depth {
                     if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
                     {
@@ -167,6 +172,7 @@ impl ImagesPart {
                             properties,
                             &tensor,
                             pinhole_ent_path,
+                            entity_highlight,
                         );
                         return Ok(());
                     };
@@ -179,7 +185,7 @@ impl ImagesPart {
                     properties,
                     ent_path,
                     world_from_obj,
-                    highlights,
+                    entity_highlight,
                     instance_key,
                     tensor,
                     color,
@@ -198,14 +204,12 @@ impl ImagesPart {
         properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
-        highlights: &SpaceViewHighlights,
+        entity_highlight: &SpaceViewOutlineMasks,
         instance_key: InstanceKey,
         tensor: Tensor,
         color: Option<ColorRGBA>,
     ) {
         crate::profile_function!();
-
-        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
         let instance_path_hash = instance_path_hash_for_picking(
             ent_path,
@@ -223,26 +227,39 @@ impl ImagesPart {
         );
 
         let outline_mask = entity_highlight.index_outline_mask(instance_path_hash.instance_key);
-        push_tensor_texture(
-            scene,
-            ctx,
-            &annotations,
-            world_from_obj,
-            instance_path_hash,
-            &tensor,
-            color.into(),
-            outline_mask,
-        );
 
-        // TODO(jleibs): Meter should really be its own component
-        let meter = tensor.meter;
+        match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+            Ok(tensor) => {
+                push_tensor_texture(
+                    scene,
+                    ctx,
+                    &annotations,
+                    world_from_obj,
+                    instance_path_hash,
+                    &tensor,
+                    color.into(),
+                    outline_mask,
+                );
 
-        scene.ui.images.push(Image {
-            instance_path_hash,
-            tensor,
-            meter,
-            annotations,
-        });
+                // TODO(jleibs): Meter should really be its own component
+                let meter = tensor.meter;
+
+                scene.ui.images.push(Image {
+                    instance_path_hash,
+                    tensor,
+                    meter,
+                    annotations,
+                });
+            }
+            Err(err) => {
+                // TODO(jleibs): Would be nice to surface these through the UI instead
+                re_log::warn_once!(
+                    "Encountered problem decoding tensor at path {}: {}",
+                    ent_path,
+                    err
+                );
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -253,6 +270,7 @@ impl ImagesPart {
         properties: &EntityProperties,
         tensor: &Tensor,
         pinhole_ent_path: &EntityPath,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) {
         crate::profile_function!();
 
@@ -267,8 +285,8 @@ impl ImagesPart {
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
         let Some(extrinsics) = pinhole_ent_path
-            .parent()
-            .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
+        .parent()
+        .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
             re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
             return;
         };
@@ -316,6 +334,7 @@ impl ImagesPart {
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,
+            outline_mask_id: entity_highlight.overall,
         });
     }
 }

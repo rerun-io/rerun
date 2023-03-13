@@ -3,6 +3,7 @@ This is a guide to how to build Rerun.
 
 
 ## See also
+* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)

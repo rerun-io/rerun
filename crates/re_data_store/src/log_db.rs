@@ -37,11 +37,21 @@ impl Default for EntityDb {
             data_store: re_arrow_store::DataStore::new(
                 InstanceKey::name(),
                 DataStoreConfig {
-                    component_bucket_size_bytes: 1024 * 1024, // 1 MiB
+                    // Garbage collection of the datastore is currently driven by the `MsgId`
+                    // component column, as a workaround for the `MsgId` mismatch issue.
+                    //
+                    // Since this component is only a few bytes large, trying to trigger a GC
+                    // based on bucket size is a lost cause, so make sure to have a small enough
+                    // row limit.
+                    //
+                    // TODO(cmc): Reasses once the whole `MsgId` mismatch issue is resolved
+                    // (probably once batching is implemented).
+                    component_bucket_nb_rows: 128,
+                    component_bucket_size_bytes: 10 * 1024 * 1024, // 10 MiB
                     // We do not garbage collect index buckets at the moment, and so the size of
                     // individual index buckets is irrelevant, only their total number of rows
                     // matter.
-                    // See <pr-link> for details.
+                    // See https://github.com/rerun-io/rerun/pull/1558 for details.
                     //
                     // TODO(cmc): Bring back index GC once the whole `MsgId` mismatch issue is
                     // resolved (probably once batching is implemented).

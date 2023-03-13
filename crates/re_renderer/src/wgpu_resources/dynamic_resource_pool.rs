@@ -89,6 +89,7 @@ where
         desc: &Desc,
         creation_func: F,
     ) -> Arc<DynamicResource<Handle, Desc, Res>> {
+        crate::profile_function!();
         let mut state = self.state.write();
 
         // First check if we can reclaim a resource we have around from a previous frame.
@@ -143,6 +144,7 @@ where
     }
 
     pub fn begin_frame(&mut self, frame_index: u64, mut on_destroy_resource: impl FnMut(&Res)) {
+        crate::profile_function!();
         self.current_frame_index = frame_index;
         let state = self.state.get_mut();
 

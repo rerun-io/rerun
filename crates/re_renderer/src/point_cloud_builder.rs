@@ -1,8 +1,8 @@
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PointCloudVertex,
+        OutlineMaskPreference, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
+        PointCloudDrawDataError, PointCloudVertex,
     },
     Color32, DebugLabel, RenderContext, Size,
 };
@@ -51,6 +51,8 @@ where
             world_from_obj: glam::Mat4::IDENTITY,
             flags: PointCloudBatchFlags::ENABLE_SHADING,
             point_count: 0,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         });
 
         PointCloudBatchBuilder(self)
@@ -150,6 +152,13 @@ where
         self
     }
 
+    /// Sets an outline mask for every element in the batch.
+    #[inline]
+    pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
+        self.batch_mut().overall_outline_mask_ids = outline_mask_ids;
+        self
+    }
+
     /// Each time we `add_points`, or upon builder drop, make sure that we
     /// fill in any additional colors and user-data to have matched vectors.
     fn extend_defaults(&mut self) {
@@ -215,6 +224,13 @@ where
             max_points,
             colors: &mut self.0.color_buffer,
             user_data: &mut self.0.user_data,
+            additional_outline_mask_ids: &mut self
+                .0
+                .batches
+                .last_mut()
+                .unwrap()
+                .additional_outline_mask_ids_vertex_ranges,
+            start_vertex_index: old_size as _,
         }
     }
 
@@ -225,6 +241,7 @@ where
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
+        let vertex_index = self.0.vertices.len() as u32;
         self.0.vertices.push(PointCloudVertex {
             position,
             radius: Size::AUTO,
@@ -236,6 +253,14 @@ where
             vertex: self.0.vertices.last_mut().unwrap(),
             color: &mut self.0.color_buffer,
             user_data: self.0.user_data.last_mut().unwrap(),
+            vertex_index,
+            additional_outline_mask_ids: &mut self
+                .0
+                .batches
+                .last_mut()
+                .unwrap()
+                .additional_outline_mask_ids_vertex_ranges,
+            outline_mask_id: OutlineMaskPreference::NONE,
         }
     }
 
@@ -267,10 +292,14 @@ where
     }
 }
 
+// TODO(andreas): Should remove single-point builder, practically this never makes sense as we're almost always dealing with arrays of points.
 pub struct PointBuilder<'a, PerPointUserData> {
     vertex: &'a mut PointCloudVertex,
     color: &'a mut CpuWriteGpuReadBuffer<Color32>,
     user_data: &'a mut PerPointUserData,
+    vertex_index: u32,
+    additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
+    outline_mask_id: OutlineMaskPreference,
 }
 
 impl<'a, PerPointUserData> PointBuilder<'a, PerPointUserData>
@@ -294,17 +323,35 @@ where
         *self.user_data = data;
         self
     }
+
+    /// Pushes additional outline mask ids for this point
+    ///
+    /// Prefer the `overall_outline_mask_ids` setting to set the outline mask ids for the entire batch whenever possible!
+    pub fn outline_mask_id(mut self, outline_mask_id: OutlineMaskPreference) -> Self {
+        self.outline_mask_id = outline_mask_id;
+        self
+    }
+}
+
+impl<'a, PerPointUserData> Drop for PointBuilder<'a, PerPointUserData> {
+    fn drop(&mut self) {
+        if self.outline_mask_id.is_some() {
+            self.additional_outline_mask_ids.push((
+                self.vertex_index..self.vertex_index + 1,
+                self.outline_mask_id,
+            ));
+        }
+    }
 }
 
 pub struct PointsBuilder<'a, PerPointUserData> {
     // Vertices is a slice, which radii will update
     vertices: &'a mut [PointCloudVertex],
-
-    // Colors and user-data are the Vec we append
-    // the data to if provided.
     max_points: usize,
     colors: &'a mut CpuWriteGpuReadBuffer<Color32>,
     user_data: &'a mut Vec<PerPointUserData>,
+    additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
+    start_vertex_index: u32,
 }
 
 impl<'a, PerPointUserData> PointsBuilder<'a, PerPointUserData>
@@ -352,6 +399,23 @@ where
         crate::profile_function!();
         self.user_data
             .extend(data.take(self.max_points - self.user_data.len()));
+        self
+    }
+
+    /// Pushes additional outline mask ids for a specific range of points.
+    /// The range is relative to this builder's range, not the entire batch.
+    ///
+    /// Prefer the `overall_outline_mask_ids` setting to set the outline mask ids for the entire batch whenever possible!
+    #[inline]
+    pub fn push_additional_outline_mask_ids_for_range(
+        self,
+        range: std::ops::Range<u32>,
+        ids: OutlineMaskPreference,
+    ) -> Self {
+        self.additional_outline_mask_ids.push((
+            (range.start + self.start_vertex_index)..(range.end + self.start_vertex_index),
+            ids,
+        ));
         self
     }
 }

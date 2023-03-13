@@ -17,6 +17,7 @@ use lazy_static::lazy_static;
 use crate::msg_bundle::Component;
 
 mod arrow;
+mod arrow_convert_shims;
 mod bbox;
 mod class_id;
 mod color;
@@ -59,6 +60,8 @@ pub use radius::Radius;
 pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
+#[cfg(feature = "image")]
+pub use tensor::TensorImageError;
 pub use tensor::{
     Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
 };

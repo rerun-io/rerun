@@ -248,7 +248,7 @@ pub struct LineBatchInfo {
     ///
     /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
     /// This feature is meant for a limited number of "extra selections"
-    /// If an overall mask is defined as well, the per-strip masks is overwriting the overall mask.
+    /// If an overall mask is defined as well, the per-vertex-range masks is overwriting the overall mask.
     pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 }
 
@@ -527,7 +527,7 @@ impl LineDrawData {
                     }),
             );
 
-            // Generate additional "micro batches" for each line strip that has a unique outline setting.
+            // Generate additional "micro batches" for each line vertex range that has a unique outline setting.
             // This is fairly costly if there's many, but easy and low-overhead if there's only few, which is usually what we expect!
             let mut uniform_buffer_bindings_mask_only_batches =
                 create_and_fill_uniform_buffer_batch(
@@ -618,7 +618,8 @@ impl LineRenderer {
         line_vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,
     ) -> LineStripBatch {
-        // TODO(andreas): There should be only a single bindgroup with dynamic indices here.
+        // TODO(andreas): There should be only a single bindgroup with dynamic indices for all batches.
+        //                  (each batch would then know which dynamic indices to use in the bindgroup)
         let bind_group = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &ctx.gpu_resources,
@@ -792,10 +793,10 @@ impl Renderer for LineRenderer {
             return Ok(()); // No lines submitted.
         };
 
-        let pipeline_handle = if phase == DrawPhase::OutlineMask {
-            self.render_pipeline_outline_mask
-        } else {
-            self.render_pipeline_color
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 

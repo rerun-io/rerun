@@ -13,6 +13,8 @@ var color_texture: texture_2d<f32>;
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     flags: u32,
+    _padding: UVec2, // UVec3 would take its own 4xf32 row, UVec2 is on the same as flags
+    outline_mask: UVec2,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -76,24 +78,12 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // There's easier ways to compute anti-aliasing for when we are in ortho mode since it's just circles.
-    // But it's very nice to have mostly the same code path and this gives us the sphere world position along the way.
-    let ray = camera_ray_to_world_pos(in.world_position);
-
-    // Sphere intersection with anti-aliasing as described by Iq here
-    // https://www.shadertoy.com/view/MsSSWV
-    // (but rearranged and labeled to it's easier to understand!)
-    let d = ray_sphere_distance(ray, in.point_center, in.radius);
-    let smallest_distance_to_sphere = d.x;
-    let closest_ray_dist = d.y;
-    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
-    if smallest_distance_to_sphere > pixel_world_size {
+    let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
+    if coverage < 0.001 {
         discard;
     }
-    let coverage = 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
-
     // TODO(andreas): Proper shading
     // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
     var shading = 1.0;
@@ -101,4 +91,16 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
     return vec4(in.color.rgb * shading, coverage);
+}
+
+@fragment
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+    // Output is an integer target, can't use coverage therefore.
+    // But we still want to discard fragments where coverage is low.
+    // Since the outline extends a bit, a very low cut off tends to look better.
+    let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
+    if coverage < 1.0 {
+        discard;
+    }
+    return batch.outline_mask;
 }
