@@ -109,16 +109,21 @@ impl DataStore {
         let has_timeless = df.column(TIMELESS_COL).is_ok();
         let insert_id_col = DataStore::insert_id_key().as_str();
 
-        // Now we want to sort _the contents_ of the columns, and we need to make sure we do so in
-        // as stable a way as possible given our constraints: we cannot actually sort the
-        // component columns themselves as they are internally lists of their own.
+        enum SortOrder {
+            Ascending = false,
+            Descending = true,
+        }
+
+        // Now we want to sort based on _the contents_ of the columns, and we need to make sure
+        // we do so in as stable a way as possible given our constraints: we cannot actually sort
+        // the component columns themselves as they are internally lists of their own.
         let (sort_cols, sort_orders): (Vec<_>, Vec<_>) = [
             df.column(TIMELESS_COL)
                 .is_ok()
-                .then_some((TIMELESS_COL, true)), // descending
+                .then_some((TIMELESS_COL, SortOrder::Descending)),
             df.column(insert_id_col)
                 .is_ok()
-                .then_some((insert_id_col, false)), // ascending
+                .then_some((insert_id_col, SortOrder::Ascending)),
         ]
         .into_iter()
         .flatten()
@@ -128,8 +133,8 @@ impl DataStore {
                 .into_iter()
                 .filter(|col| *col != TIMELESS_COL) // we handle this one separately
                 .filter(|col| *col != insert_id_col) // we handle this one separately
-                .filter(|col| !col.starts_with("rerun.")) // lists cannot be sorted
-                .map(|col| (col, false)), // ascending order
+                .filter(|col| !df.column(col).unwrap().list().is_ok()) // lists cannot be sorted
+                .map(|col| (col, SortOrder::Ascending)),
         )
         .unzip();
 
