@@ -25,7 +25,7 @@ use clap::Subcommand;
 /// e.g. e.g. "10MiB" or "2GiB", above which it'll start dropping old data (according to the order
 /// it was received in).
 ///
-/// * `RERUN_DROP_AT_LATENCY`: set a maximum input latency, e.g. "200ms" or "10s", above which
+/// * `RERUN_LATENCY_LIMIT`: set a maximum input latency, e.g. "200ms" or "10s", above which
 /// the Rerun server will start dropping packets.
 ///
 /// * `RERUN_SHADER_PATH`: change the search path for shader/shader-imports.
@@ -83,7 +83,7 @@ struct Args {
     /// and have longer and longer latency, if you are logging data faster
     /// than Rerun can index it.
     #[clap(long)]
-    drop_at_latency: Option<String>,
+    latency_limit: Option<String>,
 
     #[command(subcommand)]
     commands: Option<Commands>,
@@ -300,9 +300,9 @@ async fn run_impl(
         {
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(
-                    args.drop_at_latency
+                    args.latency_limit
                         .clone()
-                        .or(std::env::var(re_viewer::env_vars::RERUN_DROP_AT_LATENCY).ok())
+                        .or(std::env::var(re_viewer::env_vars::RERUN_LATENCY_LIMIT).ok())
                         .as_ref(),
                 ),
 
