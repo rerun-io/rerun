@@ -101,6 +101,7 @@ impl DensityGraph {
         }
     }
 
+    /// We return a float so user can interpolate between buckets.
     fn bucket_index_from_x(&self, x: f32) -> f32 {
         remap(
             x,
@@ -172,8 +173,8 @@ impl DensityGraph {
 
         // full buckets:
         for i in (min_bucket.ceil() as i64)..=(max_bucket.floor() as i64) {
-            if 0 <= i {
-                if let Some(bucket) = self.buckets.get_mut(i as usize) {
+            if let Ok(i) = usize::try_from(i) {
+                if let Some(bucket) = self.buckets.get_mut(i) {
                     *bucket += count_per_bucket;
                 }
             }
@@ -203,21 +204,23 @@ impl DensityGraph {
 
         // We paint a symmetric plot, with extra feathering for anti-aliasing:
         //
-        // 0  1 2   3
-        // x
-        //  \   x---x
-        // x \ /
-        //  \ x x---x
-        //   \ /
-        //    x
+        // bucket: 0  1 2   3
         //
-        //    x
-        //   / \
-        //  / x x---x
-        // x / \
-        //  /   x---x
-        // x
-        // 0  1 2   3
+        //         0
+        //          \   x---x
+        //         1 \ /
+        //          \ 4 x---x
+        //           \ /
+        //            5
+        //
+        //            6
+        //           / \
+        //          / 7 x---x
+        //         2 / \
+        //          /   x---x
+        //         3
+        //
+        // bucket: 0  1 2   3
         //
         // This means we have an inner radius, and an outer radius.
         // We have four vertices per bucket, and six triangles.
@@ -287,6 +290,8 @@ impl DensityGraph {
                 let i = i as u32;
                 let base = 4 * (i - 1);
 
+                // See the numbering in the ASCII art above.
+                // Also note that egui/epaint don't care about winding order.
                 mesh.indices.extend_from_slice(&[
                     // top:
                     base,

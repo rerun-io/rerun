@@ -73,7 +73,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
         TimeType::Time => TimeInt::from_milliseconds(100).as_i64() as _,
     };
     // Collect all gaps larger than our minimum gap size.
-    let mut gap_sizes = collect_gaps(times, min_gap_size, max_collapses);
+    let mut gap_sizes = collect_candidate_gaps(times, min_gap_size, max_collapses);
     gap_sizes.sort_unstable();
 
     // Only collapse gaps that take up a significant portion of the total time,
@@ -99,7 +99,11 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     gap_threshold
 }
 
-fn collect_gaps(times: &TimeHistogram, min_gap_size: u64, max_collapses: usize) -> Vec<u64> {
+fn collect_candidate_gaps(
+    times: &TimeHistogram,
+    min_gap_size: u64,
+    max_collapses: usize,
+) -> Vec<u64> {
     crate::profile_function!();
     // We want this to be fast, even when we have _a lot_ of times.
     // `TimeHistogram::range` has a granularity argument:
