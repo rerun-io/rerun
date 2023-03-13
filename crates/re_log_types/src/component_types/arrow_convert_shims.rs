@@ -74,6 +74,7 @@ impl<'a> IntoIterator for &'a BufferBinaryArray {
 
     type IntoIter = BufferBinaryArrayIter<'a>;
 
+    #[cfg(not(target_os = "windows"))]
     fn into_iter(self) -> Self::IntoIter {
         #[allow(unsafe_code)]
         // SAFETY:
@@ -84,6 +85,15 @@ impl<'a> IntoIterator for &'a BufferBinaryArray {
             do_not_call_into_iter();
         }
         unreachable!()
+    }
+
+    // On windows the above linker trick doesn't work.
+    // We'll still catch the issue on build in Linux, but on windows just fall back to panic.
+    #[cfg(target_os = "windows")]
+    fn into_iter(self) -> Self::IntoIter {
+        panic!(
+        "Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert."
+    );
     }
 }
 
