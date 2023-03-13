@@ -103,7 +103,12 @@ impl Event {
         name: impl Into<Cow<'static, str>>,
         value: impl Into<Property>,
     ) -> Self {
-        self.props.insert(name.into(), value.into());
+        let name = name.into();
+        debug_assert!(
+            name != "git_branch" && name != "location",
+            "We filter out the property name {name:?} on the server-end. Pick a different name."
+        );
+        self.props.insert(name, value.into());
         self
     }
 
