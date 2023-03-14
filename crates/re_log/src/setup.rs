@@ -35,24 +35,11 @@ fn set_default_rust_log_env() {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn setup_native_logging() {
     set_default_rust_log_env();
-    tracing_subscriber::fmt::init(); // log to stdout
-}
-
-#[cfg(target_arch = "wasm32")]
-fn default_web_log_filter() -> String {
-    // TODO(#1513): Logging a lot of things (every frame?) causes the web viewer to crash after a while in some scenes.
-    "warn".to_owned()
+    env_logger::init();
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn setup_web_logging() {
-    use tracing_subscriber::layer::SubscriberExt as _;
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::Registry::default()
-            .with(tracing_subscriber::EnvFilter::new(default_web_log_filter()))
-            .with(tracing_wasm::WASMLayer::new(
-                tracing_wasm::WASMLayerConfig::default(),
-            )),
-    )
-    .expect("Failed to set tracing subscriber.");
+    crate::log_web::WebLogger::init(log::LevelFilter::Debug)
+        .expect("Failed to set log subscriber.");
 }
