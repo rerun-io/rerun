@@ -385,11 +385,19 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
         path: path.to_owned(),
     });
 
+    let path = path.to_owned();
     std::thread::Builder::new()
         .name("rrd_file_reader".into())
         .spawn(move || {
             for msg in decoder {
-                tx.send(msg.unwrap()).ok();
+                match msg {
+                    Ok(msg) => {
+                        tx.send(msg).ok();
+                    }
+                    Err(err) => {
+                        re_log::warn_once!("Failed to decode message in {path:?}: {err}");
+                    }
+                }
             }
         })
         .expect("Failed to spawn thread");
