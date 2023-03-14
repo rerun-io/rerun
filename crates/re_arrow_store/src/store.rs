@@ -420,6 +420,10 @@ impl DataStore {
     }
 }
 
+// TODO:
+// - event_id
+// - multiprocess
+
 impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,0 +1,16 @@
+[package]
+name = "re_runtime_args"
+authors.workspace = true
+description = "Defines the runtime configuration for the Rerun viewer, server & SDK."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true

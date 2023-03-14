@@ -41,6 +41,9 @@ use clap::Subcommand;
 ///
 /// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter,
 /// must be `high` or `low`. (Default is `high`)
+//
+// TODO: ICD_FILENAMES
+// TODO: how do we document these things autoamgically?
 #[derive(Debug, clap::Parser)]
 #[clap(author, about)]
 struct Args {
