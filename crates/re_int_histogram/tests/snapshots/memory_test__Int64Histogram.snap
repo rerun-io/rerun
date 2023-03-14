@@ -1,14 +1,14 @@
 ---
 source: crates/re_int_histogram/tests/memory_test.rs
-assertion_line: 121
+assertion_line: 126
 expression: "[format!(\"{:.1} B/entry, dense\", bytes_per_entry(N, 1)),\n        format!(\"{:.1} B/entry, spacing: 1M\", bytes_per_entry(N, 1_000_000)),\n        format!(\"{:.1} B/entry, spacing: 2M\", bytes_per_entry(N, 2_000_000)),\n        format!(\"{:.1} B/entry, spacing: 3M\", bytes_per_entry(N, 3_000_000)),\n        format!(\"{:.1} B/entry, spacing: 5M\", bytes_per_entry(N, 5_000_000)),\n        format!(\"{:.1} B/entry, spacing: 8M\", bytes_per_entry(N, 8_000_000)),\n        format!(\"{:.1} B/entry, spacing: 13M\",\n            bytes_per_entry(N, 13_000_000))]"
 ---
 [
-    "5.7 B/entry, dense",
-    "35.5 B/entry, spacing: 1M",
-    "25.8 B/entry, spacing: 2M",
-    "25.3 B/entry, spacing: 3M",
-    "27.9 B/entry, spacing: 5M",
-    "35.5 B/entry, spacing: 8M",
-    "23.0 B/entry, spacing: 13M",
+    "9.6 B/entry, dense",
+    "29.5 B/entry, spacing: 1M",
+    "34.2 B/entry, spacing: 2M",
+    "44.6 B/entry, spacing: 3M",
+    "50.9 B/entry, spacing: 5M",
+    "73.2 B/entry, spacing: 8M",
+    "26.0 B/entry, spacing: 13M",
 ]

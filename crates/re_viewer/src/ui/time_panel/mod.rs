@@ -1,18 +1,14 @@
-mod ball_scatterer;
+mod data_density_graph;
 mod paint_ticks;
 mod time_axis;
 mod time_ranges_ui;
 mod time_selection_ui;
 
-use std::{collections::BTreeMap, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
-use egui::{
-    pos2, show_tooltip_at_pointer, Color32, CursorIcon, Id, NumExt, PointerButton, Rect, Shape,
-    Vec2,
-};
-use itertools::Itertools;
+use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
 
-use re_data_store::{EntityTree, InstancePath};
+use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
 
 use crate::{Item, TimeControl, TimeView, ViewerContext};
@@ -28,6 +24,8 @@ use time_ranges_ui::TimeRangesUi;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct TimePanel {
+    data_dentity_graph_painter: data_density_graph::DataDensityGraphPainter,
+
     /// Width of the entity name columns previous frame.
     prev_col_width: f32,
 
@@ -43,6 +41,7 @@ pub(crate) struct TimePanel {
 impl Default for TimePanel {
     fn default() -> Self {
         Self {
+            data_dentity_graph_painter: Default::default(),
             prev_col_width: 400.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
@@ -179,6 +178,8 @@ impl TimePanel {
     ) {
         crate::profile_function!();
 
+        self.data_dentity_graph_painter.begin_frame(ui.ctx());
+
         //               |timeline            |
         // ------------------------------------
         // tree          |streams             |
@@ -280,26 +281,14 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
-        // All the entity rows:
-        egui::ScrollArea::vertical()
-            .auto_shrink([false; 2])
-            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
-            // the earlier `interact_with_time_area`.
-            // We implement drag-to-scroll manually instead!
-            .drag_to_scroll(false)
-            .show(ui, |ui| {
-                crate::profile_scope!("tree_ui");
-                if time_area_response.dragged_by(PointerButton::Primary) {
-                    ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
-                }
-                self.tree_ui(
-                    ctx,
-                    blueprint,
-                    &time_area_response,
-                    &lower_time_area_painter,
-                    ui,
-                );
-            });
+        // All the entity rows and their data density graphs:
+        self.tree_ui(
+            ctx,
+            blueprint,
+            &time_area_response,
+            &lower_time_area_painter,
+            ui,
+        );
 
         {
             // Paint a shadow between the stream names on the left
@@ -338,6 +327,7 @@ impl TimePanel {
         self.prev_col_width = self.next_col_right - ui.min_rect().left();
     }
 
+    // All the entity rows and their data density graphs:
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -346,14 +336,27 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
-        self.show_children(
-            ctx,
-            blueprint,
-            time_area_response,
-            time_area_painter,
-            &ctx.log_db.entity_db.tree,
-            ui,
-        );
+        crate::profile_function!();
+
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
+            // the earlier `interact_with_time_area`.
+            // We implement drag-to-scroll manually instead!
+            .drag_to_scroll(false)
+            .show(ui, |ui| {
+                if time_area_response.dragged_by(PointerButton::Primary) {
+                    ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
+                }
+                self.show_children(
+                    ctx,
+                    blueprint,
+                    time_area_response,
+                    time_area_painter,
+                    &ctx.log_db.entity_db.tree,
+                    ui,
+                );
+            });
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -409,6 +412,7 @@ impl TimePanel {
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
+        // From the left of the label, all the way to the rigthmost of the time panel
         let full_width_rect = Rect::from_x_y_ranges(
             response_rect.left()..=ui.max_rect().right(),
             response_rect.y_range(),
@@ -416,27 +420,26 @@ impl TimePanel {
 
         let is_visible = ui.is_rect_visible(full_width_rect);
 
-        if is_visible {
-            // paint hline guide:
-            let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-            stroke.color = stroke.color.linear_multiply(0.5);
-            let left = response_rect.left() + ui.spacing().indent;
-            let y = response_rect.bottom() + ui.spacing().item_spacing.y * 0.5;
-            ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
-        }
-
         // ----------------------------------------------
 
         // show the data in the time area:
 
         if is_visible && is_closed {
-            let empty = BTreeMap::default();
+            let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));
+
+            paint_streams_guide_line(ctx, &item, ui, response_rect);
+
+            let empty = re_data_store::TimeHistogram::default();
             let num_messages_at_time = tree
                 .prefix_times
                 .get(ctx.rec_cfg.time_ctrl.timeline())
                 .unwrap_or(&empty);
 
-            show_data_over_time(
+            let row_rect =
+                Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
+
+            data_density_graph::data_density_graph_ui(
+                &mut self.data_dentity_graph_painter,
                 ctx,
                 blueprint,
                 time_area_response,
@@ -444,9 +447,9 @@ impl TimePanel {
                 ui,
                 tree.num_timeless_messages(),
                 num_messages_at_time,
-                full_width_rect,
+                row_rect,
                 &self.time_ranges_ui,
-                Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone())),
+                item,
             );
         }
     }
@@ -504,42 +507,43 @@ impl TimePanel {
                     })
                     .response;
 
-                self.next_col_right = self.next_col_right.max(response.rect.right());
+                let response_rect = response.rect;
 
+                self.next_col_right = self.next_col_right.max(response_rect.right());
+
+                // From the left of the label, all the way to the rigthmost of the time panel
                 let full_width_rect = Rect::from_x_y_ranges(
-                    response.rect.left()..=ui.max_rect().right(),
-                    response.rect.y_range(),
+                    response_rect.left()..=ui.max_rect().right(),
+                    response_rect.y_range(),
                 );
                 let is_visible = ui.is_rect_visible(full_width_rect);
 
                 if is_visible {
-                    // paint hline guide:
-                    let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-                    stroke.color = stroke.color.linear_multiply(0.5);
-                    let left = response.rect.left() + ui.spacing().indent;
-                    let y = response.rect.bottom() + ui.spacing().item_spacing.y * 0.5;
-                    ui.painter().hline(left..=ui.max_rect().right(), y, stroke);
-                }
-
-                if is_visible {
                     response.on_hover_ui(|ui| {
-                        let selection = Item::ComponentPath(component_path.clone());
-                        what_is_selected_ui(ui, ctx, blueprint, &selection);
+                        let item = Item::ComponentPath(component_path.clone());
+                        what_is_selected_ui(ui, ctx, blueprint, &item);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
                         component_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);
                     });
-                }
 
-                // show the data in the time area:
-                if is_visible {
-                    let empty_messages_over_time = BTreeMap::default();
+                    // show the data in the time area:
+                    let item = Item::ComponentPath(component_path);
+                    paint_streams_guide_line(ctx, &item, ui, response_rect);
+
+                    let empty_messages_over_time = TimeHistogram::default();
                     let messages_over_time = data
                         .times
                         .get(ctx.rec_cfg.time_ctrl.timeline())
                         .unwrap_or(&empty_messages_over_time);
 
-                    show_data_over_time(
+                    let row_rect = Rect::from_x_y_ranges(
+                        time_area_response.rect.x_range(),
+                        response_rect.y_range(),
+                    );
+
+                    data_density_graph::data_density_graph_ui(
+                        &mut self.data_dentity_graph_painter,
                         ctx,
                         blueprint,
                         time_area_response,
@@ -547,14 +551,39 @@ impl TimePanel {
                         ui,
                         data.num_timeless_messages(),
                         messages_over_time,
-                        full_width_rect,
+                        row_rect,
                         &self.time_ranges_ui,
-                        Item::ComponentPath(component_path),
+                        item,
                     );
                 }
             }
         }
     }
+}
+
+/// Painted behind the data density graph.
+fn paint_streams_guide_line(
+    ctx: &mut ViewerContext<'_>,
+    item: &Item,
+    ui: &mut egui::Ui,
+    response_rect: Rect,
+) {
+    let is_selected = ctx.selection().contains(item);
+    let is_hovered = ctx.hovered().contains(item);
+
+    let stroke_width = if is_hovered { 1.0 } else { 0.5 };
+
+    let line_color = if is_selected {
+        ui.visuals().selection.bg_fill
+    } else {
+        ui.visuals().widgets.noninteractive.bg_stroke.color
+    };
+
+    ui.painter().hline(
+        response_rect.right()..=ui.max_rect().right(),
+        response_rect.center().y,
+        (stroke_width, line_color),
+    );
 }
 
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -601,13 +630,13 @@ fn is_time_safe_to_show(
     }
 
     if let Some(times) = log_db.entity_db.tree.prefix_times.get(timeline) {
-        if let Some(first_time) = times.keys().next() {
+        if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
                 re_arrow_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
             };
 
-            return *first_time <= time + margin;
+            return TimeInt::from(first_time) <= time + margin;
         }
     }
 
@@ -622,228 +651,6 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
             ui.monospace(time_type.format(time_int));
         }
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn show_data_over_time(
-    ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
-    time_area_response: &egui::Response,
-    time_area_painter: &egui::Painter,
-    ui: &mut egui::Ui,
-    num_timeless_messages: usize,
-    num_messages_at_time: &BTreeMap<TimeInt, usize>,
-    full_width_rect: Rect,
-    time_ranges_ui: &TimeRangesUi,
-    select_on_click: Item,
-) {
-    crate::profile_function!();
-
-    // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
-    let is_selected = ctx.selection().iter().contains(&select_on_click);
-
-    // painting each data point as a separate circle is slow (too many circles!)
-    // so we join time points that are close together.
-    let points_per_time = time_ranges_ui.points_per_time().unwrap_or(f64::INFINITY);
-    let max_stretch_length_in_time = 1.0 / points_per_time; // TODO(emilk)
-
-    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-
-    let hovered_color = ui.visuals().widgets.hovered.text_color();
-    let inactive_color = if is_selected {
-        ui.visuals().selection.stroke.color
-    } else {
-        ui.visuals()
-            .widgets
-            .inactive
-            .text_color()
-            .linear_multiply(0.75)
-    };
-
-    struct Stretch {
-        start_x: f32,
-        start_time: TimeInt,
-        stop_time: TimeInt,
-        selected: bool,
-        /// Times x count at the given time
-        time_points: Vec<(TimeInt, usize)>,
-    }
-
-    let mut shapes = vec![];
-    let mut scatter = ball_scatterer::BallScatterer::default();
-    // Time x number of messages at that time point
-    let mut hovered_messages: Vec<(TimeInt, usize)> = vec![];
-    let mut hovered_time = None;
-
-    let mut paint_stretch = |stretch: &Stretch| {
-        let stop_x = time_ranges_ui
-            .x_from_time_f32(stretch.stop_time.into())
-            .unwrap_or(stretch.start_x);
-
-        let num_messages: usize = stretch.time_points.iter().map(|(_time, count)| count).sum();
-        let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
-        let radius = radius.at_most(full_width_rect.height() / 3.0);
-        debug_assert!(radius.is_finite());
-
-        let x = (stretch.start_x + stop_x) * 0.5;
-        let pos = scatter.add(x, radius, (full_width_rect.top(), full_width_rect.bottom()));
-
-        let is_hovered = pointer_pos.map_or(false, |pointer_pos| {
-            pos.distance(pointer_pos) < radius + 1.0
-        });
-
-        let mut color = if is_hovered {
-            hovered_color
-        } else {
-            inactive_color
-        };
-        if ui.visuals().dark_mode {
-            color = color.additive();
-        }
-
-        let radius = if is_hovered {
-            1.75 * radius
-        } else if stretch.selected {
-            1.25 * radius
-        } else {
-            radius
-        };
-
-        shapes.push(Shape::circle_filled(pos, radius, color));
-
-        if is_hovered {
-            hovered_messages.extend(stretch.time_points.iter().copied());
-            hovered_time.get_or_insert(stretch.start_time);
-        }
-    };
-
-    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
-
-    if num_timeless_messages > 0 {
-        let time_int = TimeInt::BEGINNING;
-        let time_real = TimeReal::from(time_int);
-        if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-            let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
-            paint_stretch(&Stretch {
-                start_x: x,
-                start_time: time_int,
-                stop_time: time_int,
-                selected,
-                time_points: vec![(time_int, num_timeless_messages)],
-            });
-        }
-    }
-
-    let mut stretch: Option<Stretch> = None;
-
-    let margin = 5.0;
-    let visible_time_range = TimeRange {
-        min: time_ranges_ui
-            .time_from_x_f32(time_area_painter.clip_rect().left() - margin)
-            .map_or(TimeInt::MIN, |tf| tf.floor()),
-
-        max: time_ranges_ui
-            .time_from_x_f32(time_area_painter.clip_rect().right() + margin)
-            .map_or(TimeInt::MAX, |tf| tf.ceil()),
-    };
-
-    for (&time, &num_messages_at_time) in
-        num_messages_at_time.range(visible_time_range.min..=visible_time_range.max)
-    {
-        if num_messages_at_time == 0 {
-            continue;
-        }
-        let time_real = TimeReal::from(time);
-
-        let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
-
-        if let Some(current_stretch) = &mut stretch {
-            if current_stretch.selected == selected
-                && (time - current_stretch.start_time).as_f64() < max_stretch_length_in_time
-            {
-                // extend:
-                current_stretch.stop_time = time;
-                current_stretch
-                    .time_points
-                    .push((time, num_messages_at_time));
-            } else {
-                // stop the previous…
-                paint_stretch(current_stretch);
-
-                stretch = None;
-            }
-        }
-
-        if stretch.is_none() {
-            if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-                stretch = Some(Stretch {
-                    start_x: x,
-                    start_time: time,
-                    stop_time: time,
-                    selected,
-                    time_points: vec![(time, num_messages_at_time)],
-                });
-            }
-        }
-    }
-
-    if let Some(stretch) = stretch {
-        paint_stretch(&stretch);
-    }
-
-    time_area_painter.extend(shapes);
-
-    if !hovered_messages.is_empty() {
-        if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            ctx.set_single_selection(select_on_click);
-
-            if let Some(hovered_time) = hovered_time {
-                ctx.rec_cfg.time_ctrl.set_time(hovered_time);
-                ctx.rec_cfg.time_ctrl.pause();
-            }
-        } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
-            show_msg_ids_tooltip(
-                ctx,
-                blueprint,
-                ui.ctx(),
-                &select_on_click,
-                &hovered_messages,
-            );
-        }
-    }
-}
-
-fn show_msg_ids_tooltip(
-    ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
-    egui_ctx: &egui::Context,
-    item: &Item,
-    time_points: &[(TimeInt, usize)],
-) {
-    show_tooltip_at_pointer(egui_ctx, Id::new("data_tooltip"), |ui| {
-        let num_times = time_points.len();
-        let num_messages: usize = time_points.iter().map(|(_time, count)| *count).sum();
-
-        if num_times == 1 {
-            if num_messages > 1 {
-                ui.label(format!("{num_messages} messages"));
-                ui.add_space(8.0);
-                // Could be an entity made up of many components logged at the same time.
-                // Still show a preview!
-            }
-            super::selection_panel::what_is_selected_ui(ui, ctx, blueprint, item);
-            ui.add_space(8.0);
-
-            let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-            let time_int = time_points[0].0; // We want to show the item at the time of whatever point we are hovering
-            let query = re_arrow_store::LatestAtQuery::new(timeline, time_int);
-            item.data_ui(ctx, ui, super::UiVerbosity::Reduced, &query);
-        } else {
-            ui.label(format!(
-                "{num_messages} messages at {num_times} points in time"
-            ));
-        }
-    });
 }
 
 // ----------------------------------------------------------------------------
@@ -901,7 +708,7 @@ fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) 
     };
 
     let min = timeline_axis.min();
-    let time_spanned = timeline_axis.sum_time_lengths().as_f64() * factor as f64;
+    let time_spanned = timeline_axis.sum_time_lengths() as f64 * factor as f64;
 
     TimeView {
         min: min.into(),
@@ -1119,57 +926,52 @@ fn time_marker_ui(
     // timeline_rect: top part with the second ticks and time marker
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-
-    // ------------------------------------------------
-
     let time_drag_id = ui.id().with("time_drag_id");
+    let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
+    let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
+    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+    let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     let mut is_hovering = false;
-
-    let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
-
-    let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
-
-    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-
-    let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
         if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
-            let line_rect =
-                Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
-                    .expand(interact_radius);
+            if timeline_rect.x_range().contains(&x) {
+                let line_rect =
+                    Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
+                        .expand(interact_radius);
 
-            let response = ui
-                .interact(line_rect, time_drag_id, egui::Sense::drag())
-                .on_hover_and_drag_cursor(timeline_cursor_icon);
+                let response = ui
+                    .interact(line_rect, time_drag_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(timeline_cursor_icon);
 
-            is_hovering = !is_anything_being_dragged && response.hovered();
+                is_hovering = !is_anything_being_dragged && response.hovered();
 
-            if response.dragged() {
-                if let Some(pointer_pos) = pointer_pos {
-                    if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                        let time = time_ranges_ui.clamp_time(time);
-                        time_ctrl.set_time(time);
-                        time_ctrl.pause();
+                if response.dragged() {
+                    if let Some(pointer_pos) = pointer_pos {
+                        if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                            let time = time_ranges_ui.clamp_time(time);
+                            time_ctrl.set_time(time);
+                            time_ctrl.pause();
+                        }
                     }
                 }
-            }
 
-            let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.fg_stroke
-            } else if is_hovering {
-                ui.style().visuals.widgets.hovered.fg_stroke
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke
-            };
-            paint_time_cursor(
-                time_area_painter,
-                x,
-                timeline_rect.top()..=ui.max_rect().bottom(),
-                stroke,
-            );
+                let stroke = if response.dragged() {
+                    ui.style().visuals.widgets.active.fg_stroke
+                } else if is_hovering {
+                    ui.style().visuals.widgets.hovered.fg_stroke
+                } else {
+                    ui.visuals().widgets.inactive.fg_stroke
+                };
+                paint_time_cursor(
+                    time_area_painter,
+                    x,
+                    timeline_rect.top()..=ui.max_rect().bottom(),
+                    stroke,
+                );
+            }
         }
     }
 

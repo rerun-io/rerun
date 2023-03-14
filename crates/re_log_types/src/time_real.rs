@@ -22,19 +22,19 @@ pub struct TimeReal(FixedI128<typenum::U64>);
 impl TimeReal {
     #[inline]
     pub fn floor(&self) -> TimeInt {
-        let int: i64 = self.0.floor().lossy_into();
+        let int: i64 = self.0.saturating_floor().lossy_into();
         TimeInt::from(int)
     }
 
     #[inline]
     pub fn round(&self) -> TimeInt {
-        let int: i64 = self.0.round().lossy_into();
+        let int: i64 = self.0.saturating_round().lossy_into();
         TimeInt::from(int)
     }
 
     #[inline]
     pub fn ceil(&self) -> TimeInt {
-        let int: i64 = self.0.ceil().lossy_into();
+        let int: i64 = self.0.saturating_ceil().lossy_into();
         TimeInt::from(int)
     }
 
@@ -50,7 +50,7 @@ impl TimeReal {
 
     #[inline]
     pub fn abs(self) -> Self {
-        Self(self.0.abs())
+        Self(self.0.saturating_abs())
     }
 }
 

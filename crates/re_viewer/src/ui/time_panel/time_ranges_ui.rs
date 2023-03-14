@@ -75,7 +75,7 @@ pub struct TimeRangesUi {
     /// x distance per time unit inside the segments,
     /// and before/after the last segment.
     /// Between segments time moves faster.
-    points_per_time: f64,
+    pub points_per_time: f64,
 }
 
 impl Default for TimeRangesUi {
@@ -141,7 +141,7 @@ impl TimeRangesUi {
         let segments = time_ranges
             .iter()
             .map(|&tight_time_range| {
-                let range_width = tight_time_range.length().as_f64() * points_per_time;
+                let range_width = tight_time_range.abs_length() as f64 * points_per_time;
                 let right = left + range_width;
                 let x_range = left..=right;
                 left = right + gap_width_in_ui;
@@ -334,6 +334,19 @@ impl TimeRangesUi {
         Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time))
     }
 
+    pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> TimeRange {
+        let (min_x, max_x) = (*x_range.start(), *x_range.end());
+        TimeRange {
+            min: self
+                .time_from_x_f32(min_x)
+                .map_or(TimeInt::MIN, |tf| tf.floor()),
+
+            max: self
+                .time_from_x_f32(max_x)
+                .map_or(TimeInt::MAX, |tf| tf.ceil()),
+        }
+    }
+
     /// Pan the view, returning the new view.
     pub fn pan(&self, delta_x: f32) -> Option<TimeView> {
         Some(TimeView {
@@ -362,18 +375,6 @@ impl TimeRangesUi {
             min: self.time_from_x_f64(min_x)?,
             time_spanned: self.time_view.time_spanned / zoom_factor,
         })
-    }
-
-    /// How many egui points for each time unit?
-    pub fn points_per_time(&self) -> Option<f64> {
-        for segment in &self.segments {
-            let dx = *segment.x.end() - *segment.x.start();
-            let dt = segment.time.length().as_f64();
-            if dx > 0.0 && dt > 0.0 {
-                return Some(dx / dt);
-            }
-        }
-        None
     }
 }
 
