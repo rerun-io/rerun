@@ -33,7 +33,7 @@ fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
     let messages = re_log_types::encoding::Decoder::new(&mut bytes)
         .unwrap()
-        .collect::<anyhow::Result<Vec<LogMsg>>>()
+        .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();
     assert!(bytes.is_empty());
     messages
