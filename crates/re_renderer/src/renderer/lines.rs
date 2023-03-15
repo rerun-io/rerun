@@ -424,13 +424,13 @@ impl LineDrawData {
             Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
         // sentinel at the beginning to facilitate caps.
         position_data_staging.push(LineVertex {
-            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(vertices.iter());
         // placeholder at the end to facilitate caps.
         position_data_staging.push(LineVertex {
-            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(

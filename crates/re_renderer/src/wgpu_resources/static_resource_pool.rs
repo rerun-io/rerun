@@ -52,7 +52,7 @@ where
     ) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
             crate::profile_scope!("Creating new static resource", std::any::type_name::<Res>());
-            re_log::debug!(?desc, "Created new resource");
+            re_log::trace!(?desc, "Created new resource");
             let resource = creation_func(desc);
             self.resources.insert(StoredResource {
                 resource,
