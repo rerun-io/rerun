@@ -355,6 +355,10 @@ impl MemoryPanel {
                             {
                                 ui.output_mut(|o| {
                                     o.copied_text = callstack.readable_backtrace.to_string();
+                                    if o.copied_text.is_empty() {
+                                        // This is werid
+                                        o.copied_text = "No callstack available".to_owned();
+                                    }
                                 });
                             }
                         }
