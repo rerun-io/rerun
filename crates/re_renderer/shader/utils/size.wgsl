@@ -6,11 +6,11 @@
 fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_size: f32) -> f32 {
     // Resolve auto size.
     var unresolved_size: f32;
-    if _unresolved_size == inf() {
-        // positive inf for small auto size
+    if _unresolved_size >= f32max {
+        // positive max for small auto size
         unresolved_size = auto_size;
-    } else if _unresolved_size == -inf() {
-        // negative inf for large auto size
+    } else if _unresolved_size <= f32min {
+        // negative max for large auto size
         let large_factor = 1.33;
         unresolved_size = auto_size * large_factor;
     } else {

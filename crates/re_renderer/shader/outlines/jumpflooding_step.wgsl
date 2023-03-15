@@ -22,10 +22,10 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
     let pixel_step = Vec2(f32(uniforms.step_width), f32(uniforms.step_width)) / resolution;
     let pixel_coordinates = resolution * in.texcoord;
 
-    var closest_positions_a = Vec2(-inf());
-    var closest_distance_sq_a = inf();
-    var closest_positions_b = Vec2(-inf());
-    var closest_distance_sq_b = inf();
+    var closest_positions_a = Vec2(f32min);
+    var closest_distance_sq_a = f32max;
+    var closest_positions_b = Vec2(f32min);
+    var closest_distance_sq_b = f32max;
 
     for (var y: i32 = -1; y <= 1; y += 1) {
         for (var x: i32 = -1; x <= 1; x += 1) {

@@ -13,17 +13,17 @@ pub struct Size(pub f32);
 
 impl Size {
     /// Automatically sized, based on a view builder setting.
-    pub const AUTO: Self = Self(f32::INFINITY);
+    pub const AUTO: Self = Self(f32::MAX);
 
     /// Like [`Size::AUTO`], but larger by some small factor (~2).
-    pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
+    pub const AUTO_LARGE: Self = Self(f32::MIN);
 
     /// Creates a new size in scene units.
     ///
     /// Values passed must be finite positive.
     #[inline]
     pub fn new_scene(size: f32) -> Self {
-        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
+        debug_assert!((0.0..f32::MAX).contains(&size), "Bad size: {size}");
         Self(size)
     }
 
@@ -32,27 +32,26 @@ impl Size {
     /// Values passed must be finite positive.
     #[inline]
     pub fn new_points(size: f32) -> Self {
-        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
+        debug_assert!((0.0..f32::MAX).contains(&size), "Bad size: {size}");
         Self(-size)
     }
 
     /// Returns true if the size is an automatically determined size ([`Self::AUTO`] or [`Self::AUTO_LARGE`]).
     #[inline]
     pub fn is_auto(&self) -> bool {
-        self.0.is_infinite()
+        self.0 >= f32::MAX || self.0 <= f32::MIN
     }
 
     /// Get the scene-size of this, if stored as a scene size.
     #[inline]
-    #[allow(unused)] // wgpu is not yet using this
     pub fn scene(&self) -> Option<f32> {
-        (self.0.is_finite() && self.0 >= 0.0).then_some(self.0)
+        (0.0..f32::MAX).contains(&self.0).then_some(self.0)
     }
 
     /// Get the point size of this, if stored as a point size.
     #[inline]
     pub fn points(&self) -> Option<f32> {
-        (self.0.is_finite() && self.0 <= 0.0).then_some(-self.0)
+        (f32::MIN..=0.0).contains(&self.0).then_some(-self.0)
     }
 }
 
@@ -68,7 +67,7 @@ impl std::ops::Mul<f32> for Size {
 
     #[inline]
     fn mul(self, rhs: f32) -> Self::Output {
-        debug_assert!(rhs.is_finite() && rhs >= 0.0);
+        debug_assert!(rhs.is_normal() && rhs >= 0.0);
         Self(self.0 * rhs)
     }
 }
@@ -76,7 +75,7 @@ impl std::ops::Mul<f32> for Size {
 impl std::ops::MulAssign<f32> for Size {
     #[inline]
     fn mul_assign(&mut self, rhs: f32) {
-        debug_assert!(rhs.is_finite() && rhs >= 0.0);
+        debug_assert!(rhs.is_normal() && rhs >= 0.0);
         self.0 *= rhs;
     }
 }
