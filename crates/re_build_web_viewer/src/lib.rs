@@ -56,13 +56,13 @@ pub fn build(release: bool) {
     let mut cmd = std::process::Command::new("cargo");
     cmd.args([
         "build",
-        "--target-dir",
-        target_wasm_dir.as_str(),
-        "-p",
+        "--package",
         crate_name,
         "--lib",
         "--target",
         "wasm32-unknown-unknown",
+        "--target-dir",
+        target_wasm_dir.as_str(),
     ]);
     if release {
         cmd.arg("--release");

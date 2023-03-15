@@ -13,7 +13,7 @@ export RUSTFLAGS="--deny warnings"
 export RUSTDOCFLAGS="--deny warnings --deny rustdoc::missing_crate_level_docs"
 
 cargo check --all-targets --all-features
-cargo check -p re_viewer --all-features --target wasm32-unknown-unknown
+cargo check -p re_viewer --all-features --target wasm32-unknown-unknown --target-dir target_wasm
 cargo fmt --all -- --check
 cargo cranky --all-targets --all-features -- --deny warnings
 cargo test --all-targets --all-features
