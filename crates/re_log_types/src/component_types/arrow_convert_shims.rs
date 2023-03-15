@@ -25,6 +25,7 @@ impl BinaryBuffer {
 
 impl Index<usize> for BinaryBuffer {
     type Output = u8;
+
     fn index(&self, i: usize) -> &u8 {
         &self.0[i]
     }

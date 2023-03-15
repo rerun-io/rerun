@@ -5,6 +5,7 @@ use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
 struct UniformBufferAlignmentCheck<T> {
     pub _marker: std::marker::PhantomData<T>,
 }
+
 impl<T> UniformBufferAlignmentCheck<T> {
     /// wgpu requires uniform buffers to be aligned to up to 256 bytes.
     ///
@@ -33,6 +34,7 @@ impl<T> UniformBufferAlignmentCheck<T> {
         "Uniform buffers need to be aligned to 256 bytes. Use `#[repr(C, align(256))]`"
     );
 }
+
 /// Utility for fast & efficient creation of uniform buffers from a series of structs.
 ///
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).

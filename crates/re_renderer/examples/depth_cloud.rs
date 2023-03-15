@@ -403,6 +403,7 @@ struct DepthTexture {
     dimensions: glam::UVec2,
     data: DepthCloudDepthData,
 }
+
 impl DepthTexture {
     pub fn spiral(dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;
@@ -429,6 +430,7 @@ struct AlbedoTexture {
     dimensions: glam::UVec2,
     rgba8: Vec<u8>,
 }
+
 impl AlbedoTexture {
     pub fn spiral(dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;

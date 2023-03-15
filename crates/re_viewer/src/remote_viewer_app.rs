@@ -6,8 +6,10 @@ pub struct RemoteViewerApp {
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     re_ui: re_ui::ReUi,
+
     /// The url of the remote server.
     url: String,
+
     app: Option<(re_ws_comms::Connection, App)>,
 }
 

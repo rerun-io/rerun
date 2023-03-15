@@ -90,6 +90,7 @@ impl DynamicResourcesDesc for TextureDesc {
         true
     }
 }
+
 #[derive(Default)]
 pub struct GpuTexturePool {
     pool: DynamicResourcePool<GpuTextureHandle, TextureDesc, GpuTextureInternal>,
