@@ -80,8 +80,6 @@ puffin = "0.14"
 thiserror = "1.0"
 time = { version = "0.3", features = ["wasm-bindgen"] }
 tokio = "1.24"
-tracing = "0.1"
-tracing-subscriber = "0.3"
 wgpu = { version = "0.15", default-features = false }
 wgpu-core = { version = "0.15", default-features = false }
 
