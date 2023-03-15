@@ -21,7 +21,6 @@ re_format.workspace = true
 re_log.workspace = true
 
 ahash.workspace = true
-backtrace = "0.3"
 emath.workspace = true
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
@@ -32,4 +31,9 @@ smallvec = "1.10"
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+backtrace = "0.3"
 memory-stats = "1.0"
+
+# web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.84"

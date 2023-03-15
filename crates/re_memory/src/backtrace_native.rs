@@ -1,4 +1,42 @@
-pub fn backtrace_to_string(backtrace: &backtrace::Backtrace) -> String {
+use std::sync::Arc;
+
+pub(crate) struct Backtrace(backtrace::Backtrace);
+
+impl Backtrace {
+    pub fn new_unresolved() -> Self {
+        Self(backtrace::Backtrace::new_unresolved())
+    }
+
+    pub fn format(&mut self) -> Arc<str> {
+        self.0.resolve();
+        let stack = backtrace_to_string(&self.0);
+        trim_backtrace(&stack).into()
+    }
+}
+
+impl std::hash::Hash for Backtrace {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for frame in self.0.frames() {
+            frame.ip().hash(state);
+        }
+    }
+}
+
+fn trim_backtrace(mut stack: &str) -> &str {
+    let start_pattern = "re_memory::accounting_allocator::note_alloc\n";
+    if let Some(start_offset) = stack.find(start_pattern) {
+        stack = &stack[start_offset + start_pattern.len()..];
+    }
+
+    let end_pattern = "std::sys_common::backtrace::__rust_begin_short_backtrace";
+    if let Some(end_offset) = stack.find(end_pattern) {
+        stack = &stack[..end_offset];
+    }
+
+    stack
+}
+
+fn backtrace_to_string(backtrace: &backtrace::Backtrace) -> String {
     if backtrace.frames().is_empty() {
         return "[empty backtrace]".to_owned();
     }
@@ -9,14 +47,14 @@ pub fn backtrace_to_string(backtrace: &backtrace::Backtrace) -> String {
 
     impl<'a> std::fmt::Display for AnonymizedBacktrace<'a> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            format_backtrace(self.0, f)
+            format_backtrace_with_fmt(self.0, f)
         }
     }
 
     AnonymizedBacktrace(backtrace).to_string()
 }
 
-fn format_backtrace(
+fn format_backtrace_with_fmt(
     backtrace: &backtrace::Backtrace,
     fmt: &mut std::fmt::Formatter<'_>,
 ) -> std::fmt::Result {

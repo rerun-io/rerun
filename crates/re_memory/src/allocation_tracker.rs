@@ -1,6 +1,6 @@
-use std::{hash::Hash, sync::Arc};
+use std::sync::Arc;
 
-use backtrace::Backtrace;
+use crate::{Backtrace, BacktraceHash};
 
 use crate::CountAndSize;
 
@@ -22,25 +22,6 @@ impl PtrHash {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-struct BacktraceHash(u64);
-
-impl nohash_hasher::IsEnabled for BacktraceHash {}
-
-fn hash_backtrace(backtrace: &Backtrace) -> BacktraceHash {
-    use std::hash::Hasher as _;
-    let mut hasher =
-        std::hash::BuildHasher::build_hasher(&ahash::RandomState::with_seeds(0, 1, 2, 3));
-
-    for frame in backtrace.frames() {
-        frame.ip().hash(&mut hasher);
-    }
-
-    BacktraceHash(hasher.finish())
-}
-
-// ----------------------------------------------------------------------------
-
 /// Formatted [`Backtrace`].
 ///
 /// Clones without allocating.
@@ -58,26 +39,10 @@ impl std::fmt::Display for ReadableBacktrace {
 
 impl ReadableBacktrace {
     fn new(mut backtrace: Backtrace) -> Self {
-        backtrace.resolve();
-        let readable = format_backtrace(&backtrace);
-        Self { readable }
+        Self {
+            readable: backtrace.format(),
+        }
     }
-}
-
-fn format_backtrace(backtrace: &Backtrace) -> Arc<str> {
-    let stack = crate::format_backtrace::backtrace_to_string(backtrace);
-    let mut stack = stack.as_str();
-    let start_pattern = "re_memory::accounting_allocator::note_alloc\n";
-    if let Some(start_offset) = stack.find(start_pattern) {
-        stack = &stack[start_offset + start_pattern.len()..];
-    }
-
-    if let Some(end_offset) = stack.find("std::sys_common::backtrace::__rust_begin_short_backtrace")
-    {
-        stack = &stack[..end_offset];
-    }
-
-    stack.into()
 }
 
 // ----------------------------------------------------------------------------
@@ -137,7 +102,7 @@ impl AllocationTracker {
         }
 
         let unresolved_backtrace = Backtrace::new_unresolved();
-        let hash = hash_backtrace(&unresolved_backtrace);
+        let hash = BacktraceHash::new(&unresolved_backtrace);
 
         self.readable_backtraces
             .entry(hash)
