@@ -4,6 +4,7 @@
 
 pub mod accounting_allocator;
 mod allocation_tracker;
+mod format_backtrace;
 mod memory_history;
 mod memory_limit;
 mod memory_use;

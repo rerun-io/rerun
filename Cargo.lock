@@ -3881,6 +3881,7 @@ dependencies = [
  "backtrace",
  "emath",
  "instant",
+ "itertools",
  "memory-stats",
  "nohash-hasher",
  "once_cell",
