@@ -432,6 +432,7 @@ fn summarize_callstack(callstack: &str) -> String {
         ("ImageCache", "ImageCache"),
         ("gltf", "gltf"),
         ("image::image", "image"),
+        ("epaint::text::text_layout", "text_layout"),
         // -----
         // Very general:
         ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
