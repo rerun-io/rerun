@@ -53,7 +53,6 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
-    "LoggingHandler",
     "script_add_args",
     "script_setup",
     "script_teardown",
