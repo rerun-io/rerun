@@ -352,7 +352,7 @@ impl ViewBuilder {
                         }
                     };
 
-                    let tan_half_fov = glam::vec2(f32::INFINITY, f32::INFINITY);
+                    let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
                     let pixel_world_size_from_camera_distance =
                         vertical_world_size / config.resolution_in_pixel[1] as f32;
 
