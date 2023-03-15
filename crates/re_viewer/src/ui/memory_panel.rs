@@ -325,23 +325,24 @@ impl MemoryPanel {
                             let stochastic_rate = callstack.stochastic_rate;
                             let is_stochastic = stochastic_rate > 1;
 
+                            let text = format!(
+                                "{}{} in {} allocs (≈{} / alloc){} - {}",
+                                if is_stochastic { "≈" } else { "" },
+                                format_bytes((callstack.extant.size * stochastic_rate) as _),
+                                format_number(callstack.extant.count * stochastic_rate),
+                                format_bytes(
+                                    callstack.extant.size as f64 / callstack.extant.count as f64
+                                ),
+                                if stochastic_rate <= 1 {
+                                    String::new()
+                                } else {
+                                    format!(" ({} stochastic samples)", callstack.extant.count)
+                                },
+                                summarize_callstack(&callstack.readable_backtrace.to_string())
+                            );
+
                             if ui
-                                .button(format!(
-                                    "{}{} in {} allocs (≈{} / alloc){} - {}",
-                                    if is_stochastic { "≈" } else { "" },
-                                    format_bytes((callstack.extant.size * stochastic_rate) as _),
-                                    format_number(callstack.extant.count * stochastic_rate),
-                                    format_bytes(
-                                        callstack.extant.size as f64
-                                            / callstack.extant.count as f64
-                                    ),
-                                    if stochastic_rate <= 1 {
-                                        String::new()
-                                    } else {
-                                        format!(" ({} stochastic samples)", callstack.extant.count)
-                                    },
-                                    summarize_callstack(&callstack.readable_backtrace.to_string())
-                                ))
+                                .button(text)
                                 .on_hover_text("Click to copy callstack to clipboard")
                                 .clicked()
                             {
