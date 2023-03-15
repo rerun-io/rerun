@@ -11,15 +11,15 @@ from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
 from rerun.log.camera import log_pinhole
 from rerun.log.extension_components import log_extension_components
-from rerun.log.file import log_image_file, log_mesh_file
+from rerun.log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
 from rerun.log.lines import log_line_segments, log_line_strip, log_path
 from rerun.log.mesh import log_mesh, log_meshes
 from rerun.log.points import log_point, log_points
-from rerun.log.rects import log_rect, log_rects
+from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
-from rerun.log.text import log_text_entry
+from rerun.log.text import LogLevel, log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
@@ -27,6 +27,7 @@ __all__ = [
     "LoggingHandler",
     "bindings",
     "components",
+    "ImageFormat",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
@@ -53,6 +54,9 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
+    "LogLevel",
+    "MeshFormat",
+    "RectFormat",
     "script_add_args",
     "script_setup",
     "script_teardown",
