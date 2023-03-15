@@ -556,7 +556,10 @@ impl Renderer for PointCloudRenderer {
             multisample: wgpu::MultisampleState {
                 // We discard pixels to do the round cutout, therefore we need to calculate
                 // our own sampling mask.
-                alpha_to_coverage_enabled: true,
+                alpha_to_coverage_enabled: shared_data
+                    .config
+                    .hardware_tier
+                    .support_alpha_to_coverage(),
                 ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
             },
         };
