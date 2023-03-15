@@ -39,7 +39,7 @@ const ONE  = Vec4(1.0, 1.0, 1.0, 1.0);
 
 
 // Do NOT use inf() or nan() in your WGSL shaders. Ever.
-// The WGSL spec allows implementations to assume that neither Inf or NaN are ever occuring:
+// The WGSL spec allows implementations to assume that neither Inf or NaN are ever occurring:
 // https://www.w3.org/TR/WGSL/#floating-point-evaluation
 //
 // It will work most of the time, but there are rare cases where this will break.
