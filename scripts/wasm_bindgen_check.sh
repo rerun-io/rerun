@@ -21,21 +21,23 @@ export RUSTFLAGS=--cfg=web_sys_unstable_apis
 
 echo "Building rust…"
 BUILD=debug # debug builds are faster
+TARGET_DIR="target_wasm"
 
 (cd crates/$CRATE_NAME &&
   cargo build \
     --lib \
-    --target wasm32-unknown-unknown
+    --target wasm32-unknown-unknown \
+    --target-dir=${TARGET_DIR}
 )
-
-TARGET="target"
 
 echo "Generating JS bindings for wasm…"
 
-rm -f "${CRATE_NAME}_bg.wasm" # Remove old output (if any)
+# Remove old output (if any):
+rm -f "${CRATE_NAME}.js"
+rm -f "${CRATE_NAME}_bg.wasm"
 
 TARGET_NAME="${CRATE_NAME}.wasm"
-wasm-bindgen "${TARGET}/wasm32-unknown-unknown/$BUILD/$TARGET_NAME" \
+wasm-bindgen "${TARGET_DIR}/wasm32-unknown-unknown/$BUILD/$TARGET_NAME" \
   --out-dir . --no-modules --no-typescript
 
 # Remove output:
