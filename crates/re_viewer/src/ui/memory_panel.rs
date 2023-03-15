@@ -91,9 +91,11 @@ impl MemoryPanel {
         if let Some(limit) = limit.limit {
             ui.label(format!("Memory limit: {}", format_bytes(limit as _)));
         } else {
-            ui.label(
-                "You can set an upper limit of RAM use with the command-lime option --memory-limit",
-            );
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                ui.label("You can set an upper limit of RAM use with the command-line option ");
+                ui.code("--memory-limit");
+            });
             ui.separator();
         }
 
