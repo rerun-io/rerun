@@ -107,7 +107,7 @@ where
         }
 
         // Otherwise create a new resource
-        re_log::debug!(?desc, "Allocated new resource");
+        re_log::trace!(?desc, "Allocated new resource");
         let inner_resource = creation_func(desc);
         self.total_resource_size_in_bytes.fetch_add(
             desc.resource_size_in_bytes(),

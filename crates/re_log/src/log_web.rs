@@ -21,10 +21,6 @@ impl log::Log for WebLogger {
             // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
             return metadata.level() <= log::LevelFilter::Warn;
         }
-        if metadata.target().starts_with("re_renderer") {
-            // re_renderer is also a bit too loud imho
-            return metadata.level() <= log::LevelFilter::Info;
-        }
 
         metadata.level() <= self.filter
     }
