@@ -39,7 +39,7 @@ impl Size {
     /// Returns true if the size is an automatically determined size ([`Self::AUTO`] or [`Self::AUTO_LARGE`]).
     #[inline]
     pub fn is_auto(&self) -> bool {
-        self.0 >= f32::MAX || self.0 <= f32::MIN
+        self.0 <= f32::MIN || self.0 >= f32::MAX
     }
 
     /// Get the scene-size of this, if stored as a scene size.
@@ -51,7 +51,7 @@ impl Size {
     /// Get the point size of this, if stored as a point size.
     #[inline]
     pub fn points(&self) -> Option<f32> {
-        (f32::MIN..=0.0).contains(&self.0).then_some(-self.0)
+        (self.0 > f32::MIN && self.0 <= 0.0).then_some(-self.0)
     }
 }
 
@@ -67,7 +67,8 @@ impl std::ops::Mul<f32> for Size {
 
     #[inline]
     fn mul(self, rhs: f32) -> Self::Output {
-        debug_assert!(rhs.is_normal() && rhs >= 0.0);
+        debug_assert!(rhs.is_finite() && rhs >= 0.0);
+        debug_assert!((self.0 * rhs).is_finite());
         Self(self.0 * rhs)
     }
 }
@@ -75,7 +76,8 @@ impl std::ops::Mul<f32> for Size {
 impl std::ops::MulAssign<f32> for Size {
     #[inline]
     fn mul_assign(&mut self, rhs: f32) {
-        debug_assert!(rhs.is_normal() && rhs >= 0.0);
+        debug_assert!(rhs.is_finite() && rhs >= 0.0);
+        debug_assert!((self.0 * rhs).is_finite());
         self.0 *= rhs;
     }
 }
