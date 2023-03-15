@@ -118,9 +118,14 @@ impl MemoryPanel {
             Self::tracking_stats(ui, tracking_stats);
         } else {
             ui.separator();
-            ui.label(format!(
-                "Set {RERUN_TRACK_ALLOCATIONS}=1 to turn on detailed allocation tracking."
-            ));
+            if ui.button("Turn on detailed allocation tracking").clicked() {
+                re_memory::accounting_allocator::set_tracking_callstacks(true);
+            }
+            if !cfg!(target_arch = "wasm32") {
+                ui.label(format!(
+                    "Set {RERUN_TRACK_ALLOCATIONS}=1 for detailed allocation tracking from startup."
+                ));
+            }
         }
     }
 
