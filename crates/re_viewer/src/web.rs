@@ -6,10 +6,9 @@ use re_memory::AccountingAllocator;
 static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
-/// This is the entry-point for all the web-assembly.
+/// This is the entry-point for all the Wasm.
 /// This is called once from the HTML.
 /// It loads the app, installs some callbacks, then returns.
-/// You can add more callbacks like this if you want to call in to your code.
 #[wasm_bindgen]
 pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::JsValue> {
     // Make sure panics are logged using `console.error`.
