@@ -1,4 +1,8 @@
 pub fn backtrace_to_string(backtrace: &backtrace::Backtrace) -> String {
+    if backtrace.frames().is_empty() {
+        return "[empty backtrace]".to_owned();
+    }
+
     // We need to get a `std::fmt::Formatter`, and there is no easy way to do that, so we do it the hard way:
 
     struct AnonymizedBacktrace<'a>(&'a backtrace::Backtrace);
