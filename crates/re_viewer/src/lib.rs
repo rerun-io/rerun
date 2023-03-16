@@ -200,6 +200,8 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
 }
 
 pub fn stream_rrd_from_http(url: String) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
+    re_log::debug!("Downloading .rrd file from {url:?}…");
+
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::RrdHttpStream {
         url: url.clone(),
     });
@@ -208,6 +210,8 @@ pub fn stream_rrd_from_http(url: String) -> re_smart_channel::Receiver<re_log_ty
     ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
         Ok(response) => {
             if response.ok {
+                re_log::debug!("Decoding .rrd file from {url:?}…");
+                // TODO(emilk): on web, decode in chunks an schedule a timeout to continue decoding.
                 let decoder =
                     re_log_types::encoding::Decoder::new(std::io::Cursor::new(&response.bytes));
                 match decoder {

@@ -37,7 +37,7 @@ pub async fn start(
             let re_ui = crate::customize_eframe(cc);
             let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
 
-            if url.starts_with("http") {
+            if url.starts_with("http") || url.ends_with(".rrd") {
                 // Download an .rrd file over http
                 let rx = crate::stream_rrd_from_http(url);
                 Box::new(crate::App::from_receiver(
