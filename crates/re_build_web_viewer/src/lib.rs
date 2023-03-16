@@ -47,8 +47,8 @@ pub fn build(release: bool) {
     let js_path = build_dir.join(format!("{target_name}.js"));
 
     // Clean old versions:
-    std::fs::remove_file(wasm_path.clone()).ok();
-    std::fs::remove_file(js_path).ok();
+    std::fs::remove_file(&wasm_path).ok();
+    std::fs::remove_file(&js_path).ok();
 
     // --------------------------------------------------------------------------------
     eprintln!("Compiling rust to wasm in {target_wasm_dir}…");
@@ -117,6 +117,26 @@ pub fn build(release: bool) {
         .status()
         .expect("Failed to run wasm-bindgen");
     assert!(status.success(), "Failed to run wasm-bindgen");
+
+    // --------------------------------------------------------------------------------
+    // Apply a horrible patch for https://github.com/rerun-io/rerun/issues/1513
+    {
+        let js_before =
+            std::fs::read_to_string(&js_path).expect("Failed to read js file to string");
+
+        let js_patched = js_before.replace(
+            "function getStringFromWasm0(ptr, len) {",
+            "function getStringFromWasm0(ptr, len) {
+                ptr = ptr >>> 0;
+            ",
+        );
+        assert!(
+            js_before != js_patched,
+            "Failed to apply wasm-bindgen patch"
+        );
+
+        std::fs::write(&js_path, js_patched.as_bytes()).expect("Failed to write js file");
+    }
 
     // --------------------------------------------------------------------------------
     // Optimize the wasm
