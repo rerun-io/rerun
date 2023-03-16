@@ -436,6 +436,9 @@ fn summarize_callstack(callstack: &str) -> String {
         ("gltf", "gltf"),
         ("image::image", "image"),
         ("epaint::text::text_layout", "text_layout"),
+        ("egui_wgpu", "egui_wgpu"),
+        ("wgpu_hal", "wgpu_hal"),
+        ("prepare_staging_buffer", "prepare_staging_buffer"),
         // -----
         // Very general:
         ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
