@@ -23,11 +23,11 @@ impl Backtrace {
     }
 
     pub fn format(&mut self) -> std::sync::Arc<str> {
-        trim_backtrace(&self.0).to_owned().into()
+        trim_backtrace(&self.0).into()
     }
 }
 
-fn trim_backtrace(mut stack: &str) -> &str {
+fn trim_backtrace(mut stack: &str) -> String {
     let start_pattern = "__rust_alloc_zeroed";
     if let Some(start_offset) = stack.find(start_pattern) {
         if let Some(next_newline) = stack[start_offset..].find('\n') {
@@ -42,5 +42,16 @@ fn trim_backtrace(mut stack: &str) -> &str {
         }
     }
 
-    stack
+    stack.split('\n').map(trim_line).collect::<String>()
+}
+
+/// Example input: `eframe::web::backend::AppRunner::paint::h584aff3234354fd5@http://127.0.0.1:9090/re_viewer.js line 366 > WebAssembly.instantiate:wasm-function[3352]:0x5d46b4`
+///
+/// Output: `eframe::web::backend::AppRunner::paint`
+fn trim_line(line: &str) -> String {
+    if let Some(last_double_colon) = line.rfind("::") {
+        format!("{}\n", &line[0..last_double_colon])
+    } else {
+        format!("{line}\n")
+    }
 }
