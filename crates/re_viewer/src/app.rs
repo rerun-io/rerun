@@ -60,7 +60,7 @@ pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
 
-    /// Listenes to the local log stream
+    /// Listens to the local log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
