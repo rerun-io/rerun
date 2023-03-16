@@ -91,9 +91,11 @@ impl MemoryPanel {
         if let Some(limit) = limit.limit {
             ui.label(format!("Memory limit: {}", format_bytes(limit as _)));
         } else {
-            ui.label(
-                "You can set an upper limit of RAM use with the command-lime option --memory-limit",
-            );
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                ui.label("You can set an upper limit of RAM use with the command-line option ");
+                ui.code("--memory-limit");
+            });
             ui.separator();
         }
 
@@ -113,13 +115,17 @@ impl MemoryPanel {
             }
         }
 
+        let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
+        ui.checkbox(&mut is_tracking_callstacks, "Detailed allocation tracking")
+            .on_hover_text("This will slow down the program.");
+        re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
+
         if let Some(tracking_stats) = re_memory::accounting_allocator::tracking_stats() {
             ui.style_mut().wrap = Some(false);
             Self::tracking_stats(ui, tracking_stats);
-        } else {
-            ui.separator();
+        } else if !cfg!(target_arch = "wasm32") {
             ui.label(format!(
-                "Set {RERUN_TRACK_ALLOCATIONS}=1 to turn on detailed allocation tracking."
+                "Set {RERUN_TRACK_ALLOCATIONS}=1 for detailed allocation tracking from startup."
             ));
         }
     }
@@ -325,28 +331,33 @@ impl MemoryPanel {
                             let stochastic_rate = callstack.stochastic_rate;
                             let is_stochastic = stochastic_rate > 1;
 
+                            let text = format!(
+                                "{}{} in {} allocs (≈{} / alloc){} - {}",
+                                if is_stochastic { "≈" } else { "" },
+                                format_bytes((callstack.extant.size * stochastic_rate) as _),
+                                format_number(callstack.extant.count * stochastic_rate),
+                                format_bytes(
+                                    callstack.extant.size as f64 / callstack.extant.count as f64
+                                ),
+                                if stochastic_rate <= 1 {
+                                    String::new()
+                                } else {
+                                    format!(" ({} stochastic samples)", callstack.extant.count)
+                                },
+                                summarize_callstack(&callstack.readable_backtrace.to_string())
+                            );
+
                             if ui
-                                .button(format!(
-                                    "{}{} in {} allocs (≈{} / alloc){} - {}",
-                                    if is_stochastic { "≈" } else { "" },
-                                    format_bytes((callstack.extant.size * stochastic_rate) as _),
-                                    format_number(callstack.extant.count * stochastic_rate),
-                                    format_bytes(
-                                        callstack.extant.size as f64
-                                            / callstack.extant.count as f64
-                                    ),
-                                    if stochastic_rate <= 1 {
-                                        String::new()
-                                    } else {
-                                        format!(" ({} stochastic samples)", callstack.extant.count)
-                                    },
-                                    summarize_callstack(&callstack.readable_backtrace.to_string())
-                                ))
+                                .button(text)
                                 .on_hover_text("Click to copy callstack to clipboard")
                                 .clicked()
                             {
                                 ui.output_mut(|o| {
                                     o.copied_text = callstack.readable_backtrace.to_string();
+                                    if o.copied_text.is_empty() {
+                                        // This is weird
+                                        o.copied_text = "No callstack available".to_owned();
+                                    }
                                 });
                             }
                         }
@@ -424,6 +435,10 @@ fn summarize_callstack(callstack: &str) -> String {
         ("ImageCache", "ImageCache"),
         ("gltf", "gltf"),
         ("image::image", "image"),
+        ("epaint::text::text_layout", "text_layout"),
+        ("egui_wgpu", "egui_wgpu"),
+        ("wgpu_hal", "wgpu_hal"),
+        ("prepare_staging_buffer", "prepare_staging_buffer"),
         // -----
         // Very general:
         ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),

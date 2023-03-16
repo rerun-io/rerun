@@ -3,7 +3,6 @@ set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."
 
-
 if [[ $* == --skip-setup ]]
 then
   echo "Skipping setup_web.sh"
@@ -21,22 +20,25 @@ export RUSTFLAGS=--cfg=web_sys_unstable_apis
 
 echo "Building rust…"
 BUILD=debug # debug builds are faster
+TARGET_DIR="target_wasm"
+WASM_TARGET_FILEPATH="${TARGET_DIR}/wasm32-unknown-unknown/${BUILD}/${CRATE_NAME}.wasm"
 
-(cd crates/$CRATE_NAME &&
-  cargo build \
-    --lib \
-    --target wasm32-unknown-unknown
-)
+# make sure we re-build it:
+rm -f "${WASM_TARGET_FILEPATH}"
 
-TARGET="target"
+cargo build \
+  --package "${CRATE_NAME}" \
+  --lib \
+  --target wasm32-unknown-unknown \
+  --target-dir "${TARGET_DIR}"
 
 echo "Generating JS bindings for wasm…"
 
-rm -f "${CRATE_NAME}_bg.wasm" # Remove old output (if any)
+# Remove old output (if any):
+rm -f "${CRATE_NAME}.js"
+rm -f "${CRATE_NAME}_bg.wasm"
 
-TARGET_NAME="${CRATE_NAME}.wasm"
-wasm-bindgen "${TARGET}/wasm32-unknown-unknown/$BUILD/$TARGET_NAME" \
-  --out-dir . --no-modules --no-typescript
+wasm-bindgen "${WASM_TARGET_FILEPATH}" --out-dir . --no-modules --no-typescript
 
 # Remove output:
 rm -f "${CRATE_NAME}_bg.wasm"

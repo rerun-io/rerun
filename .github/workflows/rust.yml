@@ -218,13 +218,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --locked --all-features --lib --target wasm32-unknown-unknown -p re_viewer
+          args: --locked --all-features --lib --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --locked --target wasm32-unknown-unknown -p re_renderer --examples
+          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
       - run: ./scripts/wasm_bindgen_check.sh --skip-setup
 
