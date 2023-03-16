@@ -31,15 +31,29 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
             let startup_options = crate::StartupOptions::default();
             let re_ui = crate::customize_eframe(cc);
             let url = get_url(&cc.integration_info);
-            let app = crate::RemoteViewerApp::new(
-                build_info,
-                app_env,
-                startup_options,
-                re_ui,
-                cc.storage,
-                url,
-            );
-            Box::new(app)
+
+            if url.starts_with("http") {
+                // Download an .rrd file over http
+                let rx = crate::stream_rrd_from_http(url);
+                Box::new(crate::App::from_receiver(
+                    build_info,
+                    &app_env,
+                    startup_options,
+                    re_ui,
+                    cc.storage,
+                    rx,
+                ))
+            } else {
+                // Connect to a Rerun server over WebSockets.
+                Box::new(crate::RemoteViewerApp::new(
+                    build_info,
+                    app_env,
+                    startup_options,
+                    re_ui,
+                    cc.storage,
+                    url,
+                ))
+            }
         }),
     )
     .await?;
