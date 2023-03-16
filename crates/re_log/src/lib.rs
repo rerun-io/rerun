@@ -21,6 +21,8 @@ mod setup;
 
 pub use setup::*;
 
+pub use log::{Level, LevelFilter};
+
 #[cfg(target_arch = "wasm32")]
 mod log_web;
 
@@ -59,4 +61,105 @@ fn test_shorten_file_path() {
     {
         assert_eq!(shorten_file_path(before), after);
     }
+}
+
+// ----------------------------------------------------------------------------
+
+static MULTI_LOGGER: MultiLogger = MultiLogger::new();
+
+/// Install an additional global logger.
+pub fn add_boxed_logger(logger: Box<dyn log::Log>) {
+    add_logger(Box::leak(logger));
+}
+
+/// Install an additional global logger.
+pub fn add_logger(logger: &'static dyn log::Log) {
+    MULTI_LOGGER.loggers.write().push(logger);
+}
+
+/// Forward log messages to multiple [`log::log`] receivers.
+struct MultiLogger {
+    loggers: parking_lot::RwLock<Vec<&'static dyn log::Log>>,
+}
+
+impl MultiLogger {
+    pub const fn new() -> Self {
+        Self {
+            loggers: parking_lot::RwLock::new(vec![]),
+        }
+    }
+}
+
+impl log::Log for MultiLogger {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        self.loggers
+            .read()
+            .iter()
+            .any(|logger| logger.enabled(metadata))
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        for logger in self.loggers.read().iter() {
+            logger.log(record);
+        }
+    }
+
+    fn flush(&self) {
+        for logger in self.loggers.read().iter() {
+            logger.flush();
+        }
+    }
+}
+
+pub struct LogMsg {
+    pub level: Level,
+    pub msg: String,
+}
+
+// ----------------------------------------------------------------------------
+
+/// Pipe log messages to a channel.
+pub struct ChannelLogger {
+    filter: log::LevelFilter,
+    tx: parking_lot::Mutex<std::sync::mpsc::Sender<LogMsg>>,
+}
+
+impl ChannelLogger {
+    pub fn new(filter: log::LevelFilter) -> (Self, std::sync::mpsc::Receiver<LogMsg>) {
+        let (tx, rx) = std::sync::mpsc::channel();
+        (
+            Self {
+                filter,
+                tx: tx.into(),
+            },
+            rx,
+        )
+    }
+}
+
+impl log::Log for ChannelLogger {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        if metadata.target().starts_with("wgpu") || metadata.target().starts_with("naga") {
+            // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
+            return metadata.level() <= log::LevelFilter::Warn;
+        }
+
+        metadata.level() <= self.filter
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
+        self.tx
+            .lock()
+            .send(LogMsg {
+                level: record.level(),
+                msg: record.args().to_string(),
+            })
+            .ok();
+    }
+
+    fn flush(&self) {}
 }

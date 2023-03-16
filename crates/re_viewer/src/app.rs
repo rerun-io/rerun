@@ -60,6 +60,9 @@ pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
 
+    /// Listenes to the local log stream
+    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+
     component_ui_registry: ComponentUiRegistry,
 
     rx: Receiver<LogMsg>,
@@ -111,6 +114,9 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
+        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
+        re_log::add_boxed_logger(Box::new(logger));
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
@@ -137,6 +143,7 @@ impl App {
             build_info,
             startup_options,
             re_ui,
+            text_log_rx,
             component_ui_registry: Default::default(),
             rx,
             log_dbs: Default::default(),
@@ -417,6 +424,23 @@ impl eframe::App for App {
         if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
             frame.close();
             return;
+        }
+
+        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
+            match level {
+                re_log::Level::Error => {
+                    self.toasts.error(msg);
+                }
+                re_log::Level::Warn => {
+                    self.toasts.warning(msg);
+                }
+                re_log::Level::Info => {
+                    self.toasts.info(msg);
+                }
+                re_log::Level::Debug | re_log::Level::Trace => {
+                    // too spammy
+                }
+            }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -1532,7 +1556,7 @@ fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui) {
+fn egui_debug_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
@@ -1556,6 +1580,7 @@ fn debug_menu_options_ui(ui: &mut egui::Ui) {
         )
         .on_hover_text("Show an overlay on all interactive widgets.")
         .changed();
+
     // This option currently causes the viewer to hang.
     // any_clicked |= ui
     //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
@@ -1567,8 +1592,16 @@ fn debug_menu_options_ui(ui: &mut egui::Ui) {
         style.debug = debug;
         ui.ctx().set_style(style);
     }
+}
 
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(ui: &mut egui::Ui) {
+    egui_debug_options_ui(ui);
     ui.separator();
+
+    if ui.button("Log info").clicked() {
+        re_log::info!("Logging some info");
+    }
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

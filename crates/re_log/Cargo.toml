@@ -19,6 +19,7 @@ all-features = true
 [dependencies]
 log = { version = "0.4", features = ["std"] }
 log-once = "0.4"
+parking_lot.workspace = true
 
 # make sure dependencies that user tracing gets forwarded to `log`:
 tracing = { version = "0.1", features = ["log"] }
