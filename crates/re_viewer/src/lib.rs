@@ -199,6 +199,8 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     new_rx
 }
 
+// ---------------------------------------------------------------------------
+
 pub fn stream_rrd_from_http(url: String) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
@@ -212,25 +214,7 @@ pub fn stream_rrd_from_http(url: String) -> re_smart_channel::Receiver<re_log_ty
             if response.ok {
                 re_log::debug!("Decoding .rrd file from {url:?}…");
                 // TODO(emilk): on web, decode in chunks an schedule a timeout to continue decoding.
-                let decoder =
-                    re_log_types::encoding::Decoder::new(std::io::Cursor::new(&response.bytes));
-                match decoder {
-                    Ok(decoder) => {
-                        for msg in decoder {
-                            match msg {
-                                Ok(msg) => {
-                                    tx.send(msg).ok();
-                                }
-                                Err(err) => {
-                                    re_log::warn_once!("Failed to decode message: {err}");
-                                }
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed to decode .rrd file at {url}: {err}");
-                    }
-                }
+                decode_rrd(&response.bytes, &tx);
             } else {
                 re_log::error!(
                     "Failed to fetch .rrd file from {url}: {} {}",
@@ -245,4 +229,25 @@ pub fn stream_rrd_from_http(url: String) -> re_smart_channel::Receiver<re_log_ty
     });
 
     rx
+}
+
+fn decode_rrd(rrd_bytes: &[u8], tx: &re_smart_channel::Sender<re_log_types::LogMsg>) {
+    let decoder = re_log_types::encoding::Decoder::new(std::io::Cursor::new(rrd_bytes));
+    match decoder {
+        Ok(decoder) => {
+            for msg in decoder {
+                match msg {
+                    Ok(msg) => {
+                        tx.send(msg).ok();
+                    }
+                    Err(err) => {
+                        re_log::warn_once!("Failed to decode message: {err}");
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            re_log::error!("Failed to decode .rrd: {err}");
+        }
+    }
 }
