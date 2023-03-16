@@ -14,6 +14,9 @@ pub enum Source {
     /// The source if a file on disk
     File { path: std::path::PathBuf },
 
+    /// Streaming an `.rrd` file over http.
+    RrdHttpStream { url: String },
+
     /// The source is the logging sdk directly, same process.
     Sdk,
 
@@ -33,7 +36,7 @@ impl Source {
     pub fn is_network(&self) -> bool {
         match self {
             Self::File { .. } | Self::Sdk => false,
-            Self::WsClient { .. } | Self::TcpServer { .. } => true,
+            Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }
 }

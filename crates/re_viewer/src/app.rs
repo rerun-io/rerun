@@ -606,6 +606,9 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
             re_smart_channel::Source::File { path } => {
                 ui.strong(format!("Loading {}…", path.display()));
             }
+            re_smart_channel::Source::RrdHttpStream { url } => {
+                ui.strong(format!("Loading {url}…"));
+            }
             re_smart_channel::Source::Sdk => {
                 ready_and_waiting(ui, "Waiting for logging data from SDK");
             }
@@ -1781,7 +1784,8 @@ fn new_recording_confg(
         re_smart_channel::Source::File { .. } => PlayState::Playing,
 
         // Live data - follow it!
-        re_smart_channel::Source::Sdk
+        re_smart_channel::Source::RrdHttpStream { .. }
+        | re_smart_channel::Source::Sdk
         | re_smart_channel::Source::WsClient { .. }
         | re_smart_channel::Source::TcpServer { .. } => PlayState::Following,
     };

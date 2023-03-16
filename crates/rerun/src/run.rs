@@ -35,7 +35,8 @@ struct Args {
     #[clap(long)]
     version: bool,
 
-    /// Either a path to a `.rrd` file to load, or a websocket url to a Rerun Server from which to read data
+    /// Either a path to a `.rrd` file to load, an http url to an `.rrd` file,
+    /// or a websocket url to a Rerun Server from which to read data
     ///
     /// If none is given, a server will be hosted which the Rerun SDK can connect to.
     url_or_path: Option<String>,
@@ -249,32 +250,37 @@ async fn run_impl(
 
     // Where do we get the data from?
     let rx = if let Some(url_or_path) = &args.url_or_path {
-        let path = std::path::Path::new(url_or_path).to_path_buf();
-        if path.exists() || url_or_path.ends_with(".rrd") {
-            re_log::info!("Loading {path:?}…");
-            load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
+        if url_or_path.starts_with("http") {
+            re_viewer::stream_rrd_from_http(url_or_path.clone())
         } else {
-            // We are connecting to a server at a websocket address:
-            let mut rerun_server_ws_url = url_or_path.clone();
-            if !rerun_server_ws_url.contains("://") {
-                rerun_server_ws_url = format!("{}://{rerun_server_ws_url}", re_ws_comms::PROTOCOL);
-            }
-            if args.web_viewer {
-                return host_web_viewer(rerun_server_ws_url).await;
+            let path = std::path::Path::new(url_or_path).to_path_buf();
+            if path.exists() || url_or_path.ends_with(".rrd") {
+                re_log::info!("Loading {path:?}…");
+                load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
             } else {
-                #[cfg(feature = "native_viewer")]
-                return native_viewer_connect_to_ws_url(
-                    _build_info,
-                    call_source.app_env(),
-                    startup_options,
-                    profiler,
-                    url_or_path.clone(),
-                );
+                // We are connecting to a server at a websocket address:
+                let mut rerun_server_ws_url = url_or_path.clone();
+                if !rerun_server_ws_url.contains("://") {
+                    rerun_server_ws_url =
+                        format!("{}://{rerun_server_ws_url}", re_ws_comms::PROTOCOL);
+                }
+                if args.web_viewer {
+                    return host_web_viewer(rerun_server_ws_url).await;
+                } else {
+                    #[cfg(feature = "native_viewer")]
+                    return native_viewer_connect_to_ws_url(
+                        _build_info,
+                        call_source.app_env(),
+                        startup_options,
+                        profiler,
+                        url_or_path.clone(),
+                    );
 
-                #[cfg(not(feature = "native_viewer"))]
-                {
-                    _ = call_source;
-                    anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
+                    #[cfg(not(feature = "native_viewer"))]
+                    {
+                        _ = call_source;
+                        anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
+                    }
                 }
             }
         }

@@ -198,3 +198,47 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         .unwrap();
     new_rx
 }
+
+pub fn stream_rrd_from_http(url: String) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::RrdHttpStream {
+        url: url.clone(),
+    });
+
+    // TODO(emilk): stream the http request, progressively decoding the .rrd file.
+    ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
+        Ok(response) => {
+            if response.ok {
+                let decoder =
+                    re_log_types::encoding::Decoder::new(std::io::Cursor::new(&response.bytes));
+                match decoder {
+                    Ok(decoder) => {
+                        for msg in decoder {
+                            match msg {
+                                Ok(msg) => {
+                                    tx.send(msg).ok();
+                                }
+                                Err(err) => {
+                                    re_log::warn_once!("Failed to decode message: {err}");
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to decode .rrd file at {url}: {err}");
+                    }
+                }
+            } else {
+                re_log::error!(
+                    "Failed to fetch .rrd file from {url}: {} {}",
+                    response.status,
+                    response.status_text
+                );
+            }
+        }
+        Err(err) => {
+            re_log::error!("Failed to fetch .rrd file from {url}: {err}");
+        }
+    });
+
+    rx
+}
