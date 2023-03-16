@@ -251,7 +251,7 @@ async fn run_impl(
     // Where do we get the data from?
     let rx = if let Some(url_or_path) = &args.url_or_path {
         if url_or_path.starts_with("http") {
-            re_viewer::stream_rrd_from_http(url_or_path.clone())
+            re_viewer::stream_rrd_from_http_to_channel(url_or_path.clone())
         } else {
             let path = std::path::Path::new(url_or_path).to_path_buf();
             if path.exists() || url_or_path.ends_with(".rrd") {

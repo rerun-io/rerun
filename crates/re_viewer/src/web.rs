@@ -38,8 +38,21 @@ pub async fn start(
             let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
 
             if url.starts_with("http") || url.ends_with(".rrd") {
-                // Download an .rrd file over http
-                let rx = crate::stream_rrd_from_http(url);
+                // Download an .rrd file over http:
+
+                let (tx, rx) =
+                    re_smart_channel::smart_channel(re_smart_channel::Source::RrdHttpStream {
+                        url: url.clone(),
+                    });
+                let egui_ctx = cc.egui_ctx.clone();
+                crate::stream_rrd_from_http(
+                    url,
+                    Box::new(move |msg| {
+                        egui_ctx.request_repaint(); // wake up ui thread
+                        tx.send(msg).ok();
+                    }),
+                );
+
                 Box::new(crate::App::from_receiver(
                     build_info,
                     &app_env,

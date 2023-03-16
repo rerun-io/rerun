@@ -4107,6 +4107,7 @@ dependencies = [
  "image",
  "instant",
  "itertools",
+ "js-sys",
  "lazy_static",
  "macaw",
  "mint",
@@ -4142,7 +4143,9 @@ dependencies = [
  "time 0.3.20",
  "uuid",
  "vec1",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
  "winapi",
 ]
