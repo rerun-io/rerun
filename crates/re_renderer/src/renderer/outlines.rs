@@ -199,11 +199,12 @@ impl OutlineMaskProcessor {
 
     /// Number of MSAA samples used for the outline mask target.
     pub fn mask_sample_count(tier: HardwareTier) -> u32 {
-        match tier {
-            HardwareTier::Web => 1,
+        if tier.support_sampling_msaa_texture() {
             // The MSAA shader variant deals with *exactly* 4 samples.
             // See `jumpflooding_step_msaa.wgsl`.
-            HardwareTier::Native => 4,
+            4
+        } else {
+            1
         }
     }
 

@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.5"
+LABEL version="0.6"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -65,12 +65,12 @@ ADD rerun_py/requirements-build.txt requirements-build.txt
 RUN pip install -r requirements-build.txt
 
 # Install tools from setup_web.sh
-RUN cargo install wasm-bindgen-cli@0.2.84
+RUN cargo install wasm-bindgen-cli --git https://github.com/rerun-io/wasm-bindgen.git --rev 13283975ddf48c2d90758095e235b28d381c5762
 # Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.5
+ENV CACHE_KEY=rerun_docker_v0.6
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'

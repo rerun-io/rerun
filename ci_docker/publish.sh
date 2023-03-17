@@ -1,4 +1,4 @@
-VERSION=0.5 # Bump on each new version. Remember to update the version in the Dockerfile too.
+VERSION=0.6 # Bump on each new version. Remember to update the version in the Dockerfile too.
 
 # The build needs to run from top of repo to access the requirements.txt
 cd `git rev-parse --show-toplevel`
