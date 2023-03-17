@@ -12,7 +12,9 @@ set -x
 rustup target add wasm32-unknown-unknown
 
 # For generating JS bindings:
-cargo install wasm-bindgen-cli --version 0.2.84
+# cargo install wasm-bindgen-cli --version 0.2.84
+# We use our own patched version containing this critical fix: https://github.com/rustwasm/wasm-bindgen/pull/3310
+cargo install wasm-bindgen-cli --git https://github.com/rerun-io/wasm-bindgen.git --rev 13283975ddf48c2d90758095e235b28d381c5762
 
 # For local tests with `start_server.sh`:
 # cargo install basic-http-server
