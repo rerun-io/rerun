@@ -17,7 +17,7 @@ mod multi_logger;
 mod setup;
 
 #[cfg(target_arch = "wasm32")]
-mod log_web;
+mod web_logger;
 
 pub use log::{Level, LevelFilter};
 

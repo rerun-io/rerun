@@ -7,12 +7,6 @@ impl WebLogger {
     pub fn new(filter: log::LevelFilter) -> Self {
         Self { filter }
     }
-
-    /// Install this logger as the global logger.
-    pub fn init(filter: log::LevelFilter) -> Result<(), log::SetLoggerError> {
-        log::set_max_level(filter);
-        log::set_boxed_logger(Box::new(Self::new(filter)))
-    }
 }
 
 impl log::Log for WebLogger {

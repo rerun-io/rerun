@@ -58,7 +58,7 @@ The log is for several distinct users:
 
 We are all sharing the same log stream, so we must cooperate carefully.
 
-The Rerun viewer wll show log messages at `INFO`, `WARNING` and `ERROR` to the user as a toast notifications.
+The Rerun viewer will show log messages at `INFO`, `WARNING` and `ERROR` to the user as a toast notifications.
 
 #### `ERROR`
 This is for _unrecoverable_ problems. The application or library couldn't complete an operation.
