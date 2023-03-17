@@ -4,9 +4,10 @@
 /// but instead support set of features, each a superset of the next.
 #[derive(Clone, Copy, Debug)]
 pub enum HardwareTier {
-    /// Maintains strict WebGL capability.
-    Web,
-    // Run natively with Vulkan/Metal but don't demand anything that isn't widely available.
+    /// For WebGL and native OpenGL. Maintains strict WebGL capability.
+    Basic,
+
+    /// Run natively with Vulkan/Metal but don't demand anything that isn't widely available.
     Native,
     // Run natively with Vulkan/Metal and require additional features.
     //HighEnd
@@ -17,7 +18,7 @@ impl HardwareTier {
     /// All our target platforms should support alpha to coverage.
     pub fn support_alpha_to_coverage(&self) -> bool {
         match self {
-            HardwareTier::Web => false,
+            HardwareTier::Basic => false,
             HardwareTier::Native => true,
         }
     }
@@ -25,7 +26,7 @@ impl HardwareTier {
     /// Whether the current hardware tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self {
-            HardwareTier::Web => false,
+            HardwareTier::Basic => false,
             HardwareTier::Native => true,
         }
     }
@@ -33,9 +34,9 @@ impl HardwareTier {
 
 impl Default for HardwareTier {
     fn default() -> Self {
-        // Use "Web" tier for actual web but also if someone forces the GL backend!
+        // Use "Basic" tier for actual web but also if someone forces the GL backend!
         if supported_backends() == wgpu::Backends::GL {
-            HardwareTier::Web
+            HardwareTier::Basic
         } else {
             HardwareTier::Native
         }
