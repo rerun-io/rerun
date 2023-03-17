@@ -44,36 +44,41 @@ impl RemoteViewerApp {
 
         re_log::info!("Connecting to WS server at {:?}…", self.url);
 
-        let connection =
-            re_ws_comms::Connection::viewer_to_server(self.url.clone(), move |binary: Vec<u8>| {
-                match re_ws_comms::decode_log_msg(&binary) {
-                    Ok(log_msg) => {
-                        if tx.send(log_msg).is_ok() {
-                            egui_ctx.request_repaint(); // Wake up UI thread
-                            std::ops::ControlFlow::Continue(())
-                        } else {
-                            re_log::info!("Failed to send log message to viewer - closing");
-                            std::ops::ControlFlow::Break(())
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed to parse message: {}", re_error::format(&err));
+        let callback = move |binary: Vec<u8>| {
+            match re_ws_comms::decode_log_msg(&binary) {
+                Ok(log_msg) => {
+                    if tx.send(log_msg).is_ok() {
+                        egui_ctx.request_repaint(); // Wake up UI thread
+                        std::ops::ControlFlow::Continue(())
+                    } else {
+                        re_log::info!("Failed to send log message to viewer - closing");
                         std::ops::ControlFlow::Break(())
                     }
                 }
-            })
-            .unwrap(); // TODO(emilk): handle error
+                Err(err) => {
+                    re_log::error!("Failed to parse message: {}", re_error::format(&err));
+                    std::ops::ControlFlow::Break(())
+                }
+            }
+        };
 
-        let app = crate::App::from_receiver(
-            self.build_info,
-            &self.app_env,
-            self.startup_options,
-            self.re_ui.clone(),
-            storage,
-            rx,
-        );
+        match re_ws_comms::Connection::viewer_to_server(self.url.clone(), callback) {
+            Ok(connection) => {
+                let app = crate::App::from_receiver(
+                    self.build_info,
+                    &self.app_env,
+                    self.startup_options,
+                    self.re_ui.clone(),
+                    storage,
+                    rx,
+                );
 
-        self.app = Some((connection, app));
+                self.app = Some((connection, app));
+            }
+            Err(err) => {
+                re_log::error!("Failed to connect to {:?}: {}", self.url, err);
+            }
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -118,6 +123,11 @@ impl eframe::App for RemoteViewerApp {
 
         if let Some((_, app)) = &mut self.app {
             app.update(egui_ctx, frame);
+        } else {
+            egui::CentralPanel::default().show(egui_ctx, |ui| {
+                // TODO(emilk): show the error message.
+                ui.label("An error occurred.\nCheck the debug console for details.");
+            });
         }
     }
 }
