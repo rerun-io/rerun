@@ -234,6 +234,53 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
+  rs-build-web-viewer:
+    name: Check Rust web build (wasm32 + wasm-bindgen)
+    # if: github.ref == 'refs/heads/main' # TODO: before we merge this
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.5
+      env:
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.67.0
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --release
+
+      # Upload the wasm, html etc to a Google cloud bucket:
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: "projects/11779445316/locations/global/workloadIdentityPools/rerun-github-actions-ci/providers/github"
+          service_account: "github-actions-ci@rerun-open.iam.gserviceaccount.com"
+
+      - id: "upload-folder"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer"
+
+  # ---------------------------------------------------------------------------
+
   rs-cargo-deny:
     name: Check Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest-16-cores
