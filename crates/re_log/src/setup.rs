@@ -36,13 +36,13 @@ fn set_default_rust_log_env() {
 pub fn setup_native_logging() {
     set_default_rust_log_env();
     log::set_max_level(log::LevelFilter::Debug);
-    log::set_logger(&crate::MULTI_LOGGER).expect("Failed to set logger");
-    crate::add_boxed_logger(Box::new(env_logger::Builder::from_env("MY_LOG").build()));
+    crate::multi_logger::init().expect("Failed to set logger");
+    crate::add_boxed_logger(Box::new(env_logger::Builder::from_env("RUST_LOG").build()));
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn setup_web_logging() {
     log::set_max_level(log::LevelFilter::Debug);
-    log::set_logger(&crate::MULTI_LOGGER).expect("Failed to set logger");
+    crate::multi_logger::init().expect("Failed to set logger");
     log::set_boxed_logger(Box::new(Self::new(log::LevelFilter::Debug)))
 }
