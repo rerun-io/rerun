@@ -6,7 +6,7 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun.log import log_cleared
-from rerun.log.annotation import log_annotation_context
+from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
 from rerun.log.camera import log_pinhole
@@ -24,6 +24,8 @@ from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coor
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
+    "AnnotationInfo",
+    "ClassDescription",
     "LoggingHandler",
     "bindings",
     "components",
