@@ -236,6 +236,10 @@ jobs:
 
   rs-build-web-viewer:
     name: Check Rust web build (wasm32 + wasm-bindgen)
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     # if: github.ref == 'refs/heads/main' # TODO: before we merge this
     runs-on: ubuntu-latest-16-cores
     container:
