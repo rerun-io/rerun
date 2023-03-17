@@ -1,5 +1,8 @@
 //! Text logging (nothing to do with rerun logging) for use in rerun libraries.
 //!
+//! Provides helpers for adding multiple loggers,
+//! and for setting up logging on native and on web.
+//!
 //! * `trace`: spammy things
 //! * `debug`: things that might be useful when debugging
 //! * `info`: things that we want to show to users
@@ -9,6 +12,15 @@
 //! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
 
+mod channel_logger;
+mod multi_logger;
+mod setup;
+
+#[cfg(target_arch = "wasm32")]
+mod log_web;
+
+pub use log::{Level, LevelFilter};
+
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};
 
@@ -17,18 +29,11 @@ pub use tracing::{debug, error, info, trace, warn};
 // similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 
-mod setup;
-
-pub use setup::*;
-
-pub use log::{Level, LevelFilter};
-
-mod multi_logger;
-
-pub use multi_logger::{add_boxed_logger, add_logger};
-
-#[cfg(target_arch = "wasm32")]
-mod log_web;
+pub use {
+    channel_logger::*,
+    multi_logger::{add_boxed_logger, add_logger},
+    setup::*,
+};
 
 /// Shorten a path to a Rust source file.
 ///
@@ -65,57 +70,4 @@ fn test_shorten_file_path() {
     {
         assert_eq!(shorten_file_path(before), after);
     }
-}
-
-// ----------------------------------------------------------------------------
-
-pub struct LogMsg {
-    pub level: Level,
-    pub msg: String,
-}
-
-/// Pipe log messages to a channel.
-pub struct ChannelLogger {
-    filter: log::LevelFilter,
-    tx: parking_lot::Mutex<std::sync::mpsc::Sender<LogMsg>>,
-}
-
-impl ChannelLogger {
-    pub fn new(filter: log::LevelFilter) -> (Self, std::sync::mpsc::Receiver<LogMsg>) {
-        let (tx, rx) = std::sync::mpsc::channel();
-        (
-            Self {
-                filter,
-                tx: tx.into(),
-            },
-            rx,
-        )
-    }
-}
-
-impl log::Log for ChannelLogger {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        if metadata.target().starts_with("wgpu") || metadata.target().starts_with("naga") {
-            // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
-            return metadata.level() <= log::LevelFilter::Warn;
-        }
-
-        metadata.level() <= self.filter
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        if !self.enabled(record.metadata()) {
-            return;
-        }
-
-        self.tx
-            .lock()
-            .send(LogMsg {
-                level: record.level(),
-                msg: record.args().to_string(),
-            })
-            .ok();
-    }
-
-    fn flush(&self) {}
 }
