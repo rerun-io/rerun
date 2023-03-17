@@ -36,7 +36,7 @@ cargo doc --document-private-items --no-deps --all-features
 (cd crates/rerun && cargo check --all-features)
 (cd examples/rust/objectron && cargo check --all-features)
 
-./scripts/wasm_bindgen_check.sh
+cargo run -p re_build_web_viewer -- --debug
 
 ./scripts/lint.py
 

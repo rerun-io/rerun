@@ -226,7 +226,11 @@ jobs:
           command: check
           args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
-      - run: ./scripts/wasm_bindgen_check.sh --skip-setup
+      - name: Build web-viewer (debug)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --debug
 
   # ---------------------------------------------------------------------------
 
