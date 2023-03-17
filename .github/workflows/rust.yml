@@ -243,7 +243,7 @@ jobs:
     # if: github.ref == 'refs/heads/main' # TODO: before we merge this
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.5
+      image: rerunio/ci_docker:0.6
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
