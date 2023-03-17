@@ -426,23 +426,6 @@ impl eframe::App for App {
             return;
         }
 
-        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
-            match level {
-                re_log::Level::Error => {
-                    self.toasts.error(msg);
-                }
-                re_log::Level::Warn => {
-                    self.toasts.warning(msg);
-                }
-                re_log::Level::Info => {
-                    self.toasts.info(msg);
-                }
-                re_log::Level::Debug | re_log::Level::Trace => {
-                    // too spammy
-                }
-            }
-        }
-
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Ensure zoom factor is sane and in 10% steps at all times before applying it.
@@ -483,6 +466,7 @@ impl eframe::App for App {
 
         self.state.cache.begin_frame();
 
+        self.show_text_logs_as_notifications();
         self.receive_messages(egui_ctx);
 
         self.cleanup();
@@ -645,6 +629,30 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 }
 
 impl App {
+    /// Show recent text log messages to the user as toast notifications.
+    fn show_text_logs_as_notifications(&mut self) {
+        crate::profile_function!();
+
+        let duration = Some(std::time::Duration::from_secs(4));
+
+        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
+            match level {
+                re_log::Level::Error => {
+                    self.toasts.error(msg).set_duration(duration);
+                }
+                re_log::Level::Warn => {
+                    self.toasts.warning(msg).set_duration(duration);
+                }
+                re_log::Level::Info => {
+                    self.toasts.info(msg).set_duration(duration);
+                }
+                re_log::Level::Debug | re_log::Level::Trace => {
+                    // too spammy
+                }
+            }
+        }
+    }
+
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
         crate::profile_function!();
 
@@ -1344,8 +1352,6 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
 // ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
-const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
-    Some(std::time::Duration::from_secs(4));
 
 fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     use std::path::PathBuf;
@@ -1359,16 +1365,10 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 
             match res {
                 Ok(path) => {
-                    let msg = format!("File saved to {path:?}.");
-                    re_log::info!(msg);
-                    app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
+                    re_log::info!("File saved to {path:?}."); // this will also show a notification the user
                 }
                 Err(err) => {
-                    let msg = format!("{err}");
-                    re_log::error!(msg);
-                    app.toasts
-                        .error(msg)
-                        .set_duration(FILE_SAVER_NOTIF_DURATION);
+                    re_log::error!("{err}"); // this will also show a notification the user
                 }
             }
         } else {
@@ -1469,9 +1469,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
             // NOTE: Shouldn't even be possible as the "Save" button is already
             // grayed out at this point... better safe than sorry though.
-            app.toasts
-                .error(err.to_string())
-                .set_duration(FILE_SAVER_NOTIF_DURATION);
+            re_log::error!("File saving failed: {err}");
         }
     }
 }
