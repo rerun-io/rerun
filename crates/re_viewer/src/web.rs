@@ -7,10 +7,15 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
 /// This is the entry-point for all the Wasm.
+///
 /// This is called once from the HTML.
 /// It loads the app, installs some callbacks, then returns.
+/// The `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
 #[wasm_bindgen]
-pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::JsValue> {
+pub async fn start(
+    canvas_id: &str,
+    url: Option<String>,
+) -> std::result::Result<(), eframe::wasm_bindgen::JsValue> {
     // Make sure panics are logged using `console.error`.
     console_error_panic_hook::set_once();
 
@@ -30,21 +35,74 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
             let app_env = crate::AppEnvironment::Web;
             let startup_options = crate::StartupOptions::default();
             let re_ui = crate::customize_eframe(cc);
-            let url = get_url(&cc.integration_info);
-            let app = crate::RemoteViewerApp::new(
-                build_info,
-                app_env,
-                startup_options,
-                re_ui,
-                cc.storage,
-                url,
-            );
-            Box::new(app)
+            let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
+
+            match categorize_uri(url) {
+                EndpointCategory::HttpRrd(url) => {
+                    // Download an .rrd file over http:
+                    let (tx, rx) =
+                        re_smart_channel::smart_channel(re_smart_channel::Source::RrdHttpStream {
+                            url: url.clone(),
+                        });
+                    let egui_ctx = cc.egui_ctx.clone();
+                    crate::stream_rrd_from_http::stream_rrd_from_http(
+                        url,
+                        Box::new(move |msg| {
+                            egui_ctx.request_repaint(); // wake up ui thread
+                            tx.send(msg).ok();
+                        }),
+                    );
+
+                    Box::new(crate::App::from_receiver(
+                        build_info,
+                        &app_env,
+                        startup_options,
+                        re_ui,
+                        cc.storage,
+                        rx,
+                    ))
+                }
+                EndpointCategory::WebSocket(url) => {
+                    // Connect to a Rerun server over WebSockets.
+                    Box::new(crate::RemoteViewerApp::new(
+                        build_info,
+                        app_env,
+                        startup_options,
+                        re_ui,
+                        cc.storage,
+                        url,
+                    ))
+                }
+            }
         }),
     )
     .await?;
 
     Ok(())
+}
+
+enum EndpointCategory {
+    /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
+    HttpRrd(String),
+
+    /// A remote Rerun server.
+    WebSocket(String),
+}
+
+fn categorize_uri(mut uri: String) -> EndpointCategory {
+    if uri.starts_with("http") || uri.ends_with(".rrd") {
+        EndpointCategory::HttpRrd(uri)
+    } else if uri.starts_with("ws") {
+        EndpointCategory::WebSocket(uri)
+    } else {
+        // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
+        // We could/should connect and see what it is, but for now we just take a wild guess instead:
+        re_log::info!("Assuming WebSocket endpoint");
+        if !uri.contains("://") {
+            uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+        }
+        EndpointCategory::WebSocket(uri)
+    }
 }
 
 fn get_url(info: &eframe::IntegrationInfo) -> String {
