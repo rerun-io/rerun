@@ -237,10 +237,10 @@ jobs:
   rs-build-web-viewer:
     name: Upload web build to google cloud (wasm32 + wasm-bindgen)
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
 
-    # if: github.ref == 'refs/heads/main' # TODO: before we merge this
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.6
