@@ -235,7 +235,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   rs-build-web-viewer:
-    name: Check Rust web build (wasm32 + wasm-bindgen)
+    name: Upload web build to google cloud (wasm32 + wasm-bindgen)
     permissions:
       contents: 'read'
       id-token: 'write'
