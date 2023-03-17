@@ -65,17 +65,29 @@ impl Service<Request<Body>> for Svc {
 
     #[cfg(not(feature = "__ci"))]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let rsp = Response::builder();
+        let response = Response::builder();
 
-        let bytes = match req.uri().path() {
-            "/" | "/index.html" => &include_bytes!("../web_viewer/index.html")[..],
-            "/favicon.ico" => &include_bytes!("../web_viewer/favicon.ico")[..],
-            "/sw.js" => &include_bytes!("../web_viewer/sw.js")[..],
+        let (mime, bytes) = match req.uri().path() {
+            "/" | "/index.html" => ("text/html", &include_bytes!("../web_viewer/index.html")[..]),
+            "/favicon.ico" => (
+                "image/vnd.microsoft.icon",
+                &include_bytes!("../web_viewer/favicon.ico")[..],
+            ),
+            "/sw.js" => (
+                "text/javascript",
+                &include_bytes!("../web_viewer/sw.js")[..],
+            ),
 
             #[cfg(debug_assertions)]
-            "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
+            "/re_viewer.js" => (
+                "text/javascript",
+                &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
+            ),
             #[cfg(not(debug_assertions))]
-            "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer.js")[..],
+            "/re_viewer.js" => (
+                "text/javascript",
+                &include_bytes!("../web_viewer/re_viewer.js")[..],
+            ),
 
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
@@ -84,24 +96,34 @@ impl Service<Request<Body>> for Svc {
                 #[cfg(debug_assertions)]
                 {
                     re_log::info_once!("Serving DEBUG web-viewer");
-                    &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..]
+                    (
+                        "application/wasm",
+                        &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..],
+                    )
                 }
                 #[cfg(not(debug_assertions))]
                 {
-                    &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+                    (
+                        "application/wasm",
+                        &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..],
+                    )
                 }
             }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());
                 let body = Body::from(Vec::new());
-                let rsp = rsp.status(404).body(body).unwrap();
+                let rsp = response.status(404).body(body).unwrap();
                 return future::ok(rsp);
             }
         };
 
         let body = Body::from(Vec::from(bytes));
-        let rsp = rsp.status(200).body(body).unwrap();
-        future::ok(rsp)
+        let mut response = response.status(200).body(body).unwrap();
+        response.headers_mut().insert(
+            hyper::header::CONTENT_TYPE,
+            hyper::header::HeaderValue::from_static(mime),
+        );
+        future::ok(response)
     }
 }
 
