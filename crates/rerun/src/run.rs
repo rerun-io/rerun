@@ -249,21 +249,18 @@ async fn run_impl(
     };
 
     // Where do we get the data from?
-    let rx = if let Some(url_or_path) = &args.url_or_path {
-        if url_or_path.starts_with("http") {
-            re_viewer::stream_rrd_from_http::stream_rrd_from_http_to_channel(url_or_path.clone())
-        } else {
-            let path = std::path::Path::new(url_or_path).to_path_buf();
-            if path.exists() || url_or_path.ends_with(".rrd") {
+    let rx = if let Some(url_or_path) = args.url_or_path.clone() {
+        match categorize_argument(url_or_path) {
+            ArgumentCategory::RrdHttpUrl(url) => {
+                re_viewer::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
+            }
+            ArgumentCategory::RrdFilePath(path) => {
                 re_log::info!("Loading {path:?}…");
                 load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
-            } else {
+            }
+            ArgumentCategory::WebSocketAddr(rerun_server_ws_url) => {
                 // We are connecting to a server at a websocket address:
-                let mut rerun_server_ws_url = url_or_path.clone();
-                if !rerun_server_ws_url.contains("://") {
-                    rerun_server_ws_url =
-                        format!("{}://{rerun_server_ws_url}", re_ws_comms::PROTOCOL);
-                }
+
                 if args.web_viewer {
                     return host_web_viewer(rerun_server_ws_url).await;
                 } else {
@@ -273,7 +270,7 @@ async fn run_impl(
                         call_source.app_env(),
                         startup_options,
                         profiler,
-                        url_or_path.clone(),
+                        rerun_server_ws_url,
                     );
 
                     #[cfg(not(feature = "native_viewer"))]
@@ -355,6 +352,37 @@ async fn run_impl(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );
         }
+    }
+}
+
+enum ArgumentCategory {
+    /// A remote RRD file, served over http.
+    RrdHttpUrl(String),
+
+    /// A path to a local file.
+    RrdFilePath(std::path::PathBuf),
+
+    /// A remote Rerun server.
+    WebSocketAddr(String),
+}
+
+fn categorize_argument(mut uri: String) -> ArgumentCategory {
+    let path = std::path::Path::new(&uri).to_path_buf();
+
+    if uri.starts_with("http") {
+        ArgumentCategory::RrdHttpUrl(uri)
+    } else if uri.starts_with("ws") {
+        ArgumentCategory::WebSocketAddr(uri)
+    } else if uri.starts_with("file://") || path.exists() || uri.ends_with(".rrd") {
+        ArgumentCategory::RrdFilePath(path)
+    } else {
+        // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
+        // We could/should connect and see what it is, but for now we just take a wild guess instead:
+        re_log::debug!("Assuming WebSocket endpoint");
+        if !uri.contains("://") {
+            uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+        }
+        ArgumentCategory::WebSocketAddr(uri)
     }
 }
 
