@@ -16,11 +16,11 @@ pub struct Blueprint {
 impl Blueprint {
     /// Prefer this to [`Blueprint::default`] to get better defaults based on screen size.
     pub fn new(egui_ctx: &egui::Context) -> Self {
-        let is_mobile = re_ui::is_mobile(egui_ctx);
+        let screen_size = egui_ctx.screen_rect().size();
         Self {
-            blueprint_panel_expanded: !is_mobile,
-            selection_panel_expanded: !is_mobile,
-            time_panel_expanded: !is_mobile,
+            blueprint_panel_expanded: screen_size.x > 750.0,
+            selection_panel_expanded: screen_size.x > 1000.0,
+            time_panel_expanded: screen_size.y > 550.0,
             viewport: Default::default(),
         }
     }
