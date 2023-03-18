@@ -140,38 +140,36 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        ctx.rec_cfg
-            .time_ctrl
-            .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
+        if ui.max_rect().width() < 600.0 {
+            // Narrow screen, e.g. mobile. Split the controls into two rows.
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    let times_per_timeline = ctx.log_db.times_per_timeline();
+                    time_ctrl.timeline_selector_ui(times_per_timeline, ui);
+                    collapsed_time_marker_and_time(ui, ctx);
+                });
+                ui.horizontal(|ui| {
+                    let re_ui = &ctx.re_ui;
+                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    let times_per_timeline = ctx.log_db.times_per_timeline();
+                    time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
+                    time_ctrl.playback_speed_ui(ui);
+                    time_ctrl.fps_ui(ui);
+                });
+            });
+        } else {
+            // One row:
+            let re_ui = &ctx.re_ui;
+            let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+            let times_per_timeline = ctx.log_db.times_per_timeline();
+            time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
+            time_ctrl.timeline_selector_ui(times_per_timeline, ui);
+            time_ctrl.playback_speed_ui(ui);
+            time_ctrl.fps_ui(ui);
 
-        {
-            let mut time_range_rect = ui.available_rect_before_wrap();
-            time_range_rect.max.x -= 220.0; // save space for current time
-
-            if time_range_rect.width() > 50.0 {
-                let time_ranges_ui =
-                    initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None);
-                time_ranges_ui.snap_time_control(ctx);
-
-                let painter = ui.painter_at(time_range_rect.expand(4.0));
-                painter.hline(
-                    time_range_rect.x_range(),
-                    time_range_rect.center().y,
-                    ui.visuals().widgets.inactive.fg_stroke,
-                );
-                time_marker_ui(
-                    &time_ranges_ui,
-                    &mut ctx.rec_cfg.time_ctrl,
-                    ui,
-                    &painter,
-                    &time_range_rect,
-                );
-
-                ui.allocate_rect(time_range_rect, egui::Sense::hover());
-            }
+            collapsed_time_marker_and_time(ui, ctx);
         }
-
-        current_time_ui(ctx, ui);
     }
 
     fn expanded_ui(
@@ -568,6 +566,41 @@ impl TimePanel {
     }
 }
 
+fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
+    let space_needed_for_current_time = match ctx.rec_cfg.time_ctrl.timeline().typ() {
+        re_arrow_store::TimeType::Time => 220.0,
+        re_arrow_store::TimeType::Sequence => 100.0,
+    };
+
+    {
+        let mut time_range_rect = ui.available_rect_before_wrap();
+        time_range_rect.max.x -= space_needed_for_current_time;
+
+        if time_range_rect.width() > 50.0 {
+            let time_ranges_ui = initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None);
+            time_ranges_ui.snap_time_control(ctx);
+
+            let painter = ui.painter_at(time_range_rect.expand(4.0));
+            painter.hline(
+                time_range_rect.x_range(),
+                time_range_rect.center().y,
+                ui.visuals().widgets.inactive.fg_stroke,
+            );
+            time_marker_ui(
+                &time_ranges_ui,
+                &mut ctx.rec_cfg.time_ctrl,
+                ui,
+                &painter,
+                &time_range_rect,
+            );
+
+            ui.allocate_rect(time_range_rect, egui::Sense::hover());
+        }
+    }
+
+    current_time_ui(ctx, ui);
+}
+
 /// Painted behind the data density graph.
 fn paint_streams_guide_line(
     ctx: &mut ViewerContext<'_>,
@@ -596,9 +629,16 @@ fn paint_streams_guide_line(
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-    ctx.rec_cfg
-        .time_ctrl
-        .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
+    {
+        let re_ui = &ctx.re_ui;
+        let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+        let times_per_timeline = ctx.log_db.times_per_timeline();
+
+        time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
+        time_ctrl.timeline_selector_ui(times_per_timeline, ui);
+        time_ctrl.playback_speed_ui(ui);
+        time_ctrl.fps_ui(ui);
+    }
 
     current_time_ui(ctx, ui);
 
