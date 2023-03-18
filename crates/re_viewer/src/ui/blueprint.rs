@@ -20,7 +20,7 @@ impl Blueprint {
         Self {
             blueprint_panel_expanded: screen_size.x > 750.0,
             selection_panel_expanded: screen_size.x > 1000.0,
-            time_panel_expanded: screen_size.y > 550.0,
+            time_panel_expanded: screen_size.y > 600.0,
             viewport: Default::default(),
         }
     }
