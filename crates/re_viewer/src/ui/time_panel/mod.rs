@@ -144,18 +144,17 @@ impl TimePanel {
             // Narrow screen, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                    let times_per_timeline = ctx.log_db.times_per_timeline();
-                    time_ctrl.timeline_selector_ui(times_per_timeline, ui);
-                    collapsed_time_marker_and_time(ui, ctx);
-                });
-                ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     let times_per_timeline = ctx.log_db.times_per_timeline();
                     time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
                     time_ctrl.playback_speed_ui(ui);
                     time_ctrl.fps_ui(ui);
+                });
+                ui.horizontal(|ui| {
+                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    time_ctrl.timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+                    collapsed_time_marker_and_time(ui, ctx);
                 });
             });
         } else {
@@ -629,7 +628,30 @@ fn paint_streams_guide_line(
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-    {
+    if ui.max_rect().width() < 600.0 {
+        // Narrow screen, e.g. mobile. Split the controls into two rows.
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                let re_ui = &ctx.re_ui;
+                let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                let times_per_timeline = ctx.log_db.times_per_timeline();
+                time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
+                time_ctrl.playback_speed_ui(ui);
+                time_ctrl.fps_ui(ui);
+            });
+            ui.horizontal(|ui| {
+                let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                time_ctrl.timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+
+                current_time_ui(ctx, ui);
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    help_button(ui);
+                });
+            });
+        });
+    } else {
+        // One row:
         let re_ui = &ctx.re_ui;
         let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
         let times_per_timeline = ctx.log_db.times_per_timeline();
@@ -638,13 +660,12 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         time_ctrl.timeline_selector_ui(times_per_timeline, ui);
         time_ctrl.playback_speed_ui(ui);
         time_ctrl.fps_ui(ui);
+        current_time_ui(ctx, ui);
+
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            help_button(ui);
+        });
     }
-
-    current_time_ui(ctx, ui);
-
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        help_button(ui);
-    });
 }
 
 fn help_button(ui: &mut egui::Ui) {
