@@ -52,6 +52,8 @@ impl Blueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
     ) {
+        let screen_width = ui.ctx().screen_rect().width();
+
         let panel = egui::SidePanel::left("blueprint_panel")
             .resizable(true)
             .frame(egui::Frame {
@@ -59,7 +61,7 @@ impl Blueprint {
                 ..Default::default()
             })
             .min_width(120.0)
-            .default_width(200.0);
+            .default_width((0.35 * screen_width).min(200.0).round());
 
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
             self.title_bar_ui(ctx, ui, spaces_info);

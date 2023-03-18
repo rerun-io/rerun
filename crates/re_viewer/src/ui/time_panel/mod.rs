@@ -68,17 +68,21 @@ impl TimePanel {
             panel_frame.inner_margin.right = 0.0;
         }
 
+        let screen_height = ui.ctx().screen_rect().width();
+
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
             .resizable(false)
             .show_separator_line(false)
             .frame(panel_frame)
-            .default_height(16.0);
+            .default_height(44.0);
+
+        let min_height = 150.0;
         let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
             .resizable(true)
             .show_separator_line(false)
             .frame(panel_frame)
-            .min_height(150.0)
-            .default_height(250.0);
+            .min_height(min_height)
+            .default_height((0.25 * screen_height).clamp(min_height, 250.0).round());
 
         egui::TopBottomPanel::show_animated_between_inside(
             ui,
