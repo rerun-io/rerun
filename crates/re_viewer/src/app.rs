@@ -279,7 +279,7 @@ impl App {
                 self.memory_panel_open ^= true;
             }
             Command::ToggleBlueprintPanel => {
-                let blueprint = self.blueprint_mut();
+                let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.blueprint_panel_expanded ^= true;
 
                 // Only one of blueprint or selection panel can be open at a time on mobile:
@@ -288,7 +288,7 @@ impl App {
                 }
             }
             Command::ToggleSelectionPanel => {
-                let blueprint = self.blueprint_mut();
+                let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.selection_panel_expanded ^= true;
 
                 // Only one of blueprint or selection panel can be open at a time on mobile:
@@ -297,7 +297,7 @@ impl App {
                 }
             }
             Command::ToggleTimePanel => {
-                self.blueprint_mut().time_panel_expanded ^= true;
+                self.blueprint_mut(egui_ctx).time_panel_expanded ^= true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -378,9 +378,12 @@ impl App {
         }
     }
 
-    fn blueprint_mut(&mut self) -> &mut Blueprint {
+    fn blueprint_mut(&mut self, egui_ctx: &egui::Context) -> &mut Blueprint {
         let selected_app_id = self.selected_app_id();
-        self.state.blueprints.entry(selected_app_id).or_default()
+        self.state
+            .blueprints
+            .entry(selected_app_id)
+            .or_insert_with(|| Blueprint::new(egui_ctx))
     }
 
     fn memory_panel_ui(
@@ -499,7 +502,11 @@ impl eframe::App for App {
                     .map_or_else(ApplicationId::unknown, |rec_info| {
                         rec_info.application_id.clone()
                     });
-                let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
+                let blueprint = self
+                    .state
+                    .blueprints
+                    .entry(selected_app_id)
+                    .or_insert_with(|| Blueprint::new(egui_ctx));
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
@@ -952,7 +959,9 @@ impl AppState {
             render_ctx,
         };
 
-        let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
+        let blueprint = blueprints
+            .entry(selected_app_id.clone())
+            .or_insert_with(|| Blueprint::new(ui.ctx()));
         time_panel.show_panel(&mut ctx, blueprint, ui);
         selection_panel.show_panel(&mut ctx, ui, blueprint);
 
@@ -967,7 +976,7 @@ impl AppState {
             .show_inside(ui, |ui| match *panel_selection {
                 PanelSelection::Viewport => blueprints
                     .entry(selected_app_id)
-                    .or_default()
+                    .or_insert_with(|| Blueprint::new(ui.ctx()))
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
             });
@@ -1192,7 +1201,11 @@ fn top_bar_ui(
                     rec_info.application_id.clone()
                 });
 
-            let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
+            let blueprint = app
+                .state
+                .blueprints
+                .entry(selected_app_id)
+                .or_insert_with(|| Blueprint::new(ui.ctx()));
 
             // From right-to-left:
 

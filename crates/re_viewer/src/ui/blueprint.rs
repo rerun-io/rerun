@@ -3,7 +3,7 @@ use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 use super::viewport::Viewport;
 
 /// Defines the layout of the whole Viewer (or will, eventually).
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct Blueprint {
     pub blueprint_panel_expanded: bool,
@@ -13,18 +13,18 @@ pub struct Blueprint {
     pub viewport: Viewport,
 }
 
-impl Default for Blueprint {
-    fn default() -> Self {
+impl Blueprint {
+    /// Prefer this to [`Blueprint::default`] to get better defaults based on screen size.
+    pub fn new(egui_ctx: &egui::Context) -> Self {
+        let is_mobile = re_ui::is_mobile(egui_ctx);
         Self {
-            blueprint_panel_expanded: true,
-            selection_panel_expanded: true,
-            time_panel_expanded: true,
+            blueprint_panel_expanded: !is_mobile,
+            selection_panel_expanded: !is_mobile,
+            time_panel_expanded: !is_mobile,
             viewport: Default::default(),
         }
     }
-}
 
-impl Blueprint {
     pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
