@@ -683,3 +683,8 @@ pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
         frame.set_minimized(true);
     }
 }
+
+/// Is this a small-screen device?
+pub fn is_mobile(ctx: &egui::Context) -> bool {
+    ctx.screen_rect().width() < 500.0
+}

@@ -279,10 +279,22 @@ impl App {
                 self.memory_panel_open ^= true;
             }
             Command::ToggleBlueprintPanel => {
-                self.blueprint_mut().blueprint_panel_expanded ^= true;
+                let blueprint = self.blueprint_mut();
+                blueprint.blueprint_panel_expanded ^= true;
+
+                // Only one of blueprint or selection panel can be open at a time on mobile:
+                if re_ui::is_mobile(egui_ctx) && blueprint.blueprint_panel_expanded {
+                    blueprint.selection_panel_expanded = false;
+                }
             }
             Command::ToggleSelectionPanel => {
-                self.blueprint_mut().selection_panel_expanded ^= true;
+                let blueprint = self.blueprint_mut();
+                blueprint.selection_panel_expanded ^= true;
+
+                // Only one of blueprint or selection panel can be open at a time on mobile:
+                if re_ui::is_mobile(egui_ctx) && blueprint.selection_panel_expanded {
+                    blueprint.blueprint_panel_expanded = false;
+                }
             }
             Command::ToggleTimePanel => {
                 self.blueprint_mut().time_panel_expanded ^= true;
@@ -1196,38 +1208,56 @@ fn top_bar_ui(
                 ui.add_space(extra_margin);
             }
 
-            app.re_ui
+            let mut selection_panel_expanded = blueprint.selection_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                    &mut blueprint.selection_panel_expanded,
+                    &mut selection_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Selection View{}",
                     Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleSelectionPanel);
+            }
 
-            app.re_ui
+            let mut time_panel_expanded = blueprint.time_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                    &mut blueprint.time_panel_expanded,
+                    &mut time_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Timeline View{}",
                     Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleTimePanel);
+            }
 
-            app.re_ui
+            let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::LEFT_PANEL_TOGGLE,
-                    &mut blueprint.blueprint_panel_expanded,
+                    &mut blueprint_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Blueprint View{}",
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleBlueprintPanel);
+            }
 
             if cfg!(debug_assertions) && app.state.app_options.show_metrics {
                 ui.vertical_centered(|ui| {
