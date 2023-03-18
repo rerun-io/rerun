@@ -1039,7 +1039,7 @@ fn top_panel(
         });
 }
 
-fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
     let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
@@ -1101,7 +1101,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
         });
 
         ui.menu_button("Options", |ui| {
-            options_menu_ui(ui, &mut app.state.app_options);
+            options_menu_ui(ui, frame, &mut app.state.app_options);
         });
 
         ui.add_space(spacing);
@@ -1515,7 +1515,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
+fn options_menu_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
@@ -1530,45 +1530,58 @@ fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
     {
         ui.separator();
         ui.label("Debug:");
-        debug_menu_options_ui(ui);
+        debug_menu_options_ui(ui, frame);
     }
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui) {
-    let mut debug = ui.style().debug;
-    let mut any_clicked = false;
+fn debug_menu_options_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    {
+        let mut debug = ui.style().debug;
+        let mut any_clicked = false;
 
-    any_clicked |= ui
-        .checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
-        .on_hover_text("However over widgets to see their rectangles")
-        .changed();
-    any_clicked |= ui
-        .checkbox(&mut debug.show_expand_width, "Show expand width")
-        .on_hover_text("Show which widgets make their parent wider")
-        .changed();
-    any_clicked |= ui
-        .checkbox(&mut debug.show_expand_height, "Show expand height")
-        .on_hover_text("Show which widgets make their parent higher")
-        .changed();
-    any_clicked |= ui.checkbox(&mut debug.show_resize, "Show resize").changed();
-    any_clicked |= ui
-        .checkbox(
-            &mut debug.show_interactive_widgets,
-            "Show interactive widgets",
-        )
-        .on_hover_text("Show an overlay on all interactive widgets.")
-        .changed();
-    // This option currently causes the viewer to hang.
-    // any_clicked |= ui
-    //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
-    //     .on_hover_text("Show what widget blocks the interaction of another widget.")
-    //     .changed();
+        any_clicked |= ui
+            .checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
+            .on_hover_text("However over widgets to see their rectangles")
+            .changed();
+        any_clicked |= ui
+            .checkbox(&mut debug.show_expand_width, "Show expand width")
+            .on_hover_text("Show which widgets make their parent wider")
+            .changed();
+        any_clicked |= ui
+            .checkbox(&mut debug.show_expand_height, "Show expand height")
+            .on_hover_text("Show which widgets make their parent higher")
+            .changed();
+        any_clicked |= ui.checkbox(&mut debug.show_resize, "Show resize").changed();
+        any_clicked |= ui
+            .checkbox(
+                &mut debug.show_interactive_widgets,
+                "Show interactive widgets",
+            )
+            .on_hover_text("Show an overlay on all interactive widgets.")
+            .changed();
+        // This option currently causes the viewer to hang.
+        // any_clicked |= ui
+        //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
+        //     .on_hover_text("Show what widget blocks the interaction of another widget.")
+        //     .changed();
 
-    if any_clicked {
-        let mut style = (*ui.ctx().style()).clone();
-        style.debug = debug;
-        ui.ctx().set_style(style);
+        if any_clicked {
+            let mut style = (*ui.ctx().style()).clone();
+            style.debug = debug;
+            ui.ctx().set_style(style);
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        ui.separator();
+        if ui.button("Mobile size").clicked() {
+            // frame.set_window_size(egui::vec2(375.0, 812.0)); // iPhone 12 mini
+            _frame.set_window_size(egui::vec2(375.0, 667.0)); //  iPhone SE 2nd gen
+            _frame.set_fullscreen(false);
+            ui.close_menu();
+        }
     }
 
     ui.separator();
