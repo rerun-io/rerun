@@ -188,13 +188,16 @@ impl TimePanel {
 
         self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 
-        let time_x_left = ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
+        let time_x_left =
+            (ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x)
+                .at_most(ui.max_rect().right() - 100.0);
 
         // Where the time will be shown.
         let time_bg_x_range = time_x_left..=ui.max_rect().right();
         let time_fg_x_range = {
             // Painting to the right of the scroll bar (if any) looks bad:
             let right = ui.max_rect().right() - ui.spacing_mut().scroll_bar_outer_margin;
+            debug_assert!(time_x_left < right);
             time_x_left..=right
         };
 
