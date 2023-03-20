@@ -18,6 +18,7 @@ mod arrow_util;
 mod store;
 mod store_gc;
 mod store_read;
+mod store_sanity;
 mod store_stats;
 mod store_write;
 
