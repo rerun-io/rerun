@@ -2,7 +2,6 @@ use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
 use egui::NumExt as _;
-use egui_notify::Toasts;
 use instant::Instant;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
@@ -14,7 +13,7 @@ use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
-use re_ui::Command;
+use re_ui::{toasts, Command};
 
 use crate::{
     app_icon::setup_app_icon,
@@ -60,6 +59,9 @@ pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
 
+    /// Listens to the local text log stream
+    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+
     component_ui_registry: ComponentUiRegistry,
 
     rx: Receiver<LogMsg>,
@@ -77,8 +79,8 @@ pub struct App {
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
 
-    /// Toast notifications, using `egui-notify`.
-    toasts: Toasts,
+    /// Toast notifications.
+    toasts: toasts::Toasts,
 
     latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
@@ -111,6 +113,9 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
+        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
+        re_log::add_boxed_logger(Box::new(logger));
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
@@ -137,6 +142,7 @@ impl App {
             build_info,
             startup_options,
             re_ui,
+            text_log_rx,
             component_ui_registry: Default::default(),
             rx,
             log_dbs: Default::default(),
@@ -144,7 +150,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
             pending_promises: Default::default(),
-            toasts: Toasts::new(),
+            toasts: toasts::Toasts::new(),
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -248,6 +254,8 @@ impl App {
     }
 
     fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
+        let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
+
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
@@ -279,13 +287,25 @@ impl App {
                 self.memory_panel_open ^= true;
             }
             Command::ToggleBlueprintPanel => {
-                self.blueprint_mut().blueprint_panel_expanded ^= true;
+                let blueprint = self.blueprint_mut(egui_ctx);
+                blueprint.blueprint_panel_expanded ^= true;
+
+                // Only one of blueprint or selection panel can be open at a time on mobile:
+                if is_narrow_screen && blueprint.blueprint_panel_expanded {
+                    blueprint.selection_panel_expanded = false;
+                }
             }
             Command::ToggleSelectionPanel => {
-                self.blueprint_mut().selection_panel_expanded ^= true;
+                let blueprint = self.blueprint_mut(egui_ctx);
+                blueprint.selection_panel_expanded ^= true;
+
+                // Only one of blueprint or selection panel can be open at a time on mobile:
+                if is_narrow_screen && blueprint.selection_panel_expanded {
+                    blueprint.blueprint_panel_expanded = false;
+                }
             }
             Command::ToggleTimePanel => {
-                self.blueprint_mut().time_panel_expanded ^= true;
+                self.blueprint_mut(egui_ctx).time_panel_expanded ^= true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -366,9 +386,12 @@ impl App {
         }
     }
 
-    fn blueprint_mut(&mut self) -> &mut Blueprint {
+    fn blueprint_mut(&mut self, egui_ctx: &egui::Context) -> &mut Blueprint {
         let selected_app_id = self.selected_app_id();
-        self.state.blueprints.entry(selected_app_id).or_default()
+        self.state
+            .blueprints
+            .entry(selected_app_id)
+            .or_insert_with(|| Blueprint::new(egui_ctx))
     }
 
     fn memory_panel_ui(
@@ -459,6 +482,7 @@ impl eframe::App for App {
 
         self.state.cache.begin_frame();
 
+        self.show_text_logs_as_notifications();
         self.receive_messages(egui_ctx);
 
         self.cleanup();
@@ -487,7 +511,11 @@ impl eframe::App for App {
                     .map_or_else(ApplicationId::unknown, |rec_info| {
                         rec_info.application_id.clone()
                     });
-                let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
+                let blueprint = self
+                    .state
+                    .blueprints
+                    .entry(selected_app_id)
+                    .or_insert_with(|| Blueprint::new(egui_ctx));
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
@@ -624,6 +652,33 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 }
 
 impl App {
+    /// Show recent text log messages to the user as toast notifications.
+    fn show_text_logs_as_notifications(&mut self) {
+        crate::profile_function!();
+
+        while let Ok(re_log::LogMsg { level, target, msg }) = self.text_log_rx.try_recv() {
+            let is_rerun_crate = target.starts_with("rerun") || target.starts_with("re_");
+            if !is_rerun_crate {
+                continue;
+            }
+
+            let kind = match level {
+                re_log::Level::Error => toasts::ToastKind::Error,
+                re_log::Level::Warn => toasts::ToastKind::Warning,
+                re_log::Level::Info => toasts::ToastKind::Info,
+                re_log::Level::Debug | re_log::Level::Trace => {
+                    continue; // too spammy
+                }
+            };
+
+            self.toasts.add(toasts::Toast {
+                kind,
+                text: msg,
+                options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
+            });
+        }
+    }
+
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
         crate::profile_function!();
 
@@ -730,7 +785,7 @@ impl App {
             {
                 crate::profile_scope!("pruning");
                 if let Some(counted) = mem_use_before.counted {
-                    re_log::info!(
+                    re_log::debug!(
                         "Attempting to purge {:.1}% of used RAM ({})…",
                         100.0 * fraction_to_purge,
                         format_bytes(counted as f64 * fraction_to_purge as f64)
@@ -749,7 +804,7 @@ impl App {
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
             {
-                re_log::info!(
+                re_log::debug!(
                     "Freed up {} ({:.1}%)",
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
@@ -940,7 +995,9 @@ impl AppState {
             render_ctx,
         };
 
-        let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
+        let blueprint = blueprints
+            .entry(selected_app_id.clone())
+            .or_insert_with(|| Blueprint::new(ui.ctx()));
         time_panel.show_panel(&mut ctx, blueprint, ui);
         selection_panel.show_panel(&mut ctx, ui, blueprint);
 
@@ -955,7 +1012,7 @@ impl AppState {
             .show_inside(ui, |ui| match *panel_selection {
                 PanelSelection::Viewport => blueprints
                     .entry(selected_app_id)
-                    .or_default()
+                    .or_insert_with(|| Blueprint::new(ui.ctx()))
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
             });
@@ -1039,7 +1096,7 @@ fn top_panel(
         });
 }
 
-fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
     let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
@@ -1101,7 +1158,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
         });
 
         ui.menu_button("Options", |ui| {
-            options_menu_ui(ui, &mut app.state.app_options);
+            options_menu_ui(ui, frame, &mut app.state.app_options);
         });
 
         ui.add_space(spacing);
@@ -1180,7 +1237,11 @@ fn top_bar_ui(
                     rec_info.application_id.clone()
                 });
 
-            let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
+            let blueprint = app
+                .state
+                .blueprints
+                .entry(selected_app_id)
+                .or_insert_with(|| Blueprint::new(ui.ctx()));
 
             // From right-to-left:
 
@@ -1196,38 +1257,56 @@ fn top_bar_ui(
                 ui.add_space(extra_margin);
             }
 
-            app.re_ui
+            let mut selection_panel_expanded = blueprint.selection_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                    &mut blueprint.selection_panel_expanded,
+                    &mut selection_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Selection View{}",
                     Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleSelectionPanel);
+            }
 
-            app.re_ui
+            let mut time_panel_expanded = blueprint.time_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                    &mut blueprint.time_panel_expanded,
+                    &mut time_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Timeline View{}",
                     Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleTimePanel);
+            }
 
-            app.re_ui
+            let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::LEFT_PANEL_TOGGLE,
-                    &mut blueprint.blueprint_panel_expanded,
+                    &mut blueprint_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Blueprint View{}",
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleBlueprintPanel);
+            }
 
             if cfg!(debug_assertions) && app.state.app_options.show_metrics {
                 ui.vertical_centered(|ui| {
@@ -1323,8 +1402,6 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
 // ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
-const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
-    Some(std::time::Duration::from_secs(4));
 
 fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     use std::path::PathBuf;
@@ -1338,16 +1415,10 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 
             match res {
                 Ok(path) => {
-                    let msg = format!("File saved to {path:?}.");
-                    re_log::info!(msg);
-                    app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
+                    re_log::info!("File saved to {path:?}."); // this will also show a notification the user
                 }
                 Err(err) => {
-                    let msg = format!("{err}");
-                    re_log::error!(msg);
-                    app.toasts
-                        .error(msg)
-                        .set_duration(FILE_SAVER_NOTIF_DURATION);
+                    re_log::error!("{err}"); // this will also show a notification the user
                 }
             }
         } else {
@@ -1448,9 +1519,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
             // NOTE: Shouldn't even be possible as the "Save" button is already
             // grayed out at this point... better safe than sorry though.
-            app.toasts
-                .error(err.to_string())
-                .set_duration(FILE_SAVER_NOTIF_DURATION);
+            re_log::error!("File saving failed: {err}");
         }
     }
 }
@@ -1515,7 +1584,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
+fn options_menu_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
@@ -1530,12 +1599,15 @@ fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
     {
         ui.separator();
         ui.label("Debug:");
-        debug_menu_options_ui(ui);
+
+        egui_debug_options_ui(ui);
+        ui.separator();
+        debug_menu_options_ui(ui, frame);
     }
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui) {
+fn egui_debug_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
@@ -1559,6 +1631,7 @@ fn debug_menu_options_ui(ui: &mut egui::Ui) {
         )
         .on_hover_text("Show an overlay on all interactive widgets.")
         .changed();
+
     // This option currently causes the viewer to hang.
     // any_clicked |= ui
     //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
@@ -1570,8 +1643,24 @@ fn debug_menu_options_ui(ui: &mut egui::Ui) {
         style.debug = debug;
         ui.ctx().set_style(style);
     }
+}
 
-    ui.separator();
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui.button("Mobile size").clicked() {
+            // frame.set_window_size(egui::vec2(375.0, 812.0)); // iPhone 12 mini
+            _frame.set_window_size(egui::vec2(375.0, 667.0)); //  iPhone SE 2nd gen
+            _frame.set_fullscreen(false);
+            ui.close_menu();
+        }
+        ui.separator();
+    }
+
+    if ui.button("Log info").clicked() {
+        re_log::info!("Logging some info");
+    }
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

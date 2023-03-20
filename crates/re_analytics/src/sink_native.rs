@@ -22,6 +22,7 @@ pub enum SinkError {
     #[error("JSON: {0}")]
     Serde(#[from] serde_json::Error),
 
+    /// Usually because there is no internet.
     #[error("HTTP transport: {0}")]
     HttpTransport(Box<ureq::Transport>),
 

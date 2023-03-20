@@ -75,7 +75,6 @@ eframe = { workspace = true, default-features = false, features = [
 egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_dock = { workspace = true, features = ["serde"] }
 egui_extras = { workspace = true, features = ["tracing"] }
-egui-notify = "0.6"
 egui-wgpu.workspace = true
 ehttp = "0.2"
 enumset.workspace = true

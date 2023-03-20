@@ -5,6 +5,7 @@ mod command_palette;
 mod design_tokens;
 pub mod icons;
 mod static_image_cache;
+pub mod toasts;
 mod toggle_switch;
 
 pub use command::Command;

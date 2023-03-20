@@ -38,7 +38,7 @@ async fn listen_for_new_clients(
 
     let listener = TcpListener::bind(&bind_addr)
         .await
-        .with_context(|| format!("Failed to bind address {bind_addr:?}"))
+        .with_context(|| format!("Failed to bind TCP address {bind_addr:?}"))
         .unwrap();
 
     if options.quiet {
@@ -91,10 +91,13 @@ pub fn serve(
 
 fn spawn_client(stream: TcpStream, tx: Sender<LogMsg>, options: ServerOptions) {
     tokio::spawn(async move {
+        let addr_string = stream
+            .peer_addr()
+            .map_or_else(|_| "(unknown ip)".to_owned(), |addr| addr.to_string());
         if options.quiet {
-            re_log::debug!("New SDK client connected: {:?}", stream.peer_addr());
+            re_log::debug!("New SDK client connected: {addr_string}");
         } else {
-            re_log::info!("New SDK client connected: {:?}", stream.peer_addr());
+            re_log::info!("New SDK client connected: {addr_string}");
         }
         if let Err(err) = run_client(stream, &tx, options).await {
             re_log::warn!("Closing connection to client: {err}");
