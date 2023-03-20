@@ -54,6 +54,7 @@ Status: proposal
   * [Data might be a reference to an external storage system](#data-might-be-a-reference-to-an-external-storage-system)
 - [Q&A](#q-a)
   * [What is the relationship between "component instances" and "instance keys"?](#what-is-the-relationship-between--component-instances--and--instance-keys--)
+  * [Are there any "special" components?](#are-there-any--special--components-)
 
 ---
 
@@ -950,6 +951,10 @@ The datastore won't run as part of the viewer forever.
 
 At some point we're going need the ability for components to refer to data that reside out of the store (e.g. a component `VideoFrame` which is merely a URI pointing to a video file "somewhere").
 
+### Non-integer instance keys
+
+Instance keys currently only support `u32` as their datatype. Maybe at some point we'll want to support others..?
+
 ## Q&A
 
 ### What is the relationship between "component instances" and "instance keys"?
@@ -976,4 +981,22 @@ So, a cell of `InstanceKey`s is indeed made up of component instances, but "inst
 
 Yes, each individual instance key is a component instance, but not every component instance is necessarily an `InstanceKey`.
 
+### Are there any "special" components?
 
+> Does `DataRow::cells` include the "instance key" component then? Are there any other special components?
+
+The following list is all the types that are treated separately because they need to be deserialized and stored natively in the `DataStore` since they drive its behavior:
+```rust
+event_id: Vec<EventId>,
+timepoint: Vec<TimePoint>,
+entity_path: Vec<EntityPath>,
+num_instances: Vec<u32>,
+```
+None of these are components however, they are merely arrow datatypes.
+
+Everything else is just a component, and as such is passed as a `DataCell`.
+
+Components are completely opaque blobs from the store's PoV; they cannot dictate its behavior since they aren't even deserialized.  
+This includes `InstanceKey`s, which are just returned to `re_query` as-is.
+
+The one special thing about instance keys is that they are auto-generated server-side if they are missing; but even then, once they are generated they are still treated as opaque blobs from the store's PoV.
