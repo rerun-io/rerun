@@ -494,7 +494,10 @@ impl DataRow {
 
     /// Append a cell to an existing row.
     ///
-    /// Returns an error if the cell is not compatible with the row.
+    /// Returns an error if the cell is not compatible with the row, e.g.:
+    /// - Trying to append a cell which contains neither `0`, `1` or `num_instances`.
+    /// - Trying to append the same component type more than once.
+    /// - Etc.
     pub fn append_cell(&mut self, cell: DataCell) -> Result<()> { /* ... */ }
 }
 
