@@ -4,16 +4,14 @@ use re_log_types::LogMsg;
 /// * A web-server, serving the web-viewer
 /// * A `WebSocket` server, server [`LogMsg`]es to remote viewer(s).
 struct RemoteViewerServer {
-    web_server_join_handle: tokio::task::JoinHandle<()>,
     sender: re_smart_channel::Sender<LogMsg>,
-    #[allow(dead_code)] // Unused currently, but can be used later to cancel a serve.
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
 impl Drop for RemoteViewerServer {
     fn drop(&mut self) {
         re_log::info!("Shutting down web server.");
-        self.web_server_join_handle.abort();
+        self.shutdown_tx.send(()).unwrap();
     }
 }
 
@@ -23,7 +21,7 @@ impl RemoteViewerServer {
         let (shutdown_tx, shutdown_rx_ws_server) = tokio::sync::broadcast::channel(1);
         let shutdown_rx_web_server = shutdown_tx.subscribe();
 
-        let web_server_join_handle = tokio_rt.spawn(async move {
+        tokio_rt.spawn(async move {
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
                 .await
@@ -43,14 +41,17 @@ impl RemoteViewerServer {
         });
 
         Self {
-            web_server_join_handle,
             sender: rerun_tx,
             shutdown_tx,
         }
     }
 }
 
-/// Start a web server for localhost and optionally spawns a browser to view it.
+/// Hosts two servers:
+/// * A web-server, serving the web-viewer
+/// * A `WebSocket` server, server [`LogMsg`]es to remote viewer(s).
+///
+/// Optionally opens a browser with the web-viewer.
 #[cfg(feature = "web_viewer")]
 pub async fn host_web_viewer(
     open_browser: bool,
