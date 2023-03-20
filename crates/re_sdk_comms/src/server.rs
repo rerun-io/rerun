@@ -38,7 +38,7 @@ pub fn serve(port: u16, options: ServerOptions) -> anyhow::Result<Receiver<LogMs
     let bind_addr = format!("0.0.0.0:{port}");
 
     let listener = std::net::TcpListener::bind(&bind_addr)
-        .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
+        .with_context(|| format!("Failed to bind TCP address {bind_addr:?} for our WS server."))?;
 
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
 
