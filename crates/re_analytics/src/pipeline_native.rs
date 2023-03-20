@@ -318,7 +318,19 @@ fn flush_events(
     }
 
     if let Err(err) = sink.send(analytics_id, session_id, &events) {
-        warn!(%err, "failed to send analytics down the sink, will try again later");
+        if matches!(err, SinkError::HttpTransport(_)) {
+            // No internet connection. No biggie, we'll try again later.
+            re_log::debug_once!(
+                "Failed to send analytics down the sink, will try again later.\n{err}
+            "
+            );
+        } else {
+            // A more unusual error. Show it to the user.
+            re_log::warn_once!(
+                "Failed to send analytics down the sink, will try again later.\n{err}
+            "
+            );
+        }
         return Err(err);
     }
 
