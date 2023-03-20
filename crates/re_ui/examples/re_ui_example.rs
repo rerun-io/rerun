@@ -79,7 +79,12 @@ impl ExampleApp {
 
     /// Show recent text log messages to the user as toast notifications.
     fn show_text_logs_as_notifications(&mut self) {
-        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
+        while let Ok(re_log::LogMsg {
+            level,
+            target: _,
+            msg,
+        }) = self.text_log_rx.try_recv()
+        {
             let kind = match level {
                 re_log::Level::Error => toasts::ToastKind::Error,
                 re_log::Level::Warn => toasts::ToastKind::Warning,

@@ -1,7 +1,13 @@
 //! Capture log messages and send them to some receiver over a channel.
 
 pub struct LogMsg {
+    /// The verbosity level.
     pub level: log::Level,
+
+    /// The module, starting with the crate name.
+    pub target: String,
+
+    /// The contents of the log message.
     pub msg: String,
 }
 
@@ -38,6 +44,7 @@ impl log::Log for ChannelLogger {
             .lock()
             .send(LogMsg {
                 level: record.level(),
+                target: record.target().to_owned(),
                 msg: record.args().to_string(),
             })
             .ok();

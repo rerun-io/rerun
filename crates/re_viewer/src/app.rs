@@ -635,7 +635,12 @@ impl App {
     fn show_text_logs_as_notifications(&mut self) {
         crate::profile_function!();
 
-        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
+        while let Ok(re_log::LogMsg { level, target, msg }) = self.text_log_rx.try_recv() {
+            let is_rerun_crate = target.starts_with("rerun") || target.starts_with("re_");
+            if !is_rerun_crate {
+                continue;
+            }
+
             let kind = match level {
                 re_log::Level::Error => toasts::ToastKind::Error,
                 re_log::Level::Warn => toasts::ToastKind::Warning,
