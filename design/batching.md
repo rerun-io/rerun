@@ -678,9 +678,8 @@ At this point we might want to sort the batch by `(event_id, entity_path)`, whic
 
 That's also an opportunity to pre-compact the data: if two rows share the same timepoints with different components, we could potentially merge them together... that's a bit more controversial though as it means either dropping some `EventId`s, or supporting multiple `EventId`s for a single event.
 
-One last thing that needs to be taken care of before actually sending the data is compression / dictionary-encoding of some kind.
-Even some trivial gzipping should do wonders here.  
-TODO(cmc): do we already have some kind of compression in place? zstd should already be set up i figure?
+One last thing that needs to be taken care of before actually sending the data is compression / dictionary-encoding of some kind.  
+We already have `zstd` in place for that.
 
 ### Storage
 
