@@ -74,7 +74,8 @@ async fn listen_for_new_clients(
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
-/// let log_msg_rx = serve(80, ServerOptions::default())?;
+/// let (sender, receiver) = tokio::sync::broadcast::channel(1);
+/// let log_msg_rx = serve(80, ServerOptions::default(), receiver)?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn serve(
