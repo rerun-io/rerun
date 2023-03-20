@@ -284,6 +284,10 @@ fn view_2d_scrollable(
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
+    if !response.rect.is_positive() {
+        return response; // protect against problems with zero-sized views
+    }
+
     // Create our transforms.
     let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
     let space_from_ui = ui_from_space.inverse();
