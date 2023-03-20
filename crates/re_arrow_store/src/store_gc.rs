@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use arrow2::array::{Array, ListArray};
-use re_log::{info, trace};
+
+use re_log::trace;
 use re_log_types::{ComponentName, TimeRange, Timeline};
 
 use crate::{ComponentBucket, DataStore};
@@ -59,7 +60,7 @@ impl DataStore {
                 let drop_at_least_size_bytes = initial_size_bytes * p;
                 let target_size_bytes = initial_size_bytes - drop_at_least_size_bytes;
 
-                info!(
+                re_log::debug!(
                     kind = "gc",
                     id = self.gc_id,
                     %target,
@@ -86,7 +87,7 @@ impl DataStore {
         let new_nb_rows = self.total_temporal_component_rows();
         let new_size_bytes = self.total_temporal_component_size_bytes() as f64;
 
-        info!(
+        re_log::debug!(
             kind = "gc",
             id = self.gc_id,
             %target,

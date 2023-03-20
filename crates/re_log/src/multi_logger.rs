@@ -1,9 +1,14 @@
 //! Have multiple loggers implementing [`log::Log`] at once.
 
+use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
+
 static MULTI_LOGGER: MultiLogger = MultiLogger::new();
+
+static HAS_MULTI_LOGGER: AtomicBool = AtomicBool::new(false);
 
 /// Install the multi-logger as the default logger.
 pub fn init() -> Result<(), log::SetLoggerError> {
+    HAS_MULTI_LOGGER.store(true, SeqCst);
     log::set_logger(&MULTI_LOGGER)
 }
 
@@ -14,6 +19,10 @@ pub fn add_boxed_logger(logger: Box<dyn log::Log>) {
 
 /// Install an additional global logger.
 pub fn add_logger(logger: &'static dyn log::Log) {
+    debug_assert!(
+        HAS_MULTI_LOGGER.load(SeqCst),
+        "You forgot to setup multi-logging"
+    );
     MULTI_LOGGER.loggers.write().push(logger);
 }
 

@@ -1302,15 +1302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui-notify"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa87d2d91ebea916ae30837068f869f9b91242107f86f6abc3f085fbd160e195"
-dependencies = [
- "egui",
-]
-
-[[package]]
 name = "egui-wgpu"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4077,6 +4068,7 @@ dependencies = [
  "egui_extras",
  "image",
  "parking_lot 0.12.1",
+ "re_log",
  "serde",
  "serde_json",
  "strum 0.24.1",
@@ -4097,7 +4089,6 @@ dependencies = [
  "ctrlc",
  "eframe",
  "egui",
- "egui-notify",
  "egui-wgpu",
  "egui_dock",
  "egui_extras",

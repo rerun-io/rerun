@@ -38,7 +38,7 @@ pub fn serve(port: u16, options: ServerOptions) -> anyhow::Result<Receiver<LogMs
     let bind_addr = format!("0.0.0.0:{port}");
 
     let listener = std::net::TcpListener::bind(&bind_addr)
-        .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
+        .with_context(|| format!("Failed to bind TCP address {bind_addr:?} for our WS server."))?;
 
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
 
@@ -79,10 +79,13 @@ fn spawn_client(stream: std::net::TcpStream, tx: Sender<LogMsg>, options: Server
             stream.peer_addr()
         ))
         .spawn(move || {
+            let addr_string = stream
+                .peer_addr()
+                .map_or_else(|_| "(unknown ip)".to_owned(), |addr| addr.to_string());
             if options.quiet {
-                re_log::debug!("New SDK client connected: {:?}", stream.peer_addr());
+                re_log::debug!("New SDK client connected: {addr_string}");
             } else {
-                re_log::info!("New SDK client connected: {:?}", stream.peer_addr());
+                re_log::info!("New SDK client connected: {addr_string}");
             }
 
             if let Err(err) = run_client(stream, &tx, options) {

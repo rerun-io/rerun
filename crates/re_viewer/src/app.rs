@@ -2,7 +2,6 @@ use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
 use egui::NumExt as _;
-use egui_notify::Toasts;
 use instant::Instant;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
@@ -14,7 +13,7 @@ use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
-use re_ui::Command;
+use re_ui::{toasts, Command};
 
 use crate::{
     app_icon::setup_app_icon,
@@ -60,7 +59,7 @@ pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
 
-    /// Listens to the local log stream
+    /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
@@ -80,8 +79,8 @@ pub struct App {
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
 
-    /// Toast notifications, using `egui-notify`.
-    toasts: Toasts,
+    /// Toast notifications.
+    toasts: toasts::Toasts,
 
     latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
@@ -151,7 +150,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
             pending_promises: Default::default(),
-            toasts: Toasts::new(),
+            toasts: toasts::Toasts::new(),
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -657,23 +656,26 @@ impl App {
     fn show_text_logs_as_notifications(&mut self) {
         crate::profile_function!();
 
-        let duration = Some(std::time::Duration::from_secs(4));
-
-        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
-            match level {
-                re_log::Level::Error => {
-                    self.toasts.error(msg).set_duration(duration);
-                }
-                re_log::Level::Warn => {
-                    self.toasts.warning(msg).set_duration(duration);
-                }
-                re_log::Level::Info => {
-                    self.toasts.info(msg).set_duration(duration);
-                }
-                re_log::Level::Debug | re_log::Level::Trace => {
-                    // too spammy
-                }
+        while let Ok(re_log::LogMsg { level, target, msg }) = self.text_log_rx.try_recv() {
+            let is_rerun_crate = target.starts_with("rerun") || target.starts_with("re_");
+            if !is_rerun_crate {
+                continue;
             }
+
+            let kind = match level {
+                re_log::Level::Error => toasts::ToastKind::Error,
+                re_log::Level::Warn => toasts::ToastKind::Warning,
+                re_log::Level::Info => toasts::ToastKind::Info,
+                re_log::Level::Debug | re_log::Level::Trace => {
+                    continue; // too spammy
+                }
+            };
+
+            self.toasts.add(toasts::Toast {
+                kind,
+                text: msg,
+                options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
+            });
         }
     }
 
@@ -783,7 +785,7 @@ impl App {
             {
                 crate::profile_scope!("pruning");
                 if let Some(counted) = mem_use_before.counted {
-                    re_log::info!(
+                    re_log::debug!(
                         "Attempting to purge {:.1}% of used RAM ({})…",
                         100.0 * fraction_to_purge,
                         format_bytes(counted as f64 * fraction_to_purge as f64)
@@ -802,7 +804,7 @@ impl App {
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
             {
-                re_log::info!(
+                re_log::debug!(
                     "Freed up {} ({:.1}%)",
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
