@@ -29,9 +29,12 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) {
+        let screen_width = ui.ctx().screen_rect().width();
+
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
-            .default_width(250.0)
+            .default_width((0.45 * screen_width).min(250.0).round())
+            .max_width((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,

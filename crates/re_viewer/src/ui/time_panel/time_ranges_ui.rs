@@ -101,6 +101,8 @@ impl TimeRangesUi {
     ) -> Self {
         crate::profile_function!();
 
+        debug_assert!(x_range.start() < x_range.end());
+
         //        <------- time_view ------>
         //        <-------- x_range ------->
         //        |                        |

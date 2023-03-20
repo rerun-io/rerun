@@ -255,6 +255,8 @@ impl App {
     }
 
     fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
+        let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
+
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
@@ -286,13 +288,25 @@ impl App {
                 self.memory_panel_open ^= true;
             }
             Command::ToggleBlueprintPanel => {
-                self.blueprint_mut().blueprint_panel_expanded ^= true;
+                let blueprint = self.blueprint_mut(egui_ctx);
+                blueprint.blueprint_panel_expanded ^= true;
+
+                // Only one of blueprint or selection panel can be open at a time on mobile:
+                if is_narrow_screen && blueprint.blueprint_panel_expanded {
+                    blueprint.selection_panel_expanded = false;
+                }
             }
             Command::ToggleSelectionPanel => {
-                self.blueprint_mut().selection_panel_expanded ^= true;
+                let blueprint = self.blueprint_mut(egui_ctx);
+                blueprint.selection_panel_expanded ^= true;
+
+                // Only one of blueprint or selection panel can be open at a time on mobile:
+                if is_narrow_screen && blueprint.selection_panel_expanded {
+                    blueprint.blueprint_panel_expanded = false;
+                }
             }
             Command::ToggleTimePanel => {
-                self.blueprint_mut().time_panel_expanded ^= true;
+                self.blueprint_mut(egui_ctx).time_panel_expanded ^= true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -373,9 +387,12 @@ impl App {
         }
     }
 
-    fn blueprint_mut(&mut self) -> &mut Blueprint {
+    fn blueprint_mut(&mut self, egui_ctx: &egui::Context) -> &mut Blueprint {
         let selected_app_id = self.selected_app_id();
-        self.state.blueprints.entry(selected_app_id).or_default()
+        self.state
+            .blueprints
+            .entry(selected_app_id)
+            .or_insert_with(|| Blueprint::new(egui_ctx))
     }
 
     fn memory_panel_ui(
@@ -495,7 +512,11 @@ impl eframe::App for App {
                     .map_or_else(ApplicationId::unknown, |rec_info| {
                         rec_info.application_id.clone()
                     });
-                let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
+                let blueprint = self
+                    .state
+                    .blueprints
+                    .entry(selected_app_id)
+                    .or_insert_with(|| Blueprint::new(egui_ctx));
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
@@ -972,7 +993,9 @@ impl AppState {
             render_ctx,
         };
 
-        let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
+        let blueprint = blueprints
+            .entry(selected_app_id.clone())
+            .or_insert_with(|| Blueprint::new(ui.ctx()));
         time_panel.show_panel(&mut ctx, blueprint, ui);
         selection_panel.show_panel(&mut ctx, ui, blueprint);
 
@@ -987,7 +1010,7 @@ impl AppState {
             .show_inside(ui, |ui| match *panel_selection {
                 PanelSelection::Viewport => blueprints
                     .entry(selected_app_id)
-                    .or_default()
+                    .or_insert_with(|| Blueprint::new(ui.ctx()))
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
             });
@@ -1071,7 +1094,7 @@ fn top_panel(
         });
 }
 
-fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
     let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
@@ -1133,7 +1156,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut
         });
 
         ui.menu_button("Options", |ui| {
-            options_menu_ui(ui, &mut app.state.app_options);
+            options_menu_ui(ui, frame, &mut app.state.app_options);
         });
 
         ui.add_space(spacing);
@@ -1212,7 +1235,11 @@ fn top_bar_ui(
                     rec_info.application_id.clone()
                 });
 
-            let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
+            let blueprint = app
+                .state
+                .blueprints
+                .entry(selected_app_id)
+                .or_insert_with(|| Blueprint::new(ui.ctx()));
 
             // From right-to-left:
 
@@ -1228,38 +1255,56 @@ fn top_bar_ui(
                 ui.add_space(extra_margin);
             }
 
-            app.re_ui
+            let mut selection_panel_expanded = blueprint.selection_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                    &mut blueprint.selection_panel_expanded,
+                    &mut selection_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Selection View{}",
                     Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleSelectionPanel);
+            }
 
-            app.re_ui
+            let mut time_panel_expanded = blueprint.time_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                    &mut blueprint.time_panel_expanded,
+                    &mut time_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Timeline View{}",
                     Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleTimePanel);
+            }
 
-            app.re_ui
+            let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
+            if app
+                .re_ui
                 .medium_icon_toggle_button(
                     ui,
                     &re_ui::icons::LEFT_PANEL_TOGGLE,
-                    &mut blueprint.blueprint_panel_expanded,
+                    &mut blueprint_panel_expanded,
                 )
                 .on_hover_text(format!(
                     "Toggle Blueprint View{}",
                     Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ));
+                ))
+                .clicked()
+            {
+                app.pending_commands.push(Command::ToggleBlueprintPanel);
+            }
 
             if cfg!(debug_assertions) && app.state.app_options.show_metrics {
                 ui.vertical_centered(|ui| {
@@ -1537,7 +1582,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
+fn options_menu_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
@@ -1552,7 +1597,10 @@ fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
     {
         ui.separator();
         ui.label("Debug:");
-        debug_menu_options_ui(ui);
+
+        egui_debug_options_ui(ui);
+        ui.separator();
+        debug_menu_options_ui(ui, frame);
     }
 }
 
@@ -1596,9 +1644,17 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui) {
-    egui_debug_options_ui(ui);
-    ui.separator();
+fn debug_menu_options_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui.button("Mobile size").clicked() {
+            // frame.set_window_size(egui::vec2(375.0, 812.0)); // iPhone 12 mini
+            _frame.set_window_size(egui::vec2(375.0, 667.0)); //  iPhone SE 2nd gen
+            _frame.set_fullscreen(false);
+            ui.close_menu();
+        }
+        ui.separator();
+    }
 
     if ui.button("Log info").clicked() {
         re_log::info!("Logging some info");
