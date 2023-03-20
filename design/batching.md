@@ -678,7 +678,7 @@ With the new design, the arrow buffers now store multiple rows of data. To refer
 
 That is the reason why sorting the batch on the client's end improves performance: it improves data locality in the store by making the shared batches follow the layout of the final buckets more closely.
 
-Assuming the following syntax for arrow slices: `ArrowSlice(<buffer_adrr, offset>)`, indices should now look roughly like the following:
+Assuming the following syntax for arrow slices: `ArrowSlice(<buffer_adrr, offset>)`, indices should now look roughly like the following, sorted by the timeline (`frame_nr`):
 ```
 IndexTable {
     timeline: frame_nr
