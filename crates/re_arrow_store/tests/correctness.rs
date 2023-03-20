@@ -4,25 +4,18 @@
 
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
-use arrow2::array::{Array, UInt64Array};
-
-use polars_core::{
-    prelude::{DataFrame, JoinType},
-    series::Series,
-};
+use arrow2::array::UInt64Array;
 use rand::Rng;
+
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
-    RangeQuery, TimeRange, WriteError,
+    test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, WriteError,
 };
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Point2D},
+    component_types::InstanceKey,
     datagen::{
         build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
-    external::arrow2_convert::{
-        deserialize::arrow_array_deserialize_iterator, serialize::TryIntoArrow,
-    },
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, EntityPath, MsgId, Time, TimeType, Timeline,
 };
@@ -291,6 +284,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 // also make sure that, if all else if equal, the primary iterator comes last so that it gathers as
 // much state as possible!
 
+#[cfg(feature = "polars")]
 #[test]
 fn range_join_across_single_row() {
     init_logs();
@@ -301,7 +295,16 @@ fn range_join_across_single_row() {
     }
 }
 
+#[cfg(feature = "polars")]
 fn range_join_across_single_row_impl(store: &mut DataStore) {
+    use arrow2::array::Array;
+    use polars_core::{
+        prelude::{DataFrame, JoinType},
+        series::Series,
+    };
+    use re_log_types::component_types::{ColorRGBA, Point2D};
+    use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
+
     let ent_path = EntityPath::from("this/that");
 
     let points = build_some_point2d(3);
@@ -311,12 +314,12 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     store.insert(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery::new(
+    let query = re_arrow_store::RangeQuery::new(
         timeline_frame_nr,
-        TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+        re_arrow_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
     let components = [InstanceKey::name(), Point2D::name(), ColorRGBA::name()];
-    let dfs = polars_util::range_components(
+    let dfs = re_arrow_store::polars_util::range_components(
         store,
         &query,
         &ent_path,
@@ -382,7 +385,7 @@ fn gc_correct() {
         eprintln!("{store}");
         err.unwrap();
     }
-    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    check_still_readable(&store);
 
     let msg_id_chunks = store.gc(
         GarbageCollectionTarget::DropAtLeastPercentage(1.0),
@@ -402,7 +405,7 @@ fn gc_correct() {
         eprintln!("{store}");
         err.unwrap();
     }
-    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    check_still_readable(&store);
     for msg_id in &msg_ids {
         assert!(store.get_msg_metadata(msg_id).is_some());
     }
@@ -414,7 +417,7 @@ fn gc_correct() {
         eprintln!("{store}");
         err.unwrap();
     }
-    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    check_still_readable(&store);
     for msg_id in &msg_ids {
         assert!(store.get_msg_metadata(msg_id).is_none());
     }
@@ -437,9 +440,16 @@ fn gc_correct() {
         eprintln!("{store}");
         err.unwrap();
     }
-    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    check_still_readable(&store);
 
     assert_eq!(2, store.total_temporal_component_rows());
+}
+
+fn check_still_readable(_store: &DataStore) {
+    #[cfg(feature = "polars")]
+    {
+        _ = _store.to_dataframe(); // simple way of checking that everything is still readable
+    }
 }
 
 // ---
