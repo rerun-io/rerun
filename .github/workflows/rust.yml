@@ -247,7 +247,7 @@ jobs:
       contents: "read"
       id-token: "write"
 
-    #if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.force_update_web_build
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.force_update_web_build
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.6
