@@ -7,21 +7,14 @@
 fn log_filter() -> String {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
 
-    const LOUD_CRATES: [&str; 7] = [
-        // wgpu crates spam a lot on info level, which is really annoying
-        // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
-        "naga",
-        "wgpu_core",
-        "wgpu_hal",
-        // These are quite spammy on debug, drowning out what we care about:
-        "h2",
-        "hyper",
-        "rustls",
-        "ureq",
-    ];
-    for loud_crate in LOUD_CRATES {
-        if !rust_log.contains(&format!("{loud_crate}=")) {
-            rust_log += &format!(",{loud_crate}=warn");
+    for crate_name in crate::CRATES_AT_WARN_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=warn");
+        }
+    }
+    for crate_name in crate::CRATES_FORCED_TO_INFO {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=info");
         }
     }
 

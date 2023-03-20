@@ -35,6 +35,40 @@ pub use {
     setup::*,
 };
 
+/// Never log anything less serious than a `WARN` from these crates.
+const CRATES_AT_WARN_LEVEL: [&str; 3] = [
+    // wgpu crates spam a lot on info level, which is really annoying
+    // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
+    "naga",
+    "wgpu_core",
+    "wgpu_hal",
+];
+
+/// Never log anything less serious than a `INFO` from these crates.
+const CRATES_FORCED_TO_INFO: [&str; 4] = [
+    // These are quite spammy on debug, drowning out what we care about:
+    "h2", "hyper", "rustls", "ureq",
+];
+
+/// Should we log this message given the filter?
+fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {
+    if CRATES_AT_WARN_LEVEL
+        .iter()
+        .any(|crate_name| metadata.target().starts_with(crate_name))
+    {
+        return metadata.level() <= log::LevelFilter::Warn;
+    }
+
+    if CRATES_FORCED_TO_INFO
+        .iter()
+        .any(|crate_name| metadata.target().starts_with(crate_name))
+    {
+        return metadata.level() <= log::LevelFilter::Info;
+    }
+
+    metadata.level() <= filter
+}
+
 /// Shorten a path to a Rust source file.
 ///
 /// Example input:

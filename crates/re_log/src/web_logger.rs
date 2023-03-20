@@ -11,12 +11,7 @@ impl WebLogger {
 
 impl log::Log for WebLogger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        if metadata.target().starts_with("wgpu") || metadata.target().starts_with("naga") {
-            // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
-            return metadata.level() <= log::LevelFilter::Warn;
-        }
-
-        metadata.level() <= self.filter
+        crate::is_log_enabled(self.filter, metadata)
     }
 
     fn log(&self, record: &log::Record<'_>) {
