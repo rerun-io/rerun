@@ -4068,6 +4068,7 @@ dependencies = [
  "egui_extras",
  "image",
  "parking_lot 0.12.1",
+ "re_log",
  "serde",
  "serde_json",
  "strum 0.24.1",

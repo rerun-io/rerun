@@ -1,6 +1,8 @@
-use re_ui::{Command, CommandPalette};
+use re_ui::{toasts, Command, CommandPalette};
 
 fn main() -> eframe::Result<()> {
+    re_log::setup_native_logging();
+
     let native_options = eframe::NativeOptions {
         initial_window_size: Some([1200.0, 800.0].into()),
         follow_system_theme: false,
@@ -17,34 +19,22 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
-    let tree = egui_dock::Tree::new(vec![1, 2, 3]);
-
     eframe::run_native(
         "re_ui example app",
         native_options,
         Box::new(move |cc| {
             let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Box::new(ExampleApp {
-                re_ui,
-
-                tree,
-
-                left_panel: true,
-                right_panel: true,
-                bottom_panel: true,
-
-                dummy_bool: true,
-
-                cmd_palette: CommandPalette::default(),
-                pending_commands: Default::default(),
-                latest_cmd: Default::default(),
-            })
+            Box::new(ExampleApp::new(re_ui))
         }),
     )
 }
 
 pub struct ExampleApp {
     re_ui: re_ui::ReUi,
+    toasts: toasts::Toasts,
+
+    /// Listens to the local text log stream
+    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     tree: egui_dock::Tree<Tab>,
 
@@ -61,12 +51,62 @@ pub struct ExampleApp {
     latest_cmd: String,
 }
 
+impl ExampleApp {
+    fn new(re_ui: re_ui::ReUi) -> Self {
+        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
+        re_log::add_boxed_logger(Box::new(logger));
+
+        let tree = egui_dock::Tree::new(vec![1, 2, 3]);
+
+        Self {
+            re_ui,
+            toasts: Default::default(),
+            text_log_rx,
+
+            tree,
+
+            left_panel: true,
+            right_panel: true,
+            bottom_panel: true,
+
+            dummy_bool: true,
+
+            cmd_palette: CommandPalette::default(),
+            pending_commands: Default::default(),
+            latest_cmd: Default::default(),
+        }
+    }
+
+    /// Show recent text log messages to the user as toast notifications.
+    fn show_text_logs_as_notifications(&mut self) {
+        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
+            let kind = match level {
+                re_log::Level::Error => toasts::ToastKind::Error,
+                re_log::Level::Warn => toasts::ToastKind::Warning,
+                re_log::Level::Info => toasts::ToastKind::Info,
+                re_log::Level::Debug | re_log::Level::Trace => {
+                    continue; // too spammy
+                }
+            };
+
+            self.toasts.add(toasts::Toast {
+                kind,
+                text: msg,
+                options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
+            });
+        }
+    }
+}
+
 impl eframe::App for ExampleApp {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.show_text_logs_as_notifications();
+        self.toasts.show(egui_ctx);
+
         egui::gui_zoom::zoom_with_keyboard_shortcuts(
             egui_ctx,
             frame.info().native_pixels_per_point,
@@ -97,6 +137,16 @@ impl eframe::App for ExampleApp {
                         ui.horizontal_centered(|ui| {
                             ui.strong("Left bar");
                         });
+
+                        if ui.button("Log info").clicked() {
+                            re_log::info!("A lot of text on info level.\nA lot of text in fact. So much that we should ideally be auto-wrapping it at some point, much earlier than this.");
+                        }
+                        if ui.button("Log warn").clicked() {
+                            re_log::warn!("A lot of text on warn level.\nA lot of text in fact. So much that we should ideally be auto-wrapping it at some point, much earlier than this.");
+                        }
+                        if ui.button("Log error").clicked() {
+                            re_log::error!("A lot of text on error level.\nA lot of text in fact. So much that we should ideally be auto-wrapping it at some point, much earlier than this.");
+                        }
                     });
 
                 egui::ScrollArea::both()
