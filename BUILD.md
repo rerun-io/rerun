@@ -23,7 +23,7 @@ This is a guide to how to build Rerun.
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.67
+rustup set default-host aarch64-apple-darwin && rustup install 1.67.1
 ```
 
 ## Building the docs
