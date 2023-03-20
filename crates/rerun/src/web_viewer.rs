@@ -94,19 +94,9 @@ impl crate::sink::LogSink for RemoteViewerServer {
 /// NOTE: you can not connect one `Session` to another.
 ///
 /// This function returns immediately.
+///
+/// The caller needs to ensure that there is a `tokio` runtime running.
 #[must_use]
 pub fn new_sink(open_browser: bool) -> Box<dyn crate::sink::LogSink> {
-    use once_cell::sync::Lazy;
-    static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
-        Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
-
-    let server = match tokio::runtime::Handle::try_current() {
-        Ok(_) => RemoteViewerServer::new(open_browser),
-        Err(_) => {
-            let _runtime_guard = TOKIO_RUNTIME.enter();
-            RemoteViewerServer::new(open_browser)
-        }
-    };
-
-    Box::new(server)
+    Box::new(RemoteViewerServer::new(open_browser))
 }
