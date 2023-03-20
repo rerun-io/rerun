@@ -60,7 +60,9 @@ impl Service<Request<Body>> for Svc {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
 
-        panic!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
+        // panic! is not enough in tokio - that only kills this thread. We want to compeltely quit.
+        eprintln!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
+        std::process::abort();
     }
 
     #[cfg(not(feature = "__ci"))]
