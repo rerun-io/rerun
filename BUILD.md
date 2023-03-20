@@ -15,7 +15,7 @@ This is a guide to how to build Rerun.
 * Install the Rust toolchain: <https://rustup.rs/>
 * `git clone git@github.com:rerun-io/rerun.git && cd rerun`
 * Run `./scripts/setup_dev.sh`.
-* Make sure `cargo --version` prints `1.67.0` once you are done
+* Make sure `cargo --version` prints `1.67.1` once you are done
 
 
 ### Apple-silicon Macs

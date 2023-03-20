@@ -203,7 +203,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: default
-          toolchain: 1.67.0
+          toolchain: 1.67.1
           target: wasm32-unknown-unknown
           override: true
 
