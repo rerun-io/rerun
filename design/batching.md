@@ -865,6 +865,11 @@ Reminder: the timeline widget keeps track of timepoints directly, not events.
 
 1. Use arrow extension types to carry around component names  
 
+1. Drop `log_time`  
+We currently store the logging time twice: once in the `MsgId` (soon `EventId`) and once injected by the SDK (and they don't even match!).  
+We could just not inject the `log_time`, and instead derive a `log_time` column on the server using the timestamp in the `EventId`; especially since we probably want an auto-derived `ingestion_time` anyway.  
+The timestamp in `EventId` is not going away: it is what defines our global ordering!
+
 - Turn all of the above into a tracking issue
 - Get to work :>
 
@@ -961,6 +966,10 @@ At some point we're going need the ability for components to refer to data that 
 ### Non-integer instance keys
 
 Instance keys currently only support `u32` as their datatype. Maybe at some point we'll want to support others..?
+
+### Streamed serialization
+
+Don't waste compute & memory on creating large `arrow::Chunk`s from cells, instead serialize them independently in a streaming fashion.
 
 ## Q&A
 
