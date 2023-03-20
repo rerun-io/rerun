@@ -248,6 +248,8 @@ impl App {
     }
 
     fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
+        let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
+
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
@@ -283,7 +285,7 @@ impl App {
                 blueprint.blueprint_panel_expanded ^= true;
 
                 // Only one of blueprint or selection panel can be open at a time on mobile:
-                if re_ui::is_mobile(egui_ctx) && blueprint.blueprint_panel_expanded {
+                if is_narrow_screen && blueprint.blueprint_panel_expanded {
                     blueprint.selection_panel_expanded = false;
                 }
             }
@@ -292,7 +294,7 @@ impl App {
                 blueprint.selection_panel_expanded ^= true;
 
                 // Only one of blueprint or selection panel can be open at a time on mobile:
-                if re_ui::is_mobile(egui_ctx) && blueprint.selection_panel_expanded {
+                if is_narrow_screen && blueprint.selection_panel_expanded {
                     blueprint.blueprint_panel_expanded = false;
                 }
             }

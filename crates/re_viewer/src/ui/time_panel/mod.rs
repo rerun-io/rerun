@@ -141,7 +141,7 @@ impl TimePanel {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
         if ui.max_rect().width() < 600.0 {
-            // Narrow screen, e.g. mobile. Split the controls into two rows.
+            // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
@@ -629,7 +629,7 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
     if ui.max_rect().width() < 600.0 {
-        // Narrow screen, e.g. mobile. Split the controls into two rows.
+        // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 let re_ui = &ctx.re_ui;
