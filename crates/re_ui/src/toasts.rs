@@ -78,14 +78,14 @@ impl Toasts {
     }
 
     /// Shows and updates all toasts
-    pub fn show(&mut self, ctx: &egui::Context) {
+    pub fn show(&mut self, egui_ctx: &egui::Context) {
         let Self {
             id,
             custom_toast_contents,
             toasts,
         } = self;
 
-        let dt = ctx.input(|i| i.stable_dt).at_most(0.1) as f64;
+        let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) as f64;
 
         toasts.retain(|toast| 0.0 < toast.options.ttl_sec);
 
@@ -97,7 +97,7 @@ impl Toasts {
                 .order(egui::Order::Foreground)
                 .interactable(true)
                 .movable(false)
-                .show(ctx, |ui| {
+                .show(egui_ctx, |ui| {
                     if let Some(add_contents) = custom_toast_contents.get_mut(&toast.kind) {
                         add_contents(ui, toast);
                     } else {
@@ -106,11 +106,20 @@ impl Toasts {
                 })
                 .response;
 
+            let response = response
+                .interact(egui::Sense::click())
+                .on_hover_text("Click to close and copy contents");
+
             if !response.hovered() {
                 toast.options.ttl_sec -= dt;
                 if toast.options.ttl_sec.is_finite() {
-                    ctx.request_repaint();
+                    egui_ctx.request_repaint();
                 }
+            }
+
+            if response.clicked() {
+                egui_ctx.output_mut(|o| o.copied_text = toast.text.clone());
+                toast.close();
             }
 
             offset.y += response.rect.height() + 8.0;
@@ -122,31 +131,22 @@ fn default_toast_contents(ui: &mut egui::Ui, toast: &mut Toast) -> egui::Respons
     egui::Frame::window(ui.style())
         .inner_margin(10.0)
         .show(ui, |ui| {
-            let clicked = ui
-                .horizontal(|ui| {
-                    ui.style_mut().wrap = Some(true);
-                    ui.set_max_width(400.0);
-                    ui.spacing_mut().item_spacing = egui::Vec2::splat(5.0);
+            ui.horizontal(|ui| {
+                ui.style_mut().wrap = Some(true);
+                ui.set_max_width(400.0);
+                ui.spacing_mut().item_spacing = egui::Vec2::splat(5.0);
 
-                    if toast.options.show_icon {
-                        let (icon, icon_color) = match toast.kind {
-                            ToastKind::Warning => ("⚠", WARNING_COLOR),
-                            ToastKind::Error => ("❗", ERROR_COLOR),
-                            ToastKind::Success => ("✔", SUCCESS_COLOR),
-                            _ => ("ℹ", INFO_COLOR),
-                        };
-                        ui.label(egui::RichText::new(icon).color(icon_color));
-                    }
-                    ui.label(toast.text.clone());
-                })
-                .response
-                .interact(egui::Sense::click())
-                .clicked();
-
-            if clicked {
-                ui.output_mut(|o| o.copied_text = toast.text.clone());
-                toast.close();
-            }
+                if toast.options.show_icon {
+                    let (icon, icon_color) = match toast.kind {
+                        ToastKind::Warning => ("⚠", WARNING_COLOR),
+                        ToastKind::Error => ("❗", ERROR_COLOR),
+                        ToastKind::Success => ("✔", SUCCESS_COLOR),
+                        _ => ("ℹ", INFO_COLOR),
+                    };
+                    ui.label(egui::RichText::new(icon).color(icon_color));
+                }
+                ui.label(toast.text.clone());
+            })
         })
         .response
 }
