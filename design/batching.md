@@ -69,6 +69,8 @@ Finally, these changes are expected to significantly simplify the DataStore code
 
 ## Status quo
 
+This section describes the current state of things as of 2023-03-20.
+
 The data goes through several distinct stages during its lifetime:
 - Creation
 - Transport
