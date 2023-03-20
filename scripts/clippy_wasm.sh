@@ -17,6 +17,4 @@ function cleanup()
 
 trap cleanup EXIT
 
-cargo clippy --version
-
 cargo cranky --all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings
