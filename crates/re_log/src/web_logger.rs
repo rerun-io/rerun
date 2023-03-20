@@ -7,22 +7,11 @@ impl WebLogger {
     pub fn new(filter: log::LevelFilter) -> Self {
         Self { filter }
     }
-
-    /// Install this logger as the global logger.
-    pub fn init(filter: log::LevelFilter) -> Result<(), log::SetLoggerError> {
-        log::set_max_level(filter);
-        log::set_boxed_logger(Box::new(Self::new(filter)))
-    }
 }
 
 impl log::Log for WebLogger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        if metadata.target().starts_with("wgpu") || metadata.target().starts_with("naga") {
-            // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
-            return metadata.level() <= log::LevelFilter::Warn;
-        }
-
-        metadata.level() <= self.filter
+        crate::is_log_enabled(self.filter, metadata)
     }
 
     fn log(&self, record: &log::Record<'_>) {

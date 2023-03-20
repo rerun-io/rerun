@@ -60,6 +60,9 @@ pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
 
+    /// Listens to the local log stream
+    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+
     component_ui_registry: ComponentUiRegistry,
 
     rx: Receiver<LogMsg>,
@@ -111,6 +114,9 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
+        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
+        re_log::add_boxed_logger(Box::new(logger));
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
@@ -137,6 +143,7 @@ impl App {
             build_info,
             startup_options,
             re_ui,
+            text_log_rx,
             component_ui_registry: Default::default(),
             rx,
             log_dbs: Default::default(),
@@ -459,6 +466,7 @@ impl eframe::App for App {
 
         self.state.cache.begin_frame();
 
+        self.show_text_logs_as_notifications();
         self.receive_messages(egui_ctx);
 
         self.cleanup();
@@ -624,6 +632,30 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 }
 
 impl App {
+    /// Show recent text log messages to the user as toast notifications.
+    fn show_text_logs_as_notifications(&mut self) {
+        crate::profile_function!();
+
+        let duration = Some(std::time::Duration::from_secs(4));
+
+        while let Ok(re_log::LogMsg { level, msg }) = self.text_log_rx.try_recv() {
+            match level {
+                re_log::Level::Error => {
+                    self.toasts.error(msg).set_duration(duration);
+                }
+                re_log::Level::Warn => {
+                    self.toasts.warning(msg).set_duration(duration);
+                }
+                re_log::Level::Info => {
+                    self.toasts.info(msg).set_duration(duration);
+                }
+                re_log::Level::Debug | re_log::Level::Trace => {
+                    // too spammy
+                }
+            }
+        }
+    }
+
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
         crate::profile_function!();
 
@@ -1323,8 +1355,6 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
 // ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
-const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
-    Some(std::time::Duration::from_secs(4));
 
 fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     use std::path::PathBuf;
@@ -1338,16 +1368,10 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 
             match res {
                 Ok(path) => {
-                    let msg = format!("File saved to {path:?}.");
-                    re_log::info!(msg);
-                    app.toasts.info(msg).set_duration(FILE_SAVER_NOTIF_DURATION);
+                    re_log::info!("File saved to {path:?}."); // this will also show a notification the user
                 }
                 Err(err) => {
-                    let msg = format!("{err}");
-                    re_log::error!(msg);
-                    app.toasts
-                        .error(msg)
-                        .set_duration(FILE_SAVER_NOTIF_DURATION);
+                    re_log::error!("{err}"); // this will also show a notification the user
                 }
             }
         } else {
@@ -1448,9 +1472,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
             // NOTE: Shouldn't even be possible as the "Save" button is already
             // grayed out at this point... better safe than sorry though.
-            app.toasts
-                .error(err.to_string())
-                .set_duration(FILE_SAVER_NOTIF_DURATION);
+            re_log::error!("File saving failed: {err}");
         }
     }
 }
@@ -1535,7 +1557,7 @@ fn options_menu_ui(ui: &mut egui::Ui, options: &mut AppOptions) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui) {
+fn egui_debug_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
@@ -1559,6 +1581,7 @@ fn debug_menu_options_ui(ui: &mut egui::Ui) {
         )
         .on_hover_text("Show an overlay on all interactive widgets.")
         .changed();
+
     // This option currently causes the viewer to hang.
     // any_clicked |= ui
     //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
@@ -1570,8 +1593,16 @@ fn debug_menu_options_ui(ui: &mut egui::Ui) {
         style.debug = debug;
         ui.ctx().set_style(style);
     }
+}
 
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(ui: &mut egui::Ui) {
+    egui_debug_options_ui(ui);
     ui.separator();
+
+    if ui.button("Log info").clicked() {
+        re_log::info!("Logging some info");
+    }
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

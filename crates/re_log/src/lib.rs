@@ -1,5 +1,8 @@
 //! Text logging (nothing to do with rerun logging) for use in rerun libraries.
 //!
+//! Provides helpers for adding multiple loggers,
+//! and for setting up logging on native and on web.
+//!
 //! * `trace`: spammy things
 //! * `debug`: things that might be useful when debugging
 //! * `info`: things that we want to show to users
@@ -9,6 +12,15 @@
 //! The `warn_once` etc macros are for when you want to suppress repeated
 //! logging of the exact same message.
 
+mod channel_logger;
+mod multi_logger;
+mod setup;
+
+#[cfg(target_arch = "wasm32")]
+mod web_logger;
+
+pub use log::{Level, LevelFilter};
+
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};
 
@@ -17,12 +29,45 @@ pub use tracing::{debug, error, info, trace, warn};
 // similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 
-mod setup;
+pub use {
+    channel_logger::*,
+    multi_logger::{add_boxed_logger, add_logger},
+    setup::*,
+};
 
-pub use setup::*;
+/// Never log anything less serious than a `WARN` from these crates.
+const CRATES_AT_WARN_LEVEL: [&str; 3] = [
+    // wgpu crates spam a lot on info level, which is really annoying
+    // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
+    "naga",
+    "wgpu_core",
+    "wgpu_hal",
+];
 
-#[cfg(target_arch = "wasm32")]
-mod log_web;
+/// Never log anything less serious than a `INFO` from these crates.
+const CRATES_FORCED_TO_INFO: [&str; 4] = [
+    // These are quite spammy on debug, drowning out what we care about:
+    "h2", "hyper", "rustls", "ureq",
+];
+
+/// Should we log this message given the filter?
+fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {
+    if CRATES_AT_WARN_LEVEL
+        .iter()
+        .any(|crate_name| metadata.target().starts_with(crate_name))
+    {
+        return metadata.level() <= log::LevelFilter::Warn;
+    }
+
+    if CRATES_FORCED_TO_INFO
+        .iter()
+        .any(|crate_name| metadata.target().starts_with(crate_name))
+    {
+        return metadata.level() <= log::LevelFilter::Info;
+    }
+
+    metadata.level() <= filter
+}
 
 /// Shorten a path to a Rust source file.
 ///
