@@ -262,7 +262,9 @@ async fn run_impl(
                 // We are connecting to a server at a websocket address:
 
                 if args.web_viewer {
-                    return host_web_viewer(rerun_server_ws_url).await;
+                    let shutdown_rx = setup_ctrl_c_handler();
+                    let web_viewer = host_web_viewer(true, rerun_server_ws_url, shutdown_rx);
+                    return web_viewer.await;
                 } else {
                     #[cfg(feature = "native_viewer")]
                     return native_viewer_connect_to_ws_url(
@@ -311,13 +313,21 @@ async fn run_impl(
                 );
             }
 
+            // Make it possible to gracefully shutdown the servers on ctrl-c.
+            let shutdown_ws_server = setup_ctrl_c_handler();
+            let shutdown_web_viewer = shutdown_ws_server.resubscribe();
+
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
-            let server_handle = tokio::spawn(ws_server.listen(rx));
+            let server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
 
-            let rerun_ws_server_url = re_ws_comms::default_server_url();
-            host_web_viewer(rerun_ws_server_url).await?;
+            // This is the server that serves the Wasm+HTML:
+            let ws_server_url = re_ws_comms::default_server_url();
+            let ws_server_handle =
+                tokio::spawn(host_web_viewer(true, ws_server_url, shutdown_web_viewer));
 
+            // Wait for both servers to shutdown.
+            ws_server_handle.await?.ok();
             return server_handle.await?;
         }
 
@@ -353,6 +363,16 @@ async fn run_impl(
             );
         }
     }
+}
+
+fn setup_ctrl_c_handler() -> tokio::sync::broadcast::Receiver<()> {
+    let (sender, receiver) = tokio::sync::broadcast::channel(1);
+    ctrlc::set_handler(move || {
+        re_log::debug!("Ctrl-C detected - Closing server.");
+        sender.send(()).unwrap();
+    })
+    .expect("Error setting Ctrl-C handler");
+    receiver
 }
 
 enum ArgumentCategory {
@@ -440,25 +460,14 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
 }
 
 #[cfg(feature = "web_viewer")]
-async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
-    let web_port = 9090;
-    let viewer_url = format!("http://127.0.0.1:{web_port}?url={rerun_ws_server_url}");
-
-    let web_server = re_web_viewer_server::WebViewerServer::new(web_port);
-    let web_server_handle = tokio::spawn(web_server.serve());
-
-    let open = true;
-    if open {
-        webbrowser::open(&viewer_url).ok();
-    } else {
-        println!("Hosting Rerun Web Viewer at {viewer_url}.");
-    }
-
-    web_server_handle.await?
-}
+use crate::web_viewer::host_web_viewer;
 
 #[cfg(not(feature = "web_viewer"))]
-async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
+pub async fn host_web_viewer(
+    _open_browser: bool,
+    _ws_server_url: String,
+    _shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
 }
 
