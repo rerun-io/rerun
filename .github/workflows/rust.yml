@@ -215,10 +215,7 @@ jobs:
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Check re_viewer wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --all-features --lib --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer
+        run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
