@@ -113,7 +113,9 @@ impl Toasts {
             if !response.hovered() {
                 toast.options.ttl_sec -= dt;
                 if toast.options.ttl_sec.is_finite() {
-                    egui_ctx.request_repaint();
+                    egui_ctx.request_repaint_after(std::time::Duration::from_secs_f64(
+                        toast.options.ttl_sec,
+                    ));
                 }
             }
 
