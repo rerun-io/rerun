@@ -202,7 +202,7 @@ impl RenderContext {
 
         // Browsers don't let us wait for GPU work via `poll`.
         // * WebGPU: `poll` is a no-op as the spec doesn't specify it at all.
-        // * WebGL: Internal timeout on can't go above a browser specific value.
+        // * WebGL: Internal timeout can't go above a browser specific value.
         //          Since wgpu ran into issues in the past with some browsers returning errors,
         //          it uses a timeout of zero and ignores errors there.
         //          TODO(andreas): That's not the only thing that's weird with `maintain` in general.
