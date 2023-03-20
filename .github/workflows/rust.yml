@@ -202,7 +202,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
+          profile: default
           toolchain: 1.67.0
           target: wasm32-unknown-unknown
           override: true
@@ -215,7 +215,7 @@ jobs:
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Check re_viewer wasm32
-        run: rustup component add clippy && ./scripts/clippy_wasm.sh
+        run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
