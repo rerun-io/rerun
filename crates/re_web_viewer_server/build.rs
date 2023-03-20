@@ -119,7 +119,8 @@ fn main() {
     pkgs.track_implicit_dep("re_viewer");
 
     if std::env::var("CARGO_FEATURE___CI").is_ok() {
-        // This saves a lot of CI time.
+        // If the `__ci` feature is set we skip building the web viewer wasm, saving a lot of time.
+        // This feature is set on CI (hence the name), but also with `--all-features`, which is set by rust analyzer, bacon, etc.
         eprintln!("__ci feature detected: Skipping building of web viewer wasm.");
     } else {
         let release = std::env::var("PROFILE").unwrap() == "release";
