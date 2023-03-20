@@ -52,6 +52,8 @@ Status: proposal
   * [Write our own arrow2-convert](#write-our-own-arrow2-convert)
   * [The DataStore is its own server](#the-datastore-is-its-own-server)
   * [Data might be a reference to an external storage system](#data-might-be-a-reference-to-an-external-storage-system)
+- [Q&A](#q-a)
+  * [What is the relationship between "component instances" and "instance keys"?](#what-is-the-relationship-between--component-instances--and--instance-keys--)
 
 ---
 
@@ -947,3 +949,31 @@ The datastore won't run as part of the viewer forever.
 ### Data might be a reference to an external storage system
 
 At some point we're going need the ability for components to refer to data that reside out of the store (e.g. a component `VideoFrame` which is merely a URI pointing to a video file "somewhere").
+
+## Q&A
+
+### What is the relationship between "component instances" and "instance keys"?
+
+> It seems like we do treat instance keys like any other component, which means each individual instance key is actually a component instance, no?
+
+The terminology is very subtle. 
+
+- `InstanceKey` is indeed a component, and so it is always passed as a list, which we colloquially refer to as "the instance keys".
+- a "component instance", or just "instance", is the name we give to any single value in a component cell:
+```
+[C, C, ...]
+ ^  ^
+ |  |
+ |  |
+ |  instance #2
+ |
+ instance #1
+```
+
+So, a cell of `InstanceKey`s is indeed made up of component instances, but "instance keys" and "component instances" are two different things.
+
+> each individual instance key is actually a component instance, no?
+
+Yes, each individual instance key is a component instance, but not every component instance is necessarily an `InstanceKey`.
+
+
