@@ -214,7 +214,7 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
-      - name: Check re_viewer wasm32
+      - name: clippy check re_viewer wasm32
         run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
