@@ -39,8 +39,8 @@ def log_pinhole(
     f_len = (height * width) ** 0.5
 
     rerun.log_pinhole("world/camera/image",
-                      child_from_parent = [[f_len, 0,     u_c],
-                                           [0,     f_len, v_c],
+                      child_from_parent = [[f_len, 0,     u_cen],
+                                           [0,     f_len, v_cen],
                                            [0,     0,     1  ]],
                       width = width,
                       height = height)

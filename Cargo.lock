@@ -3839,6 +3839,7 @@ dependencies = [
  "js-sys",
  "log",
  "log-once",
+ "parking_lot 0.12.1",
  "tracing",
  "wasm-bindgen",
 ]
