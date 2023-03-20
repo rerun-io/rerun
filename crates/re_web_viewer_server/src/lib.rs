@@ -169,3 +169,15 @@ impl WebViewerServer {
         Ok(())
     }
 }
+
+// ----------------------------------------------------------------------------
+
+pub fn setup_ctrl_c_handler() -> tokio::sync::broadcast::Receiver<()> {
+    let (sender, receiver) = tokio::sync::broadcast::channel(1);
+    ctrlc::set_handler(move || {
+        re_log::debug!("Ctrl-C detected - Closing web server.");
+        sender.send(()).unwrap();
+    })
+    .expect("Error setting Ctrl-C handler");
+    receiver
+}

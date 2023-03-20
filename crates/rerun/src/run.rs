@@ -4,6 +4,11 @@ use re_smart_channel::Receiver;
 use anyhow::Context as _;
 use clap::Subcommand;
 
+#[cfg(feature = "web_viewer")]
+use crate::web_viewer::host_web_viewer;
+#[cfg(feature = "web_viewer")]
+use re_web_viewer_server::setup_ctrl_c_handler;
+
 // Note the extra blank lines between the point-lists below: it is required by `clap`.
 
 /// The Rerun Viewer and Server
@@ -262,9 +267,16 @@ async fn run_impl(
                 // We are connecting to a server at a websocket address:
 
                 if args.web_viewer {
-                    let shutdown_rx = setup_ctrl_c_handler();
-                    let web_viewer = host_web_viewer(true, rerun_server_ws_url, shutdown_rx);
-                    return web_viewer.await;
+                    #[cfg(feature = "web_viewer")]
+                    {
+                        let shutdown_rx = setup_ctrl_c_handler();
+                        let web_viewer = host_web_viewer(true, rerun_server_ws_url, shutdown_rx);
+                        return web_viewer.await;
+                    }
+                    #[cfg(not(feature = "web_viewer"))]
+                    {
+                        panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
+                    }
                 } else {
                     #[cfg(feature = "native_viewer")]
                     return native_viewer_connect_to_ws_url(
@@ -365,16 +377,6 @@ async fn run_impl(
     }
 }
 
-fn setup_ctrl_c_handler() -> tokio::sync::broadcast::Receiver<()> {
-    let (sender, receiver) = tokio::sync::broadcast::channel(1);
-    ctrlc::set_handler(move || {
-        re_log::debug!("Ctrl-C detected - Closing server.");
-        sender.send(()).unwrap();
-    })
-    .expect("Error setting Ctrl-C handler");
-    receiver
-}
-
 enum ArgumentCategory {
     /// A remote RRD file, served over http.
     RrdHttpUrl(String),
@@ -457,18 +459,6 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
         .expect("Failed to spawn thread");
 
     Ok(rx)
-}
-
-#[cfg(feature = "web_viewer")]
-use crate::web_viewer::host_web_viewer;
-
-#[cfg(not(feature = "web_viewer"))]
-pub async fn host_web_viewer(
-    _open_browser: bool,
-    _ws_server_url: String,
-    _shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-) -> anyhow::Result<()> {
-    panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
 }
 
 #[cfg(feature = "server")]

@@ -4246,7 +4246,6 @@ dependencies = [
  "backtrace",
  "clap 4.1.4",
  "crossbeam",
- "ctrlc",
  "document-features",
  "egui",
  "itertools",
