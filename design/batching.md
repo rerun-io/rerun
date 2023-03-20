@@ -386,7 +386,10 @@ The main difference is of course that the client can now accumulate events (i.e.
 In practice this process of accumulation is handled behind the scenes by the SDK, and driven by both time and space thresholds ("accumulate at most 10MiB of raw data for no more than 50ms").
 
 To reflect the fact that we're passing tables of data around, I suggest we update the terminology.  
-The current terms `ComponentBundle` and `MsgBundle` are vague, so let's use more descriptive terms instead such as `DataCell` (== component, a uniform list of values for a given component type), `DataRow` (== event, a list of cells associated with an event ID, entity path, timepoint, and number of instances), and `DataTable` (== batch, a list of rows associated with a batch ID).
+The current terms `ComponentBundle` and `MsgBundle` are vague, so let's use more descriptive terms instead: 
+* `DataCell`: a uniform list of values for a given component type from a single log call.
+* `DataRow`: an event, a list of cells associated with an event ID, entity path, timepoint, and number of instances. Corresponds to a single SDK log call.
+* `DataTable`: a batch; a list of rows associated with a batch ID.
 
 Juggling between native and arrow data interchangeably can be a cumbersome task in our current implementation. While we have some helper functions to facilitate this, the process is not as smooth as it could be.  
 This is partly due to limitations in `arrow2-convert`, but also because some of our APIs are simply not optimized for this use case (yet).
