@@ -16,17 +16,17 @@ impl Drop for RemoteViewerServer {
 }
 
 impl RemoteViewerServer {
-    pub fn new(tokio_rt: &tokio::runtime::Runtime, open_browser: bool) -> Self {
+    pub fn new(open_browser: bool) -> Self {
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
         let (shutdown_tx, shutdown_rx_ws_server) = tokio::sync::broadcast::channel(1);
         let shutdown_rx_web_server = shutdown_tx.subscribe();
 
-        tokio_rt.spawn(async move {
+        tokio::spawn(async move {
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
                 .await
                 .unwrap();
-            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx, shutdown_rx_ws_server)); // TODO(emilk): use tokio_rt ?
+            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx, shutdown_rx_ws_server));
 
             // This is the server that serves the Wasm+HTML:
             let ws_server_url = re_ws_comms::default_server_url();
@@ -64,6 +64,7 @@ pub async fn host_web_viewer(
     let web_server = re_web_viewer_server::WebViewerServer::new(web_port);
     let web_server_handle = tokio::spawn(web_server.serve(shutdown_rx));
 
+    re_log::info!("Web server is running - view it at {viewer_url}");
     if open_browser {
         webbrowser::open(&viewer_url).ok();
     } else {
@@ -95,12 +96,17 @@ impl crate::sink::LogSink for RemoteViewerServer {
 /// This function returns immediately.
 #[must_use]
 pub fn new_sink(open_browser: bool) -> Box<dyn crate::sink::LogSink> {
-    // TODO(emilk): creating a tokio runtime on-demand like this is not great. Not sure how this interacts with `#[tokio::main]`, for instance.
     use once_cell::sync::Lazy;
-    use parking_lot::Mutex;
-    static TOKIO_RUNTIME: Lazy<Mutex<tokio::runtime::Runtime>> = Lazy::new(|| {
-        Mutex::new(tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"))
-    });
+    static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+        Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
 
-    Box::new(RemoteViewerServer::new(&TOKIO_RUNTIME.lock(), open_browser))
+    let server = match tokio::runtime::Handle::try_current() {
+        Ok(_) => RemoteViewerServer::new(open_browser),
+        Err(_) => {
+            let _runtime_guard = TOKIO_RUNTIME.enter();
+            RemoteViewerServer::new(open_browser)
+        }
+    };
+
+    Box::new(server)
 }
