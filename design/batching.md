@@ -64,7 +64,7 @@ The proposed implementation aims to address several issues and provide numerous 
 - Resolution of splat issues that currently require dedicated events/rows to function.
 - Resolution of the dreaded `MsgId` mismatch issues.
 - Replacement of the current hackish and partially broken garbage collection mechanism with a more viable one.
-- Should massively improve the speed of range queries (even more so for our so-called sticky scenes).
+- Should massively improve the speed of range queries (even more so for our scenes that span the entire time-range, e.g.: text, plot...).
 - Should (likely) vastly improve the loading speed of .rrd files (even more so on the web).
 
 Finally, these changes are expected to significantly simplify the DataStore codebase by completely eliminating component tables and their corresponding buckets.
@@ -342,7 +342,7 @@ This second subtlety has important implications. To actually retrieve the data, 
 While range queries have some surprisingly tricky semantics (especially around the intersection of timeless and temporal data), operationally they behave pretty much like latest-at queries: grabbing the right index, binsearching for the right bucket, and starting iteration from there.
 
 However, the fact that we return row numbers instead of the actual data itself can have significant performance implications when it comes to range queries.  
-For example, if you need to iterate through 100k values, you would need to run 100k `get` requests, which would require 100k binsearches in the component tables. This can be extremely costly and is a major reason why our sticky scenes quickly become unusable as the dataset grows.
+For example, if you need to iterate through 100k values, you would need to run 100k `get` requests, which would require 100k binsearches in the component tables. This can be extremely costly and is a major reason why our ranged query scenes quickly become unusable as the dataset grows.
 
 ### Garbage Collection
 
