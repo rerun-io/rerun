@@ -215,7 +215,7 @@ jobs:
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Check re_viewer wasm32
-        run: ./scripts/clippy_wasm.sh
+        run: rustup component add clippy && ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
