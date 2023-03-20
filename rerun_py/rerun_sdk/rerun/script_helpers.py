@@ -91,8 +91,8 @@ def script_teardown(args: Namespace) -> None:
 
     """
     if args.serve:
-        from threading import Event
         import signal
+        from threading import Event
 
         exit = Event()
         signal.signal(signal.SIGINT, lambda sig, frame: exit.set())
