@@ -4020,6 +4020,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_smart_channel",
+ "tokio",
 ]
 
 [[package]]
@@ -4246,6 +4247,7 @@ dependencies = [
  "backtrace",
  "clap 4.1.4",
  "crossbeam",
+ "ctrlc",
  "document-features",
  "egui",
  "itertools",

@@ -6,8 +6,6 @@ use clap::Subcommand;
 
 #[cfg(feature = "web_viewer")]
 use crate::web_viewer::host_web_viewer;
-#[cfg(feature = "web_viewer")]
-use re_web_viewer_server::setup_ctrl_c_handler;
 
 // Note the extra blank lines between the point-lists below: it is required by `clap`.
 
@@ -253,6 +251,8 @@ async fn run_impl(
         }),
     };
 
+    let shutdown_rx = setup_ctrl_c_handler();
+
     // Where do we get the data from?
     let rx = if let Some(url_or_path) = args.url_or_path.clone() {
         match categorize_argument(url_or_path) {
@@ -269,8 +269,8 @@ async fn run_impl(
                 if args.web_viewer {
                     #[cfg(feature = "web_viewer")]
                     {
-                        let shutdown_rx = setup_ctrl_c_handler();
-                        let web_viewer = host_web_viewer(true, rerun_server_ws_url, shutdown_rx);
+                        let web_viewer =
+                            host_web_viewer(true, rerun_server_ws_url, shutdown_rx.resubscribe());
                         return web_viewer.await;
                     }
                     #[cfg(not(feature = "web_viewer"))]
@@ -304,7 +304,7 @@ async fn run_impl(
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
-            re_sdk_comms::serve(args.port, server_options)?
+            re_sdk_comms::serve(args.port, server_options, shutdown_rx.resubscribe())?
         }
 
         #[cfg(not(feature = "server"))]
@@ -326,8 +326,8 @@ async fn run_impl(
             }
 
             // Make it possible to gracefully shutdown the servers on ctrl-c.
-            let shutdown_ws_server = setup_ctrl_c_handler();
-            let shutdown_web_viewer = shutdown_ws_server.resubscribe();
+            let shutdown_ws_server = shutdown_rx.resubscribe();
+            let shutdown_web_viewer = shutdown_rx.resubscribe();
 
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
@@ -467,4 +467,14 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         re_format::parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
+}
+
+pub fn setup_ctrl_c_handler() -> tokio::sync::broadcast::Receiver<()> {
+    let (sender, receiver) = tokio::sync::broadcast::channel(1);
+    ctrlc::set_handler(move || {
+        re_log::debug!("Ctrl-C detected, shutting down.");
+        sender.send(()).unwrap();
+    })
+    .expect("Error setting Ctrl-C handler");
+    receiver
 }
