@@ -143,6 +143,11 @@ impl SpaceView {
     ) {
         crate::profile_function!();
 
+        let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
+        if is_zero_sized_viewport {
+            return;
+        }
+
         let query = crate::ui::scene::SceneQuery {
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),

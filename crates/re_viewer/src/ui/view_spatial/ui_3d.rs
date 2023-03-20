@@ -263,6 +263,10 @@ pub fn view_3d(
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
+    if !rect.is_positive() {
+        return; // protect against problems with zero-sized views
+    }
+
     // If we're tracking a camera right now, we want to make it slightly sticky,
     // so that a click on some entity doesn't immediately break the tracked state.
     // (Threshold is in amount of ui points the mouse was moved.)
