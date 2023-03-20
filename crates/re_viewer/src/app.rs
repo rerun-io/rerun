@@ -759,7 +759,7 @@ impl App {
             {
                 crate::profile_scope!("pruning");
                 if let Some(counted) = mem_use_before.counted {
-                    re_log::info!(
+                    re_log::debug!(
                         "Attempting to purge {:.1}% of used RAM ({})…",
                         100.0 * fraction_to_purge,
                         format_bytes(counted as f64 * fraction_to_purge as f64)
@@ -778,7 +778,7 @@ impl App {
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
             {
-                re_log::info!(
+                re_log::debug!(
                     "Freed up {} ({:.1}%)",
                     format_bytes(counted_diff as _),
                     100.0 * counted_diff as f32 / counted_before as f32
