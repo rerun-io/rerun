@@ -96,6 +96,7 @@ impl DataUi for Tensor {
                         }
                     }
 
+                    #[allow(clippy::collapsible_match)] // false positive on wasm32
                     if let Some(dynamic_img) = tensor_view.dynamic_img() {
                         // TODO(emilk): support copying and saving images on web
                         #[cfg(not(target_arch = "wasm32"))]
