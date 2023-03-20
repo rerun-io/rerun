@@ -15,9 +15,6 @@ import math
 
 import numpy as np
 import rerun as rr
-from rerun.log.annotation import AnnotationInfo
-from rerun.log.rects import RectFormat
-from rerun.log.text import LoggingHandler, LogLevel
 from scipy.spatial.transform import Rotation
 
 
@@ -69,7 +66,7 @@ def run_segmentation() -> None:
     rr.set_time_seconds("sim_time", 4)
     rr.log_annotation_context(
         "seg_demo",
-        [AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), AnnotationInfo(99, label="label3")],
+        [rr.AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), rr.AnnotationInfo(99, label="label3")],
         timeless=False,
     )
     rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
@@ -124,7 +121,7 @@ def run_rects() -> None:
     rects_wh = np.random.rand(20, 2) * (1024 - rects_xy + 1)
     rects = np.hstack((rects_xy, rects_wh))
     colors = np.array([[random.randrange(255) for _ in range(3)] for _ in range(20)])
-    rr.log_rects("rects_demo/rects", rects, colors=colors, rect_format=RectFormat.XYWH)
+    rr.log_rects("rects_demo/rects", rects, colors=colors, rect_format=rr.RectFormat.XYWH)
 
     # Clear the rectangles by logging an empty set
     rr.set_time_seconds("sim_time", 3)
@@ -133,9 +130,9 @@ def run_rects() -> None:
 
 def run_text_logs() -> None:
     rr.log_text_entry("logs", "Text with explicitly set color", color=[255, 215, 0], timeless=True)
-    rr.log_text_entry("logs", "this entry has loglevel TRACE", level=LogLevel.TRACE)
+    rr.log_text_entry("logs", "this entry has loglevel TRACE", level=rr.LogLevel.TRACE)
 
-    logging.getLogger().addHandler(LoggingHandler("logs/handler"))
+    logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
     logging.getLogger().setLevel(-1)
     logging.info("This log got added through a `LoggingHandler`")
 
