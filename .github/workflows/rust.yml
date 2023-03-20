@@ -5,6 +5,13 @@ on:
     branches:
       - "main"
   pull_request:
+  workflow_dispatch:
+    inputs:
+      force_update_web_build:
+        description: "Upload web build to google cloud"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
@@ -240,7 +247,7 @@ jobs:
       contents: "read"
       id-token: "write"
 
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event.inputs.force_update_web_build
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.6
