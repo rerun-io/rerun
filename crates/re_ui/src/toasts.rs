@@ -1,7 +1,7 @@
 ///! A toast notification system for egui, roughly based on <https://github.com/urholaukkarinen/egui-toast>.
 use std::collections::HashMap;
 
-use egui::{Color32, NumExt as _};
+use egui::Color32;
 
 pub const INFO_COLOR: Color32 = Color32::from_rgb(0, 155, 255);
 pub const WARNING_COLOR: Color32 = Color32::from_rgb(255, 212, 0);
@@ -85,7 +85,7 @@ impl Toasts {
             toasts,
         } = self;
 
-        let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) as f64;
+        let dt = egui_ctx.input(|i| i.unstable_dt) as f64;
 
         toasts.retain(|toast| 0.0 < toast.options.ttl_sec);
 
