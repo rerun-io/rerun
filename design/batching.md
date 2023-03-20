@@ -548,6 +548,11 @@ These datastructures should get rid of all the issues that plague clears, splats
 
 The SDK accumulates cells into rows into tables until either the space or time thresholds are reached, at which point the batch is ready for transport.
 
+Note that `DataCell`, `DataRow`, `DataTable` are all temporary constructs to help with the creation of data batches, they are not what gets sent over the wire (although `DataCell` pre-serializes its data as it is much more convenient to erase component data before passing it around).
+
+Only when a `DataTable` gets transformed into a `ArrowMsg` does serialization actually happen.  
+`ArrowMsg` is what gets sent over the wire.
+
 ### Transport
 
 `ArrowMsg` stays roughly the same in spirit: it's the fully serialized arrow representation of a `DataTable`:
