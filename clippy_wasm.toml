@@ -10,6 +10,15 @@ disallowed-methods = [
   "std::time::Instant::now",      # use `instant` crate instead for wasm/web compatibility
   "std::time::Duration::elapsed", # use `instant` crate instead for wasm/web compatibility
   "std::time::SystemTime::now",   # use `instant` or `time` crates instead for wasm/web compatibility
+
+  # Cannot spawn threads on wasm:
+  "std::thread::spawn",
+]
+
+# https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
+disallowed-types = [
+  # Cannot spawn threads on wasm:
+  "std::thread::Builder",
 ]
 
 # Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
