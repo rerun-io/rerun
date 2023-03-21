@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use anyhow::Context as _;
+use anyhow::Context;
 use rand::{Rng as _, SeedableRng};
 
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
@@ -29,28 +29,11 @@ impl Default for ServerOptions {
 }
 
 async fn listen_for_new_clients(
-    port: u16,
+    listener: TcpListener,
     options: ServerOptions,
     tx: Sender<LogMsg>,
     mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) {
-    let bind_addr = format!("0.0.0.0:{port}");
-
-    let listener = TcpListener::bind(&bind_addr)
-        .await
-        .with_context(|| format!("Failed to bind TCP address {bind_addr:?}"))
-        .unwrap();
-
-    if options.quiet {
-        re_log::debug!(
-            "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
-        );
-    } else {
-        re_log::info!(
-            "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
-        );
-    }
-
     loop {
         let incoming = tokio::select! {
             res = listener.accept() => res,
@@ -74,18 +57,37 @@ async fn listen_for_new_clients(
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
-/// let (sender, receiver) = tokio::sync::broadcast::channel(1);
-/// let log_msg_rx = serve(80, ServerOptions::default(), receiver)?;
-/// # Ok::<(), anyhow::Error>(())
+/// #[tokio::main]
+/// async fn main() {
+///     let (sender, receiver) = tokio::sync::broadcast::channel(1);
+///     let log_msg_rx = serve(80, ServerOptions::default(), receiver).await.unwrap();
+/// }
 /// ```
-pub fn serve(
+pub async fn serve(
     port: u16,
     options: ServerOptions,
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<Receiver<LogMsg>> {
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
 
-    tokio::spawn(listen_for_new_clients(port, options, tx, shutdown_rx));
+    let bind_addr = format!("0.0.0.0:{port}");
+    let listener = TcpListener::bind(&bind_addr).await.with_context(|| {
+        format!(
+            "Failed to bind TCP address {bind_addr:?}. Another Rerun instance is probably running."
+        )
+    })?;
+
+    if options.quiet {
+        re_log::debug!(
+            "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
+        );
+    } else {
+        re_log::info!(
+            "Hosting a SDK server over TCP at {bind_addr}. Connect with the Rerun logging SDK."
+        );
+    }
+
+    tokio::spawn(listen_for_new_clients(listener, options, tx, shutdown_rx));
 
     Ok(rx)
 }
