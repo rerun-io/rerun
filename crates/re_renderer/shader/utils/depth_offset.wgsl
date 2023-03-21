@@ -12,6 +12,8 @@ fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
     // This ofc wrecks the depth offset and may cause z fighting with all very far away objects, but it's better than having things disappear!
 
     if true {
+        // This path assumes a `f32` depth buffer!
+
         // 1.0 * eps _should_ be enough, but in practice it causes Z-fighting for unknown reasons.
         // Maybe because of GPU interpolation of vertex coordinates?
         let eps = 5.0 * f32eps;
