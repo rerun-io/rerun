@@ -22,7 +22,6 @@ unmaintained = "warn"
 yanked = "deny"
 ignore = [
   "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate.
-  "RUSTSEC-2020-0159", # https://rustsec.org/advisories/RUSTSEC-2020-0159 - Potential segfault in `localtime_r` invocations.
 ]
 
 [bans]
