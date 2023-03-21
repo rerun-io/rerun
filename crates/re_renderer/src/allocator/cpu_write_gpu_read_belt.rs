@@ -425,7 +425,7 @@ impl CpuWriteGpuReadBelt {
 
 impl std::fmt::Debug for CpuWriteGpuReadBelt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("StagingBelt")
+        f.debug_struct("CpuWriteGpuReadBelt")
             .field("chunk_size", &self.chunk_size)
             .field("active_chunks", &self.active_chunks.len())
             .field("closed_chunks", &self.closed_chunks.len())

@@ -4,6 +4,7 @@
 //! follows some more complex strategy for efficient re-use and sub-allocation of wgpu resources.
 
 mod cpu_write_gpu_read_belt;
+mod gpu_write_cpu_read_belt;
 mod uniform_buffer_fill;
 
 pub use cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};
