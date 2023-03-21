@@ -62,6 +62,10 @@ impl SpaceView {
         space_path: &EntityPath,
         queries_entities: &[EntityPath],
     ) -> Self {
+        // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
+        // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
+        // Spaces are now always named after the final element of the space-path (or the root), independent of the
+        // query entities.
         let display_name = if let Some(name) = space_path.iter().last() {
             name.to_string()
         } else {
