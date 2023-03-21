@@ -28,6 +28,7 @@ def load_json(js_path: Path) -> Dict[str, Any]:
 
 def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
     """Logs annotated bounding boxes to Rerun."""
+    # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view`
     for label_info in annotation["data"]:
         object_id = label_info["objectId"]
         label = label_info["label"]
@@ -116,14 +117,15 @@ def log_arkit(recording_path: Path) -> None:
 
     rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
-    bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
-    annotation = load_json(bbox_annotations_path)
-    log_annotated_bboxes(annotation)
 
     # TODO(pablovela5620): for now just use the untextered/uncolored mesh until #1580 is resolved
     mesh_ply = trimesh.load(str(ply_path))
     mesh_gltf_bin = trimesh.exchange.gltf.export_glb(mesh_ply, include_normals=True)
-    rr.log_mesh_file("world/mesh", MeshFormat.GLB, mesh_gltf_bin)
+    rr.log_mesh_file("world/mesh", MeshFormat.GLB, mesh_gltf_bin, timeless=True)
+
+    bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
+    annotation = load_json(bbox_annotations_path)
+    log_annotated_bboxes(annotation)
 
     # To avoid logging image frames in the beginning that dont' have a trajectory
     # This causes the camera to expand in the beginning otherwise
