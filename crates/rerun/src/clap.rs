@@ -2,9 +2,7 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
-use anyhow::Context;
-
-use crate::{run::setup_ctrl_c_handler, Session};
+use crate::Session;
 
 // ---
 
@@ -121,7 +119,9 @@ impl RerunArgs {
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
-            let mut shutdown_rx = setup_ctrl_c_handler();
+            use anyhow::Context as _;
+
+            let mut shutdown_rx = crate::run::setup_ctrl_c_handler();
             return tokio_runtime_handle
                 .block_on(async { shutdown_rx.recv().await })
                 .context("Failed to wait for shutdown signal.");
