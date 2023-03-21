@@ -2,7 +2,7 @@
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
 import cv2
 import numpy as np
@@ -20,13 +20,13 @@ assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
 
-def load_json(js_path: Path) -> dict[str, Any]:
+def load_json(js_path: Path) -> Dict[str, Any]:
     with open(js_path, "r") as f:
         json_data = json.load(f)
     return dict(json_data)
 
 
-def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
+def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
     """Logs annotated bounding boxes to Rerun."""
     for label_info in annotation["data"]:
         object_id = label_info["objectId"]
@@ -41,7 +41,6 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
             half_size=scale,
             position=transform,
             rotation_q=rot.as_quat(),
-            color=[160, 230, 130, 0],
             label=label,
             timeless=True,
         )
@@ -115,6 +114,7 @@ def log_arkit(recording_path: Path) -> None:
         ts = f"{round(float(ts), 3):.3f}"
         poses_from_traj[ts] = camera_from_world
 
+    rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
@@ -132,8 +132,9 @@ def log_arkit(recording_path: Path) -> None:
         rr.set_time_seconds("time", float(frame_id))
         bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
         depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
+
         # Log the camera transforms:
-        if str(frame_id) in poses_from_traj:
+        if frame_id in poses_from_traj:
             if not init_traj_found:
                 init_traj_found = True
             intrinsic_fn = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
@@ -152,7 +153,8 @@ def log_arkit(recording_path: Path) -> None:
         if not init_traj_found:
             continue
 
-        rr.log_image("world/camera/image/rgb", bgr[..., ::-1])
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        rr.log_image("world/camera/image/rgb", rgb)
         # TODO(pablovela5620): no clear way to change colormap for depth via log function
         rr.log_depth_image("world/camera/image/depth", depth, meter=1000)
 
