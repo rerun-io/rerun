@@ -46,7 +46,7 @@ pub(crate) struct FrameUniformBuffer {
     pub auto_size_lines: f32,
 
     /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    pub depth_offset_factor: wgpu_buffer_types::F32RowPadded,
+    pub end_padding: wgpu_buffer_types::PaddingRow,
 }
 
 pub(crate) struct GlobalBindings {
