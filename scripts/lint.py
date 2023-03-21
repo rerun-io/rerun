@@ -113,7 +113,7 @@ def test_lint_line() -> None:
 
 # -----------------------------------------------------------------------------
 
-re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?((impl|fn|struct|enum|union|trait|type)\b))")
+re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?(async )?((impl|fn|struct|enum|union|trait|type)\b))")
 re_attribute = re.compile(r"^\s*\#\[(error|derive)")
 re_docstring = re.compile(r"^\s*///")
 
@@ -177,6 +177,10 @@ def lint_vertical_spacing(lines_in: List[str]) -> Tuple[List[str], List[str]]:
 
 
 def test_lint_vertical_spacing() -> None:
+    assert re_declaration.match("fn foo() {}")
+    assert re_declaration.match("async fn foo() {}")
+    assert re_declaration.match("pub async fn foo() {}")
+
     should_pass = [
         "hello world",
         """
@@ -224,6 +228,14 @@ def test_lint_vertical_spacing() -> None:
         """
         slotmap::new_key_type! { pub struct ViewBuilderHandle; }
         type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
+        """,
+        """
+        fn foo() {}
+        fn bar() {}
+        """,
+        """
+        async fn foo() {}
+        async fn bar() {}
         """,
     ]
 
