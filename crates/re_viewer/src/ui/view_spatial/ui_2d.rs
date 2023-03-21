@@ -7,7 +7,10 @@ use re_data_store::EntityPath;
 use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
-use super::{eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, ViewSpatialState};
+use super::{
+    eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, SpatialNavigationMode,
+    ViewSpatialState,
+};
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
@@ -312,7 +315,7 @@ fn view_2d_scrollable(
         &eye,
         parent_ui,
         highlights,
-        false,
+        SpatialNavigationMode::TwoD,
     );
 
     // Check if we're hovering any hover primitive.

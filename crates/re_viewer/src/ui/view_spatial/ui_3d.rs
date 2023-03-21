@@ -18,7 +18,7 @@ use crate::{
             scene::AdditionalPickingInfo,
             ui::{create_labels, outline_config},
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            SceneSpatial, SpaceCamera3D,
+            SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
         SpaceViewId, UiVerbosity,
     },
@@ -310,8 +310,7 @@ pub fn view_3d(
         &eye,
         ui,
         highlights,
-        // TODO(#1640): 2D labels are not visible in 3D for now.
-        true,
+        SpatialNavigationMode::ThreeD,
     );
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!

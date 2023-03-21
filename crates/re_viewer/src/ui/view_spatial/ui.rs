@@ -537,7 +537,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
-    skip_2d_labels: bool,
+    nav_mode: SpatialNavigationMode,
 ) -> Vec<egui::Shape> {
     crate::profile_function!();
 
@@ -548,7 +548,8 @@ pub fn create_labels(
     for label in &scene_ui.labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
-                if skip_2d_labels {
+                // TODO(#1640): 2D labels are not visible in 3D for now.
+                if nav_mode == SpatialNavigationMode::ThreeD {
                     continue;
                 }
                 let rect_in_ui = ui_from_space2d.transform_rect(rect);
@@ -559,7 +560,8 @@ pub fn create_labels(
                 )
             }
             UiLabelTarget::Point2D(pos) => {
-                if skip_2d_labels {
+                // TODO(#1640): 2D labels are not visible in 3D for now.
+                if nav_mode == SpatialNavigationMode::ThreeD {
                     continue;
                 }
                 let pos_in_ui = ui_from_space2d.transform_pos(pos);
