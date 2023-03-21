@@ -227,7 +227,7 @@ impl GpuMesh {
             for (material, uniform_buffer_binding) in data
                 .materials
                 .iter()
-                .zip(uniform_buffer_bindings.into_iter())
+                .zip(uniform_buffer_bindings.use_separate_bindings())
             {
                 let texture = ctx.texture_manager_2d.get(&material.albedo)?;
                 let bind_group = pools.bind_groups.alloc(

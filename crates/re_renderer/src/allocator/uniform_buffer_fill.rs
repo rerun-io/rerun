@@ -1,6 +1,9 @@
 pub use super::cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};
 
-use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
+use crate::{
+    wgpu_resources::{BindGroupEntry, GpuBufferHandle},
+    DebugLabel, RenderContext,
+};
 
 struct UniformBufferAlignmentCheck<T> {
     pub _marker: std::marker::PhantomData<T>,
@@ -35,6 +38,38 @@ impl<T> UniformBufferAlignmentCheck<T> {
     );
 }
 
+pub struct UniformBatchBinding {
+    buffer_handle: GpuBufferHandle,
+    binding_size: std::num::NonZeroU64,
+    num_buffers: u64,
+}
+
+impl UniformBatchBinding {
+    /// Binding for first buffer in the batch.
+    ///
+    /// Can be used with dynamic offsets to reach all buffers in the batch.
+    /// Use this to reduce the number of bind groups you need to create.
+    pub fn use_dynamic_offset(self) -> BindGroupEntry {
+        BindGroupEntry::Buffer {
+            handle: self.buffer_handle,
+            offset: 0,
+            size: Some(self.binding_size),
+        }
+    }
+
+    /// Create a buffer binding for each batch.
+    ///
+    /// Prefer [`Self::use_dynamic_offset`] if it can be used to reduce the number of created bind groups.
+    /// (if not, this method usually simpler)
+    pub fn use_separate_bindings(self) -> impl Iterator<Item = BindGroupEntry> {
+        (0..self.num_buffers).map(move |i| BindGroupEntry::Buffer {
+            handle: self.buffer_handle,
+            offset: i * self.binding_size.get(),
+            size: Some(self.binding_size),
+        })
+    }
+}
+
 /// Utility for fast & efficient creation of uniform buffers from a series of structs.
 ///
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).
@@ -44,16 +79,22 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     ctx: &RenderContext,
     label: DebugLabel,
     content: impl ExactSizeIterator<Item = T>,
-) -> Vec<BindGroupEntry> {
+) -> UniformBatchBinding {
     #[allow(clippy::let_unit_value)]
     let _ = UniformBufferAlignmentCheck::<T>::CHECK;
 
+    let element_size = std::mem::size_of::<T>() as u64;
+    let binding_size = std::num::NonZeroU64::new(element_size).unwrap();
+
     if content.len() == 0 {
-        return vec![];
+        return UniformBatchBinding {
+            buffer_handle: GpuBufferHandle::default(),
+            binding_size,
+            num_buffers: 0,
+        };
     }
 
     let num_buffers = content.len() as u64;
-    let element_size = std::mem::size_of::<T>() as u64;
 
     assert!(
         element_size > 0,
@@ -78,13 +119,11 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     staging_buffer.extend(content);
     staging_buffer.copy_to_buffer(ctx.active_frame.encoder.lock().get(), &buffer, 0);
 
-    (0..num_buffers)
-        .map(|i| BindGroupEntry::Buffer {
-            handle: buffer.handle,
-            offset: i * element_size,
-            size: Some(std::num::NonZeroU64::new(element_size).unwrap()),
-        })
-        .collect()
+    UniformBatchBinding {
+        buffer_handle: buffer.handle,
+        binding_size,
+        num_buffers,
+    }
 }
 
 /// See [`create_and_fill_uniform_buffer`].
@@ -93,8 +132,5 @@ pub fn create_and_fill_uniform_buffer<T: bytemuck::Pod>(
     label: DebugLabel,
     content: T,
 ) -> BindGroupEntry {
-    create_and_fill_uniform_buffer_batch(ctx, label, std::iter::once(content))
-        .into_iter()
-        .next()
-        .unwrap()
+    create_and_fill_uniform_buffer_batch(ctx, label, std::iter::once(content)).use_dynamic_offset()
 }

@@ -170,7 +170,10 @@ impl DepthCloudDrawData {
         );
 
         let mut instances = Vec::with_capacity(depth_clouds.len());
-        for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
+        for (depth_cloud, ubo) in depth_clouds
+            .iter()
+            .zip(depth_cloud_ubos.use_separate_bindings())
+        {
             let depth_texture = match &depth_cloud.depth_data {
                 // On native, we can use D16 textures without issues, but they aren't supported on
                 // the web (and won't ever be on the WebGL backend, see

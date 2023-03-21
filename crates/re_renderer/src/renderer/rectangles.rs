@@ -158,8 +158,9 @@ impl RectangleDrawData {
         );
 
         let mut instances = Vec::with_capacity(rectangles.len());
-        for (rectangle, uniform_buffer) in
-            rectangles.iter().zip(uniform_buffer_bindings.into_iter())
+        for (rectangle, uniform_buffer) in rectangles
+            .iter()
+            .zip(uniform_buffer_bindings.use_separate_bindings())
         {
             let texture = ctx.texture_manager_2d.get(&rectangle.texture)?;
 

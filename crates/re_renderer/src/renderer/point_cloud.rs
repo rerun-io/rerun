@@ -68,6 +68,14 @@ mod gpu_data {
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 
+    /// Uniform buffer that changes with each draw data.
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DrawDataUniformBuffer {
+        pub minimum_size_in_points: wgpu_buffer_types::F32RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
+
     /// Uniform buffer that changes for every batch of points.
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -319,7 +327,7 @@ impl PointCloudDrawData {
             &ctx.device,
             &ctx.gpu_resources,
             &BindGroupDesc {
-                label: "line drawdata".into(),
+                label: "point drawdata".into(),
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(color_texture.handle),
@@ -370,11 +378,12 @@ impl PointCloudDrawData {
                         .collect::<Vec<_>>()
                         .into_iter(),
                 )
-                .into_iter();
+                .use_separate_bindings();
 
             let mut start_point_for_next_batch = 0;
-            for (batch_info, uniform_buffer_binding) in
-                batches.iter().zip(uniform_buffer_bindings.into_iter())
+            for (batch_info, uniform_buffer_binding) in batches
+                .iter()
+                .zip(uniform_buffer_bindings.use_separate_bindings())
             {
                 let point_vertex_range_end = (start_point_for_next_batch + batch_info.point_count)
                     .min(Self::MAX_NUM_POINTS as u32);

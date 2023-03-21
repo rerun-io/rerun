@@ -566,7 +566,7 @@ impl OutlineMaskProcessor {
             },
         );
         let uniform_buffer_jumpflooding_steps = uniform_buffer_jumpflooding_steps_bindings
-            .into_iter()
+            .use_separate_bindings()
             .enumerate()
             .map(|(i, uniform_buffer_binding)| {
                 ctx.gpu_resources.bind_groups.alloc(
