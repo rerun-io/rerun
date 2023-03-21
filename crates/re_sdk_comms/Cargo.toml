@@ -35,3 +35,4 @@ bincode = "1.3"
 crossbeam = "0.8"
 document-features = "0.2"
 rand = { version = "0.8.5", features = ["small_rng"] }
+tokio.workspace = true

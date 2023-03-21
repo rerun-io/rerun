@@ -73,8 +73,7 @@ pub struct App {
     state: AppState,
 
     /// Set to `true` on Ctrl-C.
-    #[cfg(not(target_arch = "wasm32"))]
-    ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
 
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
@@ -109,27 +108,10 @@ impl App {
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
+        shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
-        #[cfg(not(target_arch = "wasm32"))]
-        let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger));
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
-
-            let ctrl_c = ctrl_c.clone();
-            let egui_ctx = re_ui.egui_ctx.clone();
-
-            ctrlc::set_handler(move || {
-                re_log::debug!("Ctrl-C detected - Closing viewer.");
-                ctrl_c.store(true, std::sync::atomic::Ordering::SeqCst);
-                egui_ctx.request_repaint(); // so that we notice that we should close
-            })
-            .expect("Error setting Ctrl-C handler");
-        }
 
         let state: AppState = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
@@ -147,8 +129,7 @@ impl App {
             rx,
             log_dbs: Default::default(),
             state,
-            #[cfg(not(target_arch = "wasm32"))]
-            ctrl_c,
+            shutdown,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
@@ -436,8 +417,8 @@ impl eframe::App for App {
             self.icon_status = setup_app_icon();
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
+        if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
+            #[cfg(not(target_arch = "wasm32"))]
             frame.close();
             return;
         }

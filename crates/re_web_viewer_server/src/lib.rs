@@ -159,8 +159,15 @@ impl WebViewerServer {
         Self { server }
     }
 
-    pub async fn serve(self) -> anyhow::Result<()> {
-        self.server.await?;
+    pub async fn serve(
+        self,
+        mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+    ) -> anyhow::Result<()> {
+        self.server
+            .with_graceful_shutdown(async {
+                shutdown_rx.recv().await.ok();
+            })
+            .await?;
         Ok(())
     }
 }

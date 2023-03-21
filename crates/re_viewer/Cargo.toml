@@ -110,7 +110,6 @@ wgpu.workspace = true
 arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
-ctrlc = { version = "3.0", features = ["termination"] }
 puffin_http = "0.11"
 puffin.workspace = true
 
