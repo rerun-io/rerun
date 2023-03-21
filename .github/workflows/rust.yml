@@ -5,6 +5,13 @@ on:
     branches:
       - "main"
   pull_request:
+  workflow_dispatch:
+    inputs:
+      force_update_web_build:
+        description: "Upload web build to google cloud"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
@@ -202,8 +209,8 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          toolchain: 1.67.0
+          profile: default
+          toolchain: 1.67.1
           target: wasm32-unknown-unknown
           override: true
 
@@ -214,11 +221,8 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
-      - name: Check re_viewer wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --all-features --lib --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer
+      - name: clippy check re_viewer wasm32
+        run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
@@ -231,6 +235,69 @@ jobs:
         with:
           command: run
           args: --locked -p re_build_web_viewer -- --debug
+
+  # ---------------------------------------------------------------------------
+
+  rs-build-web-viewer:
+    name: Upload web build to google cloud (wasm32 + wasm-bindgen)
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.force_update_web_build
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.6
+      env:
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.67.0
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --release
+
+      # Upload the wasm, html etc to a Google cloud bucket:
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-8`" >> $GITHUB_ENV
+
+      - name: "Upload web-viewer"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/commit/${{env.SHORT_SHA}}"
+          parent: false
+
+      - name: "Upload web-viewer (tagged)"
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/version/${{github.ref_name}}"
+          parent: false
 
   # ---------------------------------------------------------------------------
 

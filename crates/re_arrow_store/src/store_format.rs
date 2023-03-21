@@ -231,7 +231,7 @@ impl std::fmt::Display for IndexBucket {
                 "time range: N/A\n".to_owned()
             }
         };
-        f.write_fmt(format_args!("{}\n", time_range))?;
+        f.write_fmt(format_args!("{time_range}\n"))?;
 
         let (timeline_name, times) = self.times();
         let (col_names, cols): (Vec<_>, Vec<_>) = {

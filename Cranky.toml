@@ -104,6 +104,7 @@ warn = [
   "clippy::unchecked_duration_subtraction",
   "clippy::undocumented_unsafe_blocks",
   "clippy::unimplemented",
+  "clippy::uninlined_format_args",
   "clippy::unnecessary_safety_doc",
   "clippy::unnecessary_wraps",
   "clippy::unnested_or_patterns",

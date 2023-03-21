@@ -51,5 +51,5 @@ pub fn setup_web_logging() {
     log::set_max_level(log::LevelFilter::Debug);
     crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
         log::LevelFilter::Debug,
-    )))
+    )));
 }
