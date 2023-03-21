@@ -175,12 +175,12 @@ impl MeshDrawData {
             },
         );
 
-        let mut instances_by_mesh: HashMap<_, Vec<_>> = HashMap::with_capacity(instances.len());
+        let mut instances_by_mesh: HashMap<_, Vec<_>> = HashMap::new();
         for instance in instances {
             if !matches!(instance.gpu_mesh, ResourceHandle::Invalid) {
                 instances_by_mesh
                     .entry(&instance.gpu_mesh)
-                    .or_default()
+                    .or_insert_with(|| Vec::with_capacity(instances.len()))
                     .push(instance);
             }
         }
