@@ -143,6 +143,11 @@ impl View3DState {
             } else {
                 self.eye_interpolation = None;
             }
+
+            if 1.0 <= t {
+                // We have arrived at our target
+                self.eye_interpolation = None;
+            }
         }
 
         orbit_camera
@@ -151,6 +156,7 @@ impl View3DState {
     fn interpolate_to_eye(&mut self, target: Eye) {
         if let Some(start) = self.orbit_eye {
             let target_time = EyeInterpolation::target_time(&start.to_eye(), &target);
+            self.spin = false; // the user wants to move the camera somewhere, so stop spinning
             self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
@@ -166,6 +172,7 @@ impl View3DState {
     fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
         if let Some(start) = self.orbit_eye {
             let target_time = EyeInterpolation::target_time(&start.to_eye(), &target.to_eye());
+            self.spin = false; // the user wants to move the camera somewhere, so stop spinning
             self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
