@@ -2,7 +2,6 @@
 
 use std::time::Instant;
 
-use anyhow::Context as _;
 use rand::{Rng as _, SeedableRng};
 
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
@@ -36,10 +35,12 @@ async fn listen_for_new_clients(
 ) {
     let bind_addr = format!("0.0.0.0:{port}");
 
-    let listener = TcpListener::bind(&bind_addr)
-        .await
-        .with_context(|| format!("Failed to bind TCP address {bind_addr:?}"))
-        .unwrap();
+    let Ok(listener) = TcpListener::bind(&bind_addr).await else {
+        re_log::error!(
+            "Failed to bind TCP address {bind_addr:?}. Another Rerun instance is probably running."
+        );
+        return;
+    };
 
     if options.quiet {
         re_log::debug!(
