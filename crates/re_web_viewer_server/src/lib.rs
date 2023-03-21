@@ -70,7 +70,10 @@ impl Service<Request<Body>> for Svc {
         let response = Response::builder();
 
         let (mime, bytes) = match req.uri().path() {
-            "/" | "/index.html" => ("text/html", &include_bytes!("../web_viewer/index.html")[..]),
+            "/" | "/index.html" => (
+                "text/html",
+                &include_bytes!("../web_viewer/index_bundled.html")[..],
+            ),
             "/favicon.ico" => (
                 "image/vnd.microsoft.icon",
                 &include_bytes!("../web_viewer/favicon.ico")[..],

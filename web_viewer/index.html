@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- The version of index.html that will be served by app.rerun.io -->
 <html>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
@@ -133,8 +134,18 @@
         function on_wasm_loaded() {
             console.debug("wasm loaded. starting app…");
 
+            // The expected data path is the current pathname relocated to inside of "/data" with the
+            // index.html stripped off if it's present.
+            // exa: 'https://app.rerun.io/version/v4.0.0/index.html' -> '/data/version/v4.0.0/'
+            let data_path = "/data" + window.location.pathname.replace(/index\.html$/, '');
+
+            const url_params = new URLSearchParams(window.location.search);
+            const rrd_file = url_params.get('file') || 'fiat.rrd';
+
+            // By default look up
+            let url = data_path + rrd_file; // you can use this to point to an .rrd file over http, or a WebSocket Rerun server.
+
             // This call installs a bunch of callbacks and then returns:
-            let url = null; // you can use this to point to an .rrd file over http, or a WebSocket Rerun server.
             wasm_bindgen.start("the_canvas_id", url);
 
             console.debug("app started.");
