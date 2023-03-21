@@ -8,7 +8,7 @@ static HAS_MULTI_LOGGER: AtomicBool = AtomicBool::new(false);
 
 /// Produced when trying to install additional loggers when [`init`] has not been called.
 ///
-/// This can happend for example when users of the `rerun` crate use the `spawn` method,
+/// This can happen for example when users of the `rerun` crate use the `spawn` method,
 /// and they aren't using `re_log`.
 #[derive(Clone, Copy, Debug)]
 pub struct MultiLoggerNotSetupError {}
