@@ -111,7 +111,12 @@ impl App {
         shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-        re_log::add_boxed_logger(Box::new(logger));
+        if re_log::add_boxed_logger(Box::new(logger)).is_err() {
+            // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
+            re_log::debug!(
+                "re_log not initialized - we won't see any log messages as GUI notifications"
+            );
+        }
 
         let state: AppState = storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))

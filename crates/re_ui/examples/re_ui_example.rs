@@ -54,7 +54,7 @@ pub struct ExampleApp {
 impl ExampleApp {
     fn new(re_ui: re_ui::ReUi) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-        re_log::add_boxed_logger(Box::new(logger));
+        re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
         let tree = egui_dock::Tree::new(vec![1, 2, 3]);
 

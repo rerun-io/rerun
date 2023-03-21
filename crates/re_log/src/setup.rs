@@ -42,7 +42,7 @@ pub fn setup_native_logging() {
 
     let mut stderr_logger = env_logger::Builder::new();
     stderr_logger.parse_filters(&log_filter);
-    crate::add_boxed_logger(Box::new(stderr_logger.build()));
+    crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
 }
 
 #[cfg(target_arch = "wasm32")]
