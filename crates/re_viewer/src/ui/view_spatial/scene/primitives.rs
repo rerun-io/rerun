@@ -109,7 +109,14 @@ impl SceneSpatialPrimitives {
             // This prevents crazy bounds-increases when projecting 3d to 2d
             // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
-                let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+                let mut radius: f32 = 0.0;
+                let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| {
+                    if let Some(r) = v.radius.scene() {
+                        radius = radius.max(r);
+                    }
+                    v.position
+                }))
+                .expanded(glam::Vec3::new(radius, radius, radius));
                 *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
             }
         }
