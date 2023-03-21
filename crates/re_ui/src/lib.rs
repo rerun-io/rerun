@@ -3,6 +3,7 @@
 mod command;
 mod command_palette;
 mod design_tokens;
+pub mod egui_helpers;
 pub mod icons;
 mod static_image_cache;
 pub mod toasts;

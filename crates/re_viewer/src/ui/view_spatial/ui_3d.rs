@@ -312,9 +312,11 @@ pub fn view_3d(
         highlights,
     );
 
+    let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx());
+
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     // Check if we're hovering any hover primitive.
-    if let Some(pointer_pos) = response.hover_pos() {
+    if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
         let picking_result =
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
 
