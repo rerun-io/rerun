@@ -7,8 +7,7 @@ use crate::{
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
     renderer::{
-        compositor::CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor,
-        Renderer,
+        CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
     },
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,

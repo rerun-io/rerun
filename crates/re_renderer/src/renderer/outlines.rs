@@ -1,11 +1,11 @@
 //! Outlines as postprocessing effect.
 //!
-//! This module provides the [`OutlineMaskProcessor`] which handles render passes around outlines
-//! and [`OutlineCompositor`] which handles compositing the outlines into the final image.
+//! This module provides the [`OutlineMaskProcessor`] which handles render passes around outlines.
+//! The outlines themselves are evaluated and drawn by the main compositor.
 //!
 //! There are two channels (in shader code referred to as A and B) that are handled simultaneously.
 //! For configuring the look of the outline refer to [`OutlineConfig`].
-//! For setting outlines for an individual primitive from another [`Renderer`]/[`DrawData`],
+//! For setting outlines for an individual primitive from another [`super::Renderer`]/[`super::DrawData`],
 //! check for [`OutlineMaskPreference`] settings on that primitive.
 //!
 //! How it works:
