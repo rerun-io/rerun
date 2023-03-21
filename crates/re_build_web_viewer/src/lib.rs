@@ -128,13 +128,7 @@ pub fn build(release: bool) {
         let mut cmd = std::process::Command::new("wasm-opt");
 
         // TODO(emilk): add `-g` to keep debug symbols; useful for profiling release builds in the in-browser profiler.
-        cmd.args([
-            wasm_path.as_str(),
-            "-O2",
-            "--fast-math",
-            "-o",
-            wasm_path.as_str(),
-        ]);
+        cmd.args([wasm_path.as_str(), "-O2", "--output", wasm_path.as_str()]);
 
         eprintln!("> {cmd:?}");
         let status = cmd
