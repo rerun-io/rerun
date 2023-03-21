@@ -7,6 +7,7 @@ mod allocation_tracker;
 mod memory_history;
 mod memory_limit;
 mod memory_use;
+mod ram_warner;
 pub mod util;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -23,7 +24,7 @@ use backtrace_web::Backtrace;
 
 pub use {
     accounting_allocator::AccountingAllocator, memory_history::MemoryHistory,
-    memory_limit::MemoryLimit, memory_use::MemoryUse,
+    memory_limit::MemoryLimit, memory_use::MemoryUse, ram_warner::*,
 };
 
 /// Number of allocation and their total size.
