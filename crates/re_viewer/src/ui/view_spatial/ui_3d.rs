@@ -18,7 +18,7 @@ use crate::{
             scene::AdditionalPickingInfo,
             ui::{create_labels, outline_config},
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            SceneSpatial, SpaceCamera3D,
+            SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
         SpaceViewId, UiVerbosity,
     },
@@ -317,6 +317,7 @@ pub fn view_3d(
         &eye,
         ui,
         highlights,
+        SpatialNavigationMode::ThreeD,
     );
 
     let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx());

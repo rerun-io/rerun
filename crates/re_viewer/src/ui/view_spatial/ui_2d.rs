@@ -7,7 +7,10 @@ use re_data_store::EntityPath;
 use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
-use super::{eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, ViewSpatialState};
+use super::{
+    eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, SpatialNavigationMode,
+    ViewSpatialState,
+};
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
@@ -312,6 +315,7 @@ fn view_2d_scrollable(
         &eye,
         parent_ui,
         highlights,
+        SpatialNavigationMode::TwoD,
     );
 
     let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(parent_ui.ctx());
