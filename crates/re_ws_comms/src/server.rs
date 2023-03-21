@@ -40,7 +40,7 @@ impl Server {
         Ok(Self { listener })
     }
 
-    /// Accept new connections forever
+    /// Accept new connections until we get a message on `shutdown_rx`
     pub async fn listen(
         self,
         rx: Receiver<LogMsg>,
