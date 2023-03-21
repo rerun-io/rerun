@@ -403,12 +403,14 @@ impl ViewSpatialState {
         highlights: &SpaceViewHighlights,
     ) {
         self.scene_bbox = scene.primitives.bounding_box();
-
-        if self.nav_mode.is_auto() {
+        if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
-            self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
         } else {
             self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
+        }
+
+        if self.nav_mode.is_auto() {
+            self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
         }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
