@@ -5,14 +5,14 @@
 
 use std::sync::Arc;
 
-use itertools::Itertools as _;
+use ahash::{HashMap, HashMapExt};
 use smallvec::smallvec;
 
 use crate::{
     include_file,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
     renderer::OutlineMaskProcessor,
-    resource_managers::GpuMeshHandle,
+    resource_managers::{GpuMeshHandle, ResourceHandle},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
@@ -175,6 +175,16 @@ impl MeshDrawData {
             },
         );
 
+        let mut instances_by_mesh: HashMap<_, Vec<_>> = HashMap::with_capacity(instances.len());
+        for instance in instances {
+            if !matches!(instance.gpu_mesh, ResourceHandle::Invalid) {
+                instances_by_mesh
+                    .entry(&instance.gpu_mesh)
+                    .or_default()
+                    .push(instance);
+            }
+        }
+
         let mut batches = Vec::new();
         {
             let mut instance_buffer_staging = ctx
@@ -188,13 +198,12 @@ impl MeshDrawData {
 
             let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
-            // TODO(#1530) This grouping doesn't seem to do its job correctly. We're not actually batching correctly right now in all cases.
-            for (mesh, instances) in &instances.iter().group_by(|instance| &instance.gpu_mesh) {
+            for (mesh, mut instances) in instances_by_mesh {
                 let mut count = 0;
                 let mut count_with_outlines = 0;
 
                 // Put all instances with outlines at the start of the instance buffer range.
-                let instances = instances.sorted_by(|a, b| {
+                instances.sort_by(|a, b| {
                     a.outline_mask_ids
                         .is_none()
                         .cmp(&b.outline_mask_ids.is_none())
@@ -232,7 +241,8 @@ impl MeshDrawData {
                 }
                 num_processed_instances += count;
 
-                // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
+                // We resolve the meshes here already, so the actual draw call doesn't need to
+                // know about the MeshManager.
                 let mesh = mesh_manager.get(mesh)?;
                 batches.push(MeshBatch {
                     mesh: mesh.clone(),

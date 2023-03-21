@@ -5,7 +5,7 @@ use slotmap::{Key, SlotMap};
 use crate::wgpu_resources::PoolError;
 
 /// Handle to a resource that is stored in a resource manager.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ResourceHandle<InnerHandle: slotmap::Key> {
     /// Resource handle that keeps the resource alive as long as there are handles.
     ///
