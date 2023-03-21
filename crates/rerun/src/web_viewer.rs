@@ -11,7 +11,7 @@ struct RemoteViewerServer {
 impl Drop for RemoteViewerServer {
     fn drop(&mut self) {
         re_log::info!("Shutting down web server.");
-        self.shutdown_tx.send(()).unwrap();
+        self.shutdown_tx.send(()).ok();
     }
 }
 
