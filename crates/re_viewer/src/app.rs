@@ -81,7 +81,6 @@ pub struct App {
     /// Toast notifications.
     toasts: toasts::Toasts,
 
-    latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
@@ -132,7 +131,6 @@ impl App {
             shutdown,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
-            latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
 
@@ -744,11 +742,6 @@ impl App {
         use re_format::format_bytes;
         use re_memory::MemoryUse;
 
-        if self.latest_memory_purge.elapsed() < instant::Duration::from_secs(10) {
-            // Pruning introduces stutter, and we don't want to stutter too often.
-            return;
-        }
-
         let limit = self.startup_options.memory_limit;
         let mem_use_before = MemoryUse::capture();
 
@@ -791,8 +784,6 @@ impl App {
                     100.0 * counted_diff as f32 / counted_before as f32
                 );
             }
-
-            self.latest_memory_purge = instant::Instant::now();
 
             self.memory_panel.note_memory_purge();
         }
