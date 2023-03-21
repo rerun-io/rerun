@@ -93,20 +93,22 @@ impl Points3DPart {
         Ok(colors)
     }
 
-    fn process_radii(
-        entity_view: &EntityView<Point3D>,
-    ) -> Result<impl Iterator<Item = Size> + '_, QueryError> {
-        Ok(entity_view.iter_component::<Radius>()?.map(|radius| {
+    fn process_radii<'view>(
+        ent_path: &EntityPath,
+        entity_view: &'view EntityView<Point3D>,
+    ) -> Result<impl Iterator<Item = Size> + 'view, QueryError> {
+        let ent_path = ent_path.clone();
+        Ok(entity_view.iter_component::<Radius>()?.map(move |radius| {
             radius.map_or(Size::AUTO, |r| {
                 if 0.0 <= r.0 && r.0.is_finite() {
                     Size::new_scene(r.0)
                 } else {
                     if r.0 < 0.0 {
-                        re_log::warn_once!("Found point with negative radius");
+                        re_log::warn_once!("Found point with negative radius in entity {ent_path}");
                     } else if r.0.is_infinite() {
-                        re_log::warn_once!("Found point with infinite radius");
+                        re_log::warn_once!("Found point with infinite radius in entity {ent_path}");
                     } else {
-                        re_log::warn_once!("Found point with NaN radius");
+                        re_log::warn_once!("Found point with NaN radius in entity {ent_path}");
                     }
                     Size::AUTO
                 }
@@ -191,7 +193,7 @@ impl Points3DPart {
         };
 
         let colors = Self::process_colors(entity_view, ent_path, &annotation_infos)?;
-        let radii = Self::process_radii(entity_view)?;
+        let radii = Self::process_radii(ent_path, entity_view)?;
 
         if show_labels && instance_path_hashes_for_picking.len() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
