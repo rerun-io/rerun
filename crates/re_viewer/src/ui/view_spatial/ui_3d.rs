@@ -143,6 +143,10 @@ impl View3DState {
             } else {
                 self.eye_interpolation = None;
             }
+
+            if t >= 1.0 {
+                self.eye_interpolation = None;
+            }
         }
 
         orbit_camera
