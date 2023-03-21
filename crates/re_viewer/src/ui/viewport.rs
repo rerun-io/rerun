@@ -247,7 +247,7 @@ impl Viewport {
                         }
                         if re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove group and all its children from the space view.")
+                            .on_hover_text("Remove Entity from the space view.")
                             .clicked()
                         {
                             space_view.data_blueprint.remove_entity(entity_path);
@@ -295,7 +295,7 @@ impl Viewport {
                         );
                         if re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove Entity from the space view.")
+                            .on_hover_text("Remove group and all its children from the space view.")
                             .clicked()
                         {
                             remove_group = true;
