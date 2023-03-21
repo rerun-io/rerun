@@ -25,7 +25,7 @@ mod encoder {
         MsgPack(#[from] rmp_serde::encode::Error),
 
         #[error("Called append on already finished encoder")]
-        AlreadyFinshed,
+        AlreadyFinished,
     }
 
     /// Encode a stream of [`LogMsg`] into an `.rrd` file.
@@ -82,7 +82,7 @@ mod encoder {
 
                 Ok(())
             } else {
-                Err(EncodeError::AlreadyFinshed)
+                Err(EncodeError::AlreadyFinished)
             }
         }
 
