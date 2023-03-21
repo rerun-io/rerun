@@ -6,6 +6,7 @@ The example from our Getting Started page.
 `examples/python/dna/main.py`
 """
 
+import sys
 from math import tau
 
 import numpy as np
@@ -13,6 +14,9 @@ import rerun as rr
 from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
 from scipy.spatial.transform import Rotation
+
+# sanity-check since all other example scripts take arguments:
+assert len(sys.argv) == 1, f"{sys.argv[0]} does not take any arguments"
 
 rr.init("DNA Abacus")
 
