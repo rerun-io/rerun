@@ -96,9 +96,22 @@ impl Points3DPart {
     fn process_radii(
         entity_view: &EntityView<Point3D>,
     ) -> Result<impl Iterator<Item = Size> + '_, QueryError> {
-        Ok(entity_view
-            .iter_component::<Radius>()?
-            .map(|radius| radius.map_or(Size::AUTO, |r| Size::new_scene(r.0))))
+        Ok(entity_view.iter_component::<Radius>()?.map(|radius| {
+            radius.map_or(Size::AUTO, |r| {
+                if 0.0 <= r.0 && r.0.is_finite() {
+                    Size::new_scene(r.0)
+                } else {
+                    if r.0 < 0.0 {
+                        re_log::warn_once!("Found point with negative radius");
+                    } else if r.0.is_infinite() {
+                        re_log::warn_once!("Found point with infinite radius");
+                    } else {
+                        re_log::warn_once!("Found point with NaN radius");
+                    }
+                    Size::AUTO
+                }
+            })
+        }))
     }
 
     fn process_labels<'a>(
