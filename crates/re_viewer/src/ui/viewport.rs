@@ -323,8 +323,26 @@ impl Viewport {
         self.has_been_user_edited = true;
     }
 
-    pub(crate) fn add_space_view(&mut self, space_view: SpaceView) -> SpaceViewId {
+    pub(crate) fn add_space_view(&mut self, mut space_view: SpaceView) -> SpaceViewId {
         let id = space_view.id;
+
+        // Find a unique name for the space view
+        let mut candidate_name = space_view.display_name.clone();
+        let mut append_count = 1;
+        let unique_name = 'outer: loop {
+            for view in &self.space_views {
+                if candidate_name == view.1.display_name {
+                    append_count += 1;
+                    candidate_name = format!("{} ({})", space_view.display_name, append_count);
+
+                    continue 'outer;
+                }
+            }
+            break candidate_name;
+        };
+
+        space_view.display_name = unique_name;
+
         self.space_views.insert(id, space_view);
         self.visible.insert(id);
         self.trees.clear(); // Reset them
