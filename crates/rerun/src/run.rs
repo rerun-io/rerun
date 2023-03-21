@@ -1,3 +1,5 @@
+use std::sync::{atomic::AtomicBool, Arc};
+
 use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::Receiver;
 
@@ -251,7 +253,7 @@ async fn run_impl(
         }),
     };
 
-    let shutdown_rx = setup_ctrl_c_handler();
+    let (shutdown_rx, shutdown_bool) = setup_ctrl_c_handler();
 
     // Where do we get the data from?
     let rx = if let Some(url_or_path) = args.url_or_path.clone() {
@@ -361,6 +363,7 @@ async fn run_impl(
                 re_ui,
                 cc.storage,
                 rx,
+                shutdown_bool,
             );
             app.set_profiler(profiler);
             Box::new(app)
@@ -469,12 +472,15 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
     })
 }
 
-pub fn setup_ctrl_c_handler() -> tokio::sync::broadcast::Receiver<()> {
+pub fn setup_ctrl_c_handler() -> (tokio::sync::broadcast::Receiver<()>, Arc<AtomicBool>) {
     let (sender, receiver) = tokio::sync::broadcast::channel(1);
+    let shutdown_return = Arc::new(AtomicBool::new(false));
+    let shutdown = shutdown_return.clone();
     ctrlc::set_handler(move || {
         re_log::debug!("Ctrl-C detected, shutting down.");
         sender.send(()).unwrap();
+        shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
     })
     .expect("Error setting Ctrl-C handler");
-    receiver
+    (receiver, shutdown_return)
 }

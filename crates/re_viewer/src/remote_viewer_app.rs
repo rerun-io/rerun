@@ -71,6 +71,7 @@ impl RemoteViewerApp {
                     self.re_ui.clone(),
                     storage,
                     rx,
+                    std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
                 );
 
                 self.app = Some((connection, app));

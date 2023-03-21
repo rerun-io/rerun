@@ -4087,7 +4087,6 @@ dependencies = [
  "bytemuck",
  "cocoa",
  "console_error_panic_hook",
- "ctrlc",
  "eframe",
  "egui",
  "egui-wgpu",
