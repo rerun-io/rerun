@@ -209,8 +209,8 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
-          toolchain: 1.67.0
+          profile: default
+          toolchain: 1.67.1
           target: wasm32-unknown-unknown
           override: true
 
@@ -221,11 +221,8 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
-      - name: Check re_viewer wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --all-features --lib --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer
+      - name: clippy check re_viewer wasm32
+        run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1

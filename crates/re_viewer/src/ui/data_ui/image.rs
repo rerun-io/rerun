@@ -96,6 +96,7 @@ impl DataUi for Tensor {
                         }
                     }
 
+                    #[allow(clippy::collapsible_match)] // false positive on wasm32
                     if let Some(dynamic_img) = tensor_view.dynamic_img() {
                         // TODO(emilk): support copying and saving images on web
                         #[cfg(not(target_arch = "wasm32"))]
@@ -342,10 +343,10 @@ pub fn show_zoomed_image_region(
                 let tensor = tensor_view.tensor;
 
                 let text = match tensor.num_dim() {
-                    2 => tensor.get(&[x, y]).map(|v| format!("Val: {}", v)),
+                    2 => tensor.get(&[x, y]).map(|v| format!("Val: {v}")),
                     3 => match tensor.shape()[2].size {
                         0 => Some("Cannot preview 0-size channel".to_owned()),
-                        1 => tensor.get(&[x, y, 0]).map(|v| format!("Val: {}", v)),
+                        1 => tensor.get(&[x, y, 0]).map(|v| format!("Val: {v}")),
                         3 => {
                             // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                             if let (Some(r), Some(g), Some(b)) = (
@@ -395,11 +396,11 @@ pub fn show_zoomed_image_region(
                             }
                         },
                         channels => {
-                            Some(format!("Cannot preview {}-channel image", channels))
+                            Some(format!("Cannot preview {channels}-channel image"))
                         }
                     },
                     dims => {
-                        Some(format!("Cannot preview {}-dimensional image", dims))
+                        Some(format!("Cannot preview {dims}-dimensional image"))
                     }
                 };
 

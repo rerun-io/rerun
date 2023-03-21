@@ -61,7 +61,7 @@ fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(re_log_types::LogMsg) + Sen
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(re_log_types::LogMsg) + Send>) {
-        wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg))
+        wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
