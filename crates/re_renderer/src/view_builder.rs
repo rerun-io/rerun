@@ -7,8 +7,7 @@ use crate::{
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
     renderer::{
-        compositor::CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor,
-        Renderer,
+        CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
     },
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,
@@ -278,7 +277,23 @@ impl ViewBuilder {
             },
         );
 
-        self.queue_draw(&CompositorDrawData::new(ctx, &main_target_resolved));
+        self.outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
+            OutlineMaskProcessor::new(
+                ctx,
+                outline_config,
+                &config.name,
+                config.resolution_in_pixel,
+            )
+        });
+
+        self.queue_draw(&CompositorDrawData::new(
+            ctx,
+            &main_target_resolved,
+            self.outline_mask_processor
+                .as_ref()
+                .map(|p| p.final_voronoi_texture()),
+            &config.outline_config,
+        ));
 
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
@@ -421,15 +436,6 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
-        self.outline_mask_processor = config.outline_config.map(|outline_config| {
-            OutlineMaskProcessor::new(
-                ctx,
-                &outline_config,
-                &config.name,
-                config.resolution_in_pixel,
-            )
-        });
-
         self.setup = Some(ViewTargetSetup {
             name: config.name,
             bind_group_0,
@@ -550,9 +556,7 @@ impl ViewBuilder {
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass);
             }
-            self.queue_draw(
-                &outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?,
-            );
+            outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?;
         }
 
         Ok(encoder.finish())

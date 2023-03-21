@@ -25,7 +25,8 @@ mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
 pub use mesh_renderer::{MeshDrawData, MeshInstance};
 
-pub mod compositor;
+mod compositor;
+pub(crate) use compositor::CompositorDrawData;
 
 mod outlines;
 pub(crate) use outlines::OutlineMaskProcessor;

@@ -86,12 +86,6 @@ pub fn init() {
     }
 
     {
-        let virtpath = Path::new("shader/outlines/outlines_from_voronoi.wgsl");
-        let content = include_str!("../shader/outlines/outlines_from_voronoi.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
         let virtpath = Path::new("shader/point_cloud.wgsl");
         let content = include_str!("../shader/point_cloud.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
