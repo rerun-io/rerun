@@ -266,17 +266,20 @@ impl OrbitEye {
         let mut did_interact = false;
 
         if response.drag_delta().length() > drag_threshold {
-            if response.dragged_by(egui::PointerButton::Primary) {
+            if response.dragged_by(egui::PointerButton::Middle)
+                || (response.dragged_by(egui::PointerButton::Primary)
+                    && response.ctx.input(|i| i.modifiers.alt))
+            {
+                if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
+                    self.roll(&response.rect, pointer_pos, response.drag_delta());
+                    did_interact = true;
+                }
+            } else if response.dragged_by(egui::PointerButton::Primary) {
                 self.rotate(response.drag_delta());
                 did_interact = true;
             } else if response.dragged_by(egui::PointerButton::Secondary) {
                 self.translate(response.drag_delta());
                 did_interact = true;
-            } else if response.dragged_by(egui::PointerButton::Middle) {
-                if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
-                    self.roll(&response.rect, pointer_pos, response.drag_delta());
-                    did_interact = true;
-                }
             }
         }
 
