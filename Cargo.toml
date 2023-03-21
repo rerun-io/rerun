@@ -55,7 +55,6 @@ arrow2 = "0.16"
 arrow2_convert = "0.4.2"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
-ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
 egui = "0.21.0"

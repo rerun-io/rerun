@@ -74,18 +74,6 @@ impl RerunArgs {
         default_enabled: bool,
         run: impl FnOnce(Session) + Send + 'static,
     ) -> anyhow::Result<()> {
-        // Ensure we have a running tokio runtime.
-        #[allow(unused_assignments)]
-        let mut tokio_runtime = None;
-        let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle
-        } else {
-            tokio_runtime =
-                Some(tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
-            tokio_runtime.as_ref().unwrap().handle().clone()
-        };
-        let _tokio_runtime_guard = tokio_runtime_handle.enter();
-
         let (rerun_enabled, recording_info) = crate::SessionBuilder::new(application_id)
             .default_enabled(default_enabled)
             .finalize();
@@ -114,17 +102,12 @@ impl RerunArgs {
         };
 
         let session = Session::new(recording_info, sink);
-        let _sink = session.sink().clone(); // Keep sink (and potential associated servers) alive until the end of this function scope.
         run(session);
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
-            use anyhow::Context as _;
-
-            let mut shutdown_rx = crate::run::setup_ctrl_c_handler();
-            return tokio_runtime_handle
-                .block_on(async { shutdown_rx.recv().await })
-                .context("Failed to wait for shutdown signal.");
+            eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C");
+            std::thread::sleep(std::time::Duration::from_secs(1_000_000_000));
         }
 
         Ok(())
