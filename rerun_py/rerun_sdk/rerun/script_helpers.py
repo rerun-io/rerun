@@ -18,9 +18,7 @@ rr.script_teardown(args)
 ```
 
 """
-import contextlib
 from argparse import ArgumentParser, Namespace
-from time import sleep
 
 import rerun as rr
 
@@ -93,6 +91,10 @@ def script_teardown(args: Namespace) -> None:
 
     """
     if args.serve:
+        import signal
+        from threading import Event
+
+        exit = Event()
+        signal.signal(signal.SIGINT, lambda sig, frame: exit.set())
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        with contextlib.suppress(Exception):
-            sleep(1_000_000_000)
+        exit.wait()

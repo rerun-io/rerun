@@ -295,7 +295,12 @@ fn serve(open_browser: bool) -> PyResult<()> {
             return Ok(());
         }
 
+        use once_cell::sync::Lazy;
+        static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+            Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
+        let _guard = TOKIO_RUNTIME.enter();
         session.set_sink(rerun::web_viewer::new_sink(open_browser));
+
         Ok(())
     }
 
