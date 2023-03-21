@@ -355,6 +355,14 @@ async fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
+            // We need to wake up the ui thread in order to process shutdown signals.
+            let ctx = cc.egui_ctx.clone();
+            let mut shutdown_repaint = shutdown_rx.resubscribe();
+            tokio::spawn(async move {
+                shutdown_repaint.recv().await.unwrap();
+                ctx.request_repaint();
+            });
+
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
                 _build_info,
