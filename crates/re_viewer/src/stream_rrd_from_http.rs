@@ -100,7 +100,8 @@ mod web_decode {
 
     // Yield to other tasks
     async fn yield_() {
-        sleep_ms(1).await; // TODO(emilk): create a better async yield function
+        // TODO(emilk): create a better async yield function. See https://github.com/rustwasm/wasm-bindgen/issues/3359
+        sleep_ms(1).await;
     }
 
     // Hack to get async sleep on wasm
