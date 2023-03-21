@@ -10,6 +10,7 @@ import numpy.typing as npt
 import rerun as rr
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
+from rerun.log.file import MeshFormat
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
@@ -99,9 +100,9 @@ def log_arkit(recording_path: Path) -> None:
     intrinsics_dir = recording_path / "lowres_wide_intrinsics"
     traj_path = recording_path / "lowres_wide.traj"
 
-    frame_ids = [x.name for x in sorted(depth_dir.iterdir())]
-    frame_ids = [x.split(".png")[0].split("_")[1] for x in frame_ids]
-    frame_ids.sort()
+    depth_filenames = [x.name for x in sorted(depth_dir.iterdir())]
+    lowres_frame_ids = [x.split(".png")[0].split("_")[1] for x in depth_filenames]
+    lowres_frame_ids.sort()
 
     # dict of timestamp to pose which is a tuple of translation and quaternion
     poses_from_traj = {}
@@ -119,28 +120,15 @@ def log_arkit(recording_path: Path) -> None:
     annotation = load_json(bbox_annotations_path)
     log_annotated_bboxes(annotation)
 
-    # TODO(pablovela5620): Wait for resolution of either #1570 or #1571 for textured mesh
-    # for now just use the untextered/uncolored mesh
-    # # convert ply to obj
-    # obj_path = recording_path / f"{recording_path.stem}_3dod_mesh.obj"
-    # if not obj_path.exists():
-    #     mesh = o3d.io.read_triangle_mesh(str(ply_path))
-    #     o3d.io.write_triangle_mesh(str(obj_path), mesh)
-
-    ply = trimesh.load(str(ply_path))
-    verts = ply.vertices
-    faces = ply.faces
-
-    # Log the mesh
-    rr.log_mesh("world/mesh_log", positions=verts, indices=faces, timeless=True)
-
-    # with open(obj_path, mode="rb") as file:
-    #     rr.log_mesh_file("world/mesh_log_file", MeshFormat.OBJ, file.read(), timeless=True)
+    # TODO(pablovela5620): for now just use the untextered/uncolored mesh until #1580 is resolved
+    mesh_ply = trimesh.load(str(ply_path))
+    mesh_gltf_bin = trimesh.exchange.gltf.export_glb(mesh_ply, include_normals=True)
+    rr.log_mesh_file("world/mesh", MeshFormat.GLB, mesh_gltf_bin)
 
     # To avoid logging image frames in the beginning that dont' have a trajectory
     # This causes the camera to expand in the beginning otherwise
     init_traj_found = False
-    for frame_id in tqdm(frame_ids):
+    for frame_id in tqdm(lowres_frame_ids):
         rr.set_time_seconds("time", float(frame_id))
         bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
         depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
