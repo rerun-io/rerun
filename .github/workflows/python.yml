@@ -272,7 +272,7 @@ jobs:
       # First delete the old prerelease. If we don't do this, we don't get things like
       # proper source-archives and changelog info.
       # https://github.com/dev-drprasad/delete-tag-and-release
-      - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      - uses: dev-drprasad/delete-tag-and-release@v0.2.1
         with:
           tag_name: prerelease
           delete_release: true
