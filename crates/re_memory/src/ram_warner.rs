@@ -1,4 +1,4 @@
-/// Amount of avilable RAM on this machine.
+/// Amount of available RAM on this machine.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn total_ram_in_bytes() -> u64 {
     use sysinfo::SystemExt as _;
@@ -16,7 +16,7 @@ pub fn total_ram_in_bytes() -> u64 {
     total_memory
 }
 
-/// Amount of avilable RAM on this machine.
+/// Amount of available RAM on this machine.
 #[cfg(target_arch = "wasm32")]
 pub fn total_ram_in_bytes() -> u64 {
     1_u64 << 32
