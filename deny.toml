@@ -21,7 +21,7 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 ignore = [
-  "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate.
+  "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate. TODO(emilk): fix in arrow2
 ]
 
 [bans]
