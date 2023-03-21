@@ -38,7 +38,6 @@ pub async fn start(
                     // On wasm32 we only have 4GB of memory to play around with.
                     limit: Some(3_500_000_000),
                 },
-                ..Default::default()
             };
             let re_ui = crate::customize_eframe(cc);
             let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
