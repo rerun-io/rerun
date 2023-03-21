@@ -405,10 +405,6 @@ impl ViewBuilder {
             config.auto_size_config.line_radius
         };
 
-        // See `depth_offset.wgsl`.
-        // Factor applied to depth offsets.
-        let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
-
         // Setup frame uniform buffer
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -426,7 +422,7 @@ impl ViewBuilder {
                 auto_size_points: auto_size_points.0,
                 auto_size_lines: auto_size_lines.0,
 
-                depth_offset_factor: depth_offset_factor.into(),
+                end_padding: Default::default(),
             },
         );
 

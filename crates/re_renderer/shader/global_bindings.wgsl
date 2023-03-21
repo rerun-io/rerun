@@ -27,9 +27,6 @@ struct FrameUniformBuffer {
 
     // Size used for all line radii given with Size::AUTO.
     auto_size_lines: f32,
-
-    /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    depth_offset_factor: f32,
 };
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;
