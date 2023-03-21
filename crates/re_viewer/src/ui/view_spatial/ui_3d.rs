@@ -144,7 +144,8 @@ impl View3DState {
                 self.eye_interpolation = None;
             }
 
-            if t >= 1.0 {
+            if 1.0 <= t {
+                // We have arrived at our target
                 self.eye_interpolation = None;
             }
         }
