@@ -21,7 +21,7 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 ignore = [
-  "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate. TODO(emilk): fix in arrow2
+  "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate. Remove once a new polars is released with https://github.com/pola-rs/polars/pull/6979
 ]
 
 [bans]
