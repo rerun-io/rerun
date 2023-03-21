@@ -142,7 +142,7 @@
             const url_params = new URLSearchParams(window.location.search);
             const rrd_file = url_params.get('file') || 'fiat.rrd';
 
-            // By default look up
+            // By default load an rrd file over http
             let url = data_path + rrd_file; // you can use this to point to an .rrd file over http, or a WebSocket Rerun server.
 
             // This call installs a bunch of callbacks and then returns:
