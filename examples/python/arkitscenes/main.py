@@ -46,7 +46,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
         )
 
 
-def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.NDArray[np.float64]]:
+def traj_string_to_matrix(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
     """
     Converts trajectory string into translation and rotation matrices.
 
@@ -71,20 +71,15 @@ def traj_string_to_matrix(traj_string: str) -> Tuple[str, npt.NDArray[np.float64
 
     # Extract rotation from the second to fourth tokens
     angle_axis = [float(tokens[1]), float(tokens[2]), float(tokens[3])]
-    r_w_to_p = cv2.Rodrigues(np.asarray(angle_axis))[0]
+    rotation = R.from_rotvec(np.asarray(angle_axis))
 
     # Extract translation from the fifth to seventh tokens
-    t_w_to_p = np.asarray([float(tokens[4]), float(tokens[5]), float(tokens[6])])
+    translation = np.asarray([float(tokens[4]), float(tokens[5]), float(tokens[6])])
 
-    # Construct the extrinsics matrix
-    extrinsics = np.eye(4, 4)
-    extrinsics[:3, :3] = r_w_to_p
-    extrinsics[:3, -1] = t_w_to_p
+    # Create tuple in format log_rigid3 expects
+    camera_from_world = (translation, rotation.as_quat())
 
-    # Compute the inverse of extrinsics matrix to get the rotation and translation matrices
-    Rt = np.linalg.inv(extrinsics)
-
-    return (ts, Rt)
+    return (ts, camera_from_world)
 
 
 def log_arkit(recording_path: Path) -> None:
@@ -108,15 +103,16 @@ def log_arkit(recording_path: Path) -> None:
     frame_ids = [x.split(".png")[0].split("_")[1] for x in frame_ids]
     frame_ids.sort()
 
+    # dict of timestamp to pose which is a tuple of translation and quaternion
     poses_from_traj = {}
     with open(traj_path, "r", encoding="utf-8") as f:
         traj = f.readlines()
 
     for line in traj:
-        ts, Rt = traj_string_to_matrix(line)
+        ts, camera_from_world = traj_string_to_matrix(line)
         # round timestamp to 3 decimal places
         ts = f"{round(float(ts), 3):.3f}"
-        poses_from_traj[ts] = Rt
+        poses_from_traj[ts] = camera_from_world
 
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
@@ -155,18 +151,12 @@ def log_arkit(recording_path: Path) -> None:
             intrinsic_fn = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
             w, h, fx, fy, cx, cy = np.loadtxt(intrinsic_fn)
             intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-            frame_pose = np.array(poses_from_traj[str(frame_id)])
-
-            rot_matrix = frame_pose[:3, :3]
-            translation = frame_pose[:3, 3]
-
-            rot = R.from_matrix(rot_matrix[0:3, 0:3])
-            quaternion = rot.as_quat()
+            camera_from_world = poses_from_traj[str(frame_id)]
 
             # TODO(pablovela5620): Fix orientation for portrait captures in 2D view once #1387 is closed.
             rr.log_rigid3(
                 "world/camera",
-                parent_from_child=(translation, quaternion),
+                child_from_parent=camera_from_world,
                 xyz="RDF",  # X=Right, Y=Down, Z=Forward
             )
             rr.log_pinhole("world/camera/image", child_from_parent=intrinsic, width=w, height=h)
