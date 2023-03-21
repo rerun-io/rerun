@@ -312,6 +312,7 @@ fn view_2d_scrollable(
         &eye,
         parent_ui,
         highlights,
+        false,
     );
 
     // Check if we're hovering any hover primitive.

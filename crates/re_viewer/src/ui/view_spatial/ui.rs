@@ -537,6 +537,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
+    skip_2d_labels: bool,
 ) -> Vec<egui::Shape> {
     crate::profile_function!();
 
@@ -547,6 +548,9 @@ pub fn create_labels(
     for label in &scene_ui.labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
+                if skip_2d_labels {
+                    continue;
+                }
                 let rect_in_ui = ui_from_space2d.transform_rect(rect);
                 (
                     // Place the text centered below the rect
@@ -555,6 +559,9 @@ pub fn create_labels(
                 )
             }
             UiLabelTarget::Point2D(pos) => {
+                if skip_2d_labels {
+                    continue;
+                }
                 let pos_in_ui = ui_from_space2d.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }

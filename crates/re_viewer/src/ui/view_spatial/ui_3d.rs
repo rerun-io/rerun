@@ -310,6 +310,8 @@ pub fn view_3d(
         &eye,
         ui,
         highlights,
+        // TODO(#1640): 2D labels are not visible in 3D for now.
+        true,
     );
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
