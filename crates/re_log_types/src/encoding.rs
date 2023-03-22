@@ -23,12 +23,27 @@ mod encoder {
 
         #[error("MsgPack error: {0}")]
         MsgPack(#[from] rmp_serde::encode::Error),
+
+        #[error("Called append on already finished encoder")]
+        AlreadyFinished,
     }
 
     /// Encode a stream of [`LogMsg`] into an `.rrd` file.
     pub struct Encoder<W: std::io::Write> {
-        zstd_encoder: zstd::stream::Encoder<'static, W>,
+        /// Set to None when finished.
+        zstd_encoder: Option<zstd::stream::Encoder<'static, W>>,
         buffer: Vec<u8>,
+    }
+
+    impl<W: std::io::Write> Drop for Encoder<W> {
+        fn drop(&mut self) {
+            if self.zstd_encoder.is_some() {
+                re_log::warn!("Encoder dropped without calling finish()!");
+                if let Err(err) = self.finish() {
+                    re_log::error!("Failed to finish encoding: {err}");
+                }
+            }
+        }
     }
 
     impl<W: std::io::Write> Encoder<W> {
@@ -45,7 +60,7 @@ mod encoder {
                 zstd::stream::Encoder::new(write, level).map_err(EncodeError::Zstd)?;
 
             Ok(Self {
-                zstd_encoder,
+                zstd_encoder: Some(zstd_encoder),
                 buffer: vec![],
             })
         }
@@ -56,20 +71,29 @@ mod encoder {
                 buffer,
             } = self;
 
-            buffer.clear();
-            rmp_serde::encode::write_named(buffer, message)?;
+            if let Some(zstd_encoder) = zstd_encoder {
+                buffer.clear();
+                rmp_serde::encode::write_named(buffer, message)?;
 
-            zstd_encoder
-                .write_all(&(buffer.len() as u64).to_le_bytes())
-                .map_err(EncodeError::Zstd)?;
-            zstd_encoder.write_all(buffer).map_err(EncodeError::Zstd)?;
+                zstd_encoder
+                    .write_all(&(buffer.len() as u64).to_le_bytes())
+                    .map_err(EncodeError::Zstd)?;
+                zstd_encoder.write_all(buffer).map_err(EncodeError::Zstd)?;
 
-            Ok(())
+                Ok(())
+            } else {
+                Err(EncodeError::AlreadyFinished)
+            }
         }
 
-        pub fn finish(self) -> Result<(), EncodeError> {
-            self.zstd_encoder.finish().map_err(EncodeError::Zstd)?;
-            Ok(())
+        pub fn finish(&mut self) -> Result<(), EncodeError> {
+            if let Some(zstd_encoder) = self.zstd_encoder.take() {
+                zstd_encoder.finish().map_err(EncodeError::Zstd)?;
+                Ok(())
+            } else {
+                re_log::warn!("Encoder::finish called twice");
+                Ok(())
+            }
         }
     }
 

@@ -5,8 +5,9 @@ use std::sync::{
     Arc,
 };
 
-use crossbeam::channel::{RecvError, SendError, TryRecvError};
 use instant::Instant;
+
+pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
 /// Where is the messages coming from?
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -127,6 +128,13 @@ impl<T: Send> Receiver<T> {
 
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
         let (sent, msg) = self.rx.try_recv()?;
+        let latency_ns = sent.elapsed().as_nanos() as u64;
+        self.stats.latency_ns.store(latency_ns, Relaxed);
+        Ok(msg)
+    }
+
+    pub fn recv_timeout(&self, timeout: std::time::Duration) -> Result<T, RecvTimeoutError> {
+        let (sent, msg) = self.rx.recv_timeout(timeout)?;
         let latency_ns = sent.elapsed().as_nanos() as u64;
         self.stats.latency_ns.store(latency_ns, Relaxed);
         Ok(msg)
