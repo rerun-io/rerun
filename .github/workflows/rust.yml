@@ -268,6 +268,14 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
+      - name: Patch Cargo.toml for pre-release
+        if: github.ref == 'refs/heads/main'
+        # After patching the pre-release version, run cargo update.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          python3 scripts/version_util.py --patch_prerelease
+          cargo update -w
+
       - name: Build web-viewer (release)
         uses: actions-rs/cargo@v1
         with:

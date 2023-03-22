@@ -181,7 +181,7 @@ jobs:
 
       - name: Patch Cargo.toml for pre-release
         if: github.ref == 'refs/heads/main'
-        # After patching the pre-release version, run cargo check.
+        # After patching the pre-release version, run cargo update.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
           python3 scripts/version_util.py --patch_prerelease
