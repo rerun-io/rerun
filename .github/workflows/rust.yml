@@ -291,6 +291,14 @@ jobs:
           destination: "rerun-web-viewer/commit/${{env.SHORT_SHA}}"
           parent: false
 
+      - name: "Upload web-viewer (prerelease)"
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/prerelease"
+          parent: false
+
       - name: "Upload web-viewer (tagged)"
         if: startsWith(github.ref, 'refs/tags/v')
         uses: google-github-actions/upload-cloud-storage@v1
