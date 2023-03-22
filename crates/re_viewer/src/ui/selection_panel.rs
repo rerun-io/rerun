@@ -414,7 +414,7 @@ fn entity_props_ui(
             }
             ui.end_row();
 
-            if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
+            if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
                 if let Some(entity_path) = entity_path {
                     pinhole_props_ui(ctx, ui, entity_path, entity_props);
                     depth_props_ui(ctx, ui, entity_path, entity_props);

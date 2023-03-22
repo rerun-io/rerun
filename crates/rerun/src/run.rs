@@ -56,6 +56,10 @@ struct Args {
     #[clap(long)]
     web_viewer: bool,
 
+    /// Stream incoming log events to an .rrd file at the given path.
+    #[clap(long)]
+    save: Option<String>,
+
     /// Start with the puffin profiler running.
     #[clap(long)]
     profile: bool,
@@ -315,7 +319,9 @@ async fn run_impl(
 
     // Now what do we do with the data?
 
-    if args.web_viewer {
+    if let Some(rrd_path) = args.save {
+        Ok(stream_to_rrd(&rx, &rrd_path.into(), &shutdown_bool)?)
+    } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
         {
             #[cfg(feature = "server")]
@@ -333,16 +339,16 @@ async fn run_impl(
 
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
-            let server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
+            let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
+            let ws_server_url = re_ws_comms::default_server_url("127.0.0.1");
 
             // This is the server that serves the Wasm+HTML:
-            let ws_server_url = re_ws_comms::default_server_url();
-            let ws_server_handle =
+            let web_server_handle =
                 tokio::spawn(host_web_viewer(true, ws_server_url, shutdown_web_viewer));
 
             // Wait for both servers to shutdown.
-            ws_server_handle.await?.ok();
-            return server_handle.await?;
+            web_server_handle.await?.ok();
+            return ws_server_handle.await?;
         }
 
         #[cfg(not(feature = "web_viewer"))]
@@ -470,6 +476,46 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
         .expect("Failed to spawn thread");
 
     Ok(rx)
+}
+
+fn stream_to_rrd(
+    rx: &re_smart_channel::Receiver<LogMsg>,
+    path: &std::path::PathBuf,
+    shutdown_bool: &Arc<AtomicBool>,
+) -> Result<(), re_sdk::sink::FileSinkError> {
+    use re_sdk::sink::FileSinkError;
+    use re_smart_channel::RecvTimeoutError;
+
+    if path.exists() {
+        re_log::warn!("Overwriting existing file at {path:?}");
+    }
+
+    re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
+
+    let file =
+        std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
+    let mut encoder = re_log_types::encoding::Encoder::new(file)?;
+
+    while !shutdown_bool.load(std::sync::atomic::Ordering::Relaxed) {
+        // We wake up and poll shutdown_bool every now and then.
+        // This is far from elegant, but good enough.
+        match rx.recv_timeout(std::time::Duration::from_millis(500)) {
+            Ok(log_msg) => {
+                encoder.append(&log_msg)?;
+            }
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => {
+                re_log::info!("Log stream disconnected, stopping.");
+                break;
+            }
+        }
+    }
+
+    encoder.finish()?;
+
+    re_log::info!("File saved to {path:?}");
+
+    Ok(())
 }
 
 #[cfg(feature = "server")]

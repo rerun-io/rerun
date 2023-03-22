@@ -33,7 +33,12 @@ pub async fn start(
         Box::new(move |cc| {
             let build_info = re_build_info::build_info!();
             let app_env = crate::AppEnvironment::Web;
-            let startup_options = crate::StartupOptions::default();
+            let startup_options = crate::StartupOptions {
+                memory_limit: re_memory::MemoryLimit {
+                    // On wasm32 we only have 4GB of memory to play around with.
+                    limit: Some(3_500_000_000),
+                },
+            };
             let re_ui = crate::customize_eframe(cc);
             let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
 
@@ -112,7 +117,7 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
         url = param.clone();
     }
     if url.is_empty() {
-        re_ws_comms::default_server_url()
+        re_ws_comms::default_server_url(&info.web_info.location.hostname)
     } else {
         url
     }

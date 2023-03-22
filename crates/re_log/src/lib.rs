@@ -31,7 +31,7 @@ pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 
 pub use {
     channel_logger::*,
-    multi_logger::{add_boxed_logger, add_logger},
+    multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError},
     setup::*,
 };
 

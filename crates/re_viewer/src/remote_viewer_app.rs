@@ -77,7 +77,7 @@ impl RemoteViewerApp {
                 self.app = Some((connection, app));
             }
             Err(err) => {
-                re_log::error!("Failed to connect to {:?}: {}", self.url, err);
+                re_log::error!("Failed to connect to {:?}: {err}", self.url);
             }
         }
     }

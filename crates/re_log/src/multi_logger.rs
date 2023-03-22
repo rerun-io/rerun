@@ -6,6 +6,13 @@ static MULTI_LOGGER: MultiLogger = MultiLogger::new();
 
 static HAS_MULTI_LOGGER: AtomicBool = AtomicBool::new(false);
 
+/// Produced when trying to install additional loggers when [`crate::setup_native_logging`] has not been called.
+///
+/// This can happen for example when users of the `rerun` crate use the `spawn` method,
+/// and they aren't using `re_log`.
+#[derive(Clone, Copy, Debug)]
+pub struct MultiLoggerNotSetupError {}
+
 /// Install the multi-logger as the default logger.
 pub fn init() -> Result<(), log::SetLoggerError> {
     HAS_MULTI_LOGGER.store(true, SeqCst);
@@ -13,17 +20,18 @@ pub fn init() -> Result<(), log::SetLoggerError> {
 }
 
 /// Install an additional global logger.
-pub fn add_boxed_logger(logger: Box<dyn log::Log>) {
-    add_logger(Box::leak(logger));
+pub fn add_boxed_logger(logger: Box<dyn log::Log>) -> Result<(), MultiLoggerNotSetupError> {
+    add_logger(Box::leak(logger))
 }
 
 /// Install an additional global logger.
-pub fn add_logger(logger: &'static dyn log::Log) {
-    debug_assert!(
-        HAS_MULTI_LOGGER.load(SeqCst),
-        "You forgot to setup multi-logging"
-    );
-    MULTI_LOGGER.loggers.write().push(logger);
+pub fn add_logger(logger: &'static dyn log::Log) -> Result<(), MultiLoggerNotSetupError> {
+    if HAS_MULTI_LOGGER.load(SeqCst) {
+        MULTI_LOGGER.loggers.write().push(logger);
+        Ok(())
+    } else {
+        Err(MultiLoggerNotSetupError {})
+    }
 }
 
 /// Forward log messages to multiple [`log::log`] receivers.
