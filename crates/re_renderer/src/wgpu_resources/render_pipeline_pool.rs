@@ -148,6 +148,8 @@ impl GpuRenderPipelinePool {
         shader_module_pool: &GpuShaderModulePool,
     ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
+            sanity_check_vertex_buffers(&desc.vertex_buffers);
+
             // TODO(cmc): certainly not unwrapping here
             desc.create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
                 .unwrap()
@@ -212,5 +214,33 @@ impl GpuRenderPipelinePool {
 
     pub fn num_resources(&self) -> usize {
         self.pool.num_resources()
+    }
+}
+
+fn sanity_check_vertex_buffers(buffers: &[VertexBufferLayout]) {
+    if buffers.is_empty() {
+        return;
+    }
+
+    let mut locations = std::collections::BTreeSet::<u32>::default();
+    let mut num_attributes: u32 = 0;
+
+    for buffer in buffers {
+        for attribute in &buffer.attributes {
+            num_attributes += 1;
+            assert!(
+                locations.insert(attribute.shader_location),
+                "Duplicate shader location {} in vertex buffers",
+                attribute.shader_location
+            );
+        }
+    }
+
+    for i in 0..num_attributes {
+        // This is technically allowed, but weird.
+        assert!(
+            locations.contains(&i),
+            "Missing shader location {i} in vertex buffers"
+        );
     }
 }
