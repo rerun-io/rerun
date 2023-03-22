@@ -12,7 +12,6 @@ use pyo3::{
 };
 
 use rerun::{
-    external::re_viewer::external::eframe::wgpu::Color,
     log::{LogMsg, MsgBundle, MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,

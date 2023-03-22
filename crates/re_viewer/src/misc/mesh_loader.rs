@@ -106,38 +106,33 @@ impl LoadedMesh {
             albedo_factor,
         } = raw_mesh;
 
-        let positions: Vec<glam::Vec3> =
+        let vertex_positions: Vec<glam::Vec3> =
             bytemuck::try_cast_vec(positions.clone()).map_err(|(err, _)| anyhow!(err))?;
-        let num_positions = positions.len();
+        let num_positions = vertex_positions.len();
 
         let indices = if let Some(indices) = indices {
             indices.clone()
         } else {
-            (0..positions.len() as u32).collect()
+            (0..vertex_positions.len() as u32).collect()
         };
         let num_indices = indices.len();
 
-        let normals = if let Some(normals) = vertex_normals {
+        let vertex_normals = if let Some(normals) = vertex_normals {
             normals
                 .chunks_exact(3)
                 .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))
-                .map(|normal| re_renderer::mesh::mesh_vertices::MeshVertexData {
-                    normal,
-                    texcoord: glam::Vec2::ZERO,
-                })
                 .collect::<Vec<_>>()
         } else {
             // TODO(andreas): Calculate normals
             // TODO(cmc): support colored and/or textured raw meshes
-            std::iter::repeat(re_renderer::mesh::mesh_vertices::MeshVertexData {
-                normal: glam::Vec3::ZERO,
-                texcoord: glam::Vec2::ZERO,
-            })
-            .take(num_positions)
-            .collect()
+            std::iter::repeat(glam::Vec3::ZERO)
+                .take(num_positions)
+                .collect()
         };
 
-        let bbox = macaw::BoundingBox::from_points(positions.iter().copied());
+        let vertex_texcoords = vec![glam::Vec2::ZERO; vertex_normals.len()];
+
+        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
             gpu_mesh: render_ctx.mesh_manager.write().create(
@@ -145,8 +140,9 @@ impl LoadedMesh {
                 &re_renderer::mesh::Mesh {
                     label: name.clone().into(),
                     indices,
-                    vertex_positions: positions,
-                    vertex_data: normals,
+                    vertex_positions,
+                    vertex_normals,
+                    vertex_texcoords,
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
                         index_range: 0..num_indices as _,

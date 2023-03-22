@@ -6,7 +6,7 @@ use gltf::texture::WrappingMode;
 use smallvec::SmallVec;
 
 use crate::{
-    mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
+    mesh::{Material, Mesh},
     renderer::MeshInstance,
     resource_managers::{
         GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
@@ -129,9 +129,12 @@ fn import_mesh(
     gpu_image_handles: &[GpuTexture2DHandle],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
+    crate::profile_function!();
+
     let mut indices = Vec::new();
     let mut vertex_positions = Vec::new();
-    let mut vertex_data = Vec::new();
+    let mut vertex_normals = Vec::new();
+    let mut vertex_texcoords = Vec::new();
     let mut materials = SmallVec::new();
 
     // A GLTF mesh consists of several primitives, each with their own material.
@@ -157,30 +160,23 @@ fn import_mesh(
         }
 
         if let Some(primitive_normals) = reader.read_normals() {
-            let to_data = |(p, t)| MeshVertexData {
-                normal: glam::Vec3::from(p),
-                texcoord: glam::Vec2::from(t),
-            };
-
-            if let Some(primitive_texcoords) = reader.read_tex_coords(0) {
-                vertex_data.extend(
-                    primitive_normals
-                        .zip(primitive_texcoords.into_f32())
-                        .map(to_data),
-                );
-            } else {
-                vertex_data.extend(
-                    primitive_normals
-                        .zip(std::iter::repeat([0.0, 0.0]))
-                        .map(to_data),
-                );
-            }
+            vertex_normals.extend(primitive_normals.map(glam::Vec3::from));
         } else {
             anyhow::bail!("Gltf primitives must have normals");
         }
 
-        if vertex_positions.len() != vertex_data.len() {
-            anyhow::bail!("Number of positions was not equal number of other vertex data.");
+        if vertex_positions.len() != vertex_normals.len() {
+            anyhow::bail!("Number of positions was not equal number of normals.");
+        }
+
+        if let Some(primitive_texcoords) = reader.read_tex_coords(0) {
+            vertex_texcoords.extend(primitive_texcoords.into_f32().map(glam::Vec2::from));
+        } else {
+            vertex_texcoords.resize(vertex_positions.len(), glam::Vec2::ZERO);
+        }
+
+        if vertex_positions.len() != vertex_texcoords.len() {
+            anyhow::bail!("Number of positions was not equal number of texture coordiantes.");
         }
 
         let primitive_material = primitive.material();
@@ -247,7 +243,8 @@ fn import_mesh(
         label: mesh.name().into(),
         indices,
         vertex_positions,
-        vertex_data,
+        vertex_normals,
+        vertex_texcoords,
         materials,
     })
 }

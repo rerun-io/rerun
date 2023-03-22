@@ -10,6 +10,7 @@ var albedo_texture: texture_2d<f32>;
 struct MaterialUniformBuffer {
     albedo_factor: Vec4,
 };
+
 @group(1) @binding(1)
 var<uniform> material: MaterialUniformBuffer;
 

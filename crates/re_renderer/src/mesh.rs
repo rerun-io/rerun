@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{mem::size_of, ops::Range};
 
 use ecolor::Rgba;
 use smallvec::{smallvec, SmallVec};
@@ -22,43 +22,41 @@ pub mod mesh_vertices {
     use crate::wgpu_resources::VertexBufferLayout;
     use smallvec::smallvec;
 
-    /// Mesh vertex as used in gpu residing vertex buffers.
-    #[repr(C, packed)]
-    #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct MeshVertexData {
-        pub normal: glam::Vec3, // TODO(andreas): Compress. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
-        pub texcoord: glam::Vec2,
-        // TODO(andreas): More properties? Different kinds of vertices?
-    }
-
     /// Vertex buffer layouts describing how vertex data should be laid out.
     ///
     /// Needs to be kept in sync with `mesh_vertex.wgsl`.
-    pub fn vertex_buffer_layouts() -> [VertexBufferLayout; 2] {
+    pub fn vertex_buffer_layouts() -> [VertexBufferLayout; 3] {
         [
+            // Position:
             VertexBufferLayout {
                 array_stride: std::mem::size_of::<glam::Vec3>() as _,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![
-                    // Position
-                    wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x3,
-                        offset: 0,
-                        shader_location: 0,
-                    },
-                ],
+                attributes: smallvec![wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    shader_location: 0,
+                    offset: 0,
+                }],
             },
+            // TODO(andreas): Compress normals. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
+            // Normal:
             VertexBufferLayout {
-                array_stride: std::mem::size_of::<MeshVertexData>() as _,
+                array_stride: std::mem::size_of::<glam::Vec3>() as _,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: VertexBufferLayout::attributes_from_formats(
-                    1,
-                    [
-                        wgpu::VertexFormat::Float32x3, // Normal
-                        wgpu::VertexFormat::Float32x2, // Texcoord
-                    ]
-                    .into_iter(),
-                ),
+                attributes: smallvec![wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x3,
+                    shader_location: 1,
+                    offset: 0,
+                }],
+            },
+            // Texcoord:
+            VertexBufferLayout {
+                array_stride: std::mem::size_of::<glam::Vec2>() as _,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: smallvec![wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Float32x2,
+                    shader_location: 2,
+                    offset: 0,
+                }],
             },
         ]
     }
@@ -81,7 +79,8 @@ pub struct Mesh {
 
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
     pub vertex_positions: Vec<glam::Vec3>,
-    pub vertex_data: Vec<mesh_vertices::MeshVertexData>,
+    pub vertex_normals: Vec<glam::Vec3>,
+    pub vertex_texcoords: Vec<glam::Vec2>,
     pub materials: SmallVec<[Material; 1]>,
 }
 
@@ -110,7 +109,8 @@ pub(crate) struct GpuMesh {
     /// See [`mesh_vertices`]
     pub vertex_buffer_combined: GpuBuffer,
     pub vertex_buffer_positions_range: Range<u64>,
-    pub vertex_buffer_data_range: Range<u64>,
+    pub vertex_buffer_normals_range: Range<u64>,
+    pub vertex_buffer_texcoord_range: Range<u64>,
 
     pub index_buffer_range: Range<u64>,
 
@@ -145,7 +145,8 @@ impl GpuMesh {
         mesh_bind_group_layout: GpuBindGroupLayoutHandle,
         data: &Mesh,
     ) -> Result<Self, ResourceManagerError> {
-        assert!(data.vertex_positions.len() == data.vertex_data.len());
+        assert_eq!(data.vertex_positions.len(), data.vertex_normals.len());
+        assert_eq!(data.vertex_positions.len(), data.vertex_texcoords.len());
         re_log::trace!(
             "uploading new mesh named {:?} with {} vertices and {} triangles",
             data.label.get(),
@@ -154,11 +155,11 @@ impl GpuMesh {
         );
 
         // TODO(andreas): Have a variant that gets this from a stack allocator.
-        let vertex_buffer_positions_size =
-            (data.vertex_positions.len() * std::mem::size_of::<glam::Vec3>()) as u64;
-        let vertex_buffer_data_size =
-            (data.vertex_data.len() * std::mem::size_of::<mesh_vertices::MeshVertexData>()) as u64;
-        let vertex_buffer_combined_size = vertex_buffer_positions_size + vertex_buffer_data_size;
+        let vb_positions_size = (data.vertex_positions.len() * size_of::<glam::Vec3>()) as u64;
+        let vb_normals_size = (data.vertex_normals.len() * size_of::<glam::Vec3>()) as u64;
+        let vb_texcoords_size = (data.vertex_texcoords.len() * size_of::<glam::Vec2>()) as u64;
+
+        let vb_combined_size = vb_positions_size + vb_normals_size + vb_texcoords_size;
 
         let pools = &ctx.gpu_resources;
         let device = &ctx.device;
@@ -168,7 +169,7 @@ impl GpuMesh {
                 device,
                 &BufferDesc {
                     label: data.label.clone().push_str(" - vertices"),
-                    size: vertex_buffer_combined_size,
+                    size: vb_combined_size,
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 },
@@ -177,10 +178,11 @@ impl GpuMesh {
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate::<u8>(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                vertex_buffer_combined_size as _,
+                vb_combined_size as _,
             );
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions));
-            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_data));
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_normals));
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_texcoords));
             staging_buffer.copy_to_buffer(
                 ctx.active_frame.encoder.lock().get(),
                 &vertex_buffer_combined,
@@ -189,7 +191,7 @@ impl GpuMesh {
             vertex_buffer_combined
         };
 
-        let index_buffer_size = (std::mem::size_of::<u32>() * data.indices.len()) as u64;
+        let index_buffer_size = (size_of::<u32>() * data.indices.len()) as u64;
         let index_buffer = {
             let index_buffer = pools.buffers.alloc(
                 device,
@@ -254,8 +256,9 @@ impl GpuMesh {
         Ok(GpuMesh {
             index_buffer,
             vertex_buffer_combined,
-            vertex_buffer_positions_range: 0..vertex_buffer_positions_size,
-            vertex_buffer_data_range: vertex_buffer_positions_size..vertex_buffer_combined_size,
+            vertex_buffer_positions_range: 0..vb_positions_size,
+            vertex_buffer_normals_range: vb_positions_size..vb_positions_size + vb_normals_size,
+            vertex_buffer_texcoord_range: vb_positions_size + vb_normals_size..vb_combined_size,
             index_buffer_range: 0..index_buffer_size,
             materials,
         })
