@@ -175,13 +175,15 @@ impl GpuWriteCpuReadBelt {
             {
                 self.free_chunks.swap_remove(index)
             } else {
+                // Allocation might be bigger than a chunk!
+                let buffer_size = self.chunk_size.max(size_in_bytes);
                 // Happens relatively rarely, this is a noteworthy event!
-                re_log::debug!("Allocating new GpuWriteCpuReadBelt chunk of size {size_in_bytes}");
+                re_log::debug!("Allocating new GpuWriteCpuReadBelt chunk of size {buffer_size}");
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {
                         label: "GpuWriteCpuReadBelt buffer".into(),
-                        size: size_in_bytes,
+                        size: buffer_size,
                         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                         mapped_at_creation: false,
                     },
