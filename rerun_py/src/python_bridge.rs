@@ -654,7 +654,7 @@ fn log_meshes(
             positions: positions.as_array().to_vec(),
             vertex_colors,
             indices: indices.map(|indices| indices.as_array().to_vec()),
-            normals: normals.map(|normals| normals.as_array().to_vec()),
+            vertex_normals: normals.map(|normals| normals.as_array().to_vec()),
             albedo_factor,
         };
         raw.sanity_check()

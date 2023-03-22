@@ -102,7 +102,7 @@ impl LoadedMesh {
             positions,
             vertex_colors,
             indices,
-            normals,
+            vertex_normals,
             albedo_factor,
         } = raw_mesh;
 
@@ -117,7 +117,7 @@ impl LoadedMesh {
         };
         let num_indices = indices.len();
 
-        let normals = if let Some(normals) = normals {
+        let normals = if let Some(normals) = vertex_normals {
             normals
                 .chunks_exact(3)
                 .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))

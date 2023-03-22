@@ -31,7 +31,7 @@ impl From<GltfPrimitive> for Mesh3D {
             albedo_factor,
             positions,
             indices,
-            normals,
+            vertex_normals,
             vertex_colors,
             texcoords: _, // TODO(cmc) support mesh texturing
         } = primitive;
@@ -41,7 +41,7 @@ impl From<GltfPrimitive> for Mesh3D {
             albedo_factor: albedo_factor.map(Vec4D),
             indices,
             positions: positions.into_iter().flatten().collect(),
-            normals: normals.map(|normals| normals.into_iter().flatten().collect()),
+            vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),
             vertex_colors,
         };
 
@@ -213,7 +213,7 @@ struct GltfPrimitive {
     albedo_factor: Option<[f32; 4]>,
     positions: Vec<[f32; 3]>,
     indices: Option<Vec<u32>>,
-    normals: Option<Vec<[f32; 3]>>,
+    vertex_normals: Option<Vec<[f32; 3]>>,
     vertex_colors: Option<Vec<ColorRGBA>>,
     #[allow(dead_code)]
     texcoords: Option<Vec<[f32; 2]>>,
@@ -277,8 +277,8 @@ fn node_primitives<'data>(
             let indices = reader.read_indices();
             let indices = indices.map(|indices| indices.into_u32().into_iter().collect());
 
-            let normals = reader.read_normals();
-            let normals = normals.map(|normals| normals.collect());
+            let vertex_normals = reader.read_normals();
+            let vertex_normals = vertex_normals.map(|normals| normals.collect());
 
             let vertex_colors = reader.read_colors(0); // TODO(cmc): pick correct set
             let vertex_colors = vertex_colors.map(|colors| {
@@ -295,7 +295,7 @@ fn node_primitives<'data>(
                 albedo_factor,
                 positions,
                 indices,
-                normals,
+                vertex_normals,
                 vertex_colors,
                 texcoords,
             }

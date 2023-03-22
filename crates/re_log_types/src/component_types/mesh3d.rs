@@ -138,7 +138,7 @@ pub enum RawMeshError {
 pub struct RawMesh3D {
     pub mesh_id: MeshId,
 
-    /// The flattened positions array of this mesh.
+    /// The flattened vertex positions array of this mesh.
     ///
     /// The length of this vector should always be divisible by three (since this is a 3D mesh).
     ///
@@ -149,16 +149,16 @@ pub struct RawMesh3D {
     /// Per-vertex colors.
     pub vertex_colors: Option<Vec<ColorRGBA>>,
 
+    /// Optionally, the flattened normals array for this mesh.
+    ///
+    /// If specified, this must match the length of `Self::positions`.
+    pub vertex_normals: Option<Vec<f32>>,
+
     /// Optionally, the flattened indices array for this mesh.
     ///
     /// Meshes are always triangle lists, i.e. the length of this vector should always be
     /// divisible by three.
     pub indices: Option<Vec<u32>>,
-
-    /// Optionally, the flattened normals array for this mesh.
-    ///
-    /// If specified, this must match the length of `Self::positions`.
-    pub normals: Option<Vec<f32>>,
 
     /// Albedo factor applied to the final color of the mesh.
     ///
@@ -197,7 +197,7 @@ impl RawMesh3D {
             return Err(RawMeshError::PositionsAreNotTriangles(self.positions.len()));
         }
 
-        if let Some(normals) = &self.normals {
+        if let Some(normals) = &self.vertex_normals {
             if normals.len() != self.positions.len() {
                 return Err(RawMeshError::MismatchedPositionsNormals(
                     self.positions.len(),
@@ -430,7 +430,7 @@ mod tests {
                 ColorRGBA(0x0000ffff),
             ]),
             indices: vec![1, 2, 3].into(),
-            normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
+            vertex_normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
             albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),
         };
         mesh.sanity_check().unwrap();
