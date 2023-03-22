@@ -25,16 +25,7 @@ def log_mesh(
     """
     Log a raw 3D mesh by specifying its vertex positions, and optionally indices, normals and albedo factor.
 
-    The data is _always_ interpreted as a triangle list:
-
-    * `positions` is a (potentially flattened) array of 3D points, i.e. the total number of elements must be divisible
-      by 3.
-    * `indices`, if specified, is a flattened array of indices that describe the mesh's faces,
-      i.e. its length must be divisible by 3.
-    * `normals`, if specified, is a (potentially flattened) array of 3D vectors that describe the normal for each
-      vertex, i.e. the total number of elements must be divisible by 3 and more importantly, `len(normals)` should be
-      equal to `len(positions)`.
-    * `albedo_factor`, if specified, is either a linear, unmultiplied, normalized RGB (vec3) or RGBA (vec4) value.
+    You can also use [`rerun.log_mesh_file`] to log .gltf, .glb, .obj, etc.
 
     Example:
     -------
@@ -62,13 +53,17 @@ def log_mesh(
     entity_path:
         Path to the mesh in the space hierarchy
     positions:
-        An array of 3D points
+        An array of 3D points.
+        If no `indices` are specified, then each triplet of positions is interpeted as a triangle.
     indices:
-        Optional array of indices that describe the mesh's faces
+        If specified, is a flattened array of indices that describe the mesh's triangles,
+        i.e. its length must be divisible by 3.
     normals:
-        Optional array of 3D vectors that describe the normal of each vertices
+        If specified, is a (potentially flattened) array of 3D vectors that describe the normal for each
+        vertex, i.e. the total number of elements must be divisible by 3 and more importantly, `len(normals)` should be
+        equal to `len(positions)`.
     albedo_factor:
-        Optional RGB(A) color for the albedo factor of the mesh, aka base color factor.
+        Optional color multiplier of the mesh using RGB or unmuliplied RGBA in linear 0-1 space.
     timeless:
         If true, the mesh will be timeless (default: False)
 
