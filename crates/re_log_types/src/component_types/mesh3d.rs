@@ -88,11 +88,17 @@ impl ArrowDeserialize for MeshId {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RawMeshError {
-    #[error("Positions array length must be divisible by 3 (triangle list), got {0}")]
+    #[error("Positions array length must be divisible by 3 (xyz, xyz, …), got {0}")]
     PositionsNotDivisibleBy3(usize),
 
     #[error("Indices array length must be divisible by 3 (triangle list), got {0}")]
     IndicesNotDivisibleBy3(usize),
+
+    #[error("No indices were specified, so the number of positions must be divisible by 9 [(xyz xyz xyz), …], got {0}")]
+    PositionsAreNotTriangles(usize),
+
+    #[error("Index out of bounds: got index={index} with {num_vertices} vertices")]
+    IndexOutOfBounds { index: u32, num_vertices: usize },
 
     #[error(
         "Positions & normals array must have the same length, \
@@ -134,14 +140,16 @@ pub struct RawMesh3D {
 
     /// The flattened positions array of this mesh.
     ///
-    /// Meshes are always triangle lists, i.e. the length of this vector should always be
-    /// divisible by 3.
+    /// The length of this vector should always be divisible by three (since this is a 3D mesh).
+    ///
+    /// If no indices are specified, then each triplet of vertex positions are intrpreted as a triangle
+    /// and the length of this must be divisible by 9.
     pub positions: Vec<f32>,
 
     /// Optionally, the flattened indices array for this mesh.
     ///
     /// Meshes are always triangle lists, i.e. the length of this vector should always be
-    /// divisible by 3.
+    /// divisible by three.
     pub indices: Option<Vec<u32>>,
 
     /// Optionally, the flattened normals array for this mesh.
@@ -167,10 +175,23 @@ impl RawMesh3D {
             return Err(RawMeshError::PositionsNotDivisibleBy3(self.positions.len()));
         }
 
+        let num_vertices = self.positions.len() / 3;
+
         if let Some(indices) = &self.indices {
             if indices.len() % 3 != 0 {
                 return Err(RawMeshError::IndicesNotDivisibleBy3(indices.len()));
             }
+
+            for &index in indices {
+                if num_vertices <= index as usize {
+                    return Err(RawMeshError::IndexOutOfBounds {
+                        index,
+                        num_vertices,
+                    });
+                }
+            }
+        } else if self.positions.len() % 9 != 0 {
+            return Err(RawMeshError::PositionsAreNotTriangles(self.positions.len()));
         }
 
         if let Some(normals) = &self.normals {
@@ -392,40 +413,51 @@ impl Mesh3D {
     }
 }
 
-#[test]
-fn test_mesh_roundtrip() {
-    use arrow2::array::Array;
-    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Encoded
-    {
-        let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
-            mesh_id: MeshId::random(),
-            format: MeshFormat::Glb,
-            bytes: std::sync::Arc::new([5, 9, 13, 95, 38, 42, 98, 17]),
-            transform: [
-                [1.0, 2.0, 3.0],
-                [4.0, 5.0, 6.0],
-                [7.0, 8.0, 9.0],
-                [10.0, 11.0, 12.],
-            ],
-        })];
-        let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
-        let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
-        assert_eq!(mesh_in, mesh_out);
-    }
-
-    // Raw
-    {
-        let mesh_in = vec![Mesh3D::Raw(RawMesh3D {
+    fn example_raw_mesh() -> RawMesh3D {
+        let mesh = RawMesh3D {
             mesh_id: MeshId::random(),
             positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
             indices: vec![1, 2, 3].into(),
             normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
             albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),
-        })];
-        let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
-        let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
-        assert_eq!(mesh_in, mesh_out);
+        };
+        mesh.sanity_check().unwrap();
+        mesh
+    }
+
+    #[test]
+    fn test_mesh_roundtrip() {
+        use arrow2::array::Array;
+        use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+        // Encoded
+        {
+            let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
+                mesh_id: MeshId::random(),
+                format: MeshFormat::Glb,
+                bytes: std::sync::Arc::new([5, 9, 13, 95, 38, 42, 98, 17]),
+                transform: [
+                    [1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0],
+                    [10.0, 11.0, 12.],
+                ],
+            })];
+            let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
+            let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
+            assert_eq!(mesh_in, mesh_out);
+        }
+
+        // Raw
+        {
+            let mesh_in = vec![Mesh3D::Raw(example_raw_mesh())];
+            let array: Box<dyn Array> = mesh_in.try_into_arrow().unwrap();
+            let mesh_out: Vec<Mesh3D> = TryIntoCollection::try_into_collection(array).unwrap();
+            assert_eq!(mesh_in, mesh_out);
+        }
     }
 }
