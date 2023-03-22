@@ -27,5 +27,5 @@ fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_si
     }
 
     // Negative size indicates size in points.
-    return point_size_to_world(camera_distance, -unresolved_size);
+    return point_size_to_world(-unresolved_size, camera_distance);
 }
