@@ -31,7 +31,7 @@ thread_local! {
     ///
     /// Tracking an allocation (taking its backtrace etc) can itself create allocations.
     /// We don't want to track those allocations, or we will have infinite recursion.
-    static IS_TRHEAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = std::cell::Cell::new(false);
+    static IS_THREAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = std::cell::Cell::new(false);
 }
 
 // ----------------------------------------------------------------------------
@@ -188,7 +188,7 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
     }
 
     GLOBAL_STATS.track_callstacks.load(Relaxed).then(|| {
-        IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+        IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
             // prevent double-lock of ALLOCATION_TRACKER:
             is_thread_in_allocation_tracker.set(true);
             let mut top_big_callstacks = tracker_stats(&BIG_ALLOCATION_TRACKER.lock());
@@ -303,7 +303,7 @@ fn note_alloc(ptr: *mut u8, size: usize) {
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
 
-            IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+            IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
                 if !is_thread_in_allocation_tracker.get() {
                     is_thread_in_allocation_tracker.set(true);
 
@@ -337,7 +337,7 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
         } else {
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
-            IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
+            IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
                 if !is_thread_in_allocation_tracker.get() {
                     is_thread_in_allocation_tracker.set(true);
 

@@ -16,9 +16,9 @@ use crate::{
         data_ui::{self, DataUi},
         view_spatial::{
             scene::AdditionalPickingInfo,
-            ui::create_labels,
+            ui::{create_labels, outline_config},
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            SceneSpatial, SpaceCamera3D,
+            SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
         SpaceViewId, UiVerbosity,
     },
@@ -143,6 +143,11 @@ impl View3DState {
             } else {
                 self.eye_interpolation = None;
             }
+
+            if 1.0 <= t {
+                // We have arrived at our target
+                self.eye_interpolation = None;
+            }
         }
 
         orbit_camera
@@ -151,6 +156,7 @@ impl View3DState {
     fn interpolate_to_eye(&mut self, target: Eye) {
         if let Some(start) = self.orbit_eye {
             let target_time = EyeInterpolation::target_time(&start.to_eye(), &target);
+            self.spin = false; // the user wants to move the camera somewhere, so stop spinning
             self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
@@ -166,6 +172,7 @@ impl View3DState {
     fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
         if let Some(start) = self.orbit_eye {
             let target_time = EyeInterpolation::target_time(&start.to_eye(), &target.to_eye());
+            self.spin = false; // the user wants to move the camera somewhere, so stop spinning
             self.eye_interpolation = Some(EyeInterpolation {
                 elapsed_time: 0.0,
                 target_time,
@@ -235,7 +242,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Op
 
 pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     Drag with secondary mouse button to pan.\n\
-    Drag with middle mouse button to roll the view.\n\
+    Drag with middle mouse button (or primary mouse button + holding Alt/⌥ key) to roll the view.\n\
     Scroll to zoom.\n\
     \n\
     While hovering the 3D view, navigate with WSAD and QE.\n\
@@ -262,6 +269,10 @@ pub fn view_3d(
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
+
+    if !rect.is_positive() {
+        return; // protect against problems with zero-sized views
+    }
 
     // If we're tracking a camera right now, we want to make it slightly sticky,
     // so that a click on some entity doesn't immediately break the tracked state.
@@ -306,11 +317,14 @@ pub fn view_3d(
         &eye,
         ui,
         highlights,
+        SpatialNavigationMode::ThreeD,
     );
+
+    let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx());
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     // Check if we're hovering any hover primitive.
-    if let Some(pointer_pos) = response.hover_pos() {
+    if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
         let picking_result =
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
 
@@ -344,11 +358,10 @@ pub fn view_3d(
                                 &ctx.current_query(),
                             );
 
-                            let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
-                                &image.annotations,
-                                ctx.render_ctx,
-                            );
+                            let tensor_view = ctx
+                                .cache
+                                .image
+                                .get_colormapped_view(&image.tensor, &image.annotations);
 
                             if let [h, w, ..] = &image.tensor.shape[..] {
                                 ui.separator();
@@ -515,6 +528,7 @@ fn paint_view(
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
         return;
     }
+
     let target_config = TargetConfiguration {
         name: name.into(),
 
@@ -528,6 +542,11 @@ fn paint_view(
 
         pixels_from_point,
         auto_size_config,
+
+        outline_config: scene
+            .primitives
+            .any_outlines
+            .then(|| outline_config(ui.ctx())),
     };
 
     let Ok(callback) = create_scene_paint_callback(

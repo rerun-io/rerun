@@ -43,7 +43,6 @@ criterion_main!(benches);
 fn mono_points(c: &mut Criterion) {
     // Each mono point gets logged at a different path
     let paths = (0..NUM_POINTS)
-        .into_iter()
         .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
         .collect_vec();
     let msgs = build_points_messages(&paths, 1);
@@ -124,7 +123,6 @@ fn batch_vecs(c: &mut Criterion) {
 
 fn build_points_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES_POINTS)
-        .into_iter()
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 try_build_msg_bundle2(
@@ -141,7 +139,6 @@ fn build_points_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
 
 fn build_vecs_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES_VECS)
-        .into_iter()
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 try_build_msg_bundle1(

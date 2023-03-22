@@ -29,9 +29,12 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) {
+        let screen_width = ui.ctx().screen_rect().width();
+
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
-            .default_width(250.0)
+            .default_width((0.45 * screen_width).min(250.0).round())
+            .max_width((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
@@ -411,7 +414,7 @@ fn entity_props_ui(
             }
             ui.end_row();
 
-            if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
+            if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
                 if let Some(entity_path) = entity_path {
                     pinhole_props_ui(ctx, ui, entity_path, entity_props);
                     depth_props_ui(ctx, ui, entity_path, entity_props);

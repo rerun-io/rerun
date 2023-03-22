@@ -51,6 +51,7 @@ pub struct EntityProperties {
     ///
     /// See [`Self::color_mapper`] to select an actual mapping.
     pub color_mapping: bool,
+
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>,
 
@@ -64,12 +65,15 @@ pub struct EntityProperties {
     /// Only applies to tensors with meaning=depth that are affected by a pinhole transform when
     /// in a spatial view, using 3D navigation.
     pub backproject_depth: bool,
+
     /// Entity path of the pinhole transform used for the backprojection.
     ///
     /// `None` means backprojection is disabled.
     pub backproject_pinhole_ent_path: Option<EntityPath>,
+
     /// Used to scale the resulting point cloud.
     pub backproject_scale: EditableAutoValue<f32>,
+
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>,
 }

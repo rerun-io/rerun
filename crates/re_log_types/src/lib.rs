@@ -4,8 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#![allow(clippy::manual_range_contains)]
-
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 

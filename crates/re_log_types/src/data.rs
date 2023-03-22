@@ -255,3 +255,21 @@ impl TensorElement {
         }
     }
 }
+
+impl std::fmt::Display for TensorElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TensorElement::U8(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::U16(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::U32(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::U64(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::I8(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::I16(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::I32(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::I64(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::F16(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::F32(elem) => std::fmt::Display::fmt(elem, f),
+            TensorElement::F64(elem) => std::fmt::Display::fmt(elem, f),
+        }
+    }
+}

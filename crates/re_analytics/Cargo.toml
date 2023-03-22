@@ -42,9 +42,5 @@ ureq = { version = "2.6", features = [
 web-sys = { version = "0.3.58", features = ["Storage"] }
 
 
-[dev-dependencies]
-tracing-subscriber = "0.3"
-
-
 [build-dependencies]
 re_build_build_info.workspace = true

@@ -6,19 +6,11 @@ use re_log_types::TimeType;
 use super::time_control::{Looping, PlayState, TimeControl};
 
 impl TimeControl {
-    pub fn time_control_ui(
+    pub fn timeline_selector_ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
-        self.play_pause_ui(re_ui, times_per_timeline, ui);
-        self.timeline_selector_ui(times_per_timeline, ui);
-        self.playback_speed_ui(ui);
-        self.fps_ui(ui);
-    }
-
-    fn timeline_selector_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
         self.select_a_valid_timeline(times_per_timeline);
 
         egui::ComboBox::from_id_source("timeline")
@@ -38,7 +30,7 @@ impl TimeControl {
             });
     }
 
-    fn fps_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn fps_ui(&mut self, ui: &mut egui::Ui) {
         if self.time_type() == TimeType::Sequence {
             if let Some(mut fps) = self.fps() {
                 ui.add(
@@ -53,7 +45,7 @@ impl TimeControl {
         }
     }
 
-    fn play_pause_ui(
+    pub fn play_pause_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
         times_per_timeline: &TimesPerTimeline,
@@ -178,7 +170,7 @@ impl TimeControl {
         });
     }
 
-    fn playback_speed_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn playback_speed_ui(&mut self, ui: &mut egui::Ui) {
         let mut speed = self.speed();
         let drag_speed = (speed * 0.02).at_least(0.01);
         ui.add(

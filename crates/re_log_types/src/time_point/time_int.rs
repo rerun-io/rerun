@@ -33,6 +33,12 @@ impl TimeInt {
 
     /// For time timelines.
     #[inline]
+    pub fn from_milliseconds(millis: i64) -> Self {
+        Self::from_nanos(millis * 1_000_000)
+    }
+
+    /// For time timelines.
+    #[inline]
     pub fn from_seconds(seconds: i64) -> Self {
         Self::from_nanos(seconds.saturating_mul(1_000_000_000))
     }

@@ -1,13 +1,19 @@
+use re_log_types::{
+    component_types::InstanceKey,
+    external::arrow2_convert::serialize::TryIntoArrow,
+    msg_bundle::{wrap_in_listarray, MsgBundleError},
+};
+
 use arrow2::array::Array;
 use nohash_hasher::IntMap;
-use re_log_types::external::arrow2_convert::serialize::TryIntoArrow;
-use re_log_types::msg_bundle::MsgBundleError;
-use re_log_types::{component_types::InstanceKey, msg_bundle::wrap_in_listarray};
 
-use crate::components::Transform;
-use crate::log::{ComponentBundle, LogMsg, MsgBundle, MsgId};
-use crate::time::{Time, TimeInt, TimePoint, Timeline};
-use crate::{Component, ComponentName, EntityPath, SerializableComponent, Session};
+use crate::{
+    components::Transform,
+    log::{ComponentBundle, LogMsg, MsgBundle, MsgId},
+    sink::LogSink,
+    time::{Time, TimeInt, TimePoint, Timeline},
+    Component, ComponentName, EntityPath, SerializableComponent,
+};
 
 // ---
 
@@ -48,7 +54,7 @@ pub enum MsgSenderError {
 ///
 /// ```ignore
 /// fn log_coordinate_space(
-///     session: &mut Session,
+///     session: &Session,
 ///     ent_path: impl Into<EntityPath>,
 ///     axes: &str,
 /// ) -> anyhow::Result<()> {
@@ -253,23 +259,29 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send(self, session: &mut Session) -> Result<(), MsgSenderError> {
-        if !session.is_enabled() {
+    pub fn send(self, sink: &impl std::borrow::Borrow<dyn LogSink>) -> Result<(), MsgSenderError> {
+        self.send_to_sink(sink.borrow())
+    }
+
+    /// Consumes, packs, sanity checks and finally sends the message to the currently configured
+    /// target of the SDK.
+    fn send_to_sink(self, sink: &dyn LogSink) -> Result<(), MsgSenderError> {
+        if !sink.is_enabled() {
             return Ok(()); // silently drop the message
         }
 
         let [msg_standard, msg_transforms, msg_splats] = self.into_messages()?;
 
         if let Some(msg_transforms) = msg_transforms {
-            session.send(LogMsg::ArrowMsg(msg_transforms.try_into()?));
+            sink.send(LogMsg::ArrowMsg(msg_transforms.try_into()?));
         }
         if let Some(msg_splats) = msg_splats {
-            session.send(LogMsg::ArrowMsg(msg_splats.try_into()?));
+            sink.send(LogMsg::ArrowMsg(msg_splats.try_into()?));
         }
         // Always the primary component last so range-based queries will include the other data. See(#1215)
         // Since the primary component can't be splatted it must be in msg_standard
         if let Some(msg_standard) = msg_standard {
-            session.send(LogMsg::ArrowMsg(msg_standard.try_into()?));
+            sink.send(LogMsg::ArrowMsg(msg_standard.try_into()?));
         }
 
         Ok(())

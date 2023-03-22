@@ -8,6 +8,7 @@ pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
+pub mod stream_rrd_from_http;
 mod ui;
 mod viewer_analytics;
 
@@ -117,7 +118,7 @@ impl AppEnvironment {
 const APPLICATION_NAME: &str = "Rerun Viewer";
 
 pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
-    re_renderer::config::HardwareTier::Web
+    re_renderer::config::HardwareTier::default()
 }
 
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {

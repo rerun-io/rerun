@@ -19,12 +19,45 @@ pub fn install_crash_handlers(build_info: BuildInfo) {
     install_signal_handler(build_info);
 }
 
-fn install_panic_hook(build_info: BuildInfo) {
+fn install_panic_hook(_build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
     std::panic::set_hook(Box::new(move |panic_info: &std::panic::PanicInfo<'_>| {
-        // This prints the callstack etc
-        (*previous_panic_hook)(panic_info);
+        let callstack = callstack_from("panicking::panic_fmt\n");
+
+        let file_line = panic_info.location().map(|location| {
+            let file = anonymize_source_file_path(&std::path::PathBuf::from(location.file()));
+            format!("{file}:{}", location.line())
+        });
+
+        // `panic_info.message` is unstable, so this is the recommended way of getting
+        // the panic message out. We need both the `&str` and `String` variants.
+        let msg = panic_info_message(panic_info);
+
+        if let Some(msg) = &msg {
+            // Print our own panic message.
+            // Our formatting is nicer than `std` since we shorten the file paths (for privacy reasons).
+            // This also makes it easier for users to copy-paste the callstack into an issue
+            // without having any sensitive data in it.
+
+            let thread = std::thread::current();
+            let thread_name = thread
+                .name()
+                .map_or_else(|| format!("{:?}", thread.id()), |name| name.to_owned());
+
+            let file_line_suffix = if let Some(file_line) = &file_line {
+                format!(", {file_line}")
+            } else {
+                String::new()
+            };
+
+            eprintln!(
+                "\nthread '{thread_name}' panicked at '{msg}'{file_line_suffix}\n\n{callstack}"
+            );
+        } else {
+            // This prints the panic message and callstack:
+            (*previous_panic_hook)(panic_info);
+        }
 
         eprintln!(
             "\n\
@@ -35,22 +68,40 @@ fn install_panic_hook(build_info: BuildInfo) {
         {
             if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
             {
-                let callstack = callstack_from("panicking::panic_fmt\n");
                 let mut event = re_analytics::Event::append("crash-panic")
-                    .with_build_info(&build_info)
+                    .with_build_info(&_build_info)
                     .with_prop("callstack", callstack);
-                if let Some(location) = panic_info.location() {
-                    event = event.with_prop(
-                        "location",
-                        format!("{}:{}", location.file(), location.line()),
-                    );
+
+                let include_panic_message = false; // Don't include it, because it can contain sensitive information (`panic!("Couldn't read {sensitive_file_path}")`)
+                if include_panic_message {
+                    // `panic_info.message` is unstable, so this is the recommended way of getting
+                    // the panic message out. We need both the `&str` and `String` variants.
+                    if let Some(msg) = msg {
+                        event = event.with_prop("message", msg);
+                    }
                 }
+
+                if let Some(file_line) = file_line {
+                    event = event.with_prop("file_line", file_line);
+                }
+
                 analytics.record(event);
 
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
             }
         }
     }));
+}
+
+fn panic_info_message(panic_info: &std::panic::PanicInfo<'_>) -> Option<String> {
+    #[allow(clippy::manual_map)]
+    if let Some(msg) = panic_info.payload().downcast_ref::<&str>() {
+        Some((*msg).to_owned())
+    } else if let Some(msg) = panic_info.payload().downcast_ref::<String>() {
+        Some(msg.clone())
+    } else {
+        None
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -171,21 +222,28 @@ fn callstack_from(start_pattern: &str) -> String {
     let mut stack = stack.as_str();
 
     // Trim the top (closest to the panic handler) to cut out some noise:
-    if let Some(start_offset) = stack.find(start_pattern) {
-        stack = &stack[start_offset + start_pattern.len()..];
+    if let Some(offset) = stack.find(start_pattern) {
+        let prev_newline = stack[..offset].rfind('\n').map_or(0, |newline| newline + 1);
+        stack = &stack[prev_newline..];
     }
 
     // Trim the bottom to cut out code that sets up the callstack:
-    if let Some(end_offset) = stack.find("std::sys_common::backtrace::__rust_begin_short_backtrace")
-    {
-        stack = &stack[..end_offset];
-    }
+    let end_patterns = [
+        "std::sys_common::backtrace::__rust_begin_short_backtrace",
+        // Trim the bottom even more to exclude any user code that potentially used `rerun`
+        // as a library to show a viewer. In these cases there may be sensitive user code
+        // that called `rerun::run`, and we do not want to include it:
+        "run_native_app",
+    ];
 
-    // Trim the bottom even more to exclude any user code that potentially used `rerun`
-    // as a library to show a viewer. In these cases there may be sensitive user code
-    // that called `rerun::run`, and we do not want to include it:
-    if let Some(end_offset) = stack.find("run_native_app") {
-        stack = &stack[..end_offset];
+    for end_pattern in end_patterns {
+        if let Some(offset) = stack.find(end_pattern) {
+            if let Some(start_of_line) = stack[..offset].rfind('\n') {
+                stack = &stack[..start_of_line];
+            } else {
+                stack = &stack[..offset];
+            }
+        }
     }
 
     stack.into()

@@ -57,10 +57,10 @@ sdk = ["dep:re_sdk"]
 # You also need to install some additional tools, which you can do by running
 # [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web_viewer = [
-  "re_ws_comms/server",
-  "re_sdk?/tokio_runtime",
+  "dep:once_cell",
   "dep:re_web_viewer_server",
   "dep:webbrowser",
+  "re_ws_comms/server",
 ]
 
 [dependencies]
@@ -88,6 +88,7 @@ re_sdk_comms = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
+once_cell = { version = "1.17", optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
@@ -96,6 +97,7 @@ backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 mimalloc.workspace = true
 puffin_http = "0.11"
+ctrlc.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # Native unix dependencies:

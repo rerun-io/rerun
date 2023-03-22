@@ -2,11 +2,7 @@
 #import <./global_bindings.wgsl>
 #import <./utils/srgb.wgsl>
 #import <./utils/camera.wgsl>
-
-struct VertexOutput {
-    @builtin(position) position: Vec4,
-    @location(0) texcoord: Vec2,
-};
+#import <./screen_triangle_vertex.wgsl>
 
 fn skybox_dark_srgb(dir: Vec3) -> Vec3 {
     let rgb = dir * 0.5 + Vec3(0.5);
@@ -19,7 +15,7 @@ fn skybox_light_srgb(dir: Vec3) -> Vec3 {
 }
 
 @fragment
-fn main(in: VertexOutput) -> @location(0) Vec4 {
+fn main(in: FragmentInput) -> @location(0) Vec4 {
     let camera_dir = camera_ray_direction_from_screenuv(in.texcoord);
     // Messing with direction a bit so it looks like in our old three-d based renderer (for easier comparison)
     let rgb = skybox_dark_srgb(camera_dir); // TODO(andreas): Allow switching to skybox_light

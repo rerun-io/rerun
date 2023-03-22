@@ -78,6 +78,7 @@ The commercial product targets the needs specific to teams that build and run co
 # Development
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
+* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)

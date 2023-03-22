@@ -13,5 +13,6 @@ use re_memory::AccountingAllocator;
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
-pub(crate) mod arrow;
+mod arrow;
 mod python_bridge;
+mod python_session;

@@ -89,6 +89,7 @@ where
         desc: &Desc,
         creation_func: F,
     ) -> Arc<DynamicResource<Handle, Desc, Res>> {
+        crate::profile_function!();
         let mut state = self.state.write();
 
         // First check if we can reclaim a resource we have around from a previous frame.
@@ -106,7 +107,7 @@ where
         }
 
         // Otherwise create a new resource
-        re_log::debug!(?desc, "Allocated new resource");
+        re_log::trace!(?desc, "Allocated new resource");
         let inner_resource = creation_func(desc);
         self.total_resource_size_in_bytes.fetch_add(
             desc.resource_size_in_bytes(),
@@ -143,6 +144,7 @@ where
     }
 
     pub fn begin_frame(&mut self, frame_index: u64, mut on_destroy_resource: impl FnMut(&Res)) {
+        crate::profile_function!();
         self.current_frame_index = frame_index;
         let state = self.state.get_mut();
 
@@ -200,6 +202,7 @@ where
             .load(std::sync::atomic::Ordering::Relaxed)
     }
 }
+
 impl<Handle, Desc, Res> Drop for DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,

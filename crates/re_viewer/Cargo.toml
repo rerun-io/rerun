@@ -45,6 +45,7 @@ re_log.workspace = true
 re_log_types = { workspace = true, features = [
   "ecolor",
   "glam",
+  "image",
   "save",
   "load",
 ] }
@@ -62,7 +63,7 @@ re_analytics = { workspace = true, optional = true }
 
 
 # External
-ahash = "0.8"
+ahash.workspace = true
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 eframe = { workspace = true, default-features = false, features = [
@@ -74,16 +75,15 @@ eframe = { workspace = true, default-features = false, features = [
 egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_dock = { workspace = true, features = ["serde"] }
 egui_extras = { workspace = true, features = ["tracing"] }
-egui-notify = "0.6"
 egui-wgpu.workspace = true
-enumset = "1.0.12"
+ehttp = "0.2"
+enumset.workspace = true
 glam = { workspace = true, features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
 half.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
-  # "jpeg_rayon", # TODO(emilk): when https://github.com/rayon-rs/rayon/pull/1019 is released
   "png",
 ] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
@@ -100,6 +100,7 @@ serde = { version = "1", features = ["derive"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.10", features = ["serde"] }
 time = { workspace = true, default-features = false, features = ["formatting"] }
+thiserror.workspace = true
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu.workspace = true
@@ -109,7 +110,6 @@ wgpu.workspace = true
 arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
-ctrlc = { version = "3.0", features = ["termination"] }
 puffin_http = "0.11"
 puffin.workspace = true
 
@@ -123,8 +123,13 @@ winapi = "0.3.9"
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
-tracing = "0.1"
 wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+
+[dependencies.web-sys]
+version = "0.3.52"
+features = ["Window"]
 
 
 [build-dependencies]

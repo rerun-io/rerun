@@ -8,16 +8,19 @@ use re_log_types::{
 
 // ----------------------------------------------------------------------------
 
+/// Number of messages per time
+pub type TimeHistogram = re_int_histogram::Int64Histogram;
+
 /// Number of messages per time per timeline
 #[derive(Default)]
-pub struct TimeHistogramPerTimeline(BTreeMap<Timeline, BTreeMap<TimeInt, usize>>);
+pub struct TimeHistogramPerTimeline(BTreeMap<Timeline, TimeHistogram>);
 
 impl TimeHistogramPerTimeline {
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
         self.0.keys()
     }
 
-    pub fn get(&self, timeline: &Timeline) -> Option<&BTreeMap<TimeInt, usize>> {
+    pub fn get(&self, timeline: &Timeline) -> Option<&TimeHistogram> {
         self.0.get(timeline)
     }
 
@@ -25,13 +28,11 @@ impl TimeHistogramPerTimeline {
         self.0.contains_key(timeline)
     }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeMap<TimeInt, usize>)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeHistogram)> {
         self.0.iter()
     }
 
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (&Timeline, &mut BTreeMap<TimeInt, usize>)> {
+    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&Timeline, &mut TimeHistogram)> {
         self.0.iter_mut()
     }
 }
@@ -239,13 +240,11 @@ impl EntityTree {
             self.num_timeless_messages += 1;
         } else {
             for (timeline, time_value) in time_point.iter() {
-                *self
-                    .prefix_times
+                self.prefix_times
                     .0
                     .entry(*timeline)
                     .or_default()
-                    .entry(*time_value)
-                    .or_default() += 1;
+                    .increment(time_value.as_i64(), 1);
             }
         }
 
@@ -293,10 +292,10 @@ impl EntityTree {
             components: fields,
         } = self;
 
-        for (timeline, map) in &mut prefix_times.0 {
+        for (timeline, histogram) in &mut prefix_times.0 {
             crate::profile_scope!("prefix_times");
             if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                map.retain(|time_int, _count| cutoff_time.is_timeless() || cutoff_time <= time_int);
+                histogram.remove(..cutoff_time.as_i64());
             }
         }
         {
@@ -349,13 +348,11 @@ impl ComponentStats {
             self.num_timeless_messages += 1;
         } else {
             for (timeline, time_value) in time_point.iter() {
-                *self
-                    .times
+                self.times
                     .0
                     .entry(*timeline)
                     .or_default()
-                    .entry(*time_value)
-                    .or_default() += 1;
+                    .increment(time_value.as_i64(), 1);
             }
         }
     }
@@ -366,9 +363,9 @@ impl ComponentStats {
             num_timeless_messages: _,
         } = self;
 
-        for (timeline, time_counts) in &mut times.0 {
+        for (timeline, histogram) in &mut times.0 {
             if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                time_counts.retain(|time_int, _count| cutoff_time <= time_int);
+                histogram.remove(..cutoff_time.as_i64());
             }
         }
     }

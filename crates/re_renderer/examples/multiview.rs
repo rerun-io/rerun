@@ -1,4 +1,4 @@
-use std::{f32::consts::TAU, io::Read};
+use std::f32::consts::TAU;
 
 use ecolor::Hsva;
 use framework::Example;
@@ -12,7 +12,6 @@ use re_renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
         TestTriangleDrawData,
     },
-    resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba, Size,
 };
@@ -62,6 +61,7 @@ fn build_mesh_instances(
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
                     additive_tint: *c,
+                    ..Default::default()
                 },
             )
         })
@@ -206,19 +206,7 @@ impl Example for Multiview {
             .map(|_| random_color(&mut rnd))
             .collect_vec();
 
-        let model_mesh_instances = {
-            let reader = std::io::Cursor::new(include_bytes!("assets/rerun.obj.zip"));
-            let mut zip = zip::ZipArchive::new(reader).unwrap();
-            let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
-            let mut obj_data = Vec::new();
-            zipped_obj.read_to_end(&mut obj_data).unwrap();
-            re_renderer::importer::obj::load_obj_from_buffer(
-                &obj_data,
-                ResourceLifeTime::LongLived,
-                re_ctx,
-            )
-            .unwrap()
-        };
+        let model_mesh_instances = crate::framework::load_rerun_mesh(re_ctx);
 
         let mesh_instance_positions_and_colors = lorenz_points(10.0)
             .iter()

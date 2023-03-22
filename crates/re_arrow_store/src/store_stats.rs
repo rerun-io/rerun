@@ -1,11 +1,10 @@
 use crate::{
-    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
-    PersistentComponentTable, PersistentIndexTable,
+    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+    IndexTable, PersistentComponentTable, PersistentIndexTable,
 };
 
 // ---
 
-// TODO(cmc): count buckets?
 // TODO(cmc): compute incrementally once/if this becomes too expensive.
 #[derive(Default, Debug)]
 pub struct DataStoreStats {
@@ -16,13 +15,17 @@ pub struct DataStoreStats {
 
     pub total_temporal_index_rows: u64,
     pub total_temporal_index_size_bytes: u64,
+    pub total_temporal_index_buckets: u64,
     pub total_temporal_component_rows: u64,
     pub total_temporal_component_size_bytes: u64,
+    pub total_temporal_component_buckets: u64,
 
     pub total_index_rows: u64,
     pub total_index_size_bytes: u64,
     pub total_component_rows: u64,
     pub total_component_size_bytes: u64,
+
+    pub config: DataStoreConfig,
 }
 
 impl DataStoreStats {
@@ -36,8 +39,10 @@ impl DataStoreStats {
 
         let total_temporal_index_rows = store.total_temporal_index_rows();
         let total_temporal_index_size_bytes = store.total_temporal_index_size_bytes();
+        let total_temporal_index_buckets = store.total_temporal_index_buckets();
         let total_temporal_component_rows = store.total_temporal_component_rows();
         let total_temporal_component_size_bytes = store.total_temporal_component_size_bytes();
+        let total_temporal_component_buckets = store.total_temporal_component_buckets();
 
         let total_index_rows = total_timeless_index_rows + total_temporal_index_rows;
         let total_index_size_bytes =
@@ -51,14 +56,20 @@ impl DataStoreStats {
             total_timeless_index_size_bytes,
             total_timeless_component_rows,
             total_timeless_component_size_bytes,
+
             total_temporal_index_rows,
             total_temporal_index_size_bytes,
+            total_temporal_index_buckets,
             total_temporal_component_rows,
             total_temporal_component_size_bytes,
+            total_temporal_component_buckets,
+
             total_index_rows,
             total_index_size_bytes,
             total_component_rows,
             total_component_size_bytes,
+
+            config: store.config.clone(),
         }
     }
 }
@@ -69,6 +80,7 @@ impl DataStore {
     /// Returns the number of timeless index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its timeless index tables.
     pub fn total_timeless_index_rows(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_indices
             .values()
             .map(|table| table.total_rows())
@@ -78,6 +90,7 @@ impl DataStore {
     /// Returns the size of the timeless index data stored across this entire store, i.e. the sum
     /// of the size of the data stored across all of its timeless index tables, in bytes.
     pub fn total_timeless_index_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_indices
             .values()
             .map(|table| table.total_size_bytes())
@@ -87,6 +100,7 @@ impl DataStore {
     /// Returns the number of timeless component rows stored across this entire store, i.e. the
     /// sum of the number of rows across all of its timeless component tables.
     pub fn total_timeless_component_rows(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_components
             .values()
             .map(|table| table.total_rows())
@@ -96,6 +110,7 @@ impl DataStore {
     /// Returns the size of the timeless component data stored across this entire store, i.e. the
     /// sum of the size of the data stored across all of its timeless component tables, in bytes.
     pub fn total_timeless_component_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.timeless_components
             .values()
             .map(|table| table.total_size_bytes())
@@ -105,21 +120,33 @@ impl DataStore {
     /// Returns the number of temporal index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its temporal index tables.
     pub fn total_temporal_index_rows(&self) -> u64 {
+        crate::profile_function!();
         self.indices.values().map(|table| table.total_rows()).sum()
     }
 
     /// Returns the size of the temporal index data stored across this entire store, i.e. the sum
     /// of the size of the data stored across all of its temporal index tables, in bytes.
     pub fn total_temporal_index_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.indices
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
     }
 
+    /// Returns the number of temporal index buckets stored across this entire store.
+    pub fn total_temporal_index_buckets(&self) -> u64 {
+        crate::profile_function!();
+        self.indices
+            .values()
+            .map(|table| table.total_buckets())
+            .sum()
+    }
+
     /// Returns the number of temporal component rows stored across this entire store, i.e. the
     /// sum of the number of rows across all of its temporal component tables.
     pub fn total_temporal_component_rows(&self) -> u64 {
+        crate::profile_function!();
         self.components
             .values()
             .map(|table| table.total_rows())
@@ -129,9 +156,19 @@ impl DataStore {
     /// Returns the size of the temporal component data stored across this entire store, i.e. the
     /// sum of the size of the data stored across all of its temporal component tables, in bytes.
     pub fn total_temporal_component_size_bytes(&self) -> u64 {
+        crate::profile_function!();
         self.components
             .values()
             .map(|table| table.total_size_bytes())
+            .sum()
+    }
+
+    /// Returns the number of temporal component buckets stored across this entire store.
+    pub fn total_temporal_component_buckets(&self) -> u64 {
+        crate::profile_function!();
+        self.components
+            .values()
+            .map(|table| table.total_buckets())
             .sum()
     }
 }
@@ -172,6 +209,11 @@ impl IndexTable {
             .values()
             .map(|bucket| bucket.total_size_bytes())
             .sum()
+    }
+
+    /// Returns the number of buckets stored across this entire table.
+    pub fn total_buckets(&self) -> u64 {
+        self.buckets.len() as _
     }
 }
 
@@ -228,6 +270,11 @@ impl ComponentTable {
             .iter()
             .map(|bucket| bucket.total_size_bytes())
             .sum()
+    }
+
+    /// Returns the number of buckets stored across this entire table.
+    pub fn total_buckets(&self) -> u64 {
+        self.buckets.len() as _
     }
 }
 

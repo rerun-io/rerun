@@ -104,6 +104,7 @@ pub fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
             index_bucket_size_bytes: idx.index_bucket_size_bytes,
             index_bucket_nb_rows: idx.index_bucket_nb_rows,
             store_insert_ids: comp.store_insert_ids || idx.store_insert_ids,
+            enable_compaction: comp.enable_compaction || idx.enable_compaction,
         })
     })
 }

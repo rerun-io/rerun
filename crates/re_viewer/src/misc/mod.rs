@@ -30,7 +30,7 @@ pub use {
     item::{Item, ItemCollection},
     selection_state::{
         HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewEntityHighlight,
-        SelectionHighlight, SelectionState, SpaceViewHighlights,
+        SelectionHighlight, SelectionState, SpaceViewHighlights, SpaceViewOutlineMasks,
     },
 };
 

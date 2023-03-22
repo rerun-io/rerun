@@ -6,7 +6,9 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
-    renderer::{compositor::CompositorDrawData, DrawData, DrawPhase, Renderer},
+    renderer::{
+        CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
+    },
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,
 };
@@ -34,6 +36,9 @@ pub struct ViewBuilder {
     /// Result of [`ViewBuilder::setup_view`] - needs to be `Option` sine some of the fields don't have a default.
     setup: Option<ViewTargetSetup>,
     queued_draws: Vec<QueuedDraw>,
+
+    // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
+    outline_mask_processor: Option<OutlineMaskProcessor>,
 }
 
 struct ViewTargetSetup {
@@ -141,6 +146,8 @@ pub struct TargetConfiguration {
 
     /// How [`Size::AUTO`] is interpreted.
     pub auto_size_config: AutoSizeConfig,
+
+    pub outline_config: Option<OutlineConfig>,
 }
 
 impl Default for TargetConfiguration {
@@ -155,6 +162,7 @@ impl Default for TargetConfiguration {
             },
             pixels_from_point: 1.0,
             auto_size_config: Default::default(),
+            outline_config: None,
         }
     }
 }
@@ -195,6 +203,11 @@ impl ViewBuilder {
         mask: !0,
         alpha_to_coverage_enabled: false,
     };
+
+    /// Default value for clearing depth buffer to infinity.
+    ///
+    /// 0.0 == far since we're using reverse-z.
+    pub const DEFAULT_DEPTH_CLEAR: wgpu::LoadOp<f32> = wgpu::LoadOp::Clear(0.0);
 
     /// Default depth state for enabled depth write & read.
     pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: Option<wgpu::DepthStencilState> =
@@ -264,7 +277,23 @@ impl ViewBuilder {
             },
         );
 
-        self.queue_draw(&CompositorDrawData::new(ctx, &main_target_resolved));
+        self.outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
+            OutlineMaskProcessor::new(
+                ctx,
+                outline_config,
+                &config.name,
+                config.resolution_in_pixel,
+            )
+        });
+
+        self.queue_draw(&CompositorDrawData::new(
+            ctx,
+            &main_target_resolved,
+            self.outline_mask_processor
+                .as_ref()
+                .map(|p| p.final_voronoi_texture()),
+            &config.outline_config,
+        ));
 
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
@@ -338,7 +367,7 @@ impl ViewBuilder {
                         }
                     };
 
-                    let tan_half_fov = glam::vec2(f32::INFINITY, f32::INFINITY);
+                    let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
                     let pixel_world_size_from_camera_distance =
                         vertical_world_size / config.resolution_in_pixel[1] as f32;
 
@@ -376,10 +405,6 @@ impl ViewBuilder {
             config.auto_size_config.line_radius
         };
 
-        // See `depth_offset.wgsl`.
-        // Factor applied to depth offsets.
-        let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
-
         // Setup frame uniform buffer
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -397,7 +422,7 @@ impl ViewBuilder {
                 auto_size_points: auto_size_points.0,
                 auto_size_lines: auto_size_lines.0,
 
-                depth_offset_factor: depth_offset_factor.into(),
+                end_padding: Default::default(),
             },
         );
 
@@ -425,6 +450,8 @@ impl ViewBuilder {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
     ) {
+        crate::profile_function!();
+
         for queued_draw in &self.queued_draws {
             if queued_draw.participated_phases.contains(&phase) {
                 let res = (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
@@ -481,10 +508,10 @@ impl ViewBuilder {
             });
 
         {
-            crate::profile_scope!("view builder main target pass");
+            crate::profile_scope!("main target pass");
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{:?} - main pass", setup.name)).get(),
+                label: setup.name.clone().push_str(" - main pass").get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     resolve_target: Some(&setup.main_target_resolved.default_view),
@@ -503,9 +530,7 @@ impl ViewBuilder {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
-                        // Don't care about depth results afterwards.
-                        // This can have be much better perf, especially on tiler gpus.
+                        load: Self::DEFAULT_DEPTH_CLEAR,
                         store: false,
                     }),
                     stencil_ops: None,
@@ -517,6 +542,17 @@ impl ViewBuilder {
             for phase in [DrawPhase::Opaque, DrawPhase::Background] {
                 self.draw_phase(ctx, phase, &mut pass);
             }
+        }
+
+        if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
+            crate::profile_scope!("outlines");
+            {
+                crate::profile_scope!("outline mask pass");
+                let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
+                pass.set_bind_group(0, &setup.bind_group_0, &[]);
+                self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass);
+            }
+            outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?;
         }
 
         Ok(encoder.finish())

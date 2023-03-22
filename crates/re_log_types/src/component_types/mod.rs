@@ -17,6 +17,7 @@ use lazy_static::lazy_static;
 use crate::msg_bundle::Component;
 
 mod arrow;
+mod arrow_convert_shims;
 mod bbox;
 mod class_id;
 mod color;
@@ -59,6 +60,8 @@ pub use radius::Radius;
 pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
+#[cfg(feature = "image")]
+pub use tensor::TensorImageError;
 pub use tensor::{
     Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
 };
@@ -221,6 +224,7 @@ where
 
     type IntoIter = FastFixedSizeArrayIter<'a, T, SIZE>;
 
+    #[cfg(not(target_os = "windows"))]
     fn into_iter(self) -> Self::IntoIter {
         #[allow(unsafe_code)]
         // SAFETY:
@@ -231,6 +235,13 @@ where
             do_not_call_into_iter();
         }
         unreachable!();
+    }
+
+    // On windows the above linker trick doesn't work.
+    // We'll still catch the issue on build in Linux, but on windows just fall back to panic.
+    #[cfg(target_os = "windows")]
+    fn into_iter(self) -> Self::IntoIter {
+        panic!("Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert.");
     }
 }
 

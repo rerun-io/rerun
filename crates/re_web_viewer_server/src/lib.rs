@@ -6,7 +6,6 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
-#![allow(clippy::manual_range_contains)]
 
 use std::task::{Context, Poll};
 
@@ -61,22 +60,36 @@ impl Service<Request<Body>> for Svc {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
 
-        panic!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
+        // panic! is not enough in hyper (since it uses catch_unwind) - that only kills this thread. We want to quit.
+        eprintln!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
+        std::process::abort();
     }
 
     #[cfg(not(feature = "__ci"))]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let rsp = Response::builder();
+        let response = Response::builder();
 
-        let bytes = match req.uri().path() {
-            "/" | "/index.html" => &include_bytes!("../web_viewer/index.html")[..],
-            "/favicon.ico" => &include_bytes!("../web_viewer/favicon.ico")[..],
-            "/sw.js" => &include_bytes!("../web_viewer/sw.js")[..],
+        let (mime, bytes) = match req.uri().path() {
+            "/" | "/index.html" => ("text/html", &include_bytes!("../web_viewer/index.html")[..]),
+            "/favicon.ico" => (
+                "image/vnd.microsoft.icon",
+                &include_bytes!("../web_viewer/favicon.ico")[..],
+            ),
+            "/sw.js" => (
+                "text/javascript",
+                &include_bytes!("../web_viewer/sw.js")[..],
+            ),
 
             #[cfg(debug_assertions)]
-            "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
+            "/re_viewer.js" => (
+                "text/javascript",
+                &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
+            ),
             #[cfg(not(debug_assertions))]
-            "/re_viewer.js" => &include_bytes!("../web_viewer/re_viewer.js")[..],
+            "/re_viewer.js" => (
+                "text/javascript",
+                &include_bytes!("../web_viewer/re_viewer.js")[..],
+            ),
 
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
@@ -85,24 +98,34 @@ impl Service<Request<Body>> for Svc {
                 #[cfg(debug_assertions)]
                 {
                     re_log::info_once!("Serving DEBUG web-viewer");
-                    &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..]
+                    (
+                        "application/wasm",
+                        &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..],
+                    )
                 }
                 #[cfg(not(debug_assertions))]
                 {
-                    &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..]
+                    (
+                        "application/wasm",
+                        &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..],
+                    )
                 }
             }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());
                 let body = Body::from(Vec::new());
-                let rsp = rsp.status(404).body(body).unwrap();
+                let rsp = response.status(404).body(body).unwrap();
                 return future::ok(rsp);
             }
         };
 
         let body = Body::from(Vec::from(bytes));
-        let rsp = rsp.status(200).body(body).unwrap();
-        future::ok(rsp)
+        let mut response = response.status(200).body(body).unwrap();
+        response.headers_mut().insert(
+            hyper::header::CONTENT_TYPE,
+            hyper::header::HeaderValue::from_static(mime),
+        );
+        future::ok(response)
     }
 }
 
@@ -136,8 +159,15 @@ impl WebViewerServer {
         Self { server }
     }
 
-    pub async fn serve(self) -> anyhow::Result<()> {
-        self.server.await?;
+    pub async fn serve(
+        self,
+        mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+    ) -> anyhow::Result<()> {
+        self.server
+            .with_graceful_shutdown(async {
+                shutdown_rx.recv().await.ok();
+            })
+            .await?;
         Ok(())
     }
 }

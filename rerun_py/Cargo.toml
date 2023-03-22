@@ -51,16 +51,15 @@ rerun = { workspace = true, default-features = false, features = [
   "sdk",
 ] }
 
-ahash = "0.8"
+ahash.workspace = true
+anyhow.workspace = true
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"
 glam.workspace = true
 half.workspace = true
-image = { workspace = true, default-features = false, features = [
-  "jpeg_rayon",
-] }
+image = { workspace = true, default-features = false, features = ["jpeg"] }
 itertools = "0.10"
 macaw.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }

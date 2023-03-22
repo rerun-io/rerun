@@ -62,12 +62,11 @@ impl SpaceView {
         space_path: &EntityPath,
         queries_entities: &[EntityPath],
     ) -> Self {
-        let display_name = if queries_entities.len() == 1 {
-            // A single entity in this space-view - name the space after it.
-            queries_entities[0]
-                .last()
-                .map_or_else(|| "/".to_owned(), |part| part.to_string())
-        } else if let Some(name) = space_path.iter().last() {
+        // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
+        // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
+        // Spaces are now always named after the final element of the space-path (or the root), independent of the
+        // query entities.
+        let display_name = if let Some(name) = space_path.iter().last() {
             name.to_string()
         } else {
             // Include category name in the display for root paths because they look a tad bit too short otherwise.
@@ -142,6 +141,11 @@ impl SpaceView {
         highlights: &SpaceViewHighlights,
     ) {
         crate::profile_function!();
+
+        let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
+        if is_zero_sized_viewport {
+            return;
+        }
 
         let query = crate::ui::scene::SceneQuery {
             entity_paths: self.data_blueprint.entity_paths(),

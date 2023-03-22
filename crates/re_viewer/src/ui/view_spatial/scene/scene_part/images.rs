@@ -12,12 +12,12 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData},
-    ColorMap, Size,
+    renderer::{DepthCloud, DepthCloudDepthData, OutlineMaskPreference},
+    ColorMap,
 };
 
 use crate::{
-    misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
@@ -27,23 +27,22 @@ use crate::{
 
 use super::ScenePart;
 
-fn push_tensor_texture<T: AsDynamicImage>(
+#[allow(clippy::too_many_arguments)]
+fn push_tensor_texture(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
     instance_path_hash: InstancePathHash,
-    tensor: &T,
+    tensor: &Tensor,
     tint: egui::Rgba,
+    outline_mask: OutlineMaskPreference,
 ) {
     crate::profile_function!();
 
-    let tensor_view =
-        ctx.cache
-            .image
-            .get_view_with_annotations(tensor, annotations, ctx.render_ctx);
+    let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
 
-    if let Some(texture_handle) = tensor_view.texture_handle {
+    if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
         let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
         scene
             .primitives
@@ -58,6 +57,7 @@ fn push_tensor_texture<T: AsDynamicImage>(
                 multiplicative_tint: tint,
                 // Push to background. Mostly important for mouse picking order!
                 depth_offset: -1,
+                outline_mask,
             });
         scene
             .primitives
@@ -151,6 +151,8 @@ impl ImagesPart {
                     return Ok(());
                 }
 
+                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+
                 if tensor.meaning == TensorDataMeaning::Depth {
                     if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
                     {
@@ -164,6 +166,7 @@ impl ImagesPart {
                             properties,
                             &tensor,
                             pinhole_ent_path,
+                            entity_highlight,
                         );
                         return Ok(());
                     };
@@ -176,7 +179,7 @@ impl ImagesPart {
                     properties,
                     ent_path,
                     world_from_obj,
-                    highlights,
+                    entity_highlight,
                     instance_key,
                     tensor,
                     color,
@@ -195,21 +198,19 @@ impl ImagesPart {
         properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
-        highlights: &SpaceViewHighlights,
+        entity_highlight: &SpaceViewOutlineMasks,
         instance_key: InstanceKey,
         tensor: Tensor,
         color: Option<ColorRGBA>,
     ) {
         crate::profile_function!();
 
-        let entity_highlight = highlights.entity_highlight(ent_path.hash());
-
         let instance_path_hash = instance_path_hash_for_picking(
             ent_path,
             instance_key,
             entity_view,
             properties,
-            entity_highlight,
+            entity_highlight.any_selection_highlight,
         );
 
         let annotations = scene.annotation_map.find(ent_path);
@@ -219,42 +220,40 @@ impl ImagesPart {
             DefaultColor::OpaqueWhite,
         );
 
-        let highlight = entity_highlight.index_highlight(instance_path_hash.instance_key);
-        if highlight.is_some() {
-            let color = SceneSpatial::apply_hover_and_selection_effect_color(
-                re_renderer::Color32::TRANSPARENT,
-                highlight,
-            );
-            let rect = glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
-            scene
-                .primitives
-                .line_strips
-                .batch("image outlines")
-                .world_from_obj(world_from_obj)
-                .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
-                .color(color)
-                .radius(Size::new_points(1.0));
+        let outline_mask = entity_highlight.index_outline_mask(instance_path_hash.instance_key);
+
+        match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+            Ok(tensor) => {
+                push_tensor_texture(
+                    scene,
+                    ctx,
+                    &annotations,
+                    world_from_obj,
+                    instance_path_hash,
+                    &tensor,
+                    color.into(),
+                    outline_mask,
+                );
+
+                // TODO(jleibs): Meter should really be its own component
+                let meter = tensor.meter;
+
+                scene.ui.images.push(Image {
+                    instance_path_hash,
+                    tensor,
+                    meter,
+                    annotations,
+                });
+            }
+            Err(err) => {
+                // TODO(jleibs): Would be nice to surface these through the UI instead
+                re_log::warn_once!(
+                    "Encountered problem decoding tensor at path {}: {}",
+                    ent_path,
+                    err
+                );
+            }
         }
-
-        push_tensor_texture(
-            scene,
-            ctx,
-            &annotations,
-            world_from_obj,
-            instance_path_hash,
-            &tensor,
-            color.into(),
-        );
-
-        // TODO(jleibs): Meter should really be its own component
-        let meter = tensor.meter;
-
-        scene.ui.images.push(Image {
-            instance_path_hash,
-            tensor,
-            meter,
-            annotations,
-        });
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -265,6 +264,7 @@ impl ImagesPart {
         properties: &EntityProperties,
         tensor: &Tensor,
         pinhole_ent_path: &EntityPath,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) {
         crate::profile_function!();
 
@@ -279,8 +279,8 @@ impl ImagesPart {
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
         let Some(extrinsics) = pinhole_ent_path
-            .parent()
-            .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
+        .parent()
+        .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
             re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
             return;
         };
@@ -328,6 +328,7 @@ impl ImagesPart {
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,
+            outline_mask_id: entity_highlight.overall,
         });
     }
 }

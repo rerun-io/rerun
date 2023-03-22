@@ -1107,8 +1107,9 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            // Archive currently active bucket.
-            active_bucket.archive();
+            if config.enable_compaction {
+                active_bucket.archive();
+            }
 
             let row_offset = active_bucket.row_offset + len;
             self.buckets
@@ -1215,6 +1216,7 @@ impl ComponentBucket {
     /// Archives the bucket as a new one is about to take its place.
     ///
     /// This is a good opportunity to run compaction and other maintenance related tasks.
+    #[allow(dead_code)]
     pub fn archive(&mut self) {
         crate::profile_function!();
 

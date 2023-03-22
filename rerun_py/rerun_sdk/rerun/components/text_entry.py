@@ -14,7 +14,18 @@ __all__ = [
 
 class TextEntryArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_bodies_and_levels(text_entries: Sequence[tuple[str, str | None]]) -> TextEntryArray:
-        """Build a `TextEntryArray` from a sequence of text bodies and log levels."""
+        """
+        Build a `TextEntryArray` from a sequence of text bodies and log levels.
+
+        log levels recommended to be one of:
+        * "CRITICAL"
+        * "ERROR"
+        * "WARN"
+        * "INFO"
+        * "DEBUG"
+        * "TRACE"
+        """
+
         storage = pa.array(text_entries, type=TextEntryType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(TextEntryArray, pa.ExtensionArray.from_storage(TextEntryType(), storage))

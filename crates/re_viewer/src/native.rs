@@ -9,7 +9,7 @@ type AppCreator =
 pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         initial_window_size: Some([1600.0, 1200.0].into()),
-        min_window_size: Some([600.0, 450.0].into()), // Should be high enough to fit the rerun menu
+        min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
 
         #[cfg(target_os = "macos")]
         fullsize_content: re_ui::FULLSIZE_CONTENT,
@@ -58,6 +58,7 @@ pub fn run_native_viewer_with_messages(
             re_ui,
             cc.storage,
             rx,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         ))
     }))
 }

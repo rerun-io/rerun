@@ -179,6 +179,7 @@ impl RenderDepthClouds {
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
                 colormap: re_renderer::ColorMap::ColorMapTurbo,
+                outline_mask_id: Default::default(),
             }],
         )
         .unwrap();
@@ -328,6 +329,7 @@ impl framework::Example for RenderDepthClouds {
                 texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
                 multiplicative_tint: Rgba::from_white_alpha(0.5),
                 depth_offset: -1,
+                ..Default::default()
             }],
         )
         .unwrap();
@@ -401,6 +403,7 @@ struct DepthTexture {
     dimensions: glam::UVec2,
     data: DepthCloudDepthData,
 }
+
 impl DepthTexture {
     pub fn spiral(dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;
@@ -427,6 +430,7 @@ struct AlbedoTexture {
     dimensions: glam::UVec2,
     rgba8: Vec<u8>,
 }
+
 impl AlbedoTexture {
     pub fn spiral(dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;

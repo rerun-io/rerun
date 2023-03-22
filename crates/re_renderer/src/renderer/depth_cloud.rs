@@ -17,6 +17,7 @@ use std::num::NonZeroU32;
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     include_file,
+    renderer::OutlineMaskProcessor,
     resource_managers::ResourceManagerError,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -28,8 +29,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 // ---
@@ -42,10 +43,12 @@ mod gpu_data {
     pub struct DepthCloudInfoUBO {
         pub depth_camera_extrinsics: crate::wgpu_buffer_types::Mat4,
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
-        pub radius_scale: crate::wgpu_buffer_types::F32RowPadded,
-        pub colormap: crate::wgpu_buffer_types::U32RowPadded,
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 9],
+        pub radius_scale: f32,
+        pub colormap: u32,
+        pub outline_mask_id: crate::wgpu_buffer_types::UVec2,
+
+        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 8],
     }
 }
 
@@ -94,6 +97,9 @@ pub struct DepthCloud {
 
     /// Configures color mapping mode.
     pub colormap: ColorMap,
+
+    /// Option outline mask id preference.
+    pub outline_mask_id: OutlineMaskPreference,
 }
 
 impl Default for DepthCloud {
@@ -105,14 +111,21 @@ impl Default for DepthCloud {
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::default(),
             colormap: ColorMap::ColorMapTurbo,
+            outline_mask_id: OutlineMaskPreference::NONE,
         }
     }
 }
 
 #[derive(Clone)]
+struct DepthCloudDrawInstance {
+    bind_group: GpuBindGroup,
+    num_points: u32,
+    render_outline_mask: bool,
+}
+
+#[derive(Clone)]
 pub struct DepthCloudDrawData {
-    // Every single point clouds and their respective total number of points.
-    bind_groups: Vec<(u32, GpuBindGroup)>,
+    instances: Vec<DepthCloudDrawInstance>,
 }
 
 impl DrawData for DepthCloudDrawData {
@@ -139,7 +152,7 @@ impl DepthCloudDrawData {
 
         if depth_clouds.is_empty() {
             return Ok(DepthCloudDrawData {
-                bind_groups: Vec::new(),
+                instances: Vec::new(),
             });
         }
 
@@ -149,13 +162,14 @@ impl DepthCloudDrawData {
             depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
                 depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
                 depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
-                radius_scale: info.radius_scale.into(),
-                colormap: (info.colormap as u32).into(),
+                radius_scale: info.radius_scale,
+                colormap: info.colormap as u32,
+                outline_mask_id: info.outline_mask_id.0.unwrap_or_default().into(),
                 end_padding: Default::default(),
             }),
         );
 
-        let mut bind_groups = Vec::with_capacity(depth_clouds.len());
+        let mut instances = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
             let depth_texture = match &depth_cloud.depth_data {
                 // On native, we can use D16 textures without issues, but they aren't supported on
@@ -182,9 +196,9 @@ impl DepthCloudDrawData {
                 }
             };
 
-            bind_groups.push((
-                depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
-                ctx.gpu_resources.bind_groups.alloc(
+            instances.push(DepthCloudDrawInstance {
+                num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
+                bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
                     &BindGroupDesc {
@@ -196,10 +210,11 @@ impl DepthCloudDrawData {
                         layout: bg_layout,
                     },
                 ),
-            ));
+                render_outline_mask: depth_cloud.outline_mask_id.is_some(),
+            });
         }
 
-        Ok(DepthCloudDrawData { bind_groups })
+        Ok(DepthCloudDrawData { instances })
     }
 }
 
@@ -292,12 +307,17 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
 }
 
 pub struct DepthCloudRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for DepthCloudRenderer {
     type RendererDrawData = DepthCloudDrawData;
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::OutlineMask, DrawPhase::Opaque]
+    }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -357,35 +377,57 @@ impl Renderer for DepthCloudRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let render_pipeline_desc_color = RenderPipelineDesc {
+            label: "DepthCloudRenderer::render_pipeline_desc_color".into(),
+            pipeline_layout,
+            vertex_entrypoint: "vs_main".into(),
+            vertex_handle: shader_module,
+            fragment_entrypoint: "fs_main".into(),
+            fragment_handle: shader_module,
+            vertex_buffers: smallvec![],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            multisample: wgpu::MultisampleState {
+                // We discard pixels to do the round cutout, therefore we need to
+                // calculate our own sampling mask.
+                alpha_to_coverage_enabled: shared_data
+                    .config
+                    .hardware_tier
+                    .support_alpha_to_coverage(),
+                ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+            },
+        };
+        let render_pipeline_color = pools.render_pipelines.get_or_create(
+            device,
+            &render_pipeline_desc_color,
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "depth_cloud_rp".into(),
-                pipeline_layout,
-                vertex_entrypoint: "vs_main".into(),
-                vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main".into(),
-                fragment_handle: shader_module,
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: wgpu::MultisampleState {
-                    // We discard pixels to do the round cutout, therefore we need to
-                    // calculate our own sampling mask.
-                    alpha_to_coverage_enabled: true,
-                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
-                },
+                label: "DepthCloudRenderer::render_pipeline_outline_mask".into(),
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                // Alpha to coverage doesn't work with the mask integer target.
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
+                    shared_data.config.hardware_tier,
+                ),
+                ..render_pipeline_desc_color
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
 
         DepthCloudRenderer {
-            render_pipeline,
+            render_pipeline_color,
+            render_pipeline_outline_mask,
             bind_group_layout,
         }
     }
@@ -393,21 +435,31 @@ impl Renderer for DepthCloudRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
-        _phase: DrawPhase,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
-        if draw_data.bind_groups.is_empty() {
+        if draw_data.instances.is_empty() {
             return Ok(());
         }
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+
         pass.set_pipeline(pipeline);
 
-        for (num_points, bind_group) in &draw_data.bind_groups {
-            pass.set_bind_group(1, bind_group, &[]);
-            pass.draw(0..*num_points * 6, 0..1);
+        for instance in &draw_data.instances {
+            if phase == DrawPhase::OutlineMask && !instance.render_outline_mask {
+                continue;
+            }
+
+            pass.set_bind_group(1, &instance.bind_group, &[]);
+            pass.draw(0..instance.num_points * 6, 0..1);
         }
 
         Ok(())

@@ -5,6 +5,7 @@ use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
 struct UniformBufferAlignmentCheck<T> {
     pub _marker: std::marker::PhantomData<T>,
 }
+
 impl<T> UniformBufferAlignmentCheck<T> {
     /// wgpu requires uniform buffers to be aligned to up to 256 bytes.
     ///
@@ -33,6 +34,7 @@ impl<T> UniformBufferAlignmentCheck<T> {
         "Uniform buffers need to be aligned to 256 bytes. Use `#[repr(C, align(256))]`"
     );
 }
+
 /// Utility for fast & efficient creation of uniform buffers from a series of structs.
 ///
 /// For subsequent frames, this will automatically not allocate any resources (thanks to our buffer pooling mechanism).
@@ -45,6 +47,10 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
 ) -> Vec<BindGroupEntry> {
     #[allow(clippy::let_unit_value)]
     let _ = UniformBufferAlignmentCheck::<T>::CHECK;
+
+    if content.len() == 0 {
+        return vec![];
+    }
 
     let num_buffers = content.len() as u64;
     let element_size = std::mem::size_of::<T>() as u64;
@@ -73,7 +79,6 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
     staging_buffer.copy_to_buffer(ctx.active_frame.encoder.lock().get(), &buffer, 0);
 
     (0..num_buffers)
-        .into_iter()
         .map(|i| BindGroupEntry::Buffer {
             handle: buffer.handle,
             offset: i * element_size,
@@ -84,7 +89,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
 
 /// See [`create_and_fill_uniform_buffer`].
 pub fn create_and_fill_uniform_buffer<T: bytemuck::Pod>(
-    ctx: &mut RenderContext,
+    ctx: &RenderContext,
     label: DebugLabel,
     content: T,
 ) -> BindGroupEntry {

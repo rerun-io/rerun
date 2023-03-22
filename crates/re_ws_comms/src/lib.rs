@@ -26,8 +26,8 @@ pub const PROTOCOL: &str = "wss";
 #[cfg(not(feature = "tls"))]
 pub const PROTOCOL: &str = "ws";
 
-pub fn default_server_url() -> String {
-    format!("{PROTOCOL}://127.0.0.1:{DEFAULT_WS_SERVER_PORT}")
+pub fn default_server_url(hostname: &str) -> String {
+    format!("{PROTOCOL}://{hostname}:{DEFAULT_WS_SERVER_PORT}")
 }
 
 const PREFIX: [u8; 4] = *b"RR00";

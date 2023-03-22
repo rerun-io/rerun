@@ -10,7 +10,9 @@ import argparse
 import os
 import re
 import sys
-from typing import Optional
+from typing import Any, List, Optional, Tuple
+
+# -----------------------------------------------------------------------------
 
 todo_pattern = re.compile(r"TODO([^(]|$)")
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
@@ -41,9 +43,6 @@ def lint_line(line: str) -> Optional[str]:
     if "todo!()" in line:
         return 'todo!() should be written as todo!("$details")'
 
-    if "dbg!(" in line and not line.startswith("//"):
-        return "No dbg!( in production code"
-
     if "unimplemented!" in line:
         return "unimplemented!(): either implement this, or rewrite it as a todo!()"
 
@@ -68,7 +67,7 @@ def lint_line(line: str) -> Optional[str]:
     return None
 
 
-def test_lint() -> None:
+def test_lint_line() -> None:
     assert lint_line("hello world") is None
 
     should_pass = [
@@ -112,7 +111,149 @@ def test_lint() -> None:
         assert lint_line(line) is not None, f'expected "{line}" to fail'
 
 
-def lint_file(filepath: str) -> int:
+# -----------------------------------------------------------------------------
+
+re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?(async )?((impl|fn|struct|enum|union|trait|type)\b))")
+re_attribute = re.compile(r"^\s*\#\[(error|derive)")
+re_docstring = re.compile(r"^\s*///")
+
+
+def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
+    def is_empty(line: str) -> bool:
+        return (
+            line == ""
+            or line.startswith("#")
+            or line.startswith("//")
+            or line.endswith("{")
+            or line.endswith("(")
+            or line.endswith("\\")
+            or line.endswith('r"')
+            or line.endswith("]")
+        )
+
+    """Only for Rust files."""
+    if re_declaration.match(line) or re_attribute.match(line) or re_docstring.match(line):
+        line = line.strip()
+        prev_line = prev_line.strip()
+
+        if is_empty(prev_line):
+            return False
+
+        if line.startswith("fn ") and line.endswith(";"):
+            return False  # maybe a trait function
+
+        if line.startswith("type ") and prev_line.endswith(";"):
+            return False  # many type declarations in a row is fine
+
+        if prev_line.endswith(",") and line.startswith("impl"):
+            return False
+
+        if prev_line.endswith("*"):
+            return False  # maybe in a macro
+
+        return True
+
+    return False
+
+
+def lint_vertical_spacing(lines_in: List[str]) -> Tuple[List[str], List[str]]:
+    """Only for Rust files."""
+    prev_line = None
+
+    errors = []
+    lines_out = []
+
+    for line_nr, line in enumerate(lines_in):
+        line_nr = line_nr + 1
+
+        if prev_line is not None and is_missing_blank_line_between(prev_line, line):
+            errors.append(f"{line_nr}: for readability, add newline before `{line.strip()}`")
+            lines_out.append("\n")
+
+        lines_out.append(line)
+        prev_line = line
+
+    return errors, lines_out
+
+
+def test_lint_vertical_spacing() -> None:
+    assert re_declaration.match("fn foo() {}")
+    assert re_declaration.match("async fn foo() {}")
+    assert re_declaration.match("pub async fn foo() {}")
+
+    should_pass = [
+        "hello world",
+        """
+        /// docstring
+        foo
+
+        /// docstring
+        bar
+        """,
+        """
+        trait Foo {
+            fn bar();
+            fn baz();
+        }
+        """,
+        # macros:
+        """
+        $(#[$meta])*
+        #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+        """,
+        """
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = &PointCloudVertex>,
+        ),
+        """,
+        """
+        type Response = Response<Body>;
+        type Error = hyper::Error;
+        """,
+    ]
+
+    should_fail = [
+        """
+        /// docstring
+        foo
+        /// docstring
+        bar
+        """,
+        """
+        Foo,
+        #[error]
+        Bar,
+        """,
+        """
+        slotmap::new_key_type! { pub struct ViewBuilderHandle; }
+        type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
+        """,
+        """
+        fn foo() {}
+        fn bar() {}
+        """,
+        """
+        async fn foo() {}
+        async fn bar() {}
+        """,
+    ]
+
+    for code in should_pass:
+        errors, _ = lint_vertical_spacing(code.split("\n"))
+        assert len(errors) == 0, f"expected this to pass:\n{code}\ngot: {errors}"
+
+    for code in should_fail:
+        errors, _ = lint_vertical_spacing(code.split("\n"))
+        assert len(errors) > 0, f"expected this to fail:\n{code}"
+
+    pass
+
+
+# -----------------------------------------------------------------------------
+
+
+def lint_file(filepath: str, args: Any) -> int:
     with open(filepath) as f:
         lines_in = f.readlines()
 
@@ -124,11 +265,26 @@ def lint_file(filepath: str) -> int:
             num_errors += 1
             print(f"{filepath}:{line_nr+1}: {error}")
 
+    if filepath.endswith(".rs"):
+        errors, lines_out = lint_vertical_spacing(lines_in)
+
+        for error in errors:
+            print(f"{filepath}{error}")
+
+        if args.fix and lines_in != lines_out:
+            with open(filepath, "w") as f:
+                f.writelines(lines_out)
+            print(f"{filepath} fixed.")
+
+        num_errors = len(errors)
+
     return num_errors
 
 
 def main() -> None:
-    test_lint()  # Make sure we are bug free before we run!
+    # Make sure we are bug free before we run:
+    test_lint_line()
+    test_lint_vertical_spacing()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
@@ -138,6 +294,7 @@ def main() -> None:
         nargs="*",
         help="File paths. Empty = all files, recursively.",
     )
+    parser.add_argument("--fix", dest="fix", action="store_true", help="Automatically fix some problems.")
 
     args = parser.parse_args()
 
@@ -145,7 +302,7 @@ def main() -> None:
 
     if args.files:
         for filepath in args.files:
-            num_errors += lint_file(filepath)
+            num_errors += lint_file(filepath, args)
     else:
         script_dirpath = os.path.dirname(os.path.realpath(__file__))
         root_dirpath = os.path.abspath(f"{script_dirpath}/..")
@@ -157,7 +314,9 @@ def main() -> None:
 
         exclude_paths = {
             "./CODE_STYLE.md",
+            "./examples/rust/objectron/src/objectron.rs",  # auto-generated
             "./scripts/lint.py",  # we contain all the patterns we are linting against
+            "./web_viewer/re_viewer_debug.js",  # auto-generated by wasm_bindgen
             "./web_viewer/re_viewer.js",  # auto-generated by wasm_bindgen
         }
 
@@ -168,13 +327,13 @@ def main() -> None:
                 if extension in extensions:
                     filepath = os.path.join(root, filename)
                     if filepath not in exclude_paths:
-                        num_errors += lint_file(filepath)
+                        num_errors += lint_file(filepath, args)
 
     if num_errors == 0:
-        print("lint.py finished without error")
+        print(f"{sys.argv[0]} finished without error")
         sys.exit(0)
     else:
-        print(f"{num_errors} errors.")
+        print(f"{sys.argv[0]} found {num_errors} errors.")
         sys.exit(1)
 
 

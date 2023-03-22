@@ -73,7 +73,7 @@ fn log_messages() {
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
         let mut messages = re_log_types::encoding::Decoder::new(&mut bytes)
             .unwrap()
-            .collect::<anyhow::Result<Vec<LogMsg>>>()
+            .collect::<Result<Vec<LogMsg>, _>>()
             .unwrap();
         assert!(bytes.is_empty());
         assert_eq!(messages.len(), 1);

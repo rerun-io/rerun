@@ -37,15 +37,15 @@ pub struct ViewerContext<'a> {
 impl<'a> ViewerContext<'a> {
     /// Show an [`MsgId`] and make it selectable
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
-        let selection = Item::MsgId(msg_id);
+        let item = Item::MsgId(msg_id);
         let response = ui
-            .selectable_label(self.selection().contains(&selection), msg_id.short_string())
+            .selectable_label(self.selection().contains(&item), msg_id.short_string())
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
                 msg_id.data_ui(self, ui, UiVerbosity::Small, &self.current_query());
             });
-        self.cursor_interact_with_selectable(response, selection)
+        self.cursor_interact_with_selectable(response, item)
     }
 
     /// Show an entity path and make it selectable.
@@ -97,7 +97,7 @@ impl<'a> ViewerContext<'a> {
         instance_path: &InstancePath,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        let selection = Item::InstancePath(space_view_id, instance_path.clone());
+        let item = Item::InstancePath(space_view_id, instance_path.clone());
         let subtype_string = if instance_path.instance_key.is_splat() {
             "Entity"
         } else {
@@ -105,7 +105,7 @@ impl<'a> ViewerContext<'a> {
         };
 
         let response = ui
-            .selectable_label(self.selection().contains(&selection), text)
+            .selectable_label(self.selection().contains(&item), text)
             .on_hover_ui(|ui| {
                 ui.strong(subtype_string);
                 ui.label(format!("Path: {instance_path}"));
@@ -117,7 +117,7 @@ impl<'a> ViewerContext<'a> {
                 );
             });
 
-        self.cursor_interact_with_selectable(response, selection)
+        self.cursor_interact_with_selectable(response, item)
     }
 
     /// Show a component path and make it selectable.
@@ -127,9 +127,9 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         component_path: &ComponentPath,
     ) -> egui::Response {
-        let selection = Item::ComponentPath(component_path.clone());
-        let response = ui.selectable_label(self.selection().contains(&selection), text);
-        self.cursor_interact_with_selectable(response, selection)
+        let item = Item::ComponentPath(component_path.clone());
+        let response = ui.selectable_label(self.selection().contains(&item), text);
+        self.cursor_interact_with_selectable(response, item)
     }
 
     pub fn space_view_button(
@@ -152,14 +152,14 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         space_view_category: crate::ui::ViewCategory,
     ) -> egui::Response {
-        let selection = Item::SpaceView(space_view_id);
-        let is_selected = self.selection().contains(&selection);
+        let item = Item::SpaceView(space_view_id);
+        let is_selected = self.selection().contains(&item);
 
         let response = self
             .re_ui
             .selectable_label_with_icon(ui, space_view_category.icon(), text, is_selected)
             .on_hover_text("Space View");
-        self.cursor_interact_with_selectable(response, selection)
+        self.cursor_interact_with_selectable(response, item)
     }
 
     pub fn data_blueprint_group_button_to(
@@ -169,17 +169,17 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
-        let selection = Item::DataBlueprintGroup(space_view_id, group_handle);
+        let item = Item::DataBlueprintGroup(space_view_id, group_handle);
         let response = self
             .re_ui
             .selectable_label_with_icon(
                 ui,
                 &re_ui::icons::CONTAINER,
                 text,
-                self.selection().contains(&selection),
+                self.selection().contains(&item),
             )
             .on_hover_text("Group");
-        self.cursor_interact_with_selectable(response, selection)
+        self.cursor_interact_with_selectable(response, item)
     }
 
     pub fn data_blueprint_button_to(
@@ -189,18 +189,18 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         entity_path: &EntityPath,
     ) -> egui::Response {
-        let selection = Item::InstancePath(
+        let item = Item::InstancePath(
             Some(space_view_id),
             InstancePath::entity_splat(entity_path.clone()),
         );
         let response = ui
-            .selectable_label(self.selection().contains(&selection), text)
+            .selectable_label(self.selection().contains(&item), text)
             .on_hover_ui(|ui| {
                 ui.strong("Space View Entity");
                 ui.label(format!("Path: {entity_path}"));
                 entity_path.data_ui(self, ui, UiVerbosity::Reduced, &self.current_query());
             });
-        self.cursor_interact_with_selectable(response, selection)
+        self.cursor_interact_with_selectable(response, item)
     }
 
     pub fn time_button(
@@ -277,15 +277,15 @@ impl<'a> ViewerContext<'a> {
     pub fn cursor_interact_with_selectable(
         &mut self,
         response: egui::Response,
-        selectable: Item,
+        item: Item,
     ) -> egui::Response {
         let is_item_hovered =
-            self.selection_state().highlight_for_ui_element(&selectable) == HoverHighlight::Hovered;
+            self.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         if response.hovered() {
             self.rec_cfg
                 .selection_state
-                .set_hovered(std::iter::once(selectable));
+                .set_hovered(std::iter::once(item));
         }
         self.select_hovered_on_click(&response);
         // TODO(andreas): How to deal with shift click for selecting ranges?

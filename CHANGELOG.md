@@ -4,6 +4,13 @@
 ## Unreleased
 [Commits since latest release](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+
+## 0.3.1 - Remove potentially sensitive analytics
+[Commits](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.3.0)
+
+Remove potentially sensitive analytics, including path to rerun source code on panics, and rerun branch name when building from source [#1563](https://github.com/rerun-io/rerun/pull/1563)
+
+
 ## 0.3.0
 ### Overview & Highlights
 
@@ -32,7 +39,7 @@ Other highlights:
   * Add a `strict` mode to the Python SDK where misuses of the API result in exceptions being raised.[#1477](https://github.com/rerun-io/rerun/pull/1477)
   * Fix disabling Python API through `init` not working [#1517](https://github.com/rerun-io/rerun/pull/1517)
 * General
-  * We build now with fewer build dependencies (there is however [still more work to do!](https://github.com/rerun-io/rerun/issues/1316)).  
+  * We build now with fewer build dependencies (there is however [still more work to do!](https://github.com/rerun-io/rerun/issues/1316)).
   Notably, we previously used a version of the `time` crate which had a security issue (CVE-2020-26235), thanks @mpizenberg for helping out!
   * Print more information & troubleshooting info on crash
 
@@ -112,7 +119,7 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
   * Remove unnecessary ordered-float [#1461](https://github.com/rerun-io/rerun/pull/1461)
   * Remove extraneous `image` features and dependencies [#1425](https://github.com/rerun-io/rerun/pull/1425)
   * Replace `reqwest` with `ureq` [#1407](https://github.com/rerun-io/rerun/pull/1407)
-  * Remove derive_more dependency [#1406](https://github.com/rerun-io/rerun/pull/1406) 
+  * Remove derive_more dependency [#1406](https://github.com/rerun-io/rerun/pull/1406)
 * Use different artifact names for wasm/js in debug builds [#1428](https://github.com/rerun-io/rerun/pull/1428)
 * Separate mac wheels & trigger wheel build from ui [#1499](https://github.com/rerun-io/rerun/pull/1499)
 * Add spell checking to CI [#1492](https://github.com/rerun-io/rerun/pull/1492)

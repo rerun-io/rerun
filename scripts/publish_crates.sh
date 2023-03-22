@@ -92,6 +92,7 @@ echo "Publishing crates…"
 cargo publish $FLAGS -p re_build_info
 cargo publish $FLAGS -p re_build_build_info
 cargo publish $FLAGS -p re_log
+cargo publish $FLAGS -p re_int_histogram
 cargo publish $FLAGS -p re_error
 cargo publish $FLAGS -p re_format
 cargo publish $FLAGS -p re_string_interner
@@ -113,6 +114,5 @@ cargo publish $FLAGS -p re_web_viewer_server
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun
-cargo publish $FLAGS -p re_int_histogram
 
 echo "All crates successfully published!"

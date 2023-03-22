@@ -46,3 +46,4 @@ egui_dock = { workspace = true, optional = true, features = ["serde"] }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
+re_log.workspace = true

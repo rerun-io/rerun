@@ -65,7 +65,7 @@ pub(crate) fn tree_from_space_views(
             let aspect_ratio = match space_view.category {
                 ViewCategory::Spatial => {
                     let state_spatial = &space_view.view_state.state_spatial;
-                    match state_spatial.nav_mode {
+                    match *state_spatial.nav_mode.get() {
                         // This is the only thing where the aspect ratio makes complete sense.
                         super::view_spatial::SpatialNavigationMode::TwoD => {
                             let size = state_spatial.scene_bbox_accum.size();

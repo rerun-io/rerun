@@ -97,17 +97,15 @@ impl RenderContext {
     ///
     /// Should be somewhere between 1-4, too high and we use up more memory and introduce latency,
     /// too low and we may starve the GPU.
-    /// On the web we want to go lower because a lot more memory constraint.
-    #[cfg(not(target_arch = "wasm32"))]
     const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 4;
-    #[cfg(target_arch = "wasm32")]
-    const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 2;
 
     pub fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
     ) -> Self {
+        crate::profile_function!();
+
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
 
@@ -201,6 +199,17 @@ impl RenderContext {
 
     fn poll_device(&mut self) {
         crate::profile_function!();
+
+        // Browsers don't let us wait for GPU work via `poll`.
+        // * WebGPU: `poll` is a no-op as the spec doesn't specify it at all.
+        // * WebGL: Internal timeout can't go above a browser specific value.
+        //          Since wgpu ran into issues in the past with some browsers returning errors,
+        //          it uses a timeout of zero and ignores errors there.
+        //          TODO(andreas): That's not the only thing that's weird with `maintain` in general.
+        //                          See https://github.com/gfx-rs/wgpu/issues/3601
+        if cfg!(target_arch = "wasm32") {
+            return;
+        }
 
         // Ensure not too many queue submissions are in flight.
         let num_submissions_to_wait_for = self
@@ -310,6 +319,7 @@ impl RenderContext {
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self.active_frame.encoder.lock().0.take() {
+            crate::profile_scope!("finish & submit frame-global encoder");
             let command_buffer = command_encoder.finish();
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.

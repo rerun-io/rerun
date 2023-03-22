@@ -36,7 +36,7 @@ pub(crate) struct FrameUniformBuffer {
     pub pixels_from_point: f32,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
-    /// Both values are set to positive infinity for orthographic projection
+    /// Both values are set to f32max for orthographic projection
     pub tan_half_fov: wgpu_buffer_types::Vec2,
 
     // Size used for all point radii given with Size::AUTO.
@@ -46,7 +46,7 @@ pub(crate) struct FrameUniformBuffer {
     pub auto_size_lines: f32,
 
     /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    pub depth_offset_factor: wgpu_buffer_types::F32RowPadded,
+    pub end_padding: wgpu_buffer_types::PaddingRow,
 }
 
 pub(crate) struct GlobalBindings {

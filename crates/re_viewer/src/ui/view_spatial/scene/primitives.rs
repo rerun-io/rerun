@@ -23,10 +23,13 @@ pub struct SceneSpatialPrimitives {
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
     pub line_strips: LineStripSeriesBuilder<InstancePathHash>,
+    pub line_strips_outline_only: LineStripSeriesBuilder<()>,
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
     pub depth_clouds: Vec<DepthCloud>,
+
+    pub any_outlines: bool,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -40,9 +43,11 @@ impl SceneSpatialPrimitives {
             textured_rectangles_ids: Default::default(),
             textured_rectangles: Default::default(),
             line_strips: Default::default(),
+            line_strips_outline_only: Default::default(),
             points: PointCloudBuilder::new(re_ctx),
             meshes: Default::default(),
             depth_clouds: Default::default(),
+            any_outlines: false,
         }
     }
 
@@ -58,9 +63,11 @@ impl SceneSpatialPrimitives {
             textured_rectangles,
             textured_rectangles_ids: _,
             line_strips,
+            line_strips_outline_only: _,
             points,
             meshes,
             depth_clouds,
+            any_outlines: _,
         } = &self;
 
         textured_rectangles.len()
@@ -78,9 +85,11 @@ impl SceneSpatialPrimitives {
             textured_rectangles_ids: _,
             textured_rectangles,
             line_strips,
+            line_strips_outline_only: _,
             points,
             meshes,
             depth_clouds: _, // no bbox for depth clouds
+            any_outlines: _,
         } = self;
 
         *bounding_box = macaw::BoundingBox::nothing();
@@ -136,9 +145,9 @@ impl SceneSpatialPrimitives {
                     .iter()
                     .map(move |mesh_instance| MeshInstance {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        mesh: None, // Don't care.
                         world_from_mesh: base_transform * mesh_instance.world_from_mesh,
-                        additive_tint: mesh.additive_tint,
+                        outline_mask_ids: mesh.outline_mask_ids,
+                        ..Default::default()
                     })
             })
             .collect()

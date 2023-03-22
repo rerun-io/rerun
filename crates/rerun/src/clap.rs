@@ -9,9 +9,13 @@ use crate::Session;
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum RerunBehavior {
     Connect(SocketAddr),
+
     Save(PathBuf),
+
     #[cfg(feature = "web_viewer")]
     Serve,
+
+    #[cfg(feature = "native_viewer")]
     Spawn,
 }
 
@@ -33,7 +37,7 @@ enum RerunBehavior {
 /// ```
 ///
 /// Checkout the official examples to see it used in practice.
-#[derive(Debug, clap::Args, Clone)]
+#[derive(Clone, Debug, clap::Args)]
 #[clap(author, version, about)]
 pub struct RerunArgs {
     /// Start a viewer and feed it data in real-time.
@@ -58,51 +62,95 @@ pub struct RerunArgs {
 }
 
 impl RerunArgs {
-    /// Run common Rerun script setup actions. Connect to the viewer if necessary.
+    /// Set up Rerun, and run the given code with a [`Session`] object
+    /// that can be used to log data.
     ///
-    /// Returns `true` if you should call `session.spawn`.
-    pub fn on_startup(&self, session: &mut Session) -> anyhow::Result<bool> {
-        match self.to_behavior() {
-            RerunBehavior::Connect(addr) => session.connect(addr),
+    /// Logging will be controlled by the `RERUN` environment variable,
+    /// or the `default_enabled` argument if the environment variable is not set.
+    #[track_caller] // track_caller so that we can see if we are being called from an official example.
+    pub fn run(
+        &self,
+        application_id: &str,
+        default_enabled: bool,
+        run: impl FnOnce(Session) + Send + 'static,
+    ) -> anyhow::Result<()> {
+        // Ensure we have a running tokio runtime.
+        #[allow(unused_assignments)]
+        let mut tokio_runtime = None;
+        let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle
+        } else {
+            tokio_runtime =
+                Some(tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
+            tokio_runtime.as_ref().unwrap().handle().clone()
+        };
+        let _tokio_runtime_guard = tokio_runtime_handle.enter();
 
-            RerunBehavior::Save(path) => session.save(path)?,
+        let (rerun_enabled, recording_info) = crate::SessionBuilder::new(application_id)
+            .default_enabled(default_enabled)
+            .finalize();
+
+        if !rerun_enabled {
+            run(Session::disabled());
+            return Ok(());
+        }
+
+        let sink: Box<dyn re_sdk::sink::LogSink> = match self.to_behavior()? {
+            RerunBehavior::Connect(addr) => Box::new(crate::sink::TcpSink::new(addr)),
+
+            RerunBehavior::Save(path) => Box::new(crate::sink::FileSink::new(path)?),
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                crate::serve_web_viewer(session, true);
+                let open_browser = true;
+                crate::web_viewer::new_sink(open_browser)
             }
 
-            RerunBehavior::Spawn => return Ok(true),
-        }
+            #[cfg(feature = "native_viewer")]
+            RerunBehavior::Spawn => {
+                crate::native_viewer::spawn(recording_info, run)?;
+                return Ok(());
+            }
+        };
 
-        Ok(false)
-    }
+        let session = Session::new(recording_info, sink);
+        let _sink = session.sink().clone(); // Keep sink (and potential associated servers) alive until the end of this function scope.
+        run(session);
 
-    /// Run common post-actions. Sleep if serving the web viewer.
-    pub fn on_teardown(&self) {
         #[cfg(feature = "web_viewer")]
-        if self.to_behavior() == RerunBehavior::Serve {
-            eprintln!("Sleeping while serving the web viewer. Abort with Ctrl-C"); // TODO(emilk): sleep in `drop` instead?
-            std::thread::sleep(std::time::Duration::from_secs(1_000_000));
+        if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
+            use anyhow::Context as _;
+
+            let (mut shutdown_rx, _) = crate::run::setup_ctrl_c_handler();
+            return tokio_runtime_handle
+                .block_on(async { shutdown_rx.recv().await })
+                .context("Failed to wait for shutdown signal.");
         }
+
+        Ok(())
     }
 
-    fn to_behavior(&self) -> RerunBehavior {
+    #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
+    fn to_behavior(&self) -> anyhow::Result<RerunBehavior> {
         if let Some(path) = self.save.as_ref() {
-            return RerunBehavior::Save(path.clone());
+            return Ok(RerunBehavior::Save(path.clone()));
         }
 
         #[cfg(feature = "web_viewer")]
         if self.serve {
-            return RerunBehavior::Serve;
+            return Ok(RerunBehavior::Serve);
         }
 
         match self.connect {
-            Some(Some(addr)) => return RerunBehavior::Connect(addr),
-            Some(None) => return RerunBehavior::Connect(crate::default_server_addr()),
+            Some(Some(addr)) => return Ok(RerunBehavior::Connect(addr)),
+            Some(None) => return Ok(RerunBehavior::Connect(crate::default_server_addr())),
             None => {}
         }
 
-        RerunBehavior::Spawn
+        #[cfg(not(feature = "native_viewer"))]
+        anyhow::bail!("Expected --save, --connect, or --serve");
+
+        #[cfg(feature = "native_viewer")]
+        Ok(RerunBehavior::Spawn)
     }
 }

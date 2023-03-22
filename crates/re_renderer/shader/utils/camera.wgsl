@@ -1,17 +1,13 @@
-// TODO(andreas): global_bindings are imported implicitly
-
-fn inf() -> f32 {
-    return 1.0 / 0.0;
-}
+#import <../global_bindings.wgsl>
 
 // True if the camera is orthographic
 fn is_camera_orthographic() -> bool {
-    return frame.tan_half_fov.x == inf();
+    return frame.tan_half_fov.x >= f32max;
 }
 
 // True if the camera is perspective
 fn is_camera_perspective() -> bool {
-    return frame.tan_half_fov.x != inf();
+    return frame.tan_half_fov.x < f32max;
 }
 
 struct Ray {

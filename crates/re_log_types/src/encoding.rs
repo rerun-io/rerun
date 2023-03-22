@@ -8,62 +8,99 @@ use crate::LogMsg;
 #[cfg(feature = "save")]
 #[cfg(not(target_arch = "wasm32"))]
 mod encoder {
-    use anyhow::Context as _;
     use std::io::Write as _;
 
     use crate::LogMsg;
 
+    /// On failure to encode or serialize a [`LogMsg`].
+    #[derive(thiserror::Error, Debug)]
+    pub enum EncodeError {
+        #[error("Failed to write: {0}")]
+        Write(std::io::Error),
+
+        #[error("Zstd error: {0}")]
+        Zstd(std::io::Error),
+
+        #[error("MsgPack error: {0}")]
+        MsgPack(#[from] rmp_serde::encode::Error),
+
+        #[error("Called append on already finished encoder")]
+        AlreadyFinished,
+    }
+
     /// Encode a stream of [`LogMsg`] into an `.rrd` file.
     pub struct Encoder<W: std::io::Write> {
-        zstd_encoder: zstd::stream::Encoder<'static, W>,
+        /// Set to None when finished.
+        zstd_encoder: Option<zstd::stream::Encoder<'static, W>>,
         buffer: Vec<u8>,
     }
 
+    impl<W: std::io::Write> Drop for Encoder<W> {
+        fn drop(&mut self) {
+            if self.zstd_encoder.is_some() {
+                re_log::warn!("Encoder dropped without calling finish()!");
+                if let Err(err) = self.finish() {
+                    re_log::error!("Failed to finish encoding: {err}");
+                }
+            }
+        }
+    }
+
     impl<W: std::io::Write> Encoder<W> {
-        pub fn new(mut write: W) -> anyhow::Result<Self> {
+        pub fn new(mut write: W) -> Result<Self, EncodeError> {
             let rerun_version = re_build_info::CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
-            write.write_all(b"RRF0").context("header")?;
+            write.write_all(b"RRF0").map_err(EncodeError::Write)?;
             write
                 .write_all(&rerun_version.to_bytes())
-                .context("header")?;
+                .map_err(EncodeError::Write)?;
 
             let level = 3;
-            let zstd_encoder = zstd::stream::Encoder::new(write, level).context("zstd start")?;
+            let zstd_encoder =
+                zstd::stream::Encoder::new(write, level).map_err(EncodeError::Zstd)?;
 
             Ok(Self {
-                zstd_encoder,
+                zstd_encoder: Some(zstd_encoder),
                 buffer: vec![],
             })
         }
 
-        pub fn append(&mut self, message: &LogMsg) -> anyhow::Result<()> {
+        pub fn append(&mut self, message: &LogMsg) -> Result<(), EncodeError> {
             let Self {
                 zstd_encoder,
                 buffer,
             } = self;
 
-            buffer.clear();
-            rmp_serde::encode::write_named(buffer, message).context("MessagePack encoding")?;
+            if let Some(zstd_encoder) = zstd_encoder {
+                buffer.clear();
+                rmp_serde::encode::write_named(buffer, message)?;
 
-            zstd_encoder
-                .write_all(&(buffer.len() as u64).to_le_bytes())
-                .context("zstd write")?;
-            zstd_encoder.write_all(buffer).context("zstd write")?;
+                zstd_encoder
+                    .write_all(&(buffer.len() as u64).to_le_bytes())
+                    .map_err(EncodeError::Zstd)?;
+                zstd_encoder.write_all(buffer).map_err(EncodeError::Zstd)?;
 
-            Ok(())
+                Ok(())
+            } else {
+                Err(EncodeError::AlreadyFinished)
+            }
         }
 
-        pub fn finish(self) -> anyhow::Result<()> {
-            self.zstd_encoder.finish().context("zstd finish")?;
-            Ok(())
+        pub fn finish(&mut self) -> Result<(), EncodeError> {
+            if let Some(zstd_encoder) = self.zstd_encoder.take() {
+                zstd_encoder.finish().map_err(EncodeError::Zstd)?;
+                Ok(())
+            } else {
+                re_log::warn!("Encoder::finish called twice");
+                Ok(())
+            }
         }
     }
 
     pub fn encode<'a>(
         messages: impl Iterator<Item = &'a LogMsg>,
         write: impl std::io::Write,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), EncodeError> {
         let mut encoder = Encoder::new(write)?;
         for message in messages {
             encoder.append(message)?;
@@ -96,6 +133,34 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
 }
 
 // ----------------------------------------------------------------------------
+
+/// On failure to encode or serialize a [`LogMsg`].
+#[cfg(feature = "load")]
+#[derive(thiserror::Error, Debug)]
+pub enum DecodeError {
+    #[error("Not an .rrd file")]
+    NotAnRrd,
+
+    #[error("Failed to read: {0}")]
+    Read(std::io::Error),
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Zstd error: {0}")]
+    Zstd(std::io::Error),
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("Zstd error: {0}")]
+    RuzstdInit(ruzstd::frame_decoder::FrameDecoderError),
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("Zstd read error: {0}")]
+    RuzstdRead(std::io::Error),
+
+    #[error("MsgPack error: {0}")]
+    MsgPack(#[from] rmp_serde::decode::Error),
+}
+
+// ----------------------------------------------------------------------------
 // native decode:
 
 #[cfg(feature = "load")]
@@ -108,17 +173,18 @@ pub struct Decoder<'r, R: std::io::BufRead> {
 #[cfg(feature = "load")]
 #[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
-    pub fn new(mut read: R) -> anyhow::Result<Self> {
+    pub fn new(mut read: R) -> Result<Self, DecodeError> {
         crate::profile_function!();
-        use anyhow::Context as _;
 
         let mut header = [0_u8; 4];
-        read.read_exact(&mut header).context("missing header")?;
-        anyhow::ensure!(&header == b"RRF0", "Not a rerun file");
-        read.read_exact(&mut header).context("missing header")?;
+        read.read_exact(&mut header).map_err(DecodeError::Read)?;
+        if &header != b"RRF0" {
+            return Err(DecodeError::NotAnRrd);
+        }
+        read.read_exact(&mut header).map_err(DecodeError::Read)?;
         warn_on_version_mismatch(header);
 
-        let zdecoder = zstd::stream::read::Decoder::new(read).context("zstd")?;
+        let zdecoder = zstd::stream::read::Decoder::new(read).map_err(DecodeError::Zstd)?;
         Ok(Self {
             zdecoder,
             buffer: vec![],
@@ -129,7 +195,7 @@ impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
 #[cfg(feature = "load")]
 #[cfg(not(target_arch = "wasm32"))]
 impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
-    type Item = anyhow::Result<LogMsg>;
+    type Item = Result<LogMsg, DecodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
@@ -144,14 +210,14 @@ impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
         {
             crate::profile_scope!("zstd");
             if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
-                return Some(Err(anyhow::anyhow!("zstd: {err}")));
+                return Some(Err(DecodeError::Zstd(err)));
             }
         }
 
         crate::profile_scope!("MsgPack deser");
         match rmp_serde::from_read(&mut self.buffer.as_slice()) {
             Ok(msg) => Some(Ok(msg)),
-            Err(err) => Some(Err(anyhow::anyhow!("MessagePack: {err}"))),
+            Err(err) => Some(Err(err.into())),
         }
     }
 }
@@ -169,18 +235,18 @@ pub struct Decoder<R: std::io::Read> {
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]
 impl<R: std::io::Read> Decoder<R> {
-    pub fn new(mut read: R) -> anyhow::Result<Self> {
+    pub fn new(mut read: R) -> Result<Self, DecodeError> {
         crate::profile_function!();
-        use anyhow::Context as _;
 
         let mut header = [0_u8; 4];
-        read.read_exact(&mut header).context("missing header")?;
-        anyhow::ensure!(&header == b"RRF0", "Not a rerun file");
-        read.read_exact(&mut header).context("missing header")?;
+        read.read_exact(&mut header).map_err(DecodeError::Read)?;
+        if &header != b"RRF0" {
+            return Err(DecodeError::NotAnRrd);
+        }
+        read.read_exact(&mut header).map_err(DecodeError::Read)?;
         warn_on_version_mismatch(header);
 
-        let zdecoder =
-            ruzstd::StreamingDecoder::new(read).map_err(|err| anyhow::anyhow!("ruzstd: {err}"))?;
+        let zdecoder = ruzstd::StreamingDecoder::new(read).map_err(DecodeError::RuzstdInit)?;
         Ok(Self {
             zdecoder,
             buffer: vec![],
@@ -191,7 +257,7 @@ impl<R: std::io::Read> Decoder<R> {
 #[cfg(feature = "load")]
 #[cfg(target_arch = "wasm32")]
 impl<R: std::io::Read> Iterator for Decoder<R> {
-    type Item = anyhow::Result<LogMsg>;
+    type Item = Result<LogMsg, DecodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
@@ -206,14 +272,14 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         {
             crate::profile_scope!("ruzstd");
             if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
-                return Some(Err(anyhow::anyhow!("ruzstd: {err}")));
+                return Some(Err(DecodeError::RuzstdRead(err)));
             }
         }
 
         crate::profile_scope!("MsgPack deser");
         match rmp_serde::from_read(&mut self.buffer.as_slice()) {
             Ok(msg) => Some(Ok(msg)),
-            Err(err) => Some(Err(anyhow::anyhow!("MessagePack: {err}"))),
+            Err(err) => Some(Err(err.into())),
         }
     }
 }
@@ -244,7 +310,7 @@ fn test_encode_decode() {
 
     let decoded_messages = Decoder::new(&mut file.as_slice())
         .unwrap()
-        .collect::<anyhow::Result<Vec<LogMsg>>>()
+        .collect::<Result<Vec<LogMsg>, DecodeError>>()
         .unwrap();
 
     assert_eq!(messages, decoded_messages);

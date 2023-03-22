@@ -25,7 +25,12 @@ mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
 pub use mesh_renderer::{MeshDrawData, MeshInstance};
 
-pub mod compositor;
+mod compositor;
+pub(crate) use compositor::CompositorDrawData;
+
+mod outlines;
+pub(crate) use outlines::OutlineMaskProcessor;
+pub use outlines::{OutlineConfig, OutlineMaskPreference};
 
 use crate::{
     context::{RenderContext, SharedRendererData},
@@ -77,7 +82,8 @@ pub trait Renderer {
 ///
 /// Currently we do not support sorting *within* a rendering phase!
 /// See [#702](https://github.com/rerun-io/rerun/issues/702)
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+/// Within a phase `DrawData` are drawn in the order they are submitted in.
+#[derive(Debug, enumset::EnumSetType)]
 pub enum DrawPhase {
     /// Opaque objects, performing reads/writes to the depth buffer.
     ///
@@ -87,6 +93,25 @@ pub enum DrawPhase {
     /// Background, rendering where depth wasn't written.
     Background,
 
+    /// Render mask for things that should get outlines.
+    OutlineMask,
+
     /// Drawn when compositing with the main target.
     Compositing,
+}
+
+/// Gets or creates a vertex shader module for drawing a screen filling triangle.
+fn screen_triangle_vertex_shader<Fs: FileSystem>(
+    pools: &mut WgpuResourcePools,
+    device: &wgpu::Device,
+    resolver: &mut FileResolver<Fs>,
+) -> crate::wgpu_resources::GpuShaderModuleHandle {
+    pools.shader_modules.get_or_create(
+        device,
+        resolver,
+        &crate::wgpu_resources::ShaderModuleDesc {
+            label: "screen_triangle (vertex)".into(),
+            source: crate::include_file!("../../shader/screen_triangle.wgsl"),
+        },
+    )
 }

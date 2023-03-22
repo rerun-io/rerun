@@ -161,6 +161,7 @@ impl GpuRenderPipelinePool {
         shader_modules: &mut GpuShaderModulePool,
         pipeline_layouts: &mut GpuPipelineLayoutPool,
     ) {
+        crate::profile_function!();
         self.pool.current_frame_index = frame_index;
 
         // Recompile render pipelines referencing shader modules that have been recompiled this frame.

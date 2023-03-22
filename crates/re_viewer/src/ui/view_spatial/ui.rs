@@ -5,6 +5,7 @@ use re_format::format_f32;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
+use re_renderer::renderer::OutlineConfig;
 
 use crate::{
     misc::{
@@ -19,7 +20,7 @@ use super::{
 };
 
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
-#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum SpatialNavigationMode {
     #[default]
     TwoD,
@@ -55,7 +56,7 @@ impl From<AutoSizeUnit> for WidgetText {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
-    pub nav_mode: SpatialNavigationMode,
+    pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
 
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
@@ -81,7 +82,7 @@ pub struct ViewSpatialState {
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
-            nav_mode: SpatialNavigationMode::ThreeD,
+            nav_mode: EditableAutoValue::Auto(SpatialNavigationMode::ThreeD),
             scene_bbox_accum: BoundingBox::nothing(),
             scene_bbox: BoundingBox::nothing(),
             scene_num_primitives: 0,
@@ -313,25 +314,29 @@ impl ViewSpatialState {
             ctx.re_ui.grid_left_hand_label(ui, "Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen.");
             ui.vertical(|ui| {
-                egui::ComboBox::from_id_source("nav_mode")
-                    .selected_text(self.nav_mode)
+                let mut nav_mode = *self.nav_mode.get();
+                let nav_mode_response =  egui::ComboBox::from_id_source("nav_mode")
+                    .selected_text(nav_mode)
                     .show_ui(ui, |ui| {
                         ui.style_mut().wrap = Some(false);
                         ui.set_min_width(64.0);
 
                         ui.selectable_value(
-                            &mut self.nav_mode,
+                            &mut nav_mode,
                             SpatialNavigationMode::TwoD,
                             SpatialNavigationMode::TwoD,
                         );
                         ui.selectable_value(
-                            &mut self.nav_mode,
+                            &mut nav_mode,
                             SpatialNavigationMode::ThreeD,
                             SpatialNavigationMode::ThreeD,
                         );
-                    });
+                    }).response;
+                    if nav_mode_response.changed() {
+                        self.nav_mode = EditableAutoValue::UserEdited(nav_mode);
+                    }
 
-                if self.nav_mode == SpatialNavigationMode::ThreeD {
+                if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
                     if ui.button("Reset").on_hover_text(
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
@@ -344,7 +349,7 @@ impl ViewSpatialState {
             });
             ui.end_row();
 
-            if self.nav_mode == SpatialNavigationMode::ThreeD {
+            if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
@@ -375,7 +380,7 @@ impl ViewSpatialState {
                     format_f32(min.y),
                     format_f32(max.y),
                 ));
-                if self.nav_mode == SpatialNavigationMode::ThreeD {
+                if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
                     ui.label(format!(
                         "z [{} - {}]",
                         format_f32(min.z),
@@ -398,17 +403,18 @@ impl ViewSpatialState {
         highlights: &SpaceViewHighlights,
     ) {
         self.scene_bbox = scene.primitives.bounding_box();
-        // If this is the first time the bounding box is set, (re-)determine the nav_mode.
-        // TODO(andreas): Keep track of user edits
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
-            self.nav_mode = scene.preferred_navigation_mode(space);
         } else {
             self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
         }
+
+        if self.nav_mode.is_auto() {
+            self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
+        }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
-        match self.nav_mode {
+        match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
                 let coordinates =
                     query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
@@ -435,7 +441,7 @@ impl ViewSpatialState {
     }
 
     pub fn help_text(&self) -> &str {
-        match self.nav_mode {
+        match *self.nav_mode.get() {
             SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT_2D,
             SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT_3D,
         }
@@ -536,6 +542,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
+    nav_mode: SpatialNavigationMode,
 ) -> Vec<egui::Shape> {
     crate::profile_function!();
 
@@ -546,6 +553,10 @@ pub fn create_labels(
     for label in &scene_ui.labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
+                // TODO(#1640): 2D labels are not visible in 3D for now.
+                if nav_mode == SpatialNavigationMode::ThreeD {
+                    continue;
+                }
                 let rect_in_ui = ui_from_space2d.transform_rect(rect);
                 (
                     // Place the text centered below the rect
@@ -554,6 +565,10 @@ pub fn create_labels(
                 )
             }
             UiLabelTarget::Point2D(pos) => {
+                // TODO(#1640): 2D labels are not visible in 3D for now.
+                if nav_mode == SpatialNavigationMode::ThreeD {
+                    continue;
+                }
                 let pos_in_ui = ui_from_space2d.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }
@@ -618,4 +633,17 @@ pub fn create_labels(
     }
 
     label_shapes
+}
+
+pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
+    let selection_outline_color =
+        re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill);
+    let selection_outline_color = selection_outline_color * 0.75; // Three-quarter-transparent
+    let hover_outline_color = (selection_outline_color * 2.0).additive();
+
+    OutlineConfig {
+        outline_radius_pixel: (gui_ctx.pixels_per_point() * 2.5).at_least(1.0),
+        color_layer_a: selection_outline_color,
+        color_layer_b: hover_outline_color,
+    }
 }

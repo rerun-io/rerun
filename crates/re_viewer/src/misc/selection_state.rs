@@ -1,7 +1,11 @@
 use ahash::{HashMap, HashSet};
+use egui::NumExt;
+use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
+
 use re_data_store::{EntityPath, LogDb};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
+use re_renderer::renderer::OutlineMaskPreference;
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
@@ -45,13 +49,6 @@ pub enum SelectionHighlight {
     Selection,
 }
 
-impl SelectionHighlight {
-    #[inline]
-    pub fn is_some(self) -> bool {
-        self != SelectionHighlight::None
-    }
-}
-
 /// Hover highlight, sorted from weakest to strongest.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum HoverHighlight {
@@ -63,13 +60,6 @@ pub enum HoverHighlight {
     Hovered,
 }
 
-impl HoverHighlight {
-    #[inline]
-    pub fn is_some(self) -> bool {
-        self != HoverHighlight::None
-    }
-}
-
 /// Combination of selection & hover highlight which can occur independently.
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct InteractionHighlight {
@@ -78,12 +68,6 @@ pub struct InteractionHighlight {
 }
 
 impl InteractionHighlight {
-    /// Any active highlight at all.
-    #[inline]
-    pub fn is_some(self) -> bool {
-        self.selection.is_some() || self.hover.is_some()
-    }
-
     /// Picks the stronger selection & hover highlight from two highlight descriptions.
     #[inline]
     pub fn max(&self, other: InteractionHighlight) -> Self {
@@ -118,19 +102,27 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
             None => InteractionHighlight::default(),
         }
     }
+}
 
-    pub fn any_selection_highlight(&self) -> bool {
-        match self.0 {
-            Some(entity_highlight) => {
-                // TODO(andreas): Could easily pre-compute this!
-                entity_highlight.overall.selection.is_some()
-                    || entity_highlight
-                        .instances
-                        .values()
-                        .any(|instance_highlight| instance_highlight.selection.is_some())
-            }
-            None => false,
-        }
+#[derive(Default)]
+pub struct SpaceViewOutlineMasks {
+    pub overall: OutlineMaskPreference,
+    pub instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
+    pub any_selection_highlight: bool,
+}
+
+lazy_static! {
+    static ref SPACEVIEW_OUTLINE_MASK_NONE: SpaceViewOutlineMasks =
+        SpaceViewOutlineMasks::default();
+}
+
+impl SpaceViewOutlineMasks {
+    pub fn index_outline_mask(&self, instance_key: InstanceKey) -> OutlineMaskPreference {
+        self.instances
+            .get(&instance_key)
+            .cloned()
+            .unwrap_or_default()
+            .with_fallback_to(self.overall)
     }
 }
 
@@ -140,6 +132,7 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
 #[derive(Default)]
 pub struct SpaceViewHighlights {
     highlighted_entity_paths: IntMap<EntityPathHash, SpaceViewEntityHighlight>,
+    outlines_masks: IntMap<EntityPathHash, SpaceViewOutlineMasks>,
 }
 
 impl SpaceViewHighlights {
@@ -148,6 +141,16 @@ impl SpaceViewHighlights {
         entity_path_hash: EntityPathHash,
     ) -> OptionalSpaceViewEntityHighlight<'_> {
         OptionalSpaceViewEntityHighlight(self.highlighted_entity_paths.get(&entity_path_hash))
+    }
+
+    pub fn entity_outline_mask(&self, entity_path_hash: EntityPathHash) -> &SpaceViewOutlineMasks {
+        self.outlines_masks
+            .get(&entity_path_hash)
+            .unwrap_or(&SPACEVIEW_OUTLINE_MASK_NONE)
+    }
+
+    pub fn any_outlines(&self) -> bool {
+        !self.outlines_masks.is_empty()
     }
 }
 
@@ -325,6 +328,20 @@ impl SelectionState {
 
         let mut highlighted_entity_paths =
             IntMap::<EntityPathHash, SpaceViewEntityHighlight>::default();
+        let mut outlines_masks = IntMap::<EntityPathHash, SpaceViewOutlineMasks>::default();
+
+        let mut selection_mask_index: u8 = 0;
+        let mut hover_mask_index: u8 = 0;
+        let mut next_selection_mask = || {
+            // We don't expect to overflow u8, but if we do, don't use the "background mask".
+            selection_mask_index = selection_mask_index.wrapping_add(1).at_least(1);
+            OutlineMaskPreference::some(selection_mask_index, 0)
+        };
+        let mut next_hover_mask = || {
+            // We don't expect to overflow u8, but if we do, don't use the "background mask".
+            hover_mask_index = hover_mask_index.wrapping_add(1).at_least(1);
+            OutlineMaskPreference::some(0, hover_mask_index)
+        };
 
         for current_selection in self.selection.iter() {
             match current_selection {
@@ -333,6 +350,10 @@ impl SelectionState {
                 Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
+                            // Everything in the same group should receive the same selection outline.
+                            // (Due to the way outline masks work in re_renderer, we can't leave the hover channel empty)
+                            let selection_mask = next_selection_mask();
+
                             space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
                                 &mut |entity_path: &EntityPath| {
@@ -341,6 +362,11 @@ impl SelectionState {
                                         .or_default()
                                         .overall
                                         .selection = SelectionHighlight::SiblingSelection;
+                                    let outline_mask_ids =
+                                        outlines_masks.entry(entity_path.hash()).or_default();
+                                    outline_mask_ids.overall =
+                                        selection_mask.with_fallback_to(outline_mask_ids.overall);
+                                    outline_mask_ids.any_selection_highlight = true;
                                 },
                             );
                         }
@@ -348,29 +374,47 @@ impl SelectionState {
                 }
 
                 Item::InstancePath(selected_space_view_context, selected_instance) => {
-                    let highlight = if *selected_space_view_context == Some(space_view_id) {
-                        SelectionHighlight::Selection
-                    } else {
-                        SelectionHighlight::SiblingSelection
-                    };
-
-                    let highlighted_entity = highlighted_entity_paths
-                        .entry(selected_instance.entity_path.hash())
-                        .or_default();
-
-                    let highlight_target = if let Some(selected_index) =
-                        selected_instance.instance_key.specific_index()
                     {
-                        &mut highlighted_entity
-                            .instances
-                            .entry(selected_index)
-                            .or_default()
-                            .selection
-                    } else {
-                        &mut highlighted_entity.overall.selection
-                    };
+                        let highlight = if *selected_space_view_context == Some(space_view_id) {
+                            SelectionHighlight::Selection
+                        } else {
+                            SelectionHighlight::SiblingSelection
+                        };
 
-                    *highlight_target = (*highlight_target).max(highlight);
+                        let highlighted_entity = highlighted_entity_paths
+                            .entry(selected_instance.entity_path.hash())
+                            .or_default();
+                        let highlight_target = if let Some(selected_index) =
+                            selected_instance.instance_key.specific_index()
+                        {
+                            &mut highlighted_entity
+                                .instances
+                                .entry(selected_index)
+                                .or_default()
+                                .selection
+                        } else {
+                            &mut highlighted_entity.overall.selection
+                        };
+                        *highlight_target = (*highlight_target).max(highlight);
+                    }
+                    {
+                        let outline_mask_ids = outlines_masks
+                            .entry(selected_instance.entity_path.hash())
+                            .or_default();
+                        outline_mask_ids.any_selection_highlight = true;
+                        let outline_mask_target = if let Some(selected_index) =
+                            selected_instance.instance_key.specific_index()
+                        {
+                            outline_mask_ids
+                                .instances
+                                .entry(selected_index)
+                                .or_default()
+                        } else {
+                            &mut outline_mask_ids.overall
+                        };
+                        *outline_mask_target =
+                            next_selection_mask().with_fallback_to(*outline_mask_target);
+                    }
                 }
             };
         }
@@ -384,6 +428,9 @@ impl SelectionState {
                     // since they are truly local to a space view.
                     if *group_space_view_id == space_view_id {
                         if let Some(space_view) = space_views.get(group_space_view_id) {
+                            // Everything in the same group should receive the same selection outline.
+                            let hover_mask = next_hover_mask();
+
                             space_view.data_blueprint.visit_group_entities_recursively(
                                 *group_handle,
                                 &mut |entity_path: &EntityPath| {
@@ -392,6 +439,9 @@ impl SelectionState {
                                         .or_default()
                                         .overall
                                         .hover = HoverHighlight::Hovered;
+                                    let mask =
+                                        outlines_masks.entry(entity_path.hash()).or_default();
+                                    mask.overall = hover_mask.with_fallback_to(mask.overall);
                                 },
                             );
                         }
@@ -399,29 +449,45 @@ impl SelectionState {
                 }
 
                 Item::InstancePath(_, selected_instance) => {
-                    let highlighted_entity = highlighted_entity_paths
-                        .entry(selected_instance.entity_path.hash())
-                        .or_default();
-
-                    let highlight_target = if let Some(selected_index) =
-                        selected_instance.instance_key.specific_index()
                     {
-                        &mut highlighted_entity
-                            .instances
-                            .entry(selected_index)
-                            .or_default()
-                            .hover
-                    } else {
-                        &mut highlighted_entity.overall.hover
-                    };
+                        let highlighted_entity = highlighted_entity_paths
+                            .entry(selected_instance.entity_path.hash())
+                            .or_default();
 
-                    *highlight_target = HoverHighlight::Hovered;
+                        let highlight_target = if let Some(selected_index) =
+                            selected_instance.instance_key.specific_index()
+                        {
+                            &mut highlighted_entity
+                                .instances
+                                .entry(selected_index)
+                                .or_default()
+                                .hover
+                        } else {
+                            &mut highlighted_entity.overall.hover
+                        };
+                        *highlight_target = HoverHighlight::Hovered;
+                    }
+                    {
+                        let outlined_entity = outlines_masks
+                            .entry(selected_instance.entity_path.hash())
+                            .or_default();
+                        let outline_mask_target = if let Some(selected_index) =
+                            selected_instance.instance_key.specific_index()
+                        {
+                            outlined_entity.instances.entry(selected_index).or_default()
+                        } else {
+                            &mut outlined_entity.overall
+                        };
+                        *outline_mask_target =
+                            next_hover_mask().with_fallback_to(*outline_mask_target);
+                    }
                 }
             };
         }
 
         SpaceViewHighlights {
             highlighted_entity_paths,
+            outlines_masks,
         }
     }
 }

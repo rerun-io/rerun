@@ -7,12 +7,16 @@ use re_data_store::EntityPath;
 use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
-use super::{eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, ViewSpatialState};
+use super::{
+    eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, SpatialNavigationMode,
+    ViewSpatialState,
+};
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
+            ui::outline_config,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial,
         },
@@ -31,10 +35,12 @@ pub struct View2DState {
     zoom: ZoomState2D,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
 pub enum ZoomState2D {
+    #[default]
     Auto,
+
     Scaled {
         /// Number of ui points per scene unit
         scale: f32,
@@ -45,12 +51,6 @@ pub enum ZoomState2D {
         /// Whether to allow the state to be updated by the current `ScrollArea` offsets
         accepting_scroll: bool,
     },
-}
-
-impl Default for ZoomState2D {
-    fn default() -> Self {
-        ZoomState2D::Auto
-    }
 }
 
 impl View2DState {
@@ -287,6 +287,10 @@ fn view_2d_scrollable(
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
+    if !response.rect.is_positive() {
+        return response; // protect against problems with zero-sized views
+    }
+
     // Create our transforms.
     let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
     let space_from_ui = ui_from_space.inverse();
@@ -311,11 +315,14 @@ fn view_2d_scrollable(
         &eye,
         parent_ui,
         highlights,
+        SpatialNavigationMode::TwoD,
     );
+
+    let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(parent_ui.ctx());
 
     // Check if we're hovering any hover primitive.
     let mut depth_at_pointer = None;
-    if let Some(pointer_pos_ui) = response.hover_pos() {
+    if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
@@ -367,11 +374,10 @@ fn view_2d_scrollable(
                                 &ctx.current_query(),
                             );
 
-                            let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
-                                &image.annotations,
-                                ctx.render_ctx,
-                            );
+                            let tensor_view = ctx
+                                .cache
+                                .image
+                                .get_colormapped_view(&image.tensor, &image.annotations);
 
                             if let [h, w, ..] = image.tensor.shape() {
                                 ui.separator();
@@ -432,6 +438,9 @@ fn view_2d_scrollable(
             space_from_pixel,
             &space.to_string(),
             state.auto_size_config(response.rect.size()),
+            scene
+                .primitives
+                .any_outlines,
         ) else {
             return response;
         };
@@ -468,6 +477,7 @@ fn setup_target_config(
     space_from_pixel: f32,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
+    any_outlines: bool,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -490,6 +500,7 @@ fn setup_target_config(
             },
             pixels_from_point: pixels_from_points,
             auto_size_config,
+            outline_config: any_outlines.then(|| outline_config(painter.ctx())),
         }
     })
 }

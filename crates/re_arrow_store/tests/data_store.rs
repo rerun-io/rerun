@@ -1,3 +1,5 @@
+#![cfg(feature = "polars")]
+
 //! Straightforward high-level API tests.
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.

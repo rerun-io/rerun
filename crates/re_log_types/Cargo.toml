@@ -58,7 +58,7 @@ re_string_interner.workspace = true
 re_tuid.workspace = true
 
 # External
-ahash = "0.8"
+ahash.workspace = true
 array-init = "2.1.0"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 arrow2_convert.workspace = true
@@ -86,7 +86,6 @@ ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false, features = [
   "jpeg",
-  # "jpeg_rayon", # TODO(emilk): when https://github.com/rayon-rs/rayon/pull/1019 is released
 ] }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
