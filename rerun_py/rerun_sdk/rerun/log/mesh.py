@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -19,11 +19,11 @@ __all__ = [
 @log_decorator
 def log_mesh(
     entity_path: str,
-    positions: npt.ArrayLike,
+    positions: Any,
     *,
-    indices: Optional[npt.ArrayLike] = None,
-    normals: Optional[npt.ArrayLike] = None,
-    albedo_factor: Optional[npt.ArrayLike] = None,
+    indices: Optional[Any] = None,
+    normals: Optional[Any] = None,
+    albedo_factor: Optional[Any] = None,
     vertex_colors: Optional[Colors] = None,
     timeless: bool = False,
 ) -> None:

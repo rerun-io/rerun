@@ -28,8 +28,8 @@ __all__ = [
 
 
 ColorDtype = Union[np.uint8, np.float32, np.float64]
-Colors = npt.NDArray[ColorDtype]
 Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
+Colors = Union[Sequence[Color], npt.NDArray[ColorDtype]]
 
 OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
@@ -42,7 +42,7 @@ def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
     return array  # type: ignore[return-value]
 
 
-def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
+def _normalize_colors(colors: Optional[Union[Color, Colors]] = None) -> npt.NDArray[np.uint8]:
     """Normalize flexible colors arrays."""
     if colors is None:
         # An empty array represents no colors.
