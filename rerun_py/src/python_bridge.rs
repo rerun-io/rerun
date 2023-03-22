@@ -12,6 +12,7 @@ use pyo3::{
 };
 
 use rerun::{
+    external::re_viewer::external::eframe::wgpu::Color,
     log::{LogMsg, MsgBundle, MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
@@ -606,8 +607,9 @@ fn log_meshes(
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
 
-    for (positions, indices, normals, albedo_factor) in izip!(
+    for (positions, vertex_colors, indices, normals, albedo_factor) in izip!(
         position_buffers,
+        vertex_color_buffers,
         index_buffers,
         normal_buffers,
         albedo_factors,
@@ -628,9 +630,29 @@ fn log_meshes(
                 None
             };
 
+        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
+            if vertex_colors.len() % 4 != 0 {
+                return Err(PyTypeError::new_err(format!(
+                    "Vertex colors must be a multiple of 4, got {} instead",
+                    vertex_colors.len(),
+                )));
+            }
+            Some(
+                vertex_colors
+                    .as_array()
+                    .to_vec()
+                    .chunks_exact(4)
+                    .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]))
+                    .collect(),
+            )
+        } else {
+            None
+        };
+
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             positions: positions.as_array().to_vec(),
+            vertex_colors,
             indices: indices.map(|indices| indices.as_array().to_vec()),
             normals: normals.map(|normals| normals.as_array().to_vec()),
             albedo_factor,

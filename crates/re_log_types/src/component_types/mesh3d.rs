@@ -9,7 +9,7 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 
 use crate::msg_bundle::Component;
 
-use super::{FieldError, Vec4D};
+use super::{ColorRGBA, FieldError, Vec4D};
 
 // ----------------------------------------------------------------------------
 
@@ -145,6 +145,9 @@ pub struct RawMesh3D {
     /// If no indices are specified, then each triplet of vertex positions are intrpreted as a triangle
     /// and the length of this must be divisible by 9.
     pub positions: Vec<f32>,
+
+    /// Per-vertex colors.
+    pub vertex_colors: Option<Vec<ColorRGBA>>,
 
     /// Optionally, the flattened indices array for this mesh.
     ///
@@ -421,6 +424,11 @@ mod tests {
         let mesh = RawMesh3D {
             mesh_id: MeshId::random(),
             positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
+            vertex_colors: Some(vec![
+                ColorRGBA(0xff0000ff),
+                ColorRGBA(0x00ff00ff),
+                ColorRGBA(0x0000ffff),
+            ]),
             indices: vec![1, 2, 3].into(),
             normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
             albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),

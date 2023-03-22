@@ -100,6 +100,7 @@ impl LoadedMesh {
         let RawMesh3D {
             mesh_id: _,
             positions,
+            vertex_colors,
             indices,
             normals,
             albedo_factor,

@@ -2,7 +2,8 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
-/// An RGBA color tuple.
+/// An RGBA color tuple with unmultiplied alpha,
+/// in sRGB color space and linear alpha.
 ///
 /// ```
 /// use re_log_types::component_types::ColorRGBA;
@@ -23,7 +24,7 @@ impl ColorRGBA {
     }
 
     #[inline]
-    pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self::from([r, g, b, a])
     }
 

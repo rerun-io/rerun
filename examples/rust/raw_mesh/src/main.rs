@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use rerun::components::{Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
+use rerun::components::{ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
 use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
@@ -27,24 +27,22 @@ use rerun::{
 #[allow(clippy::fallible_impl_from)]
 impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
+        let GltfPrimitive {
+            albedo_factor,
+            positions,
+            indices,
+            normals,
+            vertex_colors,
+            texcoords: _, // TODO(cmc) support mesh texturing
+        } = primitive;
+
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
-            albedo_factor: primitive.albedo_factor.map(Vec4D),
-            indices: primitive.indices,
-            positions: primitive.positions.into_iter().flatten().collect(),
-            normals: primitive
-                .normals
-                .map(|normals| normals.into_iter().flatten().collect()),
-            //
-            // TODO(cmc): We need to support vertex colors and/or texturing, otherwise it's pretty
-            // hard to see anything with complex enough meshes (and hovering doesn't really help
-            // when everything's white).
-            // colors: primitive
-            //     .colors
-            //     .map(|colors| colors.into_iter().flatten().collect()),
-            // texcoords: primitive
-            //     .texcoords
-            //     .map(|texcoords| texcoords.into_iter().flatten().collect()),
+            albedo_factor: albedo_factor.map(Vec4D),
+            indices,
+            positions: positions.into_iter().flatten().collect(),
+            normals: normals.map(|normals| normals.into_iter().flatten().collect()),
+            vertex_colors,
         };
 
         raw.sanity_check().unwrap();
@@ -216,8 +214,7 @@ struct GltfPrimitive {
     positions: Vec<[f32; 3]>,
     indices: Option<Vec<u32>>,
     normals: Option<Vec<[f32; 3]>>,
-    #[allow(dead_code)]
-    colors: Option<Vec<[u8; 4]>>,
+    vertex_colors: Option<Vec<ColorRGBA>>,
     #[allow(dead_code)]
     texcoords: Option<Vec<[f32; 2]>>,
 }
@@ -283,8 +280,13 @@ fn node_primitives<'data>(
             let normals = reader.read_normals();
             let normals = normals.map(|normals| normals.collect());
 
-            let colors = reader.read_colors(0); // TODO(cmc): pick correct set
-            let colors = colors.map(|colors| colors.into_rgba_u8().collect());
+            let vertex_colors = reader.read_colors(0); // TODO(cmc): pick correct set
+            let vertex_colors = vertex_colors.map(|colors| {
+                colors
+                    .into_rgba_u8()
+                    .map(|[r, g, b, a]| ColorRGBA::from_unmultiplied_rgba(r, g, b, a))
+                    .collect()
+            });
 
             let texcoords = reader.read_tex_coords(0); // TODO(cmc): pick correct set
             let texcoords = texcoords.map(|texcoords| texcoords.into_f32().collect());
@@ -294,7 +296,7 @@ fn node_primitives<'data>(
                 positions,
                 indices,
                 normals,
-                colors,
+                vertex_colors,
                 texcoords,
             }
         })
