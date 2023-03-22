@@ -28,7 +28,7 @@ def run_colmap():
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
 
-    rrd_file = pathlib.Path(__file__).parent.joinpath("colmap.rrd").resolve()
+    rrd_file = pathlib.Path(__file__).parent.joinpath("colmap_fiat.rrd").resolve()
     if not rrd_file.exists():
         print("No demo file found at {}. Package was built without demo support".format(rrd_file), file=sys.stderr)
         exit(1)
