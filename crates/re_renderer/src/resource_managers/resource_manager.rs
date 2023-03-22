@@ -26,7 +26,7 @@ pub enum ResourceHandle<InnerHandle: slotmap::Key> {
     Invalid,
 }
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug)]
 pub enum ResourceManagerError {
     #[error("The requested resource is no longer valid. It was valid for the frame index {current_frame_index}, but the current frame index is {valid_frame_index}")]
     ExpiredResource {
@@ -44,7 +44,7 @@ pub enum ResourceManagerError {
     ResourcePoolError(PoolError),
 
     #[error("Invalid mesh given as input")]
-    InvalidMesh,
+    InvalidMesh(#[from] crate::mesh::MeshError),
 }
 
 #[derive(Clone, Copy)]

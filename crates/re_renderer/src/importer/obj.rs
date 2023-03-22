@@ -58,15 +58,12 @@ pub fn load_obj_from_buffer(
                 .collect();
             vertex_colors.resize(vertex_positions.len(), [255, 255, 255, 255]);
 
-            let vertex_normals: Vec<glam::Vec3> = mesh
+            let mut vertex_normals: Vec<glam::Vec3> = mesh
                 .normals
                 .chunks_exact(3)
                 .map(|n| glam::vec3(n[0], n[1], n[2]))
                 .collect();
-            anyhow::ensure!(
-                vertex_positions.len() == vertex_normals.len(),
-                "Missing normals"
-            );
+            vertex_normals.resize(vertex_positions.len(), glam::Vec3::ZERO);
 
             let mut vertex_texcoords: Vec<glam::Vec2> = mesh
                 .texcoords
@@ -95,6 +92,9 @@ pub fn load_obj_from_buffer(
                     albedo_multiplier: crate::Rgba::WHITE,
                 }],
             };
+
+            mesh.sanity_check()?;
+
             let gpu_mesh = ctx
                 .mesh_manager
                 .write()

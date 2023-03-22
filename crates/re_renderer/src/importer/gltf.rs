@@ -171,7 +171,7 @@ fn import_mesh(
         if let Some(primitive_normals) = reader.read_normals() {
             vertex_normals.extend(primitive_normals.map(glam::Vec3::from));
         } else {
-            anyhow::bail!("Gltf primitives must have normals");
+            vertex_normals.resize(vertex_positions.len(), glam::Vec3::ZERO);
         }
         if vertex_positions.len() != vertex_normals.len() {
             anyhow::bail!("Number of positions was not equal number of normals.");
@@ -246,7 +246,7 @@ fn import_mesh(
         anyhow::bail!("empty mesh");
     }
 
-    Ok(Mesh {
+    let mesh = Mesh {
         label: mesh.name().into(),
         indices,
         vertex_positions,
@@ -254,7 +254,11 @@ fn import_mesh(
         vertex_normals,
         vertex_texcoords,
         materials,
-    })
+    };
+
+    mesh.sanity_check()?;
+
+    Ok(mesh)
 }
 
 fn gather_instances_recursive(

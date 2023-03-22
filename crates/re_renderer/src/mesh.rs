@@ -105,6 +105,68 @@ pub struct Mesh {
     pub materials: SmallVec<[Material; 1]>,
 }
 
+impl Mesh {
+    pub fn sanity_check(&self) -> Result<(), MeshError> {
+        crate::profile_function!();
+
+        let num_pos = self.vertex_positions.len();
+        let num_color = self.vertex_colors.len();
+        let num_normals = self.vertex_normals.len();
+        let num_texcoords = self.vertex_texcoords.len();
+
+        if num_pos != num_color {
+            return Err(MeshError::WrongNumberOfColors { num_pos, num_color });
+        }
+        if num_pos != num_normals {
+            return Err(MeshError::WrongNumberOfNormals {
+                num_pos,
+                num_normals,
+            });
+        }
+        if num_pos != num_texcoords {
+            return Err(MeshError::WrongNumberOfTexcoord {
+                num_pos,
+                num_texcoords,
+            });
+        }
+
+        if self.indices.len() % 3 != 0 {
+            return Err(MeshError::WrongNumberOfIndices {
+                num_indices: self.indices.len(),
+            });
+        }
+
+        for &index in &self.indices {
+            if num_pos <= index as usize {
+                return Err(MeshError::IndexOutOfBounds { num_pos, index });
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum MeshError {
+    #[error("Number of vertex positions {num_pos} differed from the number of vertex colors {num_color}")]
+    WrongNumberOfColors { num_pos: usize, num_color: usize },
+
+    #[error("Number of vertex positions {num_pos} differed from the number of vertex normals {num_normals}")]
+    WrongNumberOfNormals { num_pos: usize, num_normals: usize },
+
+    #[error("Number of vertex positions {num_pos} differed from the number of vertex tex-coords {num_texcoords}")]
+    WrongNumberOfTexcoord {
+        num_pos: usize,
+        num_texcoords: usize,
+    },
+
+    #[error("Number of indices {num_indices} was not a multiple of 3")]
+    WrongNumberOfIndices { num_indices: usize },
+
+    #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
+    IndexOutOfBounds { num_pos: usize, index: u32 },
+}
+
 #[derive(Clone)]
 pub struct Material {
     pub label: DebugLabel,
@@ -167,12 +229,7 @@ impl GpuMesh {
         mesh_bind_group_layout: GpuBindGroupLayoutHandle,
         data: &Mesh,
     ) -> Result<Self, ResourceManagerError> {
-        if data.vertex_positions.len() != data.vertex_colors.len()
-            || data.vertex_positions.len() != data.vertex_normals.len()
-            || data.vertex_positions.len() != data.vertex_texcoords.len()
-        {
-            return Err(ResourceManagerError::InvalidMesh);
-        }
+        data.sanity_check()?;
 
         re_log::trace!(
             "uploading new mesh named {:?} with {} vertices and {} triangles",
