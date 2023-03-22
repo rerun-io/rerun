@@ -575,6 +575,7 @@ enum TensorDataMeaning {
 fn log_meshes(
     entity_path_str: &str,
     position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
+    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u8>>>,
     index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
     normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
@@ -583,14 +584,16 @@ fn log_meshes(
     let entity_path = parse_entity_path(entity_path_str)?;
 
     // Make sure we have as many position buffers as index buffers, etc.
-    if position_buffers.len() != index_buffers.len()
+    if position_buffers.len() != vertex_color_buffers.len()
+        || position_buffers.len() != index_buffers.len()
         || position_buffers.len() != normal_buffers.len()
         || position_buffers.len() != albedo_factors.len()
     {
         return Err(PyTypeError::new_err(format!(
             "Top-level position/index/normal/albedo buffer arrays must be same the length, \
-                got positions={}, indices={}, normals={}, albedo={} instead",
+                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
             position_buffers.len(),
+            vertex_color_buffers.len(),
             index_buffers.len(),
             normal_buffers.len(),
             albedo_factors.len(),

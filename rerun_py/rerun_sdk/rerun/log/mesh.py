@@ -4,6 +4,10 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.log import (
+    Colors,
+    _normalize_colors,
+)
 from rerun.log.log_decorator import log_decorator
 
 __all__ = [
@@ -20,6 +24,7 @@ def log_mesh(
     indices: Optional[npt.ArrayLike] = None,
     normals: Optional[npt.ArrayLike] = None,
     albedo_factor: Optional[npt.ArrayLike] = None,
+    vertex_colors: Optional[Colors] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -64,6 +69,8 @@ def log_mesh(
         equal to `len(positions)`.
     albedo_factor:
         Optional color multiplier of the mesh using RGB or unmuliplied RGBA in linear 0-1 space.
+    vertex_colors:
+        Optional array of RGB(a) vertex colors
     timeless:
         If true, the mesh will be timeless (default: False)
 
@@ -77,9 +84,18 @@ def log_mesh(
         normals = np.asarray(normals, dtype=np.float32).flatten()
     if albedo_factor is not None:
         albedo_factor = np.asarray(albedo_factor, dtype=np.float32).flatten()
+    vertex_colors = _normalize_colors(vertex_colors)
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
+    bindings.log_meshes(
+        entity_path,
+        position_buffers=[positions.flatten()],
+        vertex_color_buffers=[vertex_colors.flatten()],
+        index_buffers=[indices],
+        normal_buffers=[normals],
+        albedo_factors=[albedo_factor],
+        timeless=timeless,
+    )
 
 
 @log_decorator
@@ -87,6 +103,7 @@ def log_meshes(
     entity_path: str,
     position_buffers: Sequence[npt.ArrayLike],
     *,
+    vertex_color_buffers: Sequence[Optional[Colors]],
     index_buffers: Sequence[Optional[npt.ArrayLike]],
     normal_buffers: Sequence[Optional[npt.ArrayLike]],
     albedo_factors: Sequence[Optional[npt.ArrayLike]],
@@ -96,11 +113,7 @@ def log_meshes(
     Log multiple raw 3D meshes by specifying their different buffers and albedo factors.
 
     To learn more about how the data within these buffers is interpreted and laid out, refer
-    to `log_mesh`'s documentation.
-
-    * If specified, `index_buffers` must have the same length as `position_buffers`.
-    * If specified, `normal_buffers` must have the same length as `position_buffers`.
-    * If specified, `albedo_factors` must have the same length as `position_buffers`.
+    to the documentation for [`rerun.log_mesh`].
 
     Parameters
     ----------
@@ -108,6 +121,8 @@ def log_meshes(
         Path to the mesh in the space hierarchy
     position_buffers:
         A sequence of position buffers, one for each mesh.
+    vertex_color_buffers:
+        An optional sequence of vertex color buffers, one for each mesh.
     index_buffers:
         An optional sequence of index buffers, one for each mesh.
     normal_buffers:
@@ -120,6 +135,8 @@ def log_meshes(
     """
 
     position_buffers = [np.asarray(p, dtype=np.float32).flatten() for p in position_buffers]
+    if vertex_color_buffers is not None:
+        vertex_color_buffers = [_normalize_colors(c) for c in vertex_color_buffers]
     if index_buffers is not None:
         index_buffers = [np.asarray(i, dtype=np.uint32).flatten() if i else None for i in index_buffers]
     if normal_buffers is not None:
@@ -128,4 +145,13 @@ def log_meshes(
         albedo_factors = [np.asarray(af, dtype=np.float32).flatten() if af else None for af in albedo_factors]
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(entity_path, position_buffers, index_buffers, normal_buffers, albedo_factors, timeless)
+
+    bindings.log_meshes(
+        entity_path,
+        position_buffers=position_buffers,
+        vertex_color_buffers=vertex_color_buffers,
+        index_buffers=index_buffers,
+        normal_buffers=normal_buffers,
+        albedo_factors=albedo_factors,
+        timeless=timeless,
+    )
