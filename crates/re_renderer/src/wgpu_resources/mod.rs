@@ -117,7 +117,7 @@ impl WgpuResourcePools {
 
 pub struct TextureRowDataInfo {
     /// How many bytes per row contain actual data.
-    pub bytes_per_row_unaligned: u32,
+    pub bytes_per_row_unpadded: u32,
     /// How many bytes per row are required to be allocated in total.
     pub bytes_per_row_padded: u32,
 }
@@ -129,7 +129,7 @@ pub fn texture_row_data_info(format: wgpu::TextureFormat, width: u32) -> Texture
     let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
 
     TextureRowDataInfo {
-        bytes_per_row_unaligned,
+        bytes_per_row_unpadded: bytes_per_row_unaligned,
         bytes_per_row_padded: wgpu::util::align_to(
             bytes_per_row_unaligned,
             wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,

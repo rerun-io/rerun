@@ -175,7 +175,8 @@ impl Default for TargetConfiguration {
 
 pub struct ScheduledScreenshot {
     pub identifier: GpuWriteCpuReadBufferIdentifier,
-    pub resolution: [u32; 2],
+    pub width: u32,
+    pub height: u32,
     pub row_info: TextureRowDataInfo,
 }
 
@@ -192,6 +193,9 @@ impl ViewBuilder {
     /// (an optimized variant of this is described [by AMD here](https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/))
     /// In any case, this gets us onto a potentially much costlier rendering path, especially for tiling GPUs.
     pub const MAIN_TARGET_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
+    /// The texture format used for screenshots.
+    pub const SCREENSHOT_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
     /// Depth format used for the main target of the view builder.
     ///
@@ -591,7 +595,7 @@ impl ViewBuilder {
                     mip_level_count: 1,
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba8Unorm, // Shader does Gamma curve handling
+                    format: Self::SCREENSHOT_COLOR_FORMAT,
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
                 },
             );
@@ -611,7 +615,7 @@ impl ViewBuilder {
                 });
 
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(ctx, DrawPhase::Compositing, &mut pass);
+                self.draw_phase(ctx, DrawPhase::CompositingScreenshot, &mut pass);
             }
 
             let bytes_per_row = texture_row_data_info(
@@ -638,7 +642,10 @@ impl ViewBuilder {
 
     /// Schedules the taking of a screenshot.
     ///
+    /// Needs to be called after setup.
     /// Returns screenshot data properties for convenience.
+    ///
+    /// TODO: Document how to get the data
     pub fn schedule_screenshot(
         &mut self,
         ctx: &RenderContext,
@@ -652,10 +659,8 @@ impl ViewBuilder {
             .as_ref()
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
-        let row_info = texture_row_data_info(
-            wgpu::TextureFormat::Rgba8Unorm,
-            setup.resolution_in_pixel[0],
-        );
+        let row_info =
+            texture_row_data_info(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
         let buffer_size = row_info.bytes_per_row_padded * setup.resolution_in_pixel[1];
         let screenshot_buffer = ctx.gpu_write_cpu_read_belt.lock().allocate(
             &ctx.device,
@@ -667,9 +672,10 @@ impl ViewBuilder {
         self.scheduled_screenshot = Some(screenshot_buffer);
 
         Ok(ScheduledScreenshot {
-            resolution: setup.resolution_in_pixel,
             row_info,
             identifier,
+            width: setup.resolution_in_pixel[0],
+            height: setup.resolution_in_pixel[1],
         })
     }
 

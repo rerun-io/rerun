@@ -183,7 +183,7 @@ impl GpuWriteCpuReadBelt {
                         label: "GpuWriteCpuReadBelt buffer".into(),
                         size: size_in_bytes,
                         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                        mapped_at_creation: true,
+                        mapped_at_creation: false,
                     },
                 );
 
@@ -236,7 +236,7 @@ impl GpuWriteCpuReadBelt {
     /// After this call, internal chunks can be re-used.
     pub fn receive_data(
         &mut self,
-        on_data_received: impl Fn(&[u8], GpuWriteCpuReadBufferIdentifier),
+        mut on_data_received: impl FnMut(&[u8], GpuWriteCpuReadBufferIdentifier),
     ) {
         crate::profile_function!();
 

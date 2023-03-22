@@ -12,30 +12,14 @@ use re_renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
         TestTriangleDrawData,
     },
-    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
+    view_builder::{
+        OrthographicCameraMode, Projection, ScheduledScreenshot, TargetConfiguration, ViewBuilder,
+    },
     Color32, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
 mod framework;
-
-fn draw_view<D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
-    re_ctx: &mut RenderContext,
-    target_cfg: TargetConfiguration,
-    skybox: &GenericSkyboxDrawData,
-    draw_data: &D,
-) -> (ViewBuilder, wgpu::CommandBuffer) {
-    let mut view_builder = ViewBuilder::default();
-    let command_buffer = view_builder
-        .setup_view(re_ctx, target_cfg)
-        .unwrap()
-        .queue_draw(skybox)
-        .queue_draw(draw_data)
-        .draw(re_ctx, Rgba::TRANSPARENT)
-        .unwrap();
-
-    (view_builder, command_buffer)
-}
 
 fn build_mesh_instances(
     re_ctx: &mut RenderContext,
@@ -165,6 +149,9 @@ struct Multiview {
     random_points_positions: Vec<glam::Vec3>,
     random_points_radii: Vec<Size>,
     random_points_colors: Vec<Color32>,
+
+    take_screenshot_next_frame_for_view: Option<u32>,
+    scheduled_screenshots: Vec<ScheduledScreenshot>,
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
@@ -175,6 +162,83 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
         a: 1.0,
     }
     .into()
+}
+
+impl Multiview {
+    fn draw_view<D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
+        &mut self,
+        re_ctx: &mut RenderContext,
+        target_cfg: TargetConfiguration,
+        skybox: &GenericSkyboxDrawData,
+        draw_data: &D,
+        index: u32,
+    ) -> (ViewBuilder, wgpu::CommandBuffer) {
+        let mut view_builder = ViewBuilder::default();
+        view_builder.setup_view(re_ctx, target_cfg).unwrap();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if self
+            .take_screenshot_next_frame_for_view
+            .map_or(false, |i| i == index)
+        {
+            self.scheduled_screenshots
+                .push(view_builder.schedule_screenshot(re_ctx).unwrap());
+            re_log::info!("Scheduled screenshot for view {}", index);
+        }
+
+        let command_buffer = view_builder
+            .queue_draw(skybox)
+            .queue_draw(draw_data)
+            .draw(re_ctx, Rgba::TRANSPARENT)
+            .unwrap();
+
+        (view_builder, command_buffer)
+    }
+
+    fn handle_incoming_screenshots(&mut self, re_ctx: &mut RenderContext) {
+        re_ctx
+            .gpu_write_cpu_read_belt
+            .lock()
+            .receive_data(|data, identifier| {
+                if let Some(index) = self
+                    .scheduled_screenshots
+                    .iter()
+                    .position(|s| s.identifier == identifier)
+                {
+                    let screenshot = self.scheduled_screenshots.swap_remove(index);
+
+                    // Need to do a memcpy to remove the padding.
+                    re_log::info!("Received screenshot. Total bytes {:?}", data.len());
+                    let row_info = screenshot.row_info;
+                    let mut buffer = Vec::with_capacity(
+                        (row_info.bytes_per_row_unpadded * screenshot.height) as usize,
+                    );
+                    for row in 0..screenshot.height {
+                        let offset = (row_info.bytes_per_row_padded * row) as usize;
+                        buffer.extend_from_slice(
+                            &data[offset..(offset + row_info.bytes_per_row_unpadded as usize)],
+                        );
+                    }
+
+                    // Get next available file name.
+                    let mut i = 0;
+                    let mut filename = "screenshot.png".to_owned();
+                    while std::path::Path::new(&filename).exists() {
+                        filename = format!("screenshot_{i}.png");
+                        i += 1;
+                    }
+
+                    image::save_buffer(
+                        filename,
+                        &buffer,
+                        screenshot.width,
+                        screenshot.height,
+                        image::ColorType::Rgba8,
+                    )
+                    .expect("Failed to save screenshot");
+                }
+            });
+    }
 }
 
 impl Example for Multiview {
@@ -229,6 +293,9 @@ impl Example for Multiview {
             random_points_positions,
             random_points_radii,
             random_points_colors,
+
+            take_screenshot_next_frame_for_view: None,
+            scheduled_screenshots: Vec::new(),
         }
     }
 
@@ -247,6 +314,8 @@ impl Example for Multiview {
                 seconds_since_startup.cos(),
             ) * 10.0;
         }
+
+        self.handle_incoming_screenshots(re_ctx);
 
         let seconds_since_startup = time.seconds_since_startup();
         let view_from_world =
@@ -295,7 +364,7 @@ impl Example for Multiview {
         #[rustfmt::skip]
         macro_rules! draw {
             ($name:ident @ split #$n:expr) => {{
-                let (view_builder, command_buffer) = draw_view(re_ctx,
+                let (view_builder, command_buffer) = self.draw_view(re_ctx,
                     TargetConfiguration {
                         name: stringify!($name).into(),
                         resolution_in_pixel: splits[$n].resolution_in_pixel,
@@ -305,7 +374,8 @@ impl Example for Multiview {
                         ..Default::default()
                     },
                     &skybox,
-                    &$name
+                    &$name,
+                    $n,
                 );
                 framework::ViewDrawResult {
                     view_builder,
@@ -315,12 +385,16 @@ impl Example for Multiview {
             }};
         }
 
-        vec![
+        let draw_results = vec![
             draw!(triangle @ split #0),
             draw!(lines @ split #1),
             draw!(meshes @ split #2),
             draw!(point_cloud @ split #3),
-        ]
+        ];
+
+        self.take_screenshot_next_frame_for_view = None;
+
+        draw_results
     }
 
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
@@ -334,6 +408,19 @@ impl Example for Multiview {
                     CameraControl::RotateAroundCenter => CameraControl::Manual,
                     CameraControl::Manual => CameraControl::RotateAroundCenter,
                 };
+            }
+
+            (ElementState::Pressed, Some(VirtualKeyCode::Key1)) => {
+                self.take_screenshot_next_frame_for_view = Some(0);
+            }
+            (ElementState::Pressed, Some(VirtualKeyCode::Key2)) => {
+                self.take_screenshot_next_frame_for_view = Some(1);
+            }
+            (ElementState::Pressed, Some(VirtualKeyCode::Key3)) => {
+                self.take_screenshot_next_frame_for_view = Some(2);
+            }
+            (ElementState::Pressed, Some(VirtualKeyCode::Key4)) => {
+                self.take_screenshot_next_frame_for_view = Some(3);
             }
 
             _ => {}

@@ -254,7 +254,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
         .alloc(&ctx.device, &depth_texture_desc);
 
     let TextureRowDataInfo {
-        bytes_per_row_unaligned,
+        bytes_per_row_unpadded: bytes_per_row_unaligned,
         bytes_per_row_padded,
     } = texture_row_data_info(depth_texture_desc.format, depth_texture_desc.size.width);
 
