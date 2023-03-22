@@ -435,7 +435,7 @@ mod tests {
                 ColorRGBA(0x00ff00ff),
                 ColorRGBA(0x0000ffff),
             ]),
-            indices: vec![1, 2, 3].into(),
+            indices: vec![0, 1, 2].into(),
             vertex_normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
             albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),
         };
