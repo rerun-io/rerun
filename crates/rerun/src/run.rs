@@ -339,16 +339,16 @@ async fn run_impl(
 
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
-            let server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
+            let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
+            let ws_server_url = re_ws_comms::default_server_url("127.0.0.1");
 
             // This is the server that serves the Wasm+HTML:
-            let ws_server_url = re_ws_comms::default_server_url();
-            let ws_server_handle =
+            let web_server_handle =
                 tokio::spawn(host_web_viewer(true, ws_server_url, shutdown_web_viewer));
 
             // Wait for both servers to shutdown.
-            ws_server_handle.await?.ok();
-            return server_handle.await?;
+            web_server_handle.await?.ok();
+            return ws_server_handle.await?;
         }
 
         #[cfg(not(feature = "web_viewer"))]

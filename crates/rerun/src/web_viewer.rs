@@ -27,9 +27,9 @@ impl RemoteViewerServer {
                 .await
                 .unwrap();
             let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx, shutdown_rx_ws_server));
+            let ws_server_url = re_ws_comms::default_server_url("127.0.0.1");
 
             // This is the server that serves the Wasm+HTML:
-            let ws_server_url = re_ws_comms::default_server_url();
             let web_server_handle = tokio::spawn(host_web_viewer(
                 open_browser,
                 ws_server_url,
