@@ -286,7 +286,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Add SHORT_SHA env property with commit short sha
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-8`" >> $GITHUB_ENV
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
       - name: "Upload RRD"
         uses: google-github-actions/upload-cloud-storage@v1
