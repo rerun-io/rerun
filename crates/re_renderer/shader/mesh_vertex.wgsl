@@ -1,7 +1,7 @@
 // See mesh.rs#MeshVertex
 struct VertexIn {
     @location(0) position: Vec3,
-    @location(1) color: Vec4,
+    @location(1) color: Vec4, // gamma-space 0-1, unmultiplied
     @location(2) normal: Vec3,
     @location(3) texcoord: Vec2,
 };

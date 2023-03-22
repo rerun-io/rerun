@@ -37,6 +37,16 @@ pub mod mesh_vertices {
                     offset: 0,
                 }],
             },
+            // 32 bit color:
+            VertexBufferLayout {
+                array_stride: 4,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: smallvec![wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Unorm8x4,
+                    shader_location: 1,
+                    offset: 0,
+                }],
+            },
             // TODO(andreas): Compress normals. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
             // Normal:
             VertexBufferLayout {
@@ -44,7 +54,7 @@ pub mod mesh_vertices {
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: smallvec![wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x3,
-                    shader_location: 1,
+                    shader_location: 2,
                     offset: 0,
                 }],
             },
@@ -54,16 +64,6 @@ pub mod mesh_vertices {
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: smallvec![wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Float32x2,
-                    shader_location: 2,
-                    offset: 0,
-                }],
-            },
-            // 32 bit color:
-            VertexBufferLayout {
-                array_stride: 4,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Unorm8x4,
                     shader_location: 3,
                     offset: 0,
                 }],
