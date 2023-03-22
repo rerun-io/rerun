@@ -90,7 +90,7 @@ def log_mesh(
     bindings.log_meshes(
         entity_path,
         position_buffers=[positions.flatten()],
-        vertex_color_buffers=[vertex_colors.flatten()],
+        vertex_color_buffers=[vertex_colors],
         index_buffers=[indices],
         normal_buffers=[normals],
         albedo_factors=[albedo_factor],

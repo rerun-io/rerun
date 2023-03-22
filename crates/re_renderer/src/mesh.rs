@@ -15,9 +15,6 @@ use crate::{
 };
 
 /// Defines how mesh vertices are built.
-///
-/// Mesh vertices consist of two vertex buffers right now.
-/// One for positions ([`glam::Vec3`]) and one for the rest, called [`mesh_vertices::MeshVertexData`] here
 pub mod mesh_vertices {
     use crate::wgpu_resources::VertexBufferLayout;
     use smallvec::smallvec;
@@ -87,19 +84,20 @@ pub mod mesh_vertices {
 pub struct Mesh {
     pub label: DebugLabel,
 
+    /// Length must be a multipel of three.
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
 
     pub vertex_positions: Vec<glam::Vec3>,
 
     /// Per-vertex albedo color with unmulitplied/separate alpha.
-    /// Must be equal in length to [`vertex_positions`].
+    /// Must be equal in length to [`Self::vertex_positions`].
     pub vertex_colors: Vec<[u8; 4]>,
 
-    /// Must be equal in length to [`vertex_positions`].
+    /// Must be equal in length to [`Self::vertex_positions`].
     /// Use ZERO for unshaded.
     pub vertex_normals: Vec<glam::Vec3>,
 
-    /// Must be equal in length to [`vertex_positions`].
+    /// Must be equal in length to [`Self::vertex_positions`].
     pub vertex_texcoords: Vec<glam::Vec2>,
 
     pub materials: SmallVec<[Material; 1]>,

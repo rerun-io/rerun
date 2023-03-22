@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{io::Cursor, path::PathBuf};
+use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use itertools::izip;
 use pyo3::{
@@ -575,7 +575,7 @@ enum TensorDataMeaning {
 fn log_meshes(
     entity_path_str: &str,
     position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
-    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u8>>>,
+    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray2<'_, u8>>>,
     index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
     normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
@@ -630,20 +630,25 @@ fn log_meshes(
             };
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
-            if vertex_colors.len() % 4 != 0 {
-                return Err(PyTypeError::new_err(format!(
-                    "Vertex colors must be a multiple of 4, got {} instead",
-                    vertex_colors.len(),
-                )));
+            match vertex_colors.shape() {
+                [_, 3] => Some(
+                    slice_from_np_array(&vertex_colors)
+                        .chunks_exact(3)
+                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], 255))
+                        .collect(),
+                ),
+                [_, 4] => Some(
+                    slice_from_np_array(&vertex_colors)
+                        .chunks_exact(4)
+                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]))
+                        .collect(),
+                ),
+                shape => {
+                    return Err(PyTypeError::new_err(format!(
+                        "Expected vertex colors to have a Nx3 or Nx4 shape, got {shape:?} instead",
+                    )));
+                }
             }
-            Some(
-                vertex_colors
-                    .as_array()
-                    .to_vec()
-                    .chunks_exact(4)
-                    .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]))
-                    .collect(),
-            )
         } else {
             None
         };
@@ -950,4 +955,23 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     session.send(msg);
 
     Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
+    array: &'a numpy::PyReadonlyArray<'_, T, D>,
+) -> Cow<'a, [T]> {
+    let array = array.as_array();
+
+    // Numpy has many different memory orderings.
+    // We could/should check that we have the right one here.
+    // But for now, we just check for and optimize the trivial case.
+    if array.shape().len() == 1 {
+        if let Some(slice) = array.to_slice() {
+            return Cow::Borrowed(slice); // common-case optimization
+        }
+    }
+
+    Cow::Owned(array.iter().cloned().collect())
 }
