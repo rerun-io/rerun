@@ -636,13 +636,14 @@ pub fn create_labels(
 }
 
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
+    // Take the exact same colors we have in the ui!
     let selection_outline_color =
         re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill);
-    let selection_outline_color = selection_outline_color * 0.75; // Three-quarter-transparent
-    let hover_outline_color = (selection_outline_color * 2.0).additive();
+    let hover_outline_color =
+        re_renderer::Rgba::from(gui_ctx.style().visuals.widgets.hovered.bg_fill);
 
     OutlineConfig {
-        outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.25).at_least(0.5),
+        outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.5).at_least(0.5),
         color_layer_a: selection_outline_color,
         color_layer_b: hover_outline_color,
     }
