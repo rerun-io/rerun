@@ -42,6 +42,9 @@ pub enum ResourceManagerError {
 
     #[error("Failed accessing resource pools")]
     ResourcePoolError(PoolError),
+
+    #[error("Invalid mesh given as input")]
+    InvalidMesh,
 }
 
 #[derive(Clone, Copy)]

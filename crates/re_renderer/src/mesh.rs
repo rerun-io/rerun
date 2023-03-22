@@ -89,10 +89,17 @@ pub struct Mesh {
 
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
 
-    // These must be equal in length:
     pub vertex_positions: Vec<glam::Vec3>,
+
+    /// Per-vertex albedo color with unmulitplied/separate alpha.
+    /// Must be equal in length to [`vertex_positions`].
     pub vertex_colors: Vec<[u8; 4]>,
+
+    /// Must be equal in length to [`vertex_positions`].
+    /// Use ZERO for unshaded.
     pub vertex_normals: Vec<glam::Vec3>,
+
+    /// Must be equal in length to [`vertex_positions`].
     pub vertex_texcoords: Vec<glam::Vec2>,
 
     pub materials: SmallVec<[Material; 1]>,
@@ -160,9 +167,13 @@ impl GpuMesh {
         mesh_bind_group_layout: GpuBindGroupLayoutHandle,
         data: &Mesh,
     ) -> Result<Self, ResourceManagerError> {
-        assert_eq!(data.vertex_positions.len(), data.vertex_colors.len());
-        assert_eq!(data.vertex_positions.len(), data.vertex_normals.len());
-        assert_eq!(data.vertex_positions.len(), data.vertex_texcoords.len());
+        if data.vertex_positions.len() != data.vertex_colors.len()
+            || data.vertex_positions.len() != data.vertex_normals.len()
+            || data.vertex_positions.len() != data.vertex_texcoords.len()
+        {
+            return Err(ResourceManagerError::InvalidMesh);
+        }
+
         re_log::trace!(
             "uploading new mesh named {:?} with {} vertices and {} triangles",
             data.label.get(),
