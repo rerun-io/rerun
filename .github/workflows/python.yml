@@ -240,8 +240,8 @@ jobs:
         run: |
           mkdir rrd
           pip install -r examples/python/colmap/requirements.txt
-          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap.rrd
-          cp rrd/colmap.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap.rrd
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          cp rrd/colmap_fiat.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
 
       - name: Repack the wheel
         shell: bash

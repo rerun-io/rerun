@@ -91,6 +91,6 @@ ban-relative-imports = "all"
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
-include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap.rrd"]
+include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
 python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
