@@ -20,7 +20,7 @@ var outline_voronoi_texture: texture_2d<f32>;
 @fragment
 fn main(in: FragmentInput) -> @location(0) Vec4 {
     let resolution = Vec2(textureDimensions(color_texture).xy);
-    let pixel_coordinates = resolution * in.texcoord;
+    let pixel_coordinates = floor(resolution * in.texcoord);
 
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
