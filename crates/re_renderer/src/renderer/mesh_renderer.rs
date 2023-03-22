@@ -252,7 +252,7 @@ impl MeshDrawData {
             }
             assert_eq!(num_processed_instances, instances.len());
             instance_buffer_staging.copy_to_buffer(
-                ctx.active_frame.encoder.lock().get(),
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &instance_buffer,
                 0,
             );

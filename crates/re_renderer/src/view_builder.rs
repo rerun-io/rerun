@@ -3,13 +3,17 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer,
+    allocator::{
+        create_and_fill_uniform_buffer, GpuWriteCpuReadBuffer, GpuWriteCpuReadBufferIdentifier,
+    },
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
     renderer::{
         CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
     },
-    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
+    wgpu_resources::{
+        texture_row_data_info, GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo,
+    },
     DebugLabel, Rgba, Size,
 };
 
@@ -39,6 +43,8 @@ pub struct ViewBuilder {
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
+
+    scheduled_screenshot: Option<GpuWriteCpuReadBuffer>,
 }
 
 struct ViewTargetSetup {
@@ -165,6 +171,12 @@ impl Default for TargetConfiguration {
             outline_config: None,
         }
     }
+}
+
+pub struct ScheduledScreenshot {
+    pub identifier: GpuWriteCpuReadBufferIdentifier,
+    pub resolution: [u32; 2],
+    pub row_info: TextureRowDataInfo,
 }
 
 impl ViewBuilder {
@@ -507,6 +519,13 @@ impl ViewBuilder {
                 label: setup.name.clone().get(),
             });
 
+        let clear_color = wgpu::Color {
+            r: clear_color.r() as f64,
+            g: clear_color.g() as f64,
+            b: clear_color.b() as f64,
+            a: clear_color.a() as f64,
+        };
+
         {
             crate::profile_scope!("main target pass");
 
@@ -516,12 +535,7 @@ impl ViewBuilder {
                     view: &setup.main_target_msaa.default_view,
                     resolve_target: Some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: clear_color.r() as f64,
-                            g: clear_color.g() as f64,
-                            b: clear_color.b() as f64,
-                            a: clear_color.a() as f64,
-                        }),
+                        load: wgpu::LoadOp::Clear(clear_color),
                         // Don't care about the result, it's going to be resolved to the resolve target.
                         // This can have be much better perf, especially on tiler gpus.
                         store: false,
@@ -555,7 +569,108 @@ impl ViewBuilder {
             outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?;
         }
 
+        // Execute compositing into a special target if we want to take a screenshot.
+        // This is necessary because `composite` is expected to write directly into the final output
+        // from which we can't read back and of which we don't control the format.
+        //
+        // This comes with the perk that we can do extra things here if we want!
+        //
+        // TODO(andreas): Like more antialiasing!
+        // We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
+        // Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
+        if let Some(screenshot_target_buffer) = self.scheduled_screenshot.take() {
+            let screenshot_texture = ctx.gpu_resources.textures.alloc(
+                &ctx.device,
+                &TextureDesc {
+                    label: setup.name.clone().push_str(" - screenshot target"),
+                    size: wgpu::Extent3d {
+                        width: setup.resolution_in_pixel[0],
+                        height: setup.resolution_in_pixel[1],
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm, // Shader does Gamma curve handling
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                },
+            );
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: setup.name.clone().push_str(" - screenshot").get(),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &screenshot_texture.default_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(clear_color),
+                            store: true,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                });
+
+                pass.set_bind_group(0, &setup.bind_group_0, &[]);
+                self.draw_phase(ctx, DrawPhase::Compositing, &mut pass);
+            }
+
+            let bytes_per_row = texture_row_data_info(
+                screenshot_texture.texture.format(),
+                screenshot_texture.texture.width(),
+            )
+            .bytes_per_row_padded;
+            screenshot_target_buffer.read_texture(
+                &mut encoder,
+                wgpu::ImageCopyTexture {
+                    texture: &screenshot_texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                std::num::NonZeroU32::new(bytes_per_row),
+                None,
+                screenshot_texture.texture.size(),
+            );
+        }
+
         Ok(encoder.finish())
+    }
+
+    /// Schedules the taking of a screenshot.
+    ///
+    /// Returns screenshot data properties for convenience.
+    pub fn schedule_screenshot(
+        &mut self,
+        ctx: &RenderContext,
+    ) -> anyhow::Result<ScheduledScreenshot> {
+        if self.scheduled_screenshot.is_some() {
+            anyhow::bail!("A screenshot is already scheduled");
+        };
+
+        let setup = self
+            .setup
+            .as_ref()
+            .context("ViewBuilder::setup_view wasn't called yet")?;
+
+        let row_info = texture_row_data_info(
+            wgpu::TextureFormat::Rgba8Unorm,
+            setup.resolution_in_pixel[0],
+        );
+        let buffer_size = row_info.bytes_per_row_padded * setup.resolution_in_pixel[1];
+        let screenshot_buffer = ctx.gpu_write_cpu_read_belt.lock().allocate(
+            &ctx.device,
+            &ctx.gpu_resources.buffers,
+            buffer_size as u64,
+        );
+
+        let identifier = screenshot_buffer.identifier;
+        self.scheduled_screenshot = Some(screenshot_buffer);
+
+        Ok(ScheduledScreenshot {
+            resolution: setup.resolution_in_pixel,
+            row_info,
+            identifier,
+        })
     }
 
     /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.

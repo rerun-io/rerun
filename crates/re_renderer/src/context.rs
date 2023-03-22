@@ -175,7 +175,7 @@ impl RenderContext {
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
         let active_frame = ActiveFrameContext {
-            encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
+            before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             per_frame_data_helper: TypeMap::new(),
             frame_index: 0,
         };
@@ -245,7 +245,13 @@ impl RenderContext {
 
         // If the currently active frame still has an encoder, we need to finish it and queue it.
         // This should only ever happen for the first frame where we created an encoder for preparatory work. Every other frame we take the encoder at submit!
-        if self.active_frame.encoder.lock().0.is_some() {
+        if self
+            .active_frame
+            .before_view_builder_encoder
+            .lock()
+            .0
+            .is_some()
+        {
             assert!(self.active_frame.frame_index == 0, "There was still a command encoder from the previous frame at the beginning of the current. Did you forget to call RenderContext::before_submit?");
             self.before_submit();
         }
@@ -253,6 +259,8 @@ impl RenderContext {
         // Request write used staging buffer back.
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
+        // Map all read staging buffers.
+        self.gpu_write_cpu_read_belt.lock().after_queue_submit();
 
         // TODO: We need a safety mechanism like this. But just draining here might discard brand new buffers that just came in.
         //          Instead, brandmark buffers with a frame index and only drain those that are older than the current frame index.
@@ -267,7 +275,7 @@ impl RenderContext {
         //     });
 
         self.active_frame = ActiveFrameContext {
-            encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
+            before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
             per_frame_data_helper: TypeMap::new(),
         };
@@ -338,10 +346,14 @@ impl RenderContext {
 
         // Unmap all write staging buffers.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
-        // Map all read staging buffers.
-        self.gpu_write_cpu_read_belt.lock().before_queue_submit();
 
-        if let Some(command_encoder) = self.active_frame.encoder.lock().0.take() {
+        if let Some(command_encoder) = self
+            .active_frame
+            .before_view_builder_encoder
+            .lock()
+            .0
+            .take()
+        {
             crate::profile_scope!("finish & submit frame-global encoder");
             let command_buffer = command_encoder.finish();
 
@@ -388,7 +400,7 @@ pub struct ActiveFrameContext {
     ///
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
-    pub encoder: Mutex<FrameGlobalCommandEncoder>,
+    pub before_view_builder_encoder: Mutex<FrameGlobalCommandEncoder>,
 
     /// Utility type map that will be cleared every frame.
     pub per_frame_data_helper: TypeMap,

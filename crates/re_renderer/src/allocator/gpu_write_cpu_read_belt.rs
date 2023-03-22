@@ -9,7 +9,7 @@ pub struct GpuWriteCpuReadBuffer {
     chunk_buffer: GpuBuffer,
     byte_offset_in_chunk_buffer: wgpu::BufferAddress,
     size_in_bytes: wgpu::BufferAddress,
-    identifier: GpuWriteCpuReadBufferIdentifier,
+    pub identifier: GpuWriteCpuReadBufferIdentifier,
 }
 
 impl GpuWriteCpuReadBuffer {
@@ -146,17 +146,18 @@ impl GpuWriteCpuReadBelt {
             next_identifier: 0,
         }
     }
-
     /// Allocates a Gpu writable buffer & cpu readable buffer with a given size.
     pub fn allocate(
         &mut self,
         device: &wgpu::Device,
         buffer_pool: &GpuBufferPool,
-        size_in_bytes: wgpu::BufferSize,
+        size_in_bytes: wgpu::BufferAddress,
     ) -> GpuWriteCpuReadBuffer {
         crate::profile_function!();
 
-        let size_in_bytes = wgpu::util::align_to(size_in_bytes.get(), Self::MIN_ALIGNMENT);
+        debug_assert!(size_in_bytes > 0, "Cannot allocate zero-sized buffer");
+
+        let size_in_bytes = wgpu::util::align_to(size_in_bytes, Self::MIN_ALIGNMENT);
 
         // Try to find space in any of the active chunks first.
         let mut chunk = if let Some(index) = self
@@ -205,8 +206,9 @@ impl GpuWriteCpuReadBelt {
     ///
     /// This should be called before the command encoder(s) used in [`GpuWriteCpuReadBuffer`] copy operations are submitted.
     ///
-    /// At this point, all the partially used staging buffers are closed until the GPU write operation is done and the CPU has read them.
-    pub fn before_queue_submit(&mut self) {
+    /// At this point, all the partially used staging buffers are closed until the GPU write operation is done.
+    /// After that, the CPU has read them in [`GpuWriteCpuReadBuffer::receive_data`].
+    pub fn after_queue_submit(&mut self) {
         crate::profile_function!();
         for chunk in self.active_chunks.drain(..) {
             let sender = self.sender.clone();
