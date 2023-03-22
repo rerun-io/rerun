@@ -2,8 +2,8 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
-/// An RGBA color tuple with unmultiplied alpha,
-/// in sRGB color space and linear alpha.
+/// An RGBA color tuple with unmultiplied/seprate alpha,
+/// in sRGB gamma space with linear alpha.
 ///
 /// ```
 /// use re_log_types::component_types::ColorRGBA;

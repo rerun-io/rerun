@@ -95,11 +95,8 @@ pub fn load_obj_from_buffer(
 
             mesh.sanity_check()?;
 
-            let gpu_mesh = ctx
-                .mesh_manager
-                .write()
-                .create(ctx, &mesh, lifetime)
-                .unwrap(); // TODO(andreas): Handle error
+            let gpu_mesh = ctx.mesh_manager.write().create(ctx, &mesh, lifetime)?;
+
             Ok(MeshInstance {
                 gpu_mesh,
                 mesh: Some(Arc::new(mesh)),

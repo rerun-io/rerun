@@ -173,17 +173,11 @@ fn import_mesh(
         } else {
             vertex_normals.resize(vertex_positions.len(), glam::Vec3::ZERO);
         }
-        if vertex_positions.len() != vertex_normals.len() {
-            anyhow::bail!("Number of positions was not equal number of normals.");
-        }
 
         if let Some(primitive_texcoords) = reader.read_tex_coords(set) {
             vertex_texcoords.extend(primitive_texcoords.into_f32().map(glam::Vec2::from));
         } else {
             vertex_texcoords.resize(vertex_positions.len(), glam::Vec2::ZERO);
-        }
-        if vertex_positions.len() != vertex_texcoords.len() {
-            anyhow::bail!("Number of positions was not equal number of texture coordiantes.");
         }
 
         let primitive_material = primitive.material();
