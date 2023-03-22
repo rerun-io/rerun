@@ -4,6 +4,7 @@
 
 use std::{io::Cursor, path::PathBuf};
 
+use itertools::izip;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
@@ -601,34 +602,34 @@ fn log_meshes(
     let time_point = time(timeless);
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
-    for (i, positions) in position_buffers.into_iter().enumerate() {
-        let albedo_factor = if let Some(v) = albedo_factors[i]
-            .as_ref()
-            .map(|albedo_factor| albedo_factor.as_array().to_vec())
-        {
-            match v.len() {
-                3 => Vec4D([v[0], v[1], v[2], 1.0]),
-                4 => Vec4D([v[0], v[1], v[2], v[3]]),
-                _ => {
-                    return Err(PyTypeError::new_err(format!(
-                        "Albedo factor must be vec3 or vec4, got {v:?} instead",
-                    )));
+
+    for (positions, indices, normals, albedo_factor) in izip!(
+        position_buffers,
+        index_buffers,
+        normal_buffers,
+        albedo_factors,
+    ) {
+        let albedo_factor =
+            if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
+                match v.len() {
+                    3 => Vec4D([v[0], v[1], v[2], 1.0]),
+                    4 => Vec4D([v[0], v[1], v[2], v[3]]),
+                    _ => {
+                        return Err(PyTypeError::new_err(format!(
+                            "Albedo factor must be vec3 or vec4, got {v:?} instead",
+                        )));
+                    }
                 }
-            }
-            .into()
-        } else {
-            None
-        };
+                .into()
+            } else {
+                None
+            };
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             positions: positions.as_array().to_vec(),
-            indices: index_buffers[i]
-                .as_ref()
-                .map(|indices| indices.as_array().to_vec()),
-            normals: normal_buffers[i]
-                .as_ref()
-                .map(|normals| normals.as_array().to_vec()),
+            indices: indices.map(|indices| indices.as_array().to_vec()),
+            normals: normals.map(|normals| normals.as_array().to_vec()),
             albedo_factor,
         };
         raw.sanity_check()
