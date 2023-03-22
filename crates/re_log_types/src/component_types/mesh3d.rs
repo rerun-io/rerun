@@ -146,7 +146,7 @@ pub struct RawMesh3D {
     /// and the length of this must be divisible by 9.
     pub positions: Vec<f32>,
 
-    /// Per-vertex colors.
+    /// Per-vertex albedo colors.
     pub vertex_colors: Option<Vec<ColorRGBA>>,
 
     /// Optionally, the flattened normals array for this mesh.
@@ -210,11 +210,17 @@ impl RawMesh3D {
     }
 
     #[inline]
-    pub fn num_triangles(&self) -> usize {
-        #[cfg(debug_assertions)]
-        self.sanity_check().unwrap();
-
+    pub fn num_vertices(&self) -> usize {
         self.positions.len() / 3
+    }
+
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        if let Some(indices) = &self.indices {
+            indices.len() / 3
+        } else {
+            self.num_vertices() / 3
+        }
     }
 }
 
