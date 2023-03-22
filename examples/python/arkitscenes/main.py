@@ -11,7 +11,6 @@ import numpy.typing as npt
 import rerun as rr
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
-from rerun.log.file import MeshFormat
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
@@ -129,8 +128,11 @@ def log_arkit(recording_path: Path) -> None:
 
     # TODO(pablovela5620): for now just use the untextered/uncolored mesh until #1580 is resolved
     mesh_ply = trimesh.load(str(ply_path))
-    mesh_gltf_bin = trimesh.exchange.gltf.export_glb(mesh_ply, include_normals=True)
-    rr.log_mesh_file("world/mesh", MeshFormat.GLB, mesh_gltf_bin, timeless=True)
+    rr.log_mesh(
+        "world/mesh",
+        positions=mesh_ply.vertices,
+        indices=mesh_ply.faces,
+    )
 
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
@@ -139,6 +141,8 @@ def log_arkit(recording_path: Path) -> None:
     # To avoid logging image frames in the beginning that dont' have a trajectory
     # This causes the camera to expand in the beginning otherwise
     init_traj_found = False
+
+    print("Processing frames…")
     for frame_id in tqdm(lowres_frame_ids):
         rr.set_time_seconds("time", float(frame_id))
         bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
