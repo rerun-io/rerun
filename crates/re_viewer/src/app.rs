@@ -1028,9 +1028,8 @@ fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, _frame: &mut eframe::Fr
             .frame(frame)
             .show_inside(ui, |ui| {
                 ui.centered_and_justified(|ui| {
-                    let text = re_ui.warning_text(
-                        "Web view on mobile is not yet supported. Click for details.",
-                    );
+                    let text =
+                        re_ui.warning_text("Mobile OSes are not yet supported. Click for details.");
                     ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1672");
                 });
             });
