@@ -1,3 +1,4 @@
+# Copied from https://github.com/apple/ARKitScenes/blob/main/download_data.py
 # Licensing information: https://github.com/apple/ARKitScenes/blob/main/LICENSE
 import math
 import os
