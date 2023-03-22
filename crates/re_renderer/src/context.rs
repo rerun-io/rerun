@@ -4,7 +4,7 @@ use parking_lot::{Mutex, RwLock};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
-    allocator::CpuWriteGpuReadBelt,
+    allocator::{CpuWriteGpuReadBelt, GpuWriteCpuReadBelt},
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -28,6 +28,7 @@ pub struct RenderContext {
     pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
+    pub gpu_write_cpu_read_belt: Mutex<GpuWriteCpuReadBelt>,
 
     /// List of unfinished queue submission via this context.
     ///
@@ -85,6 +86,13 @@ impl RenderContext {
     #[cfg(target_arch = "wasm32")]
     const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
         wgpu::BufferSize::new(1024 * 1024 * 8);
+
+    /// Chunk size for our gpu->cpu buffer manager.
+    ///
+    /// We expect large screenshots to be rare occurrences, so we go with fairly small chunks of 1MiB
+    /// (this is as much memory as a 512x512 rgba8 texture)
+    const GPU_WRITE_CPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
+        wgpu::BufferSize::new(1024 * 1024);
 
     /// Limit maximum number of in flight submissions to this number.
     ///
@@ -185,6 +193,7 @@ impl RenderContext {
             mesh_manager,
             texture_manager_2d,
             cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
+            gpu_write_cpu_read_belt: Mutex::new(GpuWriteCpuReadBelt::new(Self::GPU_WRITE_CPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
 
             resolver,
 
@@ -241,9 +250,21 @@ impl RenderContext {
             self.before_submit();
         }
 
-        // Request used staging buffer back.
+        // Request write used staging buffer back.
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
+
+        // TODO: We need a safety mechanism like this. But just draining here might discard brand new buffers that just came in.
+        //          Instead, brandmark buffers with a frame index and only drain those that are older than the current frame index.
+        // To err on the safe side, drain all unused mapped staging buffers.
+        // self.gpu_write_cpu_read_belt
+        //     .lock()
+        //     .receive_data(|_data, identifier| {
+        //         log::warn_once!(
+        //             "Discarding read buffer with identifier {:?} as it was unused.",
+        //             identifier
+        //         );
+        //     });
 
         self.active_frame = ActiveFrameContext {
             encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
@@ -315,8 +336,10 @@ impl RenderContext {
     pub fn before_submit(&mut self) {
         crate::profile_function!();
 
-        // Unmap all staging buffers.
+        // Unmap all write staging buffers.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
+        // Map all read staging buffers.
+        self.gpu_write_cpu_read_belt.lock().before_queue_submit();
 
         if let Some(command_encoder) = self.active_frame.encoder.lock().0.take() {
             crate::profile_scope!("finish & submit frame-global encoder");

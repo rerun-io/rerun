@@ -1,8 +1,4 @@
-use std::{
-    num::NonZeroU32,
-    ops::{DerefMut, Range},
-    sync::mpsc,
-};
+use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 
@@ -18,7 +14,7 @@ pub struct GpuWriteCpuReadBuffer {
 
 impl GpuWriteCpuReadBuffer {
     /// Populates the buffer with data from a texture.
-    pub fn from_texture(
+    pub fn read_texture(
         self,
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
@@ -43,7 +39,7 @@ impl GpuWriteCpuReadBuffer {
     }
 
     /// Populates the buffer with data from a buffer.
-    pub fn from_buffer(
+    pub fn read_buffer(
         self,
         encoder: &mut wgpu::CommandEncoder,
         source: &GpuBuffer,
@@ -223,7 +219,7 @@ impl GpuWriteCpuReadBelt {
                         // This should never happen. Drop the chunk and report.
                         re_log::error_once!("Failed to map staging buffer for reading");
                     } else {
-                        sender.send(chunk);
+                        let _ = sender.send(chunk);
                     }
                 });
         }
