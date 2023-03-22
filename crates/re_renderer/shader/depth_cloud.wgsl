@@ -92,6 +92,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = compute_point_data(quad_idx);
 
     // Span quad
+    // TODO(andreas): Implement outline-mask size boost for depth cloud as well.
     let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, 0.0);
 
     var out: VertexOut;
