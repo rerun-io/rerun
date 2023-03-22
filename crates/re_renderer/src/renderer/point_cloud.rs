@@ -334,7 +334,7 @@ impl PointCloudDrawData {
                     end_padding: Default::default(),
                 },
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: 2.5.into(),
+                    size_boost_in_points: builder.size_boost_in_points_for_outlines.into(),
                     end_padding: Default::default(),
                 },
             ]
@@ -345,7 +345,7 @@ impl PointCloudDrawData {
             &ctx.device,
             &ctx.gpu_resources,
             &BindGroupDesc {
-                label: "line drawdata".into(),
+                label: "PointCloudDrawData::bind_group_all_points".into(),
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(color_texture.handle),
@@ -358,7 +358,7 @@ impl PointCloudDrawData {
             &ctx.device,
             &ctx.gpu_resources,
             &BindGroupDesc {
-                label: "line drawdata".into(),
+                label: "PointCloudDrawData::bind_group_all_points_outline_mask".into(),
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(color_texture.handle),

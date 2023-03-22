@@ -16,6 +16,8 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub user_data: Vec<PerPointUserData>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
+
+    pub size_boost_in_points_for_outlines: f32,
 }
 
 impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
@@ -37,6 +39,7 @@ where
             color_buffer,
             user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
+            size_boost_in_points_for_outlines: 2.5,
         }
     }
 

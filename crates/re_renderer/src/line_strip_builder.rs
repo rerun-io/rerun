@@ -23,6 +23,8 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub strip_user_data: Vec<PerStripUserData>,
 
     pub batches: Vec<LineBatchInfo>,
+
+    pub size_boost_in_points_for_outlines: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
@@ -65,7 +67,14 @@ where
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
-        LineDrawData::new(ctx, &self.vertices, &self.strips, &self.batches).unwrap()
+        LineDrawData::new(
+            ctx,
+            &self.vertices,
+            &self.strips,
+            &self.batches,
+            self.size_boost_in_points_for_outlines,
+        )
+        .unwrap()
     }
 
     /// Iterates over all line strips batches together with their strips and their respective vertices.

@@ -11,6 +11,12 @@ var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
 
+struct DrawDataUniformBuffer {
+    size_boost_in_points: f32,
+};
+@group(1) @binding(2)
+var<uniform> draw_data: DrawDataUniformBuffer;
+
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     outline_mask_ids: UVec2,
