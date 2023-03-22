@@ -103,6 +103,8 @@ def log_arkit(recording_path: Path) -> None:
     intrinsics_dir = recording_path / "lowres_wide_intrinsics"
     traj_path = recording_path / "lowres_wide.traj"
 
+    # frame_ids are indexed by timestamps, you can see more info here
+    # https://github.com/apple/ARKitScenes/blob/main/threedod/README.md#data-organization-and-format-of-input-data
     depth_filenames = [x.name for x in sorted(depth_dir.iterdir())]
     lowres_frame_ids = [x.split(".png")[0].split("_")[1] for x in depth_filenames]
     lowres_frame_ids.sort()
@@ -110,13 +112,14 @@ def log_arkit(recording_path: Path) -> None:
     # dict of timestamp to pose which is a tuple of translation and quaternion
     poses_from_traj = {}
     with open(traj_path, "r", encoding="utf-8") as f:
-        traj = f.readlines()
+        trajectory = f.readlines()
 
-    for line in traj:
-        ts, camera_from_world = traj_string_to_matrix(line)
-        # round timestamp to 3 decimal places
-        ts = f"{round(float(ts), 3):.3f}"
-        poses_from_traj[ts] = camera_from_world
+    for line in trajectory:
+        timestamp, camera_from_world = read_camera_from_world(line)
+        # round timestamp to 3 decimal places as seen in the original repo here
+        # https://github.com/apple/ARKitScenes/blob/e2e975128a0a9695ea56fa215fe76b4295241538/threedod/benchmark_scripts/utils/tenFpsDataLoader.py#L247
+        timestamp = f"{round(float(timestamp), 3):.3f}"
+        poses_from_traj[timestamp] = camera_from_world
 
     rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
