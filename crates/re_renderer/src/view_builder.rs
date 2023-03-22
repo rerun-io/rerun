@@ -180,6 +180,7 @@ impl Default for TargetConfiguration {
     }
 }
 
+#[derive(Clone)]
 pub struct ScheduledScreenshot {
     pub identifier: GpuReadbackBufferIdentifier,
     pub width: u32,

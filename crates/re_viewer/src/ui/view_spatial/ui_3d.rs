@@ -6,7 +6,7 @@ use macaw::{vec3, BoundingBox, Quat, Vec3};
 use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
-    view_builder::{Projection, TargetConfiguration},
+    view_builder::{Projection, ScheduledScreenshot, TargetConfiguration},
     RenderContext, Size,
 };
 
@@ -496,7 +496,15 @@ pub fn view_3d(
         }
     }
 
-    paint_view(
+    let mut take_screenshot = false;
+    response.context_menu(|ui| {
+        if ui.button("Take screenshot").clicked() {
+            take_screenshot = true;
+            ui.close_menu();
+        }
+    });
+
+    let scheduled_screenshot = paint_view(
         ui,
         eye,
         rect,
@@ -504,13 +512,16 @@ pub fn view_3d(
         ctx.render_ctx,
         &space.to_string(),
         state.auto_size_config(),
+        take_screenshot,
     );
+    state.scheduled_screenshots.extend(scheduled_screenshot);
 
     // Add egui driven labels on top of re_renderer content.
     let painter = ui.painter().with_clip_rect(ui.max_rect());
     painter.extend(label_shapes);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
@@ -519,14 +530,15 @@ fn paint_view(
     render_ctx: &mut RenderContext,
     name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
-) {
+    take_screenshot: bool,
+) -> Option<ScheduledScreenshot> {
     crate::profile_function!();
 
     // Determine view port resolution and position.
     let pixels_from_point = ui.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(rect, pixels_from_point);
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return;
+        return None;
     }
 
     let target_config = TargetConfiguration {
@@ -549,15 +561,18 @@ fn paint_view(
             .then(|| outline_config(ui.ctx())),
     };
 
-    let Ok(callback) = create_scene_paint_callback(
+    let Ok((callback, scheduled_screenshot)) = create_scene_paint_callback(
         render_ctx,
         target_config,
         rect,
-        scene.primitives, &ScreenBackground::GenericSkybox)
+        scene.primitives, &ScreenBackground::GenericSkybox,
+        take_screenshot)
     else {
-        return;
+        return None;
     };
     ui.painter().add(callback);
+
+    scheduled_screenshot
 }
 
 fn show_projections_from_2d_space(

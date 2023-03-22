@@ -360,6 +360,63 @@ impl Viewport {
     ) {
         crate::profile_function!();
 
+        ctx.render_ctx
+            .gpu_readback_belt
+            .lock()
+            .receive_data(|data, identifier| {
+                for space_view in self.space_views.values_mut() {
+                    let scheduled_screenshots =
+                        &mut space_view.view_state.state_spatial.scheduled_screenshots;
+
+                    if let Some(index) = scheduled_screenshots
+                        .iter()
+                        .position(|s| s.identifier == identifier)
+                    {
+                        let screenshot = scheduled_screenshots.swap_remove(index);
+
+                        // Need to do a memcpy to remove the padding.
+                        // TODO(andreas): This should be a utility in the render crate.
+                        let row_info = screenshot.row_info;
+                        let mut buffer = Vec::with_capacity(
+                            (row_info.bytes_per_row_unpadded * screenshot.height) as usize,
+                        );
+                        for row in 0..screenshot.height {
+                            let offset = (row_info.bytes_per_row_padded * row) as usize;
+                            buffer.extend_from_slice(
+                                &data[offset..(offset + row_info.bytes_per_row_unpadded as usize)],
+                            );
+                        }
+
+                        // Get next available file name.
+                        let safe_space_view_name = space_view
+                            .display_name
+                            .replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
+                        let mut i = 1;
+                        let mut filename = format!("Screenshot {safe_space_view_name}.png");
+                        while std::path::Path::new(&filename).exists() {
+                            filename = format!("Screenshot {safe_space_view_name} ({i}).png");
+                            i += 1;
+                        }
+                        let filename = std::path::Path::new(&filename);
+
+                        image::save_buffer(
+                            filename,
+                            &buffer,
+                            screenshot.width,
+                            screenshot.height,
+                            image::ColorType::Rgba8,
+                        )
+                        .expect("Failed to save screenshot"); // TODO: Graceful error handling DONT CRASH COME ON
+
+                        re_log::info!(
+                            "Saved screenshot to {:?}",
+                            filename.canonicalize().unwrap_or(filename.to_path_buf())
+                        );
+                        break;
+                    }
+                }
+            });
+
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
         }

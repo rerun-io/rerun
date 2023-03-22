@@ -427,6 +427,14 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    let mut take_screenshot = false;
+    let response = response.context_menu(|ui| {
+        if ui.button("Take screenshot").clicked() {
+            take_screenshot = true;
+            ui.close_menu();
+        }
+    });
+
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
     {
@@ -445,14 +453,16 @@ fn view_2d_scrollable(
             return response;
         };
 
-        let Ok(callback) = create_scene_paint_callback(
+        let Ok((callback, scheduled_screenshot)) = create_scene_paint_callback(
             ctx.render_ctx,
             target_config, painter.clip_rect(),
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
+            take_screenshot,
         ) else {
             return response;
         };
+        state.scheduled_screenshots.extend(scheduled_screenshot);
 
         painter.add(callback);
     }

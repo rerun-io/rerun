@@ -5,7 +5,7 @@ use re_format::format_f32;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
-use re_renderer::renderer::OutlineConfig;
+use re_renderer::{renderer::OutlineConfig, view_builder::ScheduledScreenshot};
 
 use crate::{
     misc::{
@@ -77,6 +77,9 @@ pub struct ViewSpatialState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
+
+    #[serde(skip)]
+    pub scheduled_screenshots: Vec<ScheduledScreenshot>,
 }
 
 impl Default for ViewSpatialState {
@@ -92,6 +95,7 @@ impl Default for ViewSpatialState {
                 point_radius: re_renderer::Size::AUTO, // let re_renderer decide
                 line_radius: re_renderer::Size::AUTO,  // let re_renderer decide
             },
+            scheduled_screenshots: Vec::new(),
         }
     }
 }
