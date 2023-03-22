@@ -1166,7 +1166,7 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
         version,
         rustc_version,
         llvm_version,
-        git_hash: _,
+        git_hash,
         git_branch: _,
         is_in_rerun_workspace: _,
         target_triple,
@@ -1187,8 +1187,14 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
         llvm_version
     };
 
+    let maybe_git_hash = if version.is_prerelease() {
+        git_hash
+    } else {
+        ""
+    };
+
     ui.label(format!(
-        "{crate_name} {version}\n\
+        "{crate_name} {version}{maybe_git_hash}\n\
         {target_triple}\n\
         rustc {rustc_version}\n\
         LLVM {llvm_version}\n\
