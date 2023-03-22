@@ -43,7 +43,7 @@ where
         }
     }
 
-    // TODO: DOCs
+    /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
     pub fn size_boost_in_points_for_outlines(
         mut self,
         size_boost_in_points_for_outlines: f32,
