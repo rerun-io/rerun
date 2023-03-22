@@ -63,6 +63,16 @@
             text-align: center;
         }
 
+        a {
+            display: inline-block;
+            background: white;
+            color: black;
+            padding: .75rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
         /* ---------------------------------------------- */
         /* Loading animation from https://loading.io/css/ */
         .lds-dual-ring {
@@ -99,6 +109,14 @@
 <body>
     <!-- The Wasm code will resize the canvas dynamically -->
     <canvas id="the_canvas_id"></canvas>
+    <div class="centered" id="mobile_text" style="visibility:hidden">
+        <p style="font-size:16px">
+            Rerun is not yet supported on mobile browsers.
+        </p>
+        <p style="font-size:16px">
+            <a href="#" id="try_anyways">Try anyways</a>
+        </p>
+    </div>
     <div class="centered" id="center_text">
         <p style="font-size:16px">
             Loading…
@@ -123,13 +141,30 @@
     <script src="re_viewer.js"></script>
 
     <script>
-        // We'll defer our execution until the wasm is ready to go.
-        // Here we tell bindgen the path to the wasm file so it can start
-        // initialization and return to us a promise when it's done.
-        console.debug("loading wasm…");
-        wasm_bindgen("./re_viewer_bg.wasm")
-            .then(on_wasm_loaded)
-            .catch(on_wasm_error);
+        // On mobile platforms show a warning, but provide a link to try anyways
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            document.querySelector('#center_text').style.visibility = 'hidden';
+            document.querySelector('#mobile_text').style.visibility = 'visible';
+            document.querySelector('#try_anyways').addEventListener('click', function (event) {
+                event.preventDefault();
+                document.querySelector('#center_text').style.visibility = 'visible';
+                document.querySelector('#mobile_text').style.visibility = 'hidden';
+                load_wasm();
+            });
+        } else {
+            load_wasm();
+        }
+
+        function load_wasm() {
+            // We'll defer our execution until the wasm is ready to go.
+            // Here we tell bindgen the path to the wasm file so it can start
+            // initialization and return to us a promise when it's done.
+
+            console.debug("loading wasm…");
+            wasm_bindgen("./re_viewer_bg.wasm")
+                .then(on_wasm_loaded)
+                .catch(on_wasm_error);
+        }
 
         function on_wasm_loaded() {
             console.debug("wasm loaded. starting app…");
