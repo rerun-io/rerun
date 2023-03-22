@@ -29,18 +29,18 @@ impl From<GltfPrimitive> for Mesh3D {
     fn from(primitive: GltfPrimitive) -> Self {
         let GltfPrimitive {
             albedo_factor,
-            positions,
             indices,
-            vertex_normals,
+            vertex_positions,
             vertex_colors,
-            texcoords: _, // TODO(cmc) support mesh texturing
+            vertex_normals,
+            vertex_texcoords: _, // TODO(cmc) support mesh texturing
         } = primitive;
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             albedo_factor: albedo_factor.map(Vec4D),
             indices,
-            positions: positions.into_iter().flatten().collect(),
+            vertex_positions: vertex_positions.into_iter().flatten().collect(),
             vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),
             vertex_colors,
         };
@@ -211,12 +211,12 @@ struct GltfNode {
 
 struct GltfPrimitive {
     albedo_factor: Option<[f32; 4]>,
-    positions: Vec<[f32; 3]>,
     indices: Option<Vec<u32>>,
-    vertex_normals: Option<Vec<[f32; 3]>>,
+    vertex_positions: Vec<[f32; 3]>,
     vertex_colors: Option<Vec<ColorRGBA>>,
+    vertex_normals: Option<Vec<[f32; 3]>>,
     #[allow(dead_code)]
-    texcoords: Option<Vec<[f32; 2]>>,
+    vertex_texcoords: Option<Vec<[f32; 2]>>,
 }
 
 struct GltfTransform {
@@ -271,11 +271,11 @@ fn node_primitives<'data>(
 
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
-            let positions = reader.read_positions().unwrap();
-            let positions = positions.collect();
-
             let indices = reader.read_indices();
             let indices = indices.map(|indices| indices.into_u32().into_iter().collect());
+
+            let vertex_positions = reader.read_positions().unwrap();
+            let vertex_positions = vertex_positions.collect();
 
             let vertex_normals = reader.read_normals();
             let vertex_normals = vertex_normals.map(|normals| normals.collect());
@@ -288,16 +288,16 @@ fn node_primitives<'data>(
                     .collect()
             });
 
-            let texcoords = reader.read_tex_coords(0); // TODO(cmc): pick correct set
-            let texcoords = texcoords.map(|texcoords| texcoords.into_f32().collect());
+            let vertex_texcoords = reader.read_tex_coords(0); // TODO(cmc): pick correct set
+            let vertex_texcoords = vertex_texcoords.map(|texcoords| texcoords.into_f32().collect());
 
             GltfPrimitive {
                 albedo_factor,
-                positions,
+                vertex_positions,
                 indices,
                 vertex_normals,
                 vertex_colors,
-                texcoords,
+                vertex_texcoords,
             }
         })
     })

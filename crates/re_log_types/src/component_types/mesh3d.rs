@@ -117,14 +117,17 @@ pub enum RawMeshError {
 ///     RawMesh3D::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("mesh_id", DataType::FixedSizeBinary(16), false),
-///         Field::new("positions", DataType::List(Box::new(
+///         Field::new("vertex_positions", DataType::List(Box::new(
 ///             Field::new("item", DataType::Float32, false)),
 ///         ), false),
-///         Field::new("indices", DataType::List(Box::new(
+///         Field::new("vertex_colors", DataType::List(Box::new(
 ///             Field::new("item", DataType::UInt32, false)),
 ///         ), true),
-///         Field::new("normals", DataType::List(Box::new(
+///         Field::new("vertex_normals", DataType::List(Box::new(
 ///             Field::new("item", DataType::Float32, false)),
+///         ), true),
+///         Field::new("indices", DataType::List(Box::new(
+///             Field::new("item", DataType::UInt32, false)),
 ///         ), true),
 ///         Field::new("albedo_factor", DataType::FixedSizeList(
 ///             Box::new(Field::new("item", DataType::Float32, false)),
@@ -144,7 +147,7 @@ pub struct RawMesh3D {
     ///
     /// If no indices are specified, then each triplet of vertex positions are intrpreted as a triangle
     /// and the length of this must be divisible by 9.
-    pub positions: Vec<f32>,
+    pub vertex_positions: Vec<f32>,
 
     /// Per-vertex albedo colors.
     pub vertex_colors: Option<Vec<ColorRGBA>>,
@@ -174,11 +177,13 @@ pub struct RawMesh3D {
 
 impl RawMesh3D {
     pub fn sanity_check(&self) -> Result<(), RawMeshError> {
-        if self.positions.len() % 3 != 0 {
-            return Err(RawMeshError::PositionsNotDivisibleBy3(self.positions.len()));
+        if self.vertex_positions.len() % 3 != 0 {
+            return Err(RawMeshError::PositionsNotDivisibleBy3(
+                self.vertex_positions.len(),
+            ));
         }
 
-        let num_vertices = self.positions.len() / 3;
+        let num_vertices = self.vertex_positions.len() / 3;
 
         if let Some(indices) = &self.indices {
             if indices.len() % 3 != 0 {
@@ -193,14 +198,16 @@ impl RawMesh3D {
                     });
                 }
             }
-        } else if self.positions.len() % 9 != 0 {
-            return Err(RawMeshError::PositionsAreNotTriangles(self.positions.len()));
+        } else if self.vertex_positions.len() % 9 != 0 {
+            return Err(RawMeshError::PositionsAreNotTriangles(
+                self.vertex_positions.len(),
+            ));
         }
 
         if let Some(normals) = &self.vertex_normals {
-            if normals.len() != self.positions.len() {
+            if normals.len() != self.vertex_positions.len() {
                 return Err(RawMeshError::MismatchedPositionsNormals(
-                    self.positions.len(),
+                    self.vertex_positions.len(),
                     normals.len(),
                 ));
             }
@@ -211,7 +218,7 @@ impl RawMesh3D {
 
     #[inline]
     pub fn num_vertices(&self) -> usize {
-        self.positions.len() / 3
+        self.vertex_positions.len() / 3
     }
 
     #[inline]
@@ -429,7 +436,7 @@ mod tests {
     fn example_raw_mesh() -> RawMesh3D {
         let mesh = RawMesh3D {
             mesh_id: MeshId::random(),
-            positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
+            vertex_positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
             vertex_colors: Some(vec![
                 ColorRGBA(0xff0000ff),
                 ColorRGBA(0x00ff00ff),

@@ -606,7 +606,7 @@ fn log_meshes(
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
 
-    for (positions, vertex_colors, indices, normals, albedo_factor) in izip!(
+    for (vertex_positions, vertex_colors, indices, normals, albedo_factor) in izip!(
         position_buffers,
         vertex_color_buffers,
         index_buffers,
@@ -655,7 +655,7 @@ fn log_meshes(
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
-            positions: positions.as_array().to_vec(),
+            vertex_positions: vertex_positions.as_array().to_vec(),
             vertex_colors,
             indices: indices.map(|indices| indices.as_array().to_vec()),
             vertex_normals: normals.map(|normals| normals.as_array().to_vec()),

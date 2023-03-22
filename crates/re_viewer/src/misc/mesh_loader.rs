@@ -99,7 +99,7 @@ impl LoadedMesh {
 
         let RawMesh3D {
             mesh_id: _,
-            positions,
+            vertex_positions,
             vertex_colors,
             vertex_normals,
             indices,
@@ -107,7 +107,7 @@ impl LoadedMesh {
         } = raw_mesh;
 
         let vertex_positions: Vec<glam::Vec3> =
-            bytemuck::try_cast_vec(positions.clone()).map_err(|(err, _)| anyhow!(err))?;
+            bytemuck::try_cast_vec(vertex_positions.clone()).map_err(|(err, _)| anyhow!(err))?;
         let num_positions = vertex_positions.len();
 
         let indices = if let Some(indices) = indices {
