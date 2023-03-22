@@ -25,7 +25,7 @@ pub mod mesh_vertices {
     /// Vertex buffer layouts describing how vertex data should be laid out.
     ///
     /// Needs to be kept in sync with `mesh_vertex.wgsl`.
-    pub fn vertex_buffer_layouts() -> [VertexBufferLayout; 3] {
+    pub fn vertex_buffer_layouts() -> [VertexBufferLayout; 4] {
         [
             // Position:
             VertexBufferLayout {
@@ -58,6 +58,16 @@ pub mod mesh_vertices {
                     offset: 0,
                 }],
             },
+            // 32 bit color:
+            VertexBufferLayout {
+                array_stride: 4,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: smallvec![wgpu::VertexAttribute {
+                    format: wgpu::VertexFormat::Unorm8x4,
+                    shader_location: 3,
+                    offset: 0,
+                }],
+            },
         ]
     }
 
@@ -78,9 +88,13 @@ pub struct Mesh {
     pub label: DebugLabel,
 
     pub indices: Vec<u32>, // TODO(andreas): different index formats?
+
+    // These must be equal in length:
     pub vertex_positions: Vec<glam::Vec3>,
+    pub vertex_colors: Vec<[u8; 4]>,
     pub vertex_normals: Vec<glam::Vec3>,
     pub vertex_texcoords: Vec<glam::Vec2>,
+
     pub materials: SmallVec<[Material; 1]>,
 }
 
@@ -109,6 +123,7 @@ pub(crate) struct GpuMesh {
     /// See [`mesh_vertices`]
     pub vertex_buffer_combined: GpuBuffer,
     pub vertex_buffer_positions_range: Range<u64>,
+    pub vertex_buffer_colors_range: Range<u64>,
     pub vertex_buffer_normals_range: Range<u64>,
     pub vertex_buffer_texcoord_range: Range<u64>,
 
@@ -145,6 +160,7 @@ impl GpuMesh {
         mesh_bind_group_layout: GpuBindGroupLayoutHandle,
         data: &Mesh,
     ) -> Result<Self, ResourceManagerError> {
+        assert_eq!(data.vertex_positions.len(), data.vertex_colors.len());
         assert_eq!(data.vertex_positions.len(), data.vertex_normals.len());
         assert_eq!(data.vertex_positions.len(), data.vertex_texcoords.len());
         re_log::trace!(
@@ -156,10 +172,12 @@ impl GpuMesh {
 
         // TODO(andreas): Have a variant that gets this from a stack allocator.
         let vb_positions_size = (data.vertex_positions.len() * size_of::<glam::Vec3>()) as u64;
+        let vb_color_size = (data.vertex_normals.len() * size_of::<[u8; 4]>()) as u64;
         let vb_normals_size = (data.vertex_normals.len() * size_of::<glam::Vec3>()) as u64;
         let vb_texcoords_size = (data.vertex_texcoords.len() * size_of::<glam::Vec2>()) as u64;
 
-        let vb_combined_size = vb_positions_size + vb_normals_size + vb_texcoords_size;
+        let vb_combined_size =
+            vb_positions_size + vb_color_size + vb_normals_size + vb_texcoords_size;
 
         let pools = &ctx.gpu_resources;
         let device = &ctx.device;
@@ -181,6 +199,7 @@ impl GpuMesh {
                 vb_combined_size as _,
             );
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_positions));
+            staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_colors));
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_normals));
             staging_buffer.extend_from_slice(bytemuck::cast_slice(&data.vertex_texcoords));
             staging_buffer.copy_to_buffer(
@@ -253,12 +272,17 @@ impl GpuMesh {
             materials
         };
 
+        let vb_colors_start = vb_positions_size;
+        let vb_normals_start = vb_colors_start + vb_color_size;
+        let vb_texcoord_start = vb_normals_start + vb_normals_size;
+
         Ok(GpuMesh {
             index_buffer,
             vertex_buffer_combined,
             vertex_buffer_positions_range: 0..vb_positions_size,
-            vertex_buffer_normals_range: vb_positions_size..vb_positions_size + vb_normals_size,
-            vertex_buffer_texcoord_range: vb_positions_size + vb_normals_size..vb_combined_size,
+            vertex_buffer_colors_range: vb_colors_start..vb_normals_start,
+            vertex_buffer_normals_range: vb_normals_start..vb_texcoord_start,
+            vertex_buffer_texcoord_range: vb_texcoord_start..vb_combined_size,
             index_buffer_range: 0..index_buffer_size,
             materials,
         })

@@ -101,8 +101,8 @@ impl LoadedMesh {
             mesh_id: _,
             positions,
             vertex_colors,
-            indices,
             vertex_normals,
+            indices,
             albedo_factor,
         } = raw_mesh;
 
@@ -113,9 +113,16 @@ impl LoadedMesh {
         let indices = if let Some(indices) = indices {
             indices.clone()
         } else {
-            (0..vertex_positions.len() as u32).collect()
+            anyhow::ensure!(num_positions % 3 == 0);
+            (0..num_positions as u32).collect()
         };
         let num_indices = indices.len();
+
+        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
+            vertex_colors.iter().map(|c| c.to_array()).collect()
+        } else {
+            std::iter::repeat([255; 4]).take(num_positions).collect()
+        };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
             normals
@@ -134,24 +141,27 @@ impl LoadedMesh {
 
         let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
 
+        let mesh = re_renderer::mesh::Mesh {
+            label: name.clone().into(),
+            indices,
+            vertex_positions,
+            vertex_colors,
+            vertex_normals,
+            vertex_texcoords,
+            materials: smallvec::smallvec![re_renderer::mesh::Material {
+                label: name.clone().into(),
+                index_range: 0..num_indices as _,
+                albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
+                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
+                    re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
+                }),
+            }],
+        };
+
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
             gpu_mesh: render_ctx.mesh_manager.write().create(
                 render_ctx,
-                &re_renderer::mesh::Mesh {
-                    label: name.clone().into(),
-                    indices,
-                    vertex_positions,
-                    vertex_normals,
-                    vertex_texcoords,
-                    materials: smallvec::smallvec![re_renderer::mesh::Material {
-                        label: name.clone().into(),
-                        index_range: 0..num_indices as _,
-                        albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
-                        albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
-                            re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
-                        }),
-                    }],
-                },
+                &mesh,
                 ResourceLifeTime::LongLived,
             )?,
             ..Default::default()

@@ -432,10 +432,14 @@ impl Renderer for MeshRenderer {
             );
             pass.set_vertex_buffer(
                 2,
-                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_normals_range.clone()),
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_colors_range.clone()),
             );
             pass.set_vertex_buffer(
                 3,
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_normals_range.clone()),
+            );
+            pass.set_vertex_buffer(
+                4,
                 vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_texcoord_range.clone()),
             );
             pass.set_index_buffer(

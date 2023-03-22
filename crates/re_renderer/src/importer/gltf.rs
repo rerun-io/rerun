@@ -133,6 +133,7 @@ fn import_mesh(
 
     let mut indices = Vec::new();
     let mut vertex_positions = Vec::new();
+    let mut vertex_colors = Vec::new();
     let mut vertex_normals = Vec::new();
     let mut vertex_texcoords = Vec::new();
     let mut materials = SmallVec::new();
@@ -141,6 +142,8 @@ fn import_mesh(
     // Primitives map to vertex/index ranges for us as we store all vertices/indices into the same vertex/index buffer.
     // (this means we loose the rarely used ability to re-use vertex/indices between meshes, but shouldn't loose any abilities otherwise)
     for primitive in mesh.primitives() {
+        let set = 0;
+
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
 
         let index_offset = indices.len() as u32;
@@ -159,22 +162,26 @@ fn import_mesh(
             anyhow::bail!("Gltf primitives must have positions");
         }
 
+        if let Some(colors) = reader.read_colors(set) {
+            vertex_colors.extend(colors.into_rgba_u8());
+        } else {
+            vertex_colors.resize(vertex_positions.len(), [255; 4]);
+        }
+
         if let Some(primitive_normals) = reader.read_normals() {
             vertex_normals.extend(primitive_normals.map(glam::Vec3::from));
         } else {
             anyhow::bail!("Gltf primitives must have normals");
         }
-
         if vertex_positions.len() != vertex_normals.len() {
             anyhow::bail!("Number of positions was not equal number of normals.");
         }
 
-        if let Some(primitive_texcoords) = reader.read_tex_coords(0) {
+        if let Some(primitive_texcoords) = reader.read_tex_coords(set) {
             vertex_texcoords.extend(primitive_texcoords.into_f32().map(glam::Vec2::from));
         } else {
             vertex_texcoords.resize(vertex_positions.len(), glam::Vec2::ZERO);
         }
-
         if vertex_positions.len() != vertex_texcoords.len() {
             anyhow::bail!("Number of positions was not equal number of texture coordiantes.");
         }
@@ -243,6 +250,7 @@ fn import_mesh(
         label: mesh.name().into(),
         indices,
         vertex_positions,
+        vertex_colors,
         vertex_normals,
         vertex_texcoords,
         materials,
