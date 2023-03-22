@@ -47,9 +47,9 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
         )
 
 
-def traj_string_to_matrix(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
+def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
     """
-    Converts trajectory string into translation and rotation matrices.
+    Reads out camera_from_world transform from trajectory string.
 
     Args:
         traj_string: A space-delimited file where each line represents a camera position at a particular timestamp.
@@ -60,7 +60,10 @@ def traj_string_to_matrix(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.f
 
     Returns
     -------
-        tuple: A tuple containing the timestamp (ts) and the transformation matrix (Rt).
+    timestamp: float
+        timestamp in seconds
+    camera_from_world: tuple of two numpy arrays
+        A tuple containing a translation vector and a quaternion that represent the camera_from_world transform
 
     Raises
     ------
