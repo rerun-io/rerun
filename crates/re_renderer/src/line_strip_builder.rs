@@ -5,7 +5,7 @@ use crate::{
         LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex,
         OutlineMaskPreference,
     },
-    Color32, DebugLabel, Size,
+    Color32, DebugLabel, RenderContext, Size,
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -14,7 +14,6 @@ use crate::{
 /// of writing to a GPU readable memory location.
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-#[derive(Default)]
 pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub vertices: Vec<LineVertex>,
 
@@ -24,13 +23,35 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
 
     pub batches: Vec<LineBatchInfo>,
 
-    pub size_boost_in_points_for_outlines: f32,
+    pub(crate) size_boost_in_points_for_outlines: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
 where
     PerStripUserData: Default + Copy,
 {
+    // TODO(andreas): ctx not yet needed since we don't write to GPU yet, but soon needed.
+    pub fn new(_ctx: &RenderContext) -> Self {
+        const RESERVE_SIZE: usize = 512;
+
+        Self {
+            vertices: Vec::with_capacity(RESERVE_SIZE * 2),
+            strips: Vec::with_capacity(RESERVE_SIZE),
+            strip_user_data: Vec::with_capacity(RESERVE_SIZE),
+            batches: Vec::with_capacity(16),
+            size_boost_in_points_for_outlines: 0.0,
+        }
+    }
+
+    // TODO: DOCs
+    pub fn size_boost_in_points_for_outlines(
+        mut self,
+        size_boost_in_points_for_outlines: f32,
+    ) -> Self {
+        self.size_boost_in_points_for_outlines = size_boost_in_points_for_outlines;
+        self
+    }
+
     /// Start of a new batch.
     pub fn batch(
         &mut self,

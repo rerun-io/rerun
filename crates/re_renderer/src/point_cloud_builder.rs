@@ -17,14 +17,14 @@ pub struct PointCloudBuilder<PerPointUserData> {
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
 
-    pub size_boost_in_points_for_outlines: f32,
+    pub(crate) size_boost_in_points_for_outlines: f32,
 }
 
 impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
 where
     PerPointUserData: Default + Copy,
 {
-    pub fn new(ctx: &mut RenderContext) -> Self {
+    pub fn new(ctx: &RenderContext) -> Self {
         const RESERVE_SIZE: usize = 512;
 
         // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
@@ -39,8 +39,17 @@ where
             color_buffer,
             user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
-            size_boost_in_points_for_outlines: 2.5,
+            size_boost_in_points_for_outlines: 0.0,
         }
+    }
+
+    // TODO: DOCs
+    pub fn size_boost_in_points_for_outlines(
+        mut self,
+        size_boost_in_points_for_outlines: f32,
+    ) -> Self {
+        self.size_boost_in_points_for_outlines = size_boost_in_points_for_outlines;
+        self
     }
 
     /// Start of a new batch.
