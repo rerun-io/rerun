@@ -296,7 +296,7 @@ jobs:
           parent: false
 
       - name: "Upload RRD (prerelease)"
-        if: github.ref == 'refs/heads/main'
+        if: "!startsWith(github.ref , 'refs/tags/v')"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "rrd"
