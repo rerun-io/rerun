@@ -140,7 +140,7 @@
             let data_path = "/data" + window.location.pathname.replace(/index\.html$/, '');
 
             const url_params = new URLSearchParams(window.location.search);
-            const rrd_file = url_params.get('file') || 'fiat.rrd';
+            const rrd_file = url_params.get('file') || 'colmap_fiat.rrd';
 
             // By default load an rrd file over http
             let url = data_path + rrd_file; // you can use this to point to an .rrd file over http, or a WebSocket Rerun server.
