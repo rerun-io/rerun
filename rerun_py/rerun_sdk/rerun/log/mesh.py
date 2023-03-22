@@ -59,7 +59,7 @@ def log_mesh(
         Path to the mesh in the space hierarchy
     positions:
         An array of 3D points.
-        If no `indices` are specified, then each triplet of positions is interpeted as a triangle.
+        If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
     indices:
         If specified, is a flattened array of indices that describe the mesh's triangles,
         i.e. its length must be divisible by 3.
