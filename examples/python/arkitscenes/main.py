@@ -142,7 +142,7 @@ def log_arkit(recording_path: Path) -> None:
             intrinsic_fn = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
             w, h, fx, fy, cx, cy = np.loadtxt(intrinsic_fn)
             intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-            camera_from_world = poses_from_traj[str(frame_id)]
+            camera_from_world = poses_from_traj[frame_id]
 
             # TODO(pablovela5620): Fix orientation for portrait captures in 2D view once #1387 is closed.
             rr.log_rigid3(
