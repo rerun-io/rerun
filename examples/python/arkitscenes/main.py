@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -123,6 +124,8 @@ def log_arkit(recording_path: Path) -> None:
 
     rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
+    print(f"Loading {ply_path}…")
+    assert os.path.isfile(ply_path), f"Failed to find {ply_path}"
 
     # TODO(pablovela5620): for now just use the untextered/uncolored mesh until #1580 is resolved
     mesh_ply = trimesh.load(str(ply_path))
