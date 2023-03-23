@@ -10,7 +10,7 @@ use re_log_types::{
 };
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
-use crate::ui::data_ui::image::tensor_dtype_and_shape_ui_grid_contents;
+use crate::ui::data_ui::image::tensor_summary_ui_grid_contents;
 
 use super::dimension_mapping_ui;
 
@@ -56,7 +56,7 @@ impl ViewTensorState {
         ctx.re_ui
             .selection_grid(ui, "tensor_selection_ui")
             .show(ui, |ui| {
-                tensor_dtype_and_shape_ui_grid_contents(
+                tensor_summary_ui_grid_contents(
                     ctx.re_ui,
                     ui,
                     tensor,
