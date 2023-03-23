@@ -42,7 +42,7 @@ jobs:
     name: Rust Criterion benchmarks
 
     # Only run the rs-benchmarks job when a commit gets pushed to main or we manually specify it
-    if: ${{ github.event_name == 'push' || github.event.inputs.force_run_benchmarks }
+    if: ${{ github.ref == 'refs/heads/main' || github.event.inputs.force_run_benchmarks }
 
     runs-on: ubuntu-latest-16-cores
     container:
@@ -75,9 +75,7 @@ jobs:
             -p re_tuid \
             -- --output-format=bencher | tee output.txt
 
-      # If we've manually run the benchmarks, still only store them if this is a commit on main
       - name: Store benchmark result
-        if: ${{ github.event_name == 'push' }}
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
@@ -91,8 +89,9 @@ jobs:
           fail-on-alert: true
           comment-always: true
 
-          # Push and deploy GitHub pages branch automatically
-          auto-push: true
+          # Save, results and push to github only on and push GitHub pages branch automatically
+          save-data-file: ${{ github.ref == 'refs/heads/main' }}
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           max-items-in-chart: 30
