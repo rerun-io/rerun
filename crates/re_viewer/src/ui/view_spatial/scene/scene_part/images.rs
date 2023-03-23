@@ -302,7 +302,7 @@ impl ImagesPart {
 
         let meter = *properties.backproject_depth_meter.get();
         let scale = match data {
-            // the GPU normalizes the u16 to [0, 1] during texture smapler:
+            // the GPU normalizes the u16 to [0, 1] during texture sampling:
             DepthCloudDepthData::U16(_) => u16::MAX as f32 / meter,
 
             DepthCloudDepthData::F32(_) => 1.0 / meter,
