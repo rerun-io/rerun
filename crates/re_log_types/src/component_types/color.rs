@@ -1,5 +1,3 @@
-use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-
 use crate::msg_bundle::Component;
 
 /// An RGBA color tuple with unmultiplied/separate alpha,
@@ -12,9 +10,21 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    arrow2_convert::ArrowField,
+    arrow2_convert::ArrowSerialize,
+    arrow2_convert::ArrowDeserialize,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
+#[repr(transparent)]
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {

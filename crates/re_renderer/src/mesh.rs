@@ -11,7 +11,7 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuBuffer,
     },
-    RenderContext,
+    RenderContext, Rgba32Unmul,
 };
 
 /// Defines how mesh vertices are built.
@@ -89,9 +89,9 @@ pub struct Mesh {
 
     pub vertex_positions: Vec<glam::Vec3>,
 
-    /// Per-vertex albedo color with unmulitplied/separate alpha.
+    /// Per-vertex albedo color.
     /// Must be equal in length to [`Self::vertex_positions`].
-    pub vertex_colors: Vec<[u8; 4]>,
+    pub vertex_colors: Vec<Rgba32Unmul>,
 
     /// Must be equal in length to [`Self::vertex_positions`].
     /// Use ZERO for unshaded.
@@ -238,7 +238,7 @@ impl GpuMesh {
 
         // TODO(andreas): Have a variant that gets this from a stack allocator.
         let vb_positions_size = (data.vertex_positions.len() * size_of::<glam::Vec3>()) as u64;
-        let vb_color_size = (data.vertex_normals.len() * size_of::<[u8; 4]>()) as u64;
+        let vb_color_size = (data.vertex_colors.len() * size_of::<Rgba32Unmul>()) as u64;
         let vb_normals_size = (data.vertex_normals.len() * size_of::<glam::Vec3>()) as u64;
         let vb_texcoords_size = (data.vertex_texcoords.len() * size_of::<glam::Vec2>()) as u64;
 

@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
-use re_renderer::{resource_managers::ResourceLifeTime, RenderContext};
+use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
 
 pub struct LoadedMesh {
     name: String,
@@ -119,9 +119,14 @@ impl LoadedMesh {
         let num_indices = indices.len();
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
-            vertex_colors.iter().map(|c| c.to_array()).collect()
+            vertex_colors
+                .iter()
+                .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
+                .collect()
         } else {
-            std::iter::repeat([255; 4]).take(num_positions).collect()
+            std::iter::repeat(Rgba32Unmul::WHITE)
+                .take(num_positions)
+                .collect()
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {

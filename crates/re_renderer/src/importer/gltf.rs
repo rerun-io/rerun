@@ -12,7 +12,7 @@ use crate::{
         GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
         TextureManager2D,
     },
-    RenderContext,
+    RenderContext, Rgba32Unmul,
 };
 
 /// Loads both gltf and glb into the mesh & texture manager.
@@ -163,9 +163,13 @@ fn import_mesh(
         }
 
         if let Some(colors) = reader.read_colors(set) {
-            vertex_colors.extend(colors.into_rgba_u8());
+            vertex_colors.extend(
+                colors
+                    .into_rgba_u8()
+                    .map(Rgba32Unmul::from_rgba_unmul_array),
+            );
         } else {
-            vertex_colors.resize(vertex_positions.len(), [255; 4]);
+            vertex_colors.resize(vertex_positions.len(), Rgba32Unmul::WHITE);
         }
 
         if let Some(primitive_normals) = reader.read_normals() {

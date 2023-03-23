@@ -7,7 +7,7 @@ use crate::{
     mesh::{Material, Mesh},
     renderer::MeshInstance,
     resource_managers::ResourceLifeTime,
-    RenderContext,
+    RenderContext, Rgba32Unmul,
 };
 
 /// Load a [Wavefront .obj file](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
@@ -43,20 +43,19 @@ pub fn load_obj_from_buffer(
                 .map(|p| glam::vec3(p[0], p[1], p[2]))
                 .collect();
 
-            let mut vertex_colors: Vec<[u8; 4]> = mesh
+            let mut vertex_colors: Vec<Rgba32Unmul> = mesh
                 .vertex_color
                 .chunks_exact(3)
                 .map(|c| {
-                    [
+                    Rgba32Unmul::from_rgb(
                         // It is not specified if the color is in linear or gamma space, but gamma seems a safe bet.
                         (c[0] * 255.0).round() as u8,
                         (c[1] * 255.0).round() as u8,
                         (c[2] * 255.0).round() as u8,
-                        255,
-                    ]
+                    )
                 })
                 .collect();
-            vertex_colors.resize(vertex_positions.len(), [255, 255, 255, 255]);
+            vertex_colors.resize(vertex_positions.len(), Rgba32Unmul::WHITE);
 
             let mut vertex_normals: Vec<glam::Vec3> = mesh
                 .normals
