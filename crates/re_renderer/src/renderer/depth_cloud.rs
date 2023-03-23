@@ -12,7 +12,6 @@
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
 use smallvec::smallvec;
-use std::num::NonZeroU32;
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
@@ -330,7 +329,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
         }
     }
 
-    depth_texture_staging.copy_to_texture(
+    depth_texture_staging.copy_to_texture2d(
         ctx.active_frame.before_view_builder_encoder.lock().get(),
         wgpu::ImageCopyTexture {
             texture: &depth_texture.inner.texture,
@@ -338,9 +337,8 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        Some(NonZeroU32::new(bytes_per_row_padded).expect("invalid bytes per row")),
-        None,
-        depth_texture_size,
+        depth_texture_size.width,
+        depth_texture_size.height,
     );
 
     depth_texture
