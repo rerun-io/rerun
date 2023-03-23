@@ -238,9 +238,10 @@ jobs:
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
+          mkdir rrd
           pip install -r examples/python/colmap/requirements.txt
-          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
-          cp colmap.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap.rrd
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          cp rrd/colmap_fiat.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
 
       - name: Repack the wheel
         shell: bash
@@ -254,7 +255,53 @@ jobs:
           name: wheels
           path: dist
 
+      # All platforms are currently creating the same rrd file, upload one of them
+      - name: Save RRD artifact
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: rrd
+          path: rrd
+
   # ---------------------------------------------------------------------------
+
+  upload_rrd:
+    name: Upload RRD to GCloud
+    permissions:
+      contents: "read"
+      id-token: "write"
+    needs: [wheels]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: rrd
+          path: rrd
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-8`" >> $GITHUB_ENV
+
+      - name: "Upload RRD"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/commit/${{env.SHORT_SHA}}"
+          parent: false
+
+      - name: "Upload RRD (tagged)"
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/version/${{github.ref_name}}"
+          parent: false
 
   # See https://github.com/ncipollo/release-action
   pre-release:

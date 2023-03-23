@@ -57,6 +57,7 @@ const MAX_ZOOM_FACTOR: f32 = 4.0;
 pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
+    ram_limit_warner: re_memory::RamLimitWarner,
     re_ui: re_ui::ReUi,
 
     /// Listens to the local text log stream
@@ -127,6 +128,7 @@ impl App {
         Self {
             build_info,
             startup_options,
+            ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
             text_log_rx,
             component_ui_registry: Default::default(),
@@ -415,6 +417,11 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
+
+        if self.startup_options.memory_limit.limit.is_none() {
+            // we only warn about high memory usage if the user hasn't specified a limit
+            self.ram_limit_warner.update();
+        }
 
         if self.icon_status == AppIconStatus::NotSetTryAgain {
             self.icon_status = setup_app_icon();

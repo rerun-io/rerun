@@ -33,6 +33,7 @@ smallvec = "1.10"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backtrace = "0.3"
 memory-stats = "1.0"
+sysinfo = { version = "0.28.3", default-features = false }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
