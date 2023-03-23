@@ -14,7 +14,7 @@ VALIDATION: Final = "Validation"
 HIGRES_DEPTH_ASSET_NAME: Final = "highres_depth"
 POINT_CLOUDS_FOLDER: Final = "laser_scanner_point_clouds"
 
-AVAILABLE_RECORDINGS: Final = ["48458663", "42444949", "41069046"]
+AVAILABLE_RECORDINGS: Final = ["48458663", "42444949", "41069046", "41125722", "41125763"]
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 
 default_raw_dataset_assets = [

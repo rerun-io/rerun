@@ -15,7 +15,11 @@ from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
-ORIENTATION = {"48458663": "landscape", "42444949": "portrait", "41069046": "portrait"}
+ORIENTATION = {"48458663": "landscape",
+               "42444949": "portrait",
+               "41069046": "portrait",
+               "41125722": "portrait",
+               "41125763": "portrait" }
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
@@ -26,17 +30,32 @@ def load_json(js_path: Path) -> Dict[str, Any]:
     return dict(json_data)
 
 
-def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
-    """Logs annotated bounding boxes to Rerun."""
+def log_annotated_bboxes(annotation: Dict[str, Any]) -> npt.NDArray[np.float64]:
+    """
+    Logs annotated bounding boxes to Rerun.
+
+    annotation json file
+    |  |-- label: object name of bounding box
+    |  |-- axesLengths[x, y, z]: size of the origin bounding-box before transforming
+    |  |-- centroid[]: the translation matrix 1*3of bounding-box
+    |  |-- normalizedAxes[]: the rotation matrix 3*3 of bounding-box
+    """
     # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view`
+    bbox_list = []
     for label_info in annotation["data"]:
         object_id = label_info["objectId"]
         label = label_info["label"]
-        rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
-        transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
+        # if label == "tv_monitor":
+
         scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
+        transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
+        rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
+
+        box3d = compute_box_3d(scale.reshape(3).tolist(), transform, rotation)
+        bbox_list.append(box3d)
 
         rot = R.from_matrix(rotation)
+
         rr.log_obb(
             f"world/annotations/box-{object_id}-{label}",
             half_size=scale,
@@ -44,18 +63,15 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
             rotation_q=rot.as_quat(),
             label=label,
             timeless=True,
-        )
+            )
+    bbox_list = np.array(bbox_list)
 
-def project_3d_bboxes_to_2d_keypoints(
-    label_info: Dict[str, Any],
-    camera_from_world: Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]],
-    intrinsic: npt.NDArray[np.float64],
-    ) -> npt.NDArray[np.float64]:
-    """Returns 2D keypoints of the 3D bounding box in the camera view."""
+    rr.log_points("world/annotations/box-vertices", bbox_list.reshape(-1, 3), timeless=True)
+    return bbox_list
 
-    rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
-    transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
-    scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
+
+def compute_box_3d(scale, transform, rotation):
+    """Given obb compute 3d keypoints of the box."""
 
     '''
     Box corner order that we return is of the format below:
@@ -67,26 +83,63 @@ def project_3d_bboxes_to_2d_keypoints(
     |/         |/
     1 -------- 0
     '''
-    box_corners = np.array([
-        [-scale[0], -scale[1], -scale[2]],
-        [-scale[0], -scale[1], scale[2]],
-        [-scale[0], scale[1], -scale[2]],
-        [-scale[0], scale[1], scale[2]],
-        [scale[0], -scale[1], -scale[2]],
-        [scale[0], -scale[1], scale[2]],
-        [scale[0], scale[1], -scale[2]],
-        [scale[0], scale[1], scale[2]]
-    ])
+    scales = [i / 2 for i in scale]
+    l, h, w = scales
+    center = np.reshape(transform, (-1, 3))
+    center = center.reshape(3)
+    x_corners = [l, l, -l, -l, l, l, -l, -l]
+    y_corners = [h, -h, -h, h, h, -h, -h, h]
+    z_corners = [w, w, w, w, -w, -w, -w, -w]
+    corners_3d = np.dot(np.transpose(rotation),
+                        np.vstack([x_corners, y_corners, z_corners]))
 
-    world_box_corners = (rotation @ box_corners.T).T + transform
-    camera_from_world_t, camera_from_world_q = camera_from_world
-    world_from_camera_t = -R.from_quat(camera_from_world_q).as_matrix() @ camera_from_world_t
-    camera_box_corners = (R.from_quat(camera_from_world_q).as_matrix() @ world_box_corners.T).T + world_from_camera_t
-    homogeneous_camera_box_corners = np.hstack((camera_box_corners, np.ones((8, 1))))
-    image_box_corners = intrinsic @ homogeneous_camera_box_corners[:, :3].T
-    image_box_corners /= image_box_corners[2, :]
+    corners_3d[0, :] += center[0]
+    corners_3d[1, :] += center[1]
+    corners_3d[2, :] += center[2]
+    bbox3d_raw = np.transpose(corners_3d)
+    return bbox3d_raw
 
-    return image_box_corners
+def project_3d_bboxes_to_2d_keypoints(
+    bboxes_3d: npt.NDArray[np.float64],
+    camera_from_world: Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]],
+    intrinsic: npt.NDArray[np.float64],
+    img_width: int,
+    img_height: int
+    ) -> npt.NDArray[np.float64]:
+    """
+    Returns 2D keypoints of the 3D bounding box in the camera view.
+
+    camera_from world:
+        Tuple of translation and rotation quaternion, translation is of shape (3,) and rotation is of shape (4,)
+    """
+
+    translation, rotation_q = camera_from_world
+    rotation = R.from_quat(rotation_q)
+
+    # Transform 3D keypoints from world to camera frame
+    # world_to_camera_rotation = np.linalg.inv(rotation.as_matrix())
+    world_to_camera_rotation = rotation.as_matrix()
+    # convert to transformation matrix
+    world_to_camera = np.hstack([world_to_camera_rotation, translation.reshape(3, 1)])
+    world_to_camera = intrinsic @ world_to_camera
+    # world_to_camera = np.vstack([world_to_camera, np.array([0, 0, 0, 1])])
+    # add batch dimension to match bounding box shape
+    world_to_camera = np.tile(world_to_camera, (bboxes_3d.shape[0], 1, 1))
+    # bboxes_3d: [nObjects, 21, 4] [x, y, z, 1]
+    bboxes_3d = np.concatenate([bboxes_3d, np.ones((bboxes_3d.shape[0], bboxes_3d.shape[1], 1))], axis=-1)
+    # batch projection using einsum
+    point_cam = np.einsum('vab,fnb->vfna', world_to_camera, bboxes_3d)
+    bboxes_2d = point_cam[..., :2]/point_cam[..., 2:]
+    # nViews irrelevant, squeeze out
+    bboxes_2d = bboxes_2d[0]
+
+    # Filter out keypoints that are not within the frame
+    mask_x = (bboxes_2d[:, :, 0] >= 0) & (bboxes_2d[:, :, 0] < img_width)
+    mask_y = (bboxes_2d[:, :, 1] >= 0) & (bboxes_2d[:, :, 1] < img_height)
+    mask = mask_x & mask_y
+    bboxes_2d = bboxes_2d[mask]
+
+    return bboxes_2d
 
 
 def log_camera(
@@ -94,18 +147,18 @@ def log_camera(
     frame_id: str,
     poses_from_traj: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
     entity_id: str,
-    annotation: Dict[str, Any]
+    bboxes: npt.NDArray[np.float64]
     ) -> None:
     """Logs camera intrinsics and extrinsics to Rerun."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
 
-    # Log 3D bounding boxes projected into 2D image
-    for label_info in annotation["data"]:
-        label_info["label"]
-        project_3d_bboxes_to_2d_keypoints(label_info, camera_from_world, intrinsic)
-        break
+    # Project 3D bounding boxes into 2D image
+    bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, w, h)
+
+    # Replace this with line segments
+    rr.log_points(f"{entity_id}/image/bbox-2d", bboxes_2d.reshape(-1, 2))
 
     rr.log_rigid3(
         entity_id,
@@ -215,7 +268,8 @@ def log_arkit(recording_path: Path) -> None:
 
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
-    log_annotated_bboxes(annotation)
+    bboxes = log_annotated_bboxes(annotation)
+    print(bboxes.shape)
 
     # To avoid logging image frames in the beginning that dont' have a trajectory
     # This causes the camera to expand in the beginning otherwise
@@ -237,7 +291,7 @@ def log_arkit(recording_path: Path) -> None:
                 init_traj_found = True
             # only low res camera has a trajectory, high res does not
             lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_entity_id, annotation)
+            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_entity_id, bboxes)
 
         if not init_traj_found:
             continue
@@ -251,7 +305,7 @@ def log_arkit(recording_path: Path) -> None:
             rr.set_time_seconds("time high resolution", float(frame_id))
             closest_lowres_frame_id = find_closest_frame_id(frame_id, poses_from_traj)
             highres_intri_path = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id, annotation)
+            log_camera(highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id, bboxes)
 
             # load the highres image and depth if they exist
             highres_bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
