@@ -27,6 +27,11 @@ impl BinaryBuffer {
     pub fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
     }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &u8> {
+        self.0.iter()
+    }
 }
 
 impl Index<usize> for BinaryBuffer {

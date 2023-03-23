@@ -471,22 +471,58 @@ fn depth_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
         };
     }
 
-    fn colormap(t: f32) -> egui::Color32 {
+    let colormap = |value: f64| {
+        let t = egui::remap(value, min..=max, 0.0..=1.0) as f32;
         let [r, g, b, _] = re_renderer::colormap_turbo_srgb(t);
         egui::Color32::from_rgb(r, g, b)
-    }
+    };
 
     match &tensor.data {
-        TensorData::F32(buf) => {
-            let pixels = buf
-                .iter()
-                .map(|&float| colormap(egui::remap(float, min as f32..=max as f32, 0.0..=1.0)))
-                .collect();
-
+        TensorData::U8(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
             Ok(ColorImage { size, pixels })
         }
-        _ => {
-            color_tensor_as_color_image(tensor) // TODO(emilk): support more depth dtypes
+        TensorData::U16(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::U32(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::U64(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+
+        TensorData::I8(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::I16(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::I32(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::I64(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+
+        TensorData::F32(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::F64(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+
+        TensorData::JPEG(_) => {
+            anyhow::bail!("Cannot apply colormap to JPEG image")
         }
     }
 }
