@@ -145,10 +145,11 @@ impl ExtraQueryHistory {
     }
 } // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ColorMap {
     Grayscale,
+    #[default]
     Turbo,
     Viridis,
     Plasma,
@@ -187,8 +188,9 @@ impl std::fmt::Display for ColorMapper {
 }
 
 impl Default for ColorMapper {
+    #[inline]
     fn default() -> Self {
-        Self::ColorMap(ColorMap::Grayscale)
+        Self::ColorMap(ColorMap::default())
     }
 }
 
