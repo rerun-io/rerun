@@ -85,6 +85,7 @@ impl GpuReadbackBuffer {
 /// Internal chunk of the staging belt.
 struct Chunk {
     buffer: GpuBuffer,
+
     /// All ranges that are currently in use, i.e. there is a GPU write to it scheduled.
     ranges_in_use: Vec<(Range<wgpu::BufferAddress>, GpuReadbackBufferIdentifier)>,
 }
@@ -171,6 +172,7 @@ impl GpuReadbackBelt {
             next_identifier: 0,
         }
     }
+
     /// Allocates a Gpu writable buffer & cpu readable buffer with a given size.
     pub fn allocate(
         &mut self,

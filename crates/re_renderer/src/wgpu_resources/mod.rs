@@ -118,6 +118,7 @@ impl WgpuResourcePools {
 pub struct TextureRowDataInfo {
     /// How many bytes per row contain actual data.
     pub bytes_per_row_unpadded: u32,
+
     /// How many bytes per row are required to be allocated in total.
     pub bytes_per_row_padded: u32,
 }
