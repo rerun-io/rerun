@@ -14,15 +14,6 @@ pub enum HardwareTier {
 }
 
 impl HardwareTier {
-    /// Temporary workaround until [this GL state leaking fix](https://github.com/gfx-rs/wgpu/pull/3589) is landed.
-    /// All our target platforms should support alpha to coverage.
-    pub fn support_alpha_to_coverage(&self) -> bool {
-        match self {
-            HardwareTier::Basic => false,
-            HardwareTier::Native => true,
-        }
-    }
-
     /// Whether the current hardware tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self {
