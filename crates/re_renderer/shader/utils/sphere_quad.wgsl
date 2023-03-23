@@ -99,9 +99,13 @@ fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labeled to it's easier to understand!)
     let d = ray_sphere_distance(ray, point_center, radius);
-    let smallest_distance_to_sphere = d.x;
+    let distance_to_sphere_surface = d.x;
     let closest_ray_dist = d.y;
     let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
 
-    return 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
+    let distance_to_surface_in_pixels = distance_to_sphere_surface / pixel_world_size;
+
+    // At the surface we have 50% coverage, and it decreases with distance.
+    // Not that we have signed distances to the sphere surface.
+    return saturate(0.5 - distance_to_surface_in_pixels);
 }
