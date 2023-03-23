@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
+use crate::wgpu_resources::{texture_row_data_info, BufferDesc, GpuBuffer, GpuBufferPool};
 
 pub type GpuReadbackBufferIdentifier = u32;
 
@@ -16,27 +16,40 @@ pub struct GpuReadbackBuffer {
 }
 
 impl GpuReadbackBuffer {
-    /// Populates the buffer with data from a texture.
-    pub fn read_texture(
+    /// Populates the buffer with data from a single layer of a 2D texture.
+    ///
+    /// Implementation note:
+    /// Does 2D-only entirely for convenience as it greatly simplifies the input parameters.
+    /// Additionally, we assume as tightly as possible packed data as this is by far the most common use.
+    pub fn read_texture2d(
         self,
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
-        bytes_per_row: Option<NonZeroU32>,
-        rows_per_image: Option<NonZeroU32>,
-        copy_size: wgpu::Extent3d,
+        copy_size_width: u32,
+        copy_size_height: u32,
     ) -> GpuReadbackBufferIdentifier {
-        // TODO: validate that stay within the slice.
+        let bytes_per_row =
+            texture_row_data_info(source.texture.format(), copy_size_width).bytes_per_row_padded;
+
+        // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
+        let required_buffer_size = bytes_per_row * copy_size_height;
+        debug_assert!(required_buffer_size as u64 <= self.size_in_bytes);
+
         encoder.copy_texture_to_buffer(
             source,
             wgpu::ImageCopyBuffer {
                 buffer: &self.chunk_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: self.byte_offset_in_chunk_buffer,
-                    bytes_per_row,
-                    rows_per_image,
+                    bytes_per_row: NonZeroU32::new(bytes_per_row),
+                    rows_per_image: None,
                 },
             },
-            copy_size,
+            wgpu::Extent3d {
+                width: copy_size_width,
+                height: copy_size_height,
+                depth_or_array_layers: 1,
+            },
         );
         self.identifier
     }

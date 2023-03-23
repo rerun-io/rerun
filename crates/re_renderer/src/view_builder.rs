@@ -577,7 +577,7 @@ impl ViewBuilder {
         //
         // This comes with the perk that we can do extra things here if we want!
         //
-        // TODO(andreas): Like more antialiasing!
+        // TODO(andreas): One thing to add would be more anti-aliasing!
         // We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
         // Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
         if let Some(screenshot_target_buffer) = self.scheduled_screenshot.take() {
@@ -616,12 +616,7 @@ impl ViewBuilder {
                 self.draw_phase(ctx, DrawPhase::CompositingScreenshot, &mut pass);
             }
 
-            let bytes_per_row = texture_row_data_info(
-                screenshot_texture.texture.format(),
-                screenshot_texture.texture.width(),
-            )
-            .bytes_per_row_padded;
-            screenshot_target_buffer.read_texture(
+            screenshot_target_buffer.read_texture2d(
                 &mut encoder,
                 wgpu::ImageCopyTexture {
                     texture: &screenshot_texture.texture,
@@ -629,9 +624,8 @@ impl ViewBuilder {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                std::num::NonZeroU32::new(bytes_per_row),
-                None,
-                screenshot_texture.texture.size(),
+                screenshot_texture.texture.width(),
+                screenshot_texture.texture.height(),
             );
         }
 
