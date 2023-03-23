@@ -11,6 +11,12 @@ var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
 
+struct DrawDataUniformBuffer {
+    size_boost_in_points: f32,
+};
+@group(1) @binding(2)
+var<uniform> draw_data: DrawDataUniformBuffer;
+
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     outline_mask_ids: UVec2,
@@ -159,11 +165,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Data valid for the entire strip that this vertex belongs to.
     let strip_data = read_strip_data(pos_data_current.strip_index);
 
-    // Resolve radius.
-    // (slight inaccuracy: End caps are going to adjust their center_position)
-    let camera_ray = camera_ray_to_world_pos(center_position);
-    let strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, length(camera_ray.origin - center_position), frame.auto_size_lines);
-
     // Active flags are all flags that we react to at the current vertex.
     // I.e. cap flags are only active in the respective cap triangle.
     var currently_active_flags = strip_data.flags & (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND));
@@ -187,6 +188,20 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         quad_dir = normalize(quad_dir);
     } else {
         quad_dir = normalize(pos_data_quad_end.pos - pos_data_quad_begin.pos);
+    }
+
+    // Resolve radius.
+    // (slight inaccuracy: End caps are going to adjust their center_position)
+    let camera_ray = camera_ray_to_world_pos(center_position);
+    let camera_distance = distance(camera_ray.origin, center_position);
+    var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
+    if draw_data.size_boost_in_points > 0.0 {
+        let size_boost = world_size_from_point_size(draw_data.size_boost_in_points, camera_distance);
+        strip_radius += size_boost;
+        // Push out positions as well along the quad dir.
+        // This is especially important if there's no miters on a line-strip (TODO(#829)),
+        // as this would enhance gaps between lines otherwise.
+        center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 
     var active_radius = strip_radius;
