@@ -535,7 +535,8 @@ fn depth_props_ui(
                         .clamp_range(0.0..=1.0e8)
                         .speed(speed),
                 )
-                .on_hover_text("How many depth values correspond to one work-space unit. For instance, 1000 means millimeters. Double-click to reset.");
+                .on_hover_text("How many depth values correspond to one work-space unit. For instance, 1000 means millimeters.\
+                                \nDouble-click to reset.");
                 if response.double_clicked() {
                     // reset to auto - the exacy value will be restored somewhere else
                     entity_props.backproject_depth_meter = EditableAutoValue::Auto(meter);
@@ -557,7 +558,9 @@ fn depth_props_ui(
                             .speed(speed),
                     )
                     .on_hover_text(
-                        "Scales the radii of the points in the backprojected point cloud. Double-click to reset.",
+                        "Scales the radii of the points in the backprojected point cloud.\n\
+                        With a scale of one, diagonally adjacent pixels at the same depth are sized so that they are just touching, leaving no gaps.\
+                        \nDouble-click to reset.",
                     );
                 if response.double_clicked() {
                     entity_props.backproject_radius_scale = EditableAutoValue::Auto(1.0);
