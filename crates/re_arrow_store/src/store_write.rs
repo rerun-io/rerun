@@ -311,7 +311,19 @@ impl DataStore {
                 (len, ClusterData::Cached(*row_idx))
             } else {
                 // Cache miss! Craft a new instance keys from the ground up.
-                let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
+
+                // TODO(cmc): That's exactly how one should create a cell of instance keys... but
+                // it turns out that running `TryIntoArrow` on a primitive type is orders of
+                // magnitude slower than manually creating the equivalent primitive array for some
+                // reason...
+                // let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
+
+                // ...so we create it manually instead.
+                use re_log_types::msg_bundle::Component as _;
+                let values =
+                    arrow2::array::UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
+                let cell = DataCell::from_arrow(InstanceKey::name(), values);
+
                 (len, ClusterData::GenData(cell))
             }
         };
