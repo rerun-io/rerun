@@ -2,17 +2,17 @@ use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 
-pub type GpuWriteCpuReadBufferIdentifier = u32;
+pub type GpuReadbackBufferIdentifier = u32;
 
 /// TODO: Docstring
-pub struct GpuWriteCpuReadBuffer {
+pub struct GpuReadbackBuffer {
     chunk_buffer: GpuBuffer,
     byte_offset_in_chunk_buffer: wgpu::BufferAddress,
     size_in_bytes: wgpu::BufferAddress,
-    pub identifier: GpuWriteCpuReadBufferIdentifier,
+    pub identifier: GpuReadbackBufferIdentifier,
 }
 
-impl GpuWriteCpuReadBuffer {
+impl GpuReadbackBuffer {
     /// Populates the buffer with data from a texture.
     pub fn read_texture(
         self,
@@ -21,7 +21,7 @@ impl GpuWriteCpuReadBuffer {
         bytes_per_row: Option<NonZeroU32>,
         rows_per_image: Option<NonZeroU32>,
         copy_size: wgpu::Extent3d,
-    ) -> GpuWriteCpuReadBufferIdentifier {
+    ) -> GpuReadbackBufferIdentifier {
         // TODO: validate that stay within the slice.
         encoder.copy_texture_to_buffer(
             source,
@@ -44,7 +44,7 @@ impl GpuWriteCpuReadBuffer {
         encoder: &mut wgpu::CommandEncoder,
         source: &GpuBuffer,
         source_offset: wgpu::BufferAddress,
-    ) -> GpuWriteCpuReadBufferIdentifier {
+    ) -> GpuReadbackBufferIdentifier {
         encoder.copy_buffer_to_buffer(
             source,
             source_offset,
@@ -60,7 +60,7 @@ impl GpuWriteCpuReadBuffer {
 struct Chunk {
     buffer: GpuBuffer,
     /// All ranges that are currently in use, i.e. there is a GPU write to it scheduled.
-    ranges_in_use: Vec<(Range<wgpu::BufferAddress>, GpuWriteCpuReadBufferIdentifier)>,
+    ranges_in_use: Vec<(Range<wgpu::BufferAddress>, GpuReadbackBufferIdentifier)>,
 }
 
 impl Chunk {
@@ -76,15 +76,15 @@ impl Chunk {
     fn allocate(
         &mut self,
         size_in_bytes: wgpu::BufferAddress,
-        identifier: GpuWriteCpuReadBufferIdentifier,
-    ) -> GpuWriteCpuReadBuffer {
+        identifier: GpuReadbackBufferIdentifier,
+    ) -> GpuReadbackBuffer {
         debug_assert!(size_in_bytes <= self.remaining_capacity());
 
         let start_offset = self.unused_offset();
         self.ranges_in_use
             .push((start_offset..start_offset + size_in_bytes, identifier));
 
-        GpuWriteCpuReadBuffer {
+        GpuReadbackBuffer {
             chunk_buffer: self.buffer.clone(),
             byte_offset_in_chunk_buffer: start_offset,
             size_in_bytes,
@@ -96,7 +96,7 @@ impl Chunk {
 /// Efficiently performs many buffer reads by sharing and reusing temporary buffers.
 ///
 /// Internally it uses a ring-buffer of staging buffers that are sub-allocated.
-pub struct GpuWriteCpuReadBelt {
+pub struct GpuReadbackBelt {
     /// Minimum size for new buffers.
     chunk_size: u64,
 
@@ -112,10 +112,10 @@ pub struct GpuWriteCpuReadBelt {
     /// Chunks are received here are ready to be read by the CPU.
     receiver: mpsc::Receiver<Chunk>,
 
-    next_identifier: GpuWriteCpuReadBufferIdentifier,
+    next_identifier: GpuReadbackBufferIdentifier,
 }
 
-impl GpuWriteCpuReadBelt {
+impl GpuReadbackBelt {
     /// All allocations of this allocator will be aligned to at least this size.
     ///
     /// Buffer mappings however are currently NOT guaranteed to be aligned to this size!
@@ -137,7 +137,7 @@ impl GpuWriteCpuReadBelt {
     /// TODO(andreas): Shrinking after usage spikes?
     pub fn new(chunk_size: wgpu::BufferSize) -> Self {
         let (sender, receiver) = mpsc::channel();
-        GpuWriteCpuReadBelt {
+        GpuReadbackBelt {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),
             active_chunks: Vec::new(),
             free_chunks: Vec::new(),
@@ -152,7 +152,7 @@ impl GpuWriteCpuReadBelt {
         device: &wgpu::Device,
         buffer_pool: &GpuBufferPool,
         size_in_bytes: wgpu::BufferAddress,
-    ) -> GpuWriteCpuReadBuffer {
+    ) -> GpuReadbackBuffer {
         crate::profile_function!();
 
         debug_assert!(size_in_bytes > 0, "Cannot allocate zero-sized buffer");
@@ -238,7 +238,7 @@ impl GpuWriteCpuReadBelt {
     /// After this call, internal chunks can be re-used.
     pub fn receive_data(
         &mut self,
-        mut on_data_received: impl FnMut(&[u8], GpuWriteCpuReadBufferIdentifier),
+        mut on_data_received: impl FnMut(&[u8], GpuReadbackBufferIdentifier),
     ) {
         crate::profile_function!();
 
@@ -264,7 +264,7 @@ impl GpuWriteCpuReadBelt {
     }
 }
 
-impl std::fmt::Debug for GpuWriteCpuReadBelt {
+impl std::fmt::Debug for GpuReadbackBelt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GpuWriteCpuReadBelt")
             .field("chunk_size", &self.chunk_size)

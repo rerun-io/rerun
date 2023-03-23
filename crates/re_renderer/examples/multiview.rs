@@ -197,7 +197,7 @@ impl Multiview {
 
     fn handle_incoming_screenshots(&mut self, re_ctx: &mut RenderContext) {
         re_ctx
-            .gpu_write_cpu_read_belt
+            .gpu_readback_belt
             .lock()
             .receive_data(|data, identifier| {
                 if let Some(index) = self

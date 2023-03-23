@@ -3,9 +3,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    allocator::{
-        create_and_fill_uniform_buffer, GpuWriteCpuReadBuffer, GpuWriteCpuReadBufferIdentifier,
-    },
+    allocator::{create_and_fill_uniform_buffer, GpuReadbackBuffer, GpuReadbackBufferIdentifier},
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
     renderer::{
@@ -44,7 +42,7 @@ pub struct ViewBuilder {
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
 
-    scheduled_screenshot: Option<GpuWriteCpuReadBuffer>,
+    scheduled_screenshot: Option<GpuReadbackBuffer>,
 }
 
 struct ViewTargetSetup {
@@ -174,7 +172,7 @@ impl Default for TargetConfiguration {
 }
 
 pub struct ScheduledScreenshot {
-    pub identifier: GpuWriteCpuReadBufferIdentifier,
+    pub identifier: GpuReadbackBufferIdentifier,
     pub width: u32,
     pub height: u32,
     pub row_info: TextureRowDataInfo,
@@ -662,7 +660,7 @@ impl ViewBuilder {
         let row_info =
             texture_row_data_info(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
         let buffer_size = row_info.bytes_per_row_padded * setup.resolution_in_pixel[1];
-        let screenshot_buffer = ctx.gpu_write_cpu_read_belt.lock().allocate(
+        let screenshot_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
             buffer_size as u64,

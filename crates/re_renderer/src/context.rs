@@ -4,7 +4,7 @@ use parking_lot::{Mutex, RwLock};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
-    allocator::{CpuWriteGpuReadBelt, GpuWriteCpuReadBelt},
+    allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -28,7 +28,7 @@ pub struct RenderContext {
     pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
-    pub gpu_write_cpu_read_belt: Mutex<GpuWriteCpuReadBelt>,
+    pub gpu_readback_belt: Mutex<GpuReadbackBelt>,
 
     /// List of unfinished queue submission via this context.
     ///
@@ -193,7 +193,7 @@ impl RenderContext {
             mesh_manager,
             texture_manager_2d,
             cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
-            gpu_write_cpu_read_belt: Mutex::new(GpuWriteCpuReadBelt::new(Self::GPU_WRITE_CPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
+            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(Self::GPU_WRITE_CPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
 
             resolver,
 
@@ -260,7 +260,7 @@ impl RenderContext {
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
         // Map all read staging buffers.
-        self.gpu_write_cpu_read_belt.lock().after_queue_submit();
+        self.gpu_readback_belt.lock().after_queue_submit();
 
         // TODO: We need a safety mechanism like this. But just draining here might discard brand new buffers that just came in.
         //          Instead, brandmark buffers with a frame index and only drain those that are older than the current frame index.
