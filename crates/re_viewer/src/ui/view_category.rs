@@ -1,5 +1,5 @@
 use re_arrow_store::{LatestAtQuery, TimeInt};
-use re_data_store::{query_latest_single, EntityPath, LogDb, Timeline};
+use re_data_store::{EntityPath, LogDb, Timeline};
 use re_log_types::{
     component_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
@@ -70,18 +70,6 @@ pub fn categorize_entity_path(
     crate::profile_function!();
 
     let mut set = ViewCategorySet::default();
-
-    // If it has a transform we might want to visualize it in space
-    // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
-    if query_latest_single::<Transform>(
-        &log_db.entity_db,
-        entity_path,
-        &LatestAtQuery::new(timeline, TimeInt::MAX),
-    )
-    .is_some()
-    {
-        set.insert(ViewCategory::Spatial);
-    }
 
     for component in log_db
         .entity_db
