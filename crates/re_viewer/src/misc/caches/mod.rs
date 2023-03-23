@@ -53,6 +53,7 @@ impl Caches {
 }
 
 pub struct TensorStats {
+    /// This will currently only be `None` for jpeg-encoded tensors.
     pub range: Option<(f64, f64)>,
 }
 
