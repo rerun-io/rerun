@@ -2,7 +2,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
-/// An RGBA color tuple with unmultiplied/seprate alpha,
+/// An RGBA color tuple with unmultiplied/separate alpha,
 /// in sRGB gamma space with linear alpha.
 ///
 /// ```
