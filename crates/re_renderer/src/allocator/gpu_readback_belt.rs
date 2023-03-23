@@ -32,9 +32,12 @@ impl GpuReadbackBuffer {
             texture_row_data_info(source.texture.format(), copy_size_width).bytes_per_row_padded;
 
         // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
-        let required_buffer_size = bytes_per_row * copy_size_height;
-        debug_assert!(required_buffer_size as u64 <= self.size_in_bytes);
-
+        // We go one step further and require the size to be exactly equal - there is no point in reading back more,
+        // as this would imply sniffing on unused memory.
+        debug_assert_eq!(
+            (bytes_per_row * copy_size_height) as u64,
+            self.size_in_bytes
+        );
         encoder.copy_texture_to_buffer(
             source,
             wgpu::ImageCopyBuffer {
@@ -61,12 +64,19 @@ impl GpuReadbackBuffer {
         source: &GpuBuffer,
         source_offset: wgpu::BufferAddress,
     ) -> GpuReadbackBufferIdentifier {
+        let copy_size = self.size_in_bytes;
+
+        // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
+        debug_assert!(copy_size <= source_offset + source.size(),
+            "Source buffer has a size of {}, can't write {copy_size} bytes with an offset of {source_offset}!",
+            source.size());
+
         encoder.copy_buffer_to_buffer(
             source,
             source_offset,
             &self.chunk_buffer,
             self.byte_offset_in_chunk_buffer,
-            self.size_in_bytes,
+            copy_size,
         );
         self.identifier
     }
