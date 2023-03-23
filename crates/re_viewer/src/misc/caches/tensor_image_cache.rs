@@ -246,14 +246,8 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
     }
 }
 
-fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
+fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
-
-    crate::profile_function!(format!(
-        "dtype: {}, shape: {:?}",
-        tensor.dtype(),
-        tensor.shape()
-    ));
 
     let shape = &tensor.shape();
 
@@ -277,8 +271,19 @@ fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
         "We should make the same checks above, but with actual error messages"
     );
 
-    use egui::epaint::ecolor::gamma_u8_from_linear_f32;
-    use egui::epaint::ecolor::linear_u8_from_linear_f32;
+    Ok([height, width, depth as u32])
+}
+
+fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
+    crate::profile_function!(format!(
+        "dtype: {}, shape: {:?}",
+        tensor.dtype(),
+        tensor.shape()
+    ));
+
+    let [height, width, depth] = height_width_depth(tensor)?;
+
+    use egui::epaint::ecolor::{gamma_u8_from_linear_f32, linear_u8_from_linear_f32};
 
     let size = [width as _, height as _];
 
@@ -353,7 +358,7 @@ fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
         }
 
         (_depth, dtype) => {
-            anyhow::bail!("Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into a color image")
+            anyhow::bail!("Don't know how to turn a tensor of shape={:?} and dtype={dtype:?} into a color image", tensor.shape)
         }
     }
 }
@@ -362,34 +367,17 @@ fn class_id_tensor_as_color_image(
     tensor: &Tensor,
     annotations: &Annotations,
 ) -> anyhow::Result<ColorImage> {
-    use anyhow::Context as _;
-
     crate::profile_function!(format!(
         "dtype: {}, shape: {:?}",
         tensor.dtype(),
         tensor.shape()
     ));
 
-    let shape = &tensor.shape();
-
-    anyhow::ensure!(
-        shape.len() == 2 || shape.len() == 3,
-        "Expected a 2D or 3D tensor, got {shape:?}",
-    );
-
-    let [height, width] = [
-        u32::try_from(shape[0].size).context("tensor too large")?,
-        u32::try_from(shape[1].size).context("tensor too large")?,
-    ];
-    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
-
+    let [height, width, depth] = height_width_depth(tensor)?;
     anyhow::ensure!(
         depth == 1,
-        "Cannot apply annotations to tensor of shape {shape:?}"
-    );
-    debug_assert!(
-        tensor.is_shaped_like_an_image(),
-        "We should make the same checks above, but with actual error messages"
+        "Cannot apply annotations to tensor of shape {:?}",
+        tensor.shape
     );
     let size = [width as _, height as _];
 
@@ -443,32 +431,14 @@ fn depth_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
         return Ok(ColorImage::default());
     }
 
-    use anyhow::Context as _;
-
     crate::profile_function!(format!(
         "dtype: {}, shape: {:?}",
         tensor.dtype(),
         tensor.shape()
     ));
 
-    let shape = &tensor.shape();
-
-    anyhow::ensure!(
-        shape.len() == 2 || shape.len() == 3,
-        "Expected a 2D or 3D tensor, got {shape:?}",
-    );
-
-    let [height, width] = [
-        u32::try_from(shape[0].size).context("tensor too large")?,
-        u32::try_from(shape[1].size).context("tensor too large")?,
-    ];
-    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
-
-    anyhow::ensure!(depth == 1, "Depth tensor of shape {shape:?}");
-    debug_assert!(
-        tensor.is_shaped_like_an_image(),
-        "We should make the same checks above, but with actual error messages"
-    );
+    let [height, width, depth] = height_width_depth(tensor)?;
+    anyhow::ensure!(depth == 1, "Depth tensor of shape {:?}", tensor.shape);
     let size = [width as _, height as _];
 
     match &tensor.data {
