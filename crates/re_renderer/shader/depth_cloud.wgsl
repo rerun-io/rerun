@@ -44,7 +44,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 
     var data: PointData;
     data.pos_in_world = pos_in_world.xyz;
-    data.unresolved_radius = norm_linear_depth * depth_cloud_info.radius_scale;
+    data.unresolved_radius = depth_cloud_info.point_radius_from_normalized_depth * norm_linear_depth;
     data.color = color;
 
     return data;
@@ -61,8 +61,8 @@ struct DepthCloudInfo {
     /// Only supports pinhole cameras at the moment.
     depth_camera_intrinsics: Mat3,
 
-    /// The scale to apply to the radii of the backprojected points.
-    radius_scale: f32,
+    /// Point radius is calculated as normalized depth times this value.
+    point_radius_from_normalized_depth: f32,
 
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,
@@ -70,6 +70,7 @@ struct DepthCloudInfo {
     /// Outline mask id for the outline mask pass.
     outline_mask_id: UVec2,
 };
+
 @group(1) @binding(0)
 var<uniform> depth_cloud_info: DepthCloudInfo;
 

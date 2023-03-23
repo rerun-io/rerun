@@ -278,9 +278,10 @@ impl ImagesPart {
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
-        let Some(extrinsics) = pinhole_ent_path
-        .parent()
-        .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
+        let extrinsics = pinhole_ent_path
+            .parent()
+            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        let Some(extrinsics) = extrinsics else {
             re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
             return;
         };
@@ -291,9 +292,9 @@ impl ImagesPart {
             TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
             _ => {
-                let discriminant = std::mem::discriminant(&tensor.data);
                 re_log::warn_once!(
-                    "Tensor datatype is not supported for backprojection ({discriminant:?})"
+                    "Tensor datatype {} is not supported for backprojection",
+                    tensor.dtype()
                 );
                 return;
             }
@@ -324,10 +325,17 @@ impl ImagesPart {
             },
         };
 
+        // By default, we assign a radius to each point so that each point becomes a ball
+        // that just barely touches its diagonally-neighboring pixel-point.
+        // This means the point radius increases with distance.
+        // It also increases with the field of view, and decreases with the resolution.
+        let point_radius_from_depth = 0.5_f32.sqrt() * intrinsics.fov_y().unwrap_or(1.0) / h as f32;
+        let point_radius_from_normalized_depth = radius_scale * point_radius_from_depth * scale;
+
         scene.primitives.depth_clouds.push(DepthCloud {
             depth_camera_extrinsics: world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            radius_scale,
+            point_radius_from_normalized_depth,
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,

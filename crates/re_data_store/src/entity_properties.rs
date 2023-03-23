@@ -72,6 +72,8 @@ pub struct EntityProperties {
     pub backproject_depth_meter: EditableAutoValue<f32>,
 
     /// Used to scale the radii of the points in the resulting point cloud.
+    ///
+    /// Default is 1.0.
     pub backproject_radius_scale: EditableAutoValue<f32>,
 }
 
@@ -120,7 +122,7 @@ impl Default for EntityProperties {
             backproject_depth: false,
             backproject_pinhole_ent_path: None,
             backproject_depth_meter: EditableAutoValue::default(),
-            backproject_radius_scale: EditableAutoValue::default(),
+            backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
     }
 }

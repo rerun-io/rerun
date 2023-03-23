@@ -175,13 +175,7 @@ impl ViewSpatialState {
                 &entity_path,
                 scene_size,
             );
-            Self::update_depth_cloud_property_heuristics(
-                ctx,
-                data_blueprint,
-                &query,
-                &entity_path,
-                scene_size,
-            );
+            Self::update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
@@ -221,7 +215,6 @@ impl ViewSpatialState {
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-        scene_size: f32,
     ) {
         let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
         if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
@@ -241,12 +234,7 @@ impl ViewSpatialState {
             }
 
             if properties.backproject_radius_scale.is_auto() {
-                let auto = if scene_size.is_finite() && scene_size > 0.0 {
-                    f32::max(0.02, scene_size * 0.001)
-                } else {
-                    0.02
-                };
-                properties.backproject_radius_scale = EditableAutoValue::Auto(auto);
+                properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
             }
 
             data_blueprint

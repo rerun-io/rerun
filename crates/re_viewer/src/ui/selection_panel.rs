@@ -549,7 +549,7 @@ fn depth_props_ui(
             {
                 ui.label("Backproject radius scale");
                 let mut radius_scale = *entity_props.backproject_radius_scale.get();
-                let speed = (radius_scale * 0.001).at_least(0.001);
+                let speed = (radius_scale * 0.01).at_least(0.001);
                 let response = ui
                     .add(
                         egui::DragValue::new(&mut radius_scale)
@@ -560,8 +560,7 @@ fn depth_props_ui(
                         "Scales the radii of the points in the backprojected point cloud. Double-click to reset.",
                     );
                 if response.double_clicked() {
-                    // reset to auto - the exacy value will be restored somewhere else
-                    entity_props.backproject_radius_scale = EditableAutoValue::Auto(radius_scale);
+                    entity_props.backproject_radius_scale = EditableAutoValue::Auto(1.0);
                     response.surrender_focus();
                 } else if response.changed() {
                     entity_props.backproject_radius_scale =

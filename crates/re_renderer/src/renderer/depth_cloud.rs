@@ -44,7 +44,8 @@ mod gpu_data {
         pub depth_camera_extrinsics: crate::wgpu_buffer_types::Mat4,
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
 
-        pub radius_scale: f32,
+        /// Point radius is calculated as depth times this value.
+        pub point_radius_from_normalized_depth: f32,
         pub colormap: u32,
         pub outline_mask_id: crate::wgpu_buffer_types::UVec2,
 
@@ -84,8 +85,8 @@ pub struct DepthCloud {
     /// Only supports pinhole cameras at the moment.
     pub depth_camera_intrinsics: glam::Mat3,
 
-    /// The scale to apply to the radii of the backprojected points.
-    pub radius_scale: f32,
+    /// Point radius is calculated as depth times this value.
+    pub point_radius_from_normalized_depth: f32,
 
     /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
@@ -107,7 +108,7 @@ impl Default for DepthCloud {
         Self {
             depth_camera_extrinsics: glam::Mat4::IDENTITY,
             depth_camera_intrinsics: glam::Mat3::IDENTITY,
-            radius_scale: 1.0,
+            point_radius_from_normalized_depth: 1e-3,
             depth_dimensions: glam::UVec2::ZERO,
             depth_data: DepthCloudDepthData::default(),
             colormap: ColorMap::ColorMapTurbo,
@@ -162,7 +163,7 @@ impl DepthCloudDrawData {
             depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
                 depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
                 depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
-                radius_scale: info.radius_scale,
+                point_radius_from_normalized_depth: info.point_radius_from_normalized_depth,
                 colormap: info.colormap as u32,
                 outline_mask_id: info.outline_mask_id.0.unwrap_or_default().into(),
                 end_padding: Default::default(),
