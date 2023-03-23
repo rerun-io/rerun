@@ -46,18 +46,66 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
             timeless=True,
         )
 
+def project_3d_bboxes_to_2d_keypoints(
+    label_info: Dict[str, Any],
+    camera_from_world: Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]],
+    intrinsic: npt.NDArray[np.float64],
+    ) -> npt.NDArray[np.float64]:
+
+    rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
+    transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
+    scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
+
+    '''
+    Box corner order that we return is of the format below:
+      6 -------- 7
+     /|         /|
+    5 -------- 4 .
+    | |        | |
+    . 2 -------- 3
+    |/         |/
+    1 -------- 0
+    '''
+    box_corners = np.array([
+        [-scale[0], -scale[1], -scale[2]],
+        [-scale[0], -scale[1], scale[2]],
+        [-scale[0], scale[1], -scale[2]],
+        [-scale[0], scale[1], scale[2]],
+        [scale[0], -scale[1], -scale[2]],
+        [scale[0], -scale[1], scale[2]],
+        [scale[0], scale[1], -scale[2]],
+        [scale[0], scale[1], scale[2]]
+    ])
+
+    world_box_corners = (rotation @ box_corners.T).T + transform
+    camera_from_world_t, camera_from_world_q = camera_from_world
+    world_from_camera_t = -R.from_quat(camera_from_world_q).as_matrix() @ camera_from_world_t
+    camera_box_corners = (R.from_quat(camera_from_world_q).as_matrix() @ world_box_corners.T).T + world_from_camera_t
+    homogeneous_camera_box_corners = np.hstack((camera_box_corners, np.ones((8, 1))))
+    image_box_corners = intrinsic @ homogeneous_camera_box_corners[:, :3].T
+    image_box_corners /= image_box_corners[2, :]
+
+    return image_box_corners
+
+
 def log_camera(
     intri_path: Path,
     frame_id: str,
     poses_from_traj: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
     entity_id: str,
+    annotation: Dict[str, Any]
     ) -> None:
     """Logs camera intrinsics and extrinsics to Rerun."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
 
-    # TODO(pablovela5620): Fix orientation for portrait captures in 2D view once #1387 is closed.
+    # Log 3D bounding boxes projected into 2D image
+    for label_info in annotation["data"]:
+        label = label_info["label"]
+        kps = project_3d_bboxes_to_2d_keypoints(label_info, camera_from_world, intrinsic)
+        break
+
     rr.log_rigid3(
         entity_id,
         child_from_parent=camera_from_world,
@@ -187,9 +235,7 @@ def log_arkit(recording_path: Path) -> None:
                 init_traj_found = True
             # only low res camera has a trajectory, high res does not
             lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_entity_id)
-            if high_res_exists:
-                print('hi')
+            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_entity_id, annotation)
 
         if not init_traj_found:
             continue
@@ -203,7 +249,7 @@ def log_arkit(recording_path: Path) -> None:
             rr.set_time_seconds("time high resolution", float(frame_id))
             closest_lowres_frame_id = find_closest_frame_id(frame_id, poses_from_traj)
             highres_intri_path = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id)
+            log_camera(highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id, annotation)
 
             # load the highres image and depth if they exist
             highres_bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
