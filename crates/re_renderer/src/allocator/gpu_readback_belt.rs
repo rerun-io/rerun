@@ -4,7 +4,10 @@ use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 
 pub type GpuReadbackBufferIdentifier = u32;
 
-/// TODO: Docstring
+/// A reserved slice for GPU readback.
+///
+/// Readback should happen from a buffer/texture with copy-source usage.
+/// The `identifier` field is used to identify the buffer upon retrieval of the data in `receive_data`.
 pub struct GpuReadbackBuffer {
     chunk_buffer: GpuBuffer,
     byte_offset_in_chunk_buffer: wgpu::BufferAddress,
@@ -122,15 +125,14 @@ impl GpuReadbackBelt {
     /// See this issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508).
     const MIN_ALIGNMENT: u64 = wgpu::MAP_ALIGNMENT; //wgpu::COPY_BUFFER_ALIGNMENT.max(wgpu::MAP_ALIGNMENT);
 
-    /// Create a gpu-write & cpu-read staging belt.
+    /// Create a ring buffer for efficient & easy gpu memory readback.
     ///
-    /// The `chunk_size` is the unit of internal buffer allocation; writes will be
+    /// The `chunk_size` is the unit of internal buffer allocation. Reads will be
     /// sub-allocated within each chunk. Therefore, for optimal use of memory, the
     /// chunk size should be:
     ///
-    /// * larger than the largest single [`GpuWriteCpuReadBelt::allocate`] operation;
+    /// * larger than the largest single [`GpuReadbackBelt::allocate`] operation;
     /// * 1-4 times less than the total amount of data uploaded per submission
-    ///   (per [`GpuWriteCpuReadBelt::before_queue_submit()`]); and
     /// * bigger is better, within these bounds.
     ///
     /// TODO(andreas): Adaptive chunk sizes
@@ -178,11 +180,11 @@ impl GpuReadbackBelt {
                 // Allocation might be bigger than a chunk!
                 let buffer_size = self.chunk_size.max(size_in_bytes);
                 // Happens relatively rarely, this is a noteworthy event!
-                re_log::debug!("Allocating new GpuWriteCpuReadBelt chunk of size {buffer_size}");
+                re_log::debug!("Allocating new GpuReadbackBelt chunk of size {buffer_size}");
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {
-                        label: "GpuWriteCpuReadBelt buffer".into(),
+                        label: "GpuReadbackBelt buffer".into(),
                         size: buffer_size,
                         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                         mapped_at_creation: false,
@@ -206,10 +208,10 @@ impl GpuReadbackBelt {
 
     /// Prepare used buffers for CPU read.
     ///
-    /// This should be called before the command encoder(s) used in [`GpuWriteCpuReadBuffer`] copy operations are submitted.
+    /// This should be called before the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
     ///
     /// At this point, all the partially used staging buffers are closed until the GPU write operation is done.
-    /// After that, the CPU has read them in [`GpuWriteCpuReadBuffer::receive_data`].
+    /// After that, the CPU has read them in [`GpuReadbackBelt::receive_data`].
     pub fn after_queue_submit(&mut self) {
         crate::profile_function!();
         for chunk in self.active_chunks.drain(..) {
@@ -266,7 +268,7 @@ impl GpuReadbackBelt {
 
 impl std::fmt::Debug for GpuReadbackBelt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GpuWriteCpuReadBelt")
+        f.debug_struct("GpuReadbackBelt")
             .field("chunk_size", &self.chunk_size)
             .field("active_chunks", &self.active_chunks.len())
             .field("free_chunks", &self.free_chunks.len())

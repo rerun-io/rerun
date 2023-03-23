@@ -640,10 +640,23 @@ impl ViewBuilder {
 
     /// Schedules the taking of a screenshot.
     ///
-    /// Needs to be called after setup.
+    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
     /// Returns screenshot data properties for convenience.
     ///
-    /// TODO: Document how to get the data
+    /// Data from the screenshot needs to be retrieved from the [`crate::GpuReadbackBelt`] on [`RenderContext`].
+    /// For this the user needs to store the returned scheduled screenshot like so:
+    /// ```no_run
+    /// use re_renderer::{RenderContext, ScheduledScreenshot};
+    /// fn handle_readback_data(ctx: &RenderContext, scheduled_screenshot: ScheduledScreenshot) {
+    ///     ctx.gpu_readback_belt.lock().receive_data(|data, identifier| {
+    ///         if identifier == scheduled_screenshot.identifier {
+    ///             // Do something with the screenshot data.
+    ///         } else {
+    ///            re_log::warn_once!("Unknown readback buffer identifier {:?}", identifier);
+    ///         }
+    ///     });
+    /// }
+    /// ```
     pub fn schedule_screenshot(
         &mut self,
         ctx: &RenderContext,
