@@ -85,11 +85,13 @@ where
         self.unwritten_element_range.start
     }
 
-    /// Copies the entire buffer to single layer of a 2D texture.
+    /// Copies all so far written data to a rectangle on a single 2d texture layer.
+    ///
+    /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
+    /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
     ///
     /// Implementation note:
     /// Does 2D-only entirely for convenience as it greatly simplifies the input parameters.
-    /// Additionally, we assume as tightly as possible packed data as this is by far the most common use.
     pub fn copy_to_texture2d(
         self,
         encoder: &mut wgpu::CommandEncoder,
