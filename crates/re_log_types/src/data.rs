@@ -93,6 +93,38 @@ impl TensorDataType {
             Self::F64 => std::mem::size_of::<f64>() as _,
         }
     }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            Self::U8
+            | Self::U16
+            | Self::U32
+            | Self::U64
+            | Self::I8
+            | Self::I16
+            | Self::I32
+            | Self::I64 => false,
+            Self::F16 | Self::F32 | Self::F64 => true,
+        }
+    }
+
+    pub fn max_value(&self) -> f64 {
+        match self {
+            Self::U8 => u8::MAX as _,
+            Self::U16 => u16::MAX as _,
+            Self::U32 => u32::MAX as _,
+            Self::U64 => u64::MAX as _,
+
+            Self::I8 => i8::MAX as _,
+            Self::I16 => i16::MAX as _,
+            Self::I32 => i32::MAX as _,
+            Self::I64 => i64::MAX as _,
+
+            Self::F16 => f16::MAX.into(),
+            Self::F32 => f32::MAX as _,
+            Self::F64 => f64::MAX,
+        }
+    }
 }
 
 impl std::fmt::Display for TensorDataType {

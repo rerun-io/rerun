@@ -84,7 +84,8 @@ def log_mesh(
         normals = np.asarray(normals, dtype=np.float32).flatten()
     if albedo_factor is not None:
         albedo_factor = np.asarray(albedo_factor, dtype=np.float32).flatten()
-    vertex_colors = _normalize_colors(vertex_colors)
+    if vertex_colors is not None:
+        vertex_colors = _normalize_colors(vertex_colors)
 
     # Mesh arrow handling happens inside the python bridge
     bindings.log_meshes(
