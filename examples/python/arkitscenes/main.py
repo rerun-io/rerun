@@ -46,6 +46,25 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> None:
             timeless=True,
         )
 
+def log_camera(
+    intri_path: Path,
+    frame_id: str,
+    poses_from_traj: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    entity_id: str,
+    ) -> None:
+    """Logs camera intrinsics and extrinsics to Rerun."""
+    w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
+    intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+    camera_from_world = poses_from_traj[frame_id]
+
+    # TODO(pablovela5620): Fix orientation for portrait captures in 2D view once #1387 is closed.
+    rr.log_rigid3(
+        entity_id,
+        child_from_parent=camera_from_world,
+        xyz="RDF",  # X=Right, Y=Down, Z=Forward
+    )
+    rr.log_pinhole(f"{entity_id}/image", child_from_parent=intrinsic, width=w, height=h)
+
 
 def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
     """
@@ -86,6 +105,12 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.
     return (ts, camera_from_world)
 
 
+
+def find_closest_frame_id(target_id: str, frame_ids: Dict[str, Any]) -> str:
+    target_value = float(target_id)
+    closest_id = min(frame_ids.keys(), key=lambda x: abs(float(x) - target_value))
+    return closest_id
+
 def log_arkit(recording_path: Path) -> None:
     """
     Logs ARKit recording data using Rerun.
@@ -98,14 +123,17 @@ def log_arkit(recording_path: Path) -> None:
         None
     """
     video_id = recording_path.stem
-    image_dir = recording_path / "lowres_wide"
-    depth_dir = recording_path / "lowres_depth"
-    intrinsics_dir = recording_path / "lowres_wide_intrinsics"
+    lowres_image_dir = recording_path / "lowres_wide"
+    image_dir = recording_path / "wide"
+    lowres_depth_dir = recording_path / "lowres_depth"
+    depth_dir = recording_path / "highres_depth"
+    lowres_intrinsics_dir = recording_path / "lowres_wide_intrinsics"
+    intrinsics_dir = recording_path / "wide_intrinsics"
     traj_path = recording_path / "lowres_wide.traj"
 
     # frame_ids are indexed by timestamps, you can see more info here
     # https://github.com/apple/ARKitScenes/blob/main/threedod/README.md#data-organization-and-format-of-input-data
-    depth_filenames = [x.name for x in sorted(depth_dir.iterdir())]
+    depth_filenames = [x.name for x in sorted(lowres_depth_dir.iterdir())]
     lowres_frame_ids = [x.split(".png")[0].split("_")[1] for x in depth_filenames]
     lowres_frame_ids.sort()
 
@@ -132,6 +160,7 @@ def log_arkit(recording_path: Path) -> None:
         "world/mesh",
         positions=mesh_ply.vertices,
         indices=mesh_ply.faces,
+        timeless=True
     )
 
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
@@ -141,37 +170,48 @@ def log_arkit(recording_path: Path) -> None:
     # To avoid logging image frames in the beginning that dont' have a trajectory
     # This causes the camera to expand in the beginning otherwise
     init_traj_found = False
-
+    lowres_entity_id = "world/camera_lowres"
+    highres_entity_id = "world/camera_highres"
     print("Processing frames…")
     for frame_id in tqdm(lowres_frame_ids):
         rr.set_time_seconds("time", float(frame_id))
-        bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
-        depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
+        # load the lowres image and depth
+        bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_id}.png")
+        depth = cv2.imread(f"{lowres_depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
+
+        high_res_exists:bool = (image_dir / f"{video_id}_{frame_id}.png").exists()
 
         # Log the camera transforms:
         if frame_id in poses_from_traj:
             if not init_traj_found:
                 init_traj_found = True
-            intrinsic_fn = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            w, h, fx, fy, cx, cy = np.loadtxt(intrinsic_fn)
-            intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-            camera_from_world = poses_from_traj[frame_id]
-
-            # TODO(pablovela5620): Fix orientation for portrait captures in 2D view once #1387 is closed.
-            rr.log_rigid3(
-                "world/camera",
-                child_from_parent=camera_from_world,
-                xyz="RDF",  # X=Right, Y=Down, Z=Forward
-            )
-            rr.log_pinhole("world/camera/image", child_from_parent=intrinsic, width=w, height=h)
+            # only low res camera has a trajectory, high res does not
+            lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_id}.pincam"
+            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_entity_id)
+            if high_res_exists:
+                print('hi')
 
         if not init_traj_found:
             continue
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log_image("world/camera/image/rgb", rgb)
+        rr.log_image(f"{lowres_entity_id}/image/rgb", rgb)
         # TODO(pablovela5620): no clear way to change colormap for depth via log function
-        rr.log_depth_image("world/camera/image/depth", depth, meter=1000)
+        rr.log_depth_image(f"{lowres_entity_id}/image/depth", depth, meter=1000)
+
+        if high_res_exists:
+            rr.set_time_seconds("time high resolution", float(frame_id))
+            closest_lowres_frame_id = find_closest_frame_id(frame_id, poses_from_traj)
+            highres_intri_path = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
+            log_camera(highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id)
+
+            # load the highres image and depth if they exist
+            highres_bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
+            highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
+
+            highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
+            rr.log_image(f"{highres_entity_id}/image/rgb", highres_rgb)
+            rr.log_depth_image(f"{highres_entity_id}/image/depth", highres_depth, meter=1000)
 
 
 if __name__ == "__main__":

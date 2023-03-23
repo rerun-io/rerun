@@ -78,6 +78,8 @@ def raw_files(video_id: str, assets: List[str], metadata: pd.DataFrame) -> List[
             "lowres_wide_intrinsics",
             "ultrawide",
             "ultrawide_intrinsics",
+            "wide",
+            "wide_intrinsics",
             "vga_wide",
             "vga_wide_intrinsics",
         ]:
@@ -283,8 +285,7 @@ def download_data(
 def ensure_recording_downloaded(video_id: str) -> Path:
     """Only downloads from validation set."""
     data_path = DATASET_DIR / "raw" / "Validation" / video_id
-    if not data_path.exists():
-        download_data(
+    download_data(
             dataset="raw",
             video_ids=[video_id],
             dataset_splits=[VALIDATION],
@@ -295,6 +296,9 @@ def ensure_recording_downloaded(video_id: str) -> Path:
                 "lowres_depth",
                 "lowres_wide_intrinsics",
                 "lowres_wide.traj",
+                "wide",
+                "wide_intrinsics",
+                "highres_depth",
                 "annotation",
                 "mesh",
             ],
