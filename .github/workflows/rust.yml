@@ -41,7 +41,7 @@ jobs:
   rs-benchmarks:
     name: Rust Criterion benchmarks
 
-    # Only save the rs-benchmarks job when a commit gets pushed to main
+    # Only run the rs-benchmarks job when a commit gets pushed to main or we manually specify it
     if: ${{ github.event_name == 'push' }} || github.event.inputs.force_run_benchmarks
 
     runs-on: ubuntu-latest-16-cores
@@ -75,6 +75,7 @@ jobs:
             -p re_tuid \
             -- --output-format=bencher | tee output.txt
 
+      # If we've manually run the benchmarks, still only store them if this is a commit on main
       - name: Store benchmark result
         if: ${{ github.event_name == 'push' }}
         uses: benchmark-action/github-action-benchmark@v1
