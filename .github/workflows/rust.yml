@@ -42,7 +42,7 @@ jobs:
     name: Rust Criterion benchmarks
 
     # Only run the rs-benchmarks job when a commit gets pushed to main or we manually specify it
-    if: ${{ github.ref == 'refs/heads/main' || github.event.inputs.force_run_benchmarks }
+    if: ${{ github.ref == 'refs/heads/main' || github.event.inputs.force_run_benchmarks }}
 
     runs-on: ubuntu-latest-16-cores
     container:
