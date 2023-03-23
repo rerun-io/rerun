@@ -538,7 +538,7 @@ fn depth_props_ui(
                 .on_hover_text("How many depth values correspond to one work-space unit. For instance, 1000 means millimeters.\
                                 \nDouble-click to reset.");
                 if response.double_clicked() {
-                    // reset to auto - the exacy value will be restored somewhere else
+                    // reset to auto - the exact value will be restored somewhere else
                     entity_props.backproject_depth_meter = EditableAutoValue::Auto(meter);
                     response.surrender_focus();
                 } else if response.changed() {
