@@ -91,7 +91,7 @@ impl RenderContext {
     ///
     /// We expect large screenshots to be rare occurrences, so we go with fairly small chunks of 1MiB
     /// (this is as much memory as a 512x512 rgba8 texture)
-    const GPU_WRITE_CPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
+    const GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
         wgpu::BufferSize::new(1024 * 1024);
 
     /// Limit maximum number of in flight submissions to this number.
@@ -193,7 +193,7 @@ impl RenderContext {
             mesh_manager,
             texture_manager_2d,
             cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
-            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(Self::GPU_WRITE_CPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
+            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
 
             resolver,
 
