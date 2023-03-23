@@ -51,6 +51,7 @@ def project_3d_bboxes_to_2d_keypoints(
     camera_from_world: Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]],
     intrinsic: npt.NDArray[np.float64],
     ) -> npt.NDArray[np.float64]:
+    """Returns 2D keypoints of the 3D bounding box in the camera view."""
 
     rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
     transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
@@ -102,8 +103,8 @@ def log_camera(
 
     # Log 3D bounding boxes projected into 2D image
     for label_info in annotation["data"]:
-        label = label_info["label"]
-        kps = project_3d_bboxes_to_2d_keypoints(label_info, camera_from_world, intrinsic)
+        label_info["label"]
+        project_3d_bboxes_to_2d_keypoints(label_info, camera_from_world, intrinsic)
         break
 
     rr.log_rigid3(
@@ -155,6 +156,7 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.
 
 
 def find_closest_frame_id(target_id: str, frame_ids: Dict[str, Any]) -> str:
+    """Finds the closest frame id to the target id."""
     target_value = float(target_id)
     closest_id = min(frame_ids.keys(), key=lambda x: abs(float(x) - target_value))
     return closest_id
