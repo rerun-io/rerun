@@ -3978,6 +3978,7 @@ dependencies = [
  "web-sys",
  "wgpu",
  "wgpu-core",
+ "wgpu-hal",
  "winit",
  "zip",
 ]
