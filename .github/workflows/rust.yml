@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      force_run_benchmarks:
+        description: "Run the rust benchmarks"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
@@ -37,7 +42,7 @@ jobs:
     name: Rust Criterion benchmarks
 
     # Only save the rs-benchmarks job when a commit gets pushed to main
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' }} || github.event.inputs.force_run_benchmarks
 
     runs-on: ubuntu-latest-16-cores
     container:
@@ -71,6 +76,7 @@ jobs:
             -- --output-format=bencher | tee output.txt
 
       - name: Store benchmark result
+        if: ${{ github.event_name == 'push' }}
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
