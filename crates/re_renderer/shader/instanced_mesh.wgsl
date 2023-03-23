@@ -19,7 +19,7 @@ struct VertexOut {
     @location(0) color: Vec4, // 0-1 linear space with unmultiplied/separate alpha
     @location(1) texcoord: Vec2,
     @location(2) normal_world_space: Vec3,
-    @location(3) additive_tint_rgb: Vec3,
+    @location(3) additive_tint_rgb: Vec3, // 0-1 linear space
     @location(4) @interpolate(flat)
     outline_mask_ids: UVec2,
 };
