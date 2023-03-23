@@ -12,7 +12,10 @@ use re_renderer::{
     RenderContext,
 };
 
-use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
+use crate::{
+    misc::caches::TensorStats,
+    ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS},
+};
 
 // ---
 
@@ -431,6 +434,12 @@ fn depth_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
         return Ok(ColorImage::default());
     }
 
+    // This function applies color mapping to a depth image.
+    // We are planning on moving this to the GPU: https://github.com/rerun-io/rerun/issues/1612
+    // One big downside of the approach below is that if we have two depth images
+    // in the same range, they cannot be visually compared with each other,
+    // because their individual max-depths will be scaled to 65535.
+
     crate::profile_function!(format!(
         "dtype: {}, shape: {:?}",
         tensor.dtype(),
@@ -441,42 +450,37 @@ fn depth_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
     anyhow::ensure!(depth == 1, "Depth tensor of shape {:?}", tensor.shape);
     let size = [width as _, height as _];
 
+    let range = TensorStats::new(tensor).range.ok_or(anyhow::anyhow!(
+        "Depth image had no range!? Was this compressed?"
+    ))?;
+
+    let (mut min, mut max) = range;
+
+    anyhow::ensure!(
+        min.is_finite() && max.is_finite(),
+        "Depth image had non-finite values"
+    );
+
+    if min == max {
+        // Uniform image. We can't remap it to a 0-1 range, so do whatever:
+        min = 0.0;
+        max = if tensor.dtype().is_float() {
+            1.0
+        } else {
+            tensor.dtype().max_value()
+        };
+    }
+
+    fn colormap(t: f32) -> egui::Color32 {
+        let [r, g, b, _] = re_renderer::colormap_turbo_srgb(t);
+        egui::Color32::from_rgb(r, g, b)
+    }
+
     match &tensor.data {
         TensorData::F32(buf) => {
-            // Convert to u16 so we can put them in an image.
-            // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
-            // One big downside of the approach below is that if we have two depth images
-            // in the same range, they cannot be visually compared with each other,
-            // because their individual max-depths will be scaled to 65535.
-
-            let mut min = f32::INFINITY;
-            let mut max = f32::NEG_INFINITY;
-            for float in buf.iter() {
-                min = min.min(*float);
-                max = max.max(*float);
-            }
-
-            anyhow::ensure!(
-                min.is_finite() && max.is_finite(),
-                "Depth image had non-finite values"
-            );
-
-            let ints: Vec<u16> = if min == max {
-                // Uniform image. We can't remap it to a 0-1 range, so do whatever:
-                buf.iter().map(|&float| float as u16).collect()
-            } else {
-                buf.iter()
-                    .map(|&float| egui::remap(float, min..=max, 0.0..=65535.0) as u16)
-                    .collect()
-            };
-
-            let pixels = ints
+            let pixels = buf
                 .iter()
-                .map(|pixel| {
-                    let [r, g, b, _] =
-                        re_renderer::colormap_turbo_srgb((*pixel as f32) / (u16::MAX as f32));
-                    egui::Color32::from_rgb(r, g, b)
-                })
+                .map(|&float| colormap(egui::remap(float, min as f32..=max as f32, 0.0..=1.0)))
                 .collect();
 
             Ok(ColorImage { size, pixels })
