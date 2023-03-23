@@ -13,6 +13,11 @@ var position_data_texture: texture_2d<u32>;
 
 struct DrawDataUniformBuffer {
     size_boost_in_points: f32,
+    // In actuality there is way more padding than this since we align all our uniform buffers to
+    // 256bytes in order to allow them to be buffer-suballocations.
+    // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
+    // if we wouldn't add padding here, which isn't available on WebGL.
+    _padding: Vec4,
 };
 @group(1) @binding(2)
 var<uniform> draw_data: DrawDataUniformBuffer;
