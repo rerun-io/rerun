@@ -74,9 +74,9 @@ impl Service<Request<Body>> for Svc {
                 "text/html",
                 &include_bytes!("../web_viewer/index_bundled.html")[..],
             ),
-            "/favicon.ico" => (
-                "image/vnd.microsoft.icon",
-                &include_bytes!("../web_viewer/favicon.ico")[..],
+            "/favicon.svg" => (
+                "image/svg+xml",
+                &include_bytes!("../web_viewer/favicon.svg")[..],
             ),
             "/sw.js" => (
                 "text/javascript",
