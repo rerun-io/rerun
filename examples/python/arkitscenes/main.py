@@ -46,19 +46,16 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> npt.NDArray[np.float64]:
     for label_info in annotation["data"]:
         object_id = label_info["objectId"]
         label = label_info["label"]
-        # if label == "tv_monitor" or label == "chair":
 
         scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
         transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
         rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
 
         box3d = compute_box_3d(scale.reshape(3).tolist(), transform, rotation)
-
-        rr.log_points(f"world/annotations/box-vertices/{label}", box3d.reshape(-1, 3), timeless=True)
         bbox_list.append(box3d)
         bbox_labels.append(label)
 
-        rot = R.from_matrix(rotation)
+        rot = R.from_matrix(rotation).inv()
 
         rr.log_obb(
             f"world/annotations/box-{object_id}-{label}",
