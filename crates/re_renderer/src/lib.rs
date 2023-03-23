@@ -15,6 +15,7 @@ pub mod resource_managers;
 pub mod view_builder;
 
 mod allocator;
+mod color;
 mod colormap;
 mod context;
 mod debug_label;
@@ -26,6 +27,7 @@ mod size;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
+pub use color::Rgba32Unmul;
 pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
     colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, ColorMap,

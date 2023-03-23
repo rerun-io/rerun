@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
-use re_renderer::{resource_managers::ResourceLifeTime, RenderContext};
+use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
 
 pub struct LoadedMesh {
     name: String,
@@ -99,62 +99,74 @@ impl LoadedMesh {
 
         let RawMesh3D {
             mesh_id: _,
-            positions,
+            vertex_positions,
+            vertex_colors,
+            vertex_normals,
             indices,
-            normals,
             albedo_factor,
         } = raw_mesh;
 
-        let positions: Vec<glam::Vec3> =
-            bytemuck::try_cast_vec(positions.clone()).map_err(|(err, _)| anyhow!(err))?;
-        let num_positions = positions.len();
+        let vertex_positions: Vec<glam::Vec3> =
+            bytemuck::try_cast_vec(vertex_positions.clone()).map_err(|(err, _)| anyhow!(err))?;
+        let num_positions = vertex_positions.len();
 
         let indices = if let Some(indices) = indices {
             indices.clone()
         } else {
-            (0..positions.len() as u32).collect()
+            anyhow::ensure!(num_positions % 3 == 0);
+            (0..num_positions as u32).collect()
         };
         let num_indices = indices.len();
 
-        let normals = if let Some(normals) = normals {
+        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
+            vertex_colors
+                .iter()
+                .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
+                .collect()
+        } else {
+            std::iter::repeat(Rgba32Unmul::WHITE)
+                .take(num_positions)
+                .collect()
+        };
+
+        let vertex_normals = if let Some(normals) = vertex_normals {
             normals
                 .chunks_exact(3)
                 .map(|v| glam::Vec3::from([v[0], v[1], v[2]]))
-                .map(|normal| re_renderer::mesh::mesh_vertices::MeshVertexData {
-                    normal,
-                    texcoord: glam::Vec2::ZERO,
-                })
                 .collect::<Vec<_>>()
         } else {
             // TODO(andreas): Calculate normals
-            // TODO(cmc): support colored and/or textured raw meshes
-            std::iter::repeat(re_renderer::mesh::mesh_vertices::MeshVertexData {
-                normal: glam::Vec3::ZERO,
-                texcoord: glam::Vec2::ZERO,
-            })
-            .take(num_positions)
-            .collect()
+            // TODO(cmc): support textured raw meshes
+            std::iter::repeat(glam::Vec3::ZERO)
+                .take(num_positions)
+                .collect()
         };
 
-        let bbox = macaw::BoundingBox::from_points(positions.iter().copied());
+        let vertex_texcoords = vec![glam::Vec2::ZERO; vertex_normals.len()];
+
+        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+
+        let mesh = re_renderer::mesh::Mesh {
+            label: name.clone().into(),
+            indices,
+            vertex_positions,
+            vertex_colors,
+            vertex_normals,
+            vertex_texcoords,
+            materials: smallvec::smallvec![re_renderer::mesh::Material {
+                label: name.clone().into(),
+                index_range: 0..num_indices as _,
+                albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
+                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
+                    re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
+                }),
+            }],
+        };
 
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
             gpu_mesh: render_ctx.mesh_manager.write().create(
                 render_ctx,
-                &re_renderer::mesh::Mesh {
-                    label: name.clone().into(),
-                    indices,
-                    vertex_positions: positions,
-                    vertex_data: normals,
-                    materials: smallvec::smallvec![re_renderer::mesh::Material {
-                        label: name.clone().into(),
-                        index_range: 0..num_indices as _,
-                        albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
-                        albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
-                            re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
-                        }),
-                    }],
-                },
+                &mesh,
                 ResourceLifeTime::LongLived,
             )?,
             ..Default::default()

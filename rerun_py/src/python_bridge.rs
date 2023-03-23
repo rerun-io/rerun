@@ -2,8 +2,9 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{io::Cursor, path::PathBuf};
+use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
+use itertools::izip;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
@@ -574,6 +575,7 @@ enum TensorDataMeaning {
 fn log_meshes(
     entity_path_str: &str,
     position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
+    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray2<'_, u8>>>,
     index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
     normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
@@ -582,14 +584,16 @@ fn log_meshes(
     let entity_path = parse_entity_path(entity_path_str)?;
 
     // Make sure we have as many position buffers as index buffers, etc.
-    if position_buffers.len() != index_buffers.len()
+    if position_buffers.len() != vertex_color_buffers.len()
+        || position_buffers.len() != index_buffers.len()
         || position_buffers.len() != normal_buffers.len()
         || position_buffers.len() != albedo_factors.len()
     {
         return Err(PyTypeError::new_err(format!(
             "Top-level position/index/normal/albedo buffer arrays must be same the length, \
-                got positions={}, indices={}, normals={}, albedo={} instead",
+                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
             position_buffers.len(),
+            vertex_color_buffers.len(),
             index_buffers.len(),
             normal_buffers.len(),
             albedo_factors.len(),
@@ -601,34 +605,60 @@ fn log_meshes(
     let time_point = time(timeless);
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
-    for (i, positions) in position_buffers.into_iter().enumerate() {
-        let albedo_factor = if let Some(v) = albedo_factors[i]
-            .as_ref()
-            .map(|albedo_factor| albedo_factor.as_array().to_vec())
-        {
-            match v.len() {
-                3 => Vec4D([v[0], v[1], v[2], 1.0]),
-                4 => Vec4D([v[0], v[1], v[2], v[3]]),
-                _ => {
+
+    for (vertex_positions, vertex_colors, indices, normals, albedo_factor) in izip!(
+        position_buffers,
+        vertex_color_buffers,
+        index_buffers,
+        normal_buffers,
+        albedo_factors,
+    ) {
+        let albedo_factor =
+            if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
+                match v.len() {
+                    3 => Vec4D([v[0], v[1], v[2], 1.0]),
+                    4 => Vec4D([v[0], v[1], v[2], v[3]]),
+                    _ => {
+                        return Err(PyTypeError::new_err(format!(
+                            "Albedo factor must be vec3 or vec4, got {v:?} instead",
+                        )));
+                    }
+                }
+                .into()
+            } else {
+                None
+            };
+
+        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
+            match vertex_colors.shape() {
+                [_, 3] => Some(
+                    slice_from_np_array(&vertex_colors)
+                        .chunks_exact(3)
+                        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]))
+                        .collect(),
+                ),
+                [_, 4] => Some(
+                    slice_from_np_array(&vertex_colors)
+                        .chunks_exact(4)
+                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]))
+                        .collect(),
+                ),
+                shape => {
                     return Err(PyTypeError::new_err(format!(
-                        "Albedo factor must be vec3 or vec4, got {v:?} instead",
+                        "Expected vertex colors to have a Nx3 or Nx4 shape, got {shape:?} instead",
                     )));
                 }
             }
-            .into()
         } else {
             None
         };
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
-            positions: positions.as_array().to_vec(),
-            indices: index_buffers[i]
-                .as_ref()
-                .map(|indices| indices.as_array().to_vec()),
-            normals: normal_buffers[i]
-                .as_ref()
-                .map(|normals| normals.as_array().to_vec()),
+            vertex_positions: vertex_positions.as_array().to_vec(),
+            vertex_colors,
+            indices: indices.map(|indices| indices.as_array().to_vec()),
+            vertex_normals: normals.map(|normals| normals.as_array().to_vec()),
             albedo_factor,
         };
         raw.sanity_check()
@@ -925,4 +955,23 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     session.send(msg);
 
     Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
+    array: &'a numpy::PyReadonlyArray<'_, T, D>,
+) -> Cow<'a, [T]> {
+    let array = array.as_array();
+
+    // Numpy has many different memory orderings.
+    // We could/should check that we have the right one here.
+    // But for now, we just check for and optimize the trivial case.
+    if array.shape().len() == 1 {
+        if let Some(slice) = array.to_slice() {
+            return Cow::Borrowed(slice); // common-case optimization
+        }
+    }
+
+    Cow::Owned(array.iter().cloned().collect())
 }

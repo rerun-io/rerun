@@ -105,6 +105,14 @@ def run_3d_points() -> None:
     )
 
 
+def raw_mesh() -> None:
+    rr.log_mesh(
+        "mesh_demo/triangle",
+        positions=[[0, 0, 0], [0, 0.7, 0], [1.0, 0.0, 0]],
+        vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+    )
+
+
 def run_rects() -> None:
     import random
 
@@ -274,6 +282,7 @@ def main() -> None:
         "2d_lines": run_2d_lines,
         "3d_points": run_3d_points,
         "log_cleared": run_log_cleared,
+        "raw_mesh": raw_mesh,
         "rects": run_rects,
         "segmentation": run_segmentation,
         "text": run_text_logs,
