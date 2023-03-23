@@ -34,7 +34,7 @@ re_string_interner.workspace = true
 ahash.workspace = true
 anyhow = "1.0"
 document-features = "0.2"
-itertools = "0.10"
+itertools = { workspace = true }
 nohash-hasher = "0.2"
 once_cell = "1.15.0"
 serde = { version = "1", features = ["derive", "rc"], optional = true }

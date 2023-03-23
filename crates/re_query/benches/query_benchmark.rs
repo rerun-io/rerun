@@ -155,7 +155,7 @@ fn build_vecs_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
 
 fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
-    msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
+    msgs.for_each(|msg_bundle| store.insert_row(msg_bundle).unwrap());
     store
 }
 

@@ -10,8 +10,8 @@ use pyo3::{
 };
 use re_log_types::{
     component_types,
-    msg_bundle::{self, ComponentBundle, MsgBundle, MsgBundleError},
-    EntityPath, LogMsg, MsgId, TimePoint,
+    msg_bundle::{self, MsgBundle, MsgBundleError},
+    DataCell, EntityPath, LogMsg, MsgId, TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
@@ -98,19 +98,17 @@ pub fn build_chunk_from_components(
         |iter| iter.unzip(),
     )?;
 
-    let cmp_bundles = arrays
+    let cells = arrays
         .into_iter()
         .zip(fields.into_iter())
-        .map(|(value, field)| {
-            ComponentBundle::new(field.name.into(), msg_bundle::wrap_in_listarray(value))
-        })
+        .map(|(value, field)| DataCell::from_arrow(field.name.into(), value))
         .collect();
 
     let msg_bundle = MsgBundle::new(
         MsgId::random(),
         entity_path.clone(),
         time_point.clone(),
-        cmp_bundles,
+        cells,
     );
 
     let msg = msg_bundle

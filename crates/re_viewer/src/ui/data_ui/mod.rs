@@ -1,7 +1,7 @@
 //! The `DataUi` trait and implementations provide methods for representing data using [`egui`].
 
 use itertools::Itertools;
-use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
+use re_log_types::{DataCell, PathOp, TimePoint};
 
 use crate::misc::ViewerContext;
 
@@ -69,7 +69,7 @@ impl DataUi for TimePoint {
     }
 }
 
-impl DataUi for [ComponentBundle] {
+impl DataUi for [DataCell] {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -78,17 +78,17 @@ impl DataUi for [ComponentBundle] {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let mut sorted = self.to_vec();
-        sorted.sort_by_key(|cb| cb.name());
+        sorted.sort_by_key(|cb| cb.component());
 
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
-                ui.label(sorted.iter().map(format_component_bundle).join(", "));
+                ui.label(sorted.iter().map(format_cell).join(", "));
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
-                        ui.label(format_component_bundle(component_bundle));
+                        ui.label(format_cell(component_bundle));
                     }
                 });
             }
@@ -96,12 +96,12 @@ impl DataUi for [ComponentBundle] {
     }
 }
 
-fn format_component_bundle(bundle: &ComponentBundle) -> String {
+fn format_cell(cell: &DataCell) -> String {
     // TODO(emilk): if there's only once instance, and the byte size is small, then deserialize and show the value.
     format!(
         "{}x {}",
-        bundle.num_instances(0).unwrap(), // all of our bundles have exactly 1 row as of today
-        bundle.name().short_name()
+        cell.num_instances(),
+        cell.component().short_name()
     )
 }
 

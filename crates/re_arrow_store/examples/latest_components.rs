@@ -20,10 +20,10 @@ fn main() {
     let ent_path = EntityPath::from("my/entity");
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(2.into())] => [build_some_rects(4)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(3.into())] => [build_some_point2d(2)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let df = latest_components(

@@ -164,13 +164,13 @@ pub fn __populate_example_store() -> DataStore {
 
     let bundle =
         try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (&instances, &points)).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let instances = vec![InstanceKey(96)];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle =
         try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (instances, colors)).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     store
 }

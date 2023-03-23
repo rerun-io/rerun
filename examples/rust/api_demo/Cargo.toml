@@ -12,7 +12,7 @@ rerun = { workspace = true, features = ["web_viewer"] }
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
-itertools = "0.10"
+itertools = { workspace = true }
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"

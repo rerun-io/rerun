@@ -59,7 +59,7 @@ fn pathological_bucket_topology() {
                 time_point.clone(),
                 vec![build_some_instances(num_instances).try_into().unwrap()],
             );
-            store_forward.insert(&msg).unwrap();
+            store_forward.insert_row(&msg).unwrap();
 
             let msg = MsgBundle::new(
                 MsgId::ZERO,
@@ -67,7 +67,7 @@ fn pathological_bucket_topology() {
                 time_point.clone(),
                 vec![build_some_instances(num_instances).try_into().unwrap()],
             );
-            store_backward.insert(&msg).unwrap();
+            store_backward.insert_row(&msg).unwrap();
         }
     }
 
@@ -92,11 +92,11 @@ fn pathological_bucket_topology() {
             .collect::<Vec<_>>();
 
         msgs.iter()
-            .for_each(|msg| store_forward.insert(msg).unwrap());
+            .for_each(|msg| store_forward.insert_row(msg).unwrap());
 
         msgs.iter()
             .rev()
-            .for_each(|msg| store_backward.insert(msg).unwrap());
+            .for_each(|msg| store_backward.insert_row(msg).unwrap());
     }
 
     store_repeated_frame(1000, 10, &mut store_forward, &mut store_backward);

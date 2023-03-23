@@ -1,15 +1,10 @@
-use re_log_types::{
-    component_types::InstanceKey,
-    external::arrow2_convert::serialize::TryIntoArrow,
-    msg_bundle::{wrap_in_listarray, MsgBundleError},
-};
+use re_log_types::{component_types::InstanceKey, msg_bundle::MsgBundleError};
 
-use arrow2::array::Array;
 use nohash_hasher::IntMap;
 
 use crate::{
     components::Transform,
-    log::{ComponentBundle, LogMsg, MsgBundle, MsgId},
+    log::{DataCell, LogMsg, MsgBundle, MsgId},
     sink::LogSink,
     time::{Time, TimeInt, TimePoint, Timeline},
     Component, ComponentName, EntityPath, SerializableComponent,
@@ -35,7 +30,7 @@ pub enum MsgSenderError {
         "All component collections must share the same number of instances (i.e. row length) \
             for a given row, got {0:?} instead"
     )]
-    MismatchedRowLengths(Vec<(ComponentName, usize)>),
+    MismatchedRowLengths(Vec<(ComponentName, u32)>),
 
     /// Instance keys cannot be splatted
     #[error("Instance keys cannot be splatted")]
@@ -69,6 +64,7 @@ pub enum MsgSenderError {
 ///         .map_err(Into::into)
 /// }
 /// ```
+// TODO(#1619): this should embed a DataTable soon.
 pub struct MsgSender {
     // TODO(cmc): At the moment, a `MsgBundle` can only contain data for a single entity, so
     // this must be known as soon as we spawn the builder.
@@ -94,19 +90,19 @@ pub struct MsgSender {
     /// collection will always be 1.
     /// The number of instances per row, on the other hand, will be decided based upon the first
     /// component collection that's appended.
-    num_instances: Option<usize>,
+    num_instances: Option<u32>,
 
     /// All the instanced component collections that have been appended to this message.
     ///
     /// As of today, they must have exactly 1 row of data (no batching), which itself must have
     /// `Self::num_instances` instance keys.
-    instanced: Vec<ComponentBundle>,
+    instanced: Vec<DataCell>,
 
     /// All the splatted components that have been appended to this message.
     ///
-    /// By definition, all `ComponentBundle`s in this vector will have 1 row (no batching) and more
+    /// By definition, all `DataCell`s in this vector will have 1 row (no batching) and more
     /// importantly a single, special instance key for that row.
-    splatted: Vec<ComponentBundle>,
+    splatted: Vec<DataCell>,
 }
 
 impl MsgSender {
@@ -190,9 +186,9 @@ impl MsgSender {
         mut self,
         data: impl IntoIterator<Item = &'a C>,
     ) -> Result<Self, MsgSenderError> {
-        let bundle = bundle_from_iter(data)?;
+        let cell = DataCell::try_from_native(data).map_err(MsgBundleError::from)?;
 
-        let num_instances = bundle.num_instances(0).unwrap(); // must have exactly 1 row atm
+        let num_instances = cell.num_instances();
 
         // If this is the first appended collection, it gets to decide the row-length (i.e. number
         // of instances) of all future collections.
@@ -200,20 +196,20 @@ impl MsgSender {
             self.num_instances = Some(num_instances);
         }
 
-        // Detect mismatched row-lengths early on... unless it's a Transform bundle: transforms
+        // Detect mismatched row-lengths early on... unless it's a Transform cell: transforms
         // behave differently and will be sent in their own message!
         if C::name() != Transform::name() && self.num_instances.unwrap() != num_instances {
             let collections = self
                 .instanced
                 .into_iter()
-                .map(|bundle| (bundle.name(), bundle.num_instances(0).unwrap_or(0)))
+                .map(|cell| (cell.component(), cell.num_instances()))
                 .collect();
             return Err(MsgSenderError::MismatchedRowLengths(collections));
         }
 
         // TODO(cmc): if this is an InstanceKey and it contains u64::MAX, fire IllegalInstanceKey.
 
-        self.instanced.push(bundle);
+        self.instanced.push(cell);
 
         Ok(self)
     }
@@ -236,7 +232,8 @@ impl MsgSender {
             return Err(MsgSenderError::SplattedInstanceKeys);
         }
 
-        self.splatted.push(bundle_from_iter(&[data])?);
+        self.splatted
+            .push(DataCell::try_from_native(&[data]).map_err(MsgBundleError::from)?);
 
         Ok(self)
     }
@@ -306,35 +303,35 @@ impl MsgSender {
 
         // separate transforms from the rest
         // TODO(cmc): just use `Vec::drain_filter` once it goes stable...
-        let mut all_bundles: Vec<_> = instanced.into_iter().map(Some).collect();
-        let standard_bundles: Vec<_> = all_bundles
+        let mut all_cells: Vec<_> = instanced.into_iter().map(Some).collect();
+        let standard_cells: Vec<_> = all_cells
             .iter_mut()
-            .filter(|bundle| bundle.as_ref().unwrap().name() != Transform::name())
-            .map(|bundle| bundle.take().unwrap())
+            .filter(|cell| cell.as_ref().unwrap().component() != Transform::name())
+            .map(|cell| cell.take().unwrap())
             .collect();
-        let transform_bundles: Vec<_> = all_bundles
+        let transform_cells: Vec<_> = all_cells
             .iter_mut()
-            .filter(|bundle| {
-                bundle
-                    .as_ref()
-                    .map_or(false, |bundle| bundle.name() == Transform::name())
+            .filter(|cell| {
+                cell.as_ref()
+                    .map_or(false, |cell| cell.component() == Transform::name())
             })
-            .map(|bundle| bundle.take().unwrap())
+            .map(|cell| cell.take().unwrap())
             .collect();
-        debug_assert!(all_bundles.into_iter().all(|bundle| bundle.is_none()));
+        debug_assert!(all_cells.into_iter().all(|cell| cell.is_none()));
 
         // TODO(cmc): The sanity checks we do in here can (and probably should) be done in
         // `MsgBundle` instead so that the python SDK benefits from them too... but one step at a
         // time.
+        // TODO(#1619): All of this disappears once DataRow lands.
 
         // sanity check: no row-level batching
         let mut rows_per_comptype: IntMap<ComponentName, usize> = IntMap::default();
-        for bundle in standard_bundles
+        for cell in standard_cells
             .iter()
-            .chain(&transform_bundles)
+            .chain(&transform_cells)
             .chain(&splatted)
         {
-            *rows_per_comptype.entry(bundle.name()).or_default() += bundle.num_rows();
+            *rows_per_comptype.entry(cell.component()).or_default() += 1;
         }
         if rows_per_comptype.values().any(|num_rows| *num_rows > 1) {
             return Err(MsgSenderError::MoreThanOneRow(
@@ -343,10 +340,9 @@ impl MsgSender {
         }
 
         // sanity check: transforms can't handle multiple instances
-        let num_transform_instances = transform_bundles
+        let num_transform_instances = transform_cells
             .get(0)
-            .and_then(|bundle| bundle.num_instances(0))
-            .unwrap_or(0);
+            .map_or(0, |cell| cell.num_instances());
         if num_transform_instances > 1 {
             re_log::warn!("detected Transform component with multiple instances");
         }
@@ -354,45 +350,33 @@ impl MsgSender {
         let mut msgs = [(); 3].map(|_| None);
 
         // Standard
-        msgs[0] = (!standard_bundles.is_empty()).then(|| {
+        msgs[0] = (!standard_cells.is_empty()).then(|| {
             MsgBundle::new(
                 MsgId::random(),
                 entity_path.clone(),
                 timepoint.clone(),
-                standard_bundles,
+                standard_cells,
             )
         });
 
         // Transforms
-        msgs[1] = (!transform_bundles.is_empty()).then(|| {
+        msgs[1] = (!transform_cells.is_empty()).then(|| {
             MsgBundle::new(
                 MsgId::random(),
                 entity_path.clone(),
                 timepoint.clone(),
-                transform_bundles,
+                transform_cells,
             )
         });
 
         // Splats
         msgs[2] = (!splatted.is_empty()).then(|| {
-            splatted.push(bundle_from_iter(&[InstanceKey::SPLAT]).unwrap());
+            splatted.push(DataCell::from_native(&[InstanceKey::SPLAT]));
             MsgBundle::new(MsgId::random(), entity_path, timepoint, splatted)
         });
 
         Ok(msgs)
     }
-}
-
-fn bundle_from_iter<'a, C: SerializableComponent>(
-    data: impl IntoIterator<Item = &'a C>,
-) -> Result<ComponentBundle, MsgBundleError> {
-    // TODO(cmc): Eeeh, that's not ideal to repeat that kind of logic in here, but orphan rules
-    // kinda force us to :/
-
-    let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(data)?;
-    let wrapped = wrap_in_listarray(array);
-
-    Ok(ComponentBundle::new(C::name(), wrapped))
 }
 
 #[cfg(test)]
@@ -428,9 +412,8 @@ mod tests {
         {
             let standard = standard.unwrap();
             let idx = standard.find_component(&components::Label::name()).unwrap();
-            let bundle = &standard.components[idx];
-            assert!(bundle.num_rows() == 1);
-            assert!(bundle.num_instances(0).unwrap() == 2);
+            let cell = &standard.cells[idx];
+            assert!(cell.num_instances() == 2);
         }
 
         {
@@ -438,9 +421,8 @@ mod tests {
             let idx = transforms
                 .find_component(&components::Transform::name())
                 .unwrap();
-            let bundle = &transforms.components[idx];
-            assert!(bundle.num_rows() == 1);
-            assert!(bundle.num_instances(0).unwrap() == 1);
+            let cell = &transforms.cells[idx];
+            assert!(cell.num_instances() == 1);
         }
 
         {
@@ -448,9 +430,8 @@ mod tests {
             let idx = splats
                 .find_component(&components::ColorRGBA::name())
                 .unwrap();
-            let bundle = &splats.components[idx];
-            assert!(bundle.num_rows() == 1);
-            assert!(bundle.num_instances(0).unwrap() == 1);
+            let cell = &splats.cells[idx];
+            assert!(cell.num_instances() == 1);
         }
 
         Ok(())

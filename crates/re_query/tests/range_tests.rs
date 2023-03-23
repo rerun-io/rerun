@@ -24,7 +24,7 @@ fn simple_range() {
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
         let bundle =
             try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint1, &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -36,7 +36,7 @@ fn simple_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -51,7 +51,7 @@ fn simple_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
@@ -60,7 +60,7 @@ fn simple_range() {
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
         let bundle =
             try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint3, &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---
@@ -244,11 +244,11 @@ fn timeless_range() {
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
         let bundle =
             try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint1, &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Insert timelessly too!
         let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), [], &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -260,7 +260,7 @@ fn timeless_range() {
             (color_instances.clone(), colors.clone()),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Insert timelessly too!
         let bundle = try_build_msg_bundle2(
@@ -270,7 +270,7 @@ fn timeless_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -285,7 +285,7 @@ fn timeless_range() {
             (color_instances.clone(), colors.clone()),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Insert timelessly too!
         let bundle = try_build_msg_bundle2(
@@ -295,7 +295,7 @@ fn timeless_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
@@ -304,11 +304,11 @@ fn timeless_range() {
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
         let bundle =
             try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint3, &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Insert timelessly too!
         let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), [], &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     // ┌───────────┬──────────┬────────┬─────────────────┬────────────────────┬──────────────────────┬────────────────────────────┐
@@ -679,7 +679,7 @@ fn simple_splatted_range() {
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
         let bundle =
             try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint1, &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -691,7 +691,7 @@ fn simple_splatted_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -706,7 +706,7 @@ fn simple_splatted_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
@@ -715,7 +715,7 @@ fn simple_splatted_range() {
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
         let bundle =
             try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint3, &points).unwrap();
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---

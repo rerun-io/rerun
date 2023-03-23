@@ -3861,6 +3861,7 @@ dependencies = [
  "glam",
  "half 2.2.1",
  "image",
+ "itertools",
  "lazy_static",
  "macaw",
  "mimalloc",

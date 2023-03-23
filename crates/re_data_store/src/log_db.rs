@@ -4,9 +4,9 @@ use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
     component_types::InstanceKey,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::{Component as _, ComponentBundle, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, ComponentPath, EntityPath, EntityPathHash, EntityPathOpMsg,
-    LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
+    msg_bundle::{Component as _, MsgBundle},
+    ArrowMsg, BeginRecordingMsg, ComponentPath, DataCell, EntityPath, EntityPathHash,
+    EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -85,10 +85,10 @@ impl EntityDb {
 
         self.register_entity_path(&msg_bundle.entity_path);
 
-        for component in &msg_bundle.components {
+        for cell in &msg_bundle.cells {
             let component_path =
-                ComponentPath::new(msg_bundle.entity_path.clone(), component.name());
-            if component.name() == MsgId::name() {
+                ComponentPath::new(msg_bundle.entity_path.clone(), cell.component());
+            if cell.component() == MsgId::name() {
                 continue;
             }
             let pending_clears = self
@@ -98,22 +98,21 @@ impl EntityDb {
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
-                let bundle =
-                    ComponentBundle::new_empty(component.name(), component.data_type().clone());
+                let cell = DataCell::from_arrow_empty(cell.component(), cell.datatype().clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
                     msg_bundle.entity_path.clone(),
                     time_point.clone(),
-                    vec![bundle],
+                    vec![cell],
                 );
-                self.data_store.insert(&msg_bundle).ok();
+                self.data_store.insert_row(&msg_bundle).ok();
 
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(&time_point, &component_path);
             }
         }
 
-        self.data_store.insert(&msg_bundle).map_err(Into::into)
+        self.data_store.insert_row(&msg_bundle).map_err(Into::into)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
@@ -126,15 +125,15 @@ impl EntityDb {
             {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
-                let bundle =
-                    ComponentBundle::new_empty(component_path.component_name, data_type.clone());
+                let cell =
+                    DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
                     component_path.entity_path.clone(),
                     time_point.clone(),
-                    vec![bundle],
+                    vec![cell],
                 );
-                self.data_store.insert(&msg_bundle).ok();
+                self.data_store.insert_row(&msg_bundle).ok();
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(time_point, &component_path);
             }

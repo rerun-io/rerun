@@ -70,6 +70,12 @@ impl std::fmt::Display for InstanceKey {
     }
 }
 
+impl From<u64> for InstanceKey {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
 impl Component for InstanceKey {
     #[inline]
     fn name() -> crate::ComponentName {

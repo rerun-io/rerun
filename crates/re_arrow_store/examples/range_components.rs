@@ -24,25 +24,25 @@ fn main() {
     let frame4 = 4.into();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_point2d(2)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(4)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(1)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(3)]);
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(2.into(), 4.into()));

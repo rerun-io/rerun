@@ -6,7 +6,6 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use arrow2::array::{Array, UInt64Array};
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
@@ -22,8 +21,8 @@ use re_log_types::{
         build_some_point2d, build_some_rects,
     },
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
-    ComponentName, EntityPath, MsgId, TimeType, Timeline,
+    msg_bundle::{Component as _, MsgBundle},
+    ComponentName, DataCell, EntityPath, MsgId, TimeType, Timeline,
 };
 
 // --- LatestComponentsAt ---
@@ -96,19 +95,19 @@ fn all_components() {
         ];
 
         let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         let bundle = test_bundle!(ent_path @ [
             build_frame_nr(frame1),
         ] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let bundle = test_bundle!(ent_path @ [
             build_frame_nr(frame2),
         ] => [build_some_rects(2), build_some_point2d(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
@@ -164,20 +163,20 @@ fn all_components() {
         ];
 
         let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_instances(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
@@ -236,25 +235,25 @@ fn all_components() {
         ];
 
         let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_point2d(2)]);
-        store.insert(&bundle).unwrap();
+        store.insert_row(&bundle).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
@@ -298,12 +297,12 @@ fn latest_at_impl(store: &mut DataStore) {
     // helper to insert a bundle both as a temporal and timeless payload
     let insert = |store: &mut DataStore, bundle| {
         // insert temporal
-        store.insert(bundle).unwrap();
+        store.insert_row(bundle).unwrap();
 
         // insert timeless
         let mut bundle_timeless = bundle.clone();
         bundle_timeless.time_point = Default::default();
-        store.insert(&bundle_timeless).unwrap();
+        store.insert_row(&bundle_timeless).unwrap();
     };
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
@@ -403,12 +402,12 @@ fn range_impl(store: &mut DataStore) {
     // helper to insert a bundle both as a temporal and timeless payload
     let insert = |store: &mut DataStore, bundle| {
         // insert temporal
-        store.insert(bundle).unwrap();
+        store.insert_row(bundle).unwrap();
 
         // insert timeless
         let mut bundle_timeless = bundle.clone();
         bundle_timeless.time_point = Default::default();
-        store.insert(&bundle_timeless).unwrap();
+        store.insert_row(&bundle_timeless).unwrap();
     };
 
     let insts1 = build_some_instances(3);
@@ -865,21 +864,20 @@ fn range_impl(store: &mut DataStore) {
 // --- Common helpers ---
 
 /// Given a list of bundles, crafts a `latest_components`-looking dataframe.
+// TODO(#1692): use Data{Cell,Row,Table} polars extensions
 fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
     let df = bundles
         .iter()
         .map(|(component, bundle)| {
             let cluster_comp = if let Some(idx) = bundle.find_component(&cluster_key) {
-                Series::try_from((cluster_key.as_str(), bundle.components[idx].value_boxed()))
+                Series::try_from((cluster_key.as_str(), bundle.cells[idx].as_arrow_monolist()))
                     .unwrap()
             } else {
-                let num_instances = bundle.num_instances(0).unwrap_or(0);
+                let num_instances = bundle.num_instances();
                 Series::try_from((
                     cluster_key.as_str(),
-                    wrap_in_listarray(
-                        UInt64Array::from_vec((0..num_instances as u64).collect()).to_boxed(),
-                    )
-                    .to_boxed(),
+                    DataCell::from_component::<InstanceKey>(0..num_instances as u64)
+                        .as_arrow_monolist(),
                 ))
                 .unwrap()
             };
@@ -889,7 +887,7 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
                 cluster_comp,
                 Series::try_from((
                     component.as_str(),
-                    bundle.components[comp_idx].value_boxed(),
+                    bundle.cells[comp_idx].as_arrow_monolist(),
                 ))
                 .unwrap(),
             ])
@@ -935,7 +933,7 @@ fn gc_impl(store: &mut DataStore) {
                 let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
                     build_some_rects(num_instances),
                 ]);
-                store.insert(&bundle).unwrap();
+                store.insert_row(&bundle).unwrap();
             }
         }
 

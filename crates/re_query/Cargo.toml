@@ -39,7 +39,7 @@ arrow2 = { workspace = true, features = [
 ] }
 document-features = "0.2"
 indent = "0.1"
-itertools = "0.10"
+itertools = { workspace = true }
 nohash-hasher = "0.2"
 thiserror.workspace = true
 
@@ -53,7 +53,7 @@ polars-core = { workspace = true, optional = true, features = [
 
 [dev-dependencies]
 criterion = "0.4"
-itertools = "0.10"
+itertools = { workspace = true }
 mimalloc.workspace = true
 polars-core = { workspace = true, features = [
   "dtype-date",
