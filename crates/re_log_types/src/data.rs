@@ -94,6 +94,10 @@ impl TensorDataType {
         }
     }
 
+    pub fn is_integer(&self) -> bool {
+        !self.is_float()
+    }
+
     pub fn is_float(&self) -> bool {
         match self {
             Self::U8

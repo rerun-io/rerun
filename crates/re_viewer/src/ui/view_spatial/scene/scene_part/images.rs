@@ -299,7 +299,13 @@ impl ImagesPart {
             }
         };
 
-        let scale = *properties.backproject_scale.get();
+        let meter = *properties.backproject_depth_meter.get();
+        let scale = match data {
+            // the GPU normalizes the u16 to [0, 1] during texture smapler:
+            DepthCloudDepthData::U16(_) => u16::MAX as f32 / meter,
+
+            DepthCloudDepthData::F32(_) => 1.0 / meter,
+        };
         let radius_scale = *properties.backproject_radius_scale.get();
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);

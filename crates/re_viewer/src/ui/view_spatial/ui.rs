@@ -4,7 +4,7 @@ use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
+use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::renderer::OutlineConfig;
 
 use crate::{
@@ -228,18 +228,16 @@ impl ViewSpatialState {
             let tensor = tensor.as_ref().unwrap();
 
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
-            if properties.backproject_scale.is_auto() {
-                let auto = tensor.meter.map_or_else(
-                    || match &tensor.data {
-                        TensorData::U16(_) => 1.0 / u16::MAX as f32,
-                        _ => 1.0,
-                    },
-                    |meter| match &tensor.data {
-                        TensorData::U16(_) => 1.0 / meter * u16::MAX as f32,
-                        _ => meter,
-                    },
-                );
-                properties.backproject_scale = EditableAutoValue::Auto(auto);
+            if properties.backproject_depth_meter.is_auto() {
+                let auto = tensor.meter.unwrap_or_else(|| {
+                    use re_log_types::component_types::TensorTrait as _;
+                    if tensor.dtype().is_integer() {
+                        1000.0
+                    } else {
+                        1.0
+                    }
+                });
+                properties.backproject_depth_meter = EditableAutoValue::Auto(auto);
             }
 
             if properties.backproject_radius_scale.is_auto() {

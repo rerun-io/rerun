@@ -66,8 +66,10 @@ pub struct EntityProperties {
     /// `None` means backprojection is disabled.
     pub backproject_pinhole_ent_path: Option<EntityPath>,
 
-    /// Used to scale the resulting point cloud.
-    pub backproject_scale: EditableAutoValue<f32>,
+    /// How many depth units per world-space unit. e.g. 1000 for millimeters.
+    ///
+    /// This corresponds to [`Tensor::meter`].
+    pub backproject_depth_meter: EditableAutoValue<f32>,
 
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>,
@@ -94,7 +96,10 @@ impl EntityProperties {
                 .backproject_pinhole_ent_path
                 .clone()
                 .or(child.backproject_pinhole_ent_path.clone()),
-            backproject_scale: self.backproject_scale.or(&child.backproject_scale).clone(),
+            backproject_depth_meter: self
+                .backproject_depth_meter
+                .or(&child.backproject_depth_meter)
+                .clone(),
             backproject_radius_scale: self
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
@@ -114,7 +119,7 @@ impl Default for EntityProperties {
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: false,
             backproject_pinhole_ent_path: None,
-            backproject_scale: EditableAutoValue::default(),
+            backproject_depth_meter: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::default(),
         }
     }

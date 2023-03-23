@@ -525,37 +525,50 @@ fn depth_props_ui(
                 );
             ui.end_row();
 
-            ui.label("Backproject scale");
-            let mut scale = *entity_props.backproject_scale.get();
-            let speed = (scale * 0.05).at_least(0.01);
-            if ui
+            {
+                ui.label("Backproject meter");
+                let mut meter = *entity_props.backproject_depth_meter.get();
+                let speed = (meter * 0.05).at_least(0.01);
+                let response = ui
                 .add(
-                    egui::DragValue::new(&mut scale)
+                    egui::DragValue::new(&mut meter)
                         .clamp_range(0.0..=1.0e8)
                         .speed(speed),
                 )
-                .on_hover_text("Scales the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_scale = EditableAutoValue::UserEdited(scale);
+                .on_hover_text("How many depth values correspond to one work-space unit. For instance, 1000 means millimeters. Double-click to reset.");
+                if response.double_clicked() {
+                    // reset to auto - the exacy value will be restored somewhere else
+                    entity_props.backproject_depth_meter = EditableAutoValue::Auto(meter);
+                    response.surrender_focus();
+                } else if response.changed() {
+                    entity_props.backproject_depth_meter = EditableAutoValue::UserEdited(meter);
+                }
+                ui.end_row();
             }
-            ui.end_row();
 
-            ui.label("Backproject radius scale");
-            let mut radius_scale = *entity_props.backproject_radius_scale.get();
-            let speed = (radius_scale * 0.001).at_least(0.001);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut radius_scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the radii of the points in the backprojected point cloud")
-                .changed()
             {
-                entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
+                ui.label("Backproject radius scale");
+                let mut radius_scale = *entity_props.backproject_radius_scale.get();
+                let speed = (radius_scale * 0.001).at_least(0.001);
+                let response = ui
+                    .add(
+                        egui::DragValue::new(&mut radius_scale)
+                            .clamp_range(0.0..=1.0e8)
+                            .speed(speed),
+                    )
+                    .on_hover_text(
+                        "Scales the radii of the points in the backprojected point cloud. Double-click to reset.",
+                    );
+                if response.double_clicked() {
+                    // reset to auto - the exacy value will be restored somewhere else
+                    entity_props.backproject_radius_scale = EditableAutoValue::Auto(radius_scale);
+                    response.surrender_focus();
+                } else if response.changed() {
+                    entity_props.backproject_radius_scale =
+                        EditableAutoValue::UserEdited(radius_scale);
+                }
+                ui.end_row();
             }
-            ui.end_row();
 
             // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
             // need to get the current hardcoded colormapping out of the image cache first.
