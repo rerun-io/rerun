@@ -1,5 +1,5 @@
 # 2023-03-15 Component type conversions
-Status: proposal
+Status: pre-proposal (not ready to be implemented)
 
 ## Summary
 Each _Component_ can be represented by many different _Datatypes_.
@@ -39,8 +39,10 @@ We can use this for:
   * versioning (`Tensor_v2 -> Tensor_v3`)
 
 ### Open questions:
-`(Transform, Jpeg)` or `(Jpeg, [u8])` ?
+How do we handle Jpegs? Are they a separate datatype for the `Tensor` component: `(Tensor Jpeg)`, or are they a separate component type: `(Jpeg [u8])` ?
 
-#### What naming convention for datatypes?
+How do we handle the transform-graph of convertes? What if there are cycles? What if there are two different paths from one `(component datatype)` tuple to another?
+
+#### What naming convention should we use for datatypes?
 * Rust style: `[u8]`, `[f32; 3]` etc ?
 * `quat_xyzw_f32` or `xyzw_f32` ?
