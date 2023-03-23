@@ -180,7 +180,13 @@
         }
 
         function determine_url() {
-            // If a 'url' is provided as a url_param, use it
+            // If a 'url' is provided as a url-param, use it.
+            // Although `web.rs` can also parse the url-param itself,
+            // it won't do so if we pass in a non-null url. We could
+            // arguably return null here instead and achieve the same
+            // behavior, but as long as we've queried it anyways, we
+            // may as well just pass it in for consistency.
+
             const url_params = new URLSearchParams(window.location.search);
 
             let url = url_params.get('url');
