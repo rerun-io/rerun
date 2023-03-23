@@ -26,6 +26,22 @@ pub struct VertexBufferLayout {
 }
 
 impl VertexBufferLayout {
+    /// Generates layouts with successive shader locations without gaps.
+    pub fn from_formats(formats: impl Iterator<Item = wgpu::VertexFormat>) -> SmallVec<[Self; 4]> {
+        formats
+            .enumerate()
+            .map(move |(location, format)| Self {
+                array_stride: format.size(),
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: smallvec::smallvec![wgpu::VertexAttribute {
+                    format,
+                    offset: 0,
+                    shader_location: location as u32,
+                }],
+            })
+            .collect()
+    }
+
     /// Generates attributes with successive shader locations without gaps
     pub fn attributes_from_formats(
         start_location: u32,

@@ -17,55 +17,21 @@ use crate::{
 /// Defines how mesh vertices are built.
 pub mod mesh_vertices {
     use crate::wgpu_resources::VertexBufferLayout;
-    use smallvec::smallvec;
 
     /// Vertex buffer layouts describing how vertex data should be laid out.
     ///
     /// Needs to be kept in sync with `mesh_vertex.wgsl`.
-    pub fn vertex_buffer_layouts() -> [VertexBufferLayout; 4] {
-        [
-            // Position:
-            VertexBufferLayout {
-                array_stride: std::mem::size_of::<glam::Vec3>() as _,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x3,
-                    shader_location: 0,
-                    offset: 0,
-                }],
-            },
-            // 32 bit color:
-            VertexBufferLayout {
-                array_stride: 4,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Unorm8x4,
-                    shader_location: 1,
-                    offset: 0,
-                }],
-            },
-            // TODO(andreas): Compress normals. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
-            // Normal:
-            VertexBufferLayout {
-                array_stride: std::mem::size_of::<glam::Vec3>() as _,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x3,
-                    shader_location: 2,
-                    offset: 0,
-                }],
-            },
-            // Texcoord:
-            VertexBufferLayout {
-                array_stride: std::mem::size_of::<glam::Vec2>() as _,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x2,
-                    shader_location: 3,
-                    offset: 0,
-                }],
-            },
-        ]
+    pub fn vertex_buffer_layouts() -> smallvec::SmallVec<[VertexBufferLayout; 4]> {
+        // TODO(andreas): Compress normals. Afaik Octahedral Mapping is the best by far, see https://jcgt.org/published/0003/02/01/
+        VertexBufferLayout::from_formats(
+            [
+                wgpu::VertexFormat::Float32x3, // position
+                wgpu::VertexFormat::Unorm8x4,  // RGBA
+                wgpu::VertexFormat::Float32x3, // normal
+                wgpu::VertexFormat::Float32x2, // texcoord
+            ]
+            .into_iter(),
+        )
     }
 
     /// Next vertex attribute index that can be used for another vertex buffer.
