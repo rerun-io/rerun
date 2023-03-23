@@ -255,11 +255,11 @@ impl GpuReadbackBelt {
 
     /// Receive all buffers that have been written by the GPU and are ready to be read by the CPU.
     ///
-    /// ATTENTION: Do NOT assume any alignment on the slice passed to [`on_data_received`].
+    /// ATTENTION: Do NOT assume any alignment on the slice passed to `on_data_received`.
     /// See this issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508).
     ///
     /// This should be called every frame to ensure that we're not accumulating too many buffers.
-    /// After this call, internal chunks will be re-used by subsequent [`allocate`] calls.
+    /// After this call, internal chunks will be re-used by subsequent [`Self::allocate`] calls.
     pub fn receive_data(
         &mut self,
         mut on_data_received: impl FnMut(&[u8], GpuReadbackBufferIdentifier),
