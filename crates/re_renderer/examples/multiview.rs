@@ -176,7 +176,6 @@ impl Multiview {
         let mut view_builder = ViewBuilder::default();
         view_builder.setup_view(re_ctx, target_cfg).unwrap();
 
-        #[cfg(not(target_arch = "wasm32"))]
         if self
             .take_screenshot_next_frame_for_view
             .map_or(false, |i| i == index)
@@ -228,6 +227,7 @@ impl Multiview {
                         i += 1;
                     }
 
+                    #[cfg(not(target_arch = "wasm32"))]
                     image::save_buffer(
                         filename,
                         &buffer,
