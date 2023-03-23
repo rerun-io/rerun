@@ -73,7 +73,7 @@ fn sphere_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f
     let to_camera = frame.camera_position - point_pos;
     let camera_distance = length(to_camera);
     let radius = unresolved_size_to_world(point_unresolved_radius, camera_distance, frame.auto_size_points) +
-                 point_size_to_world(size_boost_in_points, camera_distance);
+                 world_size_from_point_size(size_boost_in_points, camera_distance);
 
     // Basic properties of the vertex we're at.
     let local_idx = vertex_idx % 6u;

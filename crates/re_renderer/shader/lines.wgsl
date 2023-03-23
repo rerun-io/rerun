@@ -196,10 +196,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let camera_distance = distance(camera_ray.origin, center_position);
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
     if draw_data.size_boost_in_points > 0.0 {
-        let size_boost = point_size_to_world(draw_data.size_boost_in_points, camera_distance);
+        let size_boost = world_size_from_point_size(draw_data.size_boost_in_points, camera_distance);
         strip_radius += size_boost;
         // Push out positions as well along the quad dir.
-        // This is not only, but especially important if there's no miters on a line-strip (TODO(#829)),
+        // This is especially important if there's no miters on a line-strip (TODO(#829)),
         // as this would enhance gaps between lines otherwise.
         center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
