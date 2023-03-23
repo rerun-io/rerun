@@ -29,7 +29,7 @@ var<private> TEXTURE_SIZE: i32 = 2048;
 
 struct VertexOut {
     @builtin(position) position: Vec4,
-    @location(0) color: Vec4,
+    @location(0) color: Vec4, // linear RGBA with unmulitplied/separate alpha
     @location(1) world_position: Vec3,
     @location(2) point_center: Vec3,
     @location(3) radius: f32,

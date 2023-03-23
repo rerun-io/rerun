@@ -20,7 +20,7 @@ var<uniform> uniforms: FrameUniformBuffer;
 fn main(in: FragmentInput) -> @location(0) Vec4 {
     let resolution = Vec2(textureDimensions(voronoi_texture).xy);
     let pixel_step = Vec2(f32(uniforms.step_width), f32(uniforms.step_width)) / resolution;
-    let pixel_coordinates = resolution * in.texcoord;
+    let pixel_coordinates = floor(resolution * in.texcoord);
 
     var closest_positions_a = Vec2(f32min);
     var closest_distance_sq_a = f32max;

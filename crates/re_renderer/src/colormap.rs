@@ -34,7 +34,7 @@ pub fn grayscale_srgb(t: f32) -> [u8; 4] {
     let t = t.powf(2.2);
     let t = ((t * u8::MAX as f32) + 0.5) as u8;
 
-    [t, t, t, t]
+    [t, t, t, 255]
 }
 
 // --- Turbo color map ---
