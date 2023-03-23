@@ -131,7 +131,7 @@ impl LoadedMesh {
                 .collect::<Vec<_>>()
         } else {
             // TODO(andreas): Calculate normals
-            // TODO(cmc): support colored and/or textured raw meshes
+            // TODO(cmc): support textured raw meshes
             std::iter::repeat(glam::Vec3::ZERO)
                 .take(num_positions)
                 .collect()
