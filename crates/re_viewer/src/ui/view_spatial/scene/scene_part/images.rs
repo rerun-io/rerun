@@ -328,12 +328,10 @@ impl ImagesPart {
         // that just barely touches its diagonally-neighboring pixel-point.
         // This means the point radius increases with distance.
         // It also increases with the field of view, and decreases with the resolution.
+        let fov_y = intrinsics.fov_y().unwrap_or(1.0);
+        let point_radius_from_depth = 0.5_f32.sqrt() * (0.5 * fov_y).tan() / (0.5 * h as f32);
         let radius_scale = *properties.backproject_radius_scale.get();
-        let point_radius_from_depth = 0.5_f32.sqrt() * intrinsics.fov_y().unwrap_or(1.0) / h as f32;
         let point_radius_from_normalized_depth = radius_scale * point_radius_from_depth * scale;
-
-        // TODO(emilk): we get gaps between diagonally adjacent points without this hack. WHY???
-        let point_radius_from_normalized_depth = 1.1 * point_radius_from_normalized_depth;
 
         scene.primitives.depth_clouds.push(DepthCloud {
             depth_camera_extrinsics: world_from_obj,
