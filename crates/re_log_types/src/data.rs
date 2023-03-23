@@ -94,10 +94,12 @@ impl TensorDataType {
         }
     }
 
+    #[inline]
     pub fn is_integer(&self) -> bool {
         !self.is_float()
     }
 
+    #[inline]
     pub fn is_float(&self) -> bool {
         match self {
             Self::U8
@@ -112,6 +114,7 @@ impl TensorDataType {
         }
     }
 
+    #[inline]
     pub fn max_value(&self) -> f64 {
         match self {
             Self::U8 => u8::MAX as _,
