@@ -185,7 +185,7 @@ pub fn tensor_summary_ui_grid_contents(
             re_ui.grid_left_hand_label(ui, "Encoding");
             ui.label(format!(
                 "{} JPEG",
-                re_format::format_bytes(jpeg_bytes.len() as _),
+                re_format::format_bytes(jpeg_bytes.num_bytes() as _),
             ));
             ui.end_row();
         }

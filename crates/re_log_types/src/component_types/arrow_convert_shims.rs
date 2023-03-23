@@ -18,9 +18,8 @@ use arrow2_convert::{
 pub struct BinaryBuffer(pub Buffer<u8>);
 
 impl BinaryBuffer {
-    /// Number of bytes in the buffer.
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn num_bytes(&self) -> usize {
         self.0.len()
     }
 
