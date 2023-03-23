@@ -248,7 +248,7 @@ impl DataStore {
 
             let table = self
                 .components
-                .entry(cell.component())
+                .entry(component)
                 .or_insert_with(|| ComponentTable::new(component, cell.datatype()));
 
             let row_idx = table.push_cell(&self.config, time_point, cell);
@@ -272,10 +272,10 @@ impl DataStore {
     ) -> WriteResult<(RowIndex, u32)> {
         crate::profile_function!();
 
-        enum ClusterData {
+        enum ClusterData<'a> {
             Cached(RowIndex),
             GenData(DataCell),
-            UserData(DataCell),
+            UserData(&'a DataCell),
         }
 
         let (cluster_len, cluster_data) = if let Some(cluster_comp_pos) = cluster_comp_pos {
@@ -295,7 +295,7 @@ impl DataStore {
 
             (
                 cluster_cell.num_instances(),
-                ClusterData::UserData(cluster_cell.clone() /* shallow */),
+                ClusterData::UserData(cluster_cell),
             )
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
@@ -357,13 +357,13 @@ impl DataStore {
                         .or_insert_with(|| {
                             PersistentComponentTable::new(self.cluster_key, cell.datatype())
                         });
-                    table.push_cell(&cell)
+                    table.push_cell(cell)
                 } else {
                     let table = self
                         .components
                         .entry(self.cluster_key)
                         .or_insert_with(|| ComponentTable::new(self.cluster_key, cell.datatype()));
-                    table.push_cell(&self.config, time_point, &cell)
+                    table.push_cell(&self.config, time_point, cell)
                 };
 
                 Ok((row_idx, cluster_len))

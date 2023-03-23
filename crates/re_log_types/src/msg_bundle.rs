@@ -215,7 +215,7 @@ impl MsgBundle {
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let values = self.cells.iter().map(|cell| cell.as_arrow());
+        let values = self.cells.iter().map(|cell| cell.as_arrow_ref());
         let names = self.cells.iter().map(|cell| cell.component().as_str());
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
@@ -232,7 +232,7 @@ fn pack_components(cells: impl Iterator<Item = DataCell>) -> (Schema, StructArra
         .map(|cell| {
             // NOTE: wrap in a ListArray to emulate the presence of rows, this'll go away with
             // batching.
-            let data = wrap_in_listarray(cell.as_arrow()).to_boxed();
+            let data = cell.as_arrow_monolist();
             (
                 Field::new(cell.component().as_str(), data.data_type().clone(), false),
                 data,

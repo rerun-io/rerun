@@ -222,8 +222,8 @@ fn test_clean_for_polars_nomodify() {
 
     // Colors don't need polars cleaning
     let cell: DataCell = build_some_colors(5).try_into().unwrap();
-    let cleaned = cell.as_arrow().clean_for_polars();
-    assert_eq!(cell.as_arrow(), cleaned);
+    let cleaned = cell.as_arrow_ref().clean_for_polars();
+    assert_eq!(cell.as_arrow_ref(), &*cleaned);
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn test_clean_for_polars_modify() {
         ),
     );
 
-    let cleaned = cell.as_arrow().clean_for_polars();
+    let cleaned = cell.as_arrow_ref().clean_for_polars();
 
     assert_eq!(
         *cleaned.data_type(),
