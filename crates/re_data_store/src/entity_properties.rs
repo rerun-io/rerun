@@ -68,7 +68,7 @@ pub struct EntityProperties {
 
     /// How many depth units per world-space unit. e.g. 1000 for millimeters.
     ///
-    /// This corresponds to [`Tensor::meter`].
+    /// This corresponds to [`re_log_types::component_types::Tensor::meter`].
     pub backproject_depth_meter: EditableAutoValue<f32>,
 
     /// Used to scale the radii of the points in the resulting point cloud.
