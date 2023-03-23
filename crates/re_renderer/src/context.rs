@@ -262,18 +262,6 @@ impl RenderContext {
         // Map all read staging buffers.
         self.gpu_readback_belt.lock().after_queue_submit();
 
-        // TODO: We need a safety mechanism like this. But just draining here might discard brand new buffers that just came in.
-        //          Instead, brandmark buffers with a frame index and only drain those that are older than the current frame index.
-        // To err on the safe side, drain all unused mapped staging buffers.
-        // self.gpu_write_cpu_read_belt
-        //     .lock()
-        //     .receive_data(|_data, identifier| {
-        //         log::warn_once!(
-        //             "Discarding read buffer with identifier {:?} as it was unused.",
-        //             identifier
-        //         );
-        //     });
-
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
