@@ -174,6 +174,42 @@ pub enum TensorData {
     JPEG(BinaryBuffer),
 }
 
+impl TensorData {
+    pub fn dtype(&self) -> TensorDataType {
+        match self {
+            Self::U8(_) | Self::JPEG(_) => TensorDataType::U8,
+            Self::U16(_) => TensorDataType::U16,
+            Self::U32(_) => TensorDataType::U32,
+            Self::U64(_) => TensorDataType::U64,
+            Self::I8(_) => TensorDataType::I8,
+            Self::I16(_) => TensorDataType::I16,
+            Self::I32(_) => TensorDataType::I32,
+            Self::I64(_) => TensorDataType::I64,
+            Self::F32(_) => TensorDataType::F32,
+            Self::F64(_) => TensorDataType::F64,
+        }
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            Self::U8(buf) | Self::JPEG(buf) => buf.0.len(),
+            Self::U16(buf) => buf.len(),
+            Self::U32(buf) => buf.len(),
+            Self::U64(buf) => buf.len(),
+            Self::I8(buf) => buf.len(),
+            Self::I16(buf) => buf.len(),
+            Self::I32(buf) => buf.len(),
+            Self::I64(buf) => buf.len(),
+            Self::F32(buf) => buf.len(),
+            Self::F64(buf) => buf.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.size_in_bytes() == 0
+    }
+}
+
 /// Flattened `Tensor` data payload
 ///
 /// ## Examples
@@ -394,33 +430,11 @@ impl TensorTrait for Tensor {
     }
 
     fn dtype(&self) -> TensorDataType {
-        match &self.data {
-            TensorData::U8(_) | TensorData::JPEG(_) => TensorDataType::U8,
-            TensorData::U16(_) => TensorDataType::U16,
-            TensorData::U32(_) => TensorDataType::U32,
-            TensorData::U64(_) => TensorDataType::U64,
-            TensorData::I8(_) => TensorDataType::I8,
-            TensorData::I16(_) => TensorDataType::I16,
-            TensorData::I32(_) => TensorDataType::I32,
-            TensorData::I64(_) => TensorDataType::I64,
-            TensorData::F32(_) => TensorDataType::F32,
-            TensorData::F64(_) => TensorDataType::F64,
-        }
+        self.data.dtype()
     }
 
     fn size_in_bytes(&self) -> usize {
-        match &self.data {
-            TensorData::U8(buf) | TensorData::JPEG(buf) => buf.0.len(),
-            TensorData::U16(buf) => buf.len(),
-            TensorData::U32(buf) => buf.len(),
-            TensorData::U64(buf) => buf.len(),
-            TensorData::I8(buf) => buf.len(),
-            TensorData::I16(buf) => buf.len(),
-            TensorData::I32(buf) => buf.len(),
-            TensorData::I64(buf) => buf.len(),
-            TensorData::F32(buf) => buf.len(),
-            TensorData::F64(buf) => buf.len(),
-        }
+        self.data.size_in_bytes()
     }
 }
 
