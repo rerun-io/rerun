@@ -1,4 +1,4 @@
-use anyhow::{Context, Ok};
+use anyhow::Context;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -29,6 +29,15 @@ struct QueuedDraw {
     draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
     renderer_name: &'static str,
     participated_phases: &'static [DrawPhase],
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ViewBuilderError {
+    #[error("ViewBuilder::setup_view needs to be called first.")]
+    ViewNotSetup,
+
+    #[error("Screenshot was already scheduled.")]
+    ScreenshotAlreadyScheduled,
 }
 
 /// The highest level rendering block in `re_renderer`.
@@ -246,7 +255,7 @@ impl ViewBuilder {
         &mut self,
         ctx: &mut RenderContext,
         config: TargetConfiguration,
-    ) -> anyhow::Result<&mut Self> {
+    ) -> Result<&mut Self, ViewBuilderError> {
         crate::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
@@ -654,15 +663,12 @@ impl ViewBuilder {
     pub fn schedule_screenshot(
         &mut self,
         ctx: &RenderContext,
-    ) -> anyhow::Result<ScheduledScreenshot> {
+    ) -> Result<ScheduledScreenshot, ViewBuilderError> {
         if self.scheduled_screenshot.is_some() {
-            anyhow::bail!("A screenshot is already scheduled");
+            return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
         };
 
-        let setup = self
-            .setup
-            .as_ref()
-            .context("ViewBuilder::setup_view wasn't called yet")?;
+        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
 
         let row_info =
             texture_row_data_info(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
@@ -693,14 +699,10 @@ impl ViewBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ViewBuilderError> {
         crate::profile_function!();
 
-        let setup = self
-            .setup
-            .as_ref()
-            .context("ViewBuilder::setup_view wasn't called yet")?;
-
+        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
         pass.set_viewport(
             screen_position.x,
             screen_position.y,
