@@ -89,7 +89,7 @@ jobs:
           fail-on-alert: true
           comment-always: true
 
-          # Save, results and push to github only on and push GitHub pages branch automatically
+          # Save, results and push to GitHub only on and push GitHub pages branch automatically
           save-data-file: ${{ github.ref == 'refs/heads/main' }}
           auto-push: ${{ github.ref == 'refs/heads/main' }}
           gh-pages-branch: gh-pages
