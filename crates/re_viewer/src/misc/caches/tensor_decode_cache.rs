@@ -1,4 +1,6 @@
-use re_log_types::component_types::{Tensor, TensorDimension, TensorId, TensorTrait};
+use re_log_types::component_types::{
+    CompressedTensorData, Tensor, TensorDimension, TensorId, TensorTrait,
+};
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum TensorDecodeError {
@@ -51,7 +53,23 @@ impl DecodeCache {
     ) -> Result<Tensor, TensorDecodeError> {
         crate::profile_function!();
         match &maybe_encoded_tensor.data {
-            re_log_types::component_types::TensorData::JPEG(buf) => {
+            re_log_types::component_types::TensorData::Uncompressed(_) => {
+                // It wasn't encooded/compressed
+                Ok(maybe_encoded_tensor)
+            }
+            re_log_types::component_types::TensorData::Compressed(compressed) => {
+                self.try_decode_compressed_tensor(&maybe_encoded_tensor, compressed)
+            }
+        }
+    }
+
+    fn try_decode_compressed_tensor(
+        &mut self,
+        maybe_encoded_tensor: &Tensor,
+        data: &CompressedTensorData,
+    ) -> Result<Tensor, TensorDecodeError> {
+        match data {
+            CompressedTensorData::JPEG(buf) => {
                 let lookup = self
                     .images
                     .entry(maybe_encoded_tensor.id())
@@ -96,7 +114,6 @@ impl DecodeCache {
 
                 lookup.tensor.clone()
             }
-            _ => Ok(maybe_encoded_tensor),
         }
     }
 

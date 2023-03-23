@@ -4,7 +4,9 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning, TensorTrait},
+    component_types::{
+        self, ClassId, Tensor, TensorData, TensorDataMeaning, TensorTrait, UncompressedTensorData,
+    },
     MsgId,
 };
 use re_renderer::{
@@ -275,7 +277,11 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
     let size = [width as _, height as _];
 
     match (depth, &tensor.data, tensor.meaning) {
-        (1, TensorData::U8(buf), TensorDataMeaning::ClassId) => {
+        (
+            1,
+            TensorData::Uncompressed(UncompressedTensorData::U8(buf)),
+            TensorDataMeaning::ClassId,
+        ) => {
             // Apply annotation mapping to raw bytes interpreted as u8
             let color_lookup: Vec<Color32> = (0..256)
                 .map(|id| {
@@ -293,7 +299,11 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
             crate::profile_scope!("from_raw");
             Ok(ColorImage { size, pixels })
         }
-        (1, TensorData::U16(buf), TensorDataMeaning::ClassId) => {
+        (
+            1,
+            TensorData::Uncompressed(UncompressedTensorData::U16(buf)),
+            TensorDataMeaning::ClassId,
+        ) => {
             // Apply annotations mapping to bytes interpreted as u16
             let mut color_lookup: ahash::HashMap<u16, Color32> = Default::default();
             let pixels = buf
@@ -310,7 +320,7 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
             crate::profile_scope!("from_raw");
             Ok(ColorImage { size, pixels })
         }
-        (1, TensorData::U8(buf), _) => {
+        (1, TensorData::Uncompressed(UncompressedTensorData::U8(buf)), _) => {
             // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
             let pixels = buf
                 .0
@@ -319,7 +329,7 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
                 .collect();
             Ok(ColorImage { size, pixels })
         }
-        (1, TensorData::U16(buf), _) => {
+        (1, TensorData::Uncompressed(UncompressedTensorData::U16(buf)), _) => {
             // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
             let pixels = buf
                 .iter()
@@ -328,7 +338,11 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
 
             Ok(ColorImage { size, pixels })
         }
-        (1, TensorData::F32(buf), TensorDataMeaning::Depth) => {
+        (
+            1,
+            TensorData::Uncompressed(UncompressedTensorData::F32(buf)),
+            TensorDataMeaning::Depth,
+        ) => {
             if buf.is_empty() {
                 Ok(ColorImage::default())
             } else {
@@ -371,7 +385,7 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
                 Ok(ColorImage { size, pixels })
             }
         }
-        (1, TensorData::F32(buf), _) => {
+        (1, TensorData::Uncompressed(UncompressedTensorData::F32(buf)), _) => {
             let pixels = buf
                 .iter()
                 .map(|pixel| Color32::from_gray(linear_u8_from_linear_f32(*pixel)))
@@ -379,13 +393,15 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
 
             Ok(ColorImage { size, pixels })
         }
-        (3, TensorData::U8(buf), _) => Ok(ColorImage::from_rgb(size, buf.0.as_slice())),
-        (3, TensorData::U16(buf), _) => {
+        (3, TensorData::Uncompressed(UncompressedTensorData::U8(buf)), _) => {
+            Ok(ColorImage::from_rgb(size, buf.0.as_slice()))
+        }
+        (3, TensorData::Uncompressed(UncompressedTensorData::U16(buf)), _) => {
             let u8_buf: Vec<u8> = buf.iter().map(|pixel| (*pixel / 256) as u8).collect();
 
             Ok(ColorImage::from_rgb(size, &u8_buf))
         }
-        (3, TensorData::F32(buf), _) => {
+        (3, TensorData::Uncompressed(UncompressedTensorData::F32(buf)), _) => {
             let rgb: &[[f32; 3]] = bytemuck::cast_slice(buf.as_slice());
             let pixels: Vec<Color32> = rgb
                 .iter()
@@ -400,15 +416,15 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
             Ok(ColorImage { size, pixels })
         }
 
-        (4, TensorData::U8(buf), _) => {
+        (4, TensorData::Uncompressed(UncompressedTensorData::U8(buf)), _) => {
             Ok(ColorImage::from_rgba_unmultiplied(size, buf.0.as_slice()))
         }
-        (4, TensorData::U16(buf), _) => {
+        (4, TensorData::Uncompressed(UncompressedTensorData::U16(buf)), _) => {
             let u8_buf: Vec<u8> = buf.iter().map(|pixel| (*pixel / 256) as u8).collect();
 
             Ok(ColorImage::from_rgba_unmultiplied(size, &u8_buf))
         }
-        (4, TensorData::F32(buf), _) => {
+        (4, TensorData::Uncompressed(UncompressedTensorData::F32(buf)), _) => {
             let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
             let pixels: Vec<Color32> = rgba
                 .iter()
@@ -423,8 +439,10 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
 
             Ok(ColorImage { size, pixels })
         }
-        (_, TensorData::JPEG(_), _) => {
-            anyhow::bail!("JPEG tensor should have been decoded before using TensorImageCache")
+        (_, TensorData::Compressed(_), _) => {
+            anyhow::bail!(
+                "Compressed tensors should have been decoded before using TensorImageCache"
+            )
         }
 
         (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {

@@ -4,7 +4,7 @@ use egui::util::hash;
 
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::component_types::{self, InstanceKey};
+use re_log_types::component_types::{self, InstanceKey, UncompressedTensorData};
 
 use crate::{misc::ViewerContext, ui::annotations::auto_color};
 
@@ -57,43 +57,45 @@ pub(crate) fn view_bar_chart(
 
             for ((ent_path, instance_key), tensor) in &scene.charts {
                 let chart = match &tensor.data {
-                    component_types::TensorData::U8(data) => {
-                        create_bar_chart(ent_path, instance_key, data.0.iter().copied())
-                    }
-                    component_types::TensorData::U16(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::U32(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::U64(data) => create_bar_chart(
-                        ent_path,
-                        instance_key,
-                        data.iter().copied().map(|v| v as f64),
-                    ),
-                    component_types::TensorData::I8(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::I16(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::I32(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::I64(data) => create_bar_chart(
-                        ent_path,
-                        instance_key,
-                        data.iter().copied().map(|v| v as f64),
-                    ),
-                    component_types::TensorData::F32(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::F64(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
-                    }
-                    component_types::TensorData::JPEG(_) => {
+                    component_types::TensorData::Uncompressed(data) => match data {
+                        UncompressedTensorData::U8(data) => {
+                            create_bar_chart(ent_path, instance_key, data.0.iter().copied())
+                        }
+                        UncompressedTensorData::U16(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                        UncompressedTensorData::U32(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                        UncompressedTensorData::U64(data) => create_bar_chart(
+                            ent_path,
+                            instance_key,
+                            data.iter().copied().map(|v| v as f64),
+                        ),
+                        UncompressedTensorData::I8(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                        UncompressedTensorData::I16(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                        UncompressedTensorData::I32(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                        UncompressedTensorData::I64(data) => create_bar_chart(
+                            ent_path,
+                            instance_key,
+                            data.iter().copied().map(|v| v as f64),
+                        ),
+                        UncompressedTensorData::F32(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                        UncompressedTensorData::F64(data) => {
+                            create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        }
+                    },
+                    component_types::TensorData::Compressed(_) => {
                         warn_once!(
-                            "trying to display JPEG data as a bar chart ({:?})",
+                            "Cannot display compressed tensor data as a bar chart ({:?})",
                             ent_path
                         );
                         continue;

@@ -1,5 +1,6 @@
 use re_log_types::component_types::{
-    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
+    Tensor, TensorCastError, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
+    UncompressedTensorData,
 };
 
 #[test]
@@ -11,7 +12,7 @@ fn convert_tensor_to_ndarray_u8() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U8(vec![0; 60].into()),
+        UncompressedTensorData::U8(vec![0; 60].into()).into(),
         TensorDataMeaning::Unknown,
         None,
     );
@@ -30,7 +31,7 @@ fn convert_tensor_to_ndarray_u16() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U16(vec![0_u16; 60].into()),
+        UncompressedTensorData::U16(vec![0_u16; 60].into()).into(),
         TensorDataMeaning::Unknown,
         None,
     );
@@ -49,7 +50,7 @@ fn convert_tensor_to_ndarray_f32() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::F32(vec![0_f32; 60].into()),
+        UncompressedTensorData::F32(vec![0_f32; 60].into()).into(),
         TensorDataMeaning::Unknown,
         None,
     );
@@ -88,7 +89,7 @@ fn check_slices() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U16((0_u16..60).collect::<Vec<u16>>().into()),
+        UncompressedTensorData::U16((0_u16..60).collect::<Vec<u16>>().into()).into(),
         TensorDataMeaning::Unknown,
         None,
     );
@@ -130,7 +131,7 @@ fn check_tensor_shape_error() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U8(vec![0; 59].into()),
+        UncompressedTensorData::U8(vec![0; 59].into()).into(),
         TensorDataMeaning::Unknown,
         None,
     );
@@ -154,7 +155,7 @@ fn check_tensor_type_error() {
             TensorDimension::unnamed(4),
             TensorDimension::unnamed(5),
         ],
-        TensorData::U16(vec![0; 60].into()),
+        UncompressedTensorData::U16(vec![0; 60].into()).into(),
         TensorDataMeaning::Unknown,
         None,
     );

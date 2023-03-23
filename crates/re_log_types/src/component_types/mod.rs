@@ -63,7 +63,8 @@ pub use size::Size3D;
 #[cfg(feature = "image")]
 pub use tensor::TensorImageError;
 pub use tensor::{
-    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
+    CompressedTensorData, Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension,
+    TensorId, TensorTrait, UncompressedTensorData,
 };
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};

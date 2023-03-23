@@ -840,7 +840,8 @@ fn log_image_file(
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
+            data: re_log_types::component_types::CompressedTensorData::JPEG(img_bytes.into())
+                .into(),
             meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
             meter: None,
         }]

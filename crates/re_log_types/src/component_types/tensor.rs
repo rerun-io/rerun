@@ -89,7 +89,7 @@ impl ArrowDeserialize for TensorId {
 
 // ----------------------------------------------------------------------------
 
-/// Flattened `Tensor` data payload
+/// Flattened [`Tensor`] data payload, uncompressed.
 ///
 /// ## Examples
 ///
@@ -156,7 +156,7 @@ impl ArrowDeserialize for TensorId {
 /// ```
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
-pub enum TensorData {
+pub enum UncompressedTensorData {
     U8(BinaryBuffer),
     U16(Buffer<u16>),
     U32(Buffer<u32>),
@@ -171,7 +171,96 @@ pub enum TensorData {
     //F16(Vec<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
+}
+
+impl UncompressedTensorData {
+    pub fn dtype(&self) -> TensorDataType {
+        match self {
+            Self::U8(_) => TensorDataType::U8,
+            Self::U16(_) => TensorDataType::U16,
+            Self::U32(_) => TensorDataType::U32,
+            Self::U64(_) => TensorDataType::U64,
+            Self::I8(_) => TensorDataType::I8,
+            Self::I16(_) => TensorDataType::I16,
+            Self::I32(_) => TensorDataType::I32,
+            Self::I64(_) => TensorDataType::I64,
+            Self::F32(_) => TensorDataType::F32,
+            Self::F64(_) => TensorDataType::F64,
+        }
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        // len() is number of bytes, which is surprising. See https://github.com/jorgecarleitao/arrow2/issues/1430
+        match self {
+            Self::U8(buf) => buf.0.len(),
+            Self::U16(buf) => buf.len(),
+            Self::U32(buf) => buf.len(),
+            Self::U64(buf) => buf.len(),
+            Self::I8(buf) => buf.len(),
+            Self::I16(buf) => buf.len(),
+            Self::I32(buf) => buf.len(),
+            Self::I64(buf) => buf.len(),
+            Self::F32(buf) => buf.len(),
+            Self::F64(buf) => buf.len(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[arrow_field(type = "dense")]
+pub enum CompressedTensorData {
     JPEG(BinaryBuffer),
+}
+
+impl CompressedTensorData {
+    pub fn dtype(&self) -> TensorDataType {
+        match self {
+            Self::JPEG(_) => TensorDataType::U8,
+        }
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            Self::JPEG(bytes) => bytes.0.len(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[arrow_field(type = "dense")]
+pub enum TensorData {
+    Uncompressed(UncompressedTensorData),
+    Compressed(CompressedTensorData),
+}
+
+impl TensorData {
+    pub fn dtype(&self) -> TensorDataType {
+        match self {
+            TensorData::Uncompressed(data) => data.dtype(),
+            TensorData::Compressed(data) => data.dtype(),
+        }
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            TensorData::Uncompressed(data) => data.size_in_bytes(),
+            TensorData::Compressed(data) => data.size_in_bytes(),
+        }
+    }
+}
+
+impl From<UncompressedTensorData> for TensorData {
+    #[inline]
+    fn from(data: UncompressedTensorData) -> Self {
+        Self::Uncompressed(data)
+    }
+}
+
+impl From<CompressedTensorData> for TensorData {
+    #[inline]
+    fn from(data: CompressedTensorData) -> Self {
+        Self::Compressed(data)
+    }
 }
 
 /// Flattened `Tensor` data payload
@@ -379,48 +468,30 @@ impl TensorTrait for Tensor {
         }
 
         match &self.data {
-            TensorData::U8(buf) => Some(TensorElement::U8(buf[offset])),
-            TensorData::U16(buf) => Some(TensorElement::U16(buf[offset])),
-            TensorData::U32(buf) => Some(TensorElement::U32(buf[offset])),
-            TensorData::U64(buf) => Some(TensorElement::U64(buf[offset])),
-            TensorData::I8(buf) => Some(TensorElement::I8(buf[offset])),
-            TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
-            TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
-            TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
-            TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
-            TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
-            TensorData::JPEG(_) => None, // Too expensive to unpack here.
+            TensorData::Uncompressed(data) => match data {
+                UncompressedTensorData::U8(buf) => Some(TensorElement::U8(buf[offset])),
+                UncompressedTensorData::U16(buf) => Some(TensorElement::U16(buf[offset])),
+                UncompressedTensorData::U32(buf) => Some(TensorElement::U32(buf[offset])),
+                UncompressedTensorData::U64(buf) => Some(TensorElement::U64(buf[offset])),
+                UncompressedTensorData::I8(buf) => Some(TensorElement::I8(buf[offset])),
+                UncompressedTensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
+                UncompressedTensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
+                UncompressedTensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+                UncompressedTensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
+                UncompressedTensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
+            },
+            TensorData::Compressed(_) => None, // Too expensive to unpack here.
         }
     }
 
+    #[inline]
     fn dtype(&self) -> TensorDataType {
-        match &self.data {
-            TensorData::U8(_) | TensorData::JPEG(_) => TensorDataType::U8,
-            TensorData::U16(_) => TensorDataType::U16,
-            TensorData::U32(_) => TensorDataType::U32,
-            TensorData::U64(_) => TensorDataType::U64,
-            TensorData::I8(_) => TensorDataType::I8,
-            TensorData::I16(_) => TensorDataType::I16,
-            TensorData::I32(_) => TensorDataType::I32,
-            TensorData::I64(_) => TensorDataType::I64,
-            TensorData::F32(_) => TensorDataType::F32,
-            TensorData::F64(_) => TensorDataType::F64,
-        }
+        self.data.dtype()
     }
 
+    #[inline]
     fn size_in_bytes(&self) -> usize {
-        match &self.data {
-            TensorData::U8(buf) | TensorData::JPEG(buf) => buf.0.len(),
-            TensorData::U16(buf) => buf.len(),
-            TensorData::U32(buf) => buf.len(),
-            TensorData::U64(buf) => buf.len(),
-            TensorData::I8(buf) => buf.len(),
-            TensorData::I16(buf) => buf.len(),
-            TensorData::I32(buf) => buf.len(),
-            TensorData::I64(buf) => buf.len(),
-            TensorData::F32(buf) => buf.len(),
-            TensorData::F64(buf) => buf.len(),
-        }
+        self.data.size_in_bytes()
     }
 }
 
@@ -459,7 +530,9 @@ macro_rules! tensor_type {
             fn try_from(value: &'a Tensor) -> Result<Self, Self::Error> {
                 let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
 
-                if let TensorData::$variant(data) = &value.data {
+                if let TensorData::Uncompressed(UncompressedTensorData::$variant(data)) =
+                    &value.data
+                {
                     ndarray::ArrayViewD::from_shape(shape, data.as_slice())
                         .map_err(|err| TensorCastError::BadTensorShape { source: err })
                 } else {
@@ -485,14 +558,18 @@ macro_rules! tensor_type {
                     Some(slice) => Ok(Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(Vec::from(slice).into()),
+                        data: TensorData::Uncompressed(UncompressedTensorData::$variant(
+                            Vec::from(slice).into(),
+                        )),
                         meaning: TensorDataMeaning::Unknown,
                         meter: None,
                     }),
                     None => Ok(Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(view.iter().cloned().collect::<Vec<_>>().into()),
+                        data: TensorData::Uncompressed(UncompressedTensorData::$variant(
+                            view.iter().cloned().collect::<Vec<_>>().into(),
+                        )),
                         meaning: TensorDataMeaning::Unknown,
                         meter: None,
                     }),
@@ -517,7 +594,9 @@ macro_rules! tensor_type {
                     .then(|| Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(value.into_raw_vec().into()),
+                        data: TensorData::Uncompressed(UncompressedTensorData::$variant(
+                            value.into_raw_vec().into(),
+                        )),
                         meaning: TensorDataMeaning::Unknown,
                         meter: None,
                     })
@@ -619,7 +698,7 @@ impl Tensor {
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            data: TensorData::JPEG(jpeg_bytes.into()),
+            data: TensorData::Compressed(CompressedTensorData::JPEG(jpeg_bytes.into())),
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         })
@@ -639,21 +718,29 @@ impl Tensor {
         let (w, h) = (image.width(), image.height());
 
         let (depth, data) = match image {
-            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw().into())),
-            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw().into())),
-            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw().into())),
-            image::DynamicImage::ImageLuma16(image) => {
-                (1, TensorData::U16(image.into_raw().into()))
+            image::DynamicImage::ImageLuma8(image) => {
+                (1, UncompressedTensorData::U8(image.into_raw().into()))
             }
-            image::DynamicImage::ImageRgb16(image) => (3, TensorData::U16(image.into_raw().into())),
+            image::DynamicImage::ImageRgb8(image) => {
+                (3, UncompressedTensorData::U8(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgba8(image) => {
+                (4, UncompressedTensorData::U8(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageLuma16(image) => {
+                (1, UncompressedTensorData::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb16(image) => {
+                (3, UncompressedTensorData::U16(image.into_raw().into()))
+            }
             image::DynamicImage::ImageRgba16(image) => {
-                (4, TensorData::U16(image.into_raw().into()))
+                (4, UncompressedTensorData::U16(image.into_raw().into()))
             }
             image::DynamicImage::ImageRgb32F(image) => {
-                (3, TensorData::F32(image.into_raw().into()))
+                (3, UncompressedTensorData::F32(image.into_raw().into()))
             }
             image::DynamicImage::ImageRgba32F(image) => {
-                (4, TensorData::F32(image.into_raw().into()))
+                (4, UncompressedTensorData::F32(image.into_raw().into()))
             }
             image::DynamicImage::ImageLumaA8(image) => {
                 re_log::warn!(
@@ -680,7 +767,7 @@ impl Tensor {
                 TensorDimension::width(w as _),
                 TensorDimension::depth(depth),
             ],
-            data,
+            data: TensorData::Uncompressed(data),
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         })
@@ -704,7 +791,7 @@ fn test_ndarray() {
                 name: None,
             },
         ],
-        data: TensorData::U16(vec![1, 2, 3, 4].into()),
+        data: UncompressedTensorData::U16(vec![1, 2, 3, 4].into()).into(),
         meaning: TensorDataMeaning::Unknown,
         meter: None,
     };
@@ -727,7 +814,7 @@ fn test_arrow() {
                 size: 4,
                 name: None,
             }],
-            data: TensorData::U16(vec![1, 2, 3, 4].into()),
+            data: UncompressedTensorData::U16(vec![1, 2, 3, 4].into()).into(),
             meaning: TensorDataMeaning::Unknown,
             meter: Some(1000.0),
         },
@@ -737,7 +824,7 @@ fn test_arrow() {
                 size: 2,
                 name: None,
             }],
-            data: TensorData::F32(vec![1.23, 2.45].into()),
+            data: UncompressedTensorData::F32(vec![1.23, 2.45].into()).into(),
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         },
@@ -761,7 +848,7 @@ fn test_concat_and_slice() {
             size: 4,
             name: None,
         }],
-        data: TensorData::JPEG(vec![1, 2, 3, 4].into()),
+        data: CompressedTensorData::JPEG(vec![1, 2, 3, 4].into()).into(),
         meaning: TensorDataMeaning::Unknown,
         meter: Some(1000.0),
     }];
@@ -772,7 +859,7 @@ fn test_concat_and_slice() {
             size: 4,
             name: None,
         }],
-        data: TensorData::JPEG(vec![5, 6, 7, 8].into()),
+        data: CompressedTensorData::JPEG(vec![5, 6, 7, 8].into()).into(),
         meaning: TensorDataMeaning::Unknown,
         meter: None,
     }];

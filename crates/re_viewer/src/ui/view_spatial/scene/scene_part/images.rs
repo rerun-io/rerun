@@ -6,7 +6,10 @@ use itertools::Itertools;
 
 use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, TensorTrait},
+    component_types::{
+        ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, TensorTrait,
+        UncompressedTensorData,
+    },
     msg_bundle::Component,
     Transform,
 };
@@ -288,9 +291,26 @@ impl ImagesPart {
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
         let data = match &tensor.data {
             // NOTE: Shallow clone if feature `arrow` is enabled, full alloc + memcpy otherwise.
-            TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
-            TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
+            TensorData::Uncompressed(UncompressedTensorData::U16(data)) => {
+                DepthCloudDepthData::U16(data.clone())
+            }
+            TensorData::Uncompressed(UncompressedTensorData::F32(data)) => {
+                DepthCloudDepthData::F32(data.clone())
+            }
             _ => {
+                match &tensor.data {
+                    TensorData::Uncompressed(data) => {
+                        re_log::warn_once!(
+                            "Tensor datatype {} is not supported for backprojection",
+                            data.dtype()
+                        );
+                    }
+                    TensorData::Compressed(_) => {
+                        re_log::warn_once!(
+                            "Compressed tensors are not supported for backprojection"
+                        );
+                    }
+                }
                 let discriminant = std::mem::discriminant(&tensor.data);
                 re_log::warn_once!(
                     "Tensor datatype is not supported for backprojection ({discriminant:?})"

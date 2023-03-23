@@ -4,7 +4,10 @@ use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
+use re_log_types::{
+    component_types::{Tensor, TensorDataMeaning},
+    TensorDataType,
+};
 use re_renderer::renderer::OutlineConfig;
 
 use crate::{
@@ -229,14 +232,21 @@ impl ViewSpatialState {
 
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.backproject_scale.is_auto() {
+                // TODO(emilk): rewrite this asap and make `backproject_scale` correspond to `meter` directly. See https://github.com/rerun-io/rerun/issues/1587
                 let auto = tensor.meter.map_or_else(
-                    || match &tensor.data {
-                        TensorData::U16(_) => 1.0 / u16::MAX as f32,
-                        _ => 1.0,
+                    || {
+                        if tensor.data.dtype() == TensorDataType::U16 {
+                            1000.0
+                        } else {
+                            1.0
+                        }
                     },
-                    |meter| match &tensor.data {
-                        TensorData::U16(_) => 1.0 / meter * u16::MAX as f32,
-                        _ => meter,
+                    |meter| {
+                        if tensor.data.dtype() == TensorDataType::U16 {
+                            1.0 / meter * u16::MAX as f32
+                        } else {
+                            meter
+                        }
                     },
                 );
                 properties.backproject_scale = EditableAutoValue::Auto(auto);

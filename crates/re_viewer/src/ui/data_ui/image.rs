@@ -171,24 +171,19 @@ pub fn tensor_summary_ui_grid_contents(
     }
 
     match data {
-        re_log_types::component_types::TensorData::U8(_)
-        | re_log_types::component_types::TensorData::U16(_)
-        | re_log_types::component_types::TensorData::U32(_)
-        | re_log_types::component_types::TensorData::U64(_)
-        | re_log_types::component_types::TensorData::I8(_)
-        | re_log_types::component_types::TensorData::I16(_)
-        | re_log_types::component_types::TensorData::I32(_)
-        | re_log_types::component_types::TensorData::I64(_)
-        | re_log_types::component_types::TensorData::F32(_)
-        | re_log_types::component_types::TensorData::F64(_) => {}
-        re_log_types::component_types::TensorData::JPEG(jpeg_bytes) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
-            ui.label(format!(
-                "{} JPEG",
-                re_format::format_bytes(jpeg_bytes.num_bytes() as _),
-            ));
-            ui.end_row();
+        re_log_types::component_types::TensorData::Uncompressed(_) => {
+            // un-encoded
         }
+        re_log_types::component_types::TensorData::Compressed(data) => match data {
+            re_log_types::component_types::CompressedTensorData::JPEG(jpeg_bytes) => {
+                re_ui.grid_left_hand_label(ui, "Encoding");
+                ui.label(format!(
+                    "{} JPEG",
+                    re_format::format_bytes(jpeg_bytes.num_bytes() as _),
+                ));
+                ui.end_row();
+            }
+        },
     }
 
     if let Some(TensorStats {
@@ -553,25 +548,7 @@ fn image_options(
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
         match &tensor.data {
-            TensorData::JPEG(bytes) => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.jpg")
-                    .save_file()
-                {
-                    match write_binary(&path, bytes.as_slice()) {
-                        Ok(()) => {
-                            re_log::info!("Image saved to {path:?}");
-                        }
-                        Err(err) => {
-                            re_log::error!(
-                                "Failed saving image to {path:?}: {}",
-                                re_error::format(&err)
-                            );
-                        }
-                    }
-                }
-            }
-            _ => {
+            TensorData::Uncompressed(_) => {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("image.png")
                     .save_file()
@@ -587,6 +564,26 @@ fn image_options(
                     }
                 }
             }
+            TensorData::Compressed(data) => match data {
+                re_log_types::component_types::CompressedTensorData::JPEG(bytes) => {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_file_name("image.jpg")
+                        .save_file()
+                    {
+                        match write_binary(&path, bytes.as_slice()) {
+                            Ok(()) => {
+                                re_log::info!("Image saved to {path:?}");
+                            }
+                            Err(err) => {
+                                re_log::error!(
+                                    "Failed saving image to {path:?}: {}",
+                                    re_error::format(&err)
+                                );
+                            }
+                        }
+                    }
+                }
+            },
         }
     }
 }
