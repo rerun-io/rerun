@@ -106,6 +106,6 @@ fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -
     let distance_to_surface_in_pixels = distance_to_sphere_surface / pixel_world_size;
 
     // At the surface we have 50% coverage, and it decreases with distance.
-    // Not that we have signed distances to the sphere surface.
+    // Note that we have signed distances to the sphere surface.
     return saturate(0.5 - distance_to_surface_in_pixels);
 }
