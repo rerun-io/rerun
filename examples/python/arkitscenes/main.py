@@ -204,13 +204,13 @@ def log_arkit(recording_path: Path) -> None:
     print(f"Loading {ply_path}…")
     assert os.path.isfile(ply_path), f"Failed to find {ply_path}"
 
-    # TODO(pablovela5620): for now just use the untextered/uncolored mesh until #1580 is resolved
     mesh_ply = trimesh.load(str(ply_path))
     rr.log_mesh(
         "world/mesh",
         positions=mesh_ply.vertices,
         indices=mesh_ply.faces,
-        timeless=True
+        vertex_colors=mesh_ply.visual.vertex_colors,
+        timeless=True,
     )
 
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
