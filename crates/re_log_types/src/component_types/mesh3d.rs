@@ -9,7 +9,7 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 use crate::msg_bundle::Component;
 
 use super::arrow_convert_shims::BinaryBuffer;
-use super::{ColorRGBA, FieldError, Vec4D};
+use super::{FieldError, Vec4D};
 
 // ----------------------------------------------------------------------------
 
@@ -144,12 +144,13 @@ pub struct RawMesh3D {
     ///
     /// The length of this vector should always be divisible by three (since this is a 3D mesh).
     ///
-    /// If no indices are specified, then each triplet of vertex positions are intrpreted as a triangle
+    /// If no indices are specified, then each triplet of vertex positions are interpreted as a triangle
     /// and the length of this must be divisible by 9.
     pub vertex_positions: Buffer<f32>,
 
     /// Per-vertex albedo colors.
-    pub vertex_colors: Option<Vec<ColorRGBA>>,
+    /// This is actually an encoded [`super::ColorRGBA`]
+    pub vertex_colors: Option<Buffer<u32>>,
 
     /// Optionally, the flattened normals array for this mesh.
     ///
@@ -434,11 +435,7 @@ mod tests {
         let mesh = RawMesh3D {
             mesh_id: MeshId::random(),
             vertex_positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0].into(),
-            vertex_colors: Some(vec![
-                ColorRGBA(0xff0000ff),
-                ColorRGBA(0x00ff00ff),
-                ColorRGBA(0x0000ffff),
-            ]),
+            vertex_colors: Some(vec![0xff0000ff, 0x00ff00ff, 0x0000ffff].into()),
             indices: Some(vec![0, 1, 2].into()),
             vertex_normals: Some(
                 vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),

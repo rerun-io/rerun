@@ -42,7 +42,7 @@ impl From<GltfPrimitive> for Mesh3D {
             indices: indices.map(|i| i.into()),
             vertex_positions: vertex_positions.into_iter().flatten().collect(),
             vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),
-            vertex_colors,
+            vertex_colors: vertex_colors.map(|colors| colors.into_iter().map(|c| c.0).collect()),
         };
 
         raw.sanity_check().unwrap();

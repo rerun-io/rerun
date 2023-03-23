@@ -634,13 +634,13 @@ fn log_meshes(
                 [_, 3] => Some(
                     slice_from_np_array(&vertex_colors)
                         .chunks_exact(3)
-                        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]))
+                        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]).0)
                         .collect(),
                 ),
                 [_, 4] => Some(
                     slice_from_np_array(&vertex_colors)
                         .chunks_exact(4)
-                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]))
+                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).0)
                         .collect(),
                 ),
                 shape => {
