@@ -47,11 +47,6 @@ pub struct EntityProperties {
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
 
-    /// Enable color mapping?
-    ///
-    /// See [`Self::color_mapper`] to select an actual mapping.
-    pub color_mapping: bool,
-
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>,
 
@@ -87,7 +82,6 @@ impl EntityProperties {
             visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
 
-            color_mapping: self.color_mapping || child.color_mapping,
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
 
             pinhole_image_plane_distance: self
@@ -116,7 +110,6 @@ impl Default for EntityProperties {
             visible: true,
             visible_history: ExtraQueryHistory::default(),
             interactive: true,
-            color_mapping: false,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: false,
@@ -152,10 +145,11 @@ impl ExtraQueryHistory {
     }
 } // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ColorMap {
     Grayscale,
+    #[default]
     Turbo,
     Viridis,
     Plasma,
@@ -194,8 +188,9 @@ impl std::fmt::Display for ColorMapper {
 }
 
 impl Default for ColorMapper {
+    #[inline]
     fn default() -> Self {
-        Self::ColorMap(ColorMap::Grayscale)
+        Self::ColorMap(ColorMap::default())
     }
 }
 

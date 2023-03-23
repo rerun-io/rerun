@@ -18,20 +18,33 @@ use arrow2_convert::{
 pub struct BinaryBuffer(pub Buffer<u8>);
 
 impl BinaryBuffer {
+    #[inline]
+    pub fn num_bytes(&self) -> usize {
+        self.0.len()
+    }
+
+    #[inline]
     pub fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &u8> {
+        self.0.iter()
     }
 }
 
 impl Index<usize> for BinaryBuffer {
     type Output = u8;
 
+    #[inline]
     fn index(&self, i: usize) -> &u8 {
         &self.0[i]
     }
 }
 
 impl From<Vec<u8>> for BinaryBuffer {
+    #[inline]
     fn from(v: Vec<u8>) -> Self {
         Self(v.into())
     }

@@ -1012,11 +1012,16 @@ impl AppState {
     }
 }
 
-fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
     // We have not yet optimized the UI experience for mobile. Show a warning banner
     // with a link to the tracking issue.
-    if ui.ctx().os() == egui::os::OperatingSystem::IOS
-        || ui.ctx().os() == egui::os::OperatingSystem::Android
+
+    // Although this banner is applicable to IOS / Android generically without limit to web
+    // There is a small issue in egui where Windows native currently reports as android.
+    // TODO(jleibs): Remove the is_web gate once https://github.com/emilk/egui/pull/2832 has landed.
+    if frame.is_web()
+        && (ui.ctx().os() == egui::os::OperatingSystem::IOS
+            || ui.ctx().os() == egui::os::OperatingSystem::Android)
     {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -1166,7 +1171,7 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
         version,
         rustc_version,
         llvm_version,
-        git_hash: _,
+        git_hash,
         git_branch: _,
         is_in_rerun_workspace: _,
         target_triple,
@@ -1187,8 +1192,10 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
         llvm_version
     };
 
+    let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
+
     ui.label(format!(
-        "{crate_name} {version}\n\
+        "{crate_name} {version} ({short_git_hash})\n\
         {target_triple}\n\
         rustc {rustc_version}\n\
         LLVM {llvm_version}\n\

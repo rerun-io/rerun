@@ -4,6 +4,7 @@
 const MAX_NUM: u8 = 31;
 
 const IS_ALPHA_BIT: u8 = 1 << 7;
+const IS_PRERELEASE_BIT: u8 = 1 << 6;
 
 /// The version of a Rerun crate.
 ///
@@ -27,6 +28,7 @@ pub struct CrateVersion {
     minor: u8,
     patch: u8,
     alpha: Option<u8>,
+    prerelease: bool,
 }
 
 impl CrateVersion {
@@ -40,12 +42,19 @@ impl CrateVersion {
             minor,
             patch,
             alpha: None,
+            prerelease: false,
         }
+    }
+
+    /// Whether or not this build is a prerelease (a version ending with +commit suffix)
+    pub fn is_prerelease(&self) -> bool {
+        self.prerelease
     }
 
     /// From a compact 32-bit representation crated with [`Self::to_bytes`].
     pub fn from_bytes([major, minor, patch, suffix_byte]: [u8; 4]) -> Self {
         let is_alpha = (suffix_byte & IS_ALPHA_BIT) != 0;
+        let is_prerelease = (suffix_byte & IS_PRERELEASE_BIT) != 0;
         let alpha_version = suffix_byte & 0b0111_1111;
 
         Self {
@@ -53,6 +62,7 @@ impl CrateVersion {
             minor,
             patch,
             alpha: is_alpha.then_some(alpha_version),
+            prerelease: is_prerelease,
         }
     }
 
@@ -63,13 +73,16 @@ impl CrateVersion {
             minor,
             patch,
             alpha,
+            prerelease,
         } = self;
 
-        let suffix_byte = if let Some(alpha) = alpha {
+        let mut suffix_byte = if let Some(alpha) = alpha {
             IS_ALPHA_BIT | alpha
         } else {
             0
         };
+
+        suffix_byte |= if prerelease { IS_PRERELEASE_BIT } else { 0 };
 
         [major, minor, patch, suffix_byte]
     }
@@ -167,9 +180,12 @@ impl CrateVersion {
             None
         };
 
-        if i < s.len() {
-            // We ignore `+metadata` suffixes.
+        // If there are additional characters past alpha, it must be a prerelease
+        let prerelease = if i < s.len() {
             assert!(s[i] == b'+', "Unexpected suffix");
+            true
+        } else {
+            false
         };
 
         Self {
@@ -177,6 +193,7 @@ impl CrateVersion {
             minor,
             patch,
             alpha,
+            prerelease,
         }
     }
 }
@@ -188,11 +205,15 @@ impl std::fmt::Display for CrateVersion {
             minor,
             patch,
             alpha,
+            prerelease,
         } = *self;
 
         write!(f, "{major}.{minor}.{patch}")?;
         if let Some(alpha) = alpha {
             write!(f, "-alpha.{alpha}")?;
+        }
+        if prerelease {
+            write!(f, "+")?;
         }
         Ok(())
     }
@@ -211,6 +232,7 @@ fn test_parse_version() {
             minor: 23,
             patch: 24,
             alpha: Some(31),
+            prerelease: false
         }
     );
     assert_eq!(
@@ -220,6 +242,7 @@ fn test_parse_version() {
             minor: 23,
             patch: 24,
             alpha: None,
+            prerelease: true
         }
     );
     assert_eq!(
@@ -229,6 +252,7 @@ fn test_parse_version() {
             minor: 23,
             patch: 24,
             alpha: Some(31),
+            prerelease: true
         }
     );
 }

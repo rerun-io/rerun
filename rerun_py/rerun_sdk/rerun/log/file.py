@@ -52,7 +52,7 @@ def log_mesh_file(
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
-    `transform` is an optional 3x4 affine transform matrix applied to the mesh.
+    You can also use [`rerun.log_mesh`] to log raw mesh data.
 
     Example:
     -------

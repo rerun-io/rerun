@@ -12,7 +12,10 @@ use re_renderer::{
     RenderContext,
 };
 
-use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
+use crate::{
+    misc::caches::TensorStats,
+    ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS},
+};
 
 // ---
 
@@ -239,13 +242,15 @@ impl CachedImage {
 }
 
 fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::Result<ColorImage> {
-    use anyhow::Context as _;
+    match tensor.meaning {
+        TensorDataMeaning::Unknown => color_tensor_as_color_image(tensor),
+        TensorDataMeaning::ClassId => class_id_tensor_as_color_image(tensor, annotations),
+        TensorDataMeaning::Depth => depth_tensor_as_color_image(tensor),
+    }
+}
 
-    crate::profile_function!(format!(
-        "dtype: {}, meaning: {:?}",
-        tensor.dtype(),
-        tensor.meaning
-    ));
+fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
+    use anyhow::Context as _;
 
     let shape = &tensor.shape();
 
@@ -269,13 +274,118 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
         "We should make the same checks above, but with actual error messages"
     );
 
-    use egui::epaint::ecolor::gamma_u8_from_linear_f32;
-    use egui::epaint::ecolor::linear_u8_from_linear_f32;
+    Ok([height, width, depth as u32])
+}
+
+fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
+    crate::profile_function!(format!(
+        "dtype: {}, shape: {:?}",
+        tensor.dtype(),
+        tensor.shape()
+    ));
+
+    let [height, width, depth] = height_width_depth(tensor)?;
+
+    use egui::epaint::ecolor::{gamma_u8_from_linear_f32, linear_u8_from_linear_f32};
 
     let size = [width as _, height as _];
 
-    match (depth, &tensor.data, tensor.meaning) {
-        (1, TensorData::U8(buf), TensorDataMeaning::ClassId) => {
+    match (depth, &tensor.data) {
+        (1, TensorData::U8(buf)) => {
+            // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+            let pixels = buf
+                .0
+                .iter()
+                .map(|pixel| Color32::from_gray(*pixel))
+                .collect();
+            Ok(ColorImage { size, pixels })
+        }
+        (1, TensorData::U16(buf)) => {
+            // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
+            let pixels = buf
+                .iter()
+                .map(|pixel| Color32::from_gray((*pixel / 256) as u8))
+                .collect();
+
+            Ok(ColorImage { size, pixels })
+        }
+        (1, TensorData::F32(buf)) => {
+            let pixels = buf
+                .iter()
+                .map(|pixel| Color32::from_gray(linear_u8_from_linear_f32(*pixel)))
+                .collect();
+
+            Ok(ColorImage { size, pixels })
+        }
+        (3, TensorData::U8(buf)) => Ok(ColorImage::from_rgb(size, buf.0.as_slice())),
+        (3, TensorData::U16(buf)) => {
+            let u8_buf: Vec<u8> = buf.iter().map(|pixel| (*pixel / 256) as u8).collect();
+
+            Ok(ColorImage::from_rgb(size, &u8_buf))
+        }
+        (3, TensorData::F32(buf)) => {
+            let rgb: &[[f32; 3]] = bytemuck::cast_slice(buf.as_slice());
+            let pixels: Vec<Color32> = rgb
+                .iter()
+                .map(|&[r, g, b]| {
+                    let r = gamma_u8_from_linear_f32(r);
+                    let g = gamma_u8_from_linear_f32(g);
+                    let b = gamma_u8_from_linear_f32(b);
+                    Color32::from_rgb(r, g, b)
+                })
+                .collect();
+
+            Ok(ColorImage { size, pixels })
+        }
+
+        (4, TensorData::U8(buf)) => Ok(ColorImage::from_rgba_unmultiplied(size, buf.0.as_slice())),
+        (4, TensorData::U16(buf)) => {
+            let u8_buf: Vec<u8> = buf.iter().map(|pixel| (*pixel / 256) as u8).collect();
+
+            Ok(ColorImage::from_rgba_unmultiplied(size, &u8_buf))
+        }
+        (4, TensorData::F32(buf)) => {
+            let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
+            let pixels: Vec<Color32> = rgba
+                .iter()
+                .map(|&[r, g, b, a]| {
+                    let r = gamma_u8_from_linear_f32(r);
+                    let g = gamma_u8_from_linear_f32(g);
+                    let b = gamma_u8_from_linear_f32(b);
+                    let a = linear_u8_from_linear_f32(a);
+                    Color32::from_rgba_unmultiplied(r, g, b, a)
+                })
+                .collect();
+
+            Ok(ColorImage { size, pixels })
+        }
+
+        (_depth, dtype) => {
+            anyhow::bail!("Don't know how to turn a tensor of shape={:?} and dtype={dtype:?} into a color image", tensor.shape)
+        }
+    }
+}
+
+fn class_id_tensor_as_color_image(
+    tensor: &Tensor,
+    annotations: &Annotations,
+) -> anyhow::Result<ColorImage> {
+    crate::profile_function!(format!(
+        "dtype: {}, shape: {:?}",
+        tensor.dtype(),
+        tensor.shape()
+    ));
+
+    let [height, width, depth] = height_width_depth(tensor)?;
+    anyhow::ensure!(
+        depth == 1,
+        "Cannot apply annotations to tensor of shape {:?}",
+        tensor.shape
+    );
+    let size = [width as _, height as _];
+
+    match &tensor.data {
+        TensorData::U8(buf) => {
             // Apply annotation mapping to raw bytes interpreted as u8
             let color_lookup: Vec<Color32> = (0..256)
                 .map(|id| {
@@ -293,7 +403,7 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
             crate::profile_scope!("from_raw");
             Ok(ColorImage { size, pixels })
         }
-        (1, TensorData::U16(buf), TensorDataMeaning::ClassId) => {
+        TensorData::U16(buf) => {
             // Apply annotations mapping to bytes interpreted as u16
             let mut color_lookup: ahash::HashMap<u16, Color32> = Default::default();
             let pixels = buf
@@ -310,131 +420,109 @@ fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::R
             crate::profile_scope!("from_raw");
             Ok(ColorImage { size, pixels })
         }
-        (1, TensorData::U8(buf), _) => {
-            // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-            let pixels = buf
-                .0
-                .iter()
-                .map(|pixel| Color32::from_gray(*pixel))
-                .collect();
-            Ok(ColorImage { size, pixels })
-        }
-        (1, TensorData::U16(buf), _) => {
-            // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
-            let pixels = buf
-                .iter()
-                .map(|pixel| Color32::from_gray((*pixel / 256) as u8))
-                .collect();
-
-            Ok(ColorImage { size, pixels })
-        }
-        (1, TensorData::F32(buf), TensorDataMeaning::Depth) => {
-            if buf.is_empty() {
-                Ok(ColorImage::default())
-            } else {
-                // Convert to u16 so we can put them in an image.
-                // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
-                // One big downside of the approach below is that if we have two depth images
-                // in the same range, they cannot be visually compared with each other,
-                // because their individual max-depths will be scaled to 65535.
-
-                let mut min = f32::INFINITY;
-                let mut max = f32::NEG_INFINITY;
-                for float in buf.iter() {
-                    min = min.min(*float);
-                    max = max.max(*float);
-                }
-
-                anyhow::ensure!(
-                    min.is_finite() && max.is_finite(),
-                    "Depth image had non-finite values"
-                );
-
-                let ints: Vec<u16> = if min == max {
-                    // Uniform image. We can't remap it to a 0-1 range, so do whatever:
-                    buf.iter().map(|&float| float as u16).collect()
-                } else {
-                    buf.iter()
-                        .map(|&float| egui::remap(float, min..=max, 0.0..=65535.0) as u16)
-                        .collect()
-                };
-
-                let pixels = ints
-                    .iter()
-                    .map(|pixel| {
-                        let [r, g, b, _] =
-                            re_renderer::colormap_turbo_srgb((*pixel as f32) / (u16::MAX as f32));
-                        egui::Color32::from_rgb(r, g, b)
-                    })
-                    .collect();
-
-                Ok(ColorImage { size, pixels })
-            }
-        }
-        (1, TensorData::F32(buf), _) => {
-            let pixels = buf
-                .iter()
-                .map(|pixel| Color32::from_gray(linear_u8_from_linear_f32(*pixel)))
-                .collect();
-
-            Ok(ColorImage { size, pixels })
-        }
-        (3, TensorData::U8(buf), _) => Ok(ColorImage::from_rgb(size, buf.0.as_slice())),
-        (3, TensorData::U16(buf), _) => {
-            let u8_buf: Vec<u8> = buf.iter().map(|pixel| (*pixel / 256) as u8).collect();
-
-            Ok(ColorImage::from_rgb(size, &u8_buf))
-        }
-        (3, TensorData::F32(buf), _) => {
-            let rgb: &[[f32; 3]] = bytemuck::cast_slice(buf.as_slice());
-            let pixels: Vec<Color32> = rgb
-                .iter()
-                .map(|&[r, g, b]| {
-                    let r = gamma_u8_from_linear_f32(r);
-                    let g = gamma_u8_from_linear_f32(g);
-                    let b = gamma_u8_from_linear_f32(b);
-                    Color32::from_rgb(r, g, b)
-                })
-                .collect();
-
-            Ok(ColorImage { size, pixels })
-        }
-
-        (4, TensorData::U8(buf), _) => {
-            Ok(ColorImage::from_rgba_unmultiplied(size, buf.0.as_slice()))
-        }
-        (4, TensorData::U16(buf), _) => {
-            let u8_buf: Vec<u8> = buf.iter().map(|pixel| (*pixel / 256) as u8).collect();
-
-            Ok(ColorImage::from_rgba_unmultiplied(size, &u8_buf))
-        }
-        (4, TensorData::F32(buf), _) => {
-            let rgba: &[[f32; 4]] = bytemuck::cast_slice(buf.as_slice());
-            let pixels: Vec<Color32> = rgba
-                .iter()
-                .map(|&[r, g, b, a]| {
-                    let r = gamma_u8_from_linear_f32(r);
-                    let g = gamma_u8_from_linear_f32(g);
-                    let b = gamma_u8_from_linear_f32(b);
-                    let a = linear_u8_from_linear_f32(a);
-                    Color32::from_rgba_unmultiplied(r, g, b, a)
-                })
-                .collect();
-
-            Ok(ColorImage { size, pixels })
-        }
-        (_, TensorData::JPEG(_), _) => {
-            anyhow::bail!("JPEG tensor should have been decoded before using TensorImageCache")
-        }
-
-        (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {
+        _ => {
             anyhow::bail!(
-                "Shape={shape:?} and dtype={dtype:?} is incompatible with meaning={meaning:?}"
+                "Cannot apply annotations to tensor of dtype {}",
+                tensor.dtype()
             )
         }
+    }
+}
 
-        (_depth, dtype, _) => {
-            anyhow::bail!("Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image")
+fn depth_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
+    if tensor.data.is_empty() {
+        return Ok(ColorImage::default());
+    }
+
+    // This function applies color mapping to a depth image.
+    // We are planning on moving this to the GPU: https://github.com/rerun-io/rerun/issues/1612
+    // One big downside of the approach below is that if we have two depth images
+    // in the same range, they cannot be visually compared with each other,
+    // because their individual max-depths will be scaled to 65535.
+
+    crate::profile_function!(format!(
+        "dtype: {}, shape: {:?}",
+        tensor.dtype(),
+        tensor.shape()
+    ));
+
+    let [height, width, depth] = height_width_depth(tensor)?;
+    anyhow::ensure!(depth == 1, "Depth tensor of shape {:?}", tensor.shape);
+    let size = [width as _, height as _];
+
+    let range = TensorStats::new(tensor).range.ok_or(anyhow::anyhow!(
+        "Depth image had no range!? Was this compressed?"
+    ))?;
+
+    let (mut min, mut max) = range;
+
+    anyhow::ensure!(
+        min.is_finite() && max.is_finite(),
+        "Depth image had non-finite values"
+    );
+
+    if min == max {
+        // Uniform image. We can't remap it to a 0-1 range, so do whatever:
+        min = 0.0;
+        max = if tensor.dtype().is_float() {
+            1.0
+        } else {
+            tensor.dtype().max_value()
+        };
+    }
+
+    let colormap = |value: f64| {
+        let t = egui::remap(value, min..=max, 0.0..=1.0) as f32;
+        let [r, g, b, _] = re_renderer::colormap_turbo_srgb(t);
+        egui::Color32::from_rgb(r, g, b)
+    };
+
+    match &tensor.data {
+        TensorData::U8(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::U16(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::U32(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::U64(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+
+        TensorData::I8(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::I16(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::I32(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::I64(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+
+        TensorData::F32(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value as _)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+        TensorData::F64(buf) => {
+            let pixels = buf.iter().map(|&value| colormap(value)).collect();
+            Ok(ColorImage { size, pixels })
+        }
+
+        TensorData::JPEG(_) => {
+            anyhow::bail!("Cannot apply colormap to JPEG image")
         }
     }
 }

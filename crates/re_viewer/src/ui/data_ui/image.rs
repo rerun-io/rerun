@@ -66,14 +66,14 @@ impl DataUi for Tensor {
                         self.dtype(),
                         format_tensor_shape_single_line(self.shape())
                     ))
-                    .on_hover_ui(|ui| tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats));
+                    .on_hover_ui(|ui| tensor_summary_ui(ctx.re_ui, ui, self, tensor_stats));
                 });
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
-                    tensor_dtype_and_shape_ui(ctx.re_ui, ui, self, tensor_stats);
+                    tensor_summary_ui(ctx.re_ui, ui, self, tensor_stats);
 
                     if let Some(retained_img) = tensor_view.retained_image {
                         let max_size = ui
@@ -115,12 +115,20 @@ impl DataUi for Tensor {
     }
 }
 
-pub fn tensor_dtype_and_shape_ui_grid_contents(
+pub fn tensor_summary_ui_grid_contents(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     tensor: &Tensor,
     tensor_stats: Option<&TensorStats>,
 ) {
+    let Tensor {
+        tensor_id: _,
+        shape,
+        data,
+        meaning,
+        meter,
+    } = tensor;
+
     re_ui
         .grid_left_hand_label(ui, "Data type")
         .on_hover_text("Data type used for all individual elements within the tensor.");
@@ -134,15 +142,54 @@ pub fn tensor_dtype_and_shape_ui_grid_contents(
         // For unnamed tensor dimension more than a single line usually doesn't make sense!
         // But what if some are named and some are not?
         // -> If more than 1 is named, make it a column!
-        if tensor.shape().iter().filter(|d| d.name.is_some()).count() > 1 {
-            for dim in tensor.shape() {
+        if shape.iter().filter(|d| d.name.is_some()).count() > 1 {
+            for dim in shape {
                 ui.label(dim.to_string());
             }
         } else {
-            ui.label(format_tensor_shape_single_line(tensor.shape()));
+            ui.label(format_tensor_shape_single_line(shape));
         }
     });
     ui.end_row();
+
+    if *meaning != TensorDataMeaning::Unknown {
+        re_ui.grid_left_hand_label(ui, "Meaning");
+        ui.label(match meaning {
+            TensorDataMeaning::Unknown => "",
+            TensorDataMeaning::ClassId => "Class ID",
+            TensorDataMeaning::Depth => "Depth",
+        });
+        ui.end_row();
+    }
+
+    if let Some(meter) = meter {
+        re_ui
+            .grid_left_hand_label(ui, "Meter")
+            .on_hover_text(format!("{meter} depth units equals one world unit"));
+        ui.label(meter.to_string());
+        ui.end_row();
+    }
+
+    match data {
+        re_log_types::component_types::TensorData::U8(_)
+        | re_log_types::component_types::TensorData::U16(_)
+        | re_log_types::component_types::TensorData::U32(_)
+        | re_log_types::component_types::TensorData::U64(_)
+        | re_log_types::component_types::TensorData::I8(_)
+        | re_log_types::component_types::TensorData::I16(_)
+        | re_log_types::component_types::TensorData::I32(_)
+        | re_log_types::component_types::TensorData::I64(_)
+        | re_log_types::component_types::TensorData::F32(_)
+        | re_log_types::component_types::TensorData::F64(_) => {}
+        re_log_types::component_types::TensorData::JPEG(jpeg_bytes) => {
+            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.label(format!(
+                "{} JPEG",
+                re_format::format_bytes(jpeg_bytes.num_bytes() as _),
+            ));
+            ui.end_row();
+        }
+    }
 
     if let Some(TensorStats {
         range: Some((min, max)),
@@ -159,16 +206,16 @@ pub fn tensor_dtype_and_shape_ui_grid_contents(
     }
 }
 
-pub fn tensor_dtype_and_shape_ui(
+pub fn tensor_summary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     tensor: &Tensor,
     tensor_stats: Option<&TensorStats>,
 ) {
-    egui::Grid::new("tensor_dtype_and_shape_ui")
+    egui::Grid::new("tensor_summary_ui")
         .num_columns(2)
         .show(ui, |ui| {
-            tensor_dtype_and_shape_ui_grid_contents(re_ui, ui, tensor, tensor_stats);
+            tensor_summary_ui_grid_contents(re_ui, ui, tensor, tensor_stats);
         });
 }
 

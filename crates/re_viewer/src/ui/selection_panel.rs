@@ -424,14 +424,6 @@ fn entity_props_ui(
 }
 
 fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
-    ui.checkbox(&mut entity_props.color_mapping, "Color mapping")
-        .on_hover_text("Toggles color mapping");
-    ui.end_row();
-
-    if !entity_props.color_mapping {
-        return;
-    }
-
     let current = *entity_props.color_mapper.get();
 
     ui.label("Color map");
