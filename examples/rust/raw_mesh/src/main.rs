@@ -39,7 +39,7 @@ impl From<GltfPrimitive> for Mesh3D {
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
             albedo_factor: albedo_factor.map(Vec4D),
-            indices,
+            indices: indices.map(|i| i.into()),
             vertex_positions: vertex_positions.into_iter().flatten().collect(),
             vertex_normals: vertex_normals.map(|normals| normals.into_iter().flatten().collect()),
             vertex_colors,

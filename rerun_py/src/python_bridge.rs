@@ -655,10 +655,10 @@ fn log_meshes(
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
-            vertex_positions: vertex_positions.as_array().to_vec(),
+            vertex_positions: vertex_positions.as_array().to_vec().into(),
             vertex_colors,
-            indices: indices.map(|indices| indices.as_array().to_vec()),
-            vertex_normals: normals.map(|normals| normals.as_array().to_vec()),
+            indices: indices.map(|indices| indices.as_array().to_vec().into()),
+            vertex_normals: normals.map(|normals| normals.as_array().to_vec().into()),
             albedo_factor,
         };
         raw.sanity_check()
@@ -708,7 +708,7 @@ fn log_mesh_file(
             )));
         }
     };
-    let bytes = bytes.into();
+    let bytes: Vec<u8> = bytes.into();
     let transform = if transform.is_empty() {
         [
             [1.0, 0.0, 0.0], // col 0
@@ -741,7 +741,7 @@ fn log_mesh_file(
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
         format,
-        bytes,
+        bytes: bytes.into(),
         transform,
     });
 

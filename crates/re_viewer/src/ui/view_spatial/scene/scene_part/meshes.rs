@@ -41,15 +41,21 @@ impl MeshPart {
 
         let visitor =
             |instance_key: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
-                let picking_instance_hash = instance_path_hash_for_picking(
-                    ent_path,
-                    instance_key,
-                    entity_view,
-                    props,
-                    entity_highlight.any_selection_highlight,
-                );
+                let picking_instance_hash = {
+                    crate::profile_scope!("picking_instance_hash");
+                    instance_path_hash_for_picking(
+                        ent_path,
+                        instance_key,
+                        entity_view,
+                        props,
+                        entity_highlight.any_selection_highlight,
+                    )
+                };
 
-                let outline_mask_ids = entity_highlight.index_outline_mask(instance_key);
+                let outline_mask_ids = {
+                    crate::profile_scope!("outline_mask");
+                    entity_highlight.index_outline_mask(instance_key)
+                };
 
                 if let Some(mesh) = ctx
                     .cache
@@ -66,6 +72,7 @@ impl MeshPart {
                         outline_mask_ids,
                     })
                 {
+                    crate::profile_scope!("mesh push");
                     scene.primitives.meshes.push(mesh);
                 };
             };

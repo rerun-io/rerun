@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
 
@@ -71,7 +70,7 @@ impl LoadedMesh {
             transform,
         } = encoded_mesh;
 
-        let mut slf = Self::load_raw(name, *format, bytes, render_ctx)?;
+        let mut slf = Self::load_raw(name, *format, bytes.as_slice(), render_ctx)?;
 
         // TODO(cmc): Why are we creating the matrix twice here?
         let (scale, rotation, translation) =
@@ -106,8 +105,7 @@ impl LoadedMesh {
             albedo_factor,
         } = raw_mesh;
 
-        let vertex_positions: Vec<glam::Vec3> =
-            bytemuck::try_cast_vec(vertex_positions.clone()).map_err(|(err, _)| anyhow!(err))?;
+        let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
         let num_positions = vertex_positions.len();
 
         let indices = if let Some(indices) = indices {
@@ -148,8 +146,8 @@ impl LoadedMesh {
 
         let mesh = re_renderer::mesh::Mesh {
             label: name.clone().into(),
-            indices,
-            vertex_positions,
+            indices: indices.as_slice().into(),
+            vertex_positions: vertex_positions.into(),
             vertex_colors,
             vertex_normals,
             vertex_texcoords,
