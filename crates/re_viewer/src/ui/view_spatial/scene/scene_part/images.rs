@@ -307,7 +307,6 @@ impl ImagesPart {
 
             DepthCloudDepthData::F32(_) => 1.0 / meter,
         };
-        let radius_scale = *properties.backproject_radius_scale.get();
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
@@ -329,8 +328,12 @@ impl ImagesPart {
         // that just barely touches its diagonally-neighboring pixel-point.
         // This means the point radius increases with distance.
         // It also increases with the field of view, and decreases with the resolution.
+        let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_depth = 0.5_f32.sqrt() * intrinsics.fov_y().unwrap_or(1.0) / h as f32;
         let point_radius_from_normalized_depth = radius_scale * point_radius_from_depth * scale;
+
+        // TODO(emilk): we get gaps between diagonally adjacent points without this hack. WHY???
+        let point_radius_from_normalized_depth = 1.1 * point_radius_from_normalized_depth;
 
         scene.primitives.depth_clouds.push(DepthCloud {
             depth_camera_extrinsics: world_from_obj,
