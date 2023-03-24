@@ -28,7 +28,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
     // TODO(cmc): albedo textures
-    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth), 1.0);
+    let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
     let intrinsics = depth_cloud_info.depth_camera_intrinsics;
