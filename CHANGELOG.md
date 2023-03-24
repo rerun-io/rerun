@@ -4,6 +4,8 @@
 ## Unreleased
 [Commits since latest release](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+* Fixed a bug in the image hover code, causing the wrong RGBA values to be printed 😬 [#1690](https://github.com/rerun-io/rerun/pull/1356)
+* Fixed a bug that caused points to be render too large [#1690](https://github.com/rerun-io/rerun/pull/1690)
 
 ## 0.3.1 - Remove potentially sensitive analytics
 [Commits](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.3.0)
