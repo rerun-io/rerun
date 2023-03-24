@@ -46,7 +46,7 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.flo
     bbox_list = []
     bbox_labels = []
     for label_info in annotation["data"]:
-        object_id = label_info["objectId"]
+        uid = label_info["uid"]
         label = label_info["label"]
 
         scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
@@ -60,7 +60,7 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.flo
         rot = R.from_matrix(rotation).inv()
 
         rr.log_obb(
-            f"world/annotations/box-{object_id}-{label}",
+            f"world/annotations/box-{uid}-{label}",
             half_size=scale,
             position=transform,
             rotation_q=rot.as_quat(),
@@ -304,6 +304,7 @@ def log_arkit(recording_path: Path) -> None:
 
     print("Processing frames…")
     for frame_id in tqdm(lowres_frame_ids):
+        # frame_id is equivalent to timestamp
         rr.set_time_seconds("time", float(frame_id))
         # load the lowres image and depth
         bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_id}.png")
