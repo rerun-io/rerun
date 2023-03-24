@@ -52,6 +52,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 
 // ---
 
+/// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
 struct DepthCloudInfo {
     /// The extrinsincs of the camera used for the projection.
     extrinsincs: Mat4,
