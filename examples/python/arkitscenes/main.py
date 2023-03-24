@@ -140,12 +140,7 @@ def project_3d_bboxes_to_2d_keypoints(
     img_width: int,
     img_height: int,
 ) -> npt.NDArray[np.float64]:
-    """
-    Returns 2D keypoints of the 3D bounding box in the camera view.
-
-    camera_from world:
-        Tuple of translation and rotation quaternion, translation is of shape (3,) and rotation is of shape (4,)
-    """
+    """Returns 2D keypoints of the 3D bounding box in the camera view."""
 
     translation, rotation_q = camera_from_world
     rotation = R.from_quat(rotation_q)
