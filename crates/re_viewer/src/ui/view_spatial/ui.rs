@@ -97,40 +97,15 @@ impl Default for ViewSpatialState {
 }
 
 impl ViewSpatialState {
-    pub fn auto_size_config(
-        &self,
-        viewport_size_in_points: egui::Vec2,
-    ) -> re_renderer::AutoSizeConfig {
+    pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
-            config.point_radius = self.default_point_radius(viewport_size_in_points);
+            config.point_radius = re_renderer::Size::new_points(1.5); // default point radius
         }
         if config.line_radius.is_auto() {
-            config.line_radius = self.default_line_radius();
+            config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
         }
         config
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn default_line_radius(&self) -> re_renderer::Size {
-        re_renderer::Size::new_points(1.5)
-    }
-
-    pub fn default_point_radius(&self, viewport_size_in_points: egui::Vec2) -> re_renderer::Size {
-        // More points -> smaller points.
-        let num_points = self.scene_num_primitives; // approximately the same thing when there are many points
-
-        // Larger view -> larger points.
-        let viewport_area = viewport_size_in_points.x * viewport_size_in_points.y;
-
-        const RADIUS_MULTIPLIER: f32 = 0.15;
-        const MIN_POINT_RADIUS: f32 = 0.2;
-        const MAX_POINT_RADIUS: f32 = 3.0;
-
-        let radius = (RADIUS_MULTIPLIER * (viewport_area / (num_points + 1) as f32).sqrt())
-            .clamp(MIN_POINT_RADIUS, MAX_POINT_RADIUS);
-
-        re_renderer::Size::new_points(radius)
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {

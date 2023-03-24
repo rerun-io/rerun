@@ -437,7 +437,7 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
-            state.auto_size_config(response.rect.size()),
+            state.auto_size_config(),
             scene
                 .primitives
                 .any_outlines,
