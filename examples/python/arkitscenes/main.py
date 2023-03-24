@@ -140,20 +140,48 @@ def project_3d_bboxes_to_2d_keypoints(
     img_width: int,
     img_height: int,
 ) -> npt.NDArray[np.float64]:
-    """Returns 2D keypoints of the 3D bounding box in the camera view."""
+    """
+    Returns 2D keypoints of the 3D bounding box in the camera view.
+
+    Args:
+        bboxes_3d: (nObjects, 8, 3) containing the 3D bounding box keypoints in world frame.
+        camera_from_world: Tuple containing the camera translation and rotation_quaternion in world frame.
+        intrinsic: (3,3) containing the camera intrinsic matrix.
+        img_width: Width of the image.
+        img_height: Height of the image.
+
+    Returns
+    -------
+    bboxes_2d_filtered:
+
+    Raises
+    ------
+        AssertionError: If the input string does not contain 7 tokens.
+    """
 
     translation, rotation_q = camera_from_world
     rotation = R.from_quat(rotation_q)
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
+    world_to_camera_translation = translation.reshape(3, 1)
+    # Tile translation to match bounding box shape, (nObjects, 1, 3)
+    world_to_camera_translation_tiled = np.tile(world_to_camera_translation.T, (bboxes_3d.shape[0], 1, 1))
+    # Transform 3D bounding box keypoints from world to camera frame to filter out points behind the camera
+    camera_points = (
+        np.einsum("ij,afj->afi", world_to_camera_rotation, bboxes_3d[..., :3]) + world_to_camera_translation_tiled
+    )
+    # Check if the points are in front of the camera
+    depth_mask = camera_points[..., 2] > 0
     # convert to transformation matrix shape of (3, 4)
-    world_to_camera = np.hstack([world_to_camera_rotation, translation.reshape(3, 1)])
+    world_to_camera = np.hstack([world_to_camera_rotation, world_to_camera_translation])
     transformation_matrix = intrinsic @ world_to_camera
     # add batch dimension to match bounding box shape, (nObjects, 3, 4)
     transformation_matrix = np.tile(transformation_matrix, (bboxes_3d.shape[0], 1, 1))
     # bboxes_3d: [nObjects, 8, 3] -> [nObjects, 8, 4] to allow for batch projection
     bboxes_3d = np.concatenate([bboxes_3d, np.ones((bboxes_3d.shape[0], bboxes_3d.shape[1], 1))], axis=-1)
+    # Apply depth mask to filter out points behind the camera
+    bboxes_3d[~depth_mask] = np.nan
     # batch projection of points using einsum
     bboxes_2d = np.einsum("vab,fnb->vfna", transformation_matrix, bboxes_3d)
     bboxes_2d = bboxes_2d[..., :2] / bboxes_2d[..., 2:]
