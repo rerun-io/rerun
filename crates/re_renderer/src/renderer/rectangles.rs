@@ -15,8 +15,8 @@ use smallvec::smallvec;
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
+    draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_file,
-    renderer::OutlineMaskProcessor,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -24,12 +24,12 @@ use crate::{
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc,
         ShaderModuleDesc,
     },
-    Rgba,
+    OutlineMaskPreference, Rgba,
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
-    SharedRendererData, WgpuResourcePools,
+    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
 };
 
 mod gpu_data {

@@ -5,10 +5,9 @@ use std::sync::Arc;
 use crate::{
     allocator::{create_and_fill_uniform_buffer, GpuReadbackBuffer, GpuReadbackBufferIdentifier},
     context::RenderContext,
+    draw_phases::{DrawPhase, OutlineConfig, OutlineMaskProcessor},
     global_bindings::FrameUniformBuffer,
-    renderer::{
-        CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
-    },
+    renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
     wgpu_resources::{
         texture_row_data_info, GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo,
     },
@@ -38,6 +37,9 @@ pub enum ViewBuilderError {
 
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
+
+    #[error("Picking rectangle readback was already scheduled.")]
+    PickingRectAlreadyScheduled,
 }
 
 /// The highest level rendering block in `re_renderer`.
@@ -52,6 +54,7 @@ pub struct ViewBuilder {
     outline_mask_processor: Option<OutlineMaskProcessor>,
 
     scheduled_screenshot: Option<GpuReadbackBuffer>,
+    scheduled_picking_rect: Option<(GpuReadbackBuffer, GpuTexture)>,
 }
 
 struct ViewTargetSetup {
@@ -182,8 +185,15 @@ impl Default for TargetConfiguration {
 
 pub struct ScheduledScreenshot {
     pub identifier: GpuReadbackBufferIdentifier,
-    pub width: u32,
-    pub height: u32,
+    pub extent: glam::UVec2,
+    pub row_info: TextureRowDataInfo,
+}
+
+#[derive(Clone)]
+pub struct ScheduledPickingRect {
+    pub identifier: GpuReadbackBufferIdentifier,
+    pub screen_position: glam::UVec2,
+    pub extent: glam::UVec2,
     pub row_info: TextureRowDataInfo,
 }
 
@@ -203,6 +213,9 @@ impl ViewBuilder {
 
     /// The texture format used for screenshots.
     pub const SCREENSHOT_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+    /// The texture format used for the picking layer.
+    pub const PICKING_LAYER_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb; // TODO: Integers and stuff.
 
     /// Depth format used for the main target of the view builder.
     ///
@@ -537,6 +550,57 @@ impl ViewBuilder {
             a: clear_color.a() as f64,
         };
 
+        if let Some((readback_buffer, picking_target)) = self.scheduled_picking_rect.take() {
+            crate::profile_scope!("picking pass");
+
+            let picking_depth = ctx.gpu_resources.textures.alloc(
+                &ctx.device,
+                &TextureDesc {
+                    label: setup.name.clone().push_str(" - screenshot target depth"),
+                    format: Self::MAIN_TARGET_DEPTH_FORMAT,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    ..picking_target.creation_desc
+                },
+            );
+
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: setup.name.clone().push_str(" - picking pass").get(),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &picking_target.default_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: false,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &picking_depth.default_view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: Self::DEFAULT_DEPTH_CLEAR,
+                            store: false,
+                        }),
+                        stencil_ops: None,
+                    }),
+                });
+
+                pass.set_bind_group(0, &setup.bind_group_0, &[]); // TODO: special matrix setup.
+                self.draw_phase(ctx, DrawPhase::Opaque, &mut pass);
+            }
+            readback_buffer.read_texture2d(
+                &mut encoder,
+                wgpu::ImageCopyTexture {
+                    texture: &picking_target.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                glam::uvec2(
+                    picking_target.texture.width(),
+                    picking_target.texture.height(),
+                ),
+            );
+        }
         {
             crate::profile_scope!("main target pass");
 
@@ -687,9 +751,74 @@ impl ViewBuilder {
         Ok(ScheduledScreenshot {
             row_info,
             identifier,
-            width: setup.resolution_in_pixel[0],
-            height: setup.resolution_in_pixel[1],
+            extent: setup.resolution_in_pixel.into(),
         })
+    }
+
+    /// TODO: docs
+    /// TODO: bounds etc.?
+    pub fn schedule_picking_readback(
+        &mut self,
+        ctx: &mut RenderContext,
+        picking_rect_min: glam::UVec2,
+        picking_rect_extent: u32,
+        show_debug_view: bool,
+    ) -> Result<ScheduledPickingRect, ViewBuilderError> {
+        if self.scheduled_picking_rect.is_some() {
+            return Err(ViewBuilderError::PickingRectAlreadyScheduled);
+        };
+
+        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
+
+        let row_info = texture_row_data_info(Self::SCREENSHOT_COLOR_FORMAT, picking_rect_extent);
+        let buffer_size = row_info.bytes_per_row_padded * picking_rect_extent;
+        let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
+            &ctx.device,
+            &ctx.gpu_resources.buffers,
+            buffer_size as u64,
+        );
+
+        // TODO: Handle out of bounds stuff.
+        let mut picking_target_usage =
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
+        picking_target_usage.set(wgpu::TextureUsages::TEXTURE_BINDING, show_debug_view);
+
+        let picking_target = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &TextureDesc {
+                label: setup.name.clone().push_str(" - screenshot target"),
+                size: wgpu::Extent3d {
+                    width: picking_rect_extent,
+                    height: picking_rect_extent,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: Self::PICKING_LAYER_COLOR_FORMAT,
+                usage: picking_target_usage,
+            },
+        );
+
+        let scheduled_rect = ScheduledPickingRect {
+            identifier: readback_buffer.identifier,
+            screen_position: picking_rect_min,
+            extent: glam::uvec2(picking_rect_extent, picking_rect_extent),
+            row_info,
+        };
+
+        if show_debug_view {
+            self.queue_draw(&DebugOverlayDrawData::new(
+                ctx,
+                &picking_target,
+                scheduled_rect.screen_position,
+                scheduled_rect.extent,
+            ));
+        }
+
+        self.scheduled_picking_rect = Some((readback_buffer, picking_target));
+
+        Ok(scheduled_rect)
     }
 
     /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.

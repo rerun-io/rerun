@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use re_renderer::{
-    renderer::{MeshInstance, OutlineConfig, OutlineMaskPreference},
+    renderer::MeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
+    OutlineConfig, OutlineMaskPreference,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 

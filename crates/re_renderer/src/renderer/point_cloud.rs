@@ -16,8 +16,9 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer_batch, renderer::OutlineMaskProcessor, DebugLabel,
-    PointCloudBuilder,
+    allocator::create_and_fill_uniform_buffer_batch,
+    draw_phases::{DrawPhase, OutlineMaskProcessor},
+    DebugLabel, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable as _;
@@ -37,8 +38,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
-    SharedRendererData, WgpuResourcePools,
+    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
 };
 
 bitflags! {
@@ -454,6 +455,7 @@ impl PointCloudDrawData {
 
 pub struct PointCloudRenderer {
     render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_points: GpuBindGroupLayoutHandle,
     bind_group_layout_batch: GpuBindGroupLayoutHandle,
@@ -612,7 +614,16 @@ impl Renderer for PointCloudRenderer {
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
-
+        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "PointCloudRenderer::render_pipeline_picking_layer".into(),
+                // TODO:
+                ..render_pipeline_desc_color.clone()
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
@@ -632,6 +643,7 @@ impl Renderer for PointCloudRenderer {
 
         PointCloudRenderer {
             render_pipeline_color,
+            render_pipeline_picking_layer,
             render_pipeline_outline_mask,
             bind_group_layout_all_points,
             bind_group_layout_batch,

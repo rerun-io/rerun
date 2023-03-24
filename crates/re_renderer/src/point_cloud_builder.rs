@@ -1,10 +1,10 @@
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     renderer::{
-        OutlineMaskPreference, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
-        PointCloudDrawDataError, PointCloudVertex,
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+        PointCloudVertex,
     },
-    Color32, DebugLabel, RenderContext, Size,
+    Color32, DebugLabel, OutlineMaskPreference, RenderContext, Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].

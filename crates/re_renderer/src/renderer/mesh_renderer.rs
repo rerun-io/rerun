@@ -9,21 +9,21 @@ use ahash::{HashMap, HashMapExt};
 use smallvec::smallvec;
 
 use crate::{
+    draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_file,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
-    renderer::OutlineMaskProcessor,
     resource_managers::{GpuMeshHandle, ResourceHandle},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
     },
-    Color32,
+    Color32, OutlineMaskPreference,
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
-    SharedRendererData, WgpuResourcePools,
+    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
 };
 
 mod gpu_data {

@@ -116,6 +116,7 @@ use smallvec::smallvec;
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
+    draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_file,
     size::Size,
     view_builder::ViewBuilder,
@@ -124,12 +125,12 @@ use crate::{
         GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
         ShaderModuleDesc, TextureDesc,
     },
-    Color32, DebugLabel,
+    Color32, DebugLabel, OutlineMaskPreference,
 };
 
 use super::{
-    DrawData, DrawPhase, FileResolver, FileSystem, LineVertex, OutlineMaskPreference,
-    OutlineMaskProcessor, RenderContext, Renderer, SharedRendererData, WgpuResourcePools,
+    DrawData, FileResolver, FileSystem, LineVertex, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
 };
 
 pub mod gpu_data {

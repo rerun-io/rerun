@@ -1,11 +1,8 @@
 use std::ops::Range;
 
 use crate::{
-    renderer::{
-        LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex,
-        OutlineMaskPreference,
-    },
-    Color32, DebugLabel, RenderContext, Size,
+    renderer::{LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
+    Color32, DebugLabel, OutlineMaskPreference, RenderContext, Size,
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].

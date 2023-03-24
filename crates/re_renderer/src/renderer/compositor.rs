@@ -2,19 +2,17 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::SharedRendererData,
     include_file,
+    renderer::{screen_triangle_vertex_shader, DrawData, Renderer},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, WgpuResourcePools,
     },
-    Rgba,
+    OutlineConfig, Rgba,
 };
 
-use super::{
-    screen_triangle_vertex_shader, DrawData, DrawPhase, FileResolver, FileSystem, OutlineConfig,
-    RenderContext, Renderer,
-};
+use crate::{DrawPhase, FileResolver, FileSystem, RenderContext};
 
 use smallvec::smallvec;
 

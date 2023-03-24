@@ -43,11 +43,11 @@
 //! More details can be found in the respective shader code.
 //!
 
-use super::screen_triangle_vertex_shader;
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     config::HardwareTier,
     include_file,
+    renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
