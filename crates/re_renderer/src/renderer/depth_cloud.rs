@@ -134,7 +134,7 @@ pub struct DepthCloud {
     /// Only supports pinhole cameras at the moment.
     pub depth_camera_intrinsics: glam::Mat3,
 
-    /// Multiplier to get world-space depth from whatever is in [`depth_data`].
+    /// Multiplier to get world-space depth from whatever is in [`Self::depth_data`].
     pub world_depth_from_data_depth: f32,
 
     /// Point radius is calculated as world-space depth times this value.

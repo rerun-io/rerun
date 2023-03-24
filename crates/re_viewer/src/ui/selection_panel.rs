@@ -548,8 +548,8 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
             .clamp_range(0.0..=1.0e8)
             .speed(speed),
     )
-    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\
-                                \nDouble-click to reset.");
+    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
+                    Double-click to reset.");
     if response.double_clicked() {
         // reset to auto - the exact value will be restored somewhere else
         *property = EditableAutoValue::Auto(value);
@@ -572,11 +572,11 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
         )
         .on_hover_text(
             "Scales the radii of the points in the backprojected point cloud.\n\
-                        With a scale of one, diagonally adjacent pixels at the same depth are sized so that they are just touching, leaving no gaps.\
-                        \nDouble-click to reset.",
+            With a scale of one, adjacent pixels at the same depth are sized so that they are just touching.\
+            \nDouble-click to reset.",
         );
     if response.double_clicked() {
-        *property = EditableAutoValue::Auto(1.0);
+        *property = EditableAutoValue::Auto(2.0);
         response.surrender_focus();
     } else if response.changed() {
         *property = EditableAutoValue::UserEdited(value);

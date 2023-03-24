@@ -318,11 +318,11 @@ impl ImagesPart {
         };
 
         // By default, we assign a radius to each point so that each point becomes a ball
-        // that just barely touches its diagonally-neighboring pixel-point.
+        // that just barely touches its neighboring pixel-points.
         // This means the point radius increases with distance.
         // It also increases with the field of view, and decreases with the resolution.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
-        let point_radius_from_depth = 0.5_f32.sqrt() * (0.5 * fov_y).tan() / (0.5 * h as f32);
+        let point_radius_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * point_radius_from_depth;
 
