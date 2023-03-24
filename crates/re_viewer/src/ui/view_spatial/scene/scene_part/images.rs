@@ -278,10 +278,10 @@ impl ImagesPart {
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
-        let extrinsics = pinhole_ent_path
+        let world_from_obj = pinhole_ent_path
             .parent()
             .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
-        let Some(extrinsics) = extrinsics else {
+        let Some(world_from_obj) = world_from_obj else {
             re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
             return;
         };
@@ -300,7 +300,7 @@ impl ImagesPart {
             }
         };
 
-        let meter = *properties.backproject_depth_meter.get();
+        let depth_from_world_scale = *properties.depth_from_world_scale.get();
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
@@ -326,9 +326,9 @@ impl ImagesPart {
         let point_radius_from_world_depth = radius_scale * point_radius_from_depth;
 
         scene.primitives.depth_clouds.push(DepthCloud {
-            depth_camera_extrinsics: extrinsics,
+            world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            world_depth_from_data_depth: 1.0 / meter,
+            world_depth_from_data_depth: 1.0 / depth_from_world_scale,
             point_radius_from_world_depth,
             depth_dimensions: dimensions,
             depth_data: data,

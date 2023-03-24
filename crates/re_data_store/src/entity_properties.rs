@@ -69,7 +69,7 @@ pub struct EntityProperties {
     /// How many depth units per world-space unit. e.g. 1000 for millimeters.
     ///
     /// This corresponds to [`re_log_types::component_types::Tensor::meter`].
-    pub backproject_depth_meter: EditableAutoValue<f32>,
+    pub depth_from_world_scale: EditableAutoValue<f32>,
 
     /// Used to scale the radii of the points in the resulting point cloud.
     ///
@@ -98,9 +98,9 @@ impl EntityProperties {
                 .backproject_pinhole_ent_path
                 .clone()
                 .or(child.backproject_pinhole_ent_path.clone()),
-            backproject_depth_meter: self
-                .backproject_depth_meter
-                .or(&child.backproject_depth_meter)
+            depth_from_world_scale: self
+                .depth_from_world_scale
+                .or(&child.depth_from_world_scale)
                 .clone(),
             backproject_radius_scale: self
                 .backproject_radius_scale
@@ -121,7 +121,7 @@ impl Default for EntityProperties {
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: false,
             backproject_pinhole_ent_path: None,
-            backproject_depth_meter: EditableAutoValue::default(),
+            depth_from_world_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
     }

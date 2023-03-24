@@ -221,7 +221,7 @@ impl ViewSpatialState {
             let tensor = tensor.as_ref().unwrap();
 
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
-            if properties.backproject_depth_meter.is_auto() {
+            if properties.depth_from_world_scale.is_auto() {
                 let auto = tensor.meter.unwrap_or_else(|| {
                     use re_log_types::component_types::TensorTrait as _;
                     if tensor.dtype().is_integer() {
@@ -230,7 +230,7 @@ impl ViewSpatialState {
                         1.0
                     }
                 });
-                properties.backproject_depth_meter = EditableAutoValue::Auto(auto);
+                properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
             }
 
             if properties.backproject_radius_scale.is_auto() {

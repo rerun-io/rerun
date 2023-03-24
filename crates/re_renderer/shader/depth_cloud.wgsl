@@ -42,7 +42,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
         world_space_depth,
     );
 
-    let pos_in_world = depth_cloud_info.extrinsincs * Vec4(pos_in_obj, 1.0);
+    let pos_in_world = depth_cloud_info.world_from_obj * Vec4(pos_in_obj, 1.0);
 
     var data: PointData;
     data.pos_in_world = pos_in_world.xyz;
@@ -57,7 +57,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 /// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
 struct DepthCloudInfo {
     /// The extrinsincs of the camera used for the projection.
-    extrinsincs: Mat4,
+    world_from_obj: Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///

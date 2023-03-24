@@ -525,52 +525,9 @@ fn depth_props_ui(
                 );
             ui.end_row();
 
-            {
-                ui.label("Backproject meter");
-                let mut meter = *entity_props.backproject_depth_meter.get();
-                let speed = (meter * 0.05).at_least(0.01);
-                let response = ui
-                .add(
-                    egui::DragValue::new(&mut meter)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("How many depth values correspond to one work-space unit. For instance, 1000 means millimeters.\
-                                \nDouble-click to reset.");
-                if response.double_clicked() {
-                    // reset to auto - the exact value will be restored somewhere else
-                    entity_props.backproject_depth_meter = EditableAutoValue::Auto(meter);
-                    response.surrender_focus();
-                } else if response.changed() {
-                    entity_props.backproject_depth_meter = EditableAutoValue::UserEdited(meter);
-                }
-                ui.end_row();
-            }
+            depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
 
-            {
-                ui.label("Backproject radius scale");
-                let mut radius_scale = *entity_props.backproject_radius_scale.get();
-                let speed = (radius_scale * 0.01).at_least(0.001);
-                let response = ui
-                    .add(
-                        egui::DragValue::new(&mut radius_scale)
-                            .clamp_range(0.0..=1.0e8)
-                            .speed(speed),
-                    )
-                    .on_hover_text(
-                        "Scales the radii of the points in the backprojected point cloud.\n\
-                        With a scale of one, diagonally adjacent pixels at the same depth are sized so that they are just touching, leaving no gaps.\
-                        \nDouble-click to reset.",
-                    );
-                if response.double_clicked() {
-                    entity_props.backproject_radius_scale = EditableAutoValue::Auto(1.0);
-                    response.surrender_focus();
-                } else if response.changed() {
-                    entity_props.backproject_radius_scale =
-                        EditableAutoValue::UserEdited(radius_scale);
-                }
-                ui.end_row();
-            }
+            backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
 
             // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
             // need to get the current hardcoded colormapping out of the image cache first.
@@ -579,4 +536,50 @@ fn depth_props_ui(
             entity_props.backproject_pinhole_ent_path = None;
         }
     }
+}
+
+fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+    ui.label("Backproject meter");
+    let mut value = *property.get();
+    let speed = (value * 0.05).at_least(0.01);
+    let response = ui
+    .add(
+        egui::DragValue::new(&mut value)
+            .clamp_range(0.0..=1.0e8)
+            .speed(speed),
+    )
+    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\
+                                \nDouble-click to reset.");
+    if response.double_clicked() {
+        // reset to auto - the exact value will be restored somewhere else
+        *property = EditableAutoValue::Auto(value);
+        response.surrender_focus();
+    } else if response.changed() {
+        *property = EditableAutoValue::UserEdited(value);
+    }
+    ui.end_row();
+}
+
+fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+    ui.label("Backproject radius scale");
+    let mut value = *property.get();
+    let speed = (value * 0.01).at_least(0.001);
+    let response = ui
+        .add(
+            egui::DragValue::new(&mut value)
+                .clamp_range(0.0..=1.0e8)
+                .speed(speed),
+        )
+        .on_hover_text(
+            "Scales the radii of the points in the backprojected point cloud.\n\
+                        With a scale of one, diagonally adjacent pixels at the same depth are sized so that they are just touching, leaving no gaps.\
+                        \nDouble-click to reset.",
+        );
+    if response.double_clicked() {
+        *property = EditableAutoValue::Auto(1.0);
+        response.surrender_focus();
+    } else if response.changed() {
+        *property = EditableAutoValue::UserEdited(value);
+    }
+    ui.end_row();
 }
