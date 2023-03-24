@@ -1,6 +1,10 @@
 use crate::{
+    allocator::create_and_fill_uniform_buffer,
+    global_bindings::FrameUniformBuffer,
     view_builder::ViewBuilder,
-    wgpu_resources::{texture_row_data_info, GpuTexture, TextureDesc, TextureRowDataInfo},
+    wgpu_resources::{
+        texture_row_data_info, GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo,
+    },
     DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, RenderContext,
 };
 
@@ -8,6 +12,7 @@ pub struct PickingLayerProcessor {
     pub picking_target: GpuTexture,
     picking_depth: GpuTexture,
     readback_buffer: GpuReadbackBuffer,
+    bind_group_0: GpuBindGroup,
 }
 
 #[derive(Clone)]
@@ -35,10 +40,12 @@ impl PickingLayerProcessor {
         ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
 
     pub fn new(
-        ctx: &RenderContext,
+        ctx: &mut RenderContext,
         view_name: &DebugLabel,
+        screen_resolution: glam::UVec2,
         picking_rect_min: glam::UVec2,
         picking_rect_extent: u32,
+        frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
     ) -> (Self, ScheduledPickingRect) {
         let row_info = texture_row_data_info(Self::PICKING_LAYER_FORMAT, picking_rect_extent);
@@ -83,6 +90,52 @@ impl PickingLayerProcessor {
             },
         );
 
+        let rect_min = picking_rect_min.as_vec2();
+        let rect_max =
+            rect_min + glam::vec2(picking_rect_extent as f32, picking_rect_extent as f32);
+        let screen_resolution = screen_resolution.as_vec2();
+        let rect_min_ndc = glam::vec2(
+            rect_min.x / screen_resolution.x * 2.0 - 1.0,
+            1.0 - rect_max.y / screen_resolution.y * 2.0,
+        );
+        let rect_max_ndc = glam::vec2(
+            rect_max.x / screen_resolution.x * 2.0 - 1.0,
+            1.0 - rect_min.y / screen_resolution.y * 2.0,
+        );
+        let rect_center = (rect_min_ndc + rect_max_ndc) * 0.5;
+        let adjusted_projection_from_projection =
+            glam::Mat4::from_scale(2.0 / (rect_max_ndc - rect_min_ndc).extend(1.0))
+                * glam::Mat4::from_translation(-rect_center.extend(0.0));
+
+        // Setup frame uniform buffer
+        let previous_projection_from_world: glam::Mat4 =
+            frame_uniform_buffer_content.projection_from_world.into();
+        let previous_projection_from_view: glam::Mat4 =
+            frame_uniform_buffer_content.projection_from_view.into();
+        let frame_uniform_buffer_content = FrameUniformBuffer {
+            projection_from_world: (adjusted_projection_from_projection
+                * previous_projection_from_world)
+                .into(),
+            projection_from_view: (adjusted_projection_from_projection
+                * previous_projection_from_view)
+                .into(),
+            ..*frame_uniform_buffer_content
+        };
+
+        let frame_uniform_buffer = create_and_fill_uniform_buffer(
+            ctx,
+            view_name
+                .clone()
+                .push_str(" - picking_layer frame uniform buffer"),
+            frame_uniform_buffer_content,
+        );
+
+        let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
+            &mut ctx.gpu_resources,
+            &ctx.device,
+            frame_uniform_buffer,
+        );
+
         let scheduled_rect = ScheduledPickingRect {
             identifier: readback_buffer.identifier,
             screen_position: picking_rect_min,
@@ -92,6 +145,7 @@ impl PickingLayerProcessor {
 
         (
             PickingLayerProcessor {
+                bind_group_0,
                 picking_target,
                 picking_depth,
                 readback_buffer,
@@ -107,7 +161,7 @@ impl PickingLayerProcessor {
     ) -> wgpu::RenderPass<'a> {
         crate::profile_function!();
 
-        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: view_name.clone().push_str(" - picking_layer pass").get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.picking_target.default_view,
@@ -125,7 +179,11 @@ impl PickingLayerProcessor {
                 }),
                 stencil_ops: None,
             }),
-        })
+        });
+
+        pass.set_bind_group(0, &self.bind_group_0, &[]);
+
+        pass
     }
 
     pub fn end_render_pass(self, encoder: &mut wgpu::CommandEncoder) {

@@ -669,17 +669,14 @@ impl Renderer for PointCloudRenderer {
                 &draw_data.bind_group_all_points_outline_mask,
             ),
             DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_points),
+            DrawPhase::PickingLayer => (
+                self.render_pipeline_picking_layer,
+                &draw_data.bind_group_all_points,
+            ),
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let Some(bind_group_all_points) = bind_group_all_points else {
             return Ok(()); // No points submitted.
-        };
-
-        let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
-            DrawPhase::Opaque => self.render_pipeline_color,
-            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
-            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 

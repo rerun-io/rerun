@@ -65,6 +65,8 @@ struct ViewTargetSetup {
     main_target_resolved: GpuTexture,
     depth_buffer: GpuTexture,
 
+    frame_uniform_buffer_content: FrameUniformBuffer,
+
     resolution_in_pixel: [u32; 2],
 }
 
@@ -431,24 +433,25 @@ impl ViewBuilder {
         };
 
         // Setup frame uniform buffer
+        let frame_uniform_buffer_content = FrameUniformBuffer {
+            view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
+            projection_from_view: projection_from_view.into(),
+            projection_from_world: projection_from_world.into(),
+            camera_position,
+            camera_forward,
+            tan_half_fov: tan_half_fov.into(),
+            pixel_world_size_from_camera_distance,
+            pixels_from_point: config.pixels_from_point,
+
+            auto_size_points: auto_size_points.0,
+            auto_size_lines: auto_size_lines.0,
+
+            end_padding: Default::default(),
+        };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
             format!("{:?} - frame uniform buffer", config.name).into(),
-            FrameUniformBuffer {
-                view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
-                projection_from_view: projection_from_view.into(),
-                projection_from_world: projection_from_world.into(),
-                camera_position,
-                camera_forward,
-                tan_half_fov: tan_half_fov.into(),
-                pixel_world_size_from_camera_distance,
-                pixels_from_point: config.pixels_from_point,
-
-                auto_size_points: auto_size_points.0,
-                auto_size_lines: auto_size_lines.0,
-
-                end_padding: Default::default(),
-            },
+            frame_uniform_buffer_content,
         );
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
@@ -464,6 +467,7 @@ impl ViewBuilder {
             main_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
+            frame_uniform_buffer_content,
         });
 
         Ok(self)
@@ -574,7 +578,17 @@ impl ViewBuilder {
         if let Some(picking_processor) = self.picking_processor.take() {
             {
                 let mut pass = picking_processor.begin_render_pass(&setup.name, &mut encoder);
-                pass.set_bind_group(0, &setup.bind_group_0, &[]); // TODO: special matrix setup.
+                // PickingProcessor has as custom frame uniform buffer.
+                //
+                // TODO(andreas): Formalize this somehow.
+                // Maybe just every processor should have its own and gets abstract information from the view builder to set it up?
+                // ... or we change this whole thing again so slice things differently:
+                // 0: Truly view Global: Samplers, time, point conversions, etc.
+                // 1: Phase global (camera & projection goes here)
+                // 2: Specific renderer
+                // 3: Draw call in renderer.
+                //
+                //pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::PickingLayer, &mut pass);
             }
             picking_processor.end_render_pass(&mut encoder);
@@ -720,8 +734,10 @@ impl ViewBuilder {
         let (picking_processor, scheduled_rect) = PickingLayerProcessor::new(
             ctx,
             &setup.name,
+            setup.resolution_in_pixel.into(),
             picking_rect_min,
             picking_rect_extent,
+            &setup.frame_uniform_buffer_content,
             show_debug_view,
         );
 

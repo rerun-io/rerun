@@ -42,7 +42,7 @@ impl framework::Example for Picking {
     fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
-        let point_count = 100000;
+        let point_count = 1000;
         let random_points_positions = (0..point_count)
             .map(|_| {
                 glam::vec3(
@@ -53,7 +53,7 @@ impl framework::Example for Picking {
             })
             .collect_vec();
         let random_points_radii = (0..point_count)
-            .map(|_| Size::new_scene(rnd.gen_range(0.005..0.05)))
+            .map(|_| Size::new_scene(rnd.gen_range(0.05..0.1)))
             .collect_vec();
         let random_points_colors = (0..point_count)
             .map(|_| random_color(&mut rnd))
@@ -69,7 +69,7 @@ impl framework::Example for Picking {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        _time: &framework::Time,
+        time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         self.handle_incoming_picking_data(re_ctx);
@@ -102,7 +102,13 @@ impl framework::Example for Picking {
             )
             .unwrap();
 
-        view_builder.schedule_picking_readback(re_ctx, glam::uvec2(100, 100), 256, true);
+        let time = time.seconds_since_startup();
+        let position = glam::vec2(
+            (time.sin() * 0.5 + 0.5) * resolution[1] as f32 * 0.75,
+            (time.cos() * 0.5 + 0.5) * resolution[1] as f32 * 0.75,
+        );
+
+        view_builder.schedule_picking_readback(re_ctx, position.as_uvec2(), 256, true);
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
         builder
