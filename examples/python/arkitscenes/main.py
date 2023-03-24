@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import rerun as rr
@@ -21,6 +22,7 @@ ORIENTATION = {
     "41069046": "portrait",
     "41125722": "portrait",
     "41125763": "portrait",
+    "42446167": "portrait",
 }
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
@@ -32,7 +34,9 @@ def load_json(js_path: Path) -> Dict[str, Any]:
     return dict(json_data)
 
 
-def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.float64], List[str]]:
+def log_annotated_bboxes(
+    annotation: Dict[str, Any]
+) -> Tuple[npt.NDArray[np.float64], List[str], List[Tuple[int, int, int, int]]]:
     """
     Logs annotated bounding boxes to Rerun.
 
@@ -45,7 +49,20 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.flo
     # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view`
     bbox_list = []
     bbox_labels = []
-    for label_info in annotation["data"]:
+    num_objects = len(annotation["data"])
+    # Generate an array of evenly spaced values from 0 to 1
+    color_positions = np.linspace(0, 1, num_objects)
+
+    # Create a colormap
+    colormap = plt.cm.get_cmap("viridis")
+
+    # Generate the array of colors (0-1 range)
+    color_array_float = [colormap(pos) for pos in color_positions]
+
+    # Convert the color values from 0-1 to 0-255
+    color_list = [(int(r * 255), int(g * 255), int(b * 255), int(a * 255)) for r, g, b, a in color_array_float]
+
+    for i, label_info in enumerate(annotation["data"]):
         uid = label_info["uid"]
         label = label_info["label"]
 
@@ -65,10 +82,11 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.flo
             position=transform,
             rotation_q=rot.as_quat(),
             label=label,
+            color=color_list[i],
             timeless=True,
         )
     bboxes_3d = np.array(bbox_list)
-    return bboxes_3d, bbox_labels
+    return bboxes_3d, bbox_labels, color_list
 
 
 def compute_box_3d(
@@ -92,7 +110,9 @@ def compute_box_3d(
     return bbox3d_raw
 
 
-def generate_line_segments(enitity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64]) -> None:
+def generate_line_segments(
+    enitity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Tuple[int, int, int, int]
+) -> None:
     """
     Generates line segments for each object's bounding box.
 
@@ -130,7 +150,7 @@ def generate_line_segments(enitity_path: str, bboxes_2d_filtered: npt.NDArray[np
         bboxes_2d_filtered[3], bboxes_2d_filtered[7]
                          ], dtype=np.float32)
 
-    rr.log_line_segments(enitity_path, segments, color=[130, 160, 250, 255])
+    rr.log_line_segments(enitity_path, segments, color=color)
 
 
 def project_3d_bboxes_to_2d_keypoints(
@@ -204,6 +224,7 @@ def log_camera(
     entity_id: str,
     bboxes: npt.NDArray[np.float64],
     bbox_labels: List[str],
+    color_list: List[Tuple[int, int, int, int]],
 ) -> None:
     """Logs camera intrinsics and extrinsics to Rerun."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
@@ -212,8 +233,8 @@ def log_camera(
 
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
-    for i, bbox_2d in zip(bbox_labels, bboxes_2d):
-        generate_line_segments(f"{entity_id}/bbox-2d-segments/{i}", bbox_2d.reshape(-1, 2))
+    for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
+        generate_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), color_list[i])
 
     rr.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
@@ -324,7 +345,7 @@ def log_arkit(recording_path: Path) -> None:
 
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
-    bboxes_3d, bbox_labels = log_annotated_bboxes(annotation)
+    bboxes_3d, bbox_labels, colors_list = log_annotated_bboxes(annotation)
 
     lowres_posed_entity_id = "world/camera_posed_lowres/image_posed_lowres"
     highres_entity_id = "world/camera_highres/image_highres"
@@ -343,7 +364,15 @@ def log_arkit(recording_path: Path) -> None:
         # Log the camera transforms:
         if frame_id in poses_from_traj:
             lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_posed_entity_id, bboxes_3d, bbox_labels)
+            log_camera(
+                lowres_intri_path,
+                frame_id,
+                poses_from_traj,
+                lowres_posed_entity_id,
+                bboxes_3d,
+                bbox_labels,
+                colors_list,
+            )
 
             rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb)
             # TODO(pablovela5620): no clear way to change colormap for depth via log function
@@ -356,7 +385,13 @@ def log_arkit(recording_path: Path) -> None:
             closest_lowres_frame_id = find_closest_frame_id(frame_id, poses_from_traj)
             highres_intri_path = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
             log_camera(
-                highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id, bboxes_3d, bbox_labels
+                highres_intri_path,
+                closest_lowres_frame_id,
+                poses_from_traj,
+                highres_entity_id,
+                bboxes_3d,
+                bbox_labels,
+                colors_list,
             )
 
             # load the highres image and depth if they exist
