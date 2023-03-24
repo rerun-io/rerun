@@ -44,7 +44,7 @@ pub use wgpu_resources::WgpuResourcePoolStatistics;
 
 mod draw_phases;
 pub(crate) use draw_phases::DrawPhase;
-pub use draw_phases::{OutlineConfig, OutlineMaskPreference};
+pub use draw_phases::{OutlineConfig, OutlineMaskPreference, ScheduledPickingRect};
 
 mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};
