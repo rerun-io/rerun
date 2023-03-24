@@ -1861,12 +1861,14 @@ fn new_recording_confg(
     use crate::misc::time_control::PlayState;
 
     let play_state = match data_source {
-        // Play files from the start by default - it feels nice and alive
-        re_smart_channel::Source::File { .. } => PlayState::Playing,
+        // Play files from the start by default - it feels nice and alive./
+        // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
+        re_smart_channel::Source::File { .. } | re_smart_channel::Source::RrdHttpStream { .. } => {
+            PlayState::Playing
+        }
 
         // Live data - follow it!
-        re_smart_channel::Source::RrdHttpStream { .. }
-        | re_smart_channel::Source::Sdk
+        re_smart_channel::Source::Sdk
         | re_smart_channel::Source::WsClient { .. }
         | re_smart_channel::Source::TcpServer { .. } => PlayState::Following,
     };
