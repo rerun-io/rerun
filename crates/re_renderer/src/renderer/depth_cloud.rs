@@ -229,8 +229,7 @@ impl DepthCloudDrawData {
                             wgpu::TextureFormat::R32Float,
                         )
                     } else {
-                        // Native: We use Depth16Unorm over R16Unorm because the latter is behind a feature flag,
-                        // and not available on OpenGL backends.
+                        // Native: We use Depth16Unorm over R16Unorm because the latter is behind a feature flag and doesn't work on WebGPU.
                         create_and_upload_texture(
                             ctx,
                             depth_cloud,
