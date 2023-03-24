@@ -275,35 +275,29 @@ def download_data(
             if file_name.endswith(".zip") and os.path.isfile(dst_path):
                 unzip_file(file_name, dst_dir, keep_zip)
 
-    # if dataset == "upsampling" and VALIDATION in splits:
-    #     val_attributes_file = "val_attributes.csv"
-    #     url = f"{ARkitscense_url}/upsampling/{VALIDATION}/{val_attributes_file}"
-    #     dst_file = os.path.join(download_dir, dataset, VALIDATION)
-    #     download_file(url, val_attributes_file, dst_file)
-
 
 def ensure_recording_downloaded(video_id: str) -> Path:
     """Only downloads from validation set."""
     data_path = DATASET_DIR / "raw" / "Validation" / video_id
     download_data(
-            dataset="raw",
-            video_ids=[video_id],
-            dataset_splits=[VALIDATION],
-            download_dir=DATASET_DIR,
-            keep_zip=False,
-            raw_dataset_assets=[
-                "lowres_wide",
-                "lowres_depth",
-                "lowres_wide_intrinsics",
-                "lowres_wide.traj",
-                "wide",
-                "wide_intrinsics",
-                "highres_depth",
-                "annotation",
-                "mesh",
-            ],
-            should_download_laser_scanner_point_cloud=False,
-        )
+        dataset="raw",
+        video_ids=[video_id],
+        dataset_splits=[VALIDATION],
+        download_dir=DATASET_DIR,
+        keep_zip=False,
+        raw_dataset_assets=[
+            "lowres_wide",
+            "lowres_depth",
+            "lowres_wide_intrinsics",
+            "lowres_wide.traj",
+            "wide",
+            "wide_intrinsics",
+            "highres_depth",
+            "annotation",
+            "mesh",
+        ],
+        should_download_laser_scanner_point_cloud=False,
+    )
     return data_path
 
 

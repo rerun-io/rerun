@@ -15,11 +15,13 @@ from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
-ORIENTATION = {"48458663": "landscape",
-               "42444949": "portrait",
-               "41069046": "portrait",
-               "41125722": "portrait",
-               "41125763": "portrait" }
+ORIENTATION = {
+    "48458663": "landscape",
+    "42444949": "portrait",
+    "41069046": "portrait",
+    "41125722": "portrait",
+    "41125763": "portrait",
+}
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
@@ -30,15 +32,15 @@ def load_json(js_path: Path) -> Dict[str, Any]:
     return dict(json_data)
 
 
-def log_annotated_bboxes(annotation: Dict[str, Any]) -> npt.NDArray[np.float64]:
+def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.float64], List[str]]:
     """
     Logs annotated bounding boxes to Rerun.
 
     annotation json file
     |  |-- label: object name of bounding box
     |  |-- axesLengths[x, y, z]: size of the origin bounding-box before transforming
-    |  |-- centroid[]: the translation matrix 1*3of bounding-box
-    |  |-- normalizedAxes[]: the rotation matrix 3*3 of bounding-box
+    |  |-- centroid[]: the translation matrix (1,3) of bounding-box
+    |  |-- normalizedAxes[]: the rotation matrix (3,3) of bounding-box
     """
     # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view`
     bbox_list = []
@@ -51,7 +53,7 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> npt.NDArray[np.float64]:
         transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
         rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
 
-        box3d = compute_box_3d(scale.reshape(3).tolist(), transform, rotation)
+        box3d = compute_box_3d(scale, transform, rotation)
         bbox_list.append(box3d)
         bbox_labels.append(label)
 
@@ -64,23 +66,24 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> npt.NDArray[np.float64]:
             rotation_q=rot.as_quat(),
             label=label,
             timeless=True,
-            )
-    bbox_list = np.array(bbox_list)
-    return bbox_list, bbox_labels
+        )
+    bboxes_3d = np.array(bbox_list)
+    return bboxes_3d, bbox_labels
 
 
-def compute_box_3d(scale, transform, rotation):
+def compute_box_3d(
+    scale: npt.NDArray[np.float64], transform: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
+) -> npt.NDArray[np.float64]:
     """Given obb compute 3d keypoints of the box."""
-
+    scale = scale.tolist()
     scales = [i / 2 for i in scale]
-    l, h, w = scales
+    length, height, width = scales
     center = np.reshape(transform, (-1, 3))
     center = center.reshape(3)
-    x_corners = [l, l, -l, -l, l, l, -l, -l]
-    y_corners = [h, -h, -h, h, h, -h, -h, h]
-    z_corners = [w, w, w, w, -w, -w, -w, -w]
-    corners_3d = np.dot(np.transpose(rotation),
-                        np.vstack([x_corners, y_corners, z_corners]))
+    x_corners = [length, length, -length, -length, length, length, -length, -length]
+    y_corners = [height, -height, -height, height, height, -height, -height, height]
+    z_corners = [width, width, width, width, -width, -width, -width, -width]
+    corners_3d = np.dot(np.transpose(rotation), np.vstack([x_corners, y_corners, z_corners]))
 
     corners_3d[0, :] += center[0]
     corners_3d[1, :] += center[1]
@@ -88,15 +91,11 @@ def compute_box_3d(scale, transform, rotation):
     bbox3d_raw = np.transpose(corners_3d)
     return bbox3d_raw
 
-def generate_line_segments(path, bboxes_2d_filtered: np.ndarray) -> None:
+
+def generate_line_segments(enitity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64]) -> None:
     """
     Generates line segments for each object's bounding box.
 
-    :param bboxes_2d_filtered: A numpy array of shape (8, 2), representing the filtered 2D keypoints of the 3D bounding boxes.
-    :return: A numpy array of shape (24, 2), representing the line segments for each object's bounding boxes.
-    """
-
-    '''
     Box corner order that we return is of the format below:
       6 -------- 7
      /|         /|
@@ -105,7 +104,12 @@ def generate_line_segments(path, bboxes_2d_filtered: np.ndarray) -> None:
     . 2 -------- 3
     |/         |/
     1 -------- 0
-    '''
+
+    :param bboxes_2d_filtered:
+        A numpy array of shape (8, 2), representing the filtered 2D keypoints of the 3D bounding boxes.
+    :return: A numpy array of shape (24, 2), representing the line segments for each object's bounding boxes.
+    """
+    # fmt: off
     segments = np.array([
         # bottom of bbox
         bboxes_2d_filtered[0], bboxes_2d_filtered[1],
@@ -126,15 +130,16 @@ def generate_line_segments(path, bboxes_2d_filtered: np.ndarray) -> None:
         bboxes_2d_filtered[3], bboxes_2d_filtered[7]
                          ], dtype=np.float32)
 
-    rr.log_line_segments(path, segments, color=[130, 160, 250, 255])
+    rr.log_line_segments(enitity_path, segments, color=[130, 160, 250, 255])
+
 
 def project_3d_bboxes_to_2d_keypoints(
     bboxes_3d: npt.NDArray[np.float64],
     camera_from_world: Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]],
     intrinsic: npt.NDArray[np.float64],
     img_width: int,
-    img_height: int
-    ) -> npt.NDArray[np.float64]:
+    img_height: int,
+) -> npt.NDArray[np.float64]:
     """
     Returns 2D keypoints of the 3D bounding box in the camera view.
 
@@ -146,19 +151,17 @@ def project_3d_bboxes_to_2d_keypoints(
     rotation = R.from_quat(rotation_q)
 
     # Transform 3D keypoints from world to camera frame
-    # world_to_camera_rotation = np.linalg.inv(rotation.as_matrix())
     world_to_camera_rotation = rotation.as_matrix()
     # convert to transformation matrix
     world_to_camera = np.hstack([world_to_camera_rotation, translation.reshape(3, 1)])
     world_to_camera = intrinsic @ world_to_camera
-    # world_to_camera = np.vstack([world_to_camera, np.array([0, 0, 0, 1])])
     # add batch dimension to match bounding box shape
     world_to_camera = np.tile(world_to_camera, (bboxes_3d.shape[0], 1, 1))
-    # bboxes_3d: [nObjects, 21, 4] [x, y, z, 1]
+    # bboxes_3d: [nObjects, 8, 3] -> [nObjects, 8, 4] to allow for batch projection
     bboxes_3d = np.concatenate([bboxes_3d, np.ones((bboxes_3d.shape[0], bboxes_3d.shape[1], 1))], axis=-1)
-    # batch projection using einsum
-    point_cam = np.einsum('vab,fnb->vfna', world_to_camera, bboxes_3d)
-    bboxes_2d = point_cam[..., :2]/point_cam[..., 2:]
+    # batch projection of points using einsum
+    bboxes_2d = np.einsum("vab,fnb->vfna", world_to_camera, bboxes_3d)
+    bboxes_2d = bboxes_2d[..., :2] / bboxes_2d[..., 2:]
     # nViews irrelevant, squeeze out
     bboxes_2d = bboxes_2d[0]
 
@@ -179,7 +182,7 @@ def log_camera(
     entity_id: str,
     bboxes: npt.NDArray[np.float64],
     bbox_labels: List[str],
-    ) -> None:
+) -> None:
     """Logs camera intrinsics and extrinsics to Rerun."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
@@ -188,17 +191,15 @@ def log_camera(
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
     for i, bbox_2d in zip(bbox_labels, bboxes_2d):
-        # rr.log_points(f"{entity_id}/image/bbox-2d/{i}", bbox_2d.reshape(-1, 2))
-        generate_line_segments(f"{entity_id}/image/bbox-2d-segments/{i}", bbox_2d.reshape(-1, 2))
-
-
+        generate_line_segments(f"{entity_id}/bbox-2d-segments/{i}", bbox_2d.reshape(-1, 2))
 
     rr.log_rigid3(
-        entity_id,
+        # pathlib makes it easy to get the parent, but log_rigid requires a string
+        str(Path(entity_id).parent),
         child_from_parent=camera_from_world,
         xyz="RDF",  # X=Right, Y=Down, Z=Forward
     )
-    rr.log_pinhole(f"{entity_id}/image", child_from_parent=intrinsic, width=w, height=h)
+    rr.log_pinhole(f"{entity_id}", child_from_parent=intrinsic, width=w, height=h)
 
 
 def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
@@ -240,12 +241,12 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.
     return (ts, camera_from_world)
 
 
-
 def find_closest_frame_id(target_id: str, frame_ids: Dict[str, Any]) -> str:
     """Finds the closest frame id to the target id."""
     target_value = float(target_id)
     closest_id = min(frame_ids.keys(), key=lambda x: abs(float(x) - target_value))
     return closest_id
+
 
 def log_arkit(recording_path: Path) -> None:
     """
@@ -301,51 +302,47 @@ def log_arkit(recording_path: Path) -> None:
 
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
-    bboxes, bbox_labels = log_annotated_bboxes(annotation)
+    bboxes_3d, bbox_labels = log_annotated_bboxes(annotation)
 
-    # To avoid logging image frames in the beginning that dont' have a trajectory
-    # This causes the camera to expand in the beginning otherwise
-    init_traj_found = False
-    lowres_entity_id = "world/camera_lowres"
-    highres_entity_id = "world/camera_highres"
+    lowres_posed_entity_id = "world/camera_posed_lowres/image_posed_lowres"
+    highres_entity_id = "world/camera_highres/image_highres"
+
     print("Processing frames…")
     for frame_id in tqdm(lowres_frame_ids):
         rr.set_time_seconds("time", float(frame_id))
         # load the lowres image and depth
         bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_id}.png")
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         depth = cv2.imread(f"{lowres_depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
 
-        high_res_exists:bool = (image_dir / f"{video_id}_{frame_id}.png").exists()
+        high_res_exists: bool = (image_dir / f"{video_id}_{frame_id}.png").exists()
 
         # Log the camera transforms:
         if frame_id in poses_from_traj:
-            if not init_traj_found:
-                init_traj_found = True
-            # only low res camera has a trajectory, high res does not
             lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_entity_id, bboxes, bbox_labels)
+            log_camera(lowres_intri_path, frame_id, poses_from_traj, lowres_posed_entity_id, bboxes_3d, bbox_labels)
 
-        if not init_traj_found:
-            continue
+            rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb)
+            # TODO(pablovela5620): no clear way to change colormap for depth via log function
+            rr.log_depth_image(f"{lowres_posed_entity_id}/depth", depth, meter=1000)
 
-        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log_image(f"{lowres_entity_id}/image/rgb", rgb)
-        # TODO(pablovela5620): no clear way to change colormap for depth via log function
-        rr.log_depth_image(f"{lowres_entity_id}/image/depth", depth, meter=1000)
-
+        # log the high res camera
         if high_res_exists:
             rr.set_time_seconds("time high resolution", float(frame_id))
+            # only low res camera has a trajectory, high res does not so need to find the closest low res frame id
             closest_lowres_frame_id = find_closest_frame_id(frame_id, poses_from_traj)
             highres_intri_path = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
-            log_camera(highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id, bboxes, bbox_labels)
+            log_camera(
+                highres_intri_path, closest_lowres_frame_id, poses_from_traj, highres_entity_id, bboxes_3d, bbox_labels
+            )
 
             # load the highres image and depth if they exist
             highres_bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
             highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
-            rr.log_image(f"{highres_entity_id}/image/rgb", highres_rgb)
-            rr.log_depth_image(f"{highres_entity_id}/image/depth", highres_depth, meter=1000)
+            rr.log_image(f"{highres_entity_id}/rgb", highres_rgb)
+            rr.log_depth_image(f"{highres_entity_id}/depth", highres_depth, meter=1000)
 
 
 if __name__ == "__main__":
