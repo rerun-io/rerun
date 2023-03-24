@@ -20,16 +20,19 @@ pub struct ScheduledPickingRect {
 
 impl PickingLayerProcessor {
     /// The texture format used for the picking layer.
-    pub const PICKING_LAYER_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb; // TODO: Integers and stuff.
+    pub const PICKING_LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb; // TODO: Integers and stuff.
 
     pub const PICKING_LAYER_DEPTH_FORMAT: wgpu::TextureFormat =
         ViewBuilder::MAIN_TARGET_DEPTH_FORMAT;
 
-    pub const PICKING_LAYER_DEFAULT_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
+    pub const PICKING_LAYER_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
         count: 1,
         mask: !0,
         alpha_to_coverage_enabled: false,
     };
+
+    pub const PICKING_LAYER_DEPTH_STATE: Option<wgpu::DepthStencilState> =
+        ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
 
     pub fn new(
         ctx: &RenderContext,
@@ -38,7 +41,7 @@ impl PickingLayerProcessor {
         picking_rect_extent: u32,
         enable_picking_target_sampling: bool,
     ) -> (Self, ScheduledPickingRect) {
-        let row_info = texture_row_data_info(Self::PICKING_LAYER_COLOR_FORMAT, picking_rect_extent);
+        let row_info = texture_row_data_info(Self::PICKING_LAYER_FORMAT, picking_rect_extent);
         let buffer_size = row_info.bytes_per_row_padded * picking_rect_extent;
         let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
@@ -66,7 +69,7 @@ impl PickingLayerProcessor {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: Self::PICKING_LAYER_COLOR_FORMAT,
+                format: Self::PICKING_LAYER_FORMAT,
                 usage: picking_target_usage,
             },
         );

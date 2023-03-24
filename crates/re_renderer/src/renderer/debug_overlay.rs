@@ -21,9 +21,10 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DebugOverlayUniformBuffer {
-        pub position_in_pixel: wgpu_buffer_types::UVec2,
-        pub extent_in_pixel: wgpu_buffer_types::UVec2,
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+        pub screen_resolution: wgpu_buffer_types::Vec2,
+        pub position_in_pixel: wgpu_buffer_types::Vec2,
+        pub extent_in_pixel: wgpu_buffer_types::Vec2RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
 }
 
@@ -45,8 +46,9 @@ impl DebugOverlayDrawData {
     pub fn new(
         ctx: &mut RenderContext,
         debug_texture: &GpuTexture,
+        screen_resolution: glam::UVec2,
         position_in_pixel: glam::UVec2,
-        size_in_pixel: glam::UVec2,
+        extent_in_pixel: glam::UVec2,
     ) -> Self {
         let mut renderers = ctx.renderers.write();
         let debug_overlay = renderers.get_or_create::<_, DebugOverlayRenderer>(
@@ -60,8 +62,9 @@ impl DebugOverlayDrawData {
             ctx,
             "DebugOverlayDrawData".into(),
             gpu_data::DebugOverlayUniformBuffer {
-                position_in_pixel: position_in_pixel.into(),
-                extent_in_pixel: size_in_pixel.into(),
+                screen_resolution: screen_resolution.as_vec2().into(),
+                position_in_pixel: position_in_pixel.as_vec2().into(),
+                extent_in_pixel: extent_in_pixel.as_vec2().into(),
                 end_padding: Default::default(),
             },
         );
@@ -179,7 +182,7 @@ impl Renderer for DebugOverlayRenderer {
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, &draw_data.bind_group, &[]);
-        pass.draw(0..6, 0..1);
+        pass.draw(0..4, 0..1);
 
         Ok(())
     }

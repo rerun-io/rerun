@@ -17,7 +17,7 @@ use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
+    draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerProcessor},
     DebugLabel, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
@@ -494,7 +494,11 @@ impl Renderer for PointCloudRenderer {
     type RendererDrawData = PointCloudDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::OutlineMask, DrawPhase::Opaque]
+        &[
+            DrawPhase::OutlineMask,
+            DrawPhase::Opaque,
+            DrawPhase::PickingLayer,
+        ]
     }
 
     fn create_renderer<Fs: FileSystem>(
@@ -618,7 +622,9 @@ impl Renderer for PointCloudRenderer {
             device,
             &RenderPipelineDesc {
                 label: "PointCloudRenderer::render_pipeline_picking_layer".into(),
-                // TODO:
+                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+                depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
+                multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
             },
             &pools.pipeline_layouts,
@@ -669,6 +675,12 @@ impl Renderer for PointCloudRenderer {
             return Ok(()); // No points submitted.
         };
 
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);

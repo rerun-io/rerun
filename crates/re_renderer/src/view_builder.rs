@@ -729,6 +729,7 @@ impl ViewBuilder {
             self.queue_draw(&DebugOverlayDrawData::new(
                 ctx,
                 &picking_processor.picking_target,
+                setup.resolution_in_pixel.into(),
                 scheduled_rect.screen_position,
                 scheduled_rect.extent,
             ));
