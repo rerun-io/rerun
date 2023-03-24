@@ -117,7 +117,7 @@ impl Default for EntityProperties {
             interactive: true,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
-            backproject_depth: false,
+            backproject_depth: true,
             backproject_pinhole_ent_path: None,
             depth_from_world_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
