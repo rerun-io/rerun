@@ -329,7 +329,7 @@ impl ImagesPart {
             max as f32
         } else {
             // This could only happen for Jpegs, and we should never get here.
-            // TODO(emilk): refactor the code so that we can always clauclate a range for the tensor
+            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
             re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
             match data {
                 DepthCloudDepthData::U16(_) => u16::MAX as f32,
