@@ -6,7 +6,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 /// A Quaternion represented by 4 real numbers.
 ///

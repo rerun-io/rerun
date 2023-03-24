@@ -2,8 +2,7 @@ use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Label, Radius},
-    msg_bundle::Component,
-    Arrow3D,
+    Arrow3D, Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};

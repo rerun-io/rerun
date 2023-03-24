@@ -1,7 +1,7 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use super::FixedSizeArrayField;
-use crate::msg_bundle::Component;
+use crate::Component;
 
 /// Number of decimals shown for all vector display methods.
 const DISPLAY_PRECISION: usize = 3;

@@ -10,8 +10,7 @@ use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
 use re_log_types::{
     component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    msg_bundle::Component,
-    EntityPath,
+    Component, EntityPath,
 };
 
 fn main() {

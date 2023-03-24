@@ -7,8 +7,7 @@ use re_log_types::{
     datagen::build_frame_nr,
     msg_bundle::try_build_msg_bundle1,
     msg_bundle::try_build_msg_bundle2,
-    msg_bundle::Component,
-    MsgId,
+    Component, MsgId,
 };
 use re_query::query_entity_with_primary;
 

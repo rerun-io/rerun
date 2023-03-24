@@ -4,7 +4,7 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::msg_bundle::Component;
+use crate::Component;
 use crate::{TensorDataType, TensorElement};
 
 use super::arrow_convert_shims::BinaryBuffer;

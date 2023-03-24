@@ -11,8 +11,7 @@ use re_log_types::datagen::build_some_rects;
 use re_log_types::{
     component_types::{InstanceKey, Point2D},
     datagen::{build_frame_nr, build_some_point2d},
-    msg_bundle::Component,
-    EntityPath,
+    Component, EntityPath,
 };
 
 fn main() {

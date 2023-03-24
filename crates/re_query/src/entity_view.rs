@@ -7,8 +7,7 @@ use re_log_types::{
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
-    ComponentName,
+    Component, ComponentName, DeserializableComponent, SerializableComponent,
 };
 
 use crate::QueryError;

@@ -10,7 +10,7 @@ use pyo3::{
 };
 use re_log_types::{
     component_types,
-    msg_bundle::{self, MsgBundle, MsgBundleError},
+    msg_bundle::{MsgBundle, MsgBundleError},
     DataCell, EntityPath, LogMsg, MsgId, TimePoint,
 };
 
@@ -44,9 +44,9 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         // Force the type to be correct.
         // https://github.com/rerun-io/rerun/issues/795s
         if let Some(name) = name {
-            if name == <component_types::Tensor as msg_bundle::Component>::name() {
+            if name == <component_types::Tensor as re_log_types::Component>::name() {
                 field.data_type = <component_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name == <component_types::Rect2D as msg_bundle::Component>::name() {
+            } else if name == <component_types::Rect2D as re_log_types::Component>::name() {
                 field.data_type = <component_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }

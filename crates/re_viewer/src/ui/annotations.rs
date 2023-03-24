@@ -8,8 +8,7 @@ use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ClassId, KeypointId},
     context::{AnnotationInfo, ClassDescription},
-    msg_bundle::Component,
-    AnnotationContext, MsgId,
+    AnnotationContext, Component, MsgId,
 };
 use re_query::query_entity_with_primary;
 

@@ -322,7 +322,7 @@ impl DataStore {
                 // let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
 
                 // ...so we create it manually instead.
-                use re_log_types::msg_bundle::Component as _;
+                use re_log_types::Component as _;
                 let values =
                     arrow2::array::UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
                 let cell = DataCell::from_arrow(InstanceKey::name(), values);

@@ -2,10 +2,8 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
-    component_types::InstanceKey,
-    external::arrow2,
-    msg_bundle::{Component, DeserializableComponent},
-    ComponentName,
+    component_types::InstanceKey, external::arrow2, Component, ComponentName,
+    DeserializableComponent,
 };
 use re_query::ComponentWithInstances;
 
