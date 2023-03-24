@@ -487,55 +487,64 @@ fn depth_props_ui(
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
-) {
+) -> Option<()> {
     let query = ctx.current_query();
+    let pinhole_ent_path = closest_pinhole_transform(ctx, entity_path, &query)?;
+    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query)?;
 
-    // Find closest pinhole transform, if any.
+    if tensor.meaning != TensorDataMeaning::Depth {
+        return Some(());
+    }
+
+    entity_props.backproject_pinhole_ent_path = Some(pinhole_ent_path.clone());
+
+    ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
+        .on_hover_text(
+            "If enabled, the depth texture will be backprojected into a point cloud rather \
+                than simply displayed as an image.",
+        );
+    ui.end_row();
+
+    if entity_props.backproject_depth {
+        ui.label("Pinhole");
+        ctx.entity_path_button(ui, None, &pinhole_ent_path)
+            .on_hover_text(
+                "The entity path of the pinhole transform being used to do the backprojection.",
+            );
+        ui.end_row();
+
+        depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
+
+        backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
+
+        // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
+        // need to get the current hardcoded colormapping out of the image cache first.
+        colormap_props_ui(ui, entity_props);
+    } else {
+        entity_props.backproject_pinhole_ent_path = None;
+    }
+
+    Some(())
+}
+
+/// Find closest entity with a pinhole transform.
+fn closest_pinhole_transform(
+    ctx: &ViewerContext<'_>,
+    entity_path: &EntityPath,
+    query: &re_arrow_store::LatestAtQuery,
+) -> Option<EntityPath> {
     let mut pinhole_ent_path = None;
     let mut cur_path = Some(entity_path.clone());
     while let Some(path) = cur_path {
         if let Some(re_log_types::Transform::Pinhole(_)) =
-            query_latest_single::<Transform>(&ctx.log_db.entity_db, &path, &query)
+            query_latest_single::<Transform>(&ctx.log_db.entity_db, &path, query)
         {
             pinhole_ent_path = Some(path);
             break;
         }
         cur_path = path.parent();
     }
-
-    // Early out if there's no pinhole transform upwards in the tree.
-    let Some(pinhole_ent_path) = pinhole_ent_path else { return; };
-
-    entity_props.backproject_pinhole_ent_path = Some(pinhole_ent_path.clone());
-
-    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query);
-    if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
-        ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
-            .on_hover_text(
-                "If enabled, the depth texture will be backprojected into a point cloud rather \
-                than simply displayed as an image.",
-            );
-        ui.end_row();
-
-        if entity_props.backproject_depth {
-            ui.label("Pinhole");
-            ctx.entity_path_button(ui, None, &pinhole_ent_path)
-                .on_hover_text(
-                    "The entity path of the pinhole transform being used to do the backprojection.",
-                );
-            ui.end_row();
-
-            depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
-
-            backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
-
-            // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
-            // need to get the current hardcoded colormapping out of the image cache first.
-            colormap_props_ui(ui, entity_props);
-        } else {
-            entity_props.backproject_pinhole_ent_path = None;
-        }
-    }
+    pinhole_ent_path
 }
 
 fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
