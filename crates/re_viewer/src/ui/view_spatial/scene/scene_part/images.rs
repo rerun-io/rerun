@@ -153,9 +153,12 @@ impl ImagesPart {
 
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                if tensor.meaning == TensorDataMeaning::Depth {
-                    if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
-                    {
+                if properties.backproject_depth && tensor.meaning == TensorDataMeaning::Depth {
+                    let query = ctx.current_query();
+                    let pinhole_ent_path =
+                        crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
+
+                    if let Some(pinhole_ent_path) = pinhole_ent_path {
                         // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                         // transform of the projection plane, which is of no use to us here.
                         // What we want are the extrinsics of the depth camera!
@@ -165,7 +168,7 @@ impl ImagesPart {
                             transforms,
                             properties,
                             &tensor,
-                            pinhole_ent_path,
+                            &pinhole_ent_path,
                             entity_highlight,
                         );
                         return Ok(());

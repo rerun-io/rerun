@@ -61,11 +61,6 @@ pub struct EntityProperties {
     /// in a spatial view, using 3D navigation.
     pub backproject_depth: bool,
 
-    /// Entity path of the pinhole transform used for the backprojection.
-    ///
-    /// `None` means backprojection is disabled.
-    pub backproject_pinhole_ent_path: Option<EntityPath>,
-
     /// How many depth units per world-space unit. e.g. 1000 for millimeters.
     ///
     /// This corresponds to [`re_log_types::component_types::Tensor::meter`].
@@ -92,10 +87,6 @@ impl EntityProperties {
                 .clone(),
 
             backproject_depth: self.backproject_depth || child.backproject_depth,
-            backproject_pinhole_ent_path: self
-                .backproject_pinhole_ent_path
-                .clone()
-                .or(child.backproject_pinhole_ent_path.clone()),
             depth_from_world_scale: self
                 .depth_from_world_scale
                 .or(&child.depth_from_world_scale)
@@ -118,7 +109,6 @@ impl Default for EntityProperties {
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: true,
-            backproject_pinhole_ent_path: None,
             depth_from_world_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
