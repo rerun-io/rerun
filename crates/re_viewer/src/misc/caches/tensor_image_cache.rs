@@ -461,6 +461,8 @@ fn depth_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
         "Depth image had non-finite values"
     );
 
+    min = min.min(0.0); // Depth usually start at zero.
+
     if min == max {
         // Uniform image. We can't remap it to a 0-1 range, so do whatever:
         min = 0.0;

@@ -4,7 +4,7 @@ use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
+use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::renderer::OutlineConfig;
 
 use crate::{
@@ -175,13 +175,7 @@ impl ViewSpatialState {
                 &entity_path,
                 scene_size,
             );
-            Self::update_depth_cloud_property_heuristics(
-                ctx,
-                data_blueprint,
-                &query,
-                &entity_path,
-                scene_size,
-            );
+            Self::update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
@@ -221,34 +215,26 @@ impl ViewSpatialState {
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-        scene_size: f32,
     ) {
         let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
         if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
             let tensor = tensor.as_ref().unwrap();
 
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
-            if properties.backproject_scale.is_auto() {
-                let auto = tensor.meter.map_or_else(
-                    || match &tensor.data {
-                        TensorData::U16(_) => 1.0 / u16::MAX as f32,
-                        _ => 1.0,
-                    },
-                    |meter| match &tensor.data {
-                        TensorData::U16(_) => 1.0 / meter * u16::MAX as f32,
-                        _ => meter,
-                    },
-                );
-                properties.backproject_scale = EditableAutoValue::Auto(auto);
+            if properties.depth_from_world_scale.is_auto() {
+                let auto = tensor.meter.unwrap_or_else(|| {
+                    use re_log_types::component_types::TensorTrait as _;
+                    if tensor.dtype().is_integer() {
+                        1000.0
+                    } else {
+                        1.0
+                    }
+                });
+                properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
             }
 
             if properties.backproject_radius_scale.is_auto() {
-                let auto = if scene_size.is_finite() && scene_size > 0.0 {
-                    f32::max(0.02, scene_size * 0.001)
-                } else {
-                    0.02
-                };
-                properties.backproject_radius_scale = EditableAutoValue::Auto(auto);
+                properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
             }
 
             data_blueprint

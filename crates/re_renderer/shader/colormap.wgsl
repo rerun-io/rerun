@@ -9,6 +9,9 @@ const COLORMAP_PLASMA:  u32 = 3u;
 const COLORMAP_MAGMA:   u32 = 4u;
 const COLORMAP_INFERNO: u32 = 5u;
 
+/// Returns a gamma-space sRGB in 0-1 range.
+///
+/// The input will be saturated to [0, 1] range.
 fn colormap_srgb(which: u32, t: f32) -> Vec3 {
     if which == COLORMAP_TURBO {
         return colormap_turbo_srgb(t);
@@ -25,6 +28,13 @@ fn colormap_srgb(which: u32, t: f32) -> Vec3 {
     }
 }
 
+/// Returns a linear-space sRGB in 0-1 range.
+///
+/// The input will be saturated to [0, 1] range.
+fn colormap_linear(which: u32, t: f32) -> Vec3 {
+    return linear_from_srgb(colormap_srgb(which, t));
+}
+
 // --- Turbo color map ---
 
 // Polynomial approximation in GLSL for the Turbo colormap.
@@ -38,7 +48,8 @@ fn colormap_srgb(which: u32, t: f32) -> Vec3 {
 //   Colormap Design: Anton Mikhailov (mikhailov@google.com)
 //   GLSL Approximation: Ruofei Du (ruofei@google.com)
 
-/// Returns a normalized sRGB polynomial approximation from Turbo color map, assuming `t` is
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a polynomial approximation from Turbo color map, assuming `t` is
 /// normalized (it will be saturated no matter what).
 fn colormap_turbo_srgb(t: f32) -> Vec3 {
     let r4 = Vec4(0.13572138, 4.61539260, -42.66032258, 132.13108234);
@@ -73,7 +84,8 @@ fn colormap_turbo_srgb(t: f32) -> Vec3 {
 //
 // Data fitted from https://github.com/BIDS/colormap/blob/master/colormaps.py (CC0).
 
-/// Returns a normalized sRGB polynomial approximation from Viridis color map, assuming `t` is
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a polynomial approximation from Viridis color map, assuming `t` is
 /// normalized (it will be saturated no matter what).
 fn colormap_viridis_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
@@ -87,7 +99,8 @@ fn colormap_viridis_srgb(t: f32) -> Vec3 {
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
-/// Returns a normalized sRGB polynomial approximation from Plasma color map, assuming `t` is
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a polynomial approximation from Plasma color map, assuming `t` is
 /// normalized (it will be saturated no matter what).
 fn colormap_plasma_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(0.05873234392399702, 0.02333670892565664, 0.5433401826748754);
@@ -101,7 +114,8 @@ fn colormap_plasma_srgb(t: f32) -> Vec3 {
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
-/// Returns a normalized sRGB polynomial approximation from Magma color map, assuming `t` is
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a polynomial approximation from Magma color map, assuming `t` is
 /// normalized (it will be saturated no matter what).
 fn colormap_magma_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(-0.002136485053939582, -0.000749655052795221, -0.005386127855323933);
@@ -115,7 +129,8 @@ fn colormap_magma_srgb(t: f32) -> Vec3 {
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
-/// Returns a normalized sRGB polynomial approximation from Inferno color map, assuming `t` is
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a polynomial approximation from Inferno color map, assuming `t` is
 /// normalized (it will be saturated no matter what).
 fn colormap_inferno_srgb(t: f32) -> Vec3 {
     let c0 = Vec3(0.0002189403691192265, 0.001651004631001012, -0.01948089843709184);

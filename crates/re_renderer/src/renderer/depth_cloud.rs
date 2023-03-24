@@ -41,14 +41,61 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
-        pub depth_camera_extrinsics: crate::wgpu_buffer_types::Mat4,
+        /// The extrinsics of the camera used for the projection.
+        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
+
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
 
-        pub radius_scale: f32,
-        pub colormap: u32,
         pub outline_mask_id: crate::wgpu_buffer_types::UVec2,
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 8],
+        /// Multiplier to get world-space depth from whatever is in the texture.
+        pub world_depth_from_texture_value: f32,
+
+        /// Point radius is calculated as world-space depth times this value.
+        pub point_radius_from_world_depth: f32,
+
+        /// The maximum depth value in world-space, for use with the colormap.
+        pub max_depth_in_world: f32,
+
+        pub colormap: u32,
+        pub row_pad: [u32; 2],
+
+        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
+    }
+
+    impl DepthCloudInfoUBO {
+        pub fn from_depth_cloud(depth_cloud: &super::DepthCloud) -> Self {
+            let super::DepthCloud {
+                world_from_obj,
+                depth_camera_intrinsics,
+                world_depth_from_data_depth,
+                point_radius_from_world_depth,
+                max_depth_in_world,
+                depth_dimensions: _,
+                depth_data,
+                colormap,
+                outline_mask_id,
+            } = depth_cloud;
+
+            let user_depth_from_texture_value = match depth_data {
+                super::DepthCloudDepthData::U16(_) => 65535.0, // un-normalize
+                super::DepthCloudDepthData::F32(_) => 1.0,
+            };
+            let world_depth_from_texture_value =
+                world_depth_from_data_depth * user_depth_from_texture_value;
+
+            Self {
+                world_from_obj: (*world_from_obj).into(),
+                depth_camera_intrinsics: (*depth_camera_intrinsics).into(),
+                outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
+                world_depth_from_texture_value,
+                point_radius_from_world_depth: *point_radius_from_world_depth,
+                max_depth_in_world: *max_depth_in_world,
+                colormap: *colormap as u32,
+                row_pad: Default::default(),
+                end_padding: Default::default(),
+            }
+        }
     }
 }
 
@@ -57,6 +104,9 @@ mod gpu_data {
 /// This is either `u16` or `f32` values; in both cases the data will be uploaded to the shader
 /// as-is.
 /// For `u16`s, this results in a `Depth16Unorm` texture, otherwise an `R32Float`.
+/// The reason we normalize `u16` is so that the shader can use a `float` texture in both cases.
+/// However, it means we need to multiply the sampled value by `65535.0` in the shader to get
+/// the actual depth.
 ///
 /// The shader assumes that this is normalized, linear, non-flipped depth using the camera
 /// position as reference point (not the camera plane!).
@@ -77,15 +127,21 @@ impl Default for DepthCloudDepthData {
 
 pub struct DepthCloud {
     /// The extrinsics of the camera used for the projection.
-    pub depth_camera_extrinsics: glam::Mat4,
+    pub world_from_obj: glam::Mat4,
 
     /// The intrinsics of the camera used for the projection.
     ///
     /// Only supports pinhole cameras at the moment.
     pub depth_camera_intrinsics: glam::Mat3,
 
-    /// The scale to apply to the radii of the backprojected points.
-    pub radius_scale: f32,
+    /// Multiplier to get world-space depth from whatever is in [`Self::depth_data`].
+    pub world_depth_from_data_depth: f32,
+
+    /// Point radius is calculated as world-space depth times this value.
+    pub point_radius_from_world_depth: f32,
+
+    /// The maximum depth value in world-space, for use with the colormap.
+    pub max_depth_in_world: f32,
 
     /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
@@ -100,20 +156,6 @@ pub struct DepthCloud {
 
     /// Option outline mask id preference.
     pub outline_mask_id: OutlineMaskPreference,
-}
-
-impl Default for DepthCloud {
-    fn default() -> Self {
-        Self {
-            depth_camera_extrinsics: glam::Mat4::IDENTITY,
-            depth_camera_intrinsics: glam::Mat3::IDENTITY,
-            radius_scale: 1.0,
-            depth_dimensions: glam::UVec2::ZERO,
-            depth_data: DepthCloudDepthData::default(),
-            colormap: ColorMap::ColorMapTurbo,
-            outline_mask_id: OutlineMaskPreference::NONE,
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -159,41 +201,49 @@ impl DepthCloudDrawData {
         let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
             ctx,
             "depth_cloud_ubos".into(),
-            depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
-                depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
-                depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
-                radius_scale: info.radius_scale,
-                colormap: info.colormap as u32,
-                outline_mask_id: info.outline_mask_id.0.unwrap_or_default().into(),
-                end_padding: Default::default(),
-            }),
+            depth_clouds
+                .iter()
+                .map(gpu_data::DepthCloudInfoUBO::from_depth_cloud),
         );
 
         let mut instances = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
             let depth_texture = match &depth_cloud.depth_data {
-                // On native, we can use D16 textures without issues, but they aren't supported on
-                // the web (and won't ever be on the WebGL backend, see
-                // https://github.com/gfx-rs/wgpu/issues/3537).
-                //
-                // TODO(cmc): use an RG8 texture and unpack it manually in the shader instead.
-                #[cfg(not(target_arch = "wasm32"))]
                 DepthCloudDepthData::U16(data) => {
-                    create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
+                    if cfg!(target_arch = "wasm32") {
+                        // Web: manual normalization because Depth16Unorm textures aren't supported on
+                        // the web (and won't ever be on the WebGL backend, see
+                        // https://github.com/gfx-rs/wgpu/issues/3537).
+                        //
+                        // TODO(cmc): use an RG8 texture and unpack it manually in the shader instead.
+                        use itertools::Itertools as _;
+                        let dataf32 = data
+                            .as_slice()
+                            .iter()
+                            .map(|d| *d as f32 / u16::MAX as f32)
+                            .collect_vec();
+                        create_and_upload_texture(
+                            ctx,
+                            depth_cloud,
+                            dataf32.as_slice(),
+                            wgpu::TextureFormat::R32Float,
+                        )
+                    } else {
+                        // Native: We use Depth16Unorm over R16Unorm because the latter is behind a feature flag and doesn't work on WebGPU.
+                        create_and_upload_texture(
+                            ctx,
+                            depth_cloud,
+                            data.as_slice(),
+                            wgpu::TextureFormat::Depth16Unorm,
+                        )
+                    }
                 }
-                #[cfg(target_arch = "wasm32")]
-                DepthCloudDepthData::U16(data) => {
-                    use itertools::Itertools as _;
-                    let dataf32 = data
-                        .as_slice()
-                        .iter()
-                        .map(|d| *d as f32 / u16::MAX as f32)
-                        .collect_vec();
-                    create_and_upload_texture(ctx, depth_cloud, dataf32.as_slice(), true)
-                }
-                DepthCloudDepthData::F32(data) => {
-                    create_and_upload_texture(ctx, depth_cloud, data.as_slice(), false)
-                }
+                DepthCloudDepthData::F32(data) => create_and_upload_texture(
+                    ctx,
+                    depth_cloud,
+                    data.as_slice(),
+                    wgpu::TextureFormat::R32Float,
+                ),
             };
 
             instances.push(DepthCloudDrawInstance {
@@ -222,7 +272,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     ctx: &mut RenderContext,
     depth_cloud: &DepthCloud,
     data: &[T],
-    force_32bit: bool,
+    depth_format: wgpu::TextureFormat,
 ) -> GpuTexture {
     crate::profile_function!();
 
@@ -230,14 +280,6 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
         width: depth_cloud.depth_dimensions.x,
         height: depth_cloud.depth_dimensions.y,
         depth_or_array_layers: 1,
-    };
-    let depth_format = if force_32bit {
-        wgpu::TextureFormat::R32Float
-    } else {
-        match depth_cloud.depth_data {
-            DepthCloudDepthData::U16(_) => wgpu::TextureFormat::Depth16Unorm,
-            DepthCloudDepthData::F32(_) => wgpu::TextureFormat::R32Float,
-        }
     };
     let depth_texture_desc = TextureDesc {
         label: "depth_texture".into(),
