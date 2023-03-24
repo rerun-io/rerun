@@ -342,7 +342,7 @@ impl ImagesPart {
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_data_depth,
             point_radius_from_world_depth,
-            max_depth: world_depth_from_data_depth * max_data_value,
+            max_depth_in_world: world_depth_from_data_depth * max_data_value,
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,
