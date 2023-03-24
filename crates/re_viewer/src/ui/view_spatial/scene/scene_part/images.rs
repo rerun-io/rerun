@@ -317,14 +317,13 @@ impl ImagesPart {
             },
         };
 
-        // By default, we assign a radius to each point so that each point becomes a ball
-        // that just barely touches its neighboring pixel-points.
-        // This means the point radius increases with distance.
-        // It also increases with the field of view, and decreases with the resolution.
+        // We want point radius to be defined in a scale where the radius of a point
+        // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
+        // at that distance.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
-        let point_radius_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
         let radius_scale = *properties.backproject_radius_scale.get();
-        let point_radius_from_world_depth = radius_scale * point_radius_from_depth;
+        let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
         let max_data_value = if let Some((_min, max)) = ctx.cache.tensor_stats(tensor).range {
             max as f32

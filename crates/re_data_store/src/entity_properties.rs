@@ -120,7 +120,7 @@ impl Default for EntityProperties {
             backproject_depth: false,
             backproject_pinhole_ent_path: None,
             depth_from_world_scale: EditableAutoValue::default(),
-            backproject_radius_scale: EditableAutoValue::Auto(2.0), // Lower values leads to too much Moiré
+            backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
     }
 }

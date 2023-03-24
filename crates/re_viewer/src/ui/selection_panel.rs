@@ -572,8 +572,9 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
         )
         .on_hover_text(
             "Scales the radii of the points in the backprojected point cloud.\n\
-            With a scale of one, adjacent pixels at the same depth are sized so that they are just touching.\
-            \nDouble-click to reset.",
+            This is a factor of the projected pixel diameter. \
+            This means a scale of 0.5 will leave adjacent pixels at the same depth value jsut touching.\n\
+            Double-click to reset.",
         );
     if response.double_clicked() {
         *property = EditableAutoValue::Auto(2.0);
