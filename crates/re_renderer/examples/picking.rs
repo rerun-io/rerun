@@ -39,7 +39,7 @@ impl framework::Example for Picking {
         "Picking"
     }
 
-    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
         let point_count = 100000;
@@ -102,7 +102,7 @@ impl framework::Example for Picking {
             )
             .unwrap();
 
-        view_builder.schedule_picking_readback(re_ctx, glam::uvec2(100, 100), 32, true);
+        view_builder.schedule_picking_readback(re_ctx, glam::uvec2(100, 100), 256, true);
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
         builder

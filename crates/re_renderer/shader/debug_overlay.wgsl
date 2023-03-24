@@ -23,7 +23,7 @@ fn main_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
     // This calculation could be simplified by pre-computing things on the CPU.
     // But this is not the point here - we want to debug this and other things rapidly by editing the shader.
-    let screen_portion = texcoord * (Vec2(128.0, 128.0) / uniforms.screen_resolution) +
+    let screen_portion = texcoord * (uniforms.extent_in_pixel / uniforms.screen_resolution) +
                         uniforms.position_in_pixel / uniforms.screen_resolution;
     let screen_ndc = Vec2(screen_portion.x * 2.0 - 1.0, 1.0 - screen_portion.y * 2.0);
 
