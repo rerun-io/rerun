@@ -147,15 +147,15 @@ def project_3d_bboxes_to_2d_keypoints(
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
-    # convert to transformation matrix
+    # convert to transformation matrix shape of (3, 4)
     world_to_camera = np.hstack([world_to_camera_rotation, translation.reshape(3, 1)])
-    world_to_camera = intrinsic @ world_to_camera
-    # add batch dimension to match bounding box shape
-    world_to_camera = np.tile(world_to_camera, (bboxes_3d.shape[0], 1, 1))
+    transformation_matrix = intrinsic @ world_to_camera
+    # add batch dimension to match bounding box shape, (nObjects, 3, 4)
+    transformation_matrix = np.tile(transformation_matrix, (bboxes_3d.shape[0], 1, 1))
     # bboxes_3d: [nObjects, 8, 3] -> [nObjects, 8, 4] to allow for batch projection
     bboxes_3d = np.concatenate([bboxes_3d, np.ones((bboxes_3d.shape[0], bboxes_3d.shape[1], 1))], axis=-1)
     # batch projection of points using einsum
-    bboxes_2d = np.einsum("vab,fnb->vfna", world_to_camera, bboxes_3d)
+    bboxes_2d = np.einsum("vab,fnb->vfna", transformation_matrix, bboxes_3d)
     bboxes_2d = bboxes_2d[..., :2] / bboxes_2d[..., 2:]
     # nViews irrelevant, squeeze out
     bboxes_2d = bboxes_2d[0]
@@ -164,7 +164,6 @@ def project_3d_bboxes_to_2d_keypoints(
     mask_x = (bboxes_2d[:, :, 0] >= 0) & (bboxes_2d[:, :, 0] < img_width)
     mask_y = (bboxes_2d[:, :, 1] >= 0) & (bboxes_2d[:, :, 1] < img_height)
     mask = mask_x & mask_y
-    # bboxes_2d_filtered = bboxes_2d[mask]
     bboxes_2d_filtered = np.where(mask[..., np.newaxis], bboxes_2d, np.nan)
 
     return bboxes_2d_filtered
