@@ -166,13 +166,12 @@ impl DepthCloudDrawData {
         for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
             let depth_texture = match &depth_cloud.depth_data {
                 DepthCloudDepthData::U16(data) => {
-                    // On native, we can use D16 textures without issues, but they aren't supported on
-                    // the web (and won't ever be on the WebGL backend, see
-                    // https://github.com/gfx-rs/wgpu/issues/3537).
-                    //
-                    // TODO(cmc): use an RG8 texture and unpack it manually in the shader instead.
                     if cfg!(target_arch = "wasm32") {
-                        // Manual normalization:
+                        // Web: manual normalization because Depth16Unorm textures aren't supported on
+                        // the web (and won't ever be on the WebGL backend, see
+                        // https://github.com/gfx-rs/wgpu/issues/3537).
+                        //
+                        // TODO(cmc): use an RG8 texture and unpack it manually in the shader instead.
                         use itertools::Itertools as _;
                         let dataf32 = data
                             .as_slice()
@@ -186,6 +185,8 @@ impl DepthCloudDrawData {
                             wgpu::TextureFormat::R32Float,
                         )
                     } else {
+                        // Native: We use Depth16Unorm over R16Unorm beacuse the latter is behind a feature flag,
+                        // and not avilable on OpenGL backends.
                         create_and_upload_texture(
                             ctx,
                             depth_cloud,
