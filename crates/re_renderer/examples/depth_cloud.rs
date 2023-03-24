@@ -47,7 +47,7 @@ struct RenderDepthClouds {
     albedo_handle: GpuTexture2DHandle,
 
     scale: f32,
-    radius_scale: f32,
+    point_radius_from_world_depth: f32,
     intrinsics: glam::Mat3,
 
     camera_control: CameraControl,
@@ -72,7 +72,7 @@ impl RenderDepthClouds {
         let Self {
             depth,
             scale,
-            radius_scale,
+            point_radius_from_world_depth,
             intrinsics,
             ..
         } = self;
@@ -93,7 +93,7 @@ impl RenderDepthClouds {
                     (
                         pos_in_world * *scale,
                         Color32::from_gray((linear_depth * 255.0) as u8),
-                        Size(linear_depth * *radius_scale),
+                        Size(linear_depth * *point_radius_from_world_depth),
                     )
                 })
                 .multiunzip();
@@ -163,7 +163,7 @@ impl RenderDepthClouds {
         let Self {
             depth,
             scale,
-            radius_scale,
+            point_radius_from_world_depth,
             intrinsics,
             ..
         } = self;
@@ -175,7 +175,8 @@ impl RenderDepthClouds {
             &[DepthCloud {
                 depth_camera_extrinsics: world_from_obj,
                 depth_camera_intrinsics: *intrinsics,
-                point_radius_from_normalized_depth: *radius_scale,
+                world_depth_from_data_depth: 1.0,
+                point_radius_from_world_depth: *point_radius_from_world_depth,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
                 colormap: re_renderer::ColorMap::ColorMapTurbo,
@@ -246,7 +247,7 @@ impl framework::Example for RenderDepthClouds {
         );
 
         let scale = 50.0;
-        let radius_scale = 0.1;
+        let point_radius_from_world_depth = 0.1;
 
         // hardcoded intrinsics for nyud dataset
         let focal_length = depth.dimensions.x as f32 * 0.7;
@@ -264,7 +265,7 @@ impl framework::Example for RenderDepthClouds {
             albedo_handle,
 
             scale,
-            radius_scale,
+            point_radius_from_world_depth,
             intrinsics,
 
             camera_control: CameraControl::RotateAroundCenter,

@@ -45,14 +45,51 @@ mod gpu_data {
 
         pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
 
-        /// Point radius is calculated as depth times this value.
-        pub point_radius_from_normalized_depth: f32,
-
-        pub colormap: u32,
-
         pub outline_mask_id: crate::wgpu_buffer_types::UVec2,
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 8],
+        /// Multiplier to get world-space depth from whatever is in the texture.
+        pub world_depth_from_texture_value: f32,
+
+        /// Point radius is calculated as world-space depth times this value.
+        pub point_radius_from_world_depth: f32,
+
+        pub colormap: u32,
+        pub row_pad: [u32; 3],
+
+        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
+    }
+
+    impl DepthCloudInfoUBO {
+        pub fn from_depth_cloud(depth_cloud: &super::DepthCloud) -> Self {
+            let super::DepthCloud {
+                depth_camera_extrinsics,
+                depth_camera_intrinsics,
+                world_depth_from_data_depth,
+                point_radius_from_world_depth,
+                depth_dimensions: _,
+                depth_data,
+                colormap,
+                outline_mask_id,
+            } = depth_cloud;
+
+            let user_depth_from_texture_value = match depth_data {
+                super::DepthCloudDepthData::U16(_) => 65535.0, // un-normalize
+                super::DepthCloudDepthData::F32(_) => 1.0,
+            };
+            let world_depth_from_texture_value =
+                world_depth_from_data_depth * user_depth_from_texture_value;
+
+            Self {
+                depth_camera_extrinsics: (*depth_camera_extrinsics).into(),
+                depth_camera_intrinsics: (*depth_camera_intrinsics).into(),
+                outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
+                world_depth_from_texture_value,
+                point_radius_from_world_depth: *point_radius_from_world_depth,
+                colormap: *colormap as u32,
+                row_pad: Default::default(),
+                end_padding: Default::default(),
+            }
+        }
     }
 }
 
@@ -91,8 +128,11 @@ pub struct DepthCloud {
     /// Only supports pinhole cameras at the moment.
     pub depth_camera_intrinsics: glam::Mat3,
 
-    /// Point radius is calculated as depth times this value.
-    pub point_radius_from_normalized_depth: f32,
+    /// Multiplier to get world-space depth from whatever is in [`depth_data`].
+    pub world_depth_from_data_depth: f32,
+
+    /// Point radius is calculated as world-space depth times this value.
+    pub point_radius_from_world_depth: f32,
 
     /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
@@ -152,14 +192,9 @@ impl DepthCloudDrawData {
         let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
             ctx,
             "depth_cloud_ubos".into(),
-            depth_clouds.iter().map(|info| gpu_data::DepthCloudInfoUBO {
-                depth_camera_extrinsics: info.depth_camera_extrinsics.into(),
-                depth_camera_intrinsics: info.depth_camera_intrinsics.into(),
-                point_radius_from_normalized_depth: info.point_radius_from_normalized_depth,
-                colormap: info.colormap as u32,
-                outline_mask_id: info.outline_mask_id.0.unwrap_or_default().into(),
-                end_padding: Default::default(),
-            }),
+            depth_clouds
+                .iter()
+                .map(gpu_data::DepthCloudInfoUBO::from_depth_cloud),
         );
 
         let mut instances = Vec::with_capacity(depth_clouds.len());

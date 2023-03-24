@@ -25,10 +25,12 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let texcoords = IVec2(quad_idx % wh.x, quad_idx / wh.x);
 
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
-    let norm_linear_depth = textureLoad(depth_texture, texcoords, 0).x;
+    let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
+
+    let max_depth = 10.0; // TODO: get from uniform buffer
 
     // TODO(cmc): albedo textures
-    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, norm_linear_depth), 1.0);
+    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, world_space_depth / max_depth), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
     let intrinsics = depth_cloud_info.depth_camera_intrinsics;
@@ -36,15 +38,15 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
 
     let pos_in_obj = Vec3(
-        (Vec2(texcoords) - offset) * norm_linear_depth / focal_length,
-        norm_linear_depth,
+        (Vec2(texcoords) - offset) * world_space_depth / focal_length,
+        world_space_depth,
     );
 
     let pos_in_world = depth_cloud_info.extrinsincs * Vec4(pos_in_obj, 1.0);
 
     var data: PointData;
     data.pos_in_world = pos_in_world.xyz;
-    data.unresolved_radius = depth_cloud_info.point_radius_from_normalized_depth * norm_linear_depth;
+    data.unresolved_radius = depth_cloud_info.point_radius_from_world_depth * world_space_depth;
     data.color = color;
 
     return data;
@@ -62,14 +64,17 @@ struct DepthCloudInfo {
     /// Only supports pinhole cameras at the moment.
     depth_camera_intrinsics: Mat3,
 
-    /// Point radius is calculated as normalized depth times this value.
-    point_radius_from_normalized_depth: f32,
+    /// Outline mask id for the outline mask pass.
+    outline_mask_id: UVec2,
+
+    /// Multiplier to get world-space depth from whatever is in the texture.
+    world_depth_from_texture_value: f32,
+
+    /// Point radius is calculated as world-space depth times this value.
+    point_radius_from_world_depth: f32,
 
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,
-
-    /// Outline mask id for the outline mask pass.
-    outline_mask_id: UVec2,
 };
 
 @group(1) @binding(0)

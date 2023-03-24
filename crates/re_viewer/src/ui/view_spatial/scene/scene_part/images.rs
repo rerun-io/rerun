@@ -301,17 +301,9 @@ impl ImagesPart {
         };
 
         let meter = *properties.backproject_depth_meter.get();
-        let scale = match data {
-            // the GPU normalizes the u16 to [0, 1] during texture sampling:
-            DepthCloudDepthData::U16(_) => u16::MAX as f32 / meter,
-
-            DepthCloudDepthData::F32(_) => 1.0 / meter,
-        };
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
-
-        let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
         let colormap = match *properties.color_mapper.get() {
             re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
@@ -331,12 +323,13 @@ impl ImagesPart {
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
         let point_radius_from_depth = 0.5_f32.sqrt() * (0.5 * fov_y).tan() / (0.5 * h as f32);
         let radius_scale = *properties.backproject_radius_scale.get();
-        let point_radius_from_normalized_depth = radius_scale * point_radius_from_depth * scale;
+        let point_radius_from_world_depth = radius_scale * point_radius_from_depth;
 
         scene.primitives.depth_clouds.push(DepthCloud {
-            depth_camera_extrinsics: world_from_obj,
+            depth_camera_extrinsics: extrinsics,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            point_radius_from_normalized_depth,
+            world_depth_from_data_depth: 1.0 / meter,
+            point_radius_from_world_depth,
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,
