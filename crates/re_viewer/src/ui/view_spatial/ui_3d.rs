@@ -503,7 +503,7 @@ pub fn view_3d(
         scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config(rect.size()),
+        state.auto_size_config(),
     );
 
     // Add egui driven labels on top of re_renderer content.
