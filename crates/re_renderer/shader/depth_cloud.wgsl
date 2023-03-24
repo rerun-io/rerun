@@ -27,10 +27,8 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
     let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
-    let max_depth = 10.0; // TODO: get from uniform buffer
-
     // TODO(cmc): albedo textures
-    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, world_space_depth / max_depth), 1.0);
+    let color = Vec4(colormap_srgb(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth), 1.0);
 
     // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
     let intrinsics = depth_cloud_info.depth_camera_intrinsics;
@@ -72,6 +70,9 @@ struct DepthCloudInfo {
 
     /// Point radius is calculated as world-space depth times this value.
     point_radius_from_world_depth: f32,
+
+    /// The maximum depth value, for use with the colormap.
+    max_depth: f32,
 
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,

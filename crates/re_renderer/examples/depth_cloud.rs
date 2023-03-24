@@ -177,6 +177,7 @@ impl RenderDepthClouds {
                 depth_camera_intrinsics: *intrinsics,
                 world_depth_from_data_depth: 1.0,
                 point_radius_from_world_depth: *point_radius_from_world_depth,
+                max_depth: 5.0,
                 depth_dimensions: depth.dimensions,
                 depth_data: depth.data.clone(),
                 colormap: re_renderer::ColorMap::ColorMapTurbo,

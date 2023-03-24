@@ -54,8 +54,11 @@ mod gpu_data {
         /// Point radius is calculated as world-space depth times this value.
         pub point_radius_from_world_depth: f32,
 
+        /// The maximum depth value, for use with the colormap.
+        pub max_depth: f32,
+
         pub colormap: u32,
-        pub row_pad: [u32; 3],
+        pub row_pad: [u32; 2],
 
         pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
     }
@@ -67,6 +70,7 @@ mod gpu_data {
                 depth_camera_intrinsics,
                 world_depth_from_data_depth,
                 point_radius_from_world_depth,
+                max_depth,
                 depth_dimensions: _,
                 depth_data,
                 colormap,
@@ -86,6 +90,7 @@ mod gpu_data {
                 outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
                 world_depth_from_texture_value,
                 point_radius_from_world_depth: *point_radius_from_world_depth,
+                max_depth: *max_depth,
                 colormap: *colormap as u32,
                 row_pad: Default::default(),
                 end_padding: Default::default(),
@@ -134,6 +139,9 @@ pub struct DepthCloud {
 
     /// Point radius is calculated as world-space depth times this value.
     pub point_radius_from_world_depth: f32,
+
+    /// The maximum depth value, for use with the colormap.
+    pub max_depth: f32,
 
     /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
