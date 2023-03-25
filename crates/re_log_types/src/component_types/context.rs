@@ -36,7 +36,7 @@ pub struct AnnotationInfo {
 /// Keypoints within the class can also be decorated with skeletal edges.
 /// Keypoint-connections are pairs of [`KeypointId`]s. If an edge is
 /// defined, and both keypoints exist within the instance of the class, then the
-/// keypoints shold be connected with an edge. The edge should be labeled and
+/// keypoints should be connected with an edge. The edge should be labeled and
 /// colored as described by the class's [`AnnotationInfo`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

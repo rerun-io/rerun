@@ -1,3 +1,5 @@
+#![cfg(feature = "polars")]
+
 //! Straightforward high-level API tests.
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
@@ -153,7 +155,7 @@ fn all_components() {
 
         let components_b = &[
             ColorRGBA::name(), // added by us, timeless
-            Rect2D::name(),    // ⚠ inherited before the buckets got splitted apart!
+            Rect2D::name(),    // ⚠ inherited before the buckets got split apart!
             Point2D::name(),   // added by us
             cluster_key,       // always here
             MsgId::name(),     // automatically appended by MsgBundle

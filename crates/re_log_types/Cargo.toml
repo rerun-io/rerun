@@ -51,22 +51,18 @@ serde = [
 [dependencies]
 
 # Rerun
+re_build_info.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_string_interner.workspace = true
 re_tuid.workspace = true
 
 # External
-ahash = "0.8"
+ahash.workspace = true
 array-init = "2.1.0"
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 arrow2_convert.workspace = true
 bytemuck = "1.11"
-chrono = { version = "0.4", features = [
-  "js-sys",
-  "wasmbind",
-] } # TODO(emilk): replace `chrono` with `time` crate
-derive_more.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 half = { workspace = true, features = ["bytemuck"] }
@@ -76,6 +72,10 @@ nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
 thiserror.workspace = true
+time = { workspace = true, default-features = false, features = [
+  "formatting",
+  "macros",
+] }
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 

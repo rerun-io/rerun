@@ -1,6 +1,5 @@
 mod app_options;
 pub mod caches;
-pub mod color_map;
 pub mod format_time;
 mod item;
 pub(crate) mod mesh_loader;
@@ -31,7 +30,7 @@ pub use {
     item::{Item, ItemCollection},
     selection_state::{
         HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewEntityHighlight,
-        SelectionHighlight, SelectionState, SpaceViewHighlights,
+        SelectionHighlight, SelectionState, SpaceViewHighlights, SpaceViewOutlineMasks,
     },
 };
 

@@ -1,7 +1,6 @@
-use eframe::{emath::RectTransform, epaint::text::TextWrapping};
+use eframe::emath::RectTransform;
 use egui::{
-    pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape,
-    TextFormat, TextStyle, Vec2,
+    pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape, Vec2,
 };
 use macaw::IsoTransform;
 use re_data_store::EntityPath;
@@ -9,17 +8,17 @@ use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{
-    eye::Eye,
-    scene::{AdditionalPickingInfo, SceneSpatialUiData},
+    eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, SpatialNavigationMode,
     ViewSpatialState,
 };
 use crate::{
-    misc::{HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
+            ui::outline_config,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            Label2DTarget, SceneSpatial,
+            SceneSpatial,
         },
         SpaceViewId, UiVerbosity,
     },
@@ -36,10 +35,12 @@ pub struct View2DState {
     zoom: ZoomState2D,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
 pub enum ZoomState2D {
+    #[default]
     Auto,
+
     Scaled {
         /// Number of ui points per scene unit
         scale: f32,
@@ -50,12 +51,6 @@ pub enum ZoomState2D {
         /// Whether to allow the state to be updated by the current `ScrollArea` offsets
         accepting_scroll: bool,
     },
-}
-
-impl Default for ZoomState2D {
-    fn default() -> Self {
-        ZoomState2D::Auto
-    }
 }
 
 impl View2DState {
@@ -292,6 +287,10 @@ fn view_2d_scrollable(
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
+    if !response.rect.is_positive() {
+        return response; // protect against problems with zero-sized views
+    }
+
     // Create our transforms.
     let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
     let space_from_ui = ui_from_space.inverse();
@@ -303,30 +302,33 @@ fn view_2d_scrollable(
         .state_2d
         .update(&response, space_from_ui, scene_rect_accum, available_size);
 
-    // ------------------------------------------------------------------------
+    let eye = Eye {
+        world_from_view: IsoTransform::IDENTITY,
+        fov_y: None,
+    };
 
+    // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
         &mut scene.ui,
         ui_from_space,
         space_from_ui,
+        &eye,
         parent_ui,
         highlights,
+        SpatialNavigationMode::TwoD,
     );
 
-    // ------------------------------------------------------------------------
+    let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(parent_ui.ctx());
 
     // Check if we're hovering any hover primitive.
     let mut depth_at_pointer = None;
-    if let Some(pointer_pos_ui) = response.hover_pos() {
+    if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
             glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
             &scene_rect_accum,
-            &Eye {
-                world_from_view: IsoTransform::IDENTITY,
-                fov_y: None,
-            },
+            &eye,
             hover_radius,
         );
 
@@ -372,11 +374,10 @@ fn view_2d_scrollable(
                                 &ctx.current_query(),
                             );
 
-                            let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
-                                &image.annotations,
-                                ctx.render_ctx,
-                            );
+                            let tensor_view = ctx
+                                .cache
+                                .image
+                                .get_colormapped_view(&image.tensor, &image.annotations);
 
                             if let [h, w, ..] = image.tensor.shape() {
                                 ui.separator();
@@ -436,7 +437,10 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
-            state.auto_size_config(response.rect.size()),
+            state.auto_size_config(),
+            scene
+                .primitives
+                .any_outlines,
         ) else {
             return response;
         };
@@ -467,91 +471,13 @@ fn view_2d_scrollable(
     response
 }
 
-fn create_labels(
-    scene_ui: &mut SceneSpatialUiData,
-    ui_from_space: RectTransform,
-    space_from_ui: RectTransform,
-    parent_ui: &mut egui::Ui,
-    highlights: &SpaceViewHighlights,
-) -> Vec<Shape> {
-    crate::profile_function!();
-
-    let mut label_shapes = Vec::with_capacity(scene_ui.labels_2d.len() * 2);
-
-    for label in &scene_ui.labels_2d {
-        let (wrap_width, text_anchor_pos) = match label.target {
-            Label2DTarget::Rect(rect) => {
-                let rect_in_ui = ui_from_space.transform_rect(rect);
-                (
-                    // Place the text centered below the rect
-                    (rect_in_ui.width() - 4.0).at_least(60.0),
-                    rect_in_ui.center_bottom() + vec2(0.0, 3.0),
-                )
-            }
-            Label2DTarget::Point(pos) => {
-                let pos_in_ui = ui_from_space.transform_pos(pos);
-                (f32::INFINITY, pos_in_ui + vec2(0.0, 3.0))
-            }
-        };
-
-        let font_id = TextStyle::Body.resolve(parent_ui.style());
-        let galley = parent_ui.fonts(|fonts| {
-            fonts.layout_job({
-                egui::text::LayoutJob {
-                    sections: vec![egui::text::LayoutSection {
-                        leading_space: 0.0,
-                        byte_range: 0..label.text.len(),
-                        format: TextFormat::simple(font_id, label.color),
-                    }],
-                    text: label.text.clone(),
-                    wrap: TextWrapping {
-                        max_width: wrap_width,
-                        ..Default::default()
-                    },
-                    break_on_newline: true,
-                    halign: Align::Center,
-                    ..Default::default()
-                }
-            })
-        });
-
-        let text_rect =
-            Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
-        let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
-
-        let hightlight = highlights
-            .entity_highlight(label.labled_instance.entity_path_hash)
-            .index_highlight(label.labled_instance.instance_key);
-        let fill_color = match hightlight.hover {
-            crate::misc::HoverHighlight::None => match hightlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
-                SelectionHighlight::SiblingSelection => {
-                    parent_ui.style().visuals.widgets.active.bg_fill
-                }
-                SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
-            },
-            crate::misc::HoverHighlight::Hovered => {
-                parent_ui.style().visuals.widgets.hovered.bg_fill
-            }
-        };
-
-        label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));
-        label_shapes.push(Shape::galley(text_rect.center_top(), galley));
-
-        scene_ui
-            .pickable_ui_rects
-            .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
-    }
-
-    label_shapes
-}
-
 fn setup_target_config(
     painter: &egui::Painter,
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
+    any_outlines: bool,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -574,6 +500,7 @@ fn setup_target_config(
             },
             pixels_from_point: pixels_from_points,
             auto_size_config,
+            outline_config: any_outlines.then(|| outline_config(painter.ctx())),
         }
     })
 }

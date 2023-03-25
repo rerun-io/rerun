@@ -3,6 +3,7 @@ This document describes the technical architecture of Rerun.
 
 ## See also
 * [`BUILD.md`](BUILD.md)
+* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -26,7 +27,7 @@ The easiest way to launch the viewer is directly from the logging API with `rr.i
 #### Web viewer
 You can try running the viewer in a browser using `rr.serve()` in python, or using `rerun --web-viewer mydata.rrd`.
 
-The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_server`](https://github.com/rerun-io/rerun/tree/latest/crates/re_web_server) crate.
+The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/re_web_viewer_server) crate.
 
 The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over WebSockets.
 

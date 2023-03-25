@@ -11,8 +11,20 @@ var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
 
+struct DrawDataUniformBuffer {
+    size_boost_in_points: f32,
+    // In actuality there is way more padding than this since we align all our uniform buffers to
+    // 256bytes in order to allow them to be buffer-suballocations.
+    // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
+    // if we wouldn't add padding here, which isn't available on WebGL.
+    _padding: Vec4,
+};
+@group(1) @binding(2)
+var<uniform> draw_data: DrawDataUniformBuffer;
+
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
+    outline_mask_ids: UVec2,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -31,7 +43,7 @@ const CAP_START_TRIANGLE: u32 = 4u;
 const CAP_START_ROUND: u32 = 8u;
 const NO_COLOR_GRADIENT: u32 = 16u;
 
-// A lot of the attributes don't need to be interpolated accross triangles.
+// A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
 // (see https://www.w3.org/TR/WGSL/#interpolation)
 struct VertexOut {
@@ -158,11 +170,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Data valid for the entire strip that this vertex belongs to.
     let strip_data = read_strip_data(pos_data_current.strip_index);
 
-    // Resolve radius.
-    // (slight inaccuracy: End caps are going to adjust their center_position)
-    let camera_ray = camera_ray_to_world_pos(center_position);
-    let strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, length(camera_ray.origin - center_position), frame.auto_size_lines);
-
     // Active flags are all flags that we react to at the current vertex.
     // I.e. cap flags are only active in the respective cap triangle.
     var currently_active_flags = strip_data.flags & (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND));
@@ -186,6 +193,20 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         quad_dir = normalize(quad_dir);
     } else {
         quad_dir = normalize(pos_data_quad_end.pos - pos_data_quad_begin.pos);
+    }
+
+    // Resolve radius.
+    // (slight inaccuracy: End caps are going to adjust their center_position)
+    let camera_ray = camera_ray_to_world_pos(center_position);
+    let camera_distance = distance(camera_ray.origin, center_position);
+    var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
+    if draw_data.size_boost_in_points > 0.0 {
+        let size_boost = world_size_from_point_size(draw_data.size_boost_in_points, camera_distance);
+        strip_radius += size_boost;
+        // Push out positions as well along the quad dir.
+        // This is especially important if there's no miters on a line-strip (TODO(#829)),
+        // as this would enhance gaps between lines otherwise.
+        center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 
     var active_radius = strip_radius;
@@ -222,9 +243,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
-@fragment
-fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-
+fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
     if has_any_flag(in.currently_active_flags, CAP_START_ROUND | CAP_END_ROUND) {
         let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
@@ -234,10 +253,16 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         // If we do only outwards, rectangle outlines won't line up nicely
         let half_pixel_world_size = pixel_world_size * 0.5;
         let signed_distance_to_border = distance_to_skeleton - in.active_radius;
-        if signed_distance_to_border > half_pixel_world_size {
-            discard;
-        }
         coverage = 1.0 - saturate((signed_distance_to_border + half_pixel_world_size) / pixel_world_size);
+    }
+    return coverage;
+}
+
+@fragment
+fn fs_main(in: VertexOut) -> @location(0) Vec4 {
+    var coverage = compute_coverage(in);
+    if coverage < 0.001 {
+        discard;
     }
 
     // TODO(andreas): lighting setup
@@ -249,4 +274,16 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     }
 
     return Vec4(in.color.rgb * shading, coverage);
+}
+
+@fragment
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+    // Output is an integer target, can't use coverage therefore.
+    // But we still want to discard fragments where coverage is low.
+    // Since the outline extends a bit, a very low cut off tends to look better.
+    var coverage = compute_coverage(in);
+    if coverage < 1.0 {
+        discard;
+    }
+    return batch.outline_mask_ids;
 }

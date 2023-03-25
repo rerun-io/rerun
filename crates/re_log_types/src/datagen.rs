@@ -8,7 +8,6 @@ use crate::{
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Vec<component_types::Rect2D> {
     (0..len)
-        .into_iter()
         .map(|i| {
             component_types::Rect2D::from_xywh(i as f32, i as f32, (i / 2) as f32, (i / 2) as f32)
         })
@@ -18,14 +17,13 @@ pub fn build_some_rects(len: usize) -> Vec<component_types::Rect2D> {
 /// Create `len` dummy colors
 pub fn build_some_colors(len: usize) -> Vec<component_types::ColorRGBA> {
     (0..len)
-        .into_iter()
         .map(|i| component_types::ColorRGBA(i as u32))
         .collect()
 }
 
 /// Create `len` dummy labels
 pub fn build_some_labels(len: usize) -> Vec<String> {
-    (0..len).into_iter().map(|i| format!("label{i}")).collect()
+    (0..len).map(|i| format!("label{i}")).collect()
 }
 
 /// Create `len` dummy `Point2D`
@@ -34,10 +32,25 @@ pub fn build_some_point2d(len: usize) -> Vec<component_types::Point2D> {
     let mut rng = rand::thread_rng();
 
     (0..len)
-        .into_iter()
         .map(|_| component_types::Point2D {
             x: rng.gen_range(0.0..10.0),
             y: rng.gen_range(0.0..10.0),
+        })
+        .collect()
+}
+
+/// Create `len` dummy `Vec3D`
+pub fn build_some_vec3d(len: usize) -> Vec<component_types::Vec3D> {
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+
+    (0..len)
+        .map(|_| {
+            component_types::Vec3D::new(
+                rng.gen_range(0.0..10.0),
+                rng.gen_range(0.0..10.0),
+                rng.gen_range(0.0..10.0),
+            )
         })
         .collect()
 }

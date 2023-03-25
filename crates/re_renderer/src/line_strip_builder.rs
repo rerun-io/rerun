@@ -1,6 +1,11 @@
+use std::ops::Range;
+
 use crate::{
-    renderer::{LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
-    Color32, DebugLabel, Size,
+    renderer::{
+        LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex,
+        OutlineMaskPreference,
+    },
+    Color32, DebugLabel, RenderContext, Size,
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -9,7 +14,6 @@ use crate::{
 /// of writing to a GPU readable memory location.
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-#[derive(Default)]
 pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub vertices: Vec<LineVertex>,
 
@@ -18,12 +22,36 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub strip_user_data: Vec<PerStripUserData>,
 
     pub batches: Vec<LineBatchInfo>,
+
+    pub(crate) size_boost_in_points_for_outlines: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
 where
     PerStripUserData: Default + Copy,
 {
+    // TODO(andreas): ctx not yet needed since we don't write to GPU yet, but soon needed.
+    pub fn new(_ctx: &RenderContext) -> Self {
+        const RESERVE_SIZE: usize = 512;
+
+        Self {
+            vertices: Vec::with_capacity(RESERVE_SIZE * 2),
+            strips: Vec::with_capacity(RESERVE_SIZE),
+            strip_user_data: Vec::with_capacity(RESERVE_SIZE),
+            batches: Vec::with_capacity(16),
+            size_boost_in_points_for_outlines: 0.0,
+        }
+    }
+
+    /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
+    pub fn size_boost_in_points_for_outlines(
+        mut self,
+        size_boost_in_points_for_outlines: f32,
+    ) -> Self {
+        self.size_boost_in_points_for_outlines = size_boost_in_points_for_outlines;
+        self
+    }
+
     /// Start of a new batch.
     pub fn batch(
         &mut self,
@@ -33,6 +61,8 @@ where
             label: label.into(),
             world_from_obj: glam::Mat4::IDENTITY,
             line_vertex_count: 0,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         });
 
         LineBatchBuilder(self)
@@ -58,7 +88,14 @@ where
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
-        LineDrawData::new(ctx, &self.vertices, &self.strips, &self.batches).unwrap()
+        LineDrawData::new(
+            ctx,
+            &self.vertices,
+            &self.strips,
+            &self.batches,
+            self.size_boost_in_points_for_outlines,
+        )
+        .unwrap()
     }
 
     /// Iterates over all line strips batches together with their strips and their respective vertices.
@@ -135,23 +172,35 @@ where
         self
     }
 
+    /// Sets an outline mask for every element in the batch.
+    #[inline]
+    pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
+        self.batch_mut().overall_outline_mask_ids = outline_mask_ids;
+        self
+    }
+
     /// Adds a 3D series of line connected points.
     pub fn add_strip(
         &mut self,
         points: impl Iterator<Item = glam::Vec3>,
     ) -> LineStripBuilder<'_, PerStripUserData> {
-        let old_len = self.0.strips.len();
-        let strip_index = old_len as _;
+        let old_strip_count = self.0.strips.len();
+        let old_vertex_count = self.0.vertices.len();
+        let strip_index = old_strip_count as _;
 
         self.add_vertices(points, strip_index);
+        let new_vertex_count = self.0.vertices.len();
 
         debug_assert_eq!(self.0.strips.len(), self.0.strip_user_data.len());
         self.0.strips.push(LineStripInfo::default());
         self.0.strip_user_data.push(PerStripUserData::default());
+        let new_strip_count = self.0.strips.len();
 
         LineStripBuilder {
-            strips: &mut self.0.strips[old_len..],
-            user_data: &mut self.0.strip_user_data[old_len..],
+            builder: self.0,
+            outline_mask_ids: OutlineMaskPreference::NONE,
+            vertex_range: old_vertex_count..new_vertex_count,
+            strip_range: old_strip_count..new_strip_count,
         }
     }
 
@@ -170,18 +219,19 @@ where
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_, PerStripUserData> {
-        let mut num_strips = self.0.strips.len() as u32;
+        let old_strip_count = self.0.strips.len();
+        let old_vertex_count = self.0.vertices.len();
+        let mut strip_index = old_strip_count as u32;
 
         // It's tempting to assign the same strip to all vertices, after all they share
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
         for (a, b) in segments {
-            self.add_vertices([a, b].into_iter(), num_strips);
-            num_strips += 1;
+            self.add_vertices([a, b].into_iter(), strip_index);
+            strip_index += 1;
         }
-
-        let old_len = self.0.strips.len();
-        let num_strips_added = num_strips as usize - old_len;
+        let new_vertex_count = self.0.vertices.len();
+        let num_strips_added = strip_index as usize - old_strip_count;
 
         debug_assert_eq!(self.0.strips.len(), self.0.strip_user_data.len());
         self.0
@@ -190,10 +240,13 @@ where
         self.0
             .strip_user_data
             .extend(std::iter::repeat(PerStripUserData::default()).take(num_strips_added));
+        let new_strip_count = self.0.strips.len();
 
         LineStripBuilder {
-            strips: &mut self.0.strips[old_len..],
-            user_data: &mut self.0.strip_user_data[old_len..],
+            builder: self.0,
+            outline_mask_ids: OutlineMaskPreference::NONE,
+            vertex_range: old_vertex_count..new_vertex_count,
+            strip_range: old_strip_count..new_strip_count,
         }
     }
 
@@ -345,8 +398,10 @@ where
 }
 
 pub struct LineStripBuilder<'a, PerStripUserData> {
-    strips: &'a mut [LineStripInfo],
-    user_data: &'a mut [PerStripUserData],
+    builder: &'a mut LineStripSeriesBuilder<PerStripUserData>,
+    outline_mask_ids: OutlineMaskPreference,
+    vertex_range: Range<usize>,
+    strip_range: Range<usize>,
 }
 
 impl<'a, PerStripUserData> LineStripBuilder<'a, PerStripUserData>
@@ -355,7 +410,7 @@ where
 {
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
-        for strip in self.strips.iter_mut() {
+        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
             strip.radius = radius;
         }
         self
@@ -363,7 +418,7 @@ where
 
     #[inline]
     pub fn color(self, color: Color32) -> Self {
-        for strip in self.strips.iter_mut() {
+        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
             strip.color = color;
         }
         self
@@ -371,9 +426,17 @@ where
 
     #[inline]
     pub fn flags(self, flags: LineStripFlags) -> Self {
-        for strip in self.strips.iter_mut() {
+        for strip in self.builder.strips[self.strip_range.clone()].iter_mut() {
             strip.flags = flags;
         }
+        self
+    }
+
+    /// Sets an individual outline mask ids.
+    /// Note that this has a relatively high performance impact.
+    #[inline]
+    pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
+        self.outline_mask_ids = outline_mask_ids;
         self
     }
 
@@ -382,9 +445,25 @@ where
     /// User data is currently not available on the GPU.
     #[inline]
     pub fn user_data(self, user_data: PerStripUserData) -> Self {
-        for d in self.user_data.iter_mut() {
+        for d in self.builder.strip_user_data[self.strip_range.clone()].iter_mut() {
             *d = user_data.clone();
         }
         self
+    }
+}
+
+impl<'a, PerStripUserData> Drop for LineStripBuilder<'a, PerStripUserData> {
+    fn drop(&mut self) {
+        if self.outline_mask_ids.is_some() {
+            self.builder
+                .batches
+                .last_mut()
+                .unwrap()
+                .additional_outline_mask_ids_vertex_ranges
+                .push((
+                    self.vertex_range.start as u32..self.vertex_range.end as u32,
+                    self.outline_mask_ids,
+                ));
+        }
     }
 }

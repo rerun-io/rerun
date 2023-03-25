@@ -52,17 +52,6 @@ use time::OffsetDateTime;
 
 // ----------------------------------------------------------------------------
 
-/// What target triplet (os, cpu) `re_analytics` was compiled for.
-pub const TARGET_TRIPLET: &str = env!("__RERUN_TARGET_TRIPLE");
-
-/// What git hash of the Rerun repository we were compiled in.
-///
-/// If we are not in the Rerun repository, this will be set
-/// to the `re_analytics` crate version (`CARGO_PKG_VERSION`) instead.
-pub const GIT_HASH: &str = env!("__RERUN_GIT_HASH");
-
-// ----------------------------------------------------------------------------
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
     /// Append a new event to the time series associated with this analytics ID.
@@ -88,36 +77,74 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn append(name: Cow<'static, str>) -> Self {
+    pub fn append(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Append,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn update(name: Cow<'static, str>) -> Self {
+    pub fn update(name: impl Into<Cow<'static, str>>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
             kind: EventKind::Update,
-            name,
+            name: name.into(),
             props: Default::default(),
         }
     }
 
-    pub fn with_prop(mut self, name: Cow<'static, str>, value: impl Into<Property>) -> Self {
+    /// NOTE: due to an earlier snafu, we filter out all properties called
+    /// `git_branch` and `location` on the server-end, so don't use those property names!
+    /// See <https://github.com/rerun-io/rerun/pull/1563> for details.
+    pub fn with_prop(
+        mut self,
+        name: impl Into<Cow<'static, str>>,
+        value: impl Into<Property>,
+    ) -> Self {
+        let name = name.into();
+        debug_assert!(
+            name != "git_branch" && name != "location",
+            "We filter out the property name {name:?} on the server-end. Pick a different name."
+        );
         self.props.insert(name, value.into());
         self
     }
+
+    /// Adds Rerun version, git hash, build date and similar as properties to the event.
+    pub fn with_build_info(self, build_info: &re_build_info::BuildInfo) -> Event {
+        let re_build_info::BuildInfo {
+            crate_name: _,
+            version,
+            rustc_version,
+            llvm_version,
+            git_hash: _,
+            git_branch: _,
+            is_in_rerun_workspace,
+            target_triple,
+            datetime,
+        } = build_info;
+
+        // We intentionally don't include the branch name, because it can contain sensitive user-stuff.
+
+        self.with_prop("rerun_version", version.to_string())
+            .with_prop("rust_version", (*rustc_version).to_owned())
+            .with_prop("llvm_version", (*llvm_version).to_owned())
+            .with_prop("target", *target_triple)
+            .with_prop("git_hash", build_info.git_hash_or_tag())
+            .with_prop("build_date", *datetime)
+            .with_prop("debug", cfg!(debug_assertions)) // debug-build?
+            .with_prop("rerun_workspace", *is_in_rerun_workspace)
+    }
 }
 
-#[derive(Debug, Clone, derive_more::From, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum Property {
+    Bool(bool),
     Integer(i64),
     Float(f64),
     String(String),
-    Bool(bool),
 }
 
 impl Property {
@@ -131,12 +158,47 @@ impl Property {
         let mut hasher = sha2::Sha256::default();
         hasher.update(SALT);
         match self {
+            Property::Bool(data) => hasher.update([*data as u8]),
             Property::Integer(data) => hasher.update(data.to_le_bytes()),
             Property::Float(data) => hasher.update(data.to_le_bytes()),
             Property::String(data) => hasher.update(data),
-            Property::Bool(data) => hasher.update([*data as u8]),
         }
-        format!("{:x}", hasher.finalize()).into()
+        Self::String(format!("{:x}", hasher.finalize()))
+    }
+}
+
+impl From<bool> for Property {
+    #[inline]
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<i64> for Property {
+    #[inline]
+    fn from(value: i64) -> Self {
+        Self::Integer(value)
+    }
+}
+
+impl From<f64> for Property {
+    #[inline]
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl From<String> for Property {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&str> for Property {
+    #[inline]
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
     }
 }
 

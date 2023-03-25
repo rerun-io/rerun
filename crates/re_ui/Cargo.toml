@@ -32,8 +32,8 @@ egui_dock = ["dep:egui_dock"]
 [dependencies]
 egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_extras = { workspace = true, features = ["tracing"] }
-image = { version = "0.24", default-features = false, features = ["png"] }
-parking_lot = "0.12"
+image = { workspace = true, default-features = false, features = ["png"] }
+parking_lot.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 strum = { version = "0.24", features = ["derive"] }
@@ -46,3 +46,4 @@ egui_dock = { workspace = true, optional = true, features = ["serde"] }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
+re_log.workspace = true

@@ -1,13 +1,13 @@
-use std::sync::Arc;
-
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
 use arrow2::buffer::Buffer;
 use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::TensorElement;
-use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
+use crate::msg_bundle::Component;
+use crate::{TensorDataType, TensorElement};
+
+use super::arrow_convert_shims::BinaryBuffer;
 
 pub trait TensorTrait {
     fn id(&self) -> TensorId;
@@ -17,6 +17,8 @@ pub trait TensorTrait {
     fn is_vector(&self) -> bool;
     fn meaning(&self) -> TensorDataMeaning;
     fn get(&self, index: &[u64]) -> Option<TensorElement>;
+    fn dtype(&self) -> TensorDataType;
+    fn size_in_bytes(&self) -> usize;
 }
 
 // ----------------------------------------------------------------------------
@@ -155,7 +157,7 @@ impl ArrowDeserialize for TensorId {
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
-    U8(Vec<u8>),
+    U8(BinaryBuffer),
     U16(Buffer<u16>),
     U32(Buffer<u32>),
     U64(Buffer<u64>),
@@ -169,7 +171,43 @@ pub enum TensorData {
     //F16(Vec<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
-    JPEG(Vec<u8>),
+    JPEG(BinaryBuffer),
+}
+
+impl TensorData {
+    pub fn dtype(&self) -> TensorDataType {
+        match self {
+            Self::U8(_) | Self::JPEG(_) => TensorDataType::U8,
+            Self::U16(_) => TensorDataType::U16,
+            Self::U32(_) => TensorDataType::U32,
+            Self::U64(_) => TensorDataType::U64,
+            Self::I8(_) => TensorDataType::I8,
+            Self::I16(_) => TensorDataType::I16,
+            Self::I32(_) => TensorDataType::I32,
+            Self::I64(_) => TensorDataType::I64,
+            Self::F32(_) => TensorDataType::F32,
+            Self::F64(_) => TensorDataType::F64,
+        }
+    }
+
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            Self::U8(buf) | Self::JPEG(buf) => buf.0.len(),
+            Self::U16(buf) => buf.len(),
+            Self::U32(buf) => buf.len(),
+            Self::U64(buf) => buf.len(),
+            Self::I8(buf) => buf.len(),
+            Self::I16(buf) => buf.len(),
+            Self::I32(buf) => buf.len(),
+            Self::I64(buf) => buf.len(),
+            Self::F32(buf) => buf.len(),
+            Self::F64(buf) => buf.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.size_in_bytes() == 0
+    }
 }
 
 /// Flattened `Tensor` data payload
@@ -390,6 +428,14 @@ impl TensorTrait for Tensor {
             TensorData::JPEG(_) => None, // Too expensive to unpack here.
         }
     }
+
+    fn dtype(&self) -> TensorDataType {
+        self.data.dtype()
+    }
+
+    fn size_in_bytes(&self) -> usize {
+        self.data.size_in_bytes()
+    }
 }
 
 impl Component for Tensor {
@@ -399,7 +445,7 @@ impl Component for Tensor {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorCastError {
     #[error("ndarray type mismatch with tensor storage")]
     TypeMismatch,
@@ -412,65 +458,11 @@ pub enum TensorCastError {
 
     #[error("ndarray Array is not contiguous and in standard order")]
     NotContiguousStdOrder,
-}
 
-impl From<&Tensor> for ClassicTensor {
-    fn from(value: &Tensor) -> Self {
-        let (dtype, data) = match &value.data {
-            TensorData::U8(data) => (
-                crate::TensorDataType::U8,
-                TensorDataStore::Dense(Arc::from(data.as_slice())),
-            ),
-            TensorData::U16(data) => (
-                crate::TensorDataType::U16,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::U32(data) => (
-                crate::TensorDataType::U32,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::U64(data) => (
-                crate::TensorDataType::U64,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I8(data) => (
-                crate::TensorDataType::I8,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I16(data) => (
-                crate::TensorDataType::I16,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I32(data) => (
-                crate::TensorDataType::I32,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::I64(data) => (
-                crate::TensorDataType::I64,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::F32(data) => (
-                crate::TensorDataType::F32,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::F64(data) => (
-                crate::TensorDataType::F64,
-                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
-            ),
-            TensorData::JPEG(data) => (
-                crate::TensorDataType::U8,
-                TensorDataStore::Jpeg(Arc::from(data.as_slice())),
-            ),
-        };
-
-        ClassicTensor::new(
-            value.tensor_id,
-            value.shape.clone(),
-            dtype,
-            value.meaning,
-            data,
-        )
-    }
+    #[error(
+        "tensors do not currently support f16 data (https://github.com/rerun-io/rerun/issues/854)"
+    )]
+    F16NotSupported,
 }
 
 macro_rules! tensor_type {
@@ -502,15 +494,23 @@ macro_rules! tensor_type {
                         name: None,
                     })
                     .collect();
-                view.to_slice()
-                    .ok_or(TensorCastError::NotContiguousStdOrder)
-                    .map(|slice| Tensor {
+
+                match view.to_slice() {
+                    Some(slice) => Ok(Tensor {
                         tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(Vec::from(slice).into()),
                         meaning: TensorDataMeaning::Unknown,
                         meter: None,
-                    })
+                    }),
+                    None => Ok(Tensor {
+                        tensor_id: TensorId::random(),
+                        shape,
+                        data: TensorData::$variant(view.iter().cloned().collect::<Vec<_>>().into()),
+                        meaning: TensorDataMeaning::Unknown,
+                        meter: None,
+                    }),
+                }
             }
         }
 
@@ -554,11 +554,20 @@ tensor_type!(i64, I64);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
+// TODO(#854) Switch back to `tensor_type!` once we have F16 tensors
+impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
+    type Error = TensorCastError;
+
+    fn try_from(_: &'a Tensor) -> Result<Self, Self::Error> {
+        Err(TensorCastError::F16NotSupported)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[cfg(feature = "image")]
 #[derive(thiserror::Error, Debug)]
-pub enum ImageError {
+pub enum TensorImageError {
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
@@ -572,6 +581,24 @@ pub enum ImageError {
     ReadError(#[from] std::io::Error),
 }
 
+impl Tensor {
+    pub fn new(
+        tensor_id: TensorId,
+        shape: Vec<TensorDimension>,
+        data: TensorData,
+        meaning: TensorDataMeaning,
+        meter: Option<f32>,
+    ) -> Self {
+        Self {
+            tensor_id,
+            shape,
+            data,
+            meaning,
+            meter,
+        }
+    }
+}
+
 #[cfg(feature = "image")]
 impl Tensor {
     /// Construct a tensor from the contents of a JPEG file on disk.
@@ -580,7 +607,7 @@ impl Tensor {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn tensor_from_jpeg_file(
         image_path: impl AsRef<std::path::Path>,
-    ) -> Result<Self, ImageError> {
+    ) -> Result<Self, TensorImageError> {
         let jpeg_bytes = std::fs::read(image_path)?;
         Self::tensor_from_jpeg_bytes(jpeg_bytes)
     }
@@ -588,12 +615,14 @@ impl Tensor {
     /// Construct a tensor from the contents of a JPEG file.
     ///
     /// Requires the `image` feature.
-    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, ImageError> {
+    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageError> {
         use image::ImageDecoder as _;
         let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
         if jpeg.color_type() != image::ColorType::Rgb8 {
             // TODO(emilk): support gray-scale jpeg as well
-            return Err(ImageError::UnsupportedJpegColorType(jpeg.color_type()));
+            return Err(TensorImageError::UnsupportedJpegColorType(
+                jpeg.color_type(),
+            ));
         }
         let (w, h) = jpeg.dimensions();
 
@@ -604,7 +633,7 @@ impl Tensor {
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            data: TensorData::JPEG(jpeg_bytes),
+            data: TensorData::JPEG(jpeg_bytes.into()),
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         })
@@ -613,20 +642,20 @@ impl Tensor {
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, ImageError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageError> {
         Self::from_dynamic_image(image.into())
     }
 
     /// Construct a tensor from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageError> {
         let (w, h) = (image.width(), image.height());
 
         let (depth, data) = match image {
-            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw())),
-            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw())),
-            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw())),
+            image::DynamicImage::ImageLuma8(image) => (1, TensorData::U8(image.into_raw().into())),
+            image::DynamicImage::ImageRgb8(image) => (3, TensorData::U8(image.into_raw().into())),
+            image::DynamicImage::ImageRgba8(image) => (4, TensorData::U8(image.into_raw().into())),
             image::DynamicImage::ImageLuma16(image) => {
                 (1, TensorData::U16(image.into_raw().into()))
             }
@@ -654,7 +683,7 @@ impl Tensor {
             }
             _ => {
                 // It is very annoying that DynamicImage is #[non_exhaustive]
-                return Err(ImageError::UnsupportedImageColorType(image.color()));
+                return Err(TensorImageError::UnsupportedImageColorType(image.color()));
             }
         };
 
@@ -678,6 +707,7 @@ impl Tensor {
 #[test]
 fn test_ndarray() {
     let t0 = Tensor {
+        tensor_id: TensorId::random(),
         shape: vec![
             TensorDimension {
                 size: 2,
@@ -688,7 +718,9 @@ fn test_ndarray() {
                 name: None,
             },
         ],
-        data: TensorData::U16(vec![1, 2, 3, 4]),
+        data: TensorData::U16(vec![1, 2, 3, 4].into()),
+        meaning: TensorDataMeaning::Unknown,
+        meter: None,
     };
     let a0: ndarray::ArrayViewD<'_, u16> = (&t0).try_into().unwrap();
     dbg!(a0); // NOLINT
@@ -743,7 +775,7 @@ fn test_concat_and_slice() {
             size: 4,
             name: None,
         }],
-        data: TensorData::JPEG(vec![1, 2, 3, 4]),
+        data: TensorData::JPEG(vec![1, 2, 3, 4].into()),
         meaning: TensorDataMeaning::Unknown,
         meter: Some(1000.0),
     }];
@@ -754,7 +786,7 @@ fn test_concat_and_slice() {
             size: 4,
             name: None,
         }],
-        data: TensorData::JPEG(vec![5, 6, 7, 8]),
+        data: TensorData::JPEG(vec![5, 6, 7, 8].into()),
         meaning: TensorDataMeaning::Unknown,
         meter: None,
     }];

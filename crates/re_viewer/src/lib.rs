@@ -8,10 +8,10 @@ pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
+pub mod stream_rrd_from_http;
 mod ui;
 mod viewer_analytics;
 
-pub use self::misc::color_map;
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
 use re_log_types::PythonVersion;
 pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, UiVerbosity};
@@ -22,6 +22,7 @@ pub use remote_viewer_app::RemoteViewerApp;
 pub mod external {
     pub use eframe;
     pub use egui;
+    pub use re_renderer;
 }
 
 // ----------------------------------------------------------------------------
@@ -76,13 +77,39 @@ pub enum AppEnvironment {
     PythonSdk(PythonVersion),
 
     /// Created from the Rerun Rust SDK.
-    RustSdk { rust_version: String },
+    RustSdk {
+        rustc_version: String,
+        llvm_version: String,
+    },
 
     /// Running the Rust `rerun` binary from the CLI.
-    RerunCli { rust_version: String },
+    RerunCli {
+        rustc_version: String,
+        llvm_version: String,
+    },
 
     /// We are a web-viewer running in a browser as Wasm.
     Web,
+}
+
+impl AppEnvironment {
+    pub fn from_recording_source(source: &re_log_types::RecordingSource) -> Self {
+        use re_log_types::RecordingSource;
+        match source {
+            RecordingSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
+            RecordingSource::RustSdk {
+                rustc_version: rust_version,
+                llvm_version,
+            } => Self::RustSdk {
+                rustc_version: rust_version.clone(),
+                llvm_version: llvm_version.clone(),
+            },
+            RecordingSource::Unknown | RecordingSource::Other(_) => Self::RustSdk {
+                rustc_version: "unknown".into(),
+                llvm_version: "unknown".into(),
+            },
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +118,7 @@ pub enum AppEnvironment {
 const APPLICATION_NAME: &str = "Rerun Viewer";
 
 pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
-    re_renderer::config::HardwareTier::Web
+    re_renderer::config::HardwareTier::default()
 }
 
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
@@ -129,18 +156,11 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
 
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
-        // TODO(andreas): Query used surface format from eframe/renderer.
-        let output_format_color = if cfg!(target_arch = "wasm32") {
-            wgpu::TextureFormat::Rgba8Unorm
-        } else {
-            wgpu::TextureFormat::Bgra8Unorm
-        };
-
         paint_callback_resources.insert(RenderContext::new(
             render_state.device.clone(),
             render_state.queue.clone(),
             RenderContextConfig {
-                output_format_color,
+                output_format_color: render_state.target_format,
                 hardware_tier: crate::hardware_tier(),
             },
         ));
@@ -152,7 +172,7 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
 // ---------------------------------------------------------------------------
 
 /// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(feature = "web"))]
+#[cfg(not(feature = "web_viewer"))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: re_smart_channel::Receiver<T>,

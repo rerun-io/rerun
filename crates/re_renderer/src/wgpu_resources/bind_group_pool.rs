@@ -5,11 +5,12 @@ use smallvec::SmallVec;
 use crate::debug_label::DebugLabel;
 
 use super::{
-    bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
+    bind_group_layout_pool::GpuBindGroupLayoutHandle,
     buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
     dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
     texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
+    WgpuResourcePools,
 };
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
@@ -102,13 +103,10 @@ impl GpuBindGroupPool {
     /// Once ownership to the handle is given up, the bind group may be reclaimed in future frames.
     /// The handle also keeps alive any dependent resources.
     pub fn alloc(
-        &mut self,
+        &self,
         device: &wgpu::Device,
+        pools: &WgpuResourcePools,
         desc: &BindGroupDesc,
-        bind_group_layouts: &GpuBindGroupLayoutPool,
-        textures: &GpuTexturePool,
-        buffers: &GpuBufferPool,
-        samplers: &GpuSamplerPool,
     ) -> GpuBindGroup {
         // Retrieve strong handles to buffers and textures.
         // This way, an owner of a bind group handle keeps buffers & textures alive!.
@@ -118,7 +116,8 @@ impl GpuBindGroupPool {
             .filter_map(|e| {
                 if let BindGroupEntry::Buffer { handle, .. } = e {
                     Some(
-                        buffers
+                        pools
+                            .buffers
                             .get_from_handle(*handle)
                             .expect("BindGroupDesc had an invalid buffer handle"),
                     )
@@ -134,7 +133,8 @@ impl GpuBindGroupPool {
             .filter_map(|e| {
                 if let BindGroupEntry::DefaultTextureView(handle) = e {
                     Some(
-                        textures
+                        pools
+                            .textures
                             .get_from_handle(*handle)
                             .expect("BindGroupDesc had an invalid texture handle"),
                     )
@@ -178,14 +178,15 @@ impl GpuBindGroupPool {
                                 res
                             }
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                samplers
+                                pools
+                                    .samplers
                                     .get_resource(*handle)
                                     .expect("BindGroupDesc had an sampler handle"),
                             ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: bind_group_layouts.get_resource(desc.layout).unwrap(),
+                layout: pools.bind_group_layouts.get_resource(desc.layout).unwrap(),
             })
         });
 
@@ -204,7 +205,6 @@ impl GpuBindGroupPool {
         _samplers: &mut GpuSamplerPool,
     ) {
         self.pool.begin_frame(frame_index, |_res| {});
-        // TODO(andreas): Update usage counter on dependent resources.
     }
 
     pub fn num_resources(&self) -> usize {

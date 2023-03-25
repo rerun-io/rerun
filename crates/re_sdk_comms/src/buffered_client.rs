@@ -26,17 +26,15 @@ enum InterruptMsg {
 
 enum MsgMsg {
     LogMsg(LogMsg),
-    SetAddr(SocketAddr),
     Flush,
 }
 
 enum PacketMsg {
     Packet(Vec<u8>),
-    SetAddr(SocketAddr),
     Flush,
 }
 
-/// Send [`LogMsg`]es to a server.
+/// Send [`LogMsg`]es to a server over TCP.
 ///
 /// The messages are encoded and sent on separate threads
 /// so that calling [`Client::send`] is non-blocking.
@@ -58,7 +56,10 @@ impl Default for Client {
 }
 
 impl Client {
+    /// Connect via TCP to this log server.
     pub fn new(addr: SocketAddr) -> Self {
+        re_log::debug!("Connecting to remote {addr}…");
+
         // TODO(emilk): keep track of how much memory is in each pipe
         // and apply back-pressure to not use too much RAM.
         let (msg_tx, msg_rx) = crossbeam::channel::unbounded();
@@ -105,16 +106,12 @@ impl Client {
         }
     }
 
-    pub fn set_addr(&mut self, addr: SocketAddr) {
-        self.send_msg_msg(MsgMsg::SetAddr(addr));
-    }
-
-    pub fn send(&mut self, log_msg: LogMsg) {
+    pub fn send(&self, log_msg: LogMsg) {
         self.send_msg_msg(MsgMsg::LogMsg(log_msg));
     }
 
     /// Stall until all messages so far has been sent.
-    pub fn flush(&mut self) {
+    pub fn flush(&self) {
         re_log::debug!("Flushing message queue…");
         self.send_msg_msg(MsgMsg::Flush);
 
@@ -133,13 +130,13 @@ impl Client {
     ///
     /// Calling this before a flush (or drop) ensures we won't get stuck trying to send
     /// messages to a closed endpoint, but we will still send all messages to an open endpoint.
-    pub fn drop_if_disconnected(&mut self) {
+    pub fn drop_if_disconnected(&self) {
         self.send_quit_tx
             .send(InterruptMsg::DropIfDisconnected)
             .ok();
     }
 
-    fn send_msg_msg(&mut self, msg: MsgMsg) {
+    fn send_msg_msg(&self, msg: MsgMsg) {
         // ignoring errors, because Ctrl-C can shut down the receiving end.
         self.msg_tx.send(msg).ok();
     }
@@ -157,7 +154,7 @@ impl Drop for Client {
         self.encode_join.take().map(|j| j.join().ok());
         self.send_join.take().map(|j| j.join().ok());
         self.drop_join.take().map(|j| j.join().ok());
-        re_log::debug!("Sender has shut down.");
+        re_log::debug!("TCP client has shut down.");
     }
 }
 
@@ -196,7 +193,6 @@ fn msg_encode(
                             re_log::trace!("Encoded message of size {}", packet.len());
                             PacketMsg::Packet(packet)
                         }
-                        MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(*new_addr),
                         MsgMsg::Flush => PacketMsg::Flush,
                     };
 
@@ -240,9 +236,6 @@ fn tcp_sender(
                                 }
                                 None => {}
                             }
-                        }
-                        PacketMsg::SetAddr(new_addr) => {
-                            tcp_client.set_addr(new_addr);
                         }
                         PacketMsg::Flush => {
                             tcp_client.flush();

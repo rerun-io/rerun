@@ -83,50 +83,50 @@ impl Item {
 /// Immutable object, may pre-compute additional information about the selection on creation.
 #[derive(Default, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ItemCollection {
-    selection: Vec<Item>,
+    items: Vec<Item>,
 }
 
 impl ItemCollection {
     pub fn new(items: impl Iterator<Item = Item>) -> Self {
-        let selection = items.unique().collect();
-        Self { selection }
+        let items = items.unique().collect();
+        Self { items }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.selection.is_empty()
+        self.items.is_empty()
     }
 
     /// Number of elements in this multiselection
     pub fn len(&self) -> usize {
-        self.selection.len()
+        self.items.len()
     }
 
     /// The first selected object if any.
     pub fn first(&self) -> Option<&Item> {
-        self.selection.first()
+        self.items.first()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Item> {
-        self.selection.iter()
+        self.items.iter()
     }
 
     pub fn into_iter(self) -> impl Iterator<Item = Item> {
-        self.selection.into_iter()
+        self.items.into_iter()
     }
 
     pub fn to_vec(&self) -> Vec<Item> {
-        self.selection.clone()
+        self.items.clone()
     }
 
     /// Returns true if the exact selection is part of the current selection.
     pub fn contains(&self, item: &Item) -> bool {
-        self.selection.contains(item)
+        self.items.contains(item)
     }
 
     pub fn are_all_same_kind(&self) -> Option<&'static str> {
-        if let Some(first_selection) = self.selection.first() {
+        if let Some(first_selection) = self.items.first() {
             if self
-                .selection
+                .items
                 .iter()
                 .skip(1)
                 .all(|item| std::mem::discriminant(first_selection) == std::mem::discriminant(item))
@@ -139,7 +139,7 @@ impl ItemCollection {
 
     /// Remove all invalid selections.
     pub fn purge_invalid(&mut self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) {
-        self.selection
+        self.items
             .retain(|selection| selection.is_valid(log_db, blueprint));
     }
 }

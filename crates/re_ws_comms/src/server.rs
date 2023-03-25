@@ -40,15 +40,26 @@ impl Server {
         Ok(Self { listener })
     }
 
-    /// Accept new connections forever
-    pub async fn listen(self, rx: Receiver<LogMsg>) -> anyhow::Result<()> {
+    /// Accept new connections until we get a message on `shutdown_rx`
+    pub async fn listen(
+        self,
+        rx: Receiver<LogMsg>,
+        mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+    ) -> anyhow::Result<()> {
         use anyhow::Context as _;
 
         let history = Arc::new(Mutex::new(Vec::new()));
 
         let log_stream = to_broadcast_stream(rx, history.clone());
 
-        while let Ok((tcp_stream, _)) = self.listener.accept().await {
+        loop {
+            let (tcp_stream, _) = tokio::select! {
+                res = self.listener.accept() => res?,
+                _ = shutdown_rx.recv() => {
+                    return Ok(());
+                }
+            };
+
             let peer = tcp_stream
                 .peer_addr()
                 .context("connected streams should have a peer address")?;
@@ -59,8 +70,6 @@ impl Server {
                 history.clone(),
             ));
         }
-
-        Ok(())
     }
 }
 

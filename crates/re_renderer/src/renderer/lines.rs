@@ -26,7 +26,7 @@
 //!
 //! Data is provided in two separate textures, the "position data texture" and the "line strip texture".
 //! The "line strip texture" contains packed information over properties that are global to a single strip (see `gpu_data::LineStripInfo`)
-//! Data in the "position data texture" is layed out a follows (see `gpu_data::PositionData`):
+//! Data in the "position data texture" is laid out a follows (see `gpu_data::PositionData`):
 //! ```raw
 //!                   ___________________________________________________________________
 //! position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | ...
@@ -111,24 +111,25 @@ use std::{
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
+use enumset::{enum_set, EnumSet};
 use smallvec::smallvec;
 
 use crate::{
-    context::uniform_buffer_allocation_size,
+    allocator::create_and_fill_uniform_buffer_batch,
     include_file,
     size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, ShaderModuleDesc, TextureDesc,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
     },
     Color32, DebugLabel,
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, LineVertex, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, LineVertex, OutlineMaskPreference,
+    OutlineMaskProcessor, RenderContext, Renderer, SharedRendererData, WgpuResourcePools,
 };
 
 pub mod gpu_data {
@@ -159,11 +160,22 @@ pub mod gpu_data {
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 
+    /// Uniform buffer that changes once per draw data rendering.
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DrawDataUniformBuffer {
+        pub size_boost_in_points: wgpu_buffer_types::F32RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
+
     /// Uniform buffer that changes for every batch of line strips.
-    #[repr(C)]
+    #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
+        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded,
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
 }
 
@@ -172,6 +184,7 @@ pub mod gpu_data {
 struct LineStripBatch {
     bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
+    active_phases: EnumSet<DrawPhase>,
 }
 
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
@@ -179,6 +192,7 @@ struct LineStripBatch {
 #[derive(Clone)]
 pub struct LineDrawData {
     bind_group_all_lines: Option<GpuBindGroup>,
+    bind_group_all_lines_outline_mask: Option<GpuBindGroup>,
     batches: Vec<LineStripBatch>,
 }
 
@@ -233,6 +247,18 @@ pub struct LineBatchInfo {
     /// The batch will start with the next vertex after the one the previous batch ended with.
     /// It is expected that this vertex is the first vertex of a new batch.
     pub line_vertex_count: u32,
+
+    /// Optional outline mask setting for the entire batch.
+    pub overall_outline_mask_ids: OutlineMaskPreference,
+
+    /// Defines an outline mask for an individual vertex ranges (can span several line strips!)
+    ///
+    /// Vertex ranges are *not* relative within the current batch, but relates to the draw data vertex buffer.
+    ///
+    /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
+    /// This feature is meant for a limited number of "extra selections"
+    /// If an overall mask is defined as well, the per-vertex-range masks is overwriting the overall mask.
+    pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 }
 
 /// Style information for a line strip.
@@ -272,7 +298,7 @@ pub enum LineDrawDataError {
 
 // Textures are 2D since 1D textures are very limited in size (8k typically).
 // Need to keep these values in sync with lines.wgsl!
-const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionDatas
+const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionData
 const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65536 line strips
 
 impl LineDrawData {
@@ -295,11 +321,14 @@ impl LineDrawData {
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &mut RenderContext,
+        // TODO(andreas): Take LineBuilder directly
         vertices: &[gpu_data::LineVertex],
         strips: &[LineStripInfo],
         batches: &[LineBatchInfo],
+        size_boost_in_points_for_outlines: f32,
     ) -> Result<Self, LineDrawDataError> {
-        let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
+        let mut renderers = ctx.renderers.write();
+        let line_renderer = renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
@@ -309,6 +338,7 @@ impl LineDrawData {
         if strips.is_empty() {
             return Ok(LineDrawData {
                 bind_group_all_lines: None,
+                bind_group_all_lines_outline_mask: None,
                 batches: Vec::new(),
             });
         }
@@ -317,6 +347,8 @@ impl LineDrawData {
             world_from_obj: glam::Mat4::IDENTITY,
             label: "all lines".into(),
             line_vertex_count: vertices.len() as _,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -404,13 +436,13 @@ impl LineDrawData {
             Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
         // sentinel at the beginning to facilitate caps.
         position_data_staging.push(LineVertex {
-            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(vertices.iter());
         // placeholder at the end to facilitate caps.
         position_data_staging.push(LineVertex {
-            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
@@ -475,86 +507,125 @@ impl LineDrawData {
             },
         );
 
+        let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "LineDrawData::DrawDataUniformBuffer".into(),
+            [
+                gpu_data::DrawDataUniformBuffer {
+                    size_boost_in_points: 0.0.into(),
+                    end_padding: Default::default(),
+                },
+                gpu_data::DrawDataUniformBuffer {
+                    size_boost_in_points: size_boost_in_points_for_outlines.into(),
+                    end_padding: Default::default(),
+                },
+            ]
+            .into_iter(),
+        );
         let bind_group_all_lines = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
+            &ctx.gpu_resources,
             &BindGroupDesc {
-                label: "line draw data".into(),
+                label: "LineDrawData::bind_group_all_lines".into(),
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    draw_data_uniform_buffer_bindings[0].clone(),
                 ],
                 layout: line_renderer.bind_group_layout_all_lines,
             },
-            &ctx.gpu_resources.bind_group_layouts,
-            &ctx.gpu_resources.textures,
-            &ctx.gpu_resources.buffers,
-            &ctx.gpu_resources.samplers,
+        );
+        let bind_group_all_lines_outline_mask = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &ctx.gpu_resources,
+            &BindGroupDesc {
+                label: "LineDrawData::bind_group_all_lines_outline_mask".into(),
+                entries: smallvec![
+                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                    BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    draw_data_uniform_buffer_bindings[1].clone(),
+                ],
+                layout: line_renderer.bind_group_layout_all_lines,
+            },
         );
 
         // Process batches
         let mut batches_internal = Vec::with_capacity(batches.len());
         {
-            let allocation_size_per_uniform_buffer =
-                uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
-            let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
-            let uniform_buffers = ctx.gpu_resources.buffers.alloc(
-                &ctx.device,
-                &BufferDesc {
-                    label: "lines batch uniform buffers".into(),
-                    size: combined_buffers_size,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                },
+            let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+                ctx,
+                "lines batch uniform buffers".into(),
+                batches
+                    .iter()
+                    .map(|batch_info| gpu_data::BatchUniformBuffer {
+                        world_from_obj: batch_info.world_from_obj.into(),
+                        outline_mask_ids: batch_info
+                            .overall_outline_mask_ids
+                            .0
+                            .unwrap_or_default()
+                            .into(),
+                        end_padding: Default::default(),
+                    }),
             );
 
-            let mut staging_buffer = ctx
-                .queue
-                .write_buffer_with(
-                    &uniform_buffers,
-                    0,
-                    NonZeroU64::new(combined_buffers_size).unwrap(),
+            // Generate additional "micro batches" for each line vertex range that has a unique outline setting.
+            // This is fairly costly if there's many, but easy and low-overhead if there's only few, which is usually what we expect!
+            let mut uniform_buffer_bindings_mask_only_batches =
+                create_and_fill_uniform_buffer_batch(
+                    ctx,
+                    "lines batch uniform buffers - mask only".into(),
+                    batches
+                        .iter()
+                        .flat_map(|batch_info| {
+                            batch_info
+                                .additional_outline_mask_ids_vertex_ranges
+                                .iter()
+                                .map(|(_, mask)| gpu_data::BatchUniformBuffer {
+                                    world_from_obj: batch_info.world_from_obj.into(),
+                                    outline_mask_ids: mask.0.unwrap_or_default().into(),
+                                    end_padding: Default::default(),
+                                })
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter(),
                 )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
+                .into_iter();
 
             let mut start_vertex_for_next_batch = 0;
-            for (i, batch_info) in batches.iter().enumerate() {
-                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
-                let offset = i * allocation_size_per_uniform_buffer as usize;
+            for (batch_info, uniform_buffer_binding) in
+                batches.iter().zip(uniform_buffer_bindings.into_iter())
+            {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)
                     .min(Self::MAX_NUM_VERTICES as u32);
-                staging_buffer
-                    [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
-                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
-                    }));
+                let mut active_phases = enum_set![DrawPhase::Opaque];
+                // Does the entire batch participate in the outline mask phase?
+                if batch_info.overall_outline_mask_ids.is_some() {
+                    active_phases.insert(DrawPhase::OutlineMask);
+                }
 
-                let bind_group = ctx.gpu_resources.bind_groups.alloc(
-                    &ctx.device,
-                    &BindGroupDesc {
-                        label: batch_info.label.clone(),
-                        entries: smallvec![BindGroupEntry::Buffer {
-                            handle: uniform_buffers.handle,
-                            offset: offset as _,
-                            size: NonZeroU64::new(
-                                std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
-                            ),
-                        }],
-                        layout: line_renderer.bind_group_layout_batch,
-                    },
-                    &ctx.gpu_resources.bind_group_layouts,
-                    &ctx.gpu_resources.textures,
-                    &ctx.gpu_resources.buffers,
-                    &ctx.gpu_resources.samplers,
-                );
+                batches_internal.push(line_renderer.create_linestrip_batch(
+                    ctx,
+                    batch_info.label.clone(),
+                    uniform_buffer_binding,
+                    start_vertex_for_next_batch..line_vertex_range_end,
+                    active_phases,
+                ));
 
-                batches_internal.push(LineStripBatch {
-                    bind_group,
-                    // We spawn a quad for every line skeleton vertex. Naturally, this yields one extra quad in total.
-                    // Which is rather convenient because we need to ensure there are start and end triangles,
-                    // so just from a number-of=vertices perspective this is correct already and the shader can take care of offsets.
-                    vertex_range: (start_vertex_for_next_batch * 6)..(line_vertex_range_end * 6),
-                });
+                for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
+                    batches_internal.push(
+                        line_renderer.create_linestrip_batch(
+                            ctx,
+                            batch_info
+                                .label
+                                .clone()
+                                .push_str(&format!("strip-only {range:?}")),
+                            uniform_buffer_bindings_mask_only_batches.next().unwrap(),
+                            range.clone(),
+                            enum_set![DrawPhase::OutlineMask],
+                        ),
+                    );
+                }
 
                 start_vertex_for_next_batch = line_vertex_range_end;
 
@@ -567,19 +638,57 @@ impl LineDrawData {
 
         Ok(LineDrawData {
             bind_group_all_lines: Some(bind_group_all_lines),
+            bind_group_all_lines_outline_mask: Some(bind_group_all_lines_outline_mask),
             batches: batches_internal,
         })
     }
 }
 
 pub struct LineRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_lines: GpuBindGroupLayoutHandle,
     bind_group_layout_batch: GpuBindGroupLayoutHandle,
 }
 
+impl LineRenderer {
+    fn create_linestrip_batch(
+        &self,
+        ctx: &RenderContext,
+        label: DebugLabel,
+        uniform_buffer_binding: BindGroupEntry,
+        line_vertex_range: Range<u32>,
+        active_phases: EnumSet<DrawPhase>,
+    ) -> LineStripBatch {
+        // TODO(andreas): There should be only a single bindgroup with dynamic indices for all batches.
+        //                  (each batch would then know which dynamic indices to use in the bindgroup)
+        let bind_group = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &ctx.gpu_resources,
+            &BindGroupDesc {
+                label,
+                entries: smallvec![uniform_buffer_binding],
+                layout: self.bind_group_layout_batch,
+            },
+        );
+
+        LineStripBatch {
+            bind_group,
+            // We spawn a quad for every line skeleton vertex. Naturally, this yields one extra quad in total.
+            // Which is rather convenient because we need to ensure there are start and end triangles,
+            // so just from a number-of=vertices perspective this is correct already and the shader can take care of offsets.
+            vertex_range: (line_vertex_range.start * 6)..(line_vertex_range.end * 6),
+            active_phases,
+        }
+    }
+}
+
 impl Renderer for LineRenderer {
     type RendererDrawData = LineDrawData;
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::Opaque, DrawPhase::OutlineMask]
+    }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -612,6 +721,18 @@ impl Renderer for LineRenderer {
                         },
                         count: None,
                     },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                                gpu_data::DrawDataUniformBuffer,
+                            >() as _),
+                        },
+                        count: None,
+                    },
                 ],
             },
         );
@@ -622,7 +743,7 @@ impl Renderer for LineRenderer {
                 label: "line renderer - batch".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -657,10 +778,10 @@ impl Renderer for LineRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let render_pipeline_color = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "LineRenderer".into(),
+                label: "LineRenderer::render_pipeline_color".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,
@@ -682,9 +803,34 @@ impl Renderer for LineRenderer {
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "LineRenderer::render_pipeline_outline_mask".into(),
+                pipeline_layout,
+                vertex_entrypoint: "vs_main".into(),
+                vertex_handle: shader_module,
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                fragment_handle: shader_module,
+                vertex_buffers: smallvec![],
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                // Alpha to coverage doesn't work with the mask integer target.
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
+                    shared_data.config.hardware_tier,
+                ),
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
 
         LineRenderer {
-            render_pipeline,
+            render_pipeline_color,
+            render_pipeline_outline_mask,
             bind_group_layout_all_lines,
             bind_group_layout_batch,
         }
@@ -693,21 +839,32 @@ impl Renderer for LineRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        let Some(bind_group_all_lines) = &draw_data.bind_group_all_lines else {
+        let (pipeline_handle, bind_group_all_lines) = match phase {
+            DrawPhase::OutlineMask => (
+                self.render_pipeline_outline_mask,
+                &draw_data.bind_group_all_lines_outline_mask,
+            ),
+            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_lines),
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
+        let Some(bind_group_all_lines) = bind_group_all_lines else {
             return Ok(()); // No lines submitted.
         };
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
-
         pass.set_bind_group(1, bind_group_all_lines, &[]);
 
         for batch in &draw_data.batches {
-            pass.set_bind_group(2, &batch.bind_group, &[]);
-            pass.draw(batch.vertex_range.clone(), 0..1);
+            if batch.active_phases.contains(phase) {
+                pass.set_bind_group(2, &batch.bind_group, &[]);
+                pass.draw(batch.vertex_range.clone(), 0..1);
+            }
         }
 
         Ok(())

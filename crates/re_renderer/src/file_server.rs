@@ -82,6 +82,7 @@ macro_rules! include_file {
             // Therefore, the in-memory filesystem will actually be able to find this path,
             // and canonicalize it.
             use anyhow::Context as _;
+            use $crate::file_system::FileSystem;
             $crate::get_filesystem().canonicalize(&path)
                 .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
                 .unwrap()
@@ -95,7 +96,7 @@ pub use self::file_server_impl::FileServer;
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
 mod file_server_impl {
-    use ahash::HashSet;
+    use ahash::{HashMap, HashSet};
     use anyhow::Context as _;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
@@ -112,6 +113,7 @@ mod file_server_impl {
     pub struct FileServer {
         watcher: RecommendedWatcher,
         events_rx: Receiver<Event>,
+        file_watch_count: HashMap<PathBuf, usize>,
     }
 
     // Private details
@@ -130,7 +132,11 @@ mod file_server_impl {
                 }
             })?;
 
-            Ok(Self { watcher, events_rx })
+            Ok(Self {
+                watcher,
+                events_rx,
+                file_watch_count: HashMap::default(),
+            })
         }
     }
 
@@ -183,6 +189,14 @@ mod file_server_impl {
         ) -> anyhow::Result<PathBuf> {
             let path = std::fs::canonicalize(path.as_ref())?;
 
+            match self.file_watch_count.entry(path.clone()) {
+                std::collections::hash_map::Entry::Occupied(mut entry) => {
+                    *entry.get_mut() += 1;
+                    return Ok(path);
+                }
+                std::collections::hash_map::Entry::Vacant(entry) => entry.insert(1),
+            };
+
             self.watcher
                 .watch(
                     path.as_ref(),
@@ -214,6 +228,19 @@ mod file_server_impl {
         /// Stops watching for file events at the given `path`.
         pub fn unwatch(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
             let path = std::fs::canonicalize(path.as_ref())?;
+
+            match self.file_watch_count.entry(path.clone()) {
+                std::collections::hash_map::Entry::Occupied(mut entry) => {
+                    *entry.get_mut() -= 1;
+                    if *entry.get() == 0 {
+                        entry.remove();
+                    }
+                }
+                std::collections::hash_map::Entry::Vacant(_) => {
+                    anyhow::bail!("The path {:?} was not or no longer watched", path);
+                }
+            };
+
             self.watcher
                 .unwatch(path.as_ref())
                 .with_context(|| format!("couldn't unwatch file at {path:?}"))

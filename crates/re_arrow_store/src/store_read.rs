@@ -116,9 +116,7 @@ impl DataStore {
         let components = match (timeless, temporal) {
             (None, Some(temporal)) => temporal.iter().cloned().collect_vec(),
             (Some(timeless), None) => timeless.iter().cloned().collect_vec(),
-            (Some(timeless), Some(temporal)) => {
-                timeless.union(temporal).cloned().into_iter().collect_vec()
-            }
+            (Some(timeless), Some(temporal)) => timeless.union(temporal).cloned().collect_vec(),
             (None, None) => return None,
         };
 
@@ -657,6 +655,11 @@ impl IndexTable {
     ) -> Option<[Option<RowIndex>; N]> {
         crate::profile_function!();
 
+        // Early-exit if this entire table is unaware of this component.
+        if !self.all_components.contains(&primary) {
+            return None;
+        }
+
         let timeline = self.timeline;
 
         // The time we're looking for gives us an upper bound: all components must be indexed
@@ -836,6 +839,7 @@ impl IndexBucket {
             return; // early read-only exit
         }
 
+        crate::profile_scope!("sort");
         self.indices.write().sort();
     }
 
@@ -846,6 +850,7 @@ impl IndexBucket {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
+        crate::profile_function!();
         self.sort_indices_if_needed();
 
         let IndexBucketIndices {

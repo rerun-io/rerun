@@ -26,6 +26,22 @@ pub struct VertexBufferLayout {
 }
 
 impl VertexBufferLayout {
+    /// Generates layouts with successive shader locations without gaps.
+    pub fn from_formats(formats: impl Iterator<Item = wgpu::VertexFormat>) -> SmallVec<[Self; 4]> {
+        formats
+            .enumerate()
+            .map(move |(location, format)| Self {
+                array_stride: format.size(),
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: smallvec::smallvec![wgpu::VertexAttribute {
+                    format,
+                    offset: 0,
+                    shader_location: location as u32,
+                }],
+            })
+            .collect()
+    }
+
     /// Generates attributes with successive shader locations without gaps
     pub fn attributes_from_formats(
         start_location: u32,
@@ -148,6 +164,8 @@ impl GpuRenderPipelinePool {
         shader_module_pool: &GpuShaderModulePool,
     ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
+            sanity_check_vertex_buffers(&desc.vertex_buffers);
+
             // TODO(cmc): certainly not unwrapping here
             desc.create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
                 .unwrap()
@@ -161,6 +179,7 @@ impl GpuRenderPipelinePool {
         shader_modules: &mut GpuShaderModulePool,
         pipeline_layouts: &mut GpuPipelineLayoutPool,
     ) {
+        crate::profile_function!();
         self.pool.current_frame_index = frame_index;
 
         // Recompile render pipelines referencing shader modules that have been recompiled this frame.
@@ -211,5 +230,33 @@ impl GpuRenderPipelinePool {
 
     pub fn num_resources(&self) -> usize {
         self.pool.num_resources()
+    }
+}
+
+fn sanity_check_vertex_buffers(buffers: &[VertexBufferLayout]) {
+    if buffers.is_empty() {
+        return;
+    }
+
+    let mut locations = std::collections::BTreeSet::<u32>::default();
+    let mut num_attributes: u32 = 0;
+
+    for buffer in buffers {
+        for attribute in &buffer.attributes {
+            num_attributes += 1;
+            assert!(
+                locations.insert(attribute.shader_location),
+                "Duplicate shader location {} in vertex buffers",
+                attribute.shader_location
+            );
+        }
+    }
+
+    for i in 0..num_attributes {
+        // This is technically allowed, but weird.
+        assert!(
+            locations.contains(&i),
+            "Missing shader location {i} in vertex buffers"
+        );
     }
 }

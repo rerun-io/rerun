@@ -6,13 +6,13 @@ use gltf::texture::WrappingMode;
 use smallvec::SmallVec;
 
 use crate::{
-    mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
+    mesh::{Material, Mesh},
     renderer::MeshInstance,
     resource_managers::{
         GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
         TextureManager2D,
     },
-    Color32, RenderContext,
+    RenderContext, Rgba32Unmul,
 };
 
 /// Loads both gltf and glb into the mesh & texture manager.
@@ -86,12 +86,7 @@ pub fn load_gltf_from_buffer(
         meshes.insert(
             mesh.index(),
             (
-                ctx.mesh_manager.create(
-                    &mut ctx.gpu_resources,
-                    &ctx.texture_manager_2d,
-                    &re_mesh,
-                    lifetime,
-                )?,
+                ctx.mesh_manager.write().create(ctx, &re_mesh, lifetime)?,
                 Arc::new(re_mesh),
             ),
         );
@@ -134,15 +129,21 @@ fn import_mesh(
     gpu_image_handles: &[GpuTexture2DHandle],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
+    crate::profile_function!();
+
     let mut indices = Vec::new();
     let mut vertex_positions = Vec::new();
-    let mut vertex_data = Vec::new();
+    let mut vertex_colors = Vec::new();
+    let mut vertex_normals = Vec::new();
+    let mut vertex_texcoords = Vec::new();
     let mut materials = SmallVec::new();
 
     // A GLTF mesh consists of several primitives, each with their own material.
     // Primitives map to vertex/index ranges for us as we store all vertices/indices into the same vertex/index buffer.
     // (this means we loose the rarely used ability to re-use vertex/indices between meshes, but shouldn't loose any abilities otherwise)
     for primitive in mesh.primitives() {
+        let set = 0;
+
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
 
         let index_offset = indices.len() as u32;
@@ -161,31 +162,26 @@ fn import_mesh(
             anyhow::bail!("Gltf primitives must have positions");
         }
 
-        if let Some(primitive_normals) = reader.read_normals() {
-            let to_data = |(p, t)| MeshVertexData {
-                normal: glam::Vec3::from(p),
-                texcoord: glam::Vec2::from(t),
-            };
-
-            if let Some(primitive_texcoords) = reader.read_tex_coords(0) {
-                vertex_data.extend(
-                    primitive_normals
-                        .zip(primitive_texcoords.into_f32())
-                        .map(to_data),
-                );
-            } else {
-                vertex_data.extend(
-                    primitive_normals
-                        .zip(std::iter::repeat([0.0, 0.0]))
-                        .map(to_data),
-                );
-            }
+        if let Some(colors) = reader.read_colors(set) {
+            vertex_colors.extend(
+                colors
+                    .into_rgba_u8()
+                    .map(Rgba32Unmul::from_rgba_unmul_array),
+            );
         } else {
-            anyhow::bail!("Gltf primitives must have normals");
+            vertex_colors.resize(vertex_positions.len(), Rgba32Unmul::WHITE);
         }
 
-        if vertex_positions.len() != vertex_data.len() {
-            anyhow::bail!("Number of positions was not equal number of other vertex data.");
+        if let Some(primitive_normals) = reader.read_normals() {
+            vertex_normals.extend(primitive_normals.map(glam::Vec3::from));
+        } else {
+            vertex_normals.resize(vertex_positions.len(), glam::Vec3::ZERO);
+        }
+
+        if let Some(primitive_texcoords) = reader.read_tex_coords(set) {
+            vertex_texcoords.extend(primitive_texcoords.into_f32().map(glam::Vec2::from));
+        } else {
+            vertex_texcoords.resize(vertex_positions.len(), glam::Vec2::ZERO);
         }
 
         let primitive_material = primitive.material();
@@ -248,13 +244,19 @@ fn import_mesh(
         anyhow::bail!("empty mesh");
     }
 
-    Ok(Mesh {
+    let mesh = Mesh {
         label: mesh.name().into(),
         indices,
         vertex_positions,
-        vertex_data,
+        vertex_colors,
+        vertex_normals,
+        vertex_texcoords,
         materials,
-    })
+    };
+
+    mesh.sanity_check()?;
+
+    Ok(mesh)
 }
 
 fn gather_instances_recursive(
@@ -294,7 +296,7 @@ fn gather_instances_recursive(
                 gpu_mesh: gpu_mesh.clone(),
                 mesh: Some(mesh.clone()),
                 world_from_mesh: transform,
-                additive_tint: Color32::TRANSPARENT,
+                ..Default::default()
             });
         }
     }

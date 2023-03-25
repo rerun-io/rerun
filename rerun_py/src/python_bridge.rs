@@ -2,8 +2,9 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{io::Cursor, path::PathBuf};
+use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
+use itertools::izip;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
@@ -11,7 +12,6 @@ use pyo3::{
 };
 
 use rerun::{
-    global_session,
     log::{LogMsg, MsgBundle, MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
@@ -28,7 +28,17 @@ pub use rerun::{
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
-use crate::arrow::get_registered_component_names;
+use crate::{arrow::get_registered_component_names, python_session::PythonSession};
+
+// ----------------------------------------------------------------------------
+
+/// The global [`PythonSession`] object used by the Python API.
+fn python_session() -> parking_lot::MutexGuard<'static, PythonSession> {
+    use once_cell::sync::OnceCell;
+    use parking_lot::Mutex;
+    static PYTHON_SESSION: OnceCell<Mutex<PythonSession>> = OnceCell::new();
+    PYTHON_SESSION.get_or_init(Default::default).lock()
+}
 
 // ----------------------------------------------------------------------------
 
@@ -96,13 +106,12 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // called more than once.
     re_log::setup_native_logging();
 
-    global_session()
-        .set_recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)));
+    python_session().set_python_version(python_version(py));
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
     // See `default_recording_id` for extra information.
-    global_session().set_recording_id(default_recording_id(py));
+    python_session().set_recording_id(default_recording_id(py));
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
 
@@ -117,12 +126,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
-
-    #[cfg(feature = "re_viewer")]
-    {
-        m.add_function(wrap_pyfunction!(disconnect, m)?)?;
-        m.add_function(wrap_pyfunction!(show, m)?)?;
-    }
+    m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
 
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
@@ -217,18 +221,19 @@ fn time(timeless: bool) -> TimePoint {
 
 #[pyfunction]
 fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+    let build_info = re_build_info::build_info!();
     let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(call_src, argv))
+        .block_on(rerun::run(build_info, call_src, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
 #[pyfunction]
 fn get_recording_id() -> PyResult<String> {
-    global_session()
+    python_session()
         .recording_id()
         .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
         .map(|recording_id| recording_id.to_string())
@@ -237,7 +242,7 @@ fn get_recording_id() -> PyResult<String> {
 #[pyfunction]
 fn set_recording_id(recording_id: &str) -> PyResult<()> {
     if let Ok(recording_id) = recording_id.parse() {
-        global_session().set_recording_id(recording_id);
+        python_session().set_recording_id(recording_id);
         Ok(())
     } else {
         Err(PyTypeError::new_err(format!(
@@ -262,8 +267,8 @@ fn init(application_id: String, application_path: Option<PathBuf>, default_enabl
         false
     });
 
-    let mut session = rerun::global_session_with_default_enabled(default_enabled);
-
+    let mut session = python_session();
+    session.set_default_enabled(default_enabled);
     session.set_application_id(ApplicationId(application_id), is_official_example);
 }
 
@@ -272,9 +277,9 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
-        re_sdk_comms::default_server_addr()
+        rerun::default_server_addr()
     };
-    global_session().connect(addr);
+    python_session().connect(addr);
     Ok(())
 }
 
@@ -282,17 +287,29 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 fn serve(open_browser: bool) -> PyResult<()> {
-    #[cfg(feature = "web")]
+    #[cfg(feature = "web_viewer")]
     {
-        global_session().serve(open_browser);
+        let mut session = python_session();
+
+        if !session.is_enabled() {
+            re_log::debug!("Rerun disabled - call to serve() ignored");
+            return Ok(());
+        }
+
+        use once_cell::sync::Lazy;
+        static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+            Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
+        let _guard = TOKIO_RUNTIME.enter();
+        session.set_sink(rerun::web_viewer::new_sink(open_browser));
+
         Ok(())
     }
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(not(feature = "web_viewer"))]
     {
         _ = open_browser;
         Err(PyRuntimeError::new_err(
-            "The Rerun SDK was not compiled with the 'web' feature",
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
     }
 }
@@ -303,7 +320,7 @@ fn shutdown(py: Python<'_>) {
     // cleanup a python object.
     py.allow_threads(|| {
         re_log::debug!("Shutting down the Rerun SDK");
-        let mut session = global_session();
+        let mut session = python_session();
         session.drop_msgs_if_disconnected();
         session.flush();
         session.disconnect();
@@ -313,7 +330,7 @@ fn shutdown(py: Python<'_>) {
 /// Is logging enabled in the global session?
 #[pyfunction]
 fn is_enabled() -> bool {
-    global_session().is_enabled()
+    python_session().is_enabled()
 }
 
 /// Enable or disable logging in the global session.
@@ -322,50 +339,21 @@ fn is_enabled() -> bool {
 /// By default logging is enabled.
 #[pyfunction]
 fn set_enabled(enabled: bool) {
-    global_session().set_enabled(enabled);
+    python_session().set_enabled(enabled);
 }
 
 /// Disconnect from remote server (if any).
 ///
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
-#[cfg(feature = "re_viewer")]
 #[pyfunction]
 fn disconnect() {
-    global_session().disconnect();
-}
-
-/// Show the buffered log data.
-///
-/// NOTE: currently this only works _once_.
-/// Calling this function more than once is undefined behavior.
-/// We will try to fix this in the future.
-/// Blocked on <https://github.com/emilk/egui/issues/1918>.
-#[cfg(feature = "re_viewer")]
-#[pyfunction]
-fn show() -> PyResult<()> {
-    let mut session = global_session();
-    if session.is_connected() {
-        return Err(PyRuntimeError::new_err(
-            "Can't show the log messages: Rerun was configured to send the data to a server!",
-        ));
-    }
-
-    let log_messages = session.drain_log_messages_buffer();
-    drop(session);
-
-    if log_messages.is_empty() {
-        re_log::info!("Nothing logged, so nothing to show");
-        Ok(())
-    } else {
-        rerun_sdk::viewer::show(log_messages)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
-    }
+    python_session().disconnect();
 }
 
 #[pyfunction]
 fn save(path: &str) -> PyResult<()> {
-    let mut session = global_session();
+    let mut session = python_session();
     session
         .save(path)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
@@ -466,7 +454,7 @@ fn log_transform(
     if entity_path.is_root() {
         return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
     }
-    let mut session = global_session();
+    let mut session = python_session();
     let time_point = time(timeless);
 
     // We currently log arrow transforms from inside the bridge because we are
@@ -547,7 +535,7 @@ fn log_view_coordinates(
         parse_entity_path(entity_path_str)?
     };
 
-    let mut session = global_session();
+    let mut session = python_session();
     let time_point = time(timeless);
 
     // We currently log view coordinates from inside the bridge because the code
@@ -587,6 +575,7 @@ enum TensorDataMeaning {
 fn log_meshes(
     entity_path_str: &str,
     position_buffers: Vec<numpy::PyReadonlyArray1<'_, f32>>,
+    vertex_color_buffers: Vec<Option<numpy::PyReadonlyArray2<'_, u8>>>,
     index_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, u32>>>,
     normal_buffers: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
@@ -595,53 +584,81 @@ fn log_meshes(
     let entity_path = parse_entity_path(entity_path_str)?;
 
     // Make sure we have as many position buffers as index buffers, etc.
-    if position_buffers.len() != index_buffers.len()
+    if position_buffers.len() != vertex_color_buffers.len()
+        || position_buffers.len() != index_buffers.len()
         || position_buffers.len() != normal_buffers.len()
         || position_buffers.len() != albedo_factors.len()
     {
         return Err(PyTypeError::new_err(format!(
             "Top-level position/index/normal/albedo buffer arrays must be same the length, \
-                got positions={}, indices={}, normals={}, albedo={} instead",
+                got positions={}, vertex_colors={}, indices={}, normals={}, albedo={} instead",
             position_buffers.len(),
+            vertex_color_buffers.len(),
             index_buffers.len(),
             normal_buffers.len(),
             albedo_factors.len(),
         )));
     }
 
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(timeless);
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
-    for (i, positions) in position_buffers.into_iter().enumerate() {
-        let albedo_factor = if let Some(v) = albedo_factors[i]
-            .as_ref()
-            .map(|albedo_factor| albedo_factor.as_array().to_vec())
-        {
-            match v.len() {
-                3 => Vec4D([v[0], v[1], v[2], 1.0]),
-                4 => Vec4D([v[0], v[1], v[2], v[3]]),
-                _ => {
+
+    for (vertex_positions, vertex_colors, indices, normals, albedo_factor) in izip!(
+        position_buffers,
+        vertex_color_buffers,
+        index_buffers,
+        normal_buffers,
+        albedo_factors,
+    ) {
+        let albedo_factor =
+            if let Some(v) = albedo_factor.map(|albedo_factor| albedo_factor.as_array().to_vec()) {
+                match v.len() {
+                    3 => Vec4D([v[0], v[1], v[2], 1.0]),
+                    4 => Vec4D([v[0], v[1], v[2], v[3]]),
+                    _ => {
+                        return Err(PyTypeError::new_err(format!(
+                            "Albedo factor must be vec3 or vec4, got {v:?} instead",
+                        )));
+                    }
+                }
+                .into()
+            } else {
+                None
+            };
+
+        let vertex_colors = if let Some(vertex_colors) = vertex_colors {
+            match vertex_colors.shape() {
+                [_, 3] => Some(
+                    slice_from_np_array(&vertex_colors)
+                        .chunks_exact(3)
+                        .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]).0)
+                        .collect(),
+                ),
+                [_, 4] => Some(
+                    slice_from_np_array(&vertex_colors)
+                        .chunks_exact(4)
+                        .map(|c| ColorRGBA::from_unmultiplied_rgba(c[0], c[1], c[2], c[3]).0)
+                        .collect(),
+                ),
+                shape => {
                     return Err(PyTypeError::new_err(format!(
-                        "Albedo factor must be vec3 or vec4, got {v:?} instead",
+                        "Expected vertex colors to have a Nx3 or Nx4 shape, got {shape:?} instead",
                     )));
                 }
             }
-            .into()
         } else {
             None
         };
 
         let raw = RawMesh3D {
             mesh_id: MeshId::random(),
-            positions: positions.as_array().to_vec(),
-            indices: index_buffers[i]
-                .as_ref()
-                .map(|indices| indices.as_array().to_vec()),
-            normals: normal_buffers[i]
-                .as_ref()
-                .map(|normals| normals.as_array().to_vec()),
+            vertex_positions: vertex_positions.as_array().to_vec().into(),
+            vertex_colors,
+            indices: indices.map(|indices| indices.as_array().to_vec().into()),
+            vertex_normals: normals.map(|normals| normals.as_array().to_vec().into()),
             albedo_factor,
         };
         raw.sanity_check()
@@ -691,7 +708,7 @@ fn log_mesh_file(
             )));
         }
     };
-    let bytes = bytes.into();
+    let bytes: Vec<u8> = bytes.into();
     let transform = if transform.is_empty() {
         [
             [1.0, 0.0, 0.0], // col 0
@@ -717,14 +734,14 @@ fn log_mesh_file(
         ]
     };
 
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(timeless);
 
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
         format,
-        bytes,
+        bytes: bytes.into(),
         transform,
     });
 
@@ -808,7 +825,7 @@ fn log_image_file(
         }
     };
 
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(timeless);
 
@@ -823,7 +840,7 @@ fn log_image_file(
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            data: re_log_types::component_types::TensorData::JPEG(img_bytes),
+            data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
             meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
             meter: None,
         }]
@@ -863,7 +880,7 @@ fn log_annotation_context(
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut session = global_session();
+    let mut session = python_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let entity_path = if entity_path_str == "/" {
@@ -916,7 +933,7 @@ fn log_annotation_context(
 #[pyfunction]
 fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
-    let mut session = global_session();
+    let mut session = python_session();
 
     let time_point = time(false);
 
@@ -934,8 +951,27 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     // cause a deadlock.
     let msg = crate::arrow::build_chunk_from_components(&entity_path, components, &time(timeless))?;
 
-    let mut session = global_session();
+    let mut session = python_session();
     session.send(msg);
 
     Ok(())
+}
+
+// ----------------------------------------------------------------------------
+
+fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
+    array: &'a numpy::PyReadonlyArray<'_, T, D>,
+) -> Cow<'a, [T]> {
+    let array = array.as_array();
+
+    // Numpy has many different memory orderings.
+    // We could/should check that we have the right one here.
+    // But for now, we just check for and optimize the trivial case.
+    if array.shape().len() == 1 {
+        if let Some(slice) = array.to_slice() {
+            return Cow::Borrowed(slice); // common-case optimization
+        }
+    }
+
+    Cow::Owned(array.iter().cloned().collect())
 }

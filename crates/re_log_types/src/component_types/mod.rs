@@ -4,7 +4,7 @@
 //! schemas are additionally documented in doctests.
 
 use arrow2::{
-    array::{FixedSizeListArray, MutableFixedSizeListArray},
+    array::{FixedSizeListArray, MutableFixedSizeListArray, PrimitiveArray},
     datatypes::{DataType, Field},
 };
 use arrow2_convert::{
@@ -17,6 +17,7 @@ use lazy_static::lazy_static;
 use crate::msg_bundle::Component;
 
 mod arrow;
+mod arrow_convert_shims;
 mod bbox;
 mod class_id;
 mod color;
@@ -59,7 +60,11 @@ pub use radius::Radius;
 pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
-pub use tensor::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait};
+#[cfg(feature = "image")]
+pub use tensor::TensorImageError;
+pub use tensor::{
+    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
+};
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D, Vec4D};
@@ -124,8 +129,8 @@ pub type Result<T> = std::result::Result<T, FieldError>;
 ///
 /// #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 /// pub struct ConvertibleType {
-///     #[arrow_field(type = "FixedSizeArrayField<bool,2>")]
-///     data: [bool; 2],
+///     #[arrow_field(type = "FixedSizeArrayField<u32,2>")]
+///     data: [u32; 2],
 /// }
 /// ```
 pub struct FixedSizeArrayField<T, const SIZE: usize>(std::marker::PhantomData<T>);
@@ -170,27 +175,114 @@ where
     }
 }
 
-impl<T, const SIZE: usize> ArrowDeserialize for FixedSizeArrayField<T, SIZE>
+pub struct FastFixedSizeArrayIter<'a, T, const SIZE: usize>
 where
-    T: ArrowDeserialize + ArrowEnableVecForType + ArrowField<Type = T> + 'static,
-    <T as ArrowDeserialize>::ArrayType: 'static,
-    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+    T: arrow2::types::NativeType,
 {
-    type ArrayType = FixedSizeListArray;
+    offset: usize,
+    end: usize,
+    array: &'a FixedSizeListArray,
+    values: &'a PrimitiveArray<T>,
+}
 
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        if let Some(array) = v {
-            let mut iter = <<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(
-                array.as_ref(),
-            )
-            .map(<T as ArrowDeserialize>::arrow_deserialize_internal);
-            let out: Result<[T; SIZE]> =
-                array_init::try_array_init(|_i: usize| iter.next().ok_or(FieldError::BadValue));
-            out.ok()
+impl<'a, T, const SIZE: usize> Iterator for FastFixedSizeArrayIter<'a, T, SIZE>
+where
+    T: arrow2::types::NativeType,
+{
+    type Item = Option<[T; SIZE]>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.offset < self.end {
+            if let Some(validity) = self.array.validity() {
+                if !validity.get_bit(self.offset) {
+                    self.offset += 1;
+                    return Some(None);
+                }
+            }
+
+            let out: [T; SIZE] =
+                array_init::array_init(|i: usize| self.values.value(self.offset * SIZE + i));
+            self.offset += 1;
+            Some(Some(out))
         } else {
             None
         }
+    }
+}
+
+pub struct FastFixedSizeListArray<T, const SIZE: usize>(std::marker::PhantomData<T>);
+
+extern "C" {
+    fn do_not_call_into_iter(); // we never define this function, so the linker will fail
+}
+
+impl<'a, T, const SIZE: usize> IntoIterator for &'a FastFixedSizeListArray<T, SIZE>
+where
+    T: arrow2::types::NativeType,
+{
+    type Item = Option<[T; SIZE]>;
+
+    type IntoIter = FastFixedSizeArrayIter<'a, T, SIZE>;
+
+    #[cfg(not(target_os = "windows"))]
+    fn into_iter(self) -> Self::IntoIter {
+        #[allow(unsafe_code)]
+        // SAFETY:
+        // This exists so we get a link-error if some code tries to call into_iter
+        // Iteration should only happen via iter_from_array_ref.
+        // This is a quirk of the way the traits work in arrow2_convert.
+        unsafe {
+            do_not_call_into_iter();
+        }
+        unreachable!();
+    }
+
+    // On windows the above linker trick doesn't work.
+    // We'll still catch the issue on build in Linux, but on windows just fall back to panic.
+    #[cfg(target_os = "windows")]
+    fn into_iter(self) -> Self::IntoIter {
+        panic!("Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert.");
+    }
+}
+
+impl<T, const SIZE: usize> ArrowArray for FastFixedSizeListArray<T, SIZE>
+where
+    T: arrow2::types::NativeType,
+{
+    type BaseArrayType = FixedSizeListArray;
+
+    fn iter_from_array_ref(b: &dyn arrow2::array::Array) -> <&Self as IntoIterator>::IntoIter {
+        let array = b.as_any().downcast_ref::<Self::BaseArrayType>().unwrap();
+        let values = array
+            .values()
+            .as_any()
+            .downcast_ref::<PrimitiveArray<T>>()
+            .unwrap();
+        FastFixedSizeArrayIter::<T, SIZE> {
+            offset: 0,
+            end: array.len(),
+            array,
+            values,
+        }
+    }
+}
+
+impl<T, const SIZE: usize> ArrowDeserialize for FixedSizeArrayField<T, SIZE>
+where
+    T: arrow2::types::NativeType
+        + ArrowDeserialize
+        + ArrowEnableVecForType
+        + ArrowField<Type = T>
+        + 'static,
+    <T as ArrowDeserialize>::ArrayType: 'static,
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+{
+    type ArrayType = FastFixedSizeListArray<T, SIZE>;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v
     }
 }

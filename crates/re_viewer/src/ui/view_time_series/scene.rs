@@ -126,7 +126,7 @@ impl SceneTimeSeries {
                             attrs: PlotPointAttrs {
                                 label,
                                 color,
-                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.into()),
+                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
                                 scattered: props.map_or(false, |props| props.scattered),
                             },
                         });
@@ -209,7 +209,7 @@ impl SceneTimeSeries {
                 let prev_point = *prev_line.points.last().unwrap();
                 self.lines.push(prev_line);
 
-                // If the previous point was continous and the current point is continuous
+                // If the previous point was continuous and the current point is continuous
                 // too, then we want the 2 segments to appear continuous even though they
                 // are actually split from a data standpoint.
                 let cur_continuous = matches!(kind, PlotSeriesKind::Continuous);

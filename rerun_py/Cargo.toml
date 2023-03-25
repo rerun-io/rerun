@@ -12,10 +12,11 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module"]
+default = ["extension-module", "native_viewer"]
 
-## The features we turn on when building the PyPi package.
-pypi = ["extension-module", "web"]
+## The features we turn on when building the `rerun-sdk` PyPi package
+## for <https://pypi.org/project/rerun-sdk/>.
+pypi = ["extension-module", "native_viewer", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -24,21 +25,25 @@ pypi = ["extension-module", "web"]
 ## * <https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
 
-## Support serving a web viewer over HTTP.
+## Support spawning a native Rerun viewer with `spawn()`.
+native_viewer = ["rerun/native_viewer"]
+
+## Support serving a web viewer over HTTP with `serve()`.
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
 ##
 ## You also need to install some additional tools, which you can do by running
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web = ["rerun/web"]
+web_viewer = ["rerun/web_viewer"]
+
 
 [dependencies]
+re_build_info.workspace = true
 re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
-re_sdk_comms = { workspace = true, features = ["client"] }
 re_tensor_ops.workspace = true
 rerun = { workspace = true, default-features = false, features = [
   "analytics",
@@ -46,28 +51,31 @@ rerun = { workspace = true, default-features = false, features = [
   "sdk",
 ] }
 
-ahash = "0.8"
+ahash.workspace = true
+anyhow.workspace = true
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"
 glam.workspace = true
 half.workspace = true
-image = { version = "0.24", default-features = false, features = [
-  "jpeg",
-  "jpeg_rayon",
-] }
+image = { workspace = true, default-features = false, features = ["jpeg"] }
 itertools = "0.10"
 macaw.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy = { version = "0.18.0", features = ["half"] }
+once_cell = "1.12"
+parking_lot = "0.12"
 pyo3 = { version = "0.18.0", features = ["abi3-py38"] }
 rand = { version = "0.8", features = ["std_rng"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 uuid = "1.1"
 
+
 [build-dependencies]
+re_build_build_info.workspace = true
 pyo3-build-config = "0.18.0"
+
 
 [package.metadata.maturin]
 name = "rerun_bindings"

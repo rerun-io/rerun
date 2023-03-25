@@ -6,10 +6,10 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Point2D},
-    datagen::{build_frame_nr, build_some_colors, build_some_point2d},
+    component_types::{ColorRGBA, InstanceKey, Point2D, Vec3D},
+    datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
     entity_path,
-    msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
+    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2, Component, MsgBundle},
     EntityPath, Index, MsgId, TimeType, Timeline,
 };
 use re_query::query_entity_with_primary;
@@ -17,17 +17,25 @@ use re_query::query_entity_with_primary;
 // ---
 
 #[cfg(not(debug_assertions))]
-const NUM_FRAMES: u32 = 1_000;
+const NUM_FRAMES_POINTS: u32 = 1_000;
 #[cfg(not(debug_assertions))]
 const NUM_POINTS: u32 = 1_000;
+#[cfg(not(debug_assertions))]
+const NUM_FRAMES_VECS: u32 = 10;
+#[cfg(not(debug_assertions))]
+const NUM_VECS: u32 = 100_000;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
-const NUM_FRAMES: u32 = 1;
+const NUM_FRAMES_POINTS: u32 = 1;
 #[cfg(debug_assertions)]
 const NUM_POINTS: u32 = 1;
+#[cfg(debug_assertions)]
+const NUM_FRAMES_VECS: u32 = 1;
+#[cfg(debug_assertions)]
+const NUM_VECS: u32 = 1;
 
-criterion_group!(benches, mono_points, batch_points);
+criterion_group!(benches, mono_points, batch_points, batch_vecs);
 criterion_main!(benches);
 
 // --- Benchmarks ---
@@ -35,17 +43,16 @@ criterion_main!(benches);
 fn mono_points(c: &mut Criterion) {
     // Each mono point gets logged at a different path
     let paths = (0..NUM_POINTS)
-        .into_iter()
         .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
         .collect_vec();
-    let msgs = build_messages(&paths, 1);
+    let msgs = build_points_messages(&paths, 1);
 
     {
         let mut group = c.benchmark_group("arrow_mono_points");
         // Mono-insert is slow -- decrease the sample size
         group.sample_size(10);
         group.throughput(criterion::Throughput::Elements(
-            (NUM_POINTS * NUM_FRAMES) as _,
+            (NUM_POINTS * NUM_FRAMES_POINTS) as _,
         ));
         group.bench_function("insert", |b| {
             b.iter(|| insert_messages(msgs.iter()));
@@ -57,7 +64,7 @@ fn mono_points(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         let mut store = insert_messages(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit(&mut store, &paths));
+            b.iter(|| query_and_visit_points(&mut store, &paths));
         });
     }
 }
@@ -65,12 +72,12 @@ fn mono_points(c: &mut Criterion) {
 fn batch_points(c: &mut Criterion) {
     // Batch points are logged together at a single path
     let paths = [EntityPath::from("points")];
-    let msgs = build_messages(&paths, NUM_POINTS as _);
+    let msgs = build_points_messages(&paths, NUM_POINTS as _);
 
     {
         let mut group = c.benchmark_group("arrow_batch_points");
         group.throughput(criterion::Throughput::Elements(
-            (NUM_POINTS * NUM_FRAMES) as _,
+            (NUM_POINTS * NUM_FRAMES_POINTS) as _,
         ));
         group.bench_function("insert", |b| {
             b.iter(|| insert_messages(msgs.iter()));
@@ -82,16 +89,40 @@ fn batch_points(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         let mut store = insert_messages(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit(&mut store, &paths));
+            b.iter(|| query_and_visit_points(&mut store, &paths));
+        });
+    }
+}
+
+fn batch_vecs(c: &mut Criterion) {
+    // Batch points are logged together at a single path
+    let paths = [EntityPath::from("vec")];
+    let msgs = build_vecs_messages(&paths, NUM_VECS as _);
+
+    {
+        let mut group = c.benchmark_group("arrow_batch_vecs");
+        group.throughput(criterion::Throughput::Elements(
+            (NUM_VECS * NUM_FRAMES_VECS) as _,
+        ));
+        group.bench_function("insert", |b| {
+            b.iter(|| insert_messages(msgs.iter()));
+        });
+    }
+
+    {
+        let mut group = c.benchmark_group("arrow_batch_vecs");
+        group.throughput(criterion::Throughput::Elements(NUM_VECS as _));
+        let mut store = insert_messages(msgs.iter());
+        group.bench_function("query", |b| {
+            b.iter(|| query_and_visit_vecs(&mut store, &paths));
         });
     }
 }
 
 // --- Helpers ---
 
-fn build_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
-    (0..NUM_FRAMES)
-        .into_iter()
+fn build_points_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
+    (0..NUM_FRAMES_POINTS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 try_build_msg_bundle2(
@@ -106,20 +137,36 @@ fn build_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
         .collect()
 }
 
+fn build_vecs_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
+    (0..NUM_FRAMES_VECS)
+        .flat_map(move |frame_idx| {
+            paths.iter().map(move |path| {
+                try_build_msg_bundle1(
+                    MsgId::ZERO,
+                    path.clone(),
+                    [build_frame_nr((frame_idx as i64).into())],
+                    build_some_vec3d(pts),
+                )
+                .unwrap()
+            })
+        })
+        .collect()
+}
+
 fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
 
-struct Point {
+struct SavePoint {
     _pos: Point2D,
     _color: Option<ColorRGBA>,
 }
 
-fn query_and_visit(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Point> {
+fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES as i64 / 2).into());
+    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_POINTS as i64 / 2).into());
 
     let mut points = Vec::with_capacity(NUM_POINTS as _);
 
@@ -128,7 +175,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Point> {
         query_entity_with_primary::<Point2D>(store, &query, path, &[ColorRGBA::name()])
             .and_then(|entity_view| {
                 entity_view.visit2(|_: InstanceKey, pos: Point2D, color: Option<ColorRGBA>| {
-                    points.push(Point {
+                    points.push(SavePoint {
                         _pos: pos,
                         _color: color,
                     });
@@ -139,4 +186,28 @@ fn query_and_visit(store: &mut DataStore, paths: &[EntityPath]) -> Vec<Point> {
     }
     assert_eq!(NUM_POINTS as usize, points.len());
     points
+}
+
+struct SaveVec {
+    _vec: Vec3D,
+}
+
+fn query_and_visit_vecs(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SaveVec> {
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_POINTS as i64 / 2).into());
+
+    let mut rects = Vec::with_capacity(NUM_VECS as _);
+
+    for path in paths.iter() {
+        query_entity_with_primary::<Vec3D>(store, &query, path, &[])
+            .and_then(|entity_view| {
+                entity_view.visit1(|_: InstanceKey, vec: Vec3D| {
+                    rects.push(SaveVec { _vec: vec });
+                })
+            })
+            .ok()
+            .unwrap();
+    }
+    assert_eq!(NUM_VECS as usize, rects.len());
+    rects
 }

@@ -1,14 +1,16 @@
 mod mesh_cache;
+mod tensor_decode_cache;
 mod tensor_image_cache;
 
-use re_log_types::component_types;
-pub use tensor_image_cache::{AsDynamicImage, TensorImageView};
+use re_log_types::component_types::{self, TensorTrait};
+pub use tensor_image_cache::ColoredTensorView;
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches {
     /// For displaying images efficiently in immediate mode.
     pub image: tensor_image_cache::ImageCache,
+    pub decode: tensor_decode_cache::DecodeCache,
 
     /// For displaying meshes efficiently in immediate mode.
     pub mesh: mesh_cache::MeshCache,
@@ -18,38 +20,48 @@ pub struct Caches {
 
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
-    pub fn new_frame(&mut self) {
+    pub fn begin_frame(&mut self) {
         let max_image_cache_use = 1_000_000_000;
-        self.image.new_frame(max_image_cache_use);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let max_decode_cache_use = 4_000_000_000;
+
+        #[cfg(target_arch = "wasm32")]
+        let max_decode_cache_use = 1_000_000_000;
+
+        self.image.begin_frame(max_image_cache_use);
+        self.decode.begin_frame(max_decode_cache_use);
     }
 
     pub fn purge_memory(&mut self) {
         let Self {
             image,
+            decode,
             tensor_stats,
             mesh: _, // TODO(emilk)
         } = self;
         image.purge_memory();
+        decode.purge_memory();
         tensor_stats.clear();
     }
 
-    pub fn tensor_stats(&mut self, tensor: &re_log_types::ClassicTensor) -> &TensorStats {
+    pub fn tensor_stats(&mut self, tensor: &re_log_types::component_types::Tensor) -> &TensorStats {
         self.tensor_stats
-            .entry(tensor.id())
+            .entry(tensor.tensor_id)
             .or_insert_with(|| TensorStats::new(tensor))
     }
 }
 
 pub struct TensorStats {
+    /// This will currently only be `None` for jpeg-encoded tensors.
     pub range: Option<(f64, f64)>,
 }
 
 impl TensorStats {
-    fn new(tensor: &re_log_types::ClassicTensor) -> Self {
-        use re_log_types::TensorDataType;
-        use re_tensor_ops::as_ndarray;
-
+    fn new(tensor: &re_log_types::component_types::Tensor) -> Self {
         use half::f16;
+        use ndarray::ArrayViewD;
+        use re_log_types::TensorDataType;
 
         macro_rules! declare_tensor_range_int {
             ($name: ident, $typ: ty) => {
@@ -103,21 +115,20 @@ impl TensorStats {
         }
 
         let range = match tensor.dtype() {
-            TensorDataType::U8 => as_ndarray::<u8>(tensor).ok().map(tensor_range_u8),
-            TensorDataType::U16 => as_ndarray::<u16>(tensor).ok().map(tensor_range_u16),
-            TensorDataType::U32 => as_ndarray::<u32>(tensor).ok().map(tensor_range_u32),
-            TensorDataType::U64 => as_ndarray::<u64>(tensor).ok().map(tensor_range_u64),
+            TensorDataType::U8 => ArrayViewD::<u8>::try_from(tensor).map(tensor_range_u8),
+            TensorDataType::U16 => ArrayViewD::<u16>::try_from(tensor).map(tensor_range_u16),
+            TensorDataType::U32 => ArrayViewD::<u32>::try_from(tensor).map(tensor_range_u32),
+            TensorDataType::U64 => ArrayViewD::<u64>::try_from(tensor).map(tensor_range_u64),
 
-            TensorDataType::I8 => as_ndarray::<i8>(tensor).ok().map(tensor_range_i8),
-            TensorDataType::I16 => as_ndarray::<i16>(tensor).ok().map(tensor_range_i16),
-            TensorDataType::I32 => as_ndarray::<i32>(tensor).ok().map(tensor_range_i32),
-            TensorDataType::I64 => as_ndarray::<i64>(tensor).ok().map(tensor_range_i64),
-
-            TensorDataType::F16 => as_ndarray::<f16>(tensor).ok().map(tensor_range_f16),
-            TensorDataType::F32 => as_ndarray::<f32>(tensor).ok().map(tensor_range_f32),
-            TensorDataType::F64 => as_ndarray::<f64>(tensor).ok().map(tensor_range_f64),
+            TensorDataType::I8 => ArrayViewD::<i8>::try_from(tensor).map(tensor_range_i8),
+            TensorDataType::I16 => ArrayViewD::<i16>::try_from(tensor).map(tensor_range_i16),
+            TensorDataType::I32 => ArrayViewD::<i32>::try_from(tensor).map(tensor_range_i32),
+            TensorDataType::I64 => ArrayViewD::<i64>::try_from(tensor).map(tensor_range_i64),
+            TensorDataType::F16 => ArrayViewD::<f16>::try_from(tensor).map(tensor_range_f16),
+            TensorDataType::F32 => ArrayViewD::<f32>::try_from(tensor).map(tensor_range_f32),
+            TensorDataType::F64 => ArrayViewD::<f64>::try_from(tensor).map(tensor_range_f64),
         };
 
-        Self { range }
+        Self { range: range.ok() }
     }
 }

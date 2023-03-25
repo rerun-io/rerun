@@ -8,11 +8,11 @@ use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{OptionalSpaceViewEntityHighlight, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{
-            scene::scene_part::instance_path_hash_for_picking, Label2D, Label2DTarget, SceneSpatial,
+            scene::scene_part::instance_path_hash_for_picking, SceneSpatial, UiLabel, UiLabelTarget,
         },
         DefaultColor,
     },
@@ -35,32 +35,27 @@ impl Boxes2DPart {
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) {
         scene.num_logged_2d_objects += 1;
 
         let annotations = scene.annotation_map.find(entity_path);
         let annotation_info = annotations.class_description(class_id).annotation_info();
-        let mut color = annotation_info.color(
+        let color = annotation_info.color(
             color.map(|c| c.to_array()).as_ref(),
             DefaultColor::EntityPath(entity_path),
         );
-        let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+        let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
         let label = annotation_info.label(label.map(|l| l.0).as_ref());
-
-        SceneSpatial::apply_hover_and_selection_effect(
-            &mut radius,
-            &mut color,
-            entity_highlight.index_highlight(instance_path_hash.instance_key),
-        );
 
         let mut line_batch = scene
             .primitives
             .line_strips
             .batch("2d box")
-            .world_from_obj(world_from_obj);
+            .world_from_obj(world_from_obj)
+            .outline_mask_ids(entity_highlight.overall);
 
-        line_batch
+        let rectangle = line_batch
             .add_rectangle_outline_2d(
                 rect.top_left_corner().into(),
                 glam::vec2(rect.width(), 0.0),
@@ -70,15 +65,22 @@ impl Boxes2DPart {
             .radius(radius)
             .user_data(instance_path_hash);
 
+        if let Some(outline_mask_ids) = entity_highlight
+            .instances
+            .get(&instance_path_hash.instance_key)
+        {
+            rectangle.outline_mask_ids(*outline_mask_ids);
+        }
+
         if let Some(label) = label {
-            scene.ui.labels_2d.push(Label2D {
+            scene.ui.labels.push(UiLabel {
                 text: label,
                 color,
-                target: Label2DTarget::Rect(egui::Rect::from_min_size(
+                target: UiLabelTarget::Rect(egui::Rect::from_min_size(
                     rect.top_left_corner().into(),
                     egui::vec2(rect.width(), rect.height()),
                 )),
-                labled_instance: instance_path_hash,
+                labeled_instance: instance_path_hash,
             });
         }
     }
@@ -100,7 +102,7 @@ impl ScenePart for Boxes2DPart {
                 continue;
             };
 
-            let entity_highlight = highlights.entity_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Rect2D, 6>(
                 &ctx.log_db.entity_db.data_store,
@@ -125,7 +127,7 @@ impl ScenePart for Boxes2DPart {
                             instance_key,
                             &entity_view,
                             &props,
-                            entity_highlight,
+                            entity_highlight.any_selection_highlight,
                         );
                         Self::visit_instance(
                             scene,

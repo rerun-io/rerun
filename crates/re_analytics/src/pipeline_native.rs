@@ -25,9 +25,6 @@ pub enum PipelineError {
 
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    Http(#[from] reqwest::Error),
 }
 
 /// An eventual, at-least-once(-ish) event pipeline, backed by a write-ahead log on the local disk.
@@ -75,7 +72,7 @@ impl Pipeline {
         // The eventual part comes from the fact that this only runs as part of the Rerun viewer,
         // and as such there's no guarantee it will ever run again, even if there's pending data.
 
-        _ = std::thread::Builder::new()
+        if let Err(err) = std::thread::Builder::new()
             .name("pipeline_catchup".into())
             .spawn({
                 let config = config.clone();
@@ -88,9 +85,12 @@ impl Pipeline {
                     let res = flush_pending_events(&config, &sink);
                     trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
                 }
-            });
+            })
+        {
+            re_log::warn!("Failed to spawn analytics thread: {err}");
+        }
 
-        _ = std::thread::Builder::new().name("pipeline".into()).spawn({
+        if let Err(err) = std::thread::Builder::new().name("pipeline".into()).spawn({
             let config = config.clone();
             let event_tx = event_tx.clone();
             move || {
@@ -102,7 +102,9 @@ impl Pipeline {
                     realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
                 trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
             }
-        });
+        }) {
+            re_log::warn!("Failed to spawn analytics thread: {err}");
+        }
 
         Ok(Some(Self { event_tx }))
     }
@@ -197,13 +199,13 @@ fn realtime_pipeline(
         }
 
         if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink) {
-            warn!(%err, %analytics_id, %session_id, "couldn't flush analytics data file");
+            re_log::debug_once!("couldn't flush analytics data file: {err}");
             // We couldn't flush the session file: keep it intact so that we can retry later.
             return;
         }
 
         if let Err(err) = session_file.set_len(0) {
-            warn!(%err, %analytics_id, %session_id, "couldn't truncate analytics data file");
+            re_log::warn_once!("couldn't truncate analytics data file: {err}");
             // We couldn't truncate the session file: we'll have to keep it intact for now, which
             // will result in duplicated data that we'll be able to deduplicate at query time.
             return;
@@ -212,7 +214,7 @@ fn realtime_pipeline(
             // We couldn't reset the session file... That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
-            warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+            re_log::warn_once!("couldn't seek into analytics data file: {err}");
         }
     };
 
@@ -269,7 +271,7 @@ fn append_event(
         // corrupt row in the analytics file, that we'll simply discard later on.
         // We'll try to write a linefeed one more time, just in case, to avoid potentially
         // impacting other events.
-        _ = session_file.write_all(b"\n");
+        session_file.write_all(b"\n").ok();
         warn!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
         return Err(event);
     }
@@ -286,7 +288,7 @@ fn flush_events(
 ) -> Result<(), SinkError> {
     if let Err(err) = session_file.rewind() {
         warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
-        return Err(err.into());
+        return Err(SinkError::FileSeek(err));
     }
 
     let events = BufReader::new(&*session_file)
@@ -296,7 +298,7 @@ fn flush_events(
                 match serde_json::from_str::<Event>(&event_str) {
                     Ok(event) => Some(event),
                     Err(err) => {
-                        // NOTE: This is effectively where we detect posssible half-writes.
+                        // NOTE: This is effectively where we detect possible half-writes.
                         error!(%err, %analytics_id, %session_id,
                             "couldn't deserialize event from analytics data file: dropping it");
                         None
@@ -316,7 +318,19 @@ fn flush_events(
     }
 
     if let Err(err) = sink.send(analytics_id, session_id, &events) {
-        warn!(%err, "failed to send analytics down the sink, will try again later");
+        if matches!(err, SinkError::HttpTransport(_)) {
+            // No internet connection. No biggie, we'll try again later.
+            re_log::debug_once!(
+                "Failed to send analytics down the sink, will try again later.\n{err}
+            "
+            );
+        } else {
+            // A more unusual error. Show it to the user.
+            re_log::warn_once!(
+                "Failed to send analytics down the sink, will try again later.\n{err}
+            "
+            );
+        }
         return Err(err);
     }
 

@@ -15,6 +15,8 @@ pub mod resource_managers;
 pub mod view_builder;
 
 mod allocator;
+mod color;
+mod colormap;
 mod context;
 mod debug_label;
 mod depth_offset;
@@ -25,6 +27,11 @@ mod size;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
+pub use color::Rgba32Unmul;
+pub use colormap::{
+    colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
+    colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, ColorMap,
+};
 pub use context::RenderContext;
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
@@ -57,6 +64,16 @@ mod error_tracker;
 
 // Re-export used color types.
 pub use ecolor::{Color32, Rgba};
+
+// ---------------------------------------------------------------------------
+
+// Make Arrow integration as transparent as possible.
+
+#[cfg(feature = "arrow")]
+pub type Buffer<T> = arrow2::buffer::Buffer<T>;
+
+#[cfg(not(feature = "arrow"))]
+pub type Buffer<T> = Vec<T>;
 
 // ---------------------------------------------------------------------------
 

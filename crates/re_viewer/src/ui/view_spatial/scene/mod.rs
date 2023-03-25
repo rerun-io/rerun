@@ -6,14 +6,11 @@ use re_log_types::{
     component_types::{ClassId, KeypointId, Tensor},
     MeshId,
 };
-use re_renderer::{Color32, Size};
+use re_renderer::{renderer::OutlineMaskPreference, Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{
-        mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight, SelectionHighlight,
-        SpaceViewHighlights, TransformCache, ViewerContext,
-    },
+    misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap},
         Annotations, SceneQuery,
@@ -55,7 +52,7 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
-    pub additive_tint: Color32,
+    pub outline_mask_ids: OutlineMaskPreference,
 }
 
 pub struct Image {
@@ -74,38 +71,32 @@ pub struct Image {
     pub annotations: Arc<Annotations>,
 }
 
-pub enum Label2DTarget {
+pub enum UiLabelTarget {
     /// Labels a given rect (in scene coordinates)
     Rect(egui::Rect),
 
     /// Labels a given point (in scene coordinates)
-    Point(egui::Pos2),
+    Point2D(egui::Pos2),
+
+    /// A point in space.
+    Position3D(glam::Vec3),
 }
 
-// TODO(andreas): Merge Label2D and Label3D
-pub struct Label2D {
+pub struct UiLabel {
     pub text: String,
     pub color: Color32,
 
-    /// The shape being labeled.
-    pub target: Label2DTarget,
+    /// The shape/position being labeled.
+    pub target: UiLabelTarget,
 
     /// What is hovered if this label is hovered.
-    pub labled_instance: InstancePathHash,
-}
-
-pub struct Label3D {
-    pub(crate) text: String,
-
-    /// Origin of the label
-    pub(crate) origin: glam::Vec3,
+    pub labeled_instance: InstancePathHash,
 }
 
 /// Data necessary to setup the ui [`SceneSpatial`] but of no interest to `re_renderer`.
 #[derive(Default)]
 pub struct SceneSpatialUiData {
-    pub labels_3d: Vec<Label3D>,
-    pub labels_2d: Vec<Label2D>,
+    pub labels: Vec<UiLabel>,
 
     /// Picking any any of these rects cause the referred instance to be hovered.
     /// Only use this for 2d overlays!
@@ -190,74 +181,11 @@ impl SceneSpatial {
             part.load(self, ctx, query, transforms, highlights);
         }
 
+        self.primitives.any_outlines = highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
     }
 
-    // TODO(andreas): Better ways to determine these?
-    const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
-    const SELECTION_COLOR: Color32 = Color32::from_rgb(255, 170, 170);
-    const SIBLING_SELECTION_COLOR: Color32 = Color32::from_rgb(255, 140, 140);
     const CAMERA_COLOR: Color32 = Color32::from_rgb(150, 150, 150);
-
-    fn size_boost(size: Size) -> Size {
-        if size.is_auto() {
-            Size::AUTO_LARGE
-        } else {
-            size * 1.33
-        }
-    }
-
-    fn apply_hover_and_selection_effect(
-        size: &mut Size,
-        color: &mut Color32,
-        highlight: InteractionHighlight,
-    ) {
-        // TODO(#889):
-        // We want to use outlines instead of color highlighting, but this is a bigger endeavour, so for now:
-
-        let mut highlight_color = *color;
-        if highlight.selection.is_some() {
-            *size = Self::size_boost(*size);
-            highlight_color = match highlight.selection {
-                SelectionHighlight::None => unreachable!(),
-                SelectionHighlight::SiblingSelection => Self::SIBLING_SELECTION_COLOR,
-                SelectionHighlight::Selection => Self::SELECTION_COLOR,
-            };
-        }
-        match highlight.hover {
-            HoverHighlight::None => {}
-            HoverHighlight::Hovered => {
-                highlight_color = Self::HOVER_COLOR;
-            }
-        }
-
-        if highlight.is_some() {
-            // Interpolate with factor 2/3 towards the highlight color (in gamma space for speed)
-            *color = Color32::from_rgba_premultiplied(
-                ((color.r() as u32 + highlight_color.r() as u32 * 2) / 3) as u8,
-                ((color.g() as u32 + highlight_color.g() as u32 * 2) / 3) as u8,
-                ((color.b() as u32 + highlight_color.b() as u32 * 2) / 3) as u8,
-                color.a(),
-            );
-        }
-    }
-
-    fn apply_hover_and_selection_effect_color(
-        color: Color32,
-        highlight: InteractionHighlight,
-    ) -> Color32 {
-        let mut color = color;
-        // (counting on inlining to remove unused fields!)
-        Self::apply_hover_and_selection_effect(&mut Size::AUTO.clone(), &mut color, highlight);
-        color
-    }
-
-    fn apply_hover_and_selection_effect_size(size: Size, highlight: InteractionHighlight) -> Size {
-        let mut size = size;
-        // (counting on inlining to remove unused fields!)
-        Self::apply_hover_and_selection_effect(&mut size, &mut Color32::WHITE.clone(), highlight);
-        size
-    }
 
     fn load_keypoint_connections(
         &mut self,

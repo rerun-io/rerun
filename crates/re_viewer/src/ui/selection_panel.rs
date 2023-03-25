@@ -1,5 +1,11 @@
-use re_data_store::{query_transform, EntityPath, EntityProperties};
-use re_log_types::TimeType;
+use egui::NumExt as _;
+use re_data_store::{
+    query_latest_single, ColorMap, ColorMapper, EditableAutoValue, EntityPath, EntityProperties,
+};
+use re_log_types::{
+    component_types::{Tensor, TensorDataMeaning},
+    TimeType, Transform,
+};
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
@@ -23,9 +29,12 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) {
+        let screen_width = ui.ctx().screen_rect().width();
+
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
-            .default_width(250.0)
+            .default_width((0.45 * screen_width).min(250.0).round())
+            .max_width((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
@@ -371,8 +380,6 @@ fn entity_props_ui(
     entity_props: &mut EntityProperties,
     view_state: &ViewState,
 ) {
-    use egui::NumExt;
-
     ui.checkbox(&mut entity_props.visible, "Visible");
     ui.checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
@@ -407,29 +414,173 @@ fn entity_props_ui(
             }
             ui.end_row();
 
-            if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
+            if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
                 if let Some(entity_path) = entity_path {
-                    let query = ctx.current_query();
-                    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                        query_transform(&ctx.log_db.entity_db, entity_path, &query)
-                    {
-                        ui.label("Image plane distance");
-                        let mut distance = entity_props.pinhole_image_plane_distance(&pinhole);
-                        let speed = (distance * 0.05).at_least(0.01);
-                        if ui
-                            .add(
-                                egui::DragValue::new(&mut distance)
-                                    .clamp_range(0.0..=1.0e8)
-                                    .speed(speed),
-                            )
-                            .on_hover_text("Controls how far away the image plane is.")
-                            .changed()
-                        {
-                            entity_props.set_pinhole_image_plane_distance(distance);
-                        }
-                        ui.end_row();
-                    }
+                    pinhole_props_ui(ctx, ui, entity_path, entity_props);
+                    depth_props_ui(ctx, ui, entity_path, entity_props);
                 }
             }
         });
+}
+
+fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
+    let current = *entity_props.color_mapper.get();
+
+    ui.label("Color map");
+    egui::ComboBox::from_id_source("color_mapper")
+        .selected_text(current.to_string())
+        .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
+            ui.set_min_width(64.0);
+
+            // TODO(cmc): that is not ideal but I don't want to import yet another proc-macro...
+            let mut add_label = |proposed| {
+                if ui
+                    .selectable_label(current == proposed, proposed.to_string())
+                    .clicked()
+                {
+                    entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                }
+            };
+
+            add_label(ColorMapper::ColorMap(ColorMap::Grayscale));
+            add_label(ColorMapper::ColorMap(ColorMap::Turbo));
+            add_label(ColorMapper::ColorMap(ColorMap::Viridis));
+            add_label(ColorMapper::ColorMap(ColorMap::Plasma));
+            add_label(ColorMapper::ColorMap(ColorMap::Magma));
+            add_label(ColorMapper::ColorMap(ColorMap::Inferno));
+        });
+
+    ui.end_row();
+}
+
+fn pinhole_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &EntityPath,
+    entity_props: &mut EntityProperties,
+) {
+    let query = ctx.current_query();
+    if let Some(re_log_types::Transform::Pinhole(_)) =
+        query_latest_single::<Transform>(&ctx.log_db.entity_db, entity_path, &query)
+    {
+        ui.label("Image plane distance");
+        let mut distance = *entity_props.pinhole_image_plane_distance.get();
+        let speed = (distance * 0.05).at_least(0.01);
+        if ui
+            .add(
+                egui::DragValue::new(&mut distance)
+                    .clamp_range(0.0..=1.0e8)
+                    .speed(speed),
+            )
+            .on_hover_text("Controls how far away the image plane is.")
+            .changed()
+        {
+            entity_props.pinhole_image_plane_distance = EditableAutoValue::UserEdited(distance);
+        }
+        ui.end_row();
+    }
+}
+
+fn depth_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &EntityPath,
+    entity_props: &mut EntityProperties,
+) {
+    let query = ctx.current_query();
+
+    // Find closest pinhole transform, if any.
+    let mut pinhole_ent_path = None;
+    let mut cur_path = Some(entity_path.clone());
+    while let Some(path) = cur_path {
+        if let Some(re_log_types::Transform::Pinhole(_)) =
+            query_latest_single::<Transform>(&ctx.log_db.entity_db, &path, &query)
+        {
+            pinhole_ent_path = Some(path);
+            break;
+        }
+        cur_path = path.parent();
+    }
+
+    // Early out if there's no pinhole transform upwards in the tree.
+    let Some(pinhole_ent_path) = pinhole_ent_path else { return; };
+
+    entity_props.backproject_pinhole_ent_path = Some(pinhole_ent_path.clone());
+
+    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query);
+    if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
+        ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
+            .on_hover_text(
+                "If enabled, the depth texture will be backprojected into a point cloud rather \
+                than simply displayed as an image.",
+            );
+        ui.end_row();
+
+        if entity_props.backproject_depth {
+            ui.label("Pinhole");
+            ctx.entity_path_button(ui, None, &pinhole_ent_path)
+                .on_hover_text(
+                    "The entity path of the pinhole transform being used to do the backprojection.",
+                );
+            ui.end_row();
+
+            depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
+
+            backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
+
+            // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
+            // need to get the current hardcoded colormapping out of the image cache first.
+            colormap_props_ui(ui, entity_props);
+        } else {
+            entity_props.backproject_pinhole_ent_path = None;
+        }
+    }
+}
+
+fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+    ui.label("Backproject meter");
+    let mut value = *property.get();
+    let speed = (value * 0.05).at_least(0.01);
+    let response = ui
+    .add(
+        egui::DragValue::new(&mut value)
+            .clamp_range(0.0..=1.0e8)
+            .speed(speed),
+    )
+    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
+                    Double-click to reset.");
+    if response.double_clicked() {
+        // reset to auto - the exact value will be restored somewhere else
+        *property = EditableAutoValue::Auto(value);
+        response.surrender_focus();
+    } else if response.changed() {
+        *property = EditableAutoValue::UserEdited(value);
+    }
+    ui.end_row();
+}
+
+fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+    ui.label("Backproject radius scale");
+    let mut value = *property.get();
+    let speed = (value * 0.01).at_least(0.001);
+    let response = ui
+        .add(
+            egui::DragValue::new(&mut value)
+                .clamp_range(0.0..=1.0e8)
+                .speed(speed),
+        )
+        .on_hover_text(
+            "Scales the radii of the points in the backprojected point cloud.\n\
+            This is a factor of the projected pixel diameter. \
+            This means a scale of 0.5 will leave adjacent pixels at the same depth value just touching.\n\
+            Double-click to reset.",
+        );
+    if response.double_clicked() {
+        *property = EditableAutoValue::Auto(2.0);
+        response.surrender_focus();
+    } else if response.changed() {
+        *property = EditableAutoValue::UserEdited(value);
+    }
+    ui.end_row();
 }

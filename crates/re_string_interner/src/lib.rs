@@ -165,6 +165,8 @@ impl StringInterner {
     }
 
     pub fn bytes_used(&self) -> usize {
+        // size_of_val takes references to what it wants to measure,
+        // and that is wat `ier()` gives us, so this is all correct.
         self.map
             .iter()
             .map(|(k, v)| std::mem::size_of_val(k) + std::mem::size_of_val(v) + v.len())

@@ -1,17 +1,13 @@
-// TODO(andreas): global_bindings are imported implicitely
-
-fn inf() -> f32 {
-    return 1.0 / 0.0;
-}
+#import <../global_bindings.wgsl>
 
 // True if the camera is orthographic
 fn is_camera_orthographic() -> bool {
-    return frame.tan_half_fov.x == inf();
+    return frame.tan_half_fov.x >= f32max;
 }
 
 // True if the camera is perspective
 fn is_camera_perspective() -> bool {
-    return frame.tan_half_fov.x != inf();
+    return frame.tan_half_fov.x < f32max;
 }
 
 struct Ray {
@@ -57,11 +53,22 @@ fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> Vec3 {
     return normalize(world_space_dir);
 }
 
+// Returns distance to sphere surface (x) and distance to closest ray hit (y)
+// Via https://iquilezles.org/articles/spherefunctions/ but with more verbose names.
+fn ray_sphere_distance(ray: Ray, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
+    let sphere_radius_sq = sphere_radius * sphere_radius;
+    let sphere_to_origin = ray.origin - sphere_origin;
+    let b = dot(sphere_to_origin, ray.direction);
+    let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
+    let h = b * b - c;
+    let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
+    return Vec2(d, -b - sqrt(max(h, 0.0)));
+}
+
 // Returns the projected size of a pixel at a given distance from the camera.
 //
 // This is accurate for objects in the middle of the screen, (depending on the angle) less so at the corners
 // since an object parallel to the camera (like a conceptual pixel) has a bigger projected surface at higher angles.
 fn approx_pixel_world_size_at(camera_distance: f32) -> f32 {
-    return select(frame.pixel_world_size_from_camera_distance,
-        camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
+    return select(frame.pixel_world_size_from_camera_distance, camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
 }

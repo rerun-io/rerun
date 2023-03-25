@@ -1,5 +1,5 @@
 struct FrameUniformBuffer {
-    view_from_world: mat4x3<f32>,
+    view_from_world: Mat4x3,
     projection_from_view: Mat4,
     projection_from_world: Mat4,
 
@@ -19,7 +19,7 @@ struct FrameUniformBuffer {
     pixels_from_point: f32,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
-    /// Both values are set to positive infinity for orthographic projection
+    /// Both values are set to f32max for orthographic projection
     tan_half_fov: Vec2,
 
     // Size used for all point radii given with Size::AUTO.
@@ -27,9 +27,6 @@ struct FrameUniformBuffer {
 
     // Size used for all line radii given with Size::AUTO.
     auto_size_lines: f32,
-
-    /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    depth_offset_factor: f32,
 };
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;

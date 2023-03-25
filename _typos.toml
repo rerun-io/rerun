@@ -1,0 +1,7 @@
+# https://github.com/crate-ci/typos
+# install:  cargo install typos-cli
+# run:      typos
+
+[default.extend-words]
+lod = "lod" # level-of-detail
+teh = "teh" # part of @teh-cmc

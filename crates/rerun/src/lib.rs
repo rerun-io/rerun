@@ -31,7 +31,7 @@
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::components::ColorRGBA> { Default::default() }
-//! let mut rr_session = rerun::Session::init("my_app", true);
+//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
 //!
 //! let points: Vec<rerun::components::Point3D> = positions();
 //! let colors: Vec<rerun::components::ColorRGBA> = colors();
@@ -58,18 +58,17 @@
 //! Then do this:
 //!
 //! ``` no_run
-//! let mut rr_session = rerun::Session::init("my_app", true);
-//! rr_session.connect(rerun::default_server_addr());
+//! let mut rr_session = rerun::SessionBuilder::new("my_app").connect(rerun::default_server_addr());
 //! ```
 //!
 //! #### Buffering
 //!
 //! ``` no_run
-//! # fn log_using(rr_session: &mut rerun::Session) {}
+//! # fn log_using(rr_session: &rerun::Session) {}
 //!
-//! let mut rr_session = rerun::Session::init("my_app", true);
+//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
 //! log_using(&mut rr_session);
-//! rr_session.show();
+//! rerun::native_viewer::show(&mut rr_session);
 //! ```
 //!
 //! ## Binary
@@ -93,8 +92,29 @@
 mod crash_handler;
 mod run;
 
+/// Module for integrating with the [`clap`](https://crates.io/crates/clap) command line argument parser.
+#[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+pub mod clap;
+
+/// Methods for spawning the native viewer and streaming the SDK log stream to it.
+#[cfg(all(feature = "sdk", feature = "native_viewer"))]
+pub mod native_viewer;
+
+/// Methods for spawning the web viewer and streaming the SDK log stream to it.
+#[cfg(all(feature = "sdk", feature = "web_viewer"))]
+pub mod web_viewer;
+
 pub use run::{run, CallSource};
 
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
 pub use re_sdk::*;
+
+/// Re-exports of other crates.
+pub mod external {
+    #[cfg(feature = "native_viewer")]
+    pub use re_viewer;
+
+    #[cfg(feature = "sdk")]
+    pub use re_sdk::external::*;
+}

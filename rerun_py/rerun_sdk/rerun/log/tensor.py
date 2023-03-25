@@ -8,6 +8,7 @@ from rerun.components.instance import InstanceArray
 from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_tensor",
@@ -37,11 +38,12 @@ def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
         return np.array(tensor, copy=False)
 
 
+@log_decorator
 def log_tensor(
     entity_path: str,
     tensor: npt.ArrayLike,
     *,
-    names: Optional[Iterable[str]] = None,
+    names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
@@ -85,9 +87,6 @@ def _log_tensor(
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
-
-    if not bindings.is_enabled():
-        return
 
     if names is not None:
         names = list(names)

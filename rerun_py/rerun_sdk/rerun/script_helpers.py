@@ -18,9 +18,7 @@ rr.script_teardown(args)
 ```
 
 """
-import contextlib
 from argparse import ArgumentParser, Namespace
-from time import sleep
 
 import rerun as rr
 
@@ -67,16 +65,18 @@ def script_setup(
         The application ID to use for the viewer.
 
     """
-    rr.init(application_id=application_id, default_enabled=True)
+    rr.init(application_id=application_id, default_enabled=True, strict=True)
 
     if args.serve:
         rr.serve()
     elif args.connect:
         # Send logging data to separate `rerun` process.
-        # You can ommit the argument to connect to the default address,
+        # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
-    elif args.save is None and not args.headless:
+    elif args.save is not None:
+        rr.save(args.save)
+    elif not args.headless:
         rr.spawn()
 
 
@@ -91,8 +91,10 @@ def script_teardown(args: Namespace) -> None:
 
     """
     if args.serve:
+        import signal
+        from threading import Event
+
+        exit = Event()
+        signal.signal(signal.SIGINT, lambda sig, frame: exit.set())
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        with contextlib.suppress(Exception):
-            sleep(100_000)
-    elif args.save is not None:
-        rr.save(args.save)
+        exit.wait()

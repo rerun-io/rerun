@@ -12,16 +12,7 @@ use crate::msg_bundle::Component;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(Radius::data_type(), DataType::Float32);
 /// ```
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    derive_more::From,
-    derive_more::Into,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
-)]
+#[derive(Debug, Clone, Copy, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(transparent)]
 pub struct Radius(pub f32);
 

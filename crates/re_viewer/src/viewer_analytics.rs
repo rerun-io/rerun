@@ -1,7 +1,13 @@
 //! All telemetry analytics collected by the Rerun Viewer are defined in this file for easy auditing.
 //!
-//! Analytics can be disabled with `rerun analytics disable`,
+//! There are two exceptions:
+//! * `crates/rerun/src/crash_handler.rs` sends anonymized callstacks on crashes
+//! * `crates/re_web_viewer_server/src/lib.rs` sends an anonymous event when a `.wasm` web-viewer is served.
+//!
+//! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
+//!
+//! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 use re_analytics::{Analytics, Event, Property};
@@ -65,29 +71,23 @@ impl ViewerAnalytics {
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
     /// When the viewer is first started
-    pub fn on_viewer_started(&mut self, app_env: crate::AppEnvironment) {
+    pub fn on_viewer_started(
+        &mut self,
+        build_info: &re_build_info::BuildInfo,
+        app_env: &crate::AppEnvironment,
+    ) {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
             AppEnvironment::PythonSdk(_) => "python_sdk",
-            AppEnvironment::RustSdk { rust_version: _ } => "rust_sdk",
-            AppEnvironment::RerunCli { rust_version: _ } => "rerun_cli",
-            AppEnvironment::Web => "web",
+            AppEnvironment::RustSdk { .. } => "rust_sdk",
+            AppEnvironment::RerunCli { .. } => "rerun_cli",
+            AppEnvironment::Web => "web_viewer",
         };
-        self.register("app_env", app_env_str.to_owned());
+        self.register("app_env", app_env_str);
 
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         if let Some(analytics) = &self.analytics {
-            let rerun_version = env!("CARGO_PKG_VERSION");
-            let target = re_analytics::TARGET_TRIPLET;
-            let git_hash = re_analytics::GIT_HASH;
-
-            let mut event = Event::update("update_metadata".into())
-                .with_prop("rerun_version".into(), rerun_version.to_owned())
-                .with_prop("target".into(), target.to_owned())
-                .with_prop("git_hash".into(), git_hash.to_owned())
-                .with_prop("debug".into(), cfg!(debug_assertions).to_owned()) // debug-build?
-                .with_prop("rerun_workspace".into(), std::env::var("IS_IN_RERUN_WORKSPACE").is_ok()) // proxy for "user checked out the project and built it from source"
-                ;
+            let mut event = Event::update("update_metadata").with_build_info(build_info);
 
             // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
             // machine running the viewer, then add it to the permanent user profile.
@@ -95,14 +95,21 @@ impl ViewerAnalytics {
             // The Python/Rust versions appearing in user profiles always apply to the host
             // environment, _not_ the environment in which the data logging is taking place!
             match &app_env {
-                AppEnvironment::RustSdk { rust_version }
-                | AppEnvironment::RerunCli { rust_version } => {
-                    event = event.with_prop("rust_version".into(), rust_version.clone());
+                AppEnvironment::RustSdk {
+                    rustc_version,
+                    llvm_version,
+                }
+                | AppEnvironment::RerunCli {
+                    rustc_version,
+                    llvm_version,
+                } => {
+                    event = event.with_prop("rust_version", rustc_version.clone());
+                    event = event.with_prop("llvm_version", llvm_version.clone());
                 }
                 _ => {}
             }
             if let AppEnvironment::PythonSdk(version) = app_env {
-                event = event.with_prop("python_version".into(), version.to_string());
+                event = event.with_prop("python_version", version.to_string());
             }
 
             // Append opt-in metadata.
@@ -110,13 +117,13 @@ impl ViewerAnalytics {
             // who register their emails with `rerun analytics email`.
             // This is how we filter out employees from actual users!
             for (name, value) in analytics.config().opt_in_metadata.clone() {
-                event = event.with_prop(name.into(), value);
+                event = event.with_prop(name, value);
             }
 
             analytics.record(event);
         }
 
-        self.record(Event::append("viewer_started".into()));
+        self.record(Event::append("viewer_started"));
     }
 
     /// When we have loaded the start of a new recording.
@@ -145,7 +152,7 @@ impl ViewerAnalytics {
             let recording_source = match &rec_info.recording_source {
                 RecordingSource::Unknown => "unknown".to_owned(),
                 RecordingSource::PythonSdk(_version) => "python_sdk".to_owned(),
-                RecordingSource::RustSdk { rust_version: _ } => "rust_sdk".to_owned(),
+                RecordingSource::RustSdk { .. } => "rust_sdk".to_owned(),
                 RecordingSource::Other(other) => other.clone(),
             };
 
@@ -154,13 +161,19 @@ impl ViewerAnalytics {
             //
             // The Python/Rust versions appearing in events always apply to the recording
             // environment, _not_ the environment in which the viewer is running!
-            if let RecordingSource::RustSdk { rust_version } = &rec_info.recording_source {
+            if let RecordingSource::RustSdk {
+                rustc_version: rust_version,
+                llvm_version,
+            } = &rec_info.recording_source
+            {
                 self.register("rust_version", rust_version.to_string());
+                self.register("llvm_version", llvm_version.to_string());
                 self.deregister("python_version"); // can't be both!
             }
             if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {
                 self.register("python_version", version.to_string());
                 self.deregister("rust_version"); // can't be both!
+                self.deregister("llvm_version"); // can't be both!
             }
 
             self.register("recording_source", recording_source);
@@ -170,14 +183,15 @@ impl ViewerAnalytics {
         if let Some(data_source) = &log_db.data_source {
             let data_source = match data_source {
                 re_smart_channel::Source::File { .. } => "file", // .rrd
-                re_smart_channel::Source::Sdk => "sdk",          // show()
+                re_smart_channel::Source::RrdHttpStream { .. } => "http",
+                re_smart_channel::Source::Sdk => "sdk", // show()
                 re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
                 re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
             };
-            self.register("data_source", data_source.to_owned());
+            self.register("data_source", data_source);
         }
 
-        self.record(Event::append("open_recording".into()));
+        self.record(Event::append("open_recording"));
     }
 }
 
@@ -186,6 +200,13 @@ impl ViewerAnalytics {
 // When analytics are disabled:
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "analytics")))]
 impl ViewerAnalytics {
-    pub fn on_viewer_started(&mut self, _app_env: crate::AppEnvironment) {}
+    #[allow(clippy::unused_self)]
+    pub fn on_viewer_started(
+        &mut self,
+        _build_info: &re_build_info::BuildInfo,
+        _app_env: &crate::AppEnvironment,
+    ) {
+    }
+    #[allow(clippy::unused_self)]
     pub fn on_open_recording(&mut self, _log_db: &re_data_store::LogDb) {}
 }

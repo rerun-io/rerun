@@ -5,6 +5,7 @@ This is written for anyone who wants to contribute to the Rerun repository.
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
+* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`RELEASES.md`](RELEASES.md)
@@ -22,6 +23,21 @@ We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which mean
 All PR:s are merged with [`Squash and Merge`](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/about-pull-request-merges#squash-and-merge-your-commits), meaning they all get squashed to just one commit on the `main` branch. This means you don't need to keep a clean commit history on your feature branches. In fact, it is preferable to add new commits to a branch rather than rebasing or squashing. For one, it makes it easier to track progress on a branch, but rebasing and force-pushing also discourages collaboration on a branch.
 
 Our CI will run benchmarks on each merged PR. The results can be found at <https://rerun-io.github.io/rerun/dev/bench/>.
+
+### Adding dependencies
+Be thoughtful when adding dependencies. Each new dependency is a liability which lead to increased compile times, a bigger binary, more code that can break, a larger attack surface, etc. Sometimes it is better to write a hundred lines of code than to add a new dependency.
+
+Whenever you add a new dependency in a PR, make sure you motivate it:
+* Why use the dependency instead of rolling our own?
+* Why this dependency instead of another?
+
+For Rust, make sure you use `default-features = false` if it makes sense, to minimize the amount of new code that is pulled in.
+
+When reviewing a PR, always check the diff of `Cargo.lock` (it is collapsed by default in GitHub 😤).
+
+For a guide on picking good dependencies, see <https://gist.github.com/repi/d98bf9c202ec567fd67ef9e31152f43f>.
+
+Any full `cargo update` should be its own stand-alone PR. Make sure you include the output of it in the commit message.
 
 
 ## Structure

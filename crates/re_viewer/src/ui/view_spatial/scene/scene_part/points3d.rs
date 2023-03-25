@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
@@ -12,16 +12,13 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{
-        InteractionHighlight, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
-        TransformCache, ViewerContext,
-    },
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
         view_spatial::{
             scene::{scene_part::instance_path_hash_for_picking, Keypoints},
-            Label3D, SceneSpatial,
+            SceneSpatial, UiLabel, UiLabelTarget,
         },
         Annotations, DefaultColor,
     },
@@ -81,60 +78,74 @@ impl Points3DPart {
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
         ent_path: &'a EntityPath,
-        highlights: &'a [InteractionHighlight],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         crate::profile_function!();
         let default_color = DefaultColor::EntityPath(ent_path);
 
         let colors = itertools::izip!(
-            highlights.iter(),
             annotation_infos.iter(),
             entity_view.iter_component::<ColorRGBA>()?,
         )
-        .map(move |(highlight, annotation_info, color)| {
-            SceneSpatial::apply_hover_and_selection_effect_color(
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                *highlight,
-            )
+        .map(move |(annotation_info, color)| {
+            annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
         });
         Ok(colors)
     }
 
-    fn process_radii<'a>(
-        entity_view: &'a EntityView<Point3D>,
-        highlights: &'a [InteractionHighlight],
-    ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
-        let radii = itertools::izip!(highlights.iter(), entity_view.iter_component::<Radius>()?,)
-            .map(move |(highlight, radius)| {
-                SceneSpatial::apply_hover_and_selection_effect_size(
-                    radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0)),
-                    *highlight,
-                )
-            });
-        Ok(radii)
+    fn process_radii<'view>(
+        ent_path: &EntityPath,
+        entity_view: &'view EntityView<Point3D>,
+    ) -> Result<impl Iterator<Item = Size> + 'view, QueryError> {
+        let ent_path = ent_path.clone();
+        Ok(entity_view.iter_component::<Radius>()?.map(move |radius| {
+            radius.map_or(Size::AUTO, |r| {
+                if 0.0 <= r.0 && r.0.is_finite() {
+                    Size::new_scene(r.0)
+                } else {
+                    if r.0 < 0.0 {
+                        re_log::warn_once!("Found point with negative radius in entity {ent_path}");
+                    } else if r.0.is_infinite() {
+                        re_log::warn_once!("Found point with infinite radius in entity {ent_path}");
+                    } else {
+                        re_log::warn_once!("Found point with NaN radius in entity {ent_path}");
+                    }
+                    Size::AUTO
+                }
+            })
+        }))
     }
 
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point3D>,
+        instance_path_hashes: &'a [InstancePathHash],
+        colors: &'a [egui::Color32],
         annotation_infos: &'a [ResolvedAnnotationInfo],
         world_from_obj: Mat4,
-    ) -> Result<impl Iterator<Item = Label3D> + 'a, QueryError> {
+    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
             entity_view.iter_primary()?,
-            entity_view.iter_component::<Label>()?
+            entity_view.iter_component::<Label>()?,
+            colors,
+            instance_path_hashes,
         )
-        .filter_map(move |(annotation_info, point, label)| {
-            let label = annotation_info.label(label.map(|l| l.0).as_ref());
-            match (point, label) {
-                (Some(point), Some(label)) => Some(Label3D {
-                    text: label,
-                    origin: world_from_obj.transform_point3(point.into()),
-                }),
-                _ => None,
-            }
-        });
+        .filter_map(
+            move |(annotation_info, point, label, color, labeled_instance)| {
+                let label = annotation_info.label(label.map(|l| l.0).as_ref());
+                match (point, label) {
+                    (Some(point), Some(label)) => Some(UiLabel {
+                        text: label,
+                        color: *color,
+                        target: UiLabelTarget::Position3D(
+                            world_from_obj.transform_point3(point.into()),
+                        ),
+                        labeled_instance: *labeled_instance,
+                    }),
+                    _ => None,
+                }
+            },
+        );
         Ok(labels)
     }
 
@@ -147,7 +158,7 @@ impl Points3DPart {
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
-        entity_highlight: OptionalSpaceViewEntityHighlight<'_>,
+        entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -165,7 +176,7 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) =
             Self::process_annotations(query, entity_view, &annotations)?;
-        let instance_path_hashes = {
+        let instance_path_hashes_for_picking = {
             crate::profile_scope!("instance_hashes");
             entity_view
                 .iter_instance_keys()?
@@ -175,38 +186,60 @@ impl Points3DPart {
                         instance_key,
                         entity_view,
                         properties,
-                        entity_highlight,
+                        entity_highlight.any_selection_highlight,
                     )
                 })
                 .collect::<Vec<_>>()
         };
 
-        let highlights = {
-            crate::profile_scope!("highlights");
-            instance_path_hashes
-                .iter()
-                .map(|hash| entity_highlight.index_highlight(hash.instance_key))
-                .collect::<Vec<_>>()
-        };
+        let colors = Self::process_colors(entity_view, ent_path, &annotation_infos)?;
+        let radii = Self::process_radii(ent_path, entity_view)?;
 
-        let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
+        if show_labels && instance_path_hashes_for_picking.len() <= self.max_labels {
+            // Max labels is small enough that we can afford iterating on the colors again.
+            let colors =
+                Self::process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
-        let radii = Self::process_radii(entity_view, &highlights)?;
-        let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
-
-        if show_labels && instance_path_hashes.len() <= self.max_labels {
-            scene.ui.labels_3d.extend(labels);
+            scene.ui.labels.extend(Self::process_labels(
+                entity_view,
+                &instance_path_hashes_for_picking,
+                &colors,
+                &annotation_infos,
+                world_from_obj,
+            )?);
         }
 
-        scene
-            .primitives
-            .points
-            .batch("3d points")
-            .world_from_obj(world_from_obj)
-            .add_points(entity_view.num_instances(), point_positions)
-            .colors(colors)
-            .radii(radii)
-            .user_data(instance_path_hashes.into_iter());
+        {
+            let mut point_batch = scene
+                .primitives
+                .points
+                .batch("3d points")
+                .world_from_obj(world_from_obj)
+                .outline_mask_ids(entity_highlight.overall);
+            let mut point_range_builder = point_batch
+                .add_points(entity_view.num_instances(), point_positions)
+                .colors(colors)
+                .radii(radii)
+                .user_data(instance_path_hashes_for_picking.into_iter());
+
+            // Determine if there's any subranges that need extra highlighting.
+            {
+                crate::profile_scope!("marking additional highlight points");
+                for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
+                    // TODO(andreas/jeremy): We can do this much more efficiently
+                    let highlighted_point_index = entity_view
+                        .iter_instance_keys()?
+                        .position(|key| key == *highlighted_key);
+                    if let Some(highlighted_point_index) = highlighted_point_index {
+                        point_range_builder = point_range_builder
+                            .push_additional_outline_mask_ids_for_range(
+                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
+                                *instance_mask_ids,
+                            );
+                    }
+                }
+            }
+        }
 
         scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
 
@@ -229,7 +262,7 @@ impl ScenePart for Points3DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let entity_highlight = highlights.entity_highlight(ent_path.hash());
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.entity_db.data_store,

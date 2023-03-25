@@ -14,8 +14,20 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
+        let virtpath = Path::new("shader/colormap.wgsl");
+        let content = include_str!("../shader/colormap.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/composite.wgsl");
         let content = include_str!("../shader/composite.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/depth_cloud.wgsl");
+        let content = include_str!("../shader/depth_cloud.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
@@ -50,6 +62,30 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/outlines/jumpflooding_init.wgsl");
+        let content = include_str!("../shader/outlines/jumpflooding_init.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/outlines/jumpflooding_init_msaa.wgsl");
+        let content = include_str!("../shader/outlines/jumpflooding_init_msaa.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/outlines/jumpflooding_init_shared.wgsl");
+        let content = include_str!("../shader/outlines/jumpflooding_init_shared.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/outlines/jumpflooding_step.wgsl");
+        let content = include_str!("../shader/outlines/jumpflooding_step.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/point_cloud.wgsl");
         let content = include_str!("../shader/point_cloud.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -64,6 +100,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/screen_triangle.wgsl");
         let content = include_str!("../shader/screen_triangle.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/screen_triangle_vertex.wgsl");
+        let content = include_str!("../shader/screen_triangle_vertex.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 
@@ -112,6 +154,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/size.wgsl");
         let content = include_str!("../shader/utils/size.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/utils/sphere_quad.wgsl");
+        let content = include_str!("../shader/utils/sphere_quad.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

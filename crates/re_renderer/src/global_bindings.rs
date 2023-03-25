@@ -2,7 +2,7 @@ use crate::{
     wgpu_buffer_types,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuBuffer, GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
+        GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
     },
 };
 
@@ -13,7 +13,7 @@ use smallvec::smallvec;
 ///
 /// Contains information that is constant for a single frame like camera.
 /// (does not contain information that is special to a particular renderer)
-#[repr(C)]
+#[repr(C, align(256))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub(crate) struct FrameUniformBuffer {
     pub view_from_world: wgpu_buffer_types::Mat4x3,
@@ -36,7 +36,7 @@ pub(crate) struct FrameUniformBuffer {
     pub pixels_from_point: f32,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
-    /// Both values are set to positive infinity for orthographic projection
+    /// Both values are set to f32max for orthographic projection
     pub tan_half_fov: wgpu_buffer_types::Vec2,
 
     // Size used for all point radii given with Size::AUTO.
@@ -46,8 +46,7 @@ pub(crate) struct FrameUniformBuffer {
     pub auto_size_lines: f32,
 
     /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    pub depth_offset_factor: f32,
-    pub _padding: glam::Vec3,
+    pub end_padding: wgpu_buffer_types::PaddingRow,
 }
 
 pub(crate) struct GlobalBindings {
@@ -128,28 +127,21 @@ impl GlobalBindings {
         &self,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        frame_uniform_buffer: &GpuBuffer,
+        frame_uniform_buffer_binding: BindGroupEntry,
     ) -> GpuBindGroup {
         pools.bind_groups.alloc(
             device,
+            pools,
             // Needs to be kept in sync with `global_bindings.wgsl` / `self.layout`
             &BindGroupDesc {
                 label: "global bind group".into(),
                 entries: smallvec![
-                    BindGroupEntry::Buffer {
-                        handle: frame_uniform_buffer.handle,
-                        offset: 0,
-                        size: None,
-                    },
+                    frame_uniform_buffer_binding,
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),
                     BindGroupEntry::Sampler(self.trilinear_sampler),
                 ],
                 layout: self.layout,
             },
-            &pools.bind_group_layouts,
-            &pools.textures,
-            &pools.buffers,
-            &pools.samplers,
         )
     }
 }

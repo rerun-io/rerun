@@ -22,6 +22,7 @@ from rerun.log import (
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_point",
@@ -29,6 +30,7 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_point(
     entity_path: str,
     position: Optional[npt.ArrayLike] = None,
@@ -42,13 +44,12 @@ def log_point(
     timeless: bool = False,
 ) -> None:
     """
-    Log a 2D or 3D point, with a positions and optional colors, radii, label, etc.
+    Log a 2D or 3D point, with a position and optional color, radii, label, etc.
 
     Logging again to the same `entity_path` will replace the previous point.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
-    Colors can be RGB or RGBA. You can supply no colors, one color,
-    or one color per point in a Nx3 or Nx4 numpy array.
+    Colors can be RGB or RGBA represented as a 2-element or 3-element sequence.
 
     Supported dtypes for `color`:
     -----------------------------
@@ -61,7 +62,7 @@ def log_point(
     entity_path:
         Path to the point in the space hierarchy.
     position:
-        2x1 or 3x1 array.
+        Any 2-element or 3-element array-like.
     radius:
         Optional radius (make it a sphere).
     color:
@@ -85,9 +86,6 @@ def log_point(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     if keypoint_id is not None and class_id is None:
         class_id = 0
     if position is not None:
@@ -97,12 +95,12 @@ def log_point(
     splats: Dict[str, Any] = {}
 
     if position is not None:
-        if position.shape[0] == 2:
+        if position.size == 2:
             instanced["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
-        elif position.shape[0] == 3:
+        elif position.size == 3:
             instanced["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
         else:
-            raise TypeError("Positions should be either 1x2 or 1x3")
+            raise TypeError("Position must have a total size of 2 or 3")
 
     if color:
         colors = _normalize_colors([color])
@@ -131,6 +129,7 @@ def log_point(
         bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
+@log_decorator
 def log_points(
     entity_path: str,
     positions: Optional[npt.ArrayLike] = None,
@@ -190,9 +189,6 @@ def log_points(
         If true, the points will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0

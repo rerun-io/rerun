@@ -1,8 +1,7 @@
-use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-
 use crate::msg_bundle::Component;
 
-/// An RGBA color tuple.
+/// An RGBA color tuple with unmultiplied/separate alpha,
+/// in sRGB gamma space with linear alpha.
 ///
 /// ```
 /// use re_log_types::component_types::ColorRGBA;
@@ -17,14 +16,15 @@ use crate::msg_bundle::Component;
     Debug,
     PartialEq,
     Eq,
-    derive_more::From,
-    derive_more::Into,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    arrow2_convert::ArrowField,
+    arrow2_convert::ArrowSerialize,
+    arrow2_convert::ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
+#[repr(transparent)]
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {
@@ -34,7 +34,7 @@ impl ColorRGBA {
     }
 
     #[inline]
-    pub fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self::from([r, g, b, a])
     }
 

@@ -33,7 +33,7 @@ impl<Handle: Key, Desc, Res> Default for StaticResourcePool<Handle, Desc, Res> {
 impl<Handle, Desc, Res> StaticResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
-    Desc: Clone + Eq + Hash,
+    Desc: std::fmt::Debug + Clone + Eq + Hash,
 {
     fn to_pool_error<T>(get_result: Option<T>, handle: Handle) -> Result<T, PoolError> {
         get_result.ok_or_else(|| {
@@ -51,6 +51,8 @@ where
         creation_func: F,
     ) -> Handle {
         *self.lookup.entry(desc.clone()).or_insert_with(|| {
+            crate::profile_scope!("Creating new static resource", std::any::type_name::<Res>());
+            re_log::trace!(?desc, "Created new resource");
             let resource = creation_func(desc);
             self.resources.insert(StoredResource {
                 resource,
@@ -63,6 +65,8 @@ where
     }
 
     pub fn recreate_resources<F: FnMut(&Desc) -> Option<Res>>(&mut self, mut recreation_func: F) {
+        crate::profile_function!();
+
         for (desc, handle) in &self.lookup {
             if let Some(new_resource) = recreation_func(desc) {
                 let resource = self.resources.get_mut(*handle).unwrap();

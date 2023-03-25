@@ -5,10 +5,11 @@ use crate::APPLICATION_NAME;
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
+// NOTE: the name of this function is hard-coded in `crates/rerun/src/crash_handler.rs`!
 pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         initial_window_size: Some([1600.0, 1200.0].into()),
-        min_window_size: Some([600.0, 450.0].into()), // Should be high enough to fit the rerun menu
+        min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
 
         #[cfg(target_os = "macos")]
         fullsize_content: re_ui::FULLSIZE_CONTENT,
@@ -40,6 +41,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
 }
 
 pub fn run_native_viewer_with_messages(
+    build_info: re_build_info::BuildInfo,
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
@@ -50,11 +52,13 @@ pub fn run_native_viewer_with_messages(
     }
     run_native_app(Box::new(move |cc, re_ui| {
         Box::new(crate::App::from_receiver(
-            app_env,
+            build_info,
+            &app_env,
             startup_options,
             re_ui,
             cc.storage,
             rx,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         ))
     }))
 }

@@ -1,18 +1,26 @@
-use re_data_store::EntityPath;
+use eframe::epaint::text::TextWrapping;
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath};
 use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
+use re_log_types::component_types::{Tensor, TensorDataMeaning};
+use re_renderer::renderer::OutlineConfig;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, SpaceViewHighlights, ViewerContext},
-    ui::{data_blueprint::DataBlueprintTree, SpaceViewId},
+    misc::{
+        space_info::query_view_coordinates, SelectionHighlight, SpaceViewHighlights, ViewerContext,
+    },
+    ui::{data_blueprint::DataBlueprintTree, view_spatial::UiLabelTarget, SpaceViewId},
 };
 
-use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceSpecs};
+use super::{
+    eye::Eye, scene::SceneSpatialUiData, ui_2d::View2DState, ui_3d::View3DState, SceneSpatial,
+    SpaceSpecs,
+};
 
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
-#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum SpatialNavigationMode {
     #[default]
     TwoD,
@@ -48,7 +56,7 @@ impl From<AutoSizeUnit> for WidgetText {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
-    pub nav_mode: SpatialNavigationMode,
+    pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
 
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
@@ -74,7 +82,7 @@ pub struct ViewSpatialState {
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
-            nav_mode: SpatialNavigationMode::ThreeD,
+            nav_mode: EditableAutoValue::Auto(SpatialNavigationMode::ThreeD),
             scene_bbox_accum: BoundingBox::nothing(),
             scene_bbox: BoundingBox::nothing(),
             scene_num_primitives: 0,
@@ -89,40 +97,15 @@ impl Default for ViewSpatialState {
 }
 
 impl ViewSpatialState {
-    pub fn auto_size_config(
-        &self,
-        viewport_size_in_points: egui::Vec2,
-    ) -> re_renderer::AutoSizeConfig {
+    pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
-            config.point_radius = self.default_point_radius(viewport_size_in_points);
+            config.point_radius = re_renderer::Size::new_points(1.5); // default point radius
         }
         if config.line_radius.is_auto() {
-            config.line_radius = self.default_line_radius();
+            config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
         }
         config
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn default_line_radius(&self) -> re_renderer::Size {
-        re_renderer::Size::new_points(1.5)
-    }
-
-    pub fn default_point_radius(&self, viewport_size_in_points: egui::Vec2) -> re_renderer::Size {
-        // More points -> smaller points.
-        let num_points = self.scene_num_primitives; // approximately the same thing when there are many points
-
-        // Larger view -> larger points.
-        let viewport_area = viewport_size_in_points.x * viewport_size_in_points.y;
-
-        const RADIUS_MULTIPLIER: f32 = 0.15;
-        const MIN_POINT_RADIUS: f32 = 0.2;
-        const MAX_POINT_RADIUS: f32 = 3.0;
-
-        let radius = (RADIUS_MULTIPLIER * (viewport_area / (num_points + 1) as f32).sqrt())
-            .clamp(MIN_POINT_RADIUS, MAX_POINT_RADIUS);
-
-        re_renderer::Size::new_points(radius)
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -145,6 +128,94 @@ impl ViewSpatialState {
             (median_extent / (self.scene_num_primitives.at_least(1) as f32).powf(1.0 / 1.7)) * 0.25;
 
         heuristic0.min(heuristic1)
+    }
+
+    pub fn update_object_property_heuristics(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+    ) {
+        crate::profile_function!();
+
+        let scene_size = self.scene_bbox_accum.size().length();
+
+        let query = ctx.current_query();
+
+        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
+        for entity_path in entity_paths {
+            Self::update_pinhole_property_heuristics(
+                ctx,
+                data_blueprint,
+                &query,
+                &entity_path,
+                scene_size,
+            );
+            Self::update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
+        }
+    }
+
+    fn update_pinhole_property_heuristics(
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+        query: &re_arrow_store::LatestAtQuery,
+        entity_path: &EntityPath,
+        scene_size: f32,
+    ) {
+        if let Some(re_log_types::Transform::Pinhole(_)) =
+            query_latest_single::<re_log_types::Transform>(
+                &ctx.log_db.entity_db,
+                entity_path,
+                query,
+            )
+        {
+            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+                scene_size * 0.05
+            } else {
+                1.0
+            };
+
+            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+            if properties.pinhole_image_plane_distance.is_auto() {
+                properties.pinhole_image_plane_distance =
+                    EditableAutoValue::Auto(default_image_plane_distance);
+                data_blueprint
+                    .data_blueprints_individual()
+                    .set(entity_path.clone(), properties);
+            }
+        }
+    }
+
+    fn update_depth_cloud_property_heuristics(
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+        query: &re_arrow_store::LatestAtQuery,
+        entity_path: &EntityPath,
+    ) {
+        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
+        if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
+            let tensor = tensor.as_ref().unwrap();
+
+            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+            if properties.depth_from_world_scale.is_auto() {
+                let auto = tensor.meter.unwrap_or_else(|| {
+                    use re_log_types::component_types::TensorTrait as _;
+                    if tensor.dtype().is_integer() {
+                        1000.0
+                    } else {
+                        1.0
+                    }
+                });
+                properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
+            }
+
+            if properties.backproject_radius_scale.is_auto() {
+                properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
+            }
+
+            data_blueprint
+                .data_blueprints_individual()
+                .set(entity_path.clone(), properties);
+        }
     }
 
     pub fn selection_ui(
@@ -204,25 +275,29 @@ impl ViewSpatialState {
             ctx.re_ui.grid_left_hand_label(ui, "Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen.");
             ui.vertical(|ui| {
-                egui::ComboBox::from_id_source("nav_mode")
-                    .selected_text(self.nav_mode)
+                let mut nav_mode = *self.nav_mode.get();
+                let nav_mode_response =  egui::ComboBox::from_id_source("nav_mode")
+                    .selected_text(nav_mode)
                     .show_ui(ui, |ui| {
                         ui.style_mut().wrap = Some(false);
                         ui.set_min_width(64.0);
 
                         ui.selectable_value(
-                            &mut self.nav_mode,
+                            &mut nav_mode,
                             SpatialNavigationMode::TwoD,
                             SpatialNavigationMode::TwoD,
                         );
                         ui.selectable_value(
-                            &mut self.nav_mode,
+                            &mut nav_mode,
                             SpatialNavigationMode::ThreeD,
                             SpatialNavigationMode::ThreeD,
                         );
-                    });
+                    }).response;
+                    if nav_mode_response.changed() {
+                        self.nav_mode = EditableAutoValue::UserEdited(nav_mode);
+                    }
 
-                if self.nav_mode == SpatialNavigationMode::ThreeD {
+                if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
                     if ui.button("Reset").on_hover_text(
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
@@ -235,7 +310,7 @@ impl ViewSpatialState {
             });
             ui.end_row();
 
-            if self.nav_mode == SpatialNavigationMode::ThreeD {
+            if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
@@ -266,7 +341,7 @@ impl ViewSpatialState {
                     format_f32(min.y),
                     format_f32(max.y),
                 ));
-                if self.nav_mode == SpatialNavigationMode::ThreeD {
+                if *self.nav_mode.get() == SpatialNavigationMode::ThreeD {
                     ui.label(format!(
                         "z [{} - {}]",
                         format_f32(min.z),
@@ -289,22 +364,23 @@ impl ViewSpatialState {
         highlights: &SpaceViewHighlights,
     ) {
         self.scene_bbox = scene.primitives.bounding_box();
-        // If this is the first time the bounding box is set, (re-)determine the nav_mode.
-        // TODO(andreas): Keep track of user edits
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
-            self.nav_mode = scene.preferred_navigation_mode(space);
         } else {
             self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
         }
+
+        if self.nav_mode.is_auto() {
+            self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
+        }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
-        match self.nav_mode {
+        match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
                 let coordinates =
                     query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                super::view_3d(ctx, ui, self, space, space_view_id, scene);
+                super::view_3d(ctx, ui, self, space, space_view_id, scene, highlights);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -326,7 +402,7 @@ impl ViewSpatialState {
     }
 
     pub fn help_text(&self) -> &str {
-        match self.nav_mode {
+        match *self.nav_mode.get() {
             SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT_2D,
             SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT_3D,
         }
@@ -417,5 +493,119 @@ fn axis_name(axis: Option<glam::Vec3>) -> String {
         }
     } else {
         "—".to_owned()
+    }
+}
+
+pub fn create_labels(
+    scene_ui: &mut SceneSpatialUiData,
+    ui_from_space2d: egui::emath::RectTransform,
+    space2d_from_ui: egui::emath::RectTransform,
+    eye3d: &Eye,
+    parent_ui: &mut egui::Ui,
+    highlights: &SpaceViewHighlights,
+    nav_mode: SpatialNavigationMode,
+) -> Vec<egui::Shape> {
+    crate::profile_function!();
+
+    let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
+
+    let ui_from_world_3d = eye3d.ui_from_world(ui_from_space2d.to());
+
+    for label in &scene_ui.labels {
+        let (wrap_width, text_anchor_pos) = match label.target {
+            UiLabelTarget::Rect(rect) => {
+                // TODO(#1640): 2D labels are not visible in 3D for now.
+                if nav_mode == SpatialNavigationMode::ThreeD {
+                    continue;
+                }
+                let rect_in_ui = ui_from_space2d.transform_rect(rect);
+                (
+                    // Place the text centered below the rect
+                    (rect_in_ui.width() - 4.0).at_least(60.0),
+                    rect_in_ui.center_bottom() + egui::vec2(0.0, 3.0),
+                )
+            }
+            UiLabelTarget::Point2D(pos) => {
+                // TODO(#1640): 2D labels are not visible in 3D for now.
+                if nav_mode == SpatialNavigationMode::ThreeD {
+                    continue;
+                }
+                let pos_in_ui = ui_from_space2d.transform_pos(pos);
+                (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
+            }
+            UiLabelTarget::Position3D(pos) => {
+                let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
+                if pos_in_ui.w <= 0.0 {
+                    continue; // behind camera
+                }
+                let pos_in_ui = pos_in_ui / pos_in_ui.w;
+                (f32::INFINITY, egui::pos2(pos_in_ui.x, pos_in_ui.y))
+            }
+        };
+
+        let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
+        let galley = parent_ui.fonts(|fonts| {
+            fonts.layout_job({
+                egui::text::LayoutJob {
+                    sections: vec![egui::text::LayoutSection {
+                        leading_space: 0.0,
+                        byte_range: 0..label.text.len(),
+                        format: egui::TextFormat::simple(font_id, label.color),
+                    }],
+                    text: label.text.clone(),
+                    wrap: TextWrapping {
+                        max_width: wrap_width,
+                        ..Default::default()
+                    },
+                    break_on_newline: true,
+                    halign: egui::Align::Center,
+                    ..Default::default()
+                }
+            })
+        });
+
+        let text_rect = egui::Align2::CENTER_TOP
+            .anchor_rect(egui::Rect::from_min_size(text_anchor_pos, galley.size()));
+        let bg_rect = text_rect.expand2(egui::vec2(4.0, 2.0));
+
+        let highlight = highlights
+            .entity_highlight(label.labeled_instance.entity_path_hash)
+            .index_highlight(label.labeled_instance.instance_key);
+        let fill_color = match highlight.hover {
+            crate::misc::HoverHighlight::None => match highlight.selection {
+                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::SiblingSelection => {
+                    parent_ui.style().visuals.widgets.active.bg_fill
+                }
+                SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
+            },
+            crate::misc::HoverHighlight::Hovered => {
+                parent_ui.style().visuals.widgets.hovered.bg_fill
+            }
+        };
+
+        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
+        label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
+
+        scene_ui.pickable_ui_rects.push((
+            space2d_from_ui.transform_rect(bg_rect),
+            label.labeled_instance,
+        ));
+    }
+
+    label_shapes
+}
+
+pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
+    // Take the exact same colors we have in the ui!
+    let selection_outline_color =
+        re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill);
+    let hover_outline_color =
+        re_renderer::Rgba::from(gui_ctx.style().visuals.widgets.hovered.bg_fill);
+
+    OutlineConfig {
+        outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.5).at_least(0.5),
+        color_layer_a: selection_outline_color,
+        color_layer_b: hover_outline_color,
     }
 }

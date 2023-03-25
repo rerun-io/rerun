@@ -39,7 +39,13 @@ where
     /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
     fn as_slice(&mut self) -> &mut [T] {
-        &mut bytemuck::cast_slice_mut(&mut self.write_view)[self.unwritten_element_range.clone()]
+        // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
+        // `write_view` may have padding at the end that isn't a multiple of T's size.
+        // Bytemuck get's unhappy about that, so cast the correct range.
+        bytemuck::cast_slice_mut(
+            &mut self.write_view[self.unwritten_element_range.start * std::mem::size_of::<T>()
+                ..self.unwritten_element_range.end * std::mem::size_of::<T>()],
+        )
     }
 
     /// Pushes a slice of elements into the buffer.
@@ -47,13 +53,13 @@ where
     /// Panics if the data no longer fits into the buffer.
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) {
-        self.as_slice().copy_from_slice(elements);
+        self.as_slice()[..elements.len()].copy_from_slice(elements);
         self.unwritten_element_range.start += elements.len();
     }
 
     /// Pushes several elements into the buffer.
     ///
-    /// Panics if the data no longer fits into the buffer.
+    /// Extends until either running out of space or elements.
     #[inline]
     pub fn extend(&mut self, elements: impl Iterator<Item = T>) {
         let mut num_elements = 0;
@@ -68,8 +74,8 @@ where
     ///
     /// Panics if the data no longer fits into the buffer.
     #[inline]
-    pub fn push(&mut self, element: &T) {
-        self.as_slice()[0] = *element;
+    pub fn push(&mut self, element: T) {
+        self.as_slice()[0] = element;
         self.unwritten_element_range.start += 1;
     }
 
@@ -104,17 +110,24 @@ where
 
     /// Copies the entire buffer to another buffer and drops it.
     pub fn copy_to_buffer(
-        mut self,
+        self,
         encoder: &mut wgpu::CommandEncoder,
         destination: &GpuBuffer,
         destination_offset: wgpu::BufferAddress,
     ) {
+        let copy_size = (std::mem::size_of::<T>() * self.unwritten_element_range.start) as u64;
+
+        // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
+        debug_assert!(copy_size <= destination_offset + destination.size(),
+            "Target buffer has a size of {}, can't write {copy_size} bytes with an offset of {destination_offset}!",
+            destination.size());
+
         encoder.copy_buffer_to_buffer(
             &self.chunk_buffer,
             self.byte_offset_in_chunk_buffer,
             destination,
             destination_offset,
-            self.write_view.deref_mut().len() as u64,
+            copy_size,
         );
     }
 }
@@ -285,9 +298,11 @@ impl CpuWriteGpuReadBelt {
     pub fn allocate<T: bytemuck::Pod>(
         &mut self,
         device: &wgpu::Device,
-        buffer_pool: &mut GpuBufferPool,
+        buffer_pool: &GpuBufferPool,
         num_elements: usize,
     ) -> CpuWriteGpuReadBuffer<T> {
+        crate::profile_function!();
+
         // Potentially overestimate alignment with Self::MIN_ALIGNMENT, see Self::MIN_ALIGNMENT doc string.
         let alignment = (std::mem::align_of::<T>() as wgpu::BufferAddress).max(Self::MIN_ALIGNMENT);
         // Pad out the size of the used buffer to a multiple of Self::MIN_ALIGNMENT.
@@ -364,6 +379,8 @@ impl CpuWriteGpuReadBelt {
     /// further writes) until after [`CpuWriteGpuReadBelt::after_queue_submit`] is called *and* the GPU is done
     /// copying the data from them.
     pub fn before_queue_submit(&mut self) {
+        crate::profile_function!();
+
         // This would be a great usecase for persistent memory mapping, i.e. mapping without the need to unmap
         // https://github.com/gfx-rs/wgpu/issues/1468
         // However, WebGPU does not support this!
@@ -380,6 +397,7 @@ impl CpuWriteGpuReadBelt {
     /// copy operations are submitted. Additional calls are harmless.
     /// Not calling this as soon as possible may result in increased buffer memory usage.
     pub fn after_queue_submit(&mut self) {
+        crate::profile_function!();
         self.receive_chunks();
 
         let sender = &self.sender;

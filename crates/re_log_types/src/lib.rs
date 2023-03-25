@@ -4,8 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#![allow(clippy::manual_range_contains)]
-
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
@@ -121,7 +119,7 @@ impl std::str::FromStr for RecordingId {
 /// The user-chosen name of the application doing the logging.
 ///
 /// Used to categorize recordings.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::Display)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ApplicationId(pub String);
 
@@ -143,6 +141,13 @@ impl ApplicationId {
     /// Currently: `"unknown_app_id"`.
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
+    }
+}
+
+impl std::fmt::Display for ApplicationId {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -254,7 +259,8 @@ pub enum RecordingSource {
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
-        rust_version: String,
+        rustc_version: String,
+        llvm_version: String,
     },
 
     /// Perhaps from some manual data ingestion?
@@ -266,7 +272,10 @@ impl std::fmt::Display for RecordingSource {
         match self {
             Self::Unknown => "Unknown".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk { rust_version } => write!(f, "Rust {rust_version} SDK"),
+            Self::RustSdk {
+                rustc_version: rust_version,
+                llvm_version: _,
+            } => write!(f, "Rust {rust_version} SDK"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }

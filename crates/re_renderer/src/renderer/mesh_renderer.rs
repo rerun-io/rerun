@@ -5,13 +5,14 @@
 
 use std::sync::Arc;
 
-use itertools::Itertools as _;
+use ahash::{HashMap, HashMapExt};
 use smallvec::smallvec;
 
 use crate::{
     include_file,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
-    resource_managers::GpuMeshHandle,
+    renderer::OutlineMaskProcessor,
+    resource_managers::{GpuMeshHandle, ResourceHandle},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
@@ -21,8 +22,8 @@ use crate::{
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
+    DrawData, DrawPhase, FileResolver, FileSystem, OutlineMaskPreference, RenderContext, Renderer,
+    SharedRendererData, WgpuResourcePools,
 };
 
 mod gpu_data {
@@ -33,7 +34,7 @@ mod gpu_data {
     /// Element in the gpu residing instance buffer.
     ///
     /// Keep in sync with `mesh_vertex.wgsl`
-    #[repr(C, packed)]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct InstanceData {
         // Don't use aligned glam types because they enforce alignment.
@@ -47,6 +48,8 @@ mod gpu_data {
         pub world_from_mesh_normal_row_2: [f32; 3],
 
         pub additive_tint: Color32,
+        // Need only the first two bytes, but we want to keep everything aligned to at least 4 bytes.
+        pub outline_mask_ids: [u8; 4],
     }
 
     impl InstanceData {
@@ -69,6 +72,9 @@ mod gpu_data {
                         wgpu::VertexFormat::Float32x3,
                         // Tint color
                         wgpu::VertexFormat::Unorm8x4,
+                        // Outline mask.
+                        // This adds a tiny bit of overhead to all instances during non-outline pass, but the alternative is having yet another vertex buffer.
+                        wgpu::VertexFormat::Uint8x2,
                     ]
                     .into_iter(),
                 ),
@@ -80,7 +86,12 @@ mod gpu_data {
 #[derive(Clone)]
 struct MeshBatch {
     mesh: GpuMesh,
+
     count: u32,
+
+    /// Number of meshes out of `count` which have outlines.
+    /// We put all instances with outlines at the start of the instance buffer range.
+    count_with_outlines: u32,
 }
 
 #[derive(Clone)]
@@ -109,6 +120,21 @@ pub struct MeshInstance {
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
     pub additive_tint: Color32,
+
+    /// Optional outline mask setting for this instance.
+    pub outline_mask_ids: OutlineMaskPreference,
+}
+
+impl Default for MeshInstance {
+    fn default() -> Self {
+        Self {
+            gpu_mesh: GpuMeshHandle::Invalid,
+            mesh: None,
+            world_from_mesh: macaw::Affine3A::IDENTITY,
+            additive_tint: Color32::TRANSPARENT,
+            outline_mask_ids: OutlineMaskPreference::NONE,
+        }
+    }
 }
 
 impl MeshDrawData {
@@ -120,7 +146,7 @@ impl MeshDrawData {
     pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         crate::profile_function!();
 
-        let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
+        let _mesh_renderer = ctx.renderers.write().get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
             &ctx.device,
@@ -149,85 +175,108 @@ impl MeshDrawData {
             },
         );
 
-        let mut mesh_runs = Vec::new();
-        {
-            let mut instance_buffer_staging = ctx
-                .queue
-                .write_buffer_with(
-                    &instance_buffer,
-                    0,
-                    instance_buffer_size.try_into().unwrap(),
-                )
-                .unwrap(); // Fails only if mapping is bigger than buffer size.
-            let instance_buffer_staging: &mut [gpu_data::InstanceData] =
-                bytemuck::cast_slice_mut(&mut instance_buffer_staging);
-
-            let mut num_processed_instances = 0;
-            for (mesh, instances) in &instances.iter().group_by(|instance| &instance.gpu_mesh) {
-                let mut count = 0;
-                for (instance, gpu_instance) in instances.zip(
-                    instance_buffer_staging
-                        .iter_mut()
-                        .skip(num_processed_instances),
-                ) {
-                    count += 1;
-
-                    let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
-                    gpu_instance.world_from_mesh_row_0 = world_from_mesh_mat3
-                        .row(0)
-                        .extend(instance.world_from_mesh.translation.x)
-                        .to_array();
-                    gpu_instance.world_from_mesh_row_1 = world_from_mesh_mat3
-                        .row(1)
-                        .extend(instance.world_from_mesh.translation.y)
-                        .to_array();
-                    gpu_instance.world_from_mesh_row_2 = world_from_mesh_mat3
-                        .row(2)
-                        .extend(instance.world_from_mesh.translation.z)
-                        .to_array();
-
-                    let world_from_mesh_normal =
-                        instance.world_from_mesh.matrix3.inverse().transpose();
-                    gpu_instance.world_from_mesh_normal_row_0 =
-                        world_from_mesh_normal.row(0).to_array();
-                    gpu_instance.world_from_mesh_normal_row_1 =
-                        world_from_mesh_normal.row(1).to_array();
-                    gpu_instance.world_from_mesh_normal_row_2 =
-                        world_from_mesh_normal.row(2).to_array();
-
-                    gpu_instance.additive_tint = instance.additive_tint;
-                }
-                num_processed_instances += count;
-                mesh_runs.push((mesh, count as u32));
+        let mut instances_by_mesh: HashMap<_, Vec<_>> = HashMap::new();
+        for instance in instances {
+            if !matches!(instance.gpu_mesh, ResourceHandle::Invalid) {
+                instances_by_mesh
+                    .entry(&instance.gpu_mesh)
+                    .or_insert_with(|| Vec::with_capacity(instances.len()))
+                    .push(instance);
             }
-            assert_eq!(num_processed_instances, instances.len());
         }
 
-        // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
-        let batches: Result<Vec<_>, _> = mesh_runs
-            .into_iter()
-            .map(|(mesh_handle, count)| {
-                ctx.mesh_manager.get(mesh_handle).map(|mesh| MeshBatch {
+        let mut batches = Vec::new();
+        {
+            let mut instance_buffer_staging = ctx
+                .cpu_write_gpu_read_belt
+                .lock()
+                .allocate::<gpu_data::InstanceData>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                instances.len(),
+            );
+
+            let mesh_manager = ctx.mesh_manager.read();
+            let mut num_processed_instances = 0;
+            for (mesh, mut instances) in instances_by_mesh {
+                let mut count = 0;
+                let mut count_with_outlines = 0;
+
+                // Put all instances with outlines at the start of the instance buffer range.
+                instances.sort_by(|a, b| {
+                    a.outline_mask_ids
+                        .is_none()
+                        .cmp(&b.outline_mask_ids.is_none())
+                });
+
+                for instance in instances {
+                    count += 1;
+                    count_with_outlines += instance.outline_mask_ids.is_some() as u32;
+
+                    let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
+                    let world_from_mesh_normal =
+                        instance.world_from_mesh.matrix3.inverse().transpose();
+                    instance_buffer_staging.push(gpu_data::InstanceData {
+                        world_from_mesh_row_0: world_from_mesh_mat3
+                            .row(0)
+                            .extend(instance.world_from_mesh.translation.x)
+                            .to_array(),
+                        world_from_mesh_row_1: world_from_mesh_mat3
+                            .row(1)
+                            .extend(instance.world_from_mesh.translation.y)
+                            .to_array(),
+                        world_from_mesh_row_2: world_from_mesh_mat3
+                            .row(2)
+                            .extend(instance.world_from_mesh.translation.z)
+                            .to_array(),
+                        world_from_mesh_normal_row_0: world_from_mesh_normal.row(0).to_array(),
+                        world_from_mesh_normal_row_1: world_from_mesh_normal.row(1).to_array(),
+                        world_from_mesh_normal_row_2: world_from_mesh_normal.row(2).to_array(),
+                        additive_tint: instance.additive_tint,
+                        outline_mask_ids: instance
+                            .outline_mask_ids
+                            .0
+                            .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
+                    });
+                }
+                num_processed_instances += count;
+
+                // We resolve the meshes here already, so the actual draw call doesn't need to
+                // know about the MeshManager.
+                let mesh = mesh_manager.get(mesh)?;
+                batches.push(MeshBatch {
                     mesh: mesh.clone(),
-                    count,
-                })
-            })
-            .collect();
+                    count: count as _,
+                    count_with_outlines,
+                });
+            }
+            assert_eq!(num_processed_instances, instances.len());
+            instance_buffer_staging.copy_to_buffer(
+                ctx.active_frame.encoder.lock().get(),
+                &instance_buffer,
+                0,
+            );
+        }
 
         Ok(MeshDrawData {
-            batches: batches?,
+            batches,
             instance_buffer: Some(instance_buffer),
         })
     }
 }
 
 pub struct MeshRenderer {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_shaded: GpuRenderPipelineHandle,
+    render_pipeline_outline_mask: GpuRenderPipelineHandle,
     pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for MeshRenderer {
     type RendererDrawData = MeshDrawData;
+
+    fn participated_phases() -> &'static [DrawPhase] {
+        &[DrawPhase::Opaque, DrawPhase::OutlineMask]
+    }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -285,27 +334,29 @@ impl Renderer for MeshRenderer {
             },
         );
 
-        let render_pipeline = pools.render_pipelines.get_or_create(
+        let primitive = wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
+            ..Default::default()
+        };
+        // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
+        let vertex_buffers: smallvec::SmallVec<[_; 4]> =
+            std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
+                .chain(mesh_vertices::vertex_buffer_layouts())
+                .collect();
+
+        let render_pipeline_shaded = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "mesh renderer".into(),
+                label: "mesh renderer - shaded".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main".into(),
+                fragment_entrypoint: "fs_main_shaded".into(),
                 fragment_handle: shader_module,
-
-                // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
-                vertex_buffers: std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
-                    .chain(mesh_vertices::vertex_buffer_layouts())
-                    .collect(),
-
+                vertex_buffers: vertex_buffers.clone(),
                 render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
-                    ..Default::default()
-                },
+                primitive,
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
@@ -313,8 +364,30 @@ impl Renderer for MeshRenderer {
             &pools.shader_modules,
         );
 
+        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "mesh renderer - outline mask".into(),
+                pipeline_layout,
+                vertex_entrypoint: "vs_main".into(),
+                vertex_handle: shader_module,
+                fragment_entrypoint: "fs_main_outline_mask".into(),
+                fragment_handle: shader_module,
+                vertex_buffers,
+                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+                primitive,
+                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(
+                    shared_data.config.hardware_tier,
+                ),
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+
         MeshRenderer {
-            render_pipeline,
+            render_pipeline_shaded,
+            render_pipeline_outline_mask,
             bind_group_layout,
         }
     }
@@ -322,6 +395,7 @@ impl Renderer for MeshRenderer {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
@@ -331,13 +405,24 @@ impl Renderer for MeshRenderer {
             return Ok(()); // Instance buffer was empty.
         };
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_shaded,
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+
         pass.set_pipeline(pipeline);
 
         pass.set_vertex_buffer(0, instance_buffer.slice(..));
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
+            if phase == DrawPhase::OutlineMask && mesh_batch.count_with_outlines == 0 {
+                instance_start_index += mesh_batch.count;
+                continue;
+            }
+
             let vertex_buffer_combined = &mesh_batch.mesh.vertex_buffer_combined;
             let index_buffer = &mesh_batch.mesh.index_buffer;
 
@@ -347,24 +432,37 @@ impl Renderer for MeshRenderer {
             );
             pass.set_vertex_buffer(
                 2,
-                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_data_range.clone()),
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_colors_range.clone()),
+            );
+            pass.set_vertex_buffer(
+                3,
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_normals_range.clone()),
+            );
+            pass.set_vertex_buffer(
+                4,
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_texcoord_range.clone()),
             );
             pass.set_index_buffer(
                 index_buffer.slice(mesh_batch.mesh.index_buffer_range.clone()),
                 wgpu::IndexFormat::Uint32,
             );
 
-            let instance_range = instance_start_index..(instance_start_index + mesh_batch.count);
+            let num_meshes_to_draw = if phase == DrawPhase::OutlineMask {
+                mesh_batch.count_with_outlines
+            } else {
+                mesh_batch.count
+            };
+            let instance_range = instance_start_index..(instance_start_index + num_meshes_to_draw);
 
             for material in &mesh_batch.mesh.materials {
-                debug_assert!(mesh_batch.count > 0);
+                debug_assert!(num_meshes_to_draw > 0);
 
                 pass.set_bind_group(1, &material.bind_group, &[]);
-
                 pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }
 
-            instance_start_index = instance_range.end;
+            // Advance instance start index with *total* number of instances in this batch.
+            instance_start_index += mesh_batch.count;
         }
 
         Ok(())

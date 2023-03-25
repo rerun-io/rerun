@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "MeshFormat",
@@ -39,6 +40,7 @@ class ImageFormat(Enum):
     """JPEG format."""
 
 
+@log_decorator
 def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
@@ -50,7 +52,7 @@ def log_mesh_file(
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
 
-    `transform` is an optional 3x4 affine transform matrix applied to the mesh.
+    You can also use [`rerun.log_mesh`] to log raw mesh data.
 
     Example:
     -------
@@ -77,9 +79,6 @@ def log_mesh_file(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
     else:
@@ -89,6 +88,7 @@ def log_mesh_file(
     bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
 
 
+@log_decorator
 def log_image_file(
     entity_path: str,
     *,
@@ -120,9 +120,6 @@ def log_image_file(
         If true, the image will be timeless (default: False).
 
     """
-
-    if not bindings.is_enabled():
-        return
 
     img_format = getattr(img_format, "value", None)
 

@@ -4,16 +4,20 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Tensor, TensorTrait},
+    component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, TensorTrait},
     msg_bundle::Component,
+    Transform,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{
+    renderer::{DepthCloud, DepthCloudDepthData, OutlineMaskPreference},
+    ColorMap,
+};
 
 use crate::{
-    misc::{caches::AsDynamicImage, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
@@ -23,23 +27,22 @@ use crate::{
 
 use super::ScenePart;
 
-fn push_tensor_texture<T: AsDynamicImage>(
+#[allow(clippy::too_many_arguments)]
+fn push_tensor_texture(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
     instance_path_hash: InstancePathHash,
-    tensor: &T,
+    tensor: &Tensor,
     tint: egui::Rgba,
+    outline_mask: OutlineMaskPreference,
 ) {
     crate::profile_function!();
 
-    let tensor_view =
-        ctx.cache
-            .image
-            .get_view_with_annotations(tensor, annotations, ctx.render_ctx);
+    let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
 
-    if let Some(texture_handle) = tensor_view.texture_handle {
+    if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
         let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
         scene
             .primitives
@@ -54,6 +57,7 @@ fn push_tensor_texture<T: AsDynamicImage>(
                 multiplicative_tint: tint,
                 // Push to background. Mostly important for mouse picking order!
                 depth_offset: -1,
+                outline_mask,
             });
         scene
             .primitives
@@ -128,6 +132,7 @@ impl ImagesPart {
         entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
+        transforms: &TransformCache,
         properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
@@ -146,41 +151,79 @@ impl ImagesPart {
                     return Ok(());
                 }
 
-                let entity_highlight = highlights.entity_highlight(ent_path.hash());
+                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                let instance_path_hash = instance_path_hash_for_picking(
-                    ent_path,
-                    instance_key,
-                    entity_view,
-                    properties,
-                    entity_highlight,
-                );
-
-                let annotations = scene.annotation_map.find(ent_path);
-
-                let color = annotations.class_description(None).annotation_info().color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
-
-                let highlight = entity_highlight.index_highlight(instance_path_hash.instance_key);
-                if highlight.is_some() {
-                    let color = SceneSpatial::apply_hover_and_selection_effect_color(
-                        re_renderer::Color32::TRANSPARENT,
-                        highlight,
-                    );
-                    let rect =
-                        glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
-                    scene
-                        .primitives
-                        .line_strips
-                        .batch("image outlines")
-                        .world_from_obj(world_from_obj)
-                        .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
-                        .color(color)
-                        .radius(Size::new_points(1.0));
+                if tensor.meaning == TensorDataMeaning::Depth {
+                    if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
+                    {
+                        // NOTE: we don't pass in `world_from_obj` because this corresponds to the
+                        // transform of the projection plane, which is of no use to us here.
+                        // What we want are the extrinsics of the depth camera!
+                        Self::process_entity_view_as_depth_cloud(
+                            scene,
+                            ctx,
+                            transforms,
+                            properties,
+                            &tensor,
+                            pinhole_ent_path,
+                            entity_highlight,
+                        );
+                        return Ok(());
+                    };
                 }
 
+                Self::process_entity_view_as_image(
+                    entity_view,
+                    scene,
+                    ctx,
+                    properties,
+                    ent_path,
+                    world_from_obj,
+                    entity_highlight,
+                    instance_key,
+                    tensor,
+                    color,
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn process_entity_view_as_image(
+        entity_view: &EntityView<Tensor>,
+        scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
+        properties: &EntityProperties,
+        ent_path: &EntityPath,
+        world_from_obj: glam::Mat4,
+        entity_highlight: &SpaceViewOutlineMasks,
+        instance_key: InstanceKey,
+        tensor: Tensor,
+        color: Option<ColorRGBA>,
+    ) {
+        crate::profile_function!();
+
+        let instance_path_hash = instance_path_hash_for_picking(
+            ent_path,
+            instance_key,
+            entity_view,
+            properties,
+            entity_highlight.any_selection_highlight,
+        );
+
+        let annotations = scene.annotation_map.find(ent_path);
+
+        let color = annotations.class_description(None).annotation_info().color(
+            color.map(|c| c.to_array()).as_ref(),
+            DefaultColor::OpaqueWhite,
+        );
+
+        let outline_mask = entity_highlight.index_outline_mask(instance_path_hash.instance_key);
+
+        match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+            Ok(tensor) => {
                 push_tensor_texture(
                     scene,
                     ctx,
@@ -189,6 +232,7 @@ impl ImagesPart {
                     instance_path_hash,
                     &tensor,
                     color.into(),
+                    outline_mask,
                 );
 
                 // TODO(jleibs): Meter should really be its own component
@@ -201,9 +245,109 @@ impl ImagesPart {
                     annotations,
                 });
             }
+            Err(err) => {
+                // TODO(jleibs): Would be nice to surface these through the UI instead
+                re_log::warn_once!(
+                    "Encountered problem decoding tensor at path {}: {}",
+                    ent_path,
+                    err
+                );
+            }
         }
+    }
 
-        Ok(())
+    #[allow(clippy::too_many_arguments)]
+    fn process_entity_view_as_depth_cloud(
+        scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
+        transforms: &TransformCache,
+        properties: &EntityProperties,
+        tensor: &Tensor,
+        pinhole_ent_path: &EntityPath,
+        entity_highlight: &SpaceViewOutlineMasks,
+    ) {
+        crate::profile_function!();
+
+        let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
+            &ctx.log_db.entity_db,
+            pinhole_ent_path,
+            &ctx.current_query(),
+        ) else {
+            re_log::warn_once!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}");
+            return;
+        };
+
+        // TODO(cmc): getting to those extrinsics is no easy task :|
+        let world_from_obj = pinhole_ent_path
+            .parent()
+            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        let Some(world_from_obj) = world_from_obj else {
+            re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
+            return;
+        };
+
+        // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
+        let data = match &tensor.data {
+            // NOTE: Shallow clone if feature `arrow` is enabled, full alloc + memcpy otherwise.
+            TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
+            TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
+            _ => {
+                re_log::warn_once!(
+                    "Tensor datatype {} is not supported for backprojection",
+                    tensor.dtype()
+                );
+                return;
+            }
+        };
+
+        let depth_from_world_scale = *properties.depth_from_world_scale.get();
+        let world_depth_from_data_depth = 1.0 / depth_from_world_scale;
+
+        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
+        let dimensions = glam::UVec2::new(w as _, h as _);
+
+        let colormap = match *properties.color_mapper.get() {
+            re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
+                re_data_store::ColorMap::Grayscale => ColorMap::Grayscale,
+                re_data_store::ColorMap::Turbo => ColorMap::ColorMapTurbo,
+                re_data_store::ColorMap::Viridis => ColorMap::ColorMapViridis,
+                re_data_store::ColorMap::Plasma => ColorMap::ColorMapPlasma,
+                re_data_store::ColorMap::Magma => ColorMap::ColorMapMagma,
+                re_data_store::ColorMap::Inferno => ColorMap::ColorMapInferno,
+            },
+        };
+
+        // We want point radius to be defined in a scale where the radius of a point
+        // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
+        // at that distance.
+        let fov_y = intrinsics.fov_y().unwrap_or(1.0);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
+        let radius_scale = *properties.backproject_radius_scale.get();
+        let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
+
+        let max_data_value = if let Some((_min, max)) = ctx.cache.tensor_stats(tensor).range {
+            max as f32
+        } else {
+            // This could only happen for Jpegs, and we should never get here.
+            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
+            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
+            match data {
+                DepthCloudDepthData::U16(_) => u16::MAX as f32,
+                DepthCloudDepthData::F32(_) => 10.0,
+            }
+        };
+
+        scene.primitives.depth_clouds.push(DepthCloud {
+            world_from_obj,
+            depth_camera_intrinsics: intrinsics.image_from_cam.into(),
+            world_depth_from_data_depth,
+            point_radius_from_world_depth,
+            max_depth_in_world: world_depth_from_data_depth * max_data_value,
+            depth_dimensions: dimensions,
+            depth_data: data,
+            colormap,
+            outline_mask_id: entity_highlight.overall,
+        });
     }
 }
 
@@ -237,6 +381,7 @@ impl ScenePart for ImagesPart {
                         &entity,
                         scene,
                         ctx,
+                        transforms,
                         &props,
                         ent_path,
                         world_from_obj,

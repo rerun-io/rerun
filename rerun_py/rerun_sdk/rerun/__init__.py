@@ -6,27 +6,30 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun.log import log_cleared
-from rerun.log.annotation import log_annotation_context
+from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
 from rerun.log.camera import log_pinhole
 from rerun.log.extension_components import log_extension_components
-from rerun.log.file import log_image_file, log_mesh_file
+from rerun.log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
 from rerun.log.lines import log_line_segments, log_line_strip, log_path
 from rerun.log.mesh import log_mesh, log_meshes
 from rerun.log.points import log_point, log_points
-from rerun.log.rects import log_rect, log_rects
+from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
-from rerun.log.text import log_text_entry
+from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
+    "AnnotationInfo",
+    "ClassDescription",
     "LoggingHandler",
     "bindings",
     "components",
+    "ImageFormat",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
@@ -53,11 +56,18 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
-    "LoggingHandler",
+    "LogLevel",
+    "MeshFormat",
+    "RectFormat",
     "script_add_args",
     "script_setup",
     "script_teardown",
 ]
+
+
+# If `True`, we raise exceptions on use error (wrong parameter types etc).
+# If `False` we catch all errors and log a warning instead.
+_strict_mode = False
 
 
 def rerun_shutdown() -> None:
@@ -118,7 +128,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn: bool = False, default_enabled: bool = True) -> None:
+def init(application_id: str, spawn: bool = False, default_enabled: bool = True, strict: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -139,8 +149,13 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True)
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    strict
+        If `True`, an exceptions is raised on use error (wrong parameter types etc).
+        If `False`, errors are logged as warnings instead.
 
     """
+
+    _strict_mode = strict
     application_path = None
 
     # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
@@ -202,7 +217,7 @@ def set_enabled(enabled: bool) -> None:
 
     This is a global setting that affects all threads.
 
-    By default logging is enabled, but can be controlled with the enviornment variable `RERUN`,
+    By default logging is enabled, but can be controlled with the environment variable `RERUN`,
     (e.g. `RERUN=on` or `RERUN=off`).
 
     The default can be set in [`rerun.init`][].
@@ -216,11 +231,41 @@ def set_enabled(enabled: bool) -> None:
     bindings.set_enabled(enabled)
 
 
+def strict_mode() -> bool:
+    """
+    Strict mode enabled.
+
+    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
+    will result in exception being raised.
+    When strict mode is on, such problems are instead logged as warnings.
+
+    The default is OFF.
+    """
+
+    return _strict_mode
+
+
+def set_strict_mode(strict_mode: bool) -> None:
+    """
+    Turn strict mode on/off.
+
+    In strict mode, incorrect use of the Rerun API (wrong parameter types etc.)
+    will result in exception being raised.
+    When strict mode is off, such problems are instead logged as warnings.
+
+    The default is OFF.
+    """
+
+    _strict_mode = strict_mode
+
+
 def connect(addr: Optional[str] = None) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
 
     Requires that you first start a Rerun Viewer, e.g. with 'python -m rerun'
+
+    This function returns immediately.
 
     Parameters
     ----------
@@ -287,9 +332,13 @@ _spawn = spawn  # we need this because Python scoping is horrible
 
 def serve(open_browser: bool = True) -> None:
     """
-    Serve a Rerun Web Viewer.
+    Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+
+    You can connect to this server using `python -m rerun`.
 
     WARNING: This is an experimental feature.
+
+    This function returns immediately.
 
     Parameters
     ----------
@@ -306,25 +355,14 @@ def serve(open_browser: bool = True) -> None:
 
 
 def disconnect() -> None:
-    """Disconnect from the remote rerun server (if any)."""
+    """
+    Closes all TCP connections, servers, and files.
+
+    Closes all TCP connections, servers, and files that have been opened with
+    [`rerun.connect`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+    """
+
     bindings.disconnect()
-
-
-def show() -> None:
-    """
-    Show previously logged data.
-
-    This only works if you have not called `connect`.
-
-    NOTE: There is a bug which causes this function to only work once on some platforms.
-
-    """
-
-    if not bindings.is_enabled():
-        print("Rerun is disabled - show() call ignored")
-        return
-
-    bindings.show()
 
 
 def save(path: str) -> None:

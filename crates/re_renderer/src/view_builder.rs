@@ -3,18 +3,19 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
+    allocator::create_and_fill_uniform_buffer,
     context::RenderContext,
     global_bindings::FrameUniformBuffer,
     renderer::{
-        compositor::{Compositor, CompositorDrawData},
-        DrawData, Renderer,
+        CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
     },
-    wgpu_resources::{BufferDesc, GpuBindGroup, GpuTexture, TextureDesc},
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, Rgba, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(
         &'b RenderContext,
+        DrawPhase,
         &'a mut wgpu::RenderPass<'b>,
         &'b dyn std::any::Any,
     ) -> anyhow::Result<()>
@@ -24,7 +25,8 @@ type DrawFn = dyn for<'a, 'b> Fn(
 struct QueuedDraw {
     draw_func: Box<DrawFn>,
     draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
-    sorting_index: u32,
+    renderer_name: &'static str,
+    participated_phases: &'static [DrawPhase],
 }
 
 /// The highest level rendering block in `re_renderer`.
@@ -33,13 +35,14 @@ struct QueuedDraw {
 pub struct ViewBuilder {
     /// Result of [`ViewBuilder::setup_view`] - needs to be `Option` sine some of the fields don't have a default.
     setup: Option<ViewTargetSetup>,
-    queued_draws: Vec<QueuedDraw>, // &mut wgpu::RenderPass
+    queued_draws: Vec<QueuedDraw>,
+
+    // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
+    outline_mask_processor: Option<OutlineMaskProcessor>,
 }
 
 struct ViewTargetSetup {
     name: DebugLabel,
-
-    compositor_draw_data: CompositorDrawData,
 
     bind_group_0: GpuBindGroup,
     main_target_msaa: GpuTexture,
@@ -143,6 +146,8 @@ pub struct TargetConfiguration {
 
     /// How [`Size::AUTO`] is interpreted.
     pub auto_size_config: AutoSizeConfig,
+
+    pub outline_config: Option<OutlineConfig>,
 }
 
 impl Default for TargetConfiguration {
@@ -157,6 +162,7 @@ impl Default for TargetConfiguration {
             },
             pixels_from_point: 1.0,
             auto_size_config: Default::default(),
+            outline_config: None,
         }
     }
 }
@@ -197,6 +203,11 @@ impl ViewBuilder {
         mask: !0,
         alpha_to_coverage_enabled: false,
     };
+
+    /// Default value for clearing depth buffer to infinity.
+    ///
+    /// 0.0 == far since we're using reverse-z.
+    pub const DEFAULT_DEPTH_CLEAR: wgpu::LoadOp<f32> = wgpu::LoadOp::Clear(0.0);
 
     /// Default depth state for enabled depth write & read.
     pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: Option<wgpu::DepthStencilState> =
@@ -266,18 +277,23 @@ impl ViewBuilder {
             },
         );
 
-        let tonemapping_draw_data = CompositorDrawData::new(ctx, &main_target_resolved);
+        self.outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
+            OutlineMaskProcessor::new(
+                ctx,
+                outline_config,
+                &config.name,
+                config.resolution_in_pixel,
+            )
+        });
 
-        // Setup frame uniform buffer
-        let frame_uniform_buffer = ctx.gpu_resources.buffers.alloc(
-            &ctx.device,
-            &BufferDesc {
-                label: format!("{:?} - frame uniform buffer", config.name).into(),
-                size: std::mem::size_of::<FrameUniformBuffer>() as _,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            },
-        );
+        self.queue_draw(&CompositorDrawData::new(
+            ctx,
+            &main_target_resolved,
+            self.outline_mask_processor
+                .as_ref()
+                .map(|p| p.final_voronoi_texture()),
+            &config.outline_config,
+        ));
 
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
@@ -351,7 +367,7 @@ impl ViewBuilder {
                         }
                     };
 
-                    let tan_half_fov = glam::vec2(f32::INFINITY, f32::INFINITY);
+                    let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
                     let pixel_world_size_from_camera_distance =
                         vertical_world_size / config.resolution_in_pixel[1] as f32;
 
@@ -389,16 +405,11 @@ impl ViewBuilder {
             config.auto_size_config.line_radius
         };
 
-        // See `depth_offset.wgsl`.
-        // Factor applied to depth offsets.
-        let depth_offset_factor = 1.0e-08; // Value determined by experimentation. Quite close to the f32 machine epsilon but a bit lower.
-
-        {
-            let mut frame_uniform_buffer_cpu = ctx
-                .cpu_write_gpu_read_belt
-                .lock()
-                .allocate::<FrameUniformBuffer>(&ctx.device, &mut ctx.gpu_resources.buffers, 1);
-            frame_uniform_buffer_cpu.push(&FrameUniformBuffer {
+        // Setup frame uniform buffer
+        let frame_uniform_buffer = create_and_fill_uniform_buffer(
+            ctx,
+            format!("{:?} - frame uniform buffer", config.name).into(),
+            FrameUniformBuffer {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
@@ -411,25 +422,18 @@ impl ViewBuilder {
                 auto_size_points: auto_size_points.0,
                 auto_size_lines: auto_size_lines.0,
 
-                depth_offset_factor,
-                _padding: glam::Vec3::ZERO,
-            });
-            frame_uniform_buffer_cpu.copy_to_buffer(
-                ctx.active_frame.frame_global_command_encoder(&ctx.device),
-                &frame_uniform_buffer,
-                0,
-            );
-        }
+                end_padding: Default::default(),
+            },
+        );
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
             &mut ctx.gpu_resources,
             &ctx.device,
-            &frame_uniform_buffer,
+            frame_uniform_buffer,
         );
 
         self.setup = Some(ViewTargetSetup {
             name: config.name,
-            compositor_draw_data: tonemapping_draw_data,
             bind_group_0,
             main_target_msaa: hdr_render_target_msaa,
             main_target_resolved,
@@ -440,25 +444,45 @@ impl ViewBuilder {
         Ok(self)
     }
 
+    fn draw_phase<'a>(
+        &'a self,
+        ctx: &'a RenderContext,
+        phase: DrawPhase,
+        pass: &mut wgpu::RenderPass<'a>,
+    ) {
+        crate::profile_function!();
+
+        for queued_draw in &self.queued_draws {
+            if queued_draw.participated_phases.contains(&phase) {
+                let res = (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
+                    .with_context(|| format!("draw call during phase {phase:?}"));
+                if let Err(err) = res {
+                    re_log::error!(renderer=%queued_draw.renderer_name, %err,
+                        "renderer failed to draw");
+                }
+            }
+        }
+    }
+
     pub fn queue_draw<D: DrawData + Sync + Send + Clone + 'static>(
         &mut self,
         draw_data: &D,
     ) -> &mut Self {
         crate::profile_function!();
-
         self.queued_draws.push(QueuedDraw {
-            draw_func: Box::new(move |ctx, pass, draw_data| {
-                let renderer = ctx
-                    .renderers
+            draw_func: Box::new(move |ctx, phase, pass, draw_data| {
+                let renderers = ctx.renderers.read();
+                let renderer = renderers
                     .get::<D::Renderer>()
                     .context("failed to retrieve renderer")?;
                 let draw_data = draw_data
                     .downcast_ref::<D>()
                     .expect("passed wrong type of draw data");
-                renderer.draw(&ctx.gpu_resources, pass, draw_data)
+                renderer.draw(&ctx.gpu_resources, phase, pass, draw_data)
             }),
             draw_data: Box::new(draw_data.clone()),
-            sorting_index: D::Renderer::draw_order(),
+            renderer_name: std::any::type_name::<D::Renderer>(),
+            participated_phases: D::Renderer::participated_phases(),
         });
 
         self
@@ -484,10 +508,10 @@ impl ViewBuilder {
             });
 
         {
-            crate::profile_scope!("view builder main target pass");
+            crate::profile_scope!("main target pass");
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: DebugLabel::from(format!("{:?} - main pass", setup.name)).get(),
+                label: setup.name.clone().push_str(" - main pass").get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     resolve_target: Some(&setup.main_target_resolved.default_view),
@@ -506,9 +530,7 @@ impl ViewBuilder {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &setup.depth_buffer.default_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(0.0), // 0.0 == far since we're using reverse-z
-                        // Don't care about depth results afterwards.
-                        // This can have be much better perf, especially on tiler gpus.
+                        load: Self::DEFAULT_DEPTH_CLEAR,
                         store: false,
                     }),
                     stencil_ops: None,
@@ -517,12 +539,20 @@ impl ViewBuilder {
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
-            self.queued_draws
-                .sort_by(|a, b| a.sorting_index.cmp(&b.sorting_index));
-            for queued_draw in &self.queued_draws {
-                (queued_draw.draw_func)(ctx, &mut pass, queued_draw.draw_data.as_ref())
-                    .context("drawing a view")?;
+            for phase in [DrawPhase::Opaque, DrawPhase::Background] {
+                self.draw_phase(ctx, phase, &mut pass);
             }
+        }
+
+        if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
+            crate::profile_scope!("outlines");
+            {
+                crate::profile_scope!("outline mask pass");
+                let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
+                pass.set_bind_group(0, &setup.bind_group_0, &[]);
+                self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass);
+            }
+            outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?;
         }
 
         Ok(encoder.finish())
@@ -555,13 +585,8 @@ impl ViewBuilder {
         );
 
         pass.set_bind_group(0, &setup.bind_group_0, &[]);
+        self.draw_phase(ctx, DrawPhase::Compositing, pass);
 
-        let tonemapper = ctx
-            .renderers
-            .get::<Compositor>()
-            .context("get compositor")?;
-        tonemapper
-            .draw(&ctx.gpu_resources, pass, &setup.compositor_draw_data)
-            .context("composite into main view")
+        Ok(())
     }
 }

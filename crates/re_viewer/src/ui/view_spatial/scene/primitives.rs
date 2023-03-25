@@ -1,6 +1,9 @@
 use egui::Color32;
 use re_data_store::InstancePathHash;
-use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
+use re_renderer::{
+    renderer::{DepthCloud, MeshInstance},
+    LineStripSeriesBuilder, PointCloudBuilder,
+};
 
 use super::MeshSource;
 
@@ -23,11 +26,17 @@ pub struct SceneSpatialPrimitives {
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
+    pub depth_clouds: Vec<DepthCloud>,
+
+    pub any_outlines: bool,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
 const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
+
+const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
+const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
 impl SceneSpatialPrimitives {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
@@ -35,9 +44,13 @@ impl SceneSpatialPrimitives {
             bounding_box: macaw::BoundingBox::nothing(),
             textured_rectangles_ids: Default::default(),
             textured_rectangles: Default::default(),
-            line_strips: Default::default(),
-            points: PointCloudBuilder::new(re_ctx),
+            line_strips: LineStripSeriesBuilder::new(re_ctx)
+                .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
+            points: PointCloudBuilder::new(re_ctx)
+                .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
             meshes: Default::default(),
+            depth_clouds: Default::default(),
+            any_outlines: false,
         }
     }
 
@@ -55,60 +68,66 @@ impl SceneSpatialPrimitives {
             line_strips,
             points,
             meshes,
+            depth_clouds,
+            any_outlines: _,
         } = &self;
 
         textured_rectangles.len()
             + line_strips.vertices.len()
             + points.vertices.len()
             + meshes.len()
+            + depth_clouds.len()
     }
 
     pub fn recalculate_bounding_box(&mut self) {
         crate::profile_function!();
 
-        self.bounding_box = macaw::BoundingBox::nothing();
+        let Self {
+            bounding_box,
+            textured_rectangles_ids: _,
+            textured_rectangles,
+            line_strips,
+            points,
+            meshes,
+            depth_clouds: _, // no bbox for depth clouds
+            any_outlines: _,
+        } = self;
 
-        for rect in &self.textured_rectangles {
-            self.bounding_box.extend(rect.top_left_corner_position);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_u);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_v);
-            self.bounding_box
-                .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
+        *bounding_box = macaw::BoundingBox::nothing();
+
+        for rect in textured_rectangles {
+            bounding_box.extend(rect.top_left_corner_position);
+            bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
+            bounding_box.extend(rect.top_left_corner_position + rect.extent_v);
+            bounding_box.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
         }
 
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
         // TODO(andreas): We should keep these around to speed up picking!
-        for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
+        for (batch, vertex_iter) in points.iter_vertices_by_batch() {
             // Only use points which are an IsoTransform to update the bounding box
             // This prevents crazy bounds-increases when projecting 3d to 2d
             // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
                 let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-                self.bounding_box = self
-                    .bounding_box
-                    .union(batch_bb.transform_affine3(&transform.into()));
+                *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
             }
         }
-        for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
+        for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {
             // Only use points which are an IsoTransform to update the bounding box
             // This prevents crazy bounds-increases when projecting 3d to 2d
             // See: https://github.com/rerun-io/rerun/issues/1203
             if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
                 let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-                self.bounding_box = self
-                    .bounding_box
-                    .union(batch_bb.transform_affine3(&transform.into()));
+                *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
             }
         }
 
-        for mesh in &self.meshes {
+        for mesh in meshes {
             // TODO(jleibs): is this safe for meshes or should we be doing the equivalent of the above?
-            self.bounding_box = self
-                .bounding_box
-                .union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
+            *bounding_box =
+                bounding_box.union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
         }
     }
 
@@ -127,9 +146,9 @@ impl SceneSpatialPrimitives {
                     .iter()
                     .map(move |mesh_instance| MeshInstance {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        mesh: None, // Don't care.
                         world_from_mesh: base_transform * mesh_instance.world_from_mesh,
-                        additive_tint: mesh.additive_tint,
+                        outline_mask_ids: mesh.outline_mask_ids,
+                        ..Default::default()
                     })
             })
             .collect()

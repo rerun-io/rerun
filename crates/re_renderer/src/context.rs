@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -20,12 +20,12 @@ pub struct RenderContext {
     pub queue: Arc<wgpu::Queue>,
 
     pub(crate) shared_renderer_data: SharedRendererData,
-    pub(crate) renderers: Renderers,
+    pub(crate) renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
-    pub mesh_manager: MeshManager,
+    pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
     pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
 
@@ -97,17 +97,15 @@ impl RenderContext {
     ///
     /// Should be somewhere between 1-4, too high and we use up more memory and introduce latency,
     /// too low and we may starve the GPU.
-    /// On the web we want to go lower because a lot more memory constraint.
-    #[cfg(not(target_arch = "wasm32"))]
     const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 4;
-    #[cfg(target_arch = "wasm32")]
-    const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 2;
 
     pub fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
     ) -> Self {
+        crate::profile_function!();
+
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
 
@@ -155,22 +153,24 @@ impl RenderContext {
         };
 
         let mut resolver = crate::new_recommended_file_resolver();
-        let mut renderers = Renderers {
+        let mut renderers = RwLock::new(Renderers {
             renderers: TypeMap::new(),
-        };
+        });
 
-        let mesh_manager = MeshManager::new(
-            device.clone(),
-            queue.clone(),
-            renderers.get_or_create(
-                &shared_renderer_data,
-                &mut gpu_resources,
-                &device,
-                &mut resolver,
-            ),
-        );
+        let mesh_manager = RwLock::new(MeshManager::new(renderers.get_mut().get_or_create(
+            &shared_renderer_data,
+            &mut gpu_resources,
+            &device,
+            &mut resolver,
+        )));
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
+
+        let active_frame = ActiveFrameContext {
+            encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
+            per_frame_data_helper: TypeMap::new(),
+            frame_index: 0,
+        };
 
         RenderContext {
             device,
@@ -193,13 +193,23 @@ impl RenderContext {
 
             inflight_queue_submissions: Vec::new(),
 
-            active_frame: ActiveFrameContext { frame_global_command_encoder: None,             per_frame_data_helper: TypeMap::new(),
-                 frame_index: 0 }
+            active_frame,
         }
     }
 
     fn poll_device(&mut self) {
         crate::profile_function!();
+
+        // Browsers don't let us wait for GPU work via `poll`.
+        // * WebGPU: `poll` is a no-op as the spec doesn't specify it at all.
+        // * WebGL: Internal timeout can't go above a browser specific value.
+        //          Since wgpu ran into issues in the past with some browsers returning errors,
+        //          it uses a timeout of zero and ignores errors there.
+        //          TODO(andreas): That's not the only thing that's weird with `maintain` in general.
+        //                          See https://github.com/gfx-rs/wgpu/issues/3601
+        if cfg!(target_arch = "wasm32") {
+            return;
+        }
 
         // Ensure not too many queue submissions are in flight.
         let num_submissions_to_wait_for = self
@@ -224,12 +234,19 @@ impl RenderContext {
     pub fn begin_frame(&mut self) {
         crate::profile_function!();
 
+        // If the currently active frame still has an encoder, we need to finish it and queue it.
+        // This should only ever happen for the first frame where we created an encoder for preparatory work. Every other frame we take the encoder at submit!
+        if self.active_frame.encoder.lock().0.is_some() {
+            assert!(self.active_frame.frame_index == 0, "There was still a command encoder from the previous frame at the beginning of the current. Did you forget to call RenderContext::before_submit?");
+            self.before_submit();
+        }
+
         // Request used staging buffer back.
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
         self.cpu_write_gpu_read_belt.lock().after_queue_submit();
 
         self.active_frame = ActiveFrameContext {
-            frame_global_command_encoder: None,
+            encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
             per_frame_data_helper: TypeMap::new(),
         };
@@ -249,7 +266,7 @@ impl RenderContext {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.mesh_manager.begin_frame(frame_index);
+        self.mesh_manager.get_mut().begin_frame(frame_index);
         self.texture_manager_2d.begin_frame(frame_index);
 
         {
@@ -279,8 +296,6 @@ impl RenderContext {
                 pipeline_layouts,
             );
 
-            // Bind group maintenance must come before texture/buffer maintenance since it
-            // registers texture/buffer use
             bind_groups.begin_frame(frame_index, textures, buffers, samplers);
 
             textures.begin_frame(frame_index);
@@ -303,7 +318,8 @@ impl RenderContext {
         // Unmap all staging buffers.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
 
-        if let Some(command_encoder) = self.active_frame.frame_global_command_encoder.take() {
+        if let Some(command_encoder) = self.active_frame.encoder.lock().0.take() {
+            crate::profile_scope!("finish & submit frame-global encoder");
             let command_buffer = command_encoder.finish();
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
@@ -314,11 +330,31 @@ impl RenderContext {
     }
 }
 
-impl Drop for RenderContext {
+pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
+
+impl FrameGlobalCommandEncoder {
+    fn new(device: &wgpu::Device) -> Self {
+        Self(Some(device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label:
+                    crate::DebugLabel::from("global \"before viewbuilder\" command encoder").get(),
+            },
+        )))
+    }
+
+    /// Gets the global encoder for a frame. Only valid within a frame.
+    pub fn get(&mut self) -> &mut wgpu::CommandEncoder {
+        self.0
+            .as_mut()
+            .expect("Frame global encoder can't be accessed outside of a frame!")
+    }
+}
+
+impl Drop for FrameGlobalCommandEncoder {
     fn drop(&mut self) {
         // Close global command encoder if there is any pending.
-        // Not doing so before shutdown causes errors.
-        if let Some(encoder) = self.active_frame.frame_global_command_encoder.take() {
+        // Not doing so before shutdown causes errors!
+        if let Some(encoder) = self.0.take() {
             encoder.finish();
         }
     }
@@ -329,37 +365,11 @@ pub struct ActiveFrameContext {
     ///
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
-    frame_global_command_encoder: Option<wgpu::CommandEncoder>,
+    pub encoder: Mutex<FrameGlobalCommandEncoder>,
 
     /// Utility type map that will be cleared every frame.
     pub per_frame_data_helper: TypeMap,
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
-}
-
-impl ActiveFrameContext {
-    /// Gets or creates a command encoder that runs before all view builder encoder.
-    pub fn frame_global_command_encoder(
-        &mut self,
-        device: &wgpu::Device,
-    ) -> &mut wgpu::CommandEncoder {
-        self.frame_global_command_encoder.get_or_insert_with(|| {
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: crate::DebugLabel::from("global \"before viewbuilder\" command encoder")
-                    .get(),
-            })
-        })
-    }
-}
-
-/// Gets allocation size for a uniform buffer padded in a way that multiple can be put in a single wgpu buffer.
-///
-/// TODO(andreas): Once we have higher level buffer allocators this should be handled there.
-pub(crate) fn uniform_buffer_allocation_size<Data>(device: &wgpu::Device) -> u64 {
-    let uniform_buffer_size = std::mem::size_of::<Data>();
-    wgpu::util::align_to(
-        uniform_buffer_size as u32,
-        device.limits().min_uniform_buffer_offset_alignment,
-    ) as u64
 }

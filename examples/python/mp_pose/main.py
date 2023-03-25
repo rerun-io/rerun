@@ -14,7 +14,6 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr
-from rerun.log.annotation import AnnotationInfo, ClassDescription
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
@@ -26,15 +25,16 @@ def track_pose(video_path: str, segment: bool) -> None:
 
     rr.log_annotation_context(
         "/",
-        ClassDescription(
-            info=AnnotationInfo(label="Person"),
-            keypoint_annotations=[AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
+        rr.ClassDescription(
+            info=rr.AnnotationInfo(label="Person"),
+            keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         ),
     )
     # Use a separate annotation context for the segmentation mask.
     rr.log_annotation_context(
-        "video/mask", [AnnotationInfo(id=0, label="Background"), AnnotationInfo(id=1, label="Person", color=(0, 0, 0))]
+        "video/mask",
+        [rr.AnnotationInfo(id=0, label="Background"), rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0))],
     )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 

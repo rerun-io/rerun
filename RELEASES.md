@@ -37,14 +37,13 @@ We tag all data files (`.rrd` files) and communication protocols with the rerun 
 
 ## Releases
 Release builds of the Python Wheels are triggered by pushing a release tag to GitHub in the form `v0.2.0`.
-When doing a normal release, we tag the release commit on the `main` branch. If we are doing a patch release, we do a branch off of the latest release tag (e.g. `v0.3.0`) and cherry-pick any fixes we want into that branch.
+If we are doing a patch release, we do a branch off of the latest release tag (e.g. `v0.3.0`) and cherry-pick any fixes we want into that branch.
 
 ### Release checklist
 Copy this checklist to the the PR description, go through it from top to bottom, and check each item before moving onto the next. This is a living document. Strive to improve it on each new release.
 
-* [ ] Use `cargo +nightly udeps` to find and update outdated crates (NOT for patch releases!)
 * [ ] Create a release branch called `release-0.x.y`
-* [ ] If it is a patch release, cherry-pick the commits that should be included
+* [ ] If it is a patch release branch off `latest` and cherry-pick the commits that should be included
 * [ ] For the draft PR description, add a:
     * [ ] One-line summary of the release
     * [ ] A multi-line summary of the release
@@ -54,15 +53,17 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] `./scripts/publish_crates.sh --dry-run`
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
+    * Go through https://github.com/rerun-io/rerun/compare/latest...HEAD and manually add any important PR descriptions to the `CHANGELOG.md`, with a link to the PR (which should have a deeper explanation).
+      * You can use git log to quickly generate a list of commit headlines, use `git fetch --tags --force && git log --pretty=format:%s latest..HEAD` (fetch with `--force` is necessary to update the `latest` tag)
     * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
-* [ ] Publish new Rust crates
-* [ ] Merge PR
+* [ ] Publish the crates (see below)
 * [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
-* [ ] `git push --tags`
-* [ ] Unless this is an alpha release:
-    * `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
+    * `git push --tags`
+    * This will trigger a PyPI release when pushed
+* [ ]  `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
+* [ ] Merge PR
 * [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
 * [ ] Wait for documentation to build: https://docs.rs/releases/queue
 * [ ] Post on:
@@ -72,27 +73,52 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 
 
 ### Testing a release
-* Before pushing the release tag:
-    * [ ] `just py-run-all`
-    * [ ] Test the web viewer:
-        * [ ] `cargo run -p rerun --features web -- --web-viewer ../nyud.rrd`
-        * [ ] Test on:
-            * [ ] Chromium
-            * [ ] Firefox
-            * [ ] Mobile
-* After tagging and the CI has published:
-    * [ ] Test the Python packages from PyPI: `pip install --upgrade rerun-sdk`
+Before pushing the release tag:
+  * [ ] `just py-run-all`
+  * [ ] Test the web viewer:
+      * [ ] `cargo run -p rerun --features web_viewer -- --web-viewer ../nyud.rrd`
+      * [ ] Test on:
+          * [ ] Chromium
+          * [ ] Firefox
+          * [ ] Mobile
 
+After tagging and the CI has published:
+  * [ ] Test the Python packages from PyPI: `pip install rerun_sdk==0.3.0a1`
+  * [ ] Test rust install version: `cargo install -f rerun@0.3.0-alpha.1 -F web_viewer && rerun --web-viewer api.rrd`
+  * [ ] Test rust crate: Modify Cargo.toml of any example to not point to the workspace
+    * [ ] run with `--serve` to test web player
 
-## To do before first release
-* [ ] Add version numbers to `.rrd` files and communication protocols
-* [ ] Find a tool that auto-updates our `CHANGELOG.md` on each merged PR
-* [ ] See if we can use [`cargo-release`](https://github.com/crate-ci/cargo-release)
-* [ ] Write instructions for how to publish the Python wheels
-* [ ] Remove all crates from `[patch.crates-io]` in the main `Cargo.toml`
-    * [ ] Release new `egui`
-    * [ ] Update wgpu
-    * [ ] Either try to get a new `arrow2` and `polars` published, or use unreleased versions of both
+Checklist for testing alpha releases:
+* Windows
+  * [ ] Python Wheel
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust crate
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust install
+    * [ ] Web
+    * [ ] Native
+* Linux
+  * [ ] Python Wheel
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust crate
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust install
+    * [ ] Web
+    * [ ] Native
+* Mac
+  * [ ] Python Wheel
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust crate
+    * [ ] Web
+    * [ ] Native
+  * [ ] Rust install
+    * [ ] Web
+    * [ ] Native
 
 
 ## Publishing

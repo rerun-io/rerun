@@ -4,17 +4,25 @@ use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
 
-use rerun::components::{
-    ColorRGBA, LineStrip3D, Point3D, Quaternion, Radius, Rigid3, Transform, Vec3D,
+use rerun::{
+    components::{ColorRGBA, LineStrip3D, Point3D, Quaternion, Radius, Rigid3, Transform, Vec3D},
+    demo_util::{bounce_lerp, color_spiral},
+    external::glam,
+    time::{Time, TimeType, Timeline},
+    MsgSender, MsgSenderError, Session,
 };
-use rerun::demo_util::{bounce_lerp, color_spiral};
-use rerun::external::glam;
-use rerun::time::{Time, TimeType, Timeline};
-use rerun::{MsgSender, MsgSenderError, Session};
 
 const NUM_POINTS: usize = 100;
 
-fn run(mut session: Session) -> Result<(), MsgSenderError> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let recording_info = rerun::new_recording_info("DNA Abacus");
+    rerun::native_viewer::spawn(recording_info, |session| {
+        run(&session).unwrap();
+    })?;
+    Ok(())
+}
+
+fn run(session: &Session) -> Result<(), MsgSenderError> {
     let stable_time = Timeline::new("stable_time", TimeType::Time);
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
@@ -25,14 +33,14 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
         .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors1.iter().copied().map(ColorRGBA::from).collect_vec())?
         .with_splat(Radius(0.08))?
-        .send(&mut session)?;
+        .send(session)?;
 
     MsgSender::new("dna/structure/right")
         .with_time(stable_time, 0)
         .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors2.iter().copied().map(ColorRGBA::from).collect_vec())?
         .with_splat(Radius(0.08))?
-        .send(&mut session)?;
+        .send(session)?;
 
     let scaffolding = points1
         .iter()
@@ -47,7 +55,7 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
         .with_time(stable_time, 0)
         .with_component(&scaffolding)?
         .with_splat(ColorRGBA::from([128, 128, 128, 255]))?
-        .send(&mut session)?;
+        .send(session)?;
 
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
@@ -78,7 +86,7 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
             .with_component(&beads)?
             .with_component(&colors)?
             .with_splat(Radius(0.06))?
-            .send(&mut session)?;
+            .send(session)?;
 
         MsgSender::new("dna/structure")
             .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
@@ -89,14 +97,8 @@ fn run(mut session: Session) -> Result<(), MsgSenderError> {
                 )),
                 ..Default::default()
             })])?
-            .send(&mut session)?;
+            .send(session)?;
     }
 
     Ok(())
-}
-
-fn main() {
-    let session = Session::init("DNA Abacus", true);
-
-    session.spawn(run).unwrap();
 }

@@ -4,11 +4,7 @@ use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     component_types::InstanceKey,
     external::arrow2,
-    external::arrow2_convert::{
-        deserialize::{ArrowArray, ArrowDeserialize},
-        field::ArrowField,
-    },
-    msg_bundle::Component,
+    msg_bundle::{Component, DeserializableComponent},
     ComponentName,
 };
 use re_query::ComponentWithInstances;
@@ -74,10 +70,8 @@ impl Default for ComponentUiRegistry {
 }
 
 impl ComponentUiRegistry {
-    fn add<C>(&mut self)
+    fn add<C: DeserializableComponent + DataUi>(&mut self)
     where
-        C: Component + DataUi + ArrowDeserialize + ArrowField<Type = C> + 'static,
-        C::ArrayType: ArrowArray,
         for<'a> &'a C::ArrayType: IntoIterator,
     {
         self.components.insert(

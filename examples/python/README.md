@@ -6,6 +6,10 @@ Read more about our examples at <https://www.rerun.io/docs/getting-started/examp
 ## Setup
 First install the Rerun Python SDK with `pip install rerun-sdk`
 
+> Note: Make sure your SDK version matches the code in the examples.
+For example, if your SDK version is `0.3.1`, check out the matching tag
+for this repository by running `git checkout v0.3.1`.
+
 ## Dependencies
 Each example comes with its own set of dependencies listed in a `requirements.txt` file. For example, to install dependencies and run the toy `car` example (which doesn't need to download any data) run:
 

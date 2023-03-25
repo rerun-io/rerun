@@ -6,7 +6,7 @@ where
     T: Clone + Default + serde::Serialize,
     for<'de2> T: serde::Deserialize<'de2>,
 {
-    /// The user explicitely specified what they wanted
+    /// The user explicitly specified what they wanted
     UserEdited(T),
 
     /// The value is determined automatically.

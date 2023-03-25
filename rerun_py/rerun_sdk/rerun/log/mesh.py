@@ -1,9 +1,14 @@
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.log import (
+    Colors,
+    _normalize_colors,
+)
+from rerun.log.log_decorator import log_decorator
 
 __all__ = [
     "log_mesh",
@@ -11,37 +16,41 @@ __all__ = [
 ]
 
 
+@log_decorator
 def log_mesh(
     entity_path: str,
-    positions: npt.NDArray[np.float32],
+    positions: Any,
     *,
-    indices: Optional[npt.NDArray[np.uint32]] = None,
-    normals: Optional[npt.NDArray[np.float32]] = None,
-    albedo_factor: Optional[npt.NDArray[np.float32]] = None,
+    indices: Optional[Any] = None,
+    normals: Optional[Any] = None,
+    albedo_factor: Optional[Any] = None,
+    vertex_colors: Optional[Colors] = None,
     timeless: bool = False,
 ) -> None:
     """
     Log a raw 3D mesh by specifying its vertex positions, and optionally indices, normals and albedo factor.
 
-    The data is _always_ interpreted as a triangle list:
-
-    * `positions` is a flattened array of 3D points, i.e. its length must be divisible by 3.
-    * `indices`, if specified, is a flattened array of indices that describe the mesh's faces,
-      i.e. its length must be divisible by 3.
-    * `normals`, if specified, is a flattened array of 3D vectors that describe the normal
-      for each vertex, i.e. its length must be divisible by 3 and more importantly it has to be
-      equal to the length of `positions`.
-    * `albedo_factor`, if specified, is either a linear, unmultiplied, normalized RGB (vec3) or
-      RGBA (vec4) value.
+    You can also use [`rerun.log_mesh_file`] to log .gltf, .glb, .obj, etc.
 
     Example:
     -------
     ```
     # A simple red triangle:
-    positions = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
-    indices = np.array([0, 1, 2])
-    normals = np.array([0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0])
-    albedo_factor = np.array([1.0, 0.0, 0.0])
+    rerun.log_mesh(
+        "world/mesh",
+        positions = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0]
+        ],
+        indices = [0, 1, 2],
+        normals = [
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0]
+        ],
+        albedo_factor = [1.0, 0.0, 0.0],
+    )
     ```
 
     Parameters
@@ -49,51 +58,63 @@ def log_mesh(
     entity_path:
         Path to the mesh in the space hierarchy
     positions:
-        A flattened array of 3D points
+        An array of 3D points.
+        If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
     indices:
-        Optional flattened array of indices that describe the mesh's faces
+        If specified, is a flattened array of indices that describe the mesh's triangles,
+        i.e. its length must be divisible by 3.
     normals:
-        Optional flattened array of 3D vectors that describe the normal of each vertices
+        If specified, is a (potentially flattened) array of 3D vectors that describe the normal for each
+        vertex, i.e. the total number of elements must be divisible by 3 and more importantly, `len(normals)` should be
+        equal to `len(positions)`.
     albedo_factor:
-        Optional RGB(A) color for the albedo factor of the mesh, aka base color factor.
+        Optional color multiplier of the mesh using RGB or unmuliplied RGBA in linear 0-1 space.
+    vertex_colors:
+        Optional array of RGB(a) vertex colors
     timeless:
         If true, the mesh will be timeless (default: False)
 
     """
 
-    if not bindings.is_enabled():
-        return
+    positions = np.asarray(positions, dtype=np.float32).flatten()
 
-    positions = positions.flatten().astype(np.float32)
     if indices is not None:
-        indices = indices.flatten().astype(np.uint32)
+        indices = np.asarray(indices, dtype=np.uint32).flatten()
     if normals is not None:
-        normals = normals.flatten().astype(np.float32)
+        normals = np.asarray(normals, dtype=np.float32).flatten()
     if albedo_factor is not None:
-        albedo_factor = albedo_factor.flatten().astype(np.float32)
+        albedo_factor = np.asarray(albedo_factor, dtype=np.float32).flatten()
+    if vertex_colors is not None:
+        vertex_colors = _normalize_colors(vertex_colors)
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(entity_path, [positions.flatten()], [indices], [normals], [albedo_factor], timeless)
+    bindings.log_meshes(
+        entity_path,
+        position_buffers=[positions.flatten()],
+        vertex_color_buffers=[vertex_colors],
+        index_buffers=[indices],
+        normal_buffers=[normals],
+        albedo_factors=[albedo_factor],
+        timeless=timeless,
+    )
 
 
+@log_decorator
 def log_meshes(
     entity_path: str,
-    position_buffers: Sequence[npt.NDArray[np.float32]],
+    position_buffers: Sequence[npt.ArrayLike],
     *,
-    index_buffers: Sequence[Optional[npt.NDArray[np.uint32]]],
-    normal_buffers: Sequence[Optional[npt.NDArray[np.float32]]],
-    albedo_factors: Sequence[Optional[npt.NDArray[np.float32]]],
+    vertex_color_buffers: Sequence[Optional[Colors]],
+    index_buffers: Sequence[Optional[npt.ArrayLike]],
+    normal_buffers: Sequence[Optional[npt.ArrayLike]],
+    albedo_factors: Sequence[Optional[npt.ArrayLike]],
     timeless: bool = False,
 ) -> None:
     """
     Log multiple raw 3D meshes by specifying their different buffers and albedo factors.
 
     To learn more about how the data within these buffers is interpreted and laid out, refer
-    to `log_mesh`'s documentation.
-
-    * If specified, `index_buffers` must have the same length as `position_buffers`.
-    * If specified, `normal_buffers` must have the same length as `position_buffers`.
-    * If specified, `albedo_factors` must have the same length as `position_buffers`.
+    to the documentation for [`rerun.log_mesh`].
 
     Parameters
     ----------
@@ -101,6 +122,8 @@ def log_meshes(
         Path to the mesh in the space hierarchy
     position_buffers:
         A sequence of position buffers, one for each mesh.
+    vertex_color_buffers:
+        An optional sequence of vertex color buffers, one for each mesh.
     index_buffers:
         An optional sequence of index buffers, one for each mesh.
     normal_buffers:
@@ -112,16 +135,24 @@ def log_meshes(
 
     """
 
-    if not bindings.is_enabled():
-        return
-
-    position_buffers = [p.flatten().astype(np.float32) for p in position_buffers]
+    position_buffers = [np.asarray(p, dtype=np.float32).flatten() for p in position_buffers]
+    if vertex_color_buffers is not None:
+        vertex_color_buffers = [_normalize_colors(c) for c in vertex_color_buffers]
     if index_buffers is not None:
-        index_buffers = [i.flatten().astype(np.uint32) if i else None for i in index_buffers]
+        index_buffers = [np.asarray(i, dtype=np.uint32).flatten() if i else None for i in index_buffers]
     if normal_buffers is not None:
-        normal_buffers = [n.flatten().astype(np.float32) if n else None for n in normal_buffers]
+        normal_buffers = [np.asarray(n, dtype=np.float32).flatten() if n else None for n in normal_buffers]
     if albedo_factors is not None:
-        albedo_factors = [af.flatten().astype(np.float32) if af else None for af in albedo_factors]
+        albedo_factors = [np.asarray(af, dtype=np.float32).flatten() if af else None for af in albedo_factors]
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_meshes(entity_path, position_buffers, index_buffers, normal_buffers, albedo_factors, timeless)
+
+    bindings.log_meshes(
+        entity_path,
+        position_buffers=position_buffers,
+        vertex_color_buffers=vertex_color_buffers,
+        index_buffers=index_buffers,
+        normal_buffers=normal_buffers,
+        albedo_factors=albedo_factors,
+        timeless=timeless,
+    )

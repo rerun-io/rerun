@@ -8,12 +8,19 @@ on:
       - "main"
     tags:
       - "v*.*.*" # on release tag
+  workflow_dispatch:
+    inputs:
+      force_build_wheel:
+        description: "Build python wheels"
+        required: true
+        default: false
+        type: boolean
 
 env:
   PYTHON_VERSION: "3.8"
   PRE_RELEASE_INSTRUCTIONS: |
     ## Installing the pre-release Python SDK
-    1. Download the correct `.whl`. For Mac M1/M2, grab the "universal2" `.whl`
+    1. Download the correct `.whl`.
     2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
     3. Test it: `rerun --version`
   UBUNTU_REQUIRED_PKGS: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
@@ -59,8 +66,8 @@ jobs:
 
   matrix-setup:
     # Building all the wheels is expensive, so we only run this job when we push (to main or release tags),
-    # or if the PR has the 'build wheels' label for explicit testing of wheels.
-    if: github.event_name == 'push' || contains( github.event.pull_request.labels.*.name, '🛞 build wheels')
+    # or if the job was manually triggered with `force_build_wheel` set to true.
+    if: github.event_name == 'push' || github.event.inputs.force_build_wheel
     runs-on: ubuntu-latest
 
     outputs:
@@ -75,22 +82,15 @@ jobs:
         env:
           JOB_CONTEXT: ${{ toJson(job) }}
         run: echo "$JOB_CONTEXT"
-      # Sets TAGGED_OR_MAIN if this workflow is running on a tag or the main branch.
-      - name: Set TAGGED_OR_MAIN
-        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
-        run: echo "TAGGED_OR_MAIN=1" >> $GITHUB_ENV
 
       - id: set-matrix
         shell: bash
         run: |
           matrix=()
-
-          if [[ $TAGGED_OR_MAIN ]]; then
-            # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
-            matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
-          fi
-          matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
-          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.5"}}')
+          matrix+=('{"platform": "macos", "target": "x86_64-apple-darwin", "runs_on": "macos-latest"},')
+          matrix+=('{"platform": "macos", "target": "aarch64-apple-darwin", "runs_on": "macos-latest"},')
+          matrix+=('{"platform": "windows", "target": "x86_64-pc-windows-msvc", "runs_on": "windows-latest-8-cores"},')
+          matrix+=('{"platform": "linux", "target": "x86_64-unknown-linux-gnu", "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.6"}}')
 
           echo "Matrix values: ${matrix[@]}"
 
@@ -182,11 +182,11 @@ jobs:
 
       - name: Patch Cargo.toml for pre-release
         if: github.ref == 'refs/heads/main'
-        # After patching the pre-release version, run cargo check.
+        # After patching the pre-release version, run cargo update.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
           python3 scripts/version_util.py --patch_prerelease
-          cargo check
+          cargo update -w
 
       - name: Version check for tagged-release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -204,9 +204,9 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
+            --target ${{ matrix.target }}
             --no-default-features
             --features pypi
-            --universal2
             --out pre-dist
 
       - name: Install built wheel
@@ -239,9 +239,10 @@ jobs:
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
+          mkdir rrd
           pip install -r examples/python/colmap/requirements.txt
-          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
-          cp colmap.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap.rrd
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          cp rrd/colmap_fiat.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
 
       - name: Repack the wheel
         shell: bash
@@ -255,9 +256,63 @@ jobs:
           name: wheels
           path: dist
 
+      # All platforms are currently creating the same rrd file, upload one of them
+      - name: Save RRD artifact
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: rrd
+          path: rrd
+
   # ---------------------------------------------------------------------------
 
-  # See https://github.com/marvinpinto/action-automatic-releases#automatically-generate-a-pre-release-when-changes-land-on-master for details
+  upload_rrd:
+    name: Upload RRD to GCloud
+    permissions:
+      contents: "read"
+      id-token: "write"
+    needs: [wheels]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: rrd
+          path: rrd
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Upload RRD"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/commit/${{env.SHORT_SHA}}"
+          parent: false
+
+      - name: "Upload RRD (prerelease)"
+        if: "!startsWith(github.ref , 'refs/tags/v')"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/prerelease"
+          parent: false
+
+      - name: "Upload RRD (tagged)"
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/version/${{github.ref_name}}"
+          parent: false
+
+  # See https://github.com/ncipollo/release-action
   pre-release:
     name: Pre Release
     needs: [wheels]
@@ -270,17 +325,31 @@ jobs:
           name: wheels
           path: dist
 
+      # First delete the old prerelease. If we don't do this, we don't get things like
+      # proper source-archives and changelog info.
+      # https://github.com/dev-drprasad/delete-tag-and-release
+      - uses: dev-drprasad/delete-tag-and-release@v0.2.1
+        with:
+          tag_name: prerelease
+          delete_release: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create the actual prerelease
+      # https://github.com/ncipollo/release-action
       - name: GitHub Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: ncipollo/release-action@v1.12.0
         with:
           body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
           prerelease: true
-          files: dist/*
+          artifacts: dist/*
           name: "Development Build"
-          tag_name: "latest"
+          tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}
-          generate_release_notes: true
-          append_body: true
+          generateReleaseNotes: true
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
 
   # ---------------------------------------------------------------------------
 
@@ -297,13 +366,14 @@ jobs:
           name: wheels
           path: dist
 
+      # https://github.com/ncipollo/release-action
       - name: GitHub Release
-        uses: softprops/action-gh-release@v0.1.15
+        uses: ncipollo/release-action@v1.12.0
         with:
-          prerelease: false
-          files: dist/*
+          prerelease: true
+          artifacts: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
-          generate_release_notes: true
+          generateReleaseNotes: true
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
@@ -368,14 +438,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy via mike # https://github.com/jimporter/mike
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python -u ${{github.ref_name}} latest
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{github.ref_name}} latest
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
 
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy tag via mike # https://github.com/jimporter/mike
         if: github.ref == 'refs/heads/main'
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python HEAD
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python HEAD
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
