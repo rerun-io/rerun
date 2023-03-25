@@ -57,9 +57,10 @@ pub struct EntityProperties {
 
     /// Should the depth texture be backprojected into a point cloud?
     ///
-    /// Only applies to tensors with meaning=depth that are affected by a pinhole transform when
-    /// in a spatial view, using 3D navigation.
-    pub backproject_depth: bool,
+    /// Only applies to tensors with meaning=depth that are affected by a pinhole transform.
+    ///
+    /// The default for 3D views is `true`, but for 2D views it is `false`.
+    pub backproject_depth: EditableAutoValue<bool>,
 
     /// How many depth units per world-space unit. e.g. 1000 for millimeters.
     ///
@@ -86,7 +87,7 @@ impl EntityProperties {
                 .or(&child.pinhole_image_plane_distance)
                 .clone(),
 
-            backproject_depth: self.backproject_depth && child.backproject_depth,
+            backproject_depth: self.backproject_depth.or(&child.backproject_depth).clone(),
             depth_from_world_scale: self
                 .depth_from_world_scale
                 .or(&child.depth_from_world_scale)
@@ -108,7 +109,7 @@ impl Default for EntityProperties {
             interactive: true,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
-            backproject_depth: true,
+            backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }

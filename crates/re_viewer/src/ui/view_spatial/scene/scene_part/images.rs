@@ -153,7 +153,8 @@ impl ImagesPart {
 
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                if properties.backproject_depth && tensor.meaning == TensorDataMeaning::Depth {
+                if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth
+                {
                     let query = ctx.current_query();
                     let pinhole_ent_path =
                         crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
@@ -162,7 +163,7 @@ impl ImagesPart {
                         // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                         // transform of the projection plane, which is of no use to us here.
                         // What we want are the extrinsics of the depth camera!
-                        Self::process_entity_view_as_depth_cloud(
+                        if Self::process_entity_view_as_depth_cloud(
                             scene,
                             ctx,
                             transforms,
@@ -170,8 +171,11 @@ impl ImagesPart {
                             &tensor,
                             &pinhole_ent_path,
                             entity_highlight,
-                        );
-                        return Ok(());
+                        )
+                        .is_ok()
+                        {
+                            return Ok(());
+                        }
                     };
                 }
 
@@ -268,7 +272,7 @@ impl ImagesPart {
         tensor: &Tensor,
         pinhole_ent_path: &EntityPath,
         entity_highlight: &SpaceViewOutlineMasks,
-    ) {
+    ) -> Result<(), ()> {
         crate::profile_function!();
 
         let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
@@ -277,7 +281,7 @@ impl ImagesPart {
             &ctx.current_query(),
         ) else {
             re_log::warn_once!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}");
-            return;
+            return Err(());
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
@@ -286,7 +290,7 @@ impl ImagesPart {
             .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
         let Some(world_from_obj) = world_from_obj else {
             re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
-            return;
+            return Err(());
         };
 
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
@@ -299,7 +303,7 @@ impl ImagesPart {
                     "Tensor datatype {} is not supported for backprojection",
                     tensor.dtype()
                 );
-                return;
+                return Err(());
             }
         };
 
@@ -351,6 +355,8 @@ impl ImagesPart {
             colormap,
             outline_mask_id: entity_highlight.overall,
         });
+
+        Ok(())
     }
 }
 

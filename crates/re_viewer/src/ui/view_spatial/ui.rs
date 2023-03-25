@@ -175,7 +175,7 @@ impl ViewSpatialState {
                 &entity_path,
                 scene_size,
             );
-            Self::update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
+            self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
@@ -211,16 +211,23 @@ impl ViewSpatialState {
     }
 
     fn update_depth_cloud_property_heuristics(
+        &self,
         ctx: &mut ViewerContext<'_>,
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-    ) {
-        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
-        if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
-            let tensor = tensor.as_ref().unwrap();
+    ) -> Option<()> {
+        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query)?;
 
-            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+        let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+        if properties.backproject_depth.is_auto() {
+            properties.backproject_depth = EditableAutoValue::Auto(
+                tensor.meaning == TensorDataMeaning::Depth
+                    && *self.nav_mode.get() == SpatialNavigationMode::ThreeD,
+            );
+        }
+
+        if tensor.meaning == TensorDataMeaning::Depth {
             if properties.depth_from_world_scale.is_auto() {
                 let auto = tensor.meter.unwrap_or_else(|| {
                     use re_log_types::component_types::TensorTrait as _;
@@ -241,6 +248,8 @@ impl ViewSpatialState {
                 .data_blueprints_individual()
                 .set(entity_path.clone(), properties);
         }
+
+        Some(())
     }
 
     pub fn selection_ui(

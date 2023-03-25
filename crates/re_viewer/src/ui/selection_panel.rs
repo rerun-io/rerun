@@ -498,14 +498,21 @@ fn depth_props_ui(
     let pinhole_ent_path =
         crate::misc::queries::closest_pinhole_transform(ctx, entity_path, &query)?;
 
-    ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
+    let mut backproject_depth = *entity_props.backproject_depth.get();
+
+    if ui
+        .checkbox(&mut backproject_depth, "Backproject Depth")
         .on_hover_text(
             "If enabled, the depth texture will be backprojected into a point cloud rather \
                 than simply displayed as an image.",
-        );
+        )
+        .changed()
+    {
+        entity_props.backproject_depth = EditableAutoValue::UserEdited(backproject_depth);
+    }
     ui.end_row();
 
-    if entity_props.backproject_depth {
+    if backproject_depth {
         ui.label("Pinhole");
         ctx.entity_path_button(ui, None, &pinhole_ent_path)
             .on_hover_text(
