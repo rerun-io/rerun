@@ -605,7 +605,7 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
 
     OutlineConfig {
         outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.5).at_least(0.5),
-        color_layer_a: selection_outline_color,
-        color_layer_b: hover_outline_color,
+        color_layer_a: hover_outline_color,
+        color_layer_b: selection_outline_color,
     }
 }
