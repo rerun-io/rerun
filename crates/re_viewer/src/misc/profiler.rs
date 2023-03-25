@@ -48,12 +48,10 @@ fn start_puffin_viewer() {
         crate::misc::Clipboard::with(|cliboard| cliboard.set_text(cmd.clone()));
         re_log::warn!("Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}");
 
-        /*
         rfd::MessageDialog::new()
             .set_level(rfd::MessageLevel::Info)
             .set_title("puffin_viewer required")
             .set_description(&format!("To view the profiling data, run the following command:\n\n{cmd}\n\n(it has been copied to your clipboard)"))
             .show();
-        */
     }
 }
