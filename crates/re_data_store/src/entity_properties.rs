@@ -86,7 +86,7 @@ impl EntityProperties {
                 .or(&child.pinhole_image_plane_distance)
                 .clone(),
 
-            backproject_depth: self.backproject_depth || child.backproject_depth,
+            backproject_depth: self.backproject_depth && child.backproject_depth,
             depth_from_world_scale: self
                 .depth_from_world_scale
                 .or(&child.depth_from_world_scale)

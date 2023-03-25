@@ -488,14 +488,15 @@ fn depth_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) -> Option<()> {
-    let query = ctx.current_query();
-    let pinhole_ent_path =
-        crate::misc::queries::closest_pinhole_transform(ctx, entity_path, &query)?;
-    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query)?;
+    crate::profile_function!();
 
+    let query = ctx.current_query();
+    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query)?;
     if tensor.meaning != TensorDataMeaning::Depth {
         return Some(());
     }
+    let pinhole_ent_path =
+        crate::misc::queries::closest_pinhole_transform(ctx, entity_path, &query)?;
 
     ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
         .on_hover_text(
