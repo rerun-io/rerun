@@ -95,9 +95,7 @@ nohash-hasher = "0.2"
 ordered-float = { version = "3.2", features = ["serde"] }
 poll-promise = "0.2"
 rand = { version = "0.8", features = ["small_rng"] }
-# TODO(jleibs): Update after next release of rfd
-#rfd = { version = "0.11", default_features = false, features = ["xdg-portal"] }
-rfd = { git = "https://github.com/rerun-io/rfd.git", rev = "0eca3c36243bc4f", default_features = false, features = [
+rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",
 ] }
 serde = { version = "1", features = ["derive"] }

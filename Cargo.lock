@@ -4523,12 +4523,15 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.11.1"
-source = "git+https://github.com/rerun-io/rfd.git?rev=0eca3c36243bc4f#0eca3c36243bc4f816bb7e074fd7d6fdaaa5b4b7"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cb2988ec50c9bcdb0c012b89643a6094a35a785a37897211ee62e1639342f7b"
 dependencies = [
  "ashpd",
+ "async-io",
  "block",
  "dispatch",
+ "futures-util",
  "js-sys",
  "log",
  "objc",
