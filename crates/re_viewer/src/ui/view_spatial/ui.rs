@@ -315,14 +315,13 @@ impl ViewSpatialState {
                 .on_hover_text("The virtual camera which controls what is shown on screen.");
             ui.vertical(|ui| {
                 let mut nav_mode = *self.nav_mode.get();
-                let changed =  egui::ComboBox::from_id_source("nav_mode")
+                let mut changed = false;
+                egui::ComboBox::from_id_source("nav_mode")
                     .selected_text(nav_mode)
                     .show_ui(ui, |ui| {
                         ui.style_mut().wrap = Some(false);
                         ui.set_min_width(64.0);
 
-                        let mut changed = false;
-
                         changed |= ui.selectable_value(
                             &mut nav_mode,
                             SpatialNavigationMode::TwoD,
@@ -334,9 +333,7 @@ impl ViewSpatialState {
                             SpatialNavigationMode::ThreeD,
                             SpatialNavigationMode::ThreeD,
                         ).changed();
-
-                        changed
-                    }).inner.unwrap_or(false);
+                    });
                     if changed {
                         self.nav_mode = EditableAutoValue::UserEdited(nav_mode);
                     }
