@@ -38,7 +38,7 @@ def log_annotated_bboxes(
     annotation: Dict[str, Any]
 ) -> Tuple[npt.NDArray[np.float64], List[str], List[Tuple[int, int, int, int]]]:
     """
-    Logs annotated bounding boxes to Rerun.
+    Logs annotated oriented bounding boxes to Rerun.
 
     annotation json file
     |  |-- label: object name of bounding box
@@ -56,7 +56,7 @@ def log_annotated_bboxes(
     # Create a colormap
     colormap = plt.cm.get_cmap("viridis")
 
-    # Generate the array of colors (0-1 range)
+    # Generate the array of colors (0-1 range) rgba
     color_array_float = [colormap(pos) for pos in color_positions]
 
     # Convert the color values from 0-1 to 0-255
@@ -66,6 +66,7 @@ def log_annotated_bboxes(
         uid = label_info["uid"]
         label = label_info["label"]
 
+        # TODO(pablovela5620): half this value once #1701 is resolved
         scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
         transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
         rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
@@ -110,11 +111,11 @@ def compute_box_3d(
     return bbox3d_raw
 
 
-def generate_line_segments(
-    enitity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Tuple[int, int, int, int]
+def log_line_segments(
+    enitity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Tuple[int, int, int, int], label: str
 ) -> None:
     """
-    Generates line segments for each object's bounding box.
+    Generates line segments for each object's bounding box in 2d.
 
     Box corner order that we return is of the format below:
       6 -------- 7
@@ -128,7 +129,19 @@ def generate_line_segments(
     :param bboxes_2d_filtered:
         A numpy array of shape (8, 2), representing the filtered 2D keypoints of the 3D bounding boxes.
     :return: A numpy array of shape (24, 2), representing the line segments for each object's bounding boxes.
+             Even and odd indices represent the start and end points of each line segment respectively.
     """
+
+    # Calculate the centroid of the 2D keypoints
+    valid_points = bboxes_2d_filtered[~np.isnan(bboxes_2d_filtered).any(axis=1)]
+
+    # log centroid and add label so that object label is visible in the 2d view
+    if valid_points.size > 0:
+        centroid = valid_points.mean(axis=0)
+        rr.log_point(f"{enitity_path}/centroid", centroid, color=color, label=label)
+    else:
+        pass
+
     # fmt: off
     segments = np.array([
         # bottom of bbox
@@ -173,10 +186,8 @@ def project_3d_bboxes_to_2d_keypoints(
     Returns
     -------
     bboxes_2d_filtered:
-
-    Raises
-    ------
-        AssertionError: If the input string does not contain 7 tokens.
+        A numpy array of shape (nObjects, 8, 2), representing the 2D keypoints of the 3D bounding boxes. That
+        are within the image frame.
     """
 
     translation, rotation_q = camera_from_world
@@ -226,15 +237,16 @@ def log_camera(
     bbox_labels: List[str],
     color_list: List[Tuple[int, int, int, int]],
 ) -> None:
-    """Logs camera intrinsics and extrinsics to Rerun."""
+    """Logs camera trasnform and 3D bounding boxes in the image frame."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
 
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
+    # Log line segments for each bounding box in the image
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
-        generate_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), color_list[i])
+        log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), color_list[i], label)
 
     rr.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
@@ -318,7 +330,7 @@ def log_arkit(recording_path: Path) -> None:
     lowres_frame_ids.sort()
 
     # dict of timestamp to pose which is a tuple of translation and quaternion
-    poses_from_traj = {}
+    camera_from_world_dict = {}
     with open(traj_path, "r", encoding="utf-8") as f:
         trajectory = f.readlines()
 
@@ -327,7 +339,7 @@ def log_arkit(recording_path: Path) -> None:
         # round timestamp to 3 decimal places as seen in the original repo here
         # https://github.com/apple/ARKitScenes/blob/e2e975128a0a9695ea56fa215fe76b4295241538/threedod/benchmark_scripts/utils/tenFpsDataLoader.py#L247
         timestamp = f"{round(float(timestamp), 3):.3f}"
-        poses_from_traj[timestamp] = camera_from_world
+        camera_from_world_dict[timestamp] = camera_from_world
 
     rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
@@ -343,6 +355,7 @@ def log_arkit(recording_path: Path) -> None:
         timeless=True,
     )
 
+    # load the obb annotations and log them in the world frame
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
     bboxes_3d, bbox_labels, colors_list = log_annotated_bboxes(annotation)
@@ -351,23 +364,23 @@ def log_arkit(recording_path: Path) -> None:
     highres_entity_id = "world/camera_highres/image_highres"
 
     print("Processing frames…")
-    for frame_id in tqdm(lowres_frame_ids):
+    for frame_timestamp in tqdm(lowres_frame_ids):
         # frame_id is equivalent to timestamp
-        rr.set_time_seconds("time", float(frame_id))
+        rr.set_time_seconds("time", float(frame_timestamp))
         # load the lowres image and depth
-        bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_id}.png")
+        bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_timestamp}.png")
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        depth = cv2.imread(f"{lowres_depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
+        depth = cv2.imread(f"{lowres_depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
 
-        high_res_exists: bool = (image_dir / f"{video_id}_{frame_id}.png").exists()
+        high_res_exists: bool = (image_dir / f"{video_id}_{frame_timestamp}.png").exists()
 
         # Log the camera transforms:
-        if frame_id in poses_from_traj:
-            lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_id}.pincam"
+        if frame_timestamp in camera_from_world_dict:
+            lowres_intri_path = lowres_intrinsics_dir / f"{video_id}_{frame_timestamp}.pincam"
             log_camera(
                 lowres_intri_path,
-                frame_id,
-                poses_from_traj,
+                frame_timestamp,
+                camera_from_world_dict,
                 lowres_posed_entity_id,
                 bboxes_3d,
                 bbox_labels,
@@ -380,14 +393,14 @@ def log_arkit(recording_path: Path) -> None:
 
         # log the high res camera
         if high_res_exists:
-            rr.set_time_seconds("time high resolution", float(frame_id))
+            rr.set_time_seconds("time high resolution", float(frame_timestamp))
             # only low res camera has a trajectory, high res does not so need to find the closest low res frame id
-            closest_lowres_frame_id = find_closest_frame_id(frame_id, poses_from_traj)
-            highres_intri_path = intrinsics_dir / f"{video_id}_{frame_id}.pincam"
+            closest_lowres_frame_id = find_closest_frame_id(frame_timestamp, camera_from_world_dict)
+            highres_intri_path = intrinsics_dir / f"{video_id}_{frame_timestamp}.pincam"
             log_camera(
                 highres_intri_path,
                 closest_lowres_frame_id,
-                poses_from_traj,
+                camera_from_world_dict,
                 highres_entity_id,
                 bboxes_3d,
                 bbox_labels,
@@ -395,8 +408,8 @@ def log_arkit(recording_path: Path) -> None:
             )
 
             # load the highres image and depth if they exist
-            highres_bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_id}.png")
-            highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_id}.png", cv2.IMREAD_ANYDEPTH)
+            highres_bgr = cv2.imread(f"{image_dir}/{video_id}_{frame_timestamp}.png")
+            highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
             rr.log_image(f"{highres_entity_id}/rgb", highres_rgb)
