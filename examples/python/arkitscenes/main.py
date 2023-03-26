@@ -112,7 +112,7 @@ def compute_box_3d(
 
 
 def log_line_segments(
-    enitity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Tuple[int, int, int, int], label: str
+    entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Tuple[int, int, int, int], label: str
 ) -> None:
     """
     Generates line segments for each object's bounding box in 2d.
@@ -138,7 +138,7 @@ def log_line_segments(
     # log centroid and add label so that object label is visible in the 2d view
     if valid_points.size > 0:
         centroid = valid_points.mean(axis=0)
-        rr.log_point(f"{enitity_path}/centroid", centroid, color=color, label=label)
+        rr.log_point(f"{entity_path}/centroid", centroid, color=color, label=label)
     else:
         pass
 
@@ -163,7 +163,7 @@ def log_line_segments(
         bboxes_2d_filtered[3], bboxes_2d_filtered[7]
                          ], dtype=np.float32)
 
-    rr.log_line_segments(enitity_path, segments, color=color)
+    rr.log_line_segments(entity_path, segments, color=color)
 
 
 def project_3d_bboxes_to_2d_keypoints(
@@ -237,7 +237,7 @@ def log_camera(
     bbox_labels: List[str],
     color_list: List[Tuple[int, int, int, int]],
 ) -> None:
-    """Logs camera trasnform and 3D bounding boxes in the image frame."""
+    """Logs camera transform and 3D bounding boxes in the image frame."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
