@@ -63,6 +63,16 @@ impl std::fmt::Debug for EntityPathHash {
 /// Cheap to clone.
 ///
 /// Implements [`nohash_hasher::IsEnabled`].
+///
+/// ```
+/// # use re_log_types::EntityPath;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     EntityPath::data_type(),
+///     DataType::Extension("rerun.entity_path".into(), Box::new(DataType::Utf8), None),
+/// );
+/// ```
 #[derive(Clone, Eq)]
 pub struct EntityPath {
     /// precomputed hash
@@ -193,6 +203,60 @@ impl From<EntityPath> for String {
     #[inline]
     fn from(path: EntityPath) -> Self {
         path.to_string()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+use arrow2::{
+    array::{MutableUtf8ValuesArray, TryPush, Utf8Array},
+    datatypes::DataType,
+    offset::Offsets,
+};
+use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
+
+arrow2_convert::arrow_enable_vec_for_type!(EntityPath);
+
+impl ArrowField for EntityPath {
+    type Type = Self;
+
+    #[inline]
+    fn data_type() -> DataType {
+        DataType::Extension(
+            "rerun.entity_path".to_owned(),
+            Box::new(DataType::Utf8),
+            None,
+        )
+    }
+}
+
+impl ArrowSerialize for EntityPath {
+    type MutableArrayType = MutableUtf8ValuesArray<i32>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        MutableUtf8ValuesArray::<i32>::try_new(
+            <Self as ArrowField>::data_type(),
+            Offsets::new(),
+            Vec::<u8>::new(),
+        )
+        .unwrap() // literally cannot fail
+    }
+
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
+        array.try_push(v.to_string())
+    }
+}
+
+impl ArrowDeserialize for EntityPath {
+    type ArrayType = Utf8Array<i32>;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&str>) -> Option<Self> {
+        v.map(Into::into)
     }
 }
 

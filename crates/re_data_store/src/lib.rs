@@ -16,10 +16,9 @@ pub use entity_tree::*;
 pub use instance_path::*;
 pub use log_db::LogDb;
 
-use re_log_types::msg_bundle;
-
 #[cfg(feature = "serde")]
 pub use editable_auto_value::EditableAutoValue;
+use re_log_types::DataTableError;
 pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt, Timeline};
 
 // ----------------------------------------------------------------------------
@@ -30,8 +29,8 @@ pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt
 /// or how the logging SDK is being used (PEBKAC).
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error(transparent)]
-    MsgBundleError(#[from] msg_bundle::MsgBundleError),
+    #[error("Error with one the underlying data table")]
+    DataTable(#[from] DataTableError),
 
     #[error(transparent)]
     WriteError(#[from] re_arrow_store::WriteError),

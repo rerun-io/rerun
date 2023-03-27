@@ -6,9 +6,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
-    entity_path,
-    msg_bundle::MsgBundle,
-    ArrowMsg, DataRow, DataTable, Index, LogMsg, MsgId,
+    entity_path, ArrowMsg, DataRow, DataTable, Index, LogMsg, MsgId,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -20,7 +18,12 @@ const NUM_POINTS: usize = 10_000;
 #[cfg(debug_assertions)]
 const NUM_POINTS: usize = 1;
 
-criterion_group!(benches, mono_points_arrow, batch_points_arrow,);
+criterion_group!(
+    benches,
+    mono_points_arrow,
+    mono_points_arrow_batched,
+    batch_points_arrow,
+);
 criterion_main!(benches);
 
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
@@ -39,19 +42,19 @@ fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
     messages
 }
 
-fn generate_messages(bundles: &[MsgBundle]) -> Vec<LogMsg> {
-    bundles
+fn generate_messages(tables: &[DataTable]) -> Vec<LogMsg> {
+    tables
         .iter()
-        .map(|bundle| LogMsg::ArrowMsg(ArrowMsg::try_from(bundle.clone()).unwrap()))
+        .map(|table| LogMsg::ArrowMsg(ArrowMsg::try_from(table).unwrap()))
         .collect()
 }
 
-fn decode_message_bundles(messages: &[LogMsg]) -> Vec<MsgBundle> {
+fn decode_tables(messages: &[LogMsg]) -> Vec<DataTable> {
     messages
         .iter()
         .map(|log_msg| {
             if let LogMsg::ArrowMsg(arrow_msg) = log_msg {
-                MsgBundle::try_from(arrow_msg).unwrap()
+                DataTable::try_from(arrow_msg).unwrap()
             } else {
                 unreachable!()
             }
@@ -60,7 +63,7 @@ fn decode_message_bundles(messages: &[LogMsg]) -> Vec<MsgBundle> {
 }
 
 fn mono_points_arrow(c: &mut Criterion) {
-    fn generate_message_bundles() -> Vec<MsgBundle> {
+    fn generate_tables() -> Vec<DataTable> {
         (0..NUM_POINTS)
             .map(|i| {
                 DataTable::from_rows(
@@ -73,7 +76,6 @@ fn mono_points_arrow(c: &mut Criterion) {
                         (build_some_point2d(1), build_some_colors(1)),
                     )],
                 )
-                .into_msg_bundle()
             })
             .collect()
     }
@@ -82,18 +84,18 @@ fn mono_points_arrow(c: &mut Criterion) {
         let mut group = c.benchmark_group("mono_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
-            b.iter(generate_message_bundles);
+            b.iter(generate_tables);
         });
-        let bundles = generate_message_bundles();
+        let tables = generate_tables();
         group.bench_function("generate_messages", |b| {
-            b.iter(|| generate_messages(&bundles));
+            b.iter(|| generate_messages(&tables));
         });
-        let messages = generate_messages(&bundles);
+        let messages = generate_messages(&tables);
         group.bench_function("encode_log_msg", |b| {
             b.iter(|| encode_log_msgs(&messages));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&generate_message_bundles())));
+            b.iter(|| encode_log_msgs(&generate_messages(&generate_tables())));
         });
 
         let encoded = encode_log_msgs(&messages);
@@ -106,19 +108,74 @@ fn mono_points_arrow(c: &mut Criterion) {
         });
         group.bench_function("decode_message_bundles", |b| {
             b.iter(|| {
-                let bundles = decode_message_bundles(&messages);
+                let tables = decode_tables(&messages);
+                assert_eq!(tables.len(), messages.len());
+                tables
+            });
+        });
+        group.bench_function("decode_total", |b| {
+            b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
+        });
+    }
+}
+
+fn mono_points_arrow_batched(c: &mut Criterion) {
+    fn generate_table() -> DataTable {
+        DataTable::from_rows(
+            MsgId::ZERO,
+            (0..NUM_POINTS).map(|i| {
+                DataRow::from_cells2(
+                    MsgId::ZERO,
+                    entity_path!("points", Index::Sequence(i as _)),
+                    [build_frame_nr(0.into())],
+                    1,
+                    (build_some_point2d(1), build_some_colors(1)),
+                )
+            }),
+        )
+    }
+
+    {
+        let mut group = c.benchmark_group("mono_points_arrow");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        group.bench_function("generate_message_bundles", |b| {
+            b.iter(generate_table);
+        });
+        let tables = [generate_table()];
+        group.bench_function("generate_messages", |b| {
+            b.iter(|| generate_messages(&tables));
+        });
+        let messages = generate_messages(&tables);
+        group.bench_function("encode_log_msg", |b| {
+            b.iter(|| encode_log_msgs(&messages));
+        });
+        group.bench_function("encode_total", |b| {
+            b.iter(|| encode_log_msgs(&generate_messages(&[generate_table()])));
+        });
+
+        let encoded = encode_log_msgs(&messages);
+        group.bench_function("decode_log_msg", |b| {
+            b.iter(|| {
+                let decoded = decode_log_msgs(&encoded);
+                assert_eq!(decoded.len(), messages.len());
+                decoded
+            });
+        });
+        group.bench_function("decode_message_bundles", |b| {
+            b.iter(|| {
+                let bundles = decode_tables(&messages);
                 assert_eq!(bundles.len(), messages.len());
                 bundles
             });
         });
         group.bench_function("decode_total", |b| {
-            b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
+            b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
         });
     }
 }
 
 fn batch_points_arrow(c: &mut Criterion) {
-    fn generate_message_bundles() -> Vec<MsgBundle> {
+    fn generate_tables() -> Vec<DataTable> {
         vec![DataTable::from_rows(
             MsgId::ZERO,
             [DataRow::from_cells2(
@@ -131,26 +188,25 @@ fn batch_points_arrow(c: &mut Criterion) {
                     build_some_colors(NUM_POINTS),
                 ),
             )],
-        )
-        .into_msg_bundle()]
+        )]
     }
 
     {
         let mut group = c.benchmark_group("batch_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
-            b.iter(generate_message_bundles);
+            b.iter(generate_tables);
         });
-        let bundles = generate_message_bundles();
+        let tables = generate_tables();
         group.bench_function("generate_messages", |b| {
-            b.iter(|| generate_messages(&bundles));
+            b.iter(|| generate_messages(&tables));
         });
-        let messages = generate_messages(&bundles);
+        let messages = generate_messages(&tables);
         group.bench_function("encode_log_msg", |b| {
             b.iter(|| encode_log_msgs(&messages));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&generate_message_bundles())));
+            b.iter(|| encode_log_msgs(&generate_messages(&generate_tables())));
         });
 
         let encoded = encode_log_msgs(&messages);
@@ -163,13 +219,13 @@ fn batch_points_arrow(c: &mut Criterion) {
         });
         group.bench_function("decode_message_bundles", |b| {
             b.iter(|| {
-                let bundles = decode_message_bundles(&messages);
-                assert_eq!(bundles.len(), messages.len());
-                bundles
+                let tables = decode_tables(&messages);
+                assert_eq!(tables.len(), messages.len());
+                tables
             });
         });
         group.bench_function("decode_total", |b| {
-            b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
+            b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
         });
     }
 }

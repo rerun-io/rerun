@@ -19,7 +19,6 @@ mod data_row;
 mod data_table;
 pub mod hash;
 mod index;
-pub mod msg_bundle;
 pub mod path;
 mod time;
 pub mod time_point;
@@ -188,8 +187,11 @@ impl LogMsg {
         match self {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
             Self::EntityPathOpMsg(msg) => msg.msg_id,
-            Self::ArrowMsg(msg) => msg.msg_id,
             Self::Goodbye(msg_id) => *msg_id,
+            // TODO(#1619): the following only makes sense because, while we support sending and
+            // receiving batches, we don't actually do so yet.
+            // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
+            Self::ArrowMsg(msg) => msg.table_id,
         }
     }
 }

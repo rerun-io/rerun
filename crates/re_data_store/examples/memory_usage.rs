@@ -105,23 +105,20 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let msg_bundle = Box::new(
-            DataTable::from_rows(
-                MsgId::ZERO, // not used (yet)
-                [DataRow::from_cells1(
-                    MsgId::random(),
-                    entity_path!("points"),
-                    [build_frame_nr(0.into())],
-                    1,
-                    build_some_point2d(1),
-                )],
-            )
-            .into_msg_bundle(),
-        );
-        let msg_bundle_bytes = live_bytes() - used_bytes_start;
-        let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
+        let table = Box::new(DataTable::from_rows(
+            MsgId::ZERO, // not used (yet)
+            [DataRow::from_cells1(
+                MsgId::random(),
+                entity_path!("points"),
+                [build_frame_nr(0.into())],
+                1,
+                build_some_point2d(1),
+            )],
+        ));
+        let table_bytes = live_bytes() - used_bytes_start;
+        let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(&*table).unwrap()));
         let log_msg_bytes = live_bytes() - used_bytes_start;
-        println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
+        println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
@@ -131,23 +128,20 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let msg_bundle = Box::new(
-            DataTable::from_rows(
-                MsgId::ZERO, // not used (yet)
-                [DataRow::from_cells1(
-                    MsgId::random(),
-                    entity_path!("points"),
-                    [build_frame_nr(0.into())],
-                    NUM_POINTS as _,
-                    build_some_point2d(NUM_POINTS),
-                )],
-            )
-            .into_msg_bundle(),
-        );
-        let msg_bundle_bytes = live_bytes() - used_bytes_start;
-        let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
+        let table = Box::new(DataTable::from_rows(
+            MsgId::ZERO, // not used (yet)
+            [DataRow::from_cells1(
+                MsgId::random(),
+                entity_path!("points"),
+                [build_frame_nr(0.into())],
+                NUM_POINTS as _,
+                build_some_point2d(NUM_POINTS),
+            )],
+        ));
+        let table_bytes = live_bytes() - used_bytes_start;
+        let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(&*table).unwrap()));
         let log_msg_bytes = live_bytes() - used_bytes_start;
-        println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
+        println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",

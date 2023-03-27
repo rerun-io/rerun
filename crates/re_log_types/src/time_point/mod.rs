@@ -65,6 +65,22 @@ impl TimePoint {
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeInt)> {
         self.0.iter()
     }
+
+    /// Computes the union of two `TimePoint`s, keeping the minimal value in case of conflicts.
+    pub fn min_union(mut self, rhs: &Self) -> Self {
+        for (&timeline, &time) in rhs {
+            match self.0.entry(timeline) {
+                btree_map::Entry::Vacant(entry) => {
+                    entry.insert(time);
+                }
+                btree_map::Entry::Occupied(mut entry) => {
+                    let entry = entry.get_mut();
+                    *entry = TimeInt::min(*entry, time);
+                }
+            }
+        }
+        self
+    }
 }
 
 // ----------------------------------------------------------------------------

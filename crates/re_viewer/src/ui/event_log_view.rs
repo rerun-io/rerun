@@ -2,9 +2,7 @@ use itertools::Itertools as _;
 
 use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_format::format_number;
-use re_log_types::{
-    msg_bundle::MsgBundle, BeginRecordingMsg, EntityPathOpMsg, LogMsg, RecordingInfo,
-};
+use re_log_types::{BeginRecordingMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo};
 
 use crate::{UiVerbosity, ViewerContext};
 
@@ -175,38 +173,44 @@ fn table_row(
                 path_op.data_ui(ctx, ui, UiVerbosity::All, &query);
             });
         }
-        LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
-            Ok(MsgBundle {
-                msg_id,
-                entity_path,
-                time_point,
-                cells: components,
-            }) => {
-                row.col(|ui| {
-                    ctx.msg_id_button(ui, msg_id);
-                });
-                row.col(|ui| {
-                    ui.monospace("ArrowMsg");
-                });
-                for timeline in ctx.log_db.timelines() {
+        LogMsg::ArrowMsg(msg) => match DataTable::try_from(msg) {
+            Ok(table) => {
+                for datarow in table.as_rows() {
                     row.col(|ui| {
-                        if let Some(value) = time_point.get(timeline) {
-                            ctx.time_button(ui, timeline, *value);
-                        }
+                        ctx.msg_id_button(ui, datarow.row_id());
+                    });
+                    row.col(|ui| {
+                        ui.monospace("ArrowMsg");
+                    });
+                    for timeline in ctx.log_db.timelines() {
+                        row.col(|ui| {
+                            if let Some(value) = datarow.timepoint().get(timeline) {
+                                ctx.time_button(ui, timeline, *value);
+                            }
+                        });
+                    }
+                    row.col(|ui| {
+                        ctx.entity_path_button(ui, None, datarow.entity_path());
+                    });
+
+                    row.col(|ui| {
+                        let timeline = *ctx.rec_cfg.time_ctrl.timeline();
+                        let query = LatestAtQuery::new(
+                            timeline,
+                            datarow
+                                .timepoint()
+                                .get(&timeline)
+                                .copied()
+                                .unwrap_or(TimeInt::MAX),
+                        );
+                        datarow.cells().data_ui(
+                            ctx,
+                            ui,
+                            UiVerbosity::MaxHeight(row_height),
+                            &query,
+                        );
                     });
                 }
-                row.col(|ui| {
-                    ctx.entity_path_button(ui, None, &entity_path);
-                });
-
-                row.col(|ui| {
-                    let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-                    let query = LatestAtQuery::new(
-                        timeline,
-                        time_point.get(&timeline).copied().unwrap_or(TimeInt::MAX),
-                    );
-                    components.data_ui(ctx, ui, UiVerbosity::MaxHeight(row_height), &query);
-                });
             }
             Err(err) => {
                 re_log::error_once!("Bad arrow payload: {err}",);

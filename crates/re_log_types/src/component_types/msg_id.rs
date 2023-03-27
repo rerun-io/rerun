@@ -55,6 +55,11 @@ impl MsgId {
         self.0.as_u128()
     }
 
+    #[inline]
+    pub fn nanoseconds_since_epoch(&self) -> u64 {
+        self.0.nanoseconds_since_epoch()
+    }
+
     /// A shortened string representation of the message id.
     #[inline]
     pub fn short_string(&self) -> String {

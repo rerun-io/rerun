@@ -74,6 +74,11 @@ impl Tuid {
     pub fn as_u128(&self) -> u128 {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
+
+    #[inline]
+    pub fn nanoseconds_since_epoch(&self) -> u64 {
+        self.time_ns
+    }
 }
 
 /// Returns a high-precision, monotonically increasing count that approximates nanoseconds since unix epoch.
