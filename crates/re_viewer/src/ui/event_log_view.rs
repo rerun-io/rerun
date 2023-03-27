@@ -173,6 +173,9 @@ fn table_row(
                 path_op.data_ui(ctx, ui, UiVerbosity::All, &query);
             });
         }
+        // NOTE: This really only makes sense because we don't yet have batches with more than a
+        // single row at the moment... and by the time we do, the event log view will have
+        // disappeared entirely.
         LogMsg::ArrowMsg(msg) => match DataTable::try_from(msg) {
             Ok(table) => {
                 for datarow in table.as_rows() {

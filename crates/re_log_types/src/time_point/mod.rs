@@ -66,8 +66,9 @@ impl TimePoint {
         self.0.iter()
     }
 
-    /// Computes the union of two `TimePoint`s, keeping the minimal value in case of conflicts.
-    pub fn min_union(mut self, rhs: &Self) -> Self {
+    /// Computes the union of two `TimePoint`s, keeping the maximum time value in case of
+    /// conflicts.
+    pub fn union_max(mut self, rhs: &Self) -> Self {
         for (&timeline, &time) in rhs {
             match self.0.entry(timeline) {
                 btree_map::Entry::Vacant(entry) => {
@@ -75,7 +76,7 @@ impl TimePoint {
                 }
                 btree_map::Entry::Occupied(mut entry) => {
                     let entry = entry.get_mut();
-                    *entry = TimeInt::min(*entry, time);
+                    *entry = TimeInt::max(*entry, time);
                 }
             }
         }

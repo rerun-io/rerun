@@ -145,11 +145,11 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 /// ┌───────────────────────┬───────────────────────────────────┬────────────────────┬─────────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
 /// │ rerun.row_id          ┆ rerun.timepoint                   ┆ rerun.entity_path  ┆ rerun.num_instances ┆ rerun.label ┆ rerun.point2d                    ┆ rerun.colorrgba │
 /// ╞═══════════════════════╪═══════════════════════════════════╪════════════════════╪═════════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {pouet, 1, 1}] ┆ a                  ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
+/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {clock, 1, 1}] ┆ a                  ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {pouet, 1, 2}] ┆ b                  ┆ 0                   ┆ -           ┆ -                                ┆ []              │
+/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {clock, 1, 2}] ┆ b                  ┆ 0                   ┆ -           ┆ -                                ┆ []              │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 2}, {pouet, 1, 1}] ┆ c                  ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
+/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 2}, {clock, 1, 1}] ┆ c                  ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
 /// └───────────────────────┴───────────────────────────────────┴────────────────────┴─────────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
 /// ```
 ///
@@ -163,10 +163,10 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 /// #
 /// # let table_id = MsgId::ZERO; // not used (yet)
 /// #
-/// # let timepoint = |frame_nr: i64, pouet: i64| {
+/// # let timepoint = |frame_nr: i64, clock: i64| {
 /// #     TimePoint::from([
 /// #         (Timeline::new_sequence("frame_nr"), frame_nr.into()),
-/// #         (Timeline::new_sequence("pouet"), pouet.into()),
+/// #         (Timeline::new_sequence("clock"), clock.into()),
 /// #     ])
 /// # };
 /// #
@@ -356,12 +356,13 @@ impl DataTable {
         })
     }
 
-    /// Computes the minimum value for each and every timeline present across this entire table,
+    /// Computes the maximum value for each and every timeline present across this entire table,
     /// and returns the corresponding [`TimePoint`].
-    pub fn min_timepoint(&self) -> TimePoint {
+    #[inline]
+    pub fn timepoint_max(&self) -> TimePoint {
         self.timepoint
             .iter()
-            .fold(TimePoint::timeless(), |acc, tp| acc.min_union(tp))
+            .fold(TimePoint::timeless(), |acc, tp| acc.union_max(tp))
     }
 }
 
@@ -393,6 +394,15 @@ pub const METADATA_TABLE_ID: &str = "rerun.table_id";
 
 impl DataTable {
     /// Serializes the entire table into an arrow payload and schema.
+    ///
+    /// A serialized `DataTable` contains two kinds of columns: control & data.
+    ///
+    /// * Control columns are those that drive the behavior of the storage systems.
+    ///   They are always present, always dense, and always deserialized upon reception by the
+    ///   server.
+    /// * Data columns are the one that hold component data.
+    ///   They are optional, potentially sparse, and never deserialized on the server-side (not by
+    ///   the storage systems, at least).
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
         let mut schema = Schema::default();
         let mut columns = Vec::new();
@@ -498,8 +508,8 @@ impl DataTable {
 
     /// Serializes all data columns into an arrow payload and schema.
     ///
-    /// Data columns are the one that hold component data.
-    /// They are optional, potentially sparse, and never deserialized on the server-side.
+    /// They are optional, potentially sparse, and never deserialized on the server-side (not by
+    /// the storage systems, at least).
     fn serialize_data_columns(&self) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
         let Self {
             table_id: _,
@@ -580,9 +590,11 @@ impl DataTable {
 
 impl DataTable {
     /// Deserializes an entire table from an arrow payload and schema.
-    pub fn deserialize(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> DataTableResult<Self> {
-        let table_id = MsgId::ZERO; // not used (yet)
-
+    pub fn deserialize(
+        table_id: MsgId,
+        schema: &Schema,
+        chunk: &Chunk<Box<dyn Array>>,
+    ) -> DataTableResult<Self> {
         let control_indices: HashMap<&str, usize> = schema
             .fields
             .iter()
@@ -669,15 +681,12 @@ impl TryFrom<&ArrowMsg> for DataTable {
     fn try_from(msg: &ArrowMsg) -> DataTableResult<Self> {
         let ArrowMsg {
             table_id,
-            timepoint_min: _,
+            timepoint_max: _,
             schema,
             chunk,
         } = msg;
 
-        Ok(Self {
-            table_id: *table_id,
-            ..Self::deserialize(schema, chunk)?
-        })
+        Self::deserialize(*table_id, schema, chunk)
     }
 }
 
@@ -686,12 +695,12 @@ impl TryFrom<&DataTable> for ArrowMsg {
 
     #[inline]
     fn try_from(table: &DataTable) -> DataTableResult<Self> {
-        let timepoint_min = table.min_timepoint();
+        let timepoint_min = table.timepoint_max();
         let (schema, chunk) = table.serialize()?;
 
         Ok(ArrowMsg {
             table_id: table.table_id,
-            timepoint_min,
+            timepoint_max: timepoint_min,
             schema,
             chunk,
         })
@@ -706,6 +715,7 @@ impl std::fmt::Display for DataTable {
             re_log::error_once!("couldn't display data table: {err}");
             std::fmt::Error
         })?;
+        writeln!(f, "DataTable({}):", self.table_id)?;
         re_format::arrow::format_table(
             columns.columns(),
             schema.fields.iter().map(|field| field.name.as_str()),

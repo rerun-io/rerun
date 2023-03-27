@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, DataRow, DataTable, MsgId};
+use re_log_types::{entity_path, DataRow, MsgId};
 
 fn main() {
     log_messages();
@@ -105,16 +105,16 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let table = Box::new(DataTable::from_rows(
-            MsgId::ZERO, // not used (yet)
-            [DataRow::from_cells1(
+        let table = Box::new(
+            DataRow::from_cells1(
                 MsgId::random(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 1,
                 build_some_point2d(1),
-            )],
-        ));
+            )
+            .into_table(),
+        );
         let table_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(&*table).unwrap()));
         let log_msg_bytes = live_bytes() - used_bytes_start;
@@ -128,16 +128,16 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let table = Box::new(DataTable::from_rows(
-            MsgId::ZERO, // not used (yet)
-            [DataRow::from_cells1(
+        let table = Box::new(
+            DataRow::from_cells1(
                 MsgId::random(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 NUM_POINTS as _,
                 build_some_point2d(NUM_POINTS),
-            )],
-        ));
+            )
+            .into_table(),
+        );
         let table_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(&*table).unwrap()));
         let log_msg_bytes = live_bytes() - used_bytes_start;

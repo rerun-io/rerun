@@ -141,7 +141,7 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 /// # let row_id = MsgId::ZERO;
 /// # let timepoint = [
 /// #     (Timeline::new_sequence("frame_nr"), 42.into()), //
-/// #     (Timeline::new_sequence("pouet"), 666.into()),   //
+/// #     (Timeline::new_sequence("clock"), 666.into()),   //
 /// # ];
 /// #
 /// let num_instances = 2;

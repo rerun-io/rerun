@@ -11,12 +11,16 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrowMsg {
     /// Unique identifier for the [`DataTable`] in this message.
+    ///
+    /// NOTE(#1619): While we're in the process of transitioning towards end-to-end batching, the
+    /// `table_id` is always the same as the `row_id` as the first and only row.
     pub table_id: MsgId,
 
-    /// The minimum values for all timelines across the entire batch of data.
+    /// The maximum values for all timelines across the entire batch of data.
     ///
-    /// Used to timestamp the batch as a whole for e.g. latency measurements.
-    pub timepoint_min: TimePoint,
+    /// Used to timestamp the batch as a whole for e.g. latency measurements without having to
+    /// deserialize the arrow payload.
+    pub timepoint_max: TimePoint,
 
     /// Schema for all control & data columns.
     pub schema: Schema,
@@ -48,7 +52,7 @@ impl serde::Serialize for ArrowMsg {
 
         let mut inner = serializer.serialize_tuple(3)?;
         inner.serialize_element(&self.table_id)?;
-        inner.serialize_element(&self.timepoint_min)?;
+        inner.serialize_element(&self.timepoint_max)?;
         inner.serialize_element(&serde_bytes::ByteBuf::from(buf))?;
         inner.end()
     }
@@ -97,7 +101,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 
                     Ok(ArrowMsg {
                         table_id,
-                        timepoint_min,
+                        timepoint_max: timepoint_min,
                         schema: stream.metadata().schema.clone(),
                         chunk,
                     })

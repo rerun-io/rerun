@@ -1,13 +1,11 @@
 use re_log_types::{component_types::InstanceKey, DataRow, DataTableError};
 
-use nohash_hasher::IntMap;
-
 use crate::{
     components::Transform,
     log::{DataCell, LogMsg, MsgId},
     sink::LogSink,
     time::{Time, TimeInt, TimePoint, Timeline},
-    Component, ComponentName, EntityPath, SerializableComponent,
+    Component, EntityPath, SerializableComponent,
 };
 
 // TODO(#1619): Rust SDK batching
@@ -293,16 +291,6 @@ impl MsgSender {
             .map(|cell| cell.take().unwrap())
             .collect();
         debug_assert!(all_cells.into_iter().all(|cell| cell.is_none()));
-
-        // sanity check: no row-level batching
-        let mut rows_per_comptype: IntMap<ComponentName, usize> = IntMap::default();
-        for cell in standard_cells
-            .iter()
-            .chain(&transform_cells)
-            .chain(&splatted)
-        {
-            *rows_per_comptype.entry(cell.component_name()).or_default() += 1;
-        }
 
         // sanity check: transforms can't handle multiple instances
         let num_transform_instances = transform_cells
