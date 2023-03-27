@@ -85,7 +85,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// eprintln!("{:#?}", cell.datatype());
 /// eprintln!("{cell}");
 /// #
-/// # assert_eq!(Point2D::name(), cell.component());
+/// # assert_eq!(Point2D::name(), cell.component_name());
 /// # assert_eq!(3, cell.num_instances());
 /// # assert_eq!(cell.datatype(), &Point2D::data_type());
 /// #
