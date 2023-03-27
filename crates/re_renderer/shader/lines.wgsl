@@ -176,7 +176,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // The closest "line strip skeleton" position to the current vertex.
-    // Varius things like end cap or radius boosting can cause adjustments to it.
+    // Various things like end cap or radius boosting can cause adjustments to it.
     var center_position = pos_data_current.pos;
 
     // Data valid for the entire strip that this vertex belongs to.
