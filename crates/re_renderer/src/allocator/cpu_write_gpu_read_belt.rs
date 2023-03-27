@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, ops::DerefMut, sync::mpsc};
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
+use crate::wgpu_resources::{texture_row_data_info, BufferDesc, GpuBuffer, GpuBufferPool};
 
 /// A sub-allocated staging buffer that can be written to.
 ///
@@ -85,26 +85,46 @@ where
         self.unwritten_element_range.start
     }
 
-    /// Copies the entire buffer to a texture and drops it.
-    pub fn copy_to_texture(
+    /// Copies all so far written data to a rectangle on a single 2d texture layer.
+    ///
+    /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
+    /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
+    ///
+    /// Implementation note:
+    /// Does 2D-only entirely for convenience as it greatly simplifies the input parameters.
+    pub fn copy_to_texture2d(
         self,
         encoder: &mut wgpu::CommandEncoder,
         destination: wgpu::ImageCopyTexture<'_>,
-        bytes_per_row: Option<NonZeroU32>,
-        rows_per_image: Option<NonZeroU32>,
-        copy_size: wgpu::Extent3d,
+        copy_extent: glam::UVec2,
     ) {
+        let bytes_per_row =
+            texture_row_data_info(destination.texture.format(), copy_extent.x).bytes_per_row_padded;
+
+        // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
+        // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
+        // (and if you did you probably have regrets anyways!)
+        let required_buffer_size = bytes_per_row * copy_extent.y;
+        debug_assert_eq!(
+            required_buffer_size as usize,
+            self.num_written() * std::mem::size_of::<T>()
+        );
+
         encoder.copy_buffer_to_texture(
             wgpu::ImageCopyBuffer {
                 buffer: &self.chunk_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: self.byte_offset_in_chunk_buffer,
-                    bytes_per_row,
-                    rows_per_image,
+                    bytes_per_row: NonZeroU32::new(bytes_per_row),
+                    rows_per_image: None,
                 },
             },
             destination,
-            copy_size,
+            wgpu::Extent3d {
+                width: copy_extent.x,
+                height: copy_extent.y,
+                depth_or_array_layers: 1,
+            },
         );
     }
 

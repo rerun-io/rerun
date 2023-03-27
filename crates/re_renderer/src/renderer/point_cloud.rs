@@ -13,10 +13,7 @@
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::{
-    num::{NonZeroU32, NonZeroU64},
-    ops::Range,
-};
+use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch, renderer::OutlineMaskProcessor, DebugLabel,
@@ -25,7 +22,6 @@ use crate::{
 use bitflags::bitflags;
 use bytemuck::Zeroable;
 use enumset::{enum_set, EnumSet};
-use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
@@ -175,7 +171,7 @@ impl PointCloudDrawData {
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new<T>(
         ctx: &mut RenderContext,
-        builder: PointCloudBuilder<T>,
+        mut builder: PointCloudBuilder<T>,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
@@ -266,53 +262,46 @@ impl PointCloudDrawData {
             },
         );
 
-        // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
-        //                  These staging buffers would be provided by the belt.
-        // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
+        // To make the data upload simpler (and have it be done in copy-operation), we always update full rows of each of our textures
         let num_points_written =
             wgpu::util::align_to(vertices.len() as u32, DATA_TEXTURE_SIZE) as usize;
-        let num_points_zeroed = num_points_written - vertices.len();
-        let position_and_size_staging = {
-            crate::profile_scope!("collect_pos_size");
-            vertices
-                .iter()
-                .map(|point| gpu_data::PositionData {
-                    pos: point.position,
-                    radius: point.radius,
-                })
-                .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
-                .collect_vec()
-        };
-
-        // Upload data from staging buffers to gpu.
-        let size = wgpu::Extent3d {
-            width: DATA_TEXTURE_SIZE,
-            height: num_points_written as u32 / DATA_TEXTURE_SIZE,
-            depth_or_array_layers: 1,
-        };
+        let num_elements_padding = num_points_written - vertices.len();
+        let texture_copy_extent = glam::uvec2(
+            DATA_TEXTURE_SIZE,
+            num_points_written as u32 / DATA_TEXTURE_SIZE,
+        );
 
         {
             crate::profile_scope!("write_pos_size_texture");
-            ctx.queue.write_texture(
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                num_points_written,
+            );
+            staging_buffer.extend(vertices.iter().map(|point| gpu_data::PositionData {
+                pos: point.position,
+                radius: point.radius,
+            }));
+            staging_buffer.extend(
+                std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_elements_padding),
+            );
+            staging_buffer.copy_to_texture2d(
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
                     texture: &position_data_texture.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                bytemuck::cast_slice(&position_and_size_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: NonZeroU32::new(
-                        DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                size,
+                texture_copy_extent,
             );
         }
 
-        builder.color_buffer.copy_to_texture(
+        builder
+            .color_buffer
+            .extend(std::iter::repeat(ecolor::Color32::TRANSPARENT).take(num_elements_padding));
+        builder.color_buffer.copy_to_texture2d(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
                 texture: &color_texture.texture,
@@ -320,9 +309,7 @@ impl PointCloudDrawData {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            NonZeroU32::new(DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
-            None,
-            size,
+            texture_copy_extent,
         );
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
