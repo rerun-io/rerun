@@ -152,22 +152,30 @@ impl ImagesPart {
 
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                if tensor.meaning == TensorDataMeaning::Depth {
-                    if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
-                    {
+                if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth
+                {
+                    let query = ctx.current_query();
+                    let pinhole_ent_path =
+                        crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
+
+                    if let Some(pinhole_ent_path) = pinhole_ent_path {
                         // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                         // transform of the projection plane, which is of no use to us here.
                         // What we want are the extrinsics of the depth camera!
-                        Self::process_entity_view_as_depth_cloud(
+                        match Self::process_entity_view_as_depth_cloud(
                             scene,
                             ctx,
                             transforms,
                             properties,
                             &tensor,
-                            pinhole_ent_path,
+                            &pinhole_ent_path,
                             entity_highlight,
-                        );
-                        return Ok(());
+                        ) {
+                            Ok(()) => return Ok(()),
+                            Err(err) => {
+                                re_log::warn_once!("{err}");
+                            }
+                        }
                     };
                 }
 
@@ -264,7 +272,7 @@ impl ImagesPart {
         tensor: &Tensor,
         pinhole_ent_path: &EntityPath,
         entity_highlight: &SpaceViewOutlineMasks,
-    ) {
+    ) -> Result<(), String> {
         crate::profile_function!();
 
         let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
@@ -272,8 +280,7 @@ impl ImagesPart {
             pinhole_ent_path,
             &ctx.current_query(),
         ) else {
-            re_log::warn_once!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}");
-            return;
+            return Err(format!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}"));
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
@@ -281,8 +288,7 @@ impl ImagesPart {
             .parent()
             .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
         let Some(world_from_obj) = world_from_obj else {
-            re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
-            return;
+            return Err(format!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}"));
         };
 
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
@@ -291,11 +297,10 @@ impl ImagesPart {
             TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
             _ => {
-                re_log::warn_once!(
+                return Err(format!(
                     "Tensor datatype {} is not supported for backprojection",
                     tensor.dtype()
-                );
-                return;
+                ));
             }
         };
 
@@ -347,6 +352,8 @@ impl ImagesPart {
             colormap,
             outline_mask_id: entity_highlight.overall,
         });
+
+        Ok(())
     }
 }
 
