@@ -12,7 +12,7 @@ use super::{
     ViewSpatialState,
 };
 use crate::{
-    misc::{HoveredSpace, Item, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, ScheduledGpuReadback, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -20,7 +20,7 @@ use crate::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial,
         },
-        SpaceViewId, UiVerbosity,
+        SpaceView, SpaceViewId, UiVerbosity,
     },
     ViewerContext,
 };
@@ -453,7 +453,7 @@ fn view_2d_scrollable(
             return response;
         };
 
-        let Ok((callback, scheduled_screenshot)) = create_scene_paint_callback(
+        let Ok((callback, screenshot)) = create_scene_paint_callback(
             ctx.render_ctx,
             target_config, painter.clip_rect(),
             scene.primitives,
@@ -462,7 +462,15 @@ fn view_2d_scrollable(
         ) else {
             return response;
         };
-        state.scheduled_screenshots.extend(scheduled_screenshot);
+        if let Some(screenshot) = screenshot {
+            ctx.scheduled_gpu_readbacks.insert(
+                screenshot.identifier,
+                ScheduledGpuReadback::SpaceViewScreenshot {
+                    space_view_id,
+                    screenshot,
+                },
+            );
+        }
 
         painter.add(callback);
     }

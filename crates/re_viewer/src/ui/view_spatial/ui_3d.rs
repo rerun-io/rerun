@@ -11,7 +11,7 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{HoveredSpace, Item, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, ScheduledGpuReadback, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -504,7 +504,7 @@ pub fn view_3d(
         }
     });
 
-    let scheduled_screenshot = paint_view(
+    let screenshot = paint_view(
         ui,
         eye,
         rect,
@@ -514,7 +514,15 @@ pub fn view_3d(
         state.auto_size_config(),
         take_screenshot,
     );
-    state.scheduled_screenshots.extend(scheduled_screenshot);
+    if let Some(screenshot) = screenshot {
+        ctx.scheduled_gpu_readbacks.insert(
+            screenshot.identifier,
+            ScheduledGpuReadback::SpaceViewScreenshot {
+                space_view_id,
+                screenshot,
+            },
+        );
+    }
 
     // Add egui driven labels on top of re_renderer content.
     let painter = ui.painter().with_clip_rect(ui.max_rect());
