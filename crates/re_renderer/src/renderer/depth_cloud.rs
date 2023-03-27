@@ -171,7 +171,8 @@ pub struct DepthCloud {
 
 #[derive(Clone)]
 struct DepthCloudDrawInstance {
-    bind_group: GpuBindGroup,
+    bind_group_opaque: GpuBindGroup,
+    bind_group_outline: GpuBindGroup,
     num_points: u32,
     render_outline_mask: bool,
 }
@@ -277,38 +278,34 @@ impl DepthCloudDrawData {
                 )
             };
 
-            let render_outline_mask = depth_cloud.outline_mask_id.is_some();
-
-            let bind_group = if render_outline_mask {
-                mk_bind_group(
-                    "depth_cloud_outline_mask".into(),
-                    create_and_fill_uniform_buffer(
-                        ctx,
-                        "PointCloudDrawData::DrawDataUniformBuffer_outline_mask".into(),
-                        gpu_data::DrawDataUniformBuffer {
-                            size_boost_in_points: size_boost_in_points_for_outlines.into(),
-                            end_padding: Default::default(),
-                        },
-                    ),
-                )
-            } else {
-                mk_bind_group(
-                    "depth_cloud_bg".into(),
-                    create_and_fill_uniform_buffer(
-                        ctx,
-                        "PointCloudDrawData::DrawDataUniformBuffer".into(),
-                        gpu_data::DrawDataUniformBuffer {
-                            size_boost_in_points: 0.0.into(),
-                            end_padding: Default::default(),
-                        },
-                    ),
-                )
-            };
+            let bind_group_outline = mk_bind_group(
+                "depth_cloud_outline_mask".into(),
+                create_and_fill_uniform_buffer(
+                    ctx,
+                    "PointCloudDrawData::DrawDataUniformBuffer_outline_mask".into(),
+                    gpu_data::DrawDataUniformBuffer {
+                        size_boost_in_points: size_boost_in_points_for_outlines.into(),
+                        end_padding: Default::default(),
+                    },
+                ),
+            );
+            let bind_group_opaque = mk_bind_group(
+                "depth_cloud_bg".into(),
+                create_and_fill_uniform_buffer(
+                    ctx,
+                    "PointCloudDrawData::DrawDataUniformBuffer".into(),
+                    gpu_data::DrawDataUniformBuffer {
+                        size_boost_in_points: 0.0.into(),
+                        end_padding: Default::default(),
+                    },
+                ),
+            );
 
             instances.push(DepthCloudDrawInstance {
                 num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
-                bind_group,
-                render_outline_mask,
+                bind_group_opaque,
+                bind_group_outline,
+                render_outline_mask: depth_cloud.outline_mask_id.is_some(),
             });
         }
 
@@ -553,7 +550,13 @@ impl Renderer for DepthCloudRenderer {
                 continue;
             }
 
-            pass.set_bind_group(1, &instance.bind_group, &[]);
+            let bind_group = match phase {
+                DrawPhase::OutlineMask => &instance.bind_group_outline,
+                DrawPhase::Opaque => &instance.bind_group_opaque,
+                _ => unreachable!(),
+            };
+
+            pass.set_bind_group(1, bind_group, &[]);
             pass.draw(0..instance.num_points * 6, 0..1);
         }
 
