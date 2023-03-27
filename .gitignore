@@ -17,3 +17,6 @@ __pycache__
 perf.data*
 
 **/dataset/
+
+# Screenshots from samples etc.
+screenshot*.png

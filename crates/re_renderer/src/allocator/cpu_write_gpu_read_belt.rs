@@ -303,6 +303,8 @@ impl CpuWriteGpuReadBelt {
     ) -> CpuWriteGpuReadBuffer<T> {
         crate::profile_function!();
 
+        debug_assert!(num_elements > 0, "Cannot allocate zero-sized buffer");
+
         // Potentially overestimate alignment with Self::MIN_ALIGNMENT, see Self::MIN_ALIGNMENT doc string.
         let alignment = (std::mem::align_of::<T>() as wgpu::BufferAddress).max(Self::MIN_ALIGNMENT);
         // Pad out the size of the used buffer to a multiple of Self::MIN_ALIGNMENT.
@@ -425,7 +427,7 @@ impl CpuWriteGpuReadBelt {
 
 impl std::fmt::Debug for CpuWriteGpuReadBelt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("StagingBelt")
+        f.debug_struct("CpuWriteGpuReadBelt")
             .field("chunk_size", &self.chunk_size)
             .field("active_chunks", &self.active_chunks.len())
             .field("closed_chunks", &self.closed_chunks.len())
