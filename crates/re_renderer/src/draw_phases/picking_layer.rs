@@ -18,7 +18,7 @@ pub struct PickingLayerProcessor {
 #[derive(Clone)]
 pub struct ScheduledPickingRect {
     pub identifier: GpuReadbackBufferIdentifier,
-    pub screen_position: glam::UVec2,
+    pub screen_position: glam::IVec2,
     pub extent: glam::UVec2,
     pub row_info: TextureRowDataInfo,
 }
@@ -44,7 +44,7 @@ impl PickingLayerProcessor {
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
-        picking_rect_min: glam::UVec2,
+        picking_rect_min: glam::IVec2,
         picking_rect_extent: u32,
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,

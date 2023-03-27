@@ -13,6 +13,8 @@ struct Picking {
     random_points_colors: Vec<Color32>,
 
     scheduled_picking_rects: Vec<ScheduledPickingRect>,
+
+    picking_position: glam::UVec2,
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
@@ -52,6 +54,10 @@ impl framework::Example for Picking {
         "Picking"
     }
 
+    fn on_cursor_moved(&mut self, position_in_pixel: glam::UVec2) {
+        self.picking_position = position_in_pixel;
+    }
+
     fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
@@ -76,6 +82,7 @@ impl framework::Example for Picking {
             random_points_radii,
             random_points_colors,
             scheduled_picking_rects: Vec::new(),
+            picking_position: glam::UVec2::ZERO,
         }
     }
 
@@ -116,15 +123,16 @@ impl framework::Example for Picking {
             )
             .unwrap();
 
-        let time = time.seconds_since_startup();
-        let position = glam::vec2(
-            (time.sin() * 0.5 + 0.5) * resolution[1] as f32 * 0.75,
-            (time.cos() * 0.5 + 0.5) * resolution[1] as f32 * 0.75,
-        );
-
+        let picking_rect_size = 128;
         self.scheduled_picking_rects.push(
             view_builder
-                .schedule_picking_readback(re_ctx, position.as_uvec2(), 256, true)
+                .schedule_picking_readback(
+                    re_ctx,
+                    self.picking_position.as_ivec2()
+                        - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
+                    picking_rect_size as u32,
+                    true,
+                )
                 .unwrap(),
         );
 

@@ -47,7 +47,7 @@ impl DebugOverlayDrawData {
         ctx: &mut RenderContext,
         debug_texture: &GpuTexture,
         screen_resolution: glam::UVec2,
-        position_in_pixel: glam::UVec2,
+        position_in_pixel: glam::IVec2,
         extent_in_pixel: glam::UVec2,
     ) -> Self {
         let mut renderers = ctx.renderers.write();

@@ -36,7 +36,8 @@ pub trait Example {
         pixels_from_point: f32,
     ) -> Vec<ViewDrawResult>;
 
-    fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput);
+    fn on_keyboard_input(&mut self, _input: winit::event::KeyboardInput) {}
+    fn on_cursor_moved(&mut self, _position_in_pixel: glam::UVec2) {}
 }
 
 #[allow(dead_code)]
@@ -205,6 +206,13 @@ impl<E: Example + 'static> Application<E> {
                     event: WindowEvent::KeyboardInput { input, .. },
                     ..
                 } => self.example.on_keyboard_input(input),
+                Event::WindowEvent {
+                    event: WindowEvent::CursorMoved { position, .. },
+                    ..
+                } => self.example.on_cursor_moved(glam::uvec2(
+                    position.x.round() as u32,
+                    position.y.round() as u32,
+                )),
                 Event::WindowEvent {
                     event:
                         WindowEvent::ScaleFactorChanged {

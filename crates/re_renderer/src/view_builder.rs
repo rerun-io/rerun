@@ -725,7 +725,7 @@ impl ViewBuilder {
     pub fn schedule_picking_readback(
         &mut self,
         ctx: &mut RenderContext,
-        picking_rect_min: glam::UVec2,
+        picking_rect_min: glam::IVec2,
         picking_rect_extent: u32,
         show_debug_view: bool,
     ) -> Result<ScheduledPickingRect, ViewBuilderError> {
