@@ -716,8 +716,12 @@ impl ViewBuilder {
         })
     }
 
-    /// TODO: docs
-    /// TODO: bounds etc.?
+    /// Schedules the readback of a rectangle from the picking layer.
+    ///
+    /// The result will still be valid if the rectangle is partially or fully outside of bounds.
+    /// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger.
+    ///
+    /// Note that the picking layer will not be created in the first place if this isn't called.
     pub fn schedule_picking_readback(
         &mut self,
         ctx: &mut RenderContext,

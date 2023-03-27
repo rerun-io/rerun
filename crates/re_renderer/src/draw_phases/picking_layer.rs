@@ -25,7 +25,8 @@ pub struct ScheduledPickingRect {
 
 impl PickingLayerProcessor {
     /// The texture format used for the picking layer.
-    pub const PICKING_LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb; // TODO: Integers and stuff.
+    /// TODO(andreas): This is a color format for the current WIP implementation. Will use [`wgpu::TextureFormat::Rgba32Uint`] later.
+    pub const PICKING_LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
     pub const PICKING_LAYER_DEPTH_FORMAT: wgpu::TextureFormat =
         ViewBuilder::MAIN_TARGET_DEPTH_FORMAT;
@@ -56,7 +57,6 @@ impl PickingLayerProcessor {
             buffer_size as u64,
         );
 
-        // TODO: Handle out of bounds stuff.
         let mut picking_target_usage =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
         picking_target_usage.set(

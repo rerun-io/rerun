@@ -625,6 +625,7 @@ impl Renderer for PointCloudRenderer {
                 render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
                 depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
+                // TODO(andreas): WIP, this should use a specialized fragment shader.
                 ..render_pipeline_desc_color.clone()
             },
             &pools.pipeline_layouts,
