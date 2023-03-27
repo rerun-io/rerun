@@ -10,7 +10,7 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrowMsg {
-    /// Unique identifier for the [`DataTable`] in this message.
+    /// Unique identifier for the [`crate::DataTable`] in this message.
     ///
     /// NOTE(#1619): While we're in the process of transitioning towards end-to-end batching, the
     /// `table_id` is always the same as the `row_id` as the first and only row.
