@@ -220,12 +220,14 @@ impl Multiview {
                     }
 
                     // Get next available file name.
-                    let mut i = 0;
-                    let mut filename = "screenshot.png".to_owned();
-                    while std::path::Path::new(&filename).exists() {
-                        filename = format!("screenshot_{i}.png");
+                    let mut i = 1;
+                    let filename = loop {
+                        let filename = format!("screenshot_{i}.png");
+                        if !std::path::Path::new(&filename).exists() {
+                            break filename;
+                        }
                         i += 1;
-                    }
+                    };
 
                     #[cfg(not(target_arch = "wasm32"))]
                     image::save_buffer(
