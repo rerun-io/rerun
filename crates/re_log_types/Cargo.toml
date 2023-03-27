@@ -60,7 +60,11 @@ re_tuid.workspace = true
 # External
 ahash.workspace = true
 array-init = "2.1.0"
-arrow2 = { workspace = true, features = ["io_ipc", "io_print", "compute_concatenate"] }
+arrow2 = { workspace = true, features = [
+  "io_ipc",
+  "io_print",
+  "compute_concatenate",
+] }
 arrow2_convert.workspace = true
 bytemuck = "1.11"
 document-features = "0.2"
