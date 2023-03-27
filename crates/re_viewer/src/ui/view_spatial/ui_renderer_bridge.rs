@@ -48,14 +48,7 @@ fn create_and_fill_view_builder(
     view_builder.setup_view(render_ctx, target_config)?;
 
     view_builder
-        .queue_draw(
-            &DepthCloudDrawData::new(
-                render_ctx,
-                primitives.depth_cloud_radius_boost_in_ui_points_for_outlines,
-                &primitives.depth_clouds,
-            )
-            .unwrap(),
-        )
+        .queue_draw(&DepthCloudDrawData::new(render_ctx, &primitives.depth_clouds).unwrap())
         .queue_draw(&MeshDrawData::new(render_ctx, &primitives.mesh_instances()).unwrap())
         .queue_draw(&primitives.line_strips.to_draw_data(render_ctx))
         .queue_draw(&primitives.points.to_draw_data(render_ctx)?)

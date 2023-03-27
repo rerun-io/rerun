@@ -166,6 +166,11 @@ pub struct DepthCloud {
     pub outline_mask_id: OutlineMaskPreference,
 }
 
+pub struct DepthClouds {
+    pub clouds: Vec<DepthCloud>,
+    pub radius_boost_in_ui_points_for_outlines: f32,
+}
+
 #[derive(Clone)]
 struct DepthCloudDrawInstance {
     bind_group_opaque: GpuBindGroup,
@@ -186,10 +191,14 @@ impl DrawData for DepthCloudDrawData {
 impl DepthCloudDrawData {
     pub fn new(
         ctx: &mut RenderContext,
-        radius_boost_in_ui_points_for_outlines: f32,
-        depth_clouds: &[DepthCloud],
+        depth_clouds: &DepthClouds,
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
+
+        let DepthClouds {
+            clouds: depth_clouds,
+            radius_boost_in_ui_points_for_outlines,
+        } = depth_clouds;
 
         let bg_layout = ctx
             .renderers
@@ -213,7 +222,7 @@ impl DepthCloudDrawData {
             "depth_cloud_ubos".into(),
             depth_clouds.iter().map(|dc| {
                 gpu_data::DepthCloudInfoUBO::from_depth_cloud(
-                    radius_boost_in_ui_points_for_outlines,
+                    *radius_boost_in_ui_points_for_outlines,
                     dc,
                 )
             }),

@@ -20,8 +20,8 @@ use itertools::Itertools;
 use macaw::IsoTransform;
 use re_renderer::{
     renderer::{
-        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DrawData, GenericSkyboxDrawData,
-        RectangleDrawData, TexturedRect,
+        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds, DrawData,
+        GenericSkyboxDrawData, RectangleDrawData, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
@@ -170,21 +170,22 @@ impl RenderDepthClouds {
 
         let world_from_obj = glam::Mat4::from_scale(glam::Vec3::splat(*scale));
 
-        let radius_boost_in_ui_points_for_outlines = 2.5;
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
-            radius_boost_in_ui_points_for_outlines,
-            &[DepthCloud {
-                world_from_obj,
-                depth_camera_intrinsics: *intrinsics,
-                world_depth_from_data_depth: 1.0,
-                point_radius_from_world_depth: *point_radius_from_world_depth,
-                max_depth_in_world: 5.0,
-                depth_dimensions: depth.dimensions,
-                depth_data: depth.data.clone(),
-                colormap: re_renderer::ColorMap::ColorMapTurbo,
-                outline_mask_id: Default::default(),
-            }],
+            &DepthClouds {
+                clouds: vec![DepthCloud {
+                    world_from_obj,
+                    depth_camera_intrinsics: *intrinsics,
+                    world_depth_from_data_depth: 1.0,
+                    point_radius_from_world_depth: *point_radius_from_world_depth,
+                    max_depth_in_world: 5.0,
+                    depth_dimensions: depth.dimensions,
+                    depth_data: depth.data.clone(),
+                    colormap: re_renderer::ColorMap::ColorMapTurbo,
+                    outline_mask_id: Default::default(),
+                }],
+                radius_boost_in_ui_points_for_outlines: 2.5,
+            },
         )
         .unwrap();
 

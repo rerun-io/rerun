@@ -341,7 +341,7 @@ impl ImagesPart {
             }
         };
 
-        scene.primitives.depth_clouds.push(DepthCloud {
+        scene.primitives.depth_clouds.clouds.push(DepthCloud {
             world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_data_depth,

@@ -12,7 +12,7 @@ pub use point_cloud::{
 
 mod depth_cloud;
 pub use self::depth_cloud::{
-    DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthCloudRenderer,
+    DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthCloudRenderer, DepthClouds,
 };
 
 mod test_triangle;
