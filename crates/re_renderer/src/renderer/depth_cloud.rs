@@ -281,13 +281,10 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     if num_pixel_padding_per_row == 0 {
         depth_texture_staging.extend_from_slice(data);
     } else {
-        let row_padding = std::iter::repeat(T::zeroed())
-            .take(num_pixel_padding_per_row)
-            .collect::<Vec<_>>();
-
         for row in data.chunks(depth_texture_desc.size.width as usize) {
             depth_texture_staging.extend_from_slice(row);
-            depth_texture_staging.extend_from_slice(&row_padding);
+            depth_texture_staging
+                .extend(std::iter::repeat(T::zeroed()).take(num_pixel_padding_per_row));
         }
     }
 
