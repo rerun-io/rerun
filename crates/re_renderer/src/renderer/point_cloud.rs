@@ -20,8 +20,9 @@ use crate::{
     PointCloudBuilder,
 };
 use bitflags::bitflags;
-use bytemuck::Zeroable;
+use bytemuck::Zeroable as _;
 use enumset::{enum_set, EnumSet};
+use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
@@ -327,32 +328,35 @@ impl PointCloudDrawData {
             ]
             .into_iter(),
         );
+        let (draw_data_uniform_buffer_bindings_normal, draw_data_uniform_buffer_bindings_outline) =
+            draw_data_uniform_buffer_bindings
+                .into_iter()
+                .collect_tuple()
+                .unwrap();
 
-        let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: "PointCloudDrawData::bind_group_all_points".into(),
-                entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(color_texture.handle),
-                    draw_data_uniform_buffer_bindings[0].clone(),
-                ],
-                layout: point_renderer.bind_group_layout_all_points,
-            },
+        let mk_bind_group = |label, draw_data_uniform_buffer_binding| {
+            ctx.gpu_resources.bind_groups.alloc(
+                &ctx.device,
+                &ctx.gpu_resources,
+                &BindGroupDesc {
+                    label,
+                    entries: smallvec![
+                        BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                        BindGroupEntry::DefaultTextureView(color_texture.handle),
+                        draw_data_uniform_buffer_binding,
+                    ],
+                    layout: point_renderer.bind_group_layout_all_points,
+                },
+            )
+        };
+
+        let bind_group_all_points = mk_bind_group(
+            "PointCloudDrawData::bind_group_all_points".into(),
+            draw_data_uniform_buffer_bindings_normal,
         );
-        let bind_group_all_points_outline_mask = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: "PointCloudDrawData::bind_group_all_points_outline_mask".into(),
-                entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(color_texture.handle),
-                    draw_data_uniform_buffer_bindings[1].clone(),
-                ],
-                layout: point_renderer.bind_group_layout_all_points,
-            },
+        let bind_group_all_points_outline_mask = mk_bind_group(
+            "PointCloudDrawData::bind_group_all_points_outline_mask".into(),
+            draw_data_uniform_buffer_bindings_outline,
         );
 
         // Process batches
