@@ -36,7 +36,7 @@ const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
-const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
+pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
 impl SceneSpatialPrimitives {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {

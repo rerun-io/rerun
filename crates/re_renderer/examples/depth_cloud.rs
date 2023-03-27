@@ -182,6 +182,7 @@ impl RenderDepthClouds {
                 depth_data: depth.data.clone(),
                 colormap: re_renderer::ColorMap::ColorMapTurbo,
                 outline_mask_id: Default::default(),
+                size_boost_in_points_for_outlines: 2.5,
             }],
         )
         .unwrap();

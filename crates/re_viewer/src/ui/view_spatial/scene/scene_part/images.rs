@@ -351,6 +351,8 @@ impl ImagesPart {
             depth_data: data,
             colormap,
             outline_mask_id: entity_highlight.overall,
+            size_boost_in_points_for_outlines:
+                crate::ui::view_spatial::scene::primitives::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         });
 
         Ok(())

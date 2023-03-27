@@ -84,6 +84,17 @@ var<uniform> depth_cloud_info: DepthCloudInfo;
 @group(1) @binding(1)
 var depth_texture: texture_2d<f32>;
 
+struct DrawDataUniformBuffer {
+    size_boost_in_points: f32,
+    // In actuality there is way more padding than this since we align all our uniform buffers to
+    // 256bytes in order to allow them to be buffer-suballocations.
+    // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
+    // if we wouldn't add padding here, which isn't available on WebGL.
+    _padding: Vec4,
+};
+@group(1) @binding(2)
+var<uniform> draw_data: DrawDataUniformBuffer;
+
 struct VertexOut {
     @builtin(position) pos_in_clip: Vec4,
     @location(0) pos_in_world: Vec3,
@@ -100,8 +111,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = compute_point_data(quad_idx);
 
     // Span quad
-    // TODO(andreas): Implement outline-mask size boost for depth cloud as well.
-    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, 0.0);
+    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, draw_data.size_boost_in_points);
 
     var out: VertexOut;
     out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);

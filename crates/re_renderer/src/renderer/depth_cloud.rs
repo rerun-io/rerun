@@ -11,10 +11,12 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
+use std::num::NonZeroU64;
+
 use smallvec::smallvec;
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer_batch,
+    allocator::{create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch},
     include_file,
     renderer::OutlineMaskProcessor,
     resource_managers::ResourceManagerError,
@@ -35,17 +37,19 @@ use super::{
 // ---
 
 mod gpu_data {
+    use crate::wgpu_buffer_types;
+
     // - Keep in sync with mirror in depth_cloud.wgsl.
     // - See `DepthCloud` for documentation.
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
         /// The extrinsics of the camera used for the projection.
-        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
+        pub world_from_obj: wgpu_buffer_types::Mat4,
 
-        pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
+        pub depth_camera_intrinsics: wgpu_buffer_types::Mat3,
 
-        pub outline_mask_id: crate::wgpu_buffer_types::UVec2,
+        pub outline_mask_id: wgpu_buffer_types::UVec2,
 
         /// Multiplier to get world-space depth from whatever is in the texture.
         pub world_depth_from_texture_value: f32,
@@ -59,7 +63,7 @@ mod gpu_data {
         pub colormap: u32,
         pub row_pad: [u32; 2],
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
     }
 
     impl DepthCloudInfoUBO {
@@ -74,6 +78,7 @@ mod gpu_data {
                 depth_data,
                 colormap,
                 outline_mask_id,
+                size_boost_in_points_for_outlines: _,
             } = depth_cloud;
 
             let user_depth_from_texture_value = match depth_data {
@@ -95,6 +100,14 @@ mod gpu_data {
                 end_padding: Default::default(),
             }
         }
+    }
+
+    /// Uniform buffer that changes once per draw data rendering.
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DrawDataUniformBuffer {
+        pub size_boost_in_points: wgpu_buffer_types::F32RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
 
@@ -155,6 +168,9 @@ pub struct DepthCloud {
 
     /// Option outline mask id preference.
     pub outline_mask_id: OutlineMaskPreference,
+
+    /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
+    pub size_boost_in_points_for_outlines: f32,
 }
 
 #[derive(Clone)]
@@ -197,7 +213,7 @@ impl DepthCloudDrawData {
             });
         }
 
-        let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
+        let depth_cloud_ubo_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
             "depth_cloud_ubos".into(),
             depth_clouds
@@ -206,7 +222,10 @@ impl DepthCloudDrawData {
         );
 
         let mut instances = Vec::with_capacity(depth_clouds.len());
-        for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
+        for (depth_cloud, ubo) in depth_clouds
+            .iter()
+            .zip(depth_cloud_ubo_bindings.into_iter())
+        {
             let depth_texture = match &depth_cloud.depth_data {
                 DepthCloudDepthData::U16(data) => {
                     if cfg!(target_arch = "wasm32") {
@@ -245,21 +264,56 @@ impl DepthCloudDrawData {
                 ),
             };
 
-            instances.push(DepthCloudDrawInstance {
-                num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
-                bind_group: ctx.gpu_resources.bind_groups.alloc(
+            let mk_bind_group = |label, draw_data_uniform_buffer| {
+                ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
                     &BindGroupDesc {
-                        label: "depth_cloud_bg".into(),
+                        label,
                         entries: smallvec![
-                            ubo,
+                            ubo.clone(),
                             BindGroupEntry::DefaultTextureView(depth_texture.handle),
+                            draw_data_uniform_buffer
                         ],
                         layout: bg_layout,
                     },
-                ),
-                render_outline_mask: depth_cloud.outline_mask_id.is_some(),
+                )
+            };
+
+            let render_outline_mask = depth_cloud.outline_mask_id.is_some();
+
+            let bind_group = if render_outline_mask {
+                mk_bind_group(
+                    "depth_cloud_outline_mask".into(),
+                    create_and_fill_uniform_buffer(
+                        ctx,
+                        "PointCloudDrawData::DrawDataUniformBuffer_outline_mask".into(),
+                        gpu_data::DrawDataUniformBuffer {
+                            size_boost_in_points: depth_cloud
+                                .size_boost_in_points_for_outlines
+                                .into(),
+                            end_padding: Default::default(),
+                        },
+                    ),
+                )
+            } else {
+                mk_bind_group(
+                    "depth_cloud_bg".into(),
+                    create_and_fill_uniform_buffer(
+                        ctx,
+                        "PointCloudDrawData::DrawDataUniformBuffer".into(),
+                        gpu_data::DrawDataUniformBuffer {
+                            size_boost_in_points: 0.0.into(),
+                            end_padding: Default::default(),
+                        },
+                    ),
+                )
+            };
+
+            instances.push(DepthCloudDrawInstance {
+                num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
+                bind_group,
+                render_outline_mask,
             });
         }
 
@@ -389,6 +443,18 @@ impl Renderer for DepthCloudRenderer {
                             sample_type: wgpu::TextureSampleType::Float { filterable: false },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                                gpu_data::DrawDataUniformBuffer,
+                            >() as _),
                         },
                         count: None,
                     },
