@@ -1635,6 +1635,14 @@ fn options_menu_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, options: &mut A
         ui.close_menu();
     }
 
+    if ui
+        .checkbox(&mut options.experimental_space_view_screenshots, "(experimental) Space View screenshots")
+        .on_hover_text("Allow taking screenshots of 2D & 3D space views via their context menu. Does not contain labels.")
+        .clicked()
+    {
+        ui.close_menu();
+    }
+
     #[cfg(debug_assertions)]
     {
         ui.separator();

@@ -16,7 +16,7 @@ use crate::{
         data_ui::{self, DataUi},
         view_spatial::{
             scene::AdditionalPickingInfo,
-            ui::{create_labels, outline_config},
+            ui::{create_labels, outline_config, screenshot_context_menu},
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
@@ -496,13 +496,7 @@ pub fn view_3d(
         }
     }
 
-    let mut take_screenshot = false;
-    response.context_menu(|ui| {
-        if ui.button("Take screenshot").clicked() {
-            take_screenshot = true;
-            ui.close_menu();
-        }
-    });
+    let (_, take_screenshot) = screenshot_context_menu(ctx, response);
 
     let screenshot = paint_view(
         ui,

@@ -8,8 +8,10 @@ use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{
-    eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, SpatialNavigationMode,
-    ViewSpatialState,
+    eye::Eye,
+    scene::AdditionalPickingInfo,
+    ui::{create_labels, screenshot_context_menu},
+    SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
     misc::{HoveredSpace, Item, ScheduledGpuReadback, SpaceViewHighlights},
@@ -427,13 +429,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    let mut take_screenshot = false;
-    let response = response.context_menu(|ui| {
-        if ui.button("Take screenshot").clicked() {
-            take_screenshot = true;
-            ui.close_menu();
-        }
-    });
+    let (response, take_screenshot) = screenshot_context_menu(ctx, response);
 
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.

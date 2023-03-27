@@ -620,3 +620,21 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
         color_layer_b: selection_outline_color,
     }
 }
+
+pub fn screenshot_context_menu(
+    ctx: &ViewerContext<'_>,
+    response: egui::Response,
+) -> (egui::Response, bool) {
+    if ctx.app_options.experimental_space_view_screenshots {
+        let mut take_screenshot = false;
+        let response = response.context_menu(|ui| {
+            if ui.button("Take screenshot").clicked() {
+                take_screenshot = true;
+                ui.close_menu();
+            }
+        });
+        (response, take_screenshot)
+    } else {
+        (response, false)
+    }
+}
