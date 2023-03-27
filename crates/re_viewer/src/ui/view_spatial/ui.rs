@@ -625,16 +625,23 @@ pub fn screenshot_context_menu(
     ctx: &ViewerContext<'_>,
     response: egui::Response,
 ) -> (egui::Response, bool) {
-    if ctx.app_options.experimental_space_view_screenshots {
-        let mut take_screenshot = false;
-        let response = response.context_menu(|ui| {
-            if ui.button("Take screenshot").clicked() {
-                take_screenshot = true;
-                ui.close_menu();
-            }
-        });
-        (response, take_screenshot)
-    } else {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ctx.app_options.experimental_space_view_screenshots {
+            let mut take_screenshot = false;
+            let response = response.context_menu(|ui| {
+                if ui.button("Take screenshot").clicked() {
+                    take_screenshot = true;
+                    ui.close_menu();
+                }
+            });
+            (response, take_screenshot)
+        } else {
+            (response, false)
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
         (response, false)
     }
 }
