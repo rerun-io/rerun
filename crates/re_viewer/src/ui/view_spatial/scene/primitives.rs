@@ -26,7 +26,9 @@ pub struct SceneSpatialPrimitives {
     pub points: PointCloudBuilder<InstancePathHash>,
 
     pub meshes: Vec<MeshSource>,
+
     pub depth_clouds: Vec<DepthCloud>,
+    pub depth_cloud_size_boost_in_points_for_outlines: f32,
 
     pub any_outlines: bool,
 }
@@ -36,7 +38,7 @@ const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
-pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
+const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
 impl SceneSpatialPrimitives {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
@@ -50,6 +52,7 @@ impl SceneSpatialPrimitives {
                 .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
             meshes: Default::default(),
             depth_clouds: Default::default(),
+            depth_cloud_size_boost_in_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
             any_outlines: false,
         }
     }
@@ -69,6 +72,7 @@ impl SceneSpatialPrimitives {
             points,
             meshes,
             depth_clouds,
+            depth_cloud_size_boost_in_points_for_outlines: _,
             any_outlines: _,
         } = &self;
 
@@ -90,6 +94,7 @@ impl SceneSpatialPrimitives {
             points,
             meshes,
             depth_clouds: _, // no bbox for depth clouds
+            depth_cloud_size_boost_in_points_for_outlines: _,
             any_outlines: _,
         } = self;
 

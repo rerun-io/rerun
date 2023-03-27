@@ -170,8 +170,10 @@ impl RenderDepthClouds {
 
         let world_from_obj = glam::Mat4::from_scale(glam::Vec3::splat(*scale));
 
+        let size_boost_in_points_for_outlines = 2.5;
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
+            size_boost_in_points_for_outlines,
             &[DepthCloud {
                 world_from_obj,
                 depth_camera_intrinsics: *intrinsics,
@@ -182,7 +184,6 @@ impl RenderDepthClouds {
                 depth_data: depth.data.clone(),
                 colormap: re_renderer::ColorMap::ColorMapTurbo,
                 outline_mask_id: Default::default(),
-                size_boost_in_points_for_outlines: 2.5,
             }],
         )
         .unwrap();

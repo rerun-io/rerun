@@ -167,6 +167,7 @@ pub fn picking(
         points,
         meshes,
         depth_clouds: _, // no picking for depth clouds yet
+        depth_cloud_size_boost_in_points_for_outlines: _,
         any_outlines: _,
     } = primitives;
 

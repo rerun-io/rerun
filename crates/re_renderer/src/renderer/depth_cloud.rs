@@ -78,7 +78,6 @@ mod gpu_data {
                 depth_data,
                 colormap,
                 outline_mask_id,
-                size_boost_in_points_for_outlines: _,
             } = depth_cloud;
 
             let user_depth_from_texture_value = match depth_data {
@@ -168,9 +167,6 @@ pub struct DepthCloud {
 
     /// Option outline mask id preference.
     pub outline_mask_id: OutlineMaskPreference,
-
-    /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
-    pub size_boost_in_points_for_outlines: f32,
 }
 
 #[derive(Clone)]
@@ -192,6 +188,7 @@ impl DrawData for DepthCloudDrawData {
 impl DepthCloudDrawData {
     pub fn new(
         ctx: &mut RenderContext,
+        size_boost_in_points_for_outlines: f32,
         depth_clouds: &[DepthCloud],
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
@@ -289,9 +286,7 @@ impl DepthCloudDrawData {
                         ctx,
                         "PointCloudDrawData::DrawDataUniformBuffer_outline_mask".into(),
                         gpu_data::DrawDataUniformBuffer {
-                            size_boost_in_points: depth_cloud
-                                .size_boost_in_points_for_outlines
-                                .into(),
+                            size_boost_in_points: size_boost_in_points_for_outlines.into(),
                             end_padding: Default::default(),
                         },
                     ),
