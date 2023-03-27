@@ -69,7 +69,7 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
-        pub size_boost_in_points: wgpu_buffer_types::F32RowPadded,
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 
@@ -318,11 +318,13 @@ impl PointCloudDrawData {
             "PointCloudDrawData::DrawDataUniformBuffer".into(),
             [
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: 0.0.into(),
+                    radius_boost_in_ui_points: 0.0.into(),
                     end_padding: Default::default(),
                 },
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: builder.size_boost_in_points_for_outlines.into(),
+                    radius_boost_in_ui_points: builder
+                        .radius_boost_in_ui_points_for_outlines
+                        .into(),
                     end_padding: Default::default(),
                 },
             ]

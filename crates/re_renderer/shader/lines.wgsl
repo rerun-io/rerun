@@ -12,7 +12,7 @@ var line_strip_texture: texture_2d<f32>;
 var position_data_texture: texture_2d<u32>;
 
 struct DrawDataUniformBuffer {
-    size_boost_in_points: f32,
+    radius_boost_in_ui_points: f32,
     // In actuality there is way more padding than this since we align all our uniform buffers to
     // 256bytes in order to allow them to be buffer-suballocations.
     // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
@@ -200,8 +200,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let camera_ray = camera_ray_to_world_pos(center_position);
     let camera_distance = distance(camera_ray.origin, center_position);
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
-    if draw_data.size_boost_in_points > 0.0 {
-        let size_boost = world_size_from_point_size(draw_data.size_boost_in_points, camera_distance);
+    if draw_data.radius_boost_in_ui_points > 0.0 {
+        let size_boost = world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
         strip_radius += size_boost;
         // Push out positions as well along the quad dir.
         // This is especially important if there's no miters on a line-strip (TODO(#829)),

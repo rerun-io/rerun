@@ -11,7 +11,7 @@ var position_data_texture: texture_2d<f32>;
 var color_texture: texture_2d<f32>;
 
 struct DrawDataUniformBuffer {
-    size_boost_in_points: f32,
+    radius_boost_in_ui_points: f32,
     // In actuality there is way more padding than this since we align all our uniform buffers to
     // 256bytes in order to allow them to be buffer-suballocations.
     // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
@@ -74,7 +74,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = read_data(quad_idx);
 
     // Span quad
-    let quad = sphere_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius, draw_data.size_boost_in_points);
+    let quad = sphere_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius, draw_data.radius_boost_in_ui_points);
 
     // Output, transform to projection space and done.
     var out: VertexOut;

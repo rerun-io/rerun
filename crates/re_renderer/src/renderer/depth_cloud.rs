@@ -105,7 +105,7 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
-        pub size_boost_in_points: wgpu_buffer_types::F32RowPadded,
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
@@ -189,7 +189,7 @@ impl DrawData for DepthCloudDrawData {
 impl DepthCloudDrawData {
     pub fn new(
         ctx: &mut RenderContext,
-        size_boost_in_points_for_outlines: f32,
+        radius_boost_in_ui_points_for_outlines: f32,
         depth_clouds: &[DepthCloud],
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
@@ -284,7 +284,7 @@ impl DepthCloudDrawData {
                     ctx,
                     "PointCloudDrawData::DrawDataUniformBuffer_outline_mask".into(),
                     gpu_data::DrawDataUniformBuffer {
-                        size_boost_in_points: size_boost_in_points_for_outlines.into(),
+                        radius_boost_in_ui_points: radius_boost_in_ui_points_for_outlines.into(),
                         end_padding: Default::default(),
                     },
                 ),
@@ -295,7 +295,7 @@ impl DepthCloudDrawData {
                     ctx,
                     "PointCloudDrawData::DrawDataUniformBuffer".into(),
                     gpu_data::DrawDataUniformBuffer {
-                        size_boost_in_points: 0.0.into(),
+                        radius_boost_in_ui_points: 0.0.into(),
                         end_padding: Default::default(),
                     },
                 ),

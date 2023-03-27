@@ -51,7 +51,7 @@ fn create_and_fill_view_builder(
         .queue_draw(
             &DepthCloudDrawData::new(
                 render_ctx,
-                primitives.depth_cloud_size_boost_in_points_for_outlines,
+                primitives.depth_cloud_radius_boost_in_ui_points_for_outlines,
                 &primitives.depth_clouds,
             )
             .unwrap(),

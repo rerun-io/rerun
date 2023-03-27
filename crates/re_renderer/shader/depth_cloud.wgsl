@@ -85,7 +85,7 @@ var<uniform> depth_cloud_info: DepthCloudInfo;
 var depth_texture: texture_2d<f32>;
 
 struct DrawDataUniformBuffer {
-    size_boost_in_points: f32,
+    radius_boost_in_ui_points: f32,
     // In actuality there is way more padding than this since we align all our uniform buffers to
     // 256bytes in order to allow them to be buffer-suballocations.
     // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
@@ -111,7 +111,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = compute_point_data(quad_idx);
 
     // Span quad
-    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, draw_data.size_boost_in_points);
+    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, draw_data.radius_boost_in_ui_points);
 
     var out: VertexOut;
     out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);

@@ -28,7 +28,7 @@ pub struct SceneSpatialPrimitives {
     pub meshes: Vec<MeshSource>,
 
     pub depth_clouds: Vec<DepthCloud>,
-    pub depth_cloud_size_boost_in_points_for_outlines: f32,
+    pub depth_cloud_radius_boost_in_ui_points_for_outlines: f32,
 
     pub any_outlines: bool,
 }
@@ -47,12 +47,13 @@ impl SceneSpatialPrimitives {
             textured_rectangles_ids: Default::default(),
             textured_rectangles: Default::default(),
             line_strips: LineStripSeriesBuilder::new(re_ctx)
-                .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
+                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
             points: PointCloudBuilder::new(re_ctx)
-                .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
+                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
             meshes: Default::default(),
             depth_clouds: Default::default(),
-            depth_cloud_size_boost_in_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+            depth_cloud_radius_boost_in_ui_points_for_outlines:
+                SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
             any_outlines: false,
         }
     }
@@ -72,7 +73,7 @@ impl SceneSpatialPrimitives {
             points,
             meshes,
             depth_clouds,
-            depth_cloud_size_boost_in_points_for_outlines: _,
+            depth_cloud_radius_boost_in_ui_points_for_outlines: _,
             any_outlines: _,
         } = &self;
 
@@ -94,7 +95,7 @@ impl SceneSpatialPrimitives {
             points,
             meshes,
             depth_clouds: _, // no bbox for depth clouds
-            depth_cloud_size_boost_in_points_for_outlines: _,
+            depth_cloud_radius_boost_in_ui_points_for_outlines: _,
             any_outlines: _,
         } = self;
 
