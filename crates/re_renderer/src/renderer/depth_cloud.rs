@@ -35,17 +35,18 @@ use super::{
 // ---
 
 mod gpu_data {
-    // - Keep in sync with mirror in depth_cloud.wgsl.
-    // - See `DepthCloud` for documentation.
+    use crate::wgpu_buffer_types;
+
+    /// Keep in sync with mirror in `depth_cloud.wgsl.`
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
         /// The extrinsics of the camera used for the projection.
-        pub world_from_obj: crate::wgpu_buffer_types::Mat4,
+        pub world_from_obj: wgpu_buffer_types::Mat4,
 
-        pub depth_camera_intrinsics: crate::wgpu_buffer_types::Mat3,
+        pub depth_camera_intrinsics: wgpu_buffer_types::Mat3,
 
-        pub outline_mask_id: crate::wgpu_buffer_types::UVec2,
+        pub outline_mask_id: wgpu_buffer_types::UVec2,
 
         /// Multiplier to get world-space depth from whatever is in the texture.
         pub world_depth_from_texture_value: f32,
@@ -57,13 +58,20 @@ mod gpu_data {
         pub max_depth_in_world: f32,
 
         pub colormap: u32,
-        pub row_pad: [u32; 2],
 
-        pub end_padding: [crate::wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
+        /// Changes over different draw-phases.
+        pub radius_boost_in_ui_points: f32,
+
+        pub row_pad: f32,
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
     }
 
     impl DepthCloudInfoUBO {
-        pub fn from_depth_cloud(depth_cloud: &super::DepthCloud) -> Self {
+        pub fn from_depth_cloud(
+            radius_boost_in_ui_points: f32,
+            depth_cloud: &super::DepthCloud,
+        ) -> Self {
             let super::DepthCloud {
                 world_from_obj,
                 depth_camera_intrinsics,
@@ -91,6 +99,7 @@ mod gpu_data {
                 point_radius_from_world_depth: *point_radius_from_world_depth,
                 max_depth_in_world: *max_depth_in_world,
                 colormap: *colormap as u32,
+                radius_boost_in_ui_points,
                 row_pad: Default::default(),
                 end_padding: Default::default(),
             }
@@ -157,9 +166,15 @@ pub struct DepthCloud {
     pub outline_mask_id: OutlineMaskPreference,
 }
 
+pub struct DepthClouds {
+    pub clouds: Vec<DepthCloud>,
+    pub radius_boost_in_ui_points_for_outlines: f32,
+}
+
 #[derive(Clone)]
 struct DepthCloudDrawInstance {
-    bind_group: GpuBindGroup,
+    bind_group_opaque: GpuBindGroup,
+    bind_group_outline: GpuBindGroup,
     num_points: u32,
     render_outline_mask: bool,
 }
@@ -176,9 +191,14 @@ impl DrawData for DepthCloudDrawData {
 impl DepthCloudDrawData {
     pub fn new(
         ctx: &mut RenderContext,
-        depth_clouds: &[DepthCloud],
+        depth_clouds: &DepthClouds,
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
+
+        let DepthClouds {
+            clouds: depth_clouds,
+            radius_boost_in_ui_points_for_outlines,
+        } = depth_clouds;
 
         let bg_layout = ctx
             .renderers
@@ -197,16 +217,30 @@ impl DepthCloudDrawData {
             });
         }
 
-        let depth_cloud_ubos = create_and_fill_uniform_buffer_batch(
+        let depth_cloud_ubo_binding_outlines = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "depth_cloud_ubos".into(),
+            depth_clouds.iter().map(|dc| {
+                gpu_data::DepthCloudInfoUBO::from_depth_cloud(
+                    *radius_boost_in_ui_points_for_outlines,
+                    dc,
+                )
+            }),
+        );
+        let depth_cloud_ubo_binding_opaque = create_and_fill_uniform_buffer_batch(
             ctx,
             "depth_cloud_ubos".into(),
             depth_clouds
                 .iter()
-                .map(gpu_data::DepthCloudInfoUBO::from_depth_cloud),
+                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, dc)),
         );
 
         let mut instances = Vec::with_capacity(depth_clouds.len());
-        for (depth_cloud, ubo) in depth_clouds.iter().zip(depth_cloud_ubos.into_iter()) {
+        for (depth_cloud, ubo_outlines, ubo_opaque) in itertools::izip!(
+            depth_clouds,
+            depth_cloud_ubo_binding_outlines,
+            depth_cloud_ubo_binding_opaque
+        ) {
             let depth_texture = match &depth_cloud.depth_data {
                 DepthCloudDepthData::U16(data) => {
                     if cfg!(target_arch = "wasm32") {
@@ -245,20 +279,28 @@ impl DepthCloudDrawData {
                 ),
             };
 
-            instances.push(DepthCloudDrawInstance {
-                num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
-                bind_group: ctx.gpu_resources.bind_groups.alloc(
+            let mk_bind_group = |label, ubo: BindGroupEntry| {
+                ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
                     &BindGroupDesc {
-                        label: "depth_cloud_bg".into(),
+                        label,
                         entries: smallvec![
                             ubo,
                             BindGroupEntry::DefaultTextureView(depth_texture.handle),
                         ],
                         layout: bg_layout,
                     },
-                ),
+                )
+            };
+
+            let bind_group_outline = mk_bind_group("depth_cloud_outline".into(), ubo_outlines);
+            let bind_group_opaque = mk_bind_group("depth_cloud_opaque".into(), ubo_opaque);
+
+            instances.push(DepthCloudDrawInstance {
+                num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
+                bind_group_opaque,
+                bind_group_outline,
                 render_outline_mask: depth_cloud.outline_mask_id.is_some(),
             });
         }
@@ -492,7 +534,13 @@ impl Renderer for DepthCloudRenderer {
                 continue;
             }
 
-            pass.set_bind_group(1, &instance.bind_group, &[]);
+            let bind_group = match phase {
+                DrawPhase::OutlineMask => &instance.bind_group_outline,
+                DrawPhase::Opaque => &instance.bind_group_opaque,
+                _ => unreachable!(),
+            };
+
+            pass.set_bind_group(1, bind_group, &[]);
             pass.draw(0..instance.num_points * 6, 0..1);
         }
 

@@ -164,7 +164,7 @@ pub mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
-        pub size_boost_in_points: wgpu_buffer_types::F32RowPadded,
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 
@@ -325,7 +325,7 @@ impl LineDrawData {
         vertices: &[gpu_data::LineVertex],
         strips: &[LineStripInfo],
         batches: &[LineBatchInfo],
-        size_boost_in_points_for_outlines: f32,
+        radius_boost_in_ui_points_for_outlines: f32,
     ) -> Result<Self, LineDrawDataError> {
         let mut renderers = ctx.renderers.write();
         let line_renderer = renderers.get_or_create::<_, LineRenderer>(
@@ -512,11 +512,11 @@ impl LineDrawData {
             "LineDrawData::DrawDataUniformBuffer".into(),
             [
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: 0.0.into(),
+                    radius_boost_in_ui_points: 0.0.into(),
                     end_padding: Default::default(),
                 },
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: size_boost_in_points_for_outlines.into(),
+                    radius_boost_in_ui_points: radius_boost_in_ui_points_for_outlines.into(),
                     end_padding: Default::default(),
                 },
             ]
