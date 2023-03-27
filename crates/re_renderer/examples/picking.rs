@@ -90,7 +90,7 @@ impl framework::Example for Picking {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        time: &framework::Time,
+        _time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         self.handle_incoming_picking_data(re_ctx);
