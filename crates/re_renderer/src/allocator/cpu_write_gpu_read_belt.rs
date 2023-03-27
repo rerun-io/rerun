@@ -96,16 +96,15 @@ where
         self,
         encoder: &mut wgpu::CommandEncoder,
         destination: wgpu::ImageCopyTexture<'_>,
-        copy_size_width: u32,
-        copy_size_height: u32,
+        copy_extent: glam::UVec2,
     ) {
-        let bytes_per_row = texture_row_data_info(destination.texture.format(), copy_size_width)
-            .bytes_per_row_padded;
+        let bytes_per_row =
+            texture_row_data_info(destination.texture.format(), copy_extent.x).bytes_per_row_padded;
 
         // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
         // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
         // (and if you did you probably have regrets anyways!)
-        let required_buffer_size = bytes_per_row * copy_size_height;
+        let required_buffer_size = bytes_per_row * copy_extent.y;
         debug_assert_eq!(
             required_buffer_size as usize,
             self.num_written() * std::mem::size_of::<T>()
@@ -122,8 +121,8 @@ where
             },
             destination,
             wgpu::Extent3d {
-                width: copy_size_width,
-                height: copy_size_height,
+                width: copy_extent.x,
+                height: copy_extent.y,
                 depth_or_array_layers: 1,
             },
         );

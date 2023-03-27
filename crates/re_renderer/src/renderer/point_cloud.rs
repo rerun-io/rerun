@@ -266,8 +266,10 @@ impl PointCloudDrawData {
         let num_points_written =
             wgpu::util::align_to(vertices.len() as u32, DATA_TEXTURE_SIZE) as usize;
         let num_elements_padding = num_points_written - vertices.len();
-        let texture_width = DATA_TEXTURE_SIZE;
-        let texture_height = num_points_written as u32 / DATA_TEXTURE_SIZE;
+        let texture_copy_extent = glam::uvec2(
+            DATA_TEXTURE_SIZE,
+            num_points_written as u32 / DATA_TEXTURE_SIZE,
+        );
 
         {
             crate::profile_scope!("write_pos_size_texture");
@@ -292,8 +294,7 @@ impl PointCloudDrawData {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                texture_width,
-                texture_height,
+                texture_copy_extent,
             );
         }
 
@@ -308,8 +309,7 @@ impl PointCloudDrawData {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            texture_width,
-            texture_height,
+            texture_copy_extent,
         );
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(

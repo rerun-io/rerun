@@ -337,8 +337,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        depth_texture_size.width,
-        depth_texture_size.height,
+        depth_cloud.depth_dimensions,
     );
 
     depth_texture
