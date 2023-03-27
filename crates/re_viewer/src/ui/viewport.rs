@@ -392,11 +392,13 @@ impl Viewport {
                             .display_name
                             .replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
                         let mut i = 1;
-                        let mut filename = format!("Screenshot {safe_space_view_name}.png");
-                        while std::path::Path::new(&filename).exists() {
-                            filename = format!("Screenshot {safe_space_view_name} ({i}).png");
+                        let filename = loop {
+                            let filename = format!("Screenshot {safe_space_view_name} - {i}.png");
+                            if !std::path::Path::new(&filename).exists() {
+                                break filename;
+                            }
                             i += 1;
-                        }
+                        };
                         let filename = std::path::Path::new(&filename);
 
                         image::save_buffer(
