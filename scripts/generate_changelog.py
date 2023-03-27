@@ -75,6 +75,7 @@ def print_section(title: str, items: List[str]) -> None:
 
 repo = Repo(".")
 commits = list(repo.iter_commits(COMMIT_RANGE))
+commits.reverse()
 
 # Sections:
 analytics = []
@@ -158,10 +159,10 @@ print_section("🚀 Performance Improvements", performance)
 print_section("🧑‍🏫 Examples", examples)
 print_section("📚 Docs", docs)
 print_section("🖼 UI Improvements", ui)
-print_section("Other Viewer Improvements", viewer)
+print_section("🤷‍♂️ Other Viewer Improvements", viewer)
 print_section("🕸️ web", web)
 print_section("🎨 Renderer Improvements", renderer)
-print_section("Other Enhancement", enhancement)
+print_section("✨ Other Enhancement", enhancement)
 print_section("🗣 Merged RFCs", rfc)
-print_section("Dev-experience", dev_experience)
+print_section("🧑‍💻 Dev-experience", dev_experience)
 print_section("🤷‍♂️ Other", misc)
