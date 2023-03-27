@@ -59,9 +59,9 @@ ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
 egui = "0.21.0"
+egui-wgpu = "0.21.0"
 egui_dock = "0.4"
 egui_extras = "0.21.0"
-egui-wgpu = "0.21.0"
 emath = "0.21.0"
 enumset = "1.0.12"
 epaint = "0.21.0"
@@ -69,6 +69,7 @@ glam = "0.22"
 gltf = "1.1"
 half = "2.0"
 image = { version = "0.24", default-features = false }
+itertools = "0.10"
 lazy_static = "1.4"
 macaw = "0.18"
 mimalloc = "0.1.29"

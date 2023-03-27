@@ -12,8 +12,8 @@ pub mod datagen;
 
 pub mod arrow_msg;
 pub mod component_types;
-pub use arrow_msg::ArrowMsg;
 mod data;
+mod data_cell;
 pub mod hash;
 mod index;
 pub mod msg_bundle;
@@ -34,6 +34,7 @@ pub mod external {
     pub use image;
 }
 
+pub use self::arrow_msg::ArrowMsg;
 pub use self::component_types::context;
 pub use self::component_types::coordinates;
 pub use self::component_types::AnnotationContext;
@@ -42,6 +43,7 @@ pub use self::component_types::MsgId;
 pub use self::component_types::ViewCoordinates;
 pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::data::*;
+pub use self::data_cell::{DataCell, DataCellError, DataCellResult};
 pub use self::index::*;
 pub use self::path::*;
 pub use self::time::{Duration, Time};

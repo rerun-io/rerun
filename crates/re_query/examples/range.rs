@@ -25,27 +25,27 @@ fn main() {
 
     let rects = build_some_rects(2);
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), frame1, &rects).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let points = build_some_point2d(2);
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), frame2, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let points = build_some_point2d(4);
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), frame3, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let rects = build_some_rects(3);
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), frame4, &rects).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let points = build_some_point2d(3);
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), frame4, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let rects = build_some_rects(3);
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), frame4, &rects).unwrap();
-    store.insert(&bundle).unwrap();
+    store.insert_row(&bundle).unwrap();
 
     let query = RangeQuery::new(frame2[0].0, TimeRange::new(frame2[0].1, frame4[0].1));
 

@@ -166,7 +166,7 @@ fn insert_messages<'a>(
     msgs: impl Iterator<Item = &'a MsgBundle>,
 ) -> DataStore {
     let mut store = DataStore::new(cluster_key, config);
-    msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
+    msgs.for_each(|msg_bundle| store.insert_row(msg_bundle).unwrap());
     store
 }
 

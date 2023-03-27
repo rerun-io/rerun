@@ -170,6 +170,10 @@ mod tests {
         )
         .unwrap();
 
+        // TODO(#1619): test the full roundtrip:
+        // cell -> row -> table_in -> msg_in -> msg_out -> table_out
+        //     => msg_in == msg_out
+        //     => table_in == table_out
         let msg_in: ArrowMsg = bundle.try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
