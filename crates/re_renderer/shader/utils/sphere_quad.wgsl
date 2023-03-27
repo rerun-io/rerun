@@ -27,9 +27,9 @@ fn sphere_quad_span_perspective(
     let camera_offset = radius_sq * distance_to_camera_inv;
     var modified_radius = point_radius * distance_to_camera_inv * sqrt(distance_to_camera_sq - radius_sq);
 
-    // We're computing a coverage mask in the fragment shader - make sure the quad doesn't cut off our antialiasing.
+    // Add half a pixel of margin for the feathering we do for antialiasing the spheres.
     // It's fairly subtle but if we don't do this our spheres look slightly squarish
-    modified_radius += frame.pixel_world_size_from_camera_distance * camera_distance;
+    modified_radius += 0.5 * frame.pixel_world_size_from_camera_distance * camera_distance;
 
     return point_pos + pos_in_quad * modified_radius + camera_offset * quad_normal;
 
@@ -48,9 +48,9 @@ fn sphere_quad_span_orthographic(point_pos: Vec3, point_radius: f32, top_bottom:
     let quad_up = cross(quad_right, quad_normal);
     let pos_in_quad = top_bottom * quad_up + left_right * quad_right;
 
-    // We're computing a coverage mask in the fragment shader - make sure the quad doesn't cut off our antialiasing.
+    // Add half a pixel of margin for the feathering we do for antialiasing the spheres.
     // It's fairly subtle but if we don't do this our spheres look slightly squarish
-    let radius = point_radius + frame.pixel_world_size_from_camera_distance;
+    let radius = point_radius + 0.5 * frame.pixel_world_size_from_camera_distance;
 
     return point_pos + pos_in_quad * radius;
 }
@@ -100,9 +100,13 @@ fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labeled to it's easier to understand!)
     let d = ray_sphere_distance(ray, point_center, radius);
-    let smallest_distance_to_sphere = d.x;
+    let distance_to_sphere_surface = d.x;
     let closest_ray_dist = d.y;
     let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
 
-    return 1.0 - saturate(smallest_distance_to_sphere / pixel_world_size);
+    let distance_to_surface_in_pixels = distance_to_sphere_surface / pixel_world_size;
+
+    // At the surface we have 50% coverage, and it decreases with distance.
+    // Note that we have signed distances to the sphere surface.
+    return saturate(0.5 - distance_to_surface_in_pixels);
 }

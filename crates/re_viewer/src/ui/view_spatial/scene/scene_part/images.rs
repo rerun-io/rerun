@@ -278,9 +278,10 @@ impl ImagesPart {
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
-        let Some(extrinsics) = pinhole_ent_path
-        .parent()
-        .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
+        let world_from_obj = pinhole_ent_path
+            .parent()
+            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        let Some(world_from_obj) = world_from_obj else {
             re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
             return;
         };
@@ -291,21 +292,19 @@ impl ImagesPart {
             TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
             _ => {
-                let discriminant = std::mem::discriminant(&tensor.data);
                 re_log::warn_once!(
-                    "Tensor datatype is not supported for backprojection ({discriminant:?})"
+                    "Tensor datatype {} is not supported for backprojection",
+                    tensor.dtype()
                 );
                 return;
             }
         };
 
-        let scale = *properties.backproject_scale.get();
-        let radius_scale = *properties.backproject_radius_scale.get();
+        let depth_from_world_scale = *properties.depth_from_world_scale.get();
+        let world_depth_from_data_depth = 1.0 / depth_from_world_scale;
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
-
-        let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
         let colormap = match *properties.color_mapper.get() {
             re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
@@ -318,10 +317,32 @@ impl ImagesPart {
             },
         };
 
+        // We want point radius to be defined in a scale where the radius of a point
+        // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
+        // at that distance.
+        let fov_y = intrinsics.fov_y().unwrap_or(1.0);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
+        let radius_scale = *properties.backproject_radius_scale.get();
+        let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
+
+        let max_data_value = if let Some((_min, max)) = ctx.cache.tensor_stats(tensor).range {
+            max as f32
+        } else {
+            // This could only happen for Jpegs, and we should never get here.
+            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
+            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
+            match data {
+                DepthCloudDepthData::U16(_) => u16::MAX as f32,
+                DepthCloudDepthData::F32(_) => 10.0,
+            }
+        };
+
         scene.primitives.depth_clouds.push(DepthCloud {
-            depth_camera_extrinsics: world_from_obj,
+            world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            radius_scale,
+            world_depth_from_data_depth,
+            point_radius_from_world_depth,
+            max_depth_in_world: world_depth_from_data_depth * max_data_value,
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,

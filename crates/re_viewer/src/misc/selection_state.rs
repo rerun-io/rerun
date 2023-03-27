@@ -335,12 +335,12 @@ impl SelectionState {
         let mut next_selection_mask = || {
             // We don't expect to overflow u8, but if we do, don't use the "background mask".
             selection_mask_index = selection_mask_index.wrapping_add(1).at_least(1);
-            OutlineMaskPreference::some(selection_mask_index, 0)
+            OutlineMaskPreference::some(0, selection_mask_index)
         };
         let mut next_hover_mask = || {
             // We don't expect to overflow u8, but if we do, don't use the "background mask".
             hover_mask_index = hover_mask_index.wrapping_add(1).at_least(1);
-            OutlineMaskPreference::some(0, hover_mask_index)
+            OutlineMaskPreference::some(hover_mask_index, 0)
         };
 
         for current_selection in self.selection.iter() {

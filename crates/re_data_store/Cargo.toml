@@ -49,6 +49,12 @@ puffin.workspace = true
 criterion = "0.4"
 mimalloc.workspace = true
 rand = "0.8"
+re_log_types = { workspace = true, features = ["load", "save"] }
 
 [lib]
 bench = false
+
+[[example]]
+name = "memory_usage"
+path = "examples/memory_usage.rs"
+required-features = ["re_log_types/load", "re_log_types/save"]

@@ -4,7 +4,7 @@ use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_log_types::component_types::{Tensor, TensorData, TensorDataMeaning};
+use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::renderer::OutlineConfig;
 
 use crate::{
@@ -97,40 +97,15 @@ impl Default for ViewSpatialState {
 }
 
 impl ViewSpatialState {
-    pub fn auto_size_config(
-        &self,
-        viewport_size_in_points: egui::Vec2,
-    ) -> re_renderer::AutoSizeConfig {
+    pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
-            config.point_radius = self.default_point_radius(viewport_size_in_points);
+            config.point_radius = re_renderer::Size::new_points(1.5); // default point radius
         }
         if config.line_radius.is_auto() {
-            config.line_radius = self.default_line_radius();
+            config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
         }
         config
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn default_line_radius(&self) -> re_renderer::Size {
-        re_renderer::Size::new_points(1.5)
-    }
-
-    pub fn default_point_radius(&self, viewport_size_in_points: egui::Vec2) -> re_renderer::Size {
-        // More points -> smaller points.
-        let num_points = self.scene_num_primitives; // approximately the same thing when there are many points
-
-        // Larger view -> larger points.
-        let viewport_area = viewport_size_in_points.x * viewport_size_in_points.y;
-
-        const RADIUS_MULTIPLIER: f32 = 0.15;
-        const MIN_POINT_RADIUS: f32 = 0.2;
-        const MAX_POINT_RADIUS: f32 = 3.0;
-
-        let radius = (RADIUS_MULTIPLIER * (viewport_area / (num_points + 1) as f32).sqrt())
-            .clamp(MIN_POINT_RADIUS, MAX_POINT_RADIUS);
-
-        re_renderer::Size::new_points(radius)
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -175,13 +150,7 @@ impl ViewSpatialState {
                 &entity_path,
                 scene_size,
             );
-            Self::update_depth_cloud_property_heuristics(
-                ctx,
-                data_blueprint,
-                &query,
-                &entity_path,
-                scene_size,
-            );
+            Self::update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
@@ -221,34 +190,26 @@ impl ViewSpatialState {
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-        scene_size: f32,
     ) {
         let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
         if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
             let tensor = tensor.as_ref().unwrap();
 
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
-            if properties.backproject_scale.is_auto() {
-                let auto = tensor.meter.map_or_else(
-                    || match &tensor.data {
-                        TensorData::U16(_) => 1.0 / u16::MAX as f32,
-                        _ => 1.0,
-                    },
-                    |meter| match &tensor.data {
-                        TensorData::U16(_) => 1.0 / meter * u16::MAX as f32,
-                        _ => meter,
-                    },
-                );
-                properties.backproject_scale = EditableAutoValue::Auto(auto);
+            if properties.depth_from_world_scale.is_auto() {
+                let auto = tensor.meter.unwrap_or_else(|| {
+                    use re_log_types::component_types::TensorTrait as _;
+                    if tensor.dtype().is_integer() {
+                        1000.0
+                    } else {
+                        1.0
+                    }
+                });
+                properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
             }
 
             if properties.backproject_radius_scale.is_auto() {
-                let auto = if scene_size.is_finite() && scene_size > 0.0 {
-                    f32::max(0.02, scene_size * 0.001)
-                } else {
-                    0.02
-                };
-                properties.backproject_radius_scale = EditableAutoValue::Auto(auto);
+                properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
             }
 
             data_blueprint
@@ -644,7 +605,7 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
 
     OutlineConfig {
         outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.5).at_least(0.5),
-        color_layer_a: selection_outline_color,
-        color_layer_b: hover_outline_color,
+        color_layer_a: hover_outline_color,
+        color_layer_b: selection_outline_color,
     }
 }
