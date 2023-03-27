@@ -75,7 +75,7 @@ def print_section(title: str, items: List[str]) -> None:
 
 repo = Repo(".")
 commits = list(repo.iter_commits(COMMIT_RANGE))
-commits.reverse() # Most recent last
+commits.reverse()  # Most recent last
 
 # Sections:
 analytics = []
