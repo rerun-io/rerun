@@ -37,6 +37,7 @@ pub trait Example {
     ) -> Vec<ViewDrawResult>;
 
     fn on_keyboard_input(&mut self, _input: winit::event::KeyboardInput) {}
+
     fn on_cursor_moved(&mut self, _position_in_pixel: glam::UVec2) {}
 }
 
