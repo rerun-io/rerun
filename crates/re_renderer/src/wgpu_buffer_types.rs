@@ -235,10 +235,10 @@ impl From<crate::Rgba> for Vec4 {
     }
 }
 
-impl Into<glam::Vec4> for Vec4 {
+impl From<Vec4> for glam::Vec4 {
     #[inline]
-    fn into(self) -> glam::Vec4 {
-        glam::vec4(self.x, self.y, self.z, self.w)
+    fn from(val: Vec4) -> Self {
+        glam::vec4(val.x, val.y, val.z, val.w)
     }
 }
 
@@ -282,15 +282,10 @@ impl From<glam::Mat4> for Mat4 {
     }
 }
 
-impl Into<glam::Mat4> for Mat4 {
+impl From<Mat4> for glam::Mat4 {
     #[inline]
-    fn into(self) -> glam::Mat4 {
-        glam::Mat4::from_cols(
-            self.c0.into(),
-            self.c1.into(),
-            self.c2.into(),
-            self.c3.into(),
-        )
+    fn from(val: Mat4) -> Self {
+        glam::Mat4::from_cols(val.c0.into(), val.c1.into(), val.c2.into(), val.c3.into())
     }
 }
 

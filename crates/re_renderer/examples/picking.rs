@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, PointCloudBuilder, RenderContext, Size,
+    Color32, PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
 };
 
 mod framework;
@@ -11,6 +11,8 @@ struct Picking {
     random_points_positions: Vec<glam::Vec3>,
     random_points_radii: Vec<Size>,
     random_points_colors: Vec<Color32>,
+
+    scheduled_picking_rects: Vec<ScheduledPickingRect>,
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
@@ -24,12 +26,23 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
 }
 
 impl Picking {
+    #[allow(clippy::unused_self)]
     fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext) {
         re_ctx
             .gpu_readback_belt
             .lock()
-            .receive_data(|_data, _identifier| {
-                // TODO.
+            .receive_data(|_data, identifier| {
+                if let Some(index) = self
+                    .scheduled_picking_rects
+                    .iter()
+                    .position(|s| s.identifier == identifier)
+                {
+                    let picking_rect_info = self.scheduled_picking_rects.swap_remove(index);
+                    // TODO(andreas): Process picking data
+                    let _ = picking_rect_info;
+                } else {
+                    re_log::error!("Received picking data for unknown identifier");
+                }
             });
     }
 }
@@ -62,6 +75,7 @@ impl framework::Example for Picking {
             random_points_positions,
             random_points_radii,
             random_points_colors,
+            scheduled_picking_rects: Vec::new(),
         }
     }
 
@@ -108,7 +122,11 @@ impl framework::Example for Picking {
             (time.cos() * 0.5 + 0.5) * resolution[1] as f32 * 0.75,
         );
 
-        view_builder.schedule_picking_readback(re_ctx, position.as_uvec2(), 256, true);
+        self.scheduled_picking_rects.push(
+            view_builder
+                .schedule_picking_readback(re_ctx, position.as_uvec2(), 256, true)
+                .unwrap(),
+        );
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
         builder
