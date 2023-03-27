@@ -572,6 +572,11 @@ impl Viewport {
             );
         }
 
+        // Set to clipboard.
+        crate::misc::Clipboard::with(|clipboard| {
+            clipboard.set_image([screenshot.width as _, screenshot.height as _], &buffer);
+        });
+
         // Get next available file name.
         let safe_space_view_name =
             space_view_display_name.replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
@@ -594,7 +599,7 @@ impl Viewport {
         ) {
             Ok(_) => {
                 re_log::info!(
-                    "Saved screenshot to {:?}",
+                    "Saved screenshot to {:?} and copied to clipboard.",
                     filename.canonicalize().unwrap_or(filename.to_path_buf())
                 );
             }
