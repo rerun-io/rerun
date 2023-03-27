@@ -4,9 +4,9 @@ use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
     component_types::InstanceKey,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::MsgBundle,
-    ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath, DataCell, EntityPath,
-    EntityPathHash, EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint,
-    Timeline,
+    ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
+    EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
+    TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -78,42 +78,52 @@ impl EntityDb {
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
+        let table = DataTable::from_msg_bundle(msg_bundle);
 
-        for (&timeline, &time_int) in msg_bundle.time_point.iter() {
+        // TODO(#1619): batch all of this
+        for row in table.as_rows() {
+            self.try_add_data_row(&row)?;
+        }
+
+        Ok(())
+    }
+
+    fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+        for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
         }
 
-        self.register_entity_path(&msg_bundle.entity_path);
+        self.register_entity_path(&row.entity_path);
 
-        for cell in &msg_bundle.cells {
+        for cell in row.cells() {
             let component_path =
-                ComponentPath::new(msg_bundle.entity_path.clone(), cell.component_name());
+                ComponentPath::new(row.entity_path().clone(), cell.component_name());
             if cell.component_name() == MsgId::name() {
                 continue;
             }
-            let pending_clears = self
-                .tree
-                .add_data_msg(&msg_bundle.time_point, &component_path);
+            let pending_clears = self.tree.add_data_msg(row.timepoint(), &component_path);
 
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let cell =
                     DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
-                let msg_bundle = MsgBundle::new(
+
+                let row = DataRow::from_cells1(
                     msg_id,
-                    msg_bundle.entity_path.clone(),
+                    row.entity_path.clone(),
                     time_point.clone(),
-                    vec![cell],
+                    cell.num_instances(),
+                    cell,
                 );
-                self.data_store.insert_row(&msg_bundle).ok();
+                self.data_store.insert_row(&row).ok();
 
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(&time_point, &component_path);
             }
         }
 
-        self.data_store.insert_row(&msg_bundle).map_err(Into::into)
+        self.data_store.insert_row(row).map_err(Into::into)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
@@ -128,13 +138,14 @@ impl EntityDb {
                 // TODO(jleibs): Faster empty-array creation
                 let cell =
                     DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
-                let msg_bundle = MsgBundle::new(
+                let row = DataRow::from_cells1(
                     msg_id,
                     component_path.entity_path.clone(),
                     time_point.clone(),
-                    vec![cell],
+                    cell.num_instances(),
+                    cell,
                 );
-                self.data_store.insert_row(&msg_bundle).ok();
+                self.data_store.insert_row(&row).ok();
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(time_point, &component_path);
             }

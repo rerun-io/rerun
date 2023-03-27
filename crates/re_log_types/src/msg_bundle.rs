@@ -24,7 +24,6 @@ use arrow2::{
     array::{Array, ListArray, StructArray},
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
-    offset::Offsets,
 };
 use arrow2_convert::{field::ArrowField, serialize::TryIntoArrow};
 
@@ -35,6 +34,7 @@ use crate::{
 
 // ---
 
+// TODO: can probably make that one pub(crate) already
 /// The errors that can occur when trying to convert between Arrow and `MessageBundle` types
 #[derive(thiserror::Error, Debug)]
 pub enum MsgBundleError {
@@ -62,7 +62,7 @@ pub enum MsgBundleError {
     #[error("Could not serialize components to Arrow")]
     ArrowSerializationError(#[from] arrow2::error::Error),
 
-    #[error(transparent)]
+    #[error("Error with one or more the underlying data cells")]
     DataCell(#[from] DataCellError),
 
     // Needed to handle TryFrom<T> -> T
@@ -97,26 +97,18 @@ impl MsgBundle {
     ///
     /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
     /// the backend to keep track of the origin of any row of data.
-    pub fn new(
+    pub(crate) fn new(
         msg_id: MsgId,
         entity_path: EntityPath,
         time_point: TimePoint,
-        components: Vec<DataCell>,
+        cells: Vec<DataCell>,
     ) -> Self {
-        let mut this = Self {
+        Self {
             msg_id,
             entity_path,
             time_point,
-            cells: components,
-        };
-
-        // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
-        // we need to craft an array of `MsgId`s that matches the length of the other components.
-        this.cells.push(DataCell::from_native(
-            vec![msg_id; this.num_instances()].iter(),
-        ));
-
-        this
+            cells,
+        }
     }
 
     /// Returns the number of component collections in this bundle, i.e. the length of the bundle
@@ -319,90 +311,4 @@ fn extract_components(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> Result<Ve
             DataCell::from_arrow(ComponentName::from(field.name.as_str()), component.clone())
         })
         .collect())
-}
-
-// ----------------------------------------------------------------------------
-
-/// Wrap `field_array` in a single-element `ListArray`
-pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
-    let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Offsets::try_from_lengths(std::iter::once(field_array.len()))
-        .unwrap()
-        .into();
-    let values = field_array;
-    let validity = None;
-    ListArray::<i32>::new(datatype, offsets, values, validity)
-}
-
-/// Helper to build a `MessageBundle` from 1 component
-pub fn try_build_msg_bundle1<O, T, C0>(
-    msg_id: MsgId,
-    into_entity_path: O,
-    into_time_point: T,
-    into_cells: C0,
-) -> Result<MsgBundle>
-where
-    O: Into<EntityPath>,
-    T: Into<TimePoint>,
-    C0: TryInto<DataCell>,
-    MsgBundleError: From<<C0 as TryInto<DataCell>>::Error>,
-{
-    Ok(MsgBundle::new(
-        msg_id,
-        into_entity_path.into(),
-        into_time_point.into(),
-        vec![into_cells.try_into()?],
-    ))
-}
-
-/// Helper to build a `MessageBundle` from 2 components
-pub fn try_build_msg_bundle2<O, T, C0, C1>(
-    msg_id: MsgId,
-    into_entity_path: O,
-    into_time_point: T,
-    into_cells: (C0, C1),
-) -> Result<MsgBundle>
-where
-    O: Into<EntityPath>,
-    T: Into<TimePoint>,
-    C0: TryInto<DataCell>,
-    C1: TryInto<DataCell>,
-    MsgBundleError: From<<C0 as TryInto<DataCell>>::Error>,
-    MsgBundleError: From<<C1 as TryInto<DataCell>>::Error>,
-{
-    Ok(MsgBundle::new(
-        msg_id,
-        into_entity_path.into(),
-        into_time_point.into(),
-        vec![into_cells.0.try_into()?, into_cells.1.try_into()?],
-    ))
-}
-
-/// Helper to build a `MessageBundle` from 3 components
-pub fn try_build_msg_bundle3<O, T, C0, C1, C2>(
-    msg_id: MsgId,
-    into_entity_path: O,
-    into_time_point: T,
-    into_cells: (C0, C1, C2),
-) -> Result<MsgBundle>
-where
-    O: Into<EntityPath>,
-    T: Into<TimePoint>,
-    C0: TryInto<DataCell>,
-    C1: TryInto<DataCell>,
-    C2: TryInto<DataCell>,
-    MsgBundleError: From<<C0 as TryInto<DataCell>>::Error>,
-    MsgBundleError: From<<C1 as TryInto<DataCell>>::Error>,
-    MsgBundleError: From<<C2 as TryInto<DataCell>>::Error>,
-{
-    Ok(MsgBundle::new(
-        msg_id,
-        into_entity_path.into(),
-        into_time_point.into(),
-        vec![
-            into_cells.0.try_into()?,
-            into_cells.1.try_into()?,
-            into_cells.2.try_into()?,
-        ],
-    ))
 }

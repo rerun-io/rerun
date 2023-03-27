@@ -1,17 +1,12 @@
-use arrow2::{
-    array::{new_empty_array, Array},
-    datatypes::DataType,
-};
+use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    component_types::InstanceKey,
-    msg_bundle::{wrap_in_listarray, MsgBundle},
-    ComponentName, DataCell, DataCellError, EntityPath, MsgId, TimeInt, TimePoint, TimeRange,
-    Timeline,
+    component_types::InstanceKey, ComponentName, DataCell, DataCellError, DataRow, DataTable,
+    EntityPath, MsgId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 use crate::{
@@ -28,7 +23,7 @@ use crate::{
 
 #[derive(thiserror::Error, Debug)]
 pub enum WriteError {
-    #[error("Error with the underlying data cell")]
+    #[error("Error with one or more the underlying data cells")]
     DataCell(#[from] DataCellError),
 
     // Clustering key
@@ -37,22 +32,9 @@ pub enum WriteError {
 
     #[error(
         "The cluster component must be increasingly sorted and not contain \
-                any duplicates, got {0:?}"
+            any duplicates, got {0:?}"
     )]
     InvalidClusteringComponent(DataCell),
-
-    // Instances
-    #[error(
-        "All components within a row must have the same number of instances as the \
-            cluster component, got {cluster_comp}={cluster_comp_nb_instances} vs. \
-                {key}={num_instances}"
-    )]
-    MismatchedInstances {
-        cluster_comp: ComponentName,
-        cluster_comp_nb_instances: u32,
-        key: ComponentName,
-        num_instances: u32,
-    },
 
     // Misc
     #[error("Other error")]
@@ -62,51 +44,52 @@ pub enum WriteError {
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
 impl DataStore {
-    /// Inserts a [`MsgBundle`]'s worth of components into the datastore.
+    /// Inserts a [`DataTable`]'s worth of components into the datastore.
     ///
-    /// * All components within a single row must share the same number of instances.
+    /// This iteratively inserts all rows from the table on a row-by-row basis.
+    /// The entire method fails if any row fails.
+    ///
+    /// Both the write and read paths transparently benefit from the contiguous memory of the
+    /// table's columns: the bigger the tables, the bigger the benefits!
+    ///
+    /// See [`Self::insert_row`].
+    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
+        for row in table.as_rows() {
+            self.insert_row(&row)?;
+        }
+        Ok(())
+    }
+
+    /// Inserts a [`DataRow`]'s worth of components into the datastore.
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
     /// based on the length of the components in the payload, in the form of an array of
     /// monotonically increasing u64s going from `0` to `N-1`.
-    pub fn insert_row(&mut self, msg: &MsgBundle) -> WriteResult<()> {
+    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
-        let MsgBundle {
-            msg_id,
-            entity_path: ent_path,
-            time_point,
-            cells,
-        } = msg;
-
-        if cells.is_empty() {
+        if row.num_cells() == 0 {
             return Ok(());
         }
 
         crate::profile_function!();
 
-        let ent_path_hash = ent_path.hash();
+        let DataRow {
+            row_id,
+            timepoint,
+            entity_path: ent_path,
+            num_instances: _,
+            cells,
+        } = row;
 
-        // TODO(#1619): remove this thing when removing MsgBundle.
-        //
-        // Effectively the same thing as having a non-unit length batch, except it's really not
-        // worth more than an assertion since:
-        // - A) `MsgBundle` should already guarantee this
-        // - B) this limitation should be gone soon enough
-        debug_assert!(
-            msg.cells
-                .iter()
-                .map(|cell| cell.component_name())
-                .all_unique(),
-            "cannot insert same component multiple times, this is equivalent to multiple rows",
-        );
+        let ent_path_hash = ent_path.hash();
 
         trace!(
             kind = "insert",
             id = self.insert_id,
             cluster_key = %self.cluster_key,
-            timelines = ?time_point.iter()
+            timelines = ?timepoint.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
@@ -114,15 +97,15 @@ impl DataStore {
             "insertion started..."
         );
 
-        let cluster_comp_pos = cells
+        let cluster_cell_pos = cells
             .iter()
             .find_position(|cell| cell.component_name() == self.cluster_key)
             .map(|(pos, _)| pos);
 
-        if time_point.is_timeless() {
+        if timepoint.is_timeless() {
             let mut row_indices = IntMap::default();
 
-            self.insert_timeless_row_helper(cluster_comp_pos, cells, &mut row_indices)?;
+            self.insert_timeless_row_helper(cluster_cell_pos, cells, &mut row_indices)?;
 
             let index = self
                 .timeless_indices
@@ -132,9 +115,9 @@ impl DataStore {
         } else {
             let mut row_indices = IntMap::default();
 
-            self.insert_row_helper(time_point, cluster_comp_pos, cells, &mut row_indices)?;
+            self.insert_row_helper(timepoint, cluster_cell_pos, cells, &mut row_indices)?;
 
-            for (timeline, time) in time_point.iter() {
+            for (timeline, time) in timepoint.iter() {
                 let ent_path = ent_path.clone(); // shallow
                 let index = self
                     .indices
@@ -144,22 +127,22 @@ impl DataStore {
             }
         }
 
-        // This is valuable information, even for a timeless !
-        self.messages.insert(*msg_id, time_point.clone());
+        // This is valuable information, even for a timeless timepoint!
+        self.messages.insert(*row_id, timepoint.clone());
 
         Ok(())
     }
 
     fn insert_timeless_row_helper(
         &mut self,
-        cluster_comp_pos: Option<usize>,
+        cluster_cell_pos: Option<usize>,
         cells: &[DataCell],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         crate::profile_function!();
 
-        let (cluster_row_idx, cluster_len) =
-            self.get_or_create_cluster_component(cluster_comp_pos, cells, &TimePoint::default())?;
+        let cluster_row_idx =
+            self.get_or_create_cluster_component(cluster_cell_pos, cells, &TimePoint::default())?;
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
@@ -182,16 +165,6 @@ impl DataStore {
             .filter(|cell| cell.component_name() != self.cluster_key)
         {
             let component = cell.component_name();
-            let num_instances = cell.num_instances();
-
-            if num_instances != cluster_len {
-                return Err(WriteError::MismatchedInstances {
-                    cluster_comp: self.cluster_key,
-                    cluster_comp_nb_instances: cluster_len,
-                    key: component,
-                    num_instances,
-                });
-            }
 
             let table = self
                 .timeless_components
@@ -208,14 +181,14 @@ impl DataStore {
     fn insert_row_helper(
         &mut self,
         time_point: &TimePoint,
-        cluster_comp_pos: Option<usize>,
+        cluster_cell_pos: Option<usize>,
         cells: &[DataCell],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         crate::profile_function!();
 
-        let (cluster_row_idx, cluster_len) =
-            self.get_or_create_cluster_component(cluster_comp_pos, cells, time_point)?;
+        let cluster_row_idx =
+            self.get_or_create_cluster_component(cluster_cell_pos, cells, time_point)?;
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
@@ -238,16 +211,6 @@ impl DataStore {
             .filter(|cell| cell.component_name() != self.cluster_key)
         {
             let component = cell.component_name();
-            let num_instances = cell.num_instances();
-
-            if num_instances != cluster_len {
-                return Err(WriteError::MismatchedInstances {
-                    cluster_comp: self.cluster_key,
-                    cluster_comp_nb_instances: cluster_len,
-                    key: component,
-                    num_instances,
-                });
-            }
 
             let table = self
                 .components
@@ -269,10 +232,10 @@ impl DataStore {
     /// deduplication.
     fn get_or_create_cluster_component(
         &mut self,
-        cluster_comp_pos: Option<usize>,
+        cluster_cell_pos: Option<usize>,
         cells: &[DataCell],
         time_point: &TimePoint,
-    ) -> WriteResult<(RowIndex, u32)> {
+    ) -> WriteResult<RowIndex> {
         crate::profile_function!();
 
         enum ClusterData<'a> {
@@ -281,11 +244,11 @@ impl DataStore {
             UserData(&'a DataCell),
         }
 
-        let (cluster_len, cluster_data) = if let Some(cluster_comp_pos) = cluster_comp_pos {
+        let (cluster_len, cluster_data) = if let Some(cluster_cell_pos) = cluster_cell_pos {
             // We found a component with a name matching the cluster key's, let's make sure it's
             // valid (dense, sorted, no duplicates) and use that if so.
 
-            let cluster_cell = &cells[cluster_comp_pos];
+            let cluster_cell = &cells[cluster_cell_pos];
 
             // Clustering component must be dense.
             if !cluster_cell.is_dense() {
@@ -332,7 +295,7 @@ impl DataStore {
         };
 
         match cluster_data {
-            ClusterData::Cached(row_idx) => Ok((row_idx, cluster_len)),
+            ClusterData::Cached(row_idx) => Ok(row_idx),
             ClusterData::GenData(cell) => {
                 // We had to generate a cluster component of the given length for the first time,
                 // let's store it forever.
@@ -347,7 +310,7 @@ impl DataStore {
 
                 self.cluster_comp_cache.insert(cluster_len, row_idx);
 
-                Ok((row_idx, cluster_len))
+                Ok(row_idx)
             }
             ClusterData::UserData(cell) => {
                 // If we didn't hit the cache, then we have to insert this cluster component in
@@ -369,7 +332,7 @@ impl DataStore {
                     table.push_cell(&self.config, time_point, cell)
                 };
 
-                Ok((row_idx, cluster_len))
+                Ok(row_idx)
             }
         }
     }
@@ -920,8 +883,8 @@ impl PersistentComponentTable {
     /// `datatype` must be the type of the component itself, devoid of any wrapping layers
     /// (i.e. _not_ a `ListArray<...>`!).
     fn new(name: ComponentName, datatype: &DataType) -> Self {
-        // TODO(cmc): think about this when implementing deletion.
-        let chunks = vec![wrap_in_listarray(new_empty_array(datatype.clone())).to_boxed()];
+        // TODO(#1619): the whole fake row thing needs to go
+        let chunks = vec![DataCell::from_arrow_empty(name, datatype.clone()).as_arrow_monolist()];
         let total_rows = chunks.iter().map(|values| values.len() as u64).sum();
         let total_size_bytes = chunks
             .iter()
@@ -950,7 +913,7 @@ impl PersistentComponentTable {
             cell.datatype(),
         );
 
-        // TODO(cmc): don't use raw arrays
+        // TODO(#1619): don't use raw arrays
         let values = cell.as_arrow_monolist();
 
         self.total_rows += 1;
@@ -1062,8 +1025,9 @@ impl ComponentBucket {
     pub fn new(name: ComponentName, datatype: &DataType, row_offset: u64) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
+        // TODO(#1619): the whole fake row thing needs to go
         let chunks = if row_offset == 0 {
-            vec![wrap_in_listarray(new_empty_array(datatype.clone())).to_boxed()]
+            vec![DataCell::from_arrow_empty(name, datatype.clone()).as_arrow_monolist()]
         } else {
             vec![]
         };

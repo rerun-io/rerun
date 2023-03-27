@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{component_types::InstanceKey, Component, ComponentName, EntityPath};
+use re_log_types::{component_types::InstanceKey, Component, ComponentName, DataRow, EntityPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -148,7 +148,6 @@ pub fn __populate_example_store() -> DataStore {
     use re_log_types::{
         component_types::{ColorRGBA, Point2D},
         datagen::build_frame_nr,
-        msg_bundle::try_build_msg_bundle2,
         MsgId,
     };
 
@@ -160,15 +159,26 @@ pub fn __populate_example_store() -> DataStore {
     let instances = vec![InstanceKey(42), InstanceKey(96)];
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
 
-    let bundle =
-        try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (&instances, &points)).unwrap();
-    store.insert_row(&bundle).unwrap();
+    let row = DataRow::from_cells2(
+        MsgId::ZERO,
+        ent_path,
+        timepoint,
+        instances.len() as _,
+        (&instances, &points),
+    );
+    store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
     let colors = vec![ColorRGBA(0xff000000)];
-    let bundle =
-        try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (instances, colors)).unwrap();
-    store.insert_row(&bundle).unwrap();
+
+    let row = DataRow::from_cells2(
+        MsgId::ZERO,
+        ent_path,
+        timepoint,
+        instances.len() as _,
+        (instances, colors),
+    );
+    store.insert_row(&row).unwrap();
 
     store
 }

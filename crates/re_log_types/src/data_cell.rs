@@ -9,8 +9,12 @@ pub enum DataCellError {
     #[error("Unsupported datatype: {0:?}")]
     UnsupportedDatatype(arrow2::datatypes::DataType),
 
-    #[error("Could not serialize/deserialize component instances to/from Arrow: {0}")]
+    #[error("Could not serialize/deserialize data to/from Arrow: {0}")]
     Arrow(#[from] arrow2::error::Error),
+
+    // Needed to handle TryFrom<T> -> T
+    #[error("Infallible")]
+    Unreachable(#[from] std::convert::Infallible),
 }
 
 pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
@@ -33,11 +37,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 ///
 /// Consider this example:
 /// ```ignore
-/// let points: &[Point2D] = &[
-///     [10.0, 10.0].into(),
-///     [20.0, 20.0].into(),
-///     [30.0, 30.0].into(),
-/// ];
+/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into(), [30.0, 30.0].into()];
 /// let cell = DataCell::from(points);
 /// // Or, alternatively:
 /// let cell = DataCell::from_component::<Point2D>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);

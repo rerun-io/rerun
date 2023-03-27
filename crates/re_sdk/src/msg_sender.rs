@@ -1,4 +1,4 @@
-use re_log_types::{component_types::InstanceKey, msg_bundle::MsgBundleError};
+use re_log_types::{component_types::InstanceKey, msg_bundle::MsgBundleError, DataRow, DataTable};
 
 use nohash_hasher::IntMap;
 
@@ -289,7 +289,7 @@ impl MsgSender {
             entity_path,
             timepoint,
             timeless,
-            num_instances: _,
+            num_instances,
             instanced,
             mut splatted,
         } = self;
@@ -351,28 +351,49 @@ impl MsgSender {
 
         // Standard
         msgs[0] = (!standard_cells.is_empty()).then(|| {
-            MsgBundle::new(
-                MsgId::random(),
-                entity_path.clone(),
-                timepoint.clone(),
-                standard_cells,
+            DataTable::from_rows(
+                MsgId::ZERO, // not used (yet)
+                [DataRow::from_cells(
+                    MsgId::random(),
+                    timepoint.clone(),
+                    entity_path.clone(),
+                    num_instances.unwrap_or(0),
+                    standard_cells,
+                )],
             )
+            .into_msg_bundle()
         });
 
         // Transforms
         msgs[1] = (!transform_cells.is_empty()).then(|| {
-            MsgBundle::new(
-                MsgId::random(),
-                entity_path.clone(),
-                timepoint.clone(),
-                transform_cells,
+            DataTable::from_rows(
+                MsgId::ZERO, // not used (yet)
+                [DataRow::from_cells(
+                    MsgId::random(),
+                    timepoint.clone(),
+                    entity_path.clone(),
+                    num_transform_instances,
+                    transform_cells,
+                )],
             )
+            .into_msg_bundle()
         });
 
         // Splats
+        // TODO(cmc): unsplit splats once new data cells are in
         msgs[2] = (!splatted.is_empty()).then(|| {
             splatted.push(DataCell::from_native(&[InstanceKey::SPLAT]));
-            MsgBundle::new(MsgId::random(), entity_path, timepoint, splatted)
+            DataTable::from_rows(
+                MsgId::ZERO, // not used (yet)
+                [DataRow::from_cells(
+                    MsgId::random(),
+                    timepoint,
+                    entity_path,
+                    1,
+                    splatted,
+                )],
+            )
+            .into_msg_bundle()
         });
 
         Ok(msgs)

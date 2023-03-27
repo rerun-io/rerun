@@ -11,7 +11,7 @@ use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
+    polars_util, test_row, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
     RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
@@ -21,9 +21,10 @@ use re_log_types::{
         build_some_point2d, build_some_rects,
     },
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::MsgBundle,
-    Component as _, ComponentName, DataCell, EntityPath, MsgId, TimeType, Timeline,
+    Component as _, ComponentName, DataCell, DataRow, EntityPath, MsgId, TimeType, Timeline,
 };
+
+// TODO(#1619): introduce batching in the testing matrix
 
 // --- LatestComponentsAt ---
 
@@ -79,7 +80,7 @@ fn all_components() {
             ColorRGBA::name(), // added by us, timeless
             Rect2D::name(),    // added by us
             cluster_key,       // always here
-            MsgId::name(),     // automatically appended by MsgBundle
+            MsgId::name(),     // automatically appended by DataRow
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
@@ -89,25 +90,23 @@ fn all_components() {
             Point2D::name(),   // added by us
             Rect2D::name(),    // added by us
             cluster_key,       // always here
-            MsgId::name(),     // automatically appended by MsgBundle
+            MsgId::name(),     // automatically appended by DataRow
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        store.insert_row(&row).unwrap();
 
-        let bundle = test_bundle!(ent_path @ [
-            build_frame_nr(frame1),
-        ] => [build_some_rects(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_rects(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let bundle = test_bundle!(ent_path @ [
+        let row = test_row!(ent_path @ [
             build_frame_nr(frame2),
-        ] => [build_some_rects(2), build_some_point2d(2)]);
-        store.insert_row(&bundle).unwrap();
+        ] => 2; [build_some_rects(2), build_some_point2d(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
@@ -147,7 +146,7 @@ fn all_components() {
             ColorRGBA::name(), // added by us, timeless
             Rect2D::name(),    // added by us
             cluster_key,       // always here
-            MsgId::name(),     // automatically appended by MsgBundle
+            MsgId::name(),     // automatically appended by DataRow
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
@@ -157,26 +156,26 @@ fn all_components() {
             Rect2D::name(),    // ⚠ inherited before the buckets got split apart!
             Point2D::name(),   // added by us
             cluster_key,       // always here
-            MsgId::name(),     // automatically appended by MsgBundle
+            MsgId::name(),     // automatically appended by DataRow
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        store.insert_row(&row).unwrap();
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
-        store.insert_row(&bundle).unwrap();
-
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_instances(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_rects(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_instances(2)]);
+        store.insert_row(&row).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_point2d(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
@@ -219,7 +218,7 @@ fn all_components() {
             ColorRGBA::name(), // added by us, timeless
             Rect2D::name(),    // added by us
             cluster_key,       // always here
-            MsgId::name(),     // automatically appended by MsgBundle
+            MsgId::name(),     // automatically appended by DataRow
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
@@ -229,31 +228,31 @@ fn all_components() {
             Point2D::name(),   // added by us but not contained in the second bucket
             Rect2D::name(),    // added by use
             cluster_key,       // always here
-            MsgId::name(),     // automatically appended by MsgBundle
+            MsgId::name(),     // automatically appended by DataRow
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        store.insert_row(&row).unwrap();
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_rects(2)]);
-        store.insert_row(&bundle).unwrap();
-
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_rects(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_rects(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_rects(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_point2d(2)]);
-        store.insert_row(&bundle).unwrap();
+        let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 2; [build_some_rects(2)]);
+        store.insert_row(&row).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_point2d(2)]);
+        store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
@@ -294,33 +293,32 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3: TimeInt = 3.into();
     let frame4: TimeInt = 4.into();
 
-    // helper to insert a bundle both as a temporal and timeless payload
-    let insert = |store: &mut DataStore, bundle| {
+    // helper to insert a row both as a temporal and timeless payload
+    let insert = |store: &mut DataStore, row| {
         // insert temporal
-        store.insert_row(bundle).unwrap();
+        store.insert_row(row).unwrap();
 
         // insert timeless
-        let mut bundle_timeless = bundle.clone();
-        bundle_timeless.time_point = Default::default();
-        store.insert_row(&bundle_timeless).unwrap();
+        let mut row_timeless = (*row).clone();
+        row_timeless.timepoint = Default::default();
+        store.insert_row(&row_timeless).unwrap();
     };
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let bundle1 =
-        test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
-    insert(store, &bundle1);
+    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    insert(store, &row1);
 
     let points2 = build_some_point2d(3);
-    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [instances1, points2]);
-    insert(store, &bundle2);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
+    insert(store, &row2);
 
     let points3 = build_some_point2d(10);
-    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
-    insert(store, &bundle3);
+    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    insert(store, &row3);
 
     let colors4 = build_some_colors(5);
-    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [colors4]);
-    insert(store, &bundle4);
+    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+    insert(store, &row4);
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
@@ -328,50 +326,49 @@ fn latest_at_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
-    let mut assert_latest_components =
-        |frame_nr: TimeInt, bundles: &[(ComponentName, &MsgBundle)]| {
-            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-            let components_all = &[ColorRGBA::name(), Point2D::name()];
+    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let components_all = &[ColorRGBA::name(), Point2D::name()];
 
-            let df = polars_util::latest_components(
-                store,
-                &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-                &ent_path,
-                components_all,
-                &JoinType::Outer,
-            )
-            .unwrap();
+        let df = polars_util::latest_components(
+            store,
+            &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+            &ent_path,
+            components_all,
+            &JoinType::Outer,
+        )
+        .unwrap();
 
-            let df_expected = joint_df(store.cluster_key(), bundles);
+        let df_expected = joint_df(store.cluster_key(), rows);
 
-            store.sort_indices_if_needed();
-            assert_eq!(df_expected, df, "{store}");
-        };
+        store.sort_indices_if_needed();
+        assert_eq!(df_expected, df, "{store}");
+    };
 
     // TODO(cmc): bring back some log_time scenarios
 
     assert_latest_components(
         frame0,
-        &[(ColorRGBA::name(), &bundle4), (Point2D::name(), &bundle3)], // timeless
+        &[(ColorRGBA::name(), &row4), (Point2D::name(), &row3)], // timeless
     );
     assert_latest_components(
         frame1,
         &[
-            (ColorRGBA::name(), &bundle1),
-            (Point2D::name(), &bundle3), // timeless
+            (ColorRGBA::name(), &row1),
+            (Point2D::name(), &row3), // timeless
         ],
     );
     assert_latest_components(
         frame2,
-        &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle2)],
+        &[(ColorRGBA::name(), &row1), (Point2D::name(), &row2)],
     );
     assert_latest_components(
         frame3,
-        &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle3)],
+        &[(ColorRGBA::name(), &row1), (Point2D::name(), &row3)],
     );
     assert_latest_components(
         frame4,
-        &[(ColorRGBA::name(), &bundle4), (Point2D::name(), &bundle3)],
+        &[(ColorRGBA::name(), &row4), (Point2D::name(), &row3)],
     );
 }
 
@@ -399,54 +396,52 @@ fn range_impl(store: &mut DataStore) {
     let frame4: TimeInt = 4.into();
     let frame5: TimeInt = 5.into();
 
-    // helper to insert a bundle both as a temporal and timeless payload
-    let insert = |store: &mut DataStore, bundle| {
+    // helper to insert a row both as a temporal and timeless payload
+    let insert = |store: &mut DataStore, row| {
         // insert temporal
-        store.insert_row(bundle).unwrap();
+        store.insert_row(row).unwrap();
 
         // insert timeless
-        let mut bundle_timeless = bundle.clone();
-        bundle_timeless.time_point = Default::default();
-        store.insert_row(&bundle_timeless).unwrap();
+        let mut row_timeless = (*row).clone();
+        row_timeless.timepoint = Default::default();
+        store.insert_row(&row_timeless).unwrap();
     };
 
     let insts1 = build_some_instances(3);
     let colors1 = build_some_colors(3);
-    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), colors1]);
-    insert(store, &bundle1);
+    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [insts1.clone(), colors1]);
+    insert(store, &row1);
 
     let points2 = build_some_point2d(3);
-    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [insts1, points2]);
-    insert(store, &bundle2);
+    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [insts1, points2]);
+    insert(store, &row2);
 
     let points3 = build_some_point2d(10);
-    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
-    insert(store, &bundle3);
+    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    insert(store, &row3);
 
     let insts4_1 = build_some_instances_from(20..25);
     let colors4_1 = build_some_colors(5);
-    let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, colors4_1]);
-    insert(store, &bundle4_1);
+    let row4_1 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_1, colors4_1]);
+    insert(store, &row4_1);
 
     let insts4_2 = build_some_instances_from(25..30);
     let colors4_2 = build_some_colors(5);
-    let bundle4_2 =
-        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), colors4_2]);
-    insert(store, &bundle4_2);
+    let row4_2 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_2.clone(), colors4_2]);
+    insert(store, &row4_2);
 
     let points4_25 = build_some_point2d(5);
-    let bundle4_25 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, points4_25]);
-    insert(store, &bundle4_25);
+    let row4_25 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_2, points4_25]);
+    insert(store, &row4_25);
 
     let insts4_3 = build_some_instances_from(30..35);
     let colors4_3 = build_some_colors(5);
-    let bundle4_3 =
-        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), colors4_3]);
-    insert(store, &bundle4_3);
+    let row4_3 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3.clone(), colors4_3]);
+    insert(store, &row4_3);
 
     let points4_4 = build_some_point2d(5);
-    let bundle4_4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3, points4_4]);
-    insert(store, &bundle4_4);
+    let row4_4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3, points4_4]);
+    insert(store, &row4_4);
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
@@ -454,7 +449,7 @@ fn range_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
-    // Each entry in `bundles_at_times` corresponds to a dataframe that's expected to be returned
+    // Each entry in `rows_at_times` corresponds to a dataframe that's expected to be returned
     // by the range query.
     // A single timepoint might have several of those! That's one of the behaviors specific to
     // range queries.
@@ -462,16 +457,16 @@ fn range_impl(store: &mut DataStore) {
     let mut assert_range_components =
         |time_range: TimeRange,
          components: [ComponentName; 2],
-         bundles_at_times: &[(Option<TimeInt>, &[(ComponentName, &MsgBundle)])]| {
+         rows_at_times: &[(Option<TimeInt>, &[(ComponentName, &DataRow)])]| {
             let mut expected_timeless = Vec::<DataFrame>::new();
             let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
 
-            for (time, bundles) in bundles_at_times {
+            for (time, rows) in rows_at_times {
                 if let Some(time) = time {
                     let dfs = expected_at_times.entry(*time).or_default();
-                    dfs.push(joint_df(store.cluster_key(), bundles));
+                    dfs.push(joint_df(store.cluster_key(), rows));
                 } else {
-                    expected_timeless.push(joint_df(store.cluster_key(), bundles));
+                    expected_timeless.push(joint_df(store.cluster_key(), rows));
                 }
             }
 
@@ -510,7 +505,7 @@ fn range_impl(store: &mut DataStore) {
                 dfs_processed += 1;
             }
 
-            let dfs_processed_expected = bundles_at_times.len();
+            let dfs_processed_expected = rows_at_times.len();
             assert_eq!(dfs_processed_expected, dfs_processed);
         };
 
@@ -524,16 +519,13 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_4),
-                ],
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &bundle1),
-                    (Point2D::name(), &bundle4_4), // timeless
+                    (ColorRGBA::name(), &row1),
+                    (Point2D::name(), &row4_4), // timeless
                 ],
             ),
         ],
@@ -545,8 +537,8 @@ fn range_impl(store: &mut DataStore) {
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &bundle1),
-                    (Point2D::name(), &bundle4_4), // timeless
+                    (ColorRGBA::name(), &row1),
+                    (Point2D::name(), &row4_4), // timeless
                 ],
             ), //
         ],
@@ -557,7 +549,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame2),
-                &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle2)],
+                &[(ColorRGBA::name(), &row1), (Point2D::name(), &row2)],
             ), //
         ],
     );
@@ -567,22 +559,19 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame3),
-                &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -592,10 +581,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_4),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)], // !!!
             ), //
         ],
     );
@@ -608,10 +594,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ), // timeless
         ],
     );
@@ -622,13 +605,13 @@ fn range_impl(store: &mut DataStore) {
             (
                 Some(frame1),
                 &[
-                    (Point2D::name(), &bundle4_4), // timeless
-                    (ColorRGBA::name(), &bundle1),
+                    (Point2D::name(), &row4_4), // timeless
+                    (ColorRGBA::name(), &row1),
                 ],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
             ), //
         ],
     );
@@ -638,11 +621,11 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
             ),
         ],
     );
@@ -652,21 +635,15 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_25),
-                    (ColorRGBA::name(), &bundle4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
         ],
     );
@@ -676,10 +653,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ), //
         ],
     );
@@ -692,32 +666,26 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_4),
-                ],
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_4)],
             ), // timeless
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &bundle1),
-                    (Point2D::name(), &bundle4_4), // timeless
+                    (ColorRGBA::name(), &row1),
+                    (Point2D::name(), &row4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -730,32 +698,23 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 Some(frame0),
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ), // timeless
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_25),
-                    (ColorRGBA::name(), &bundle4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
         ],
     );
@@ -766,43 +725,37 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
         [ColorRGBA::name(), Point2D::name()],
         &[
-            (None, &[(ColorRGBA::name(), &bundle1)]),
+            (None, &[(ColorRGBA::name(), &row1)]),
             (
                 None,
-                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 None,
-                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 None,
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
             (
                 Some(frame1),
                 &[
-                    (ColorRGBA::name(), &bundle1),
-                    (Point2D::name(), &bundle4_4), // timeless
+                    (ColorRGBA::name(), &row1),
+                    (Point2D::name(), &row4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_1), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &row4_2), (Point2D::name(), &row3)],
             ),
             (
                 Some(frame4),
-                &[
-                    (ColorRGBA::name(), &bundle4_3),
-                    (Point2D::name(), &bundle4_25),
-                ], // !!!
+                &[(ColorRGBA::name(), &row4_3), (Point2D::name(), &row4_25)], // !!!
             ),
         ],
     );
@@ -815,47 +768,35 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 None,
-                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
             ),
             (
                 None,
-                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
             ),
             (
                 None,
-                &[
-                    (Point2D::name(), &bundle4_25),
-                    (ColorRGBA::name(), &bundle4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 None,
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row2), (ColorRGBA::name(), &row1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
+                &[(Point2D::name(), &row3), (ColorRGBA::name(), &row1)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_25),
-                    (ColorRGBA::name(), &bundle4_2),
-                ],
+                &[(Point2D::name(), &row4_25), (ColorRGBA::name(), &row4_2)],
             ),
             (
                 Some(frame4),
-                &[
-                    (Point2D::name(), &bundle4_4),
-                    (ColorRGBA::name(), &bundle4_3),
-                ],
+                &[(Point2D::name(), &row4_4), (ColorRGBA::name(), &row4_3)],
             ),
         ],
     );
@@ -863,17 +804,16 @@ fn range_impl(store: &mut DataStore) {
 
 // --- Common helpers ---
 
-/// Given a list of bundles, crafts a `latest_components`-looking dataframe.
-// TODO(#1692): use Data{Cell,Row,Table} polars extensions
-fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
-    let df = bundles
+/// Given a list of rows, crafts a `latest_components`-looking dataframe.
+fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
+    let df = rows
         .iter()
-        .map(|(component, bundle)| {
-            let cluster_comp = if let Some(idx) = bundle.find_component(&cluster_key) {
-                Series::try_from((cluster_key.as_str(), bundle.cells[idx].as_arrow_monolist()))
+        .map(|(component, row)| {
+            let cluster_comp = if let Some(idx) = row.find_cell(&cluster_key) {
+                Series::try_from((cluster_key.as_str(), row.cells[idx].as_arrow_monolist()))
                     .unwrap()
             } else {
-                let num_instances = bundle.num_instances();
+                let num_instances = row.num_instances();
                 Series::try_from((
                     cluster_key.as_str(),
                     DataCell::from_component::<InstanceKey>(0..num_instances as u64)
@@ -882,14 +822,11 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
                 .unwrap()
             };
 
-            let comp_idx = bundle.find_component(component).unwrap();
+            let comp_idx = row.find_cell(component).unwrap();
             let df = DataFrame::new(vec![
                 cluster_comp,
-                Series::try_from((
-                    component.as_str(),
-                    bundle.cells[comp_idx].as_arrow_monolist(),
-                ))
-                .unwrap(),
+                Series::try_from((component.as_str(), row.cells[comp_idx].as_arrow_monolist()))
+                    .unwrap(),
             ])
             .unwrap();
 
@@ -930,10 +867,12 @@ fn gc_impl(store: &mut DataStore) {
             let frames = (0..num_frames).filter(|_| rand::thread_rng().gen());
             for frame_nr in frames {
                 let num_instances = rng.gen_range(0..=1_000);
-                let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
-                    build_some_rects(num_instances),
+                let row = test_row!(ent_path @ [
+                    build_frame_nr(frame_nr.into())
+                ] => num_instances; [
+                    build_some_rects(num_instances as _),
                 ]);
-                store.insert_row(&bundle).unwrap();
+                store.insert_row(&row).unwrap();
             }
         }
 
