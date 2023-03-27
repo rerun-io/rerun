@@ -136,7 +136,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
     }
 
     {
-        let mut group = c.benchmark_group("mono_points_arrow");
+        let mut group = c.benchmark_group("mono_points_arrow_batched");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
             b.iter(generate_table);
