@@ -219,8 +219,11 @@ bitflags! {
         /// Adds a round cap at the start of a line strip (excludes other start caps).
         const CAP_START_ROUND = 0b0000_1000;
 
+        /// By default, line caps end at the last/first position of the the line strip. This flag makes them extend outwards.
+        const CAP_EXTEND_OUTWARDS = 0b0001_0000;
+
         /// Disable color gradient which is on by default
-        const NO_COLOR_GRADIENT = 0b0001_0000;
+        const NO_COLOR_GRADIENT = 0b0010_0000;
     }
 }
 
