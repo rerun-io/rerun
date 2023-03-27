@@ -204,40 +204,49 @@ impl Multiview {
                     .iter()
                     .position(|s| s.identifier == identifier)
                 {
-                    let screenshot = self.scheduled_screenshots.swap_remove(index);
-
-                    // Need to do a memcpy to remove the padding.
-                    re_log::info!("Received screenshot. Total bytes {:?}", data.len());
-                    let row_info = screenshot.row_info;
-                    let mut buffer = Vec::with_capacity(
-                        (row_info.bytes_per_row_unpadded * screenshot.height) as usize,
+                    re_log::info!(
+                        "Received screenshot. Total bytes {:?}. Identifier {identifier}",
+                        data.len()
                     );
-                    for row in 0..screenshot.height {
-                        let offset = (row_info.bytes_per_row_padded * row) as usize;
-                        buffer.extend_from_slice(
-                            &data[offset..(offset + row_info.bytes_per_row_unpadded as usize)],
-                        );
-                    }
 
-                    // Get next available file name.
-                    let mut i = 1;
-                    let filename = loop {
-                        let filename = format!("screenshot_{i}.png");
-                        if !std::path::Path::new(&filename).exists() {
-                            break filename;
-                        }
-                        i += 1;
-                    };
+                    #[cfg(target_arch = "wasm32")]
+                    self.scheduled_screenshots.remove(index);
 
                     #[cfg(not(target_arch = "wasm32"))]
-                    image::save_buffer(
-                        filename,
-                        &buffer,
-                        screenshot.width,
-                        screenshot.height,
-                        image::ColorType::Rgba8,
-                    )
-                    .expect("Failed to save screenshot");
+                    {
+                        let screenshot = self.scheduled_screenshots.swap_remove(index);
+
+                        // Need to do a memcpy to remove the padding.
+                        let row_info = screenshot.row_info;
+                        let mut buffer = Vec::with_capacity(
+                            (row_info.bytes_per_row_unpadded * screenshot.height) as usize,
+                        );
+                        for row in 0..screenshot.height {
+                            let offset = (row_info.bytes_per_row_padded * row) as usize;
+                            buffer.extend_from_slice(
+                                &data[offset..(offset + row_info.bytes_per_row_unpadded as usize)],
+                            );
+                        }
+
+                        // Get next available file name.
+                        let mut i = 1;
+                        let filename = loop {
+                            let filename = format!("screenshot_{i}.png");
+                            if !std::path::Path::new(&filename).exists() {
+                                break filename;
+                            }
+                            i += 1;
+                        };
+
+                        image::save_buffer(
+                            filename,
+                            &buffer,
+                            screenshot.width,
+                            screenshot.height,
+                            image::ColorType::Rgba8,
+                        )
+                        .expect("Failed to save screenshot");
+                    }
                 }
             });
     }
