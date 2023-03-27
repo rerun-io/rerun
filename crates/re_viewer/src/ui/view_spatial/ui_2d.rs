@@ -20,7 +20,7 @@ use crate::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial,
         },
-        SpaceView, SpaceViewId, UiVerbosity,
+        SpaceViewId, UiVerbosity,
     },
     ViewerContext,
 };

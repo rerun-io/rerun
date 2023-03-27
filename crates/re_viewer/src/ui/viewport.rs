@@ -549,7 +549,7 @@ impl Viewport {
 
     pub fn save_spaceview_screenshot(
         &self,
-        screenshot: ScheduledScreenshot,
+        screenshot: &ScheduledScreenshot,
         data: &[u8],
         space_view_id: SpaceViewId,
     ) {

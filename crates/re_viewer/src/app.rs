@@ -424,7 +424,7 @@ impl App {
                     } => {
                         if let Some(blueprint) = self.state.blueprints.get_mut(application_id) {
                             blueprint.viewport.save_spaceview_screenshot(
-                                screenshot,
+                                &screenshot,
                                 data,
                                 space_view_id,
                             );
@@ -577,8 +577,7 @@ impl eframe::App for App {
                         self.state.show(
                             ui,
                             render_ctx,
-                            &mut self
-                                .scheduled_gpu_readbacks_per_application
+                            self.scheduled_gpu_readbacks_per_application
                                 .entry(selected_app_id)
                                 .or_default(),
                             log_db,
@@ -982,6 +981,7 @@ struct AppState {
 }
 
 impl AppState {
+    #[allow(clippy::too_many_arguments)]
     fn show(
         &mut self,
         ui: &mut egui::Ui,
