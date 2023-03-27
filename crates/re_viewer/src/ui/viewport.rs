@@ -573,6 +573,7 @@ impl Viewport {
         }
 
         // Set to clipboard.
+        #[cfg(not(target_arch = "wasm32"))]
         crate::misc::Clipboard::with(|clipboard| {
             clipboard.set_image([screenshot.width as _, screenshot.height as _], &buffer);
         });

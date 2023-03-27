@@ -622,12 +622,12 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
 }
 
 pub fn screenshot_context_menu(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     response: egui::Response,
 ) -> (egui::Response, bool) {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        if ctx.app_options.experimental_space_view_screenshots {
+        if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = false;
             let response = response.context_menu(|ui| {
                 if ui.button("Take screenshot").clicked() {
