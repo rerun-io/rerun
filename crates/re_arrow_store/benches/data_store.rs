@@ -8,8 +8,8 @@ use re_arrow_store::{DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, Time
 use re_log_types::{
     component_types::{InstanceKey, Rect2D},
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
-    msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
-    ComponentName, EntityPath, MsgId, TimeType, Timeline,
+    msg_bundle::{try_build_msg_bundle2, MsgBundle},
+    Component as _, ComponentName, EntityPath, MsgId, TimeType, Timeline,
 };
 
 // ---

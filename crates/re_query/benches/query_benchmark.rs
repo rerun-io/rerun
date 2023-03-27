@@ -9,8 +9,8 @@ use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Point2D, Vec3D},
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
     entity_path,
-    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2, Component, MsgBundle},
-    EntityPath, Index, MsgId, TimeType, Timeline,
+    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2, MsgBundle},
+    Component, EntityPath, Index, MsgId, TimeType, Timeline,
 };
 use re_query::query_entity_with_primary;
 

@@ -1,9 +1,6 @@
 use itertools::Itertools as _;
 
-use crate::{
-    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
-    ComponentName,
-};
+use crate::{Component, ComponentName, DeserializableComponent, SerializableComponent};
 
 // ---
 
@@ -69,7 +66,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # use arrow2_convert::field::ArrowField as _;
 /// # use itertools::Itertools as _;
 /// #
-/// # use re_log_types::{DataCell, msg_bundle::Component as _};
+/// # use re_log_types::{DataCell, Component as _};
 /// # use re_log_types::component_types::Point2D;
 /// #
 /// let points: &[Point2D] = &[

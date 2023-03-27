@@ -43,8 +43,7 @@
 //! ```
 
 use re_log_types::{
-    component_types::InstanceKey,
-    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
+    component_types::InstanceKey, Component, DeserializableComponent, SerializableComponent,
 };
 
 use crate::EntityView;

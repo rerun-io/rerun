@@ -3,10 +3,10 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
     component_types::InstanceKey,
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::{Component as _, MsgBundle},
-    ArrowMsg, BeginRecordingMsg, ComponentPath, DataCell, EntityPath, EntityPathHash,
-    EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::MsgBundle,
+    ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath, DataCell, EntityPath,
+    EntityPathHash, EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint,
+    Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};

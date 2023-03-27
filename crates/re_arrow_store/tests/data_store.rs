@@ -21,8 +21,8 @@ use re_log_types::{
         build_some_point2d, build_some_rects,
     },
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::{Component as _, MsgBundle},
-    ComponentName, DataCell, EntityPath, MsgId, TimeType, Timeline,
+    msg_bundle::MsgBundle,
+    Component as _, ComponentName, DataCell, EntityPath, MsgId, TimeType, Timeline,
 };
 
 // --- LatestComponentsAt ---

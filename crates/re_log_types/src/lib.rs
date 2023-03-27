@@ -11,6 +11,7 @@ pub mod encoding;
 pub mod datagen;
 
 pub mod arrow_msg;
+mod component;
 pub mod component_types;
 mod data;
 mod data_cell;
@@ -35,6 +36,7 @@ pub mod external {
 }
 
 pub use self::arrow_msg::ArrowMsg;
+pub use self::component::{Component, DeserializableComponent, SerializableComponent};
 pub use self::component_types::context;
 pub use self::component_types::coordinates;
 pub use self::component_types::AnnotationContext;

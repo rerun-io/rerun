@@ -6,7 +6,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 /// A 3D bounding box represented by it's half-lengths
 ///

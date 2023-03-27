@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{
-    component_types::InstanceKey, msg_bundle::Component, ComponentName, EntityPath,
-};
+use re_log_types::{component_types::InstanceKey, Component, ComponentName, EntityPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::Point2D, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::Point2D, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -76,7 +74,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -179,7 +177,7 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
-    use re_log_types::{component_types::Point2D, msg_bundle::Component as _, Timeline};
+    use re_log_types::{component_types::Point2D, Component as _, Timeline};
 
     let store = __populate_example_store();
 
@@ -216,8 +214,7 @@ fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::{
         component_types::{ColorRGBA, Point2D},
-        msg_bundle::Component as _,
-        Timeline,
+        Component as _, Timeline,
     };
 
     let store = __populate_example_store();

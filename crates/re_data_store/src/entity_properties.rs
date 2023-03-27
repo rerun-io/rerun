@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::DeserializableComponent, EntityPath,
+    DeserializableComponent, EntityPath,
 };
 
 use crate::log_db::EntityDb;
@@ -201,7 +201,7 @@ impl Default for ColorMapper {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value for a given [`re_log_types::msg_bundle::Component`].
+/// Get the latest value for a given [`re_log_types::Component`].
 ///
 /// This assumes that the row we get from the store only contains a single instance for this
 /// component; it will log a warning otherwise.

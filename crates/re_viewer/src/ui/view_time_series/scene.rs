@@ -5,7 +5,7 @@ use crate::{
 use re_arrow_store::TimeRange;
 use re_log_types::{
     component_types::{self, InstanceKey},
-    msg_bundle::Component,
+    Component,
 };
 use re_query::{range_entity_with_primary, QueryError};
 

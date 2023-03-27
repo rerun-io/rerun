@@ -7,8 +7,7 @@ use itertools::Itertools;
 use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, TensorTrait},
-    msg_bundle::Component,
-    Transform,
+    Component, Transform,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{

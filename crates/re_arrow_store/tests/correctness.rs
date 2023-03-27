@@ -15,8 +15,7 @@ use re_log_types::{
         build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::Component as _,
-    DataCell, Duration, EntityPath, MsgId, Time, TimeType, Timeline,
+    Component as _, DataCell, Duration, EntityPath, MsgId, Time, TimeType, Timeline,
 };
 
 // ---

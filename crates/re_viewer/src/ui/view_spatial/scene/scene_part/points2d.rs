@@ -3,7 +3,7 @@ use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius},
-    msg_bundle::Component,
+    Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;

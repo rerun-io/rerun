@@ -43,7 +43,7 @@ pub trait ScenePart {
 /// Computes the instance hash that should be used for picking (in turn for selecting/hover)
 ///
 /// Takes into account the currently the object properties, currently highlighted objects, and number of instances.
-pub fn instance_path_hash_for_picking<T: re_log_types::msg_bundle::Component>(
+pub fn instance_path_hash_for_picking<T: re_log_types::Component>(
     ent_path: &EntityPath,
     instance_key: re_log_types::component_types::InstanceKey,
     entity_view: &re_query::EntityView<T>,

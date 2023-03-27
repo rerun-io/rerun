@@ -5,8 +5,7 @@ use re_log_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TensorTrait,
         TextEntry,
     },
-    msg_bundle::Component,
-    Arrow3D, Mesh3D, Transform,
+    Arrow3D, Component, Mesh3D, Transform,
 };
 use re_query::query_entity_with_primary;
 
