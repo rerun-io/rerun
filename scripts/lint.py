@@ -276,7 +276,7 @@ def lint_file(filepath: str, args: Any) -> int:
                 f.writelines(lines_out)
             print(f"{filepath} fixed.")
 
-        num_errors = len(errors)
+        num_errors += len(errors)
 
     return num_errors
 
