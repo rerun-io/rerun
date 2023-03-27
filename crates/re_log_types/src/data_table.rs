@@ -213,7 +213,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 /// // eprintln!("{schema:#?}");
 /// eprintln!("Wired chunk:\n{columns:#?}");
 ///
-/// let table_out = DataTable::deserialize(&schema, &columns).unwrap();
+/// let table_out = DataTable::deserialize(table_id, &schema, &columns).unwrap();
 /// eprintln!("Table out:\n{table_out}");
 /// #
 /// # assert_eq!(table_in, table_out);
