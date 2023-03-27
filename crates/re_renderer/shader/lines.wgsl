@@ -213,16 +213,20 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
-    if has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
-        if (is_cap_triangle && has_any_flag(currently_active_flags, CAP_END_TRIANGLE | CAP_END_ROUND)) ||
-            (is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index) {
-            center_position -= quad_dir * cap_length(strip_data.flags, strip_radius);
+    {
+        var neighbor_cap_flags = currently_active_flags;
+        if is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index {
+            neighbor_cap_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
         }
+        else if !is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index {
+            neighbor_cap_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
     }
-    if has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
-        if (is_cap_triangle && has_any_flag(currently_active_flags, CAP_START_TRIANGLE | CAP_START_ROUND)) ||
-            (!is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index) {
-            center_position += quad_dir * cap_length(strip_data.flags, strip_radius);
+
+        if has_any_flag(neighbor_cap_flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
+            center_position -= quad_dir * cap_length(neighbor_cap_flags, strip_radius);
+        }
+        if has_any_flag(neighbor_cap_flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
+            center_position += quad_dir * cap_length(neighbor_cap_flags, strip_radius);
         }
     }
 
