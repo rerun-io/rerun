@@ -5,6 +5,7 @@ struct UniformBuffer {
     screen_resolution: Vec2,
     position_in_pixel: Vec2,
     extent_in_pixel: Vec2,
+    _padding: Vec2,
 };
 @group(1) @binding(0)
 var<uniform> uniforms: UniformBuffer;
@@ -35,6 +36,5 @@ fn main_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn main_fs(in: VertexOutput) -> @location(0) Vec4 {
-    return textureSample(debug_texture, nearest_sampler, in.texcoord);
-    //return Vec4(in.texcoord, 0.0, 1.0);
+    return Vec4(textureSample(debug_texture, nearest_sampler, in.texcoord).rgb, 1.0);
 }
