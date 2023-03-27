@@ -34,7 +34,7 @@ use crate::{
 
 // ---
 
-// TODO: can probably make that one pub(crate) already
+// TODO(cmc): can probably make that one pub(crate) already
 /// The errors that can occur when trying to convert between Arrow and `MessageBundle` types
 #[derive(thiserror::Error, Debug)]
 pub enum MsgBundleError {
