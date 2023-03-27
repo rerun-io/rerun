@@ -224,14 +224,6 @@ bitflags! {
     }
 }
 
-impl LineStripFlags {
-    pub fn get_triangle_cap_tip_length(line_radius: f32) -> f32 {
-        // hardcoded in lines.wgsl
-        // Alternatively we could declare the entire last segment to be a tip, making the line length configurable!
-        line_radius * 4.0
-    }
-}
-
 /// Data that is valid for a batch of line strips.
 pub struct LineBatchInfo {
     pub label: DebugLabel,
