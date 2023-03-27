@@ -39,10 +39,11 @@ const POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 // See lines.rs#LineStripFlags
 const CAP_END_TRIANGLE: u32 = 1u;
 const CAP_END_ROUND: u32 = 2u;
-const CAP_START_TRIANGLE: u32 = 4u;
-const CAP_START_ROUND: u32 = 8u;
-const CAP_EXTEND_OUTWARDS: u32 = 16u;
-const NO_COLOR_GRADIENT: u32 = 32u;
+const CAP_END_EXTEND_OUTWARDS: u32 = 4u;
+const CAP_START_TRIANGLE: u32 = 8u;
+const CAP_START_ROUND: u32 = 16u;
+const CAP_START_EXTEND_OUTWARDS: u32 = 32u;
+const NO_COLOR_GRADIENT: u32 = 64u;
 
 // A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
@@ -184,7 +185,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Active flags are all flags that we react to at the current vertex.
     // I.e. cap flags are only active in the respective cap triangle.
-    var currently_active_flags = strip_data.flags & (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND | CAP_EXTEND_OUTWARDS));
+    var currently_active_flags = strip_data.flags &
+        (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND | CAP_START_EXTEND_OUTWARDS | CAP_END_EXTEND_OUTWARDS));
 
     // Compute quad_dir and correct the currently_active_flags & correct center_position triangle caps.
     var quad_dir: Vec3;
@@ -214,17 +216,19 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
-    if !has_any_flag(strip_data.flags, CAP_EXTEND_OUTWARDS) {
+    if !has_any_flag(strip_data.flags, CAP_END_EXTEND_OUTWARDS) {
         var neighbor_cap_flags = currently_active_flags;
         if is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index {
             neighbor_cap_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
         }
-        else if !is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index {
-            neighbor_cap_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
-        }
-
         if has_any_flag(neighbor_cap_flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
             center_position -= quad_dir * cap_length(neighbor_cap_flags, strip_radius);
+        }
+    }
+    if !has_any_flag(strip_data.flags, CAP_START_EXTEND_OUTWARDS) {
+        var neighbor_cap_flags = currently_active_flags;
+        if !is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index {
+            neighbor_cap_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
         }
         if has_any_flag(neighbor_cap_flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
             center_position += quad_dir * cap_length(neighbor_cap_flags, strip_radius);

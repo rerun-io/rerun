@@ -73,7 +73,11 @@ impl Arrows3DPart {
                 .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
-                .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+                .flags(
+                    re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE
+                        | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
+                        | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
+                )
                 .user_data(picking_instance_hash);
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
