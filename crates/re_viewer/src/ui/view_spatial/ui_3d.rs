@@ -83,7 +83,7 @@ impl Default for View3DState {
 
 impl View3DState {
     pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
-        self.interpolate_to_eye(default_eye(scene_bbox_accum, &self.space_specs).to_eye());
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
