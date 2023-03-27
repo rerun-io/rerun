@@ -53,6 +53,8 @@ fn compute_point_data(quad_idx: i32) -> PointData {
 // ---
 
 /// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
+///
+/// Same for all draw-phases.
 struct DepthCloudInfo {
     /// The extrinsincs of the camera used for the projection.
     world_from_obj: Mat4,
@@ -84,6 +86,9 @@ var<uniform> depth_cloud_info: DepthCloudInfo;
 @group(1) @binding(1)
 var depth_texture: texture_2d<f32>;
 
+/// Keep in sync with `DrawDataUniformBuffer` in `depth_cloud.rs`.
+///
+/// Changes between the opaque and outline draw-phases.
 struct DrawDataUniformBuffer {
     radius_boost_in_ui_points: f32,
     // In actuality there is way more padding than this since we align all our uniform buffers to

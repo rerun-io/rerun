@@ -39,8 +39,9 @@ use super::{
 mod gpu_data {
     use crate::wgpu_buffer_types;
 
-    // - Keep in sync with mirror in depth_cloud.wgsl.
-    // - See `DepthCloud` for documentation.
+    /// Uniform buffer that is constant across all draw phases.
+    ///
+    /// Keep in sync with mirror in `depth_cloud.wgsl.`
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
@@ -101,7 +102,9 @@ mod gpu_data {
         }
     }
 
-    /// Uniform buffer that changes once per draw data rendering.
+    /// Uniform buffer that changes between the opaque and outline draw-phases.
+    ///
+    /// Keep in sync with mirror in `depth_cloud.wgsl.`
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
