@@ -96,7 +96,7 @@ web = []
 for commit in tqdm(commits, desc="Processing commits"):
     (title, pr_number) = commit_title_pr_number(commit)
     if pr_number is None:
-        # Someone commited straight to main:
+        # Someone committed straight to main:
         summary = f"{title} [{commit.hexsha}](https://github.com/{OWNER}/{REPO}/commit/{commit.hexsha})"
         misc.append(summary)
     else:
