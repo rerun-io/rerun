@@ -315,7 +315,7 @@ impl DataStore {
             } else {
                 // Cache miss! Craft a new instance keys from the ground up.
 
-                // TODO(cmc): That's exactly how one should create a cell of instance keys... but
+                // TODO(#1712): That's exactly how one should create a cell of instance keys... but
                 // it turns out that running `TryIntoArrow` on a primitive type is orders of
                 // magnitude slower than manually creating the equivalent primitive array for some
                 // reason...
