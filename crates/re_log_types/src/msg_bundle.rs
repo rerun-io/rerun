@@ -208,7 +208,7 @@ impl MsgBundle {
     pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
         self.cells
             .iter()
-            .map(|cell| cell.component())
+            .map(|cell| cell.component_name())
             .position(|name| name == *component)
     }
 }
@@ -216,7 +216,7 @@ impl MsgBundle {
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let values = self.cells.iter().map(|cell| cell.as_arrow_ref());
-        let names = self.cells.iter().map(|cell| cell.component().as_str());
+        let names = self.cells.iter().map(|cell| cell.component_name().as_str());
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
             "MsgBundle '{}' @ {:?}:\n{table}",
@@ -225,7 +225,7 @@ impl std::fmt::Display for MsgBundle {
     }
 }
 
-/// Pack the passed iterator of `DataCell` into a `(Schema, StructArray)` tuple.
+/// Pack the passed iterator of [`DataCell`] into a `(Schema, StructArray)` tuple.
 #[inline]
 fn pack_components(cells: impl Iterator<Item = DataCell>) -> (Schema, StructArray) {
     let (component_fields, component_cols): (Vec<Field>, Vec<Box<dyn Array>>) = cells
@@ -234,7 +234,11 @@ fn pack_components(cells: impl Iterator<Item = DataCell>) -> (Schema, StructArra
             // batching.
             let data = cell.as_arrow_monolist();
             (
-                Field::new(cell.component().as_str(), data.data_type().clone(), false),
+                Field::new(
+                    cell.component_name().as_str(),
+                    data.data_type().clone(),
+                    false,
+                ),
                 data,
             )
         })

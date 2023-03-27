@@ -95,7 +95,10 @@ impl DataStore {
         // - A) `MsgBundle` should already guarantee this
         // - B) this limitation should be gone soon enough
         debug_assert!(
-            msg.cells.iter().map(|cell| cell.component()).all_unique(),
+            msg.cells
+                .iter()
+                .map(|cell| cell.component_name())
+                .all_unique(),
             "cannot insert same component multiple times, this is equivalent to multiple rows",
         );
 
@@ -107,13 +110,13 @@ impl DataStore {
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
-            components = ?cells.iter().map(|cell| cell.component()).collect_vec(),
+            components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
             "insertion started..."
         );
 
         let cluster_comp_pos = cells
             .iter()
-            .find_position(|cell| cell.component() == self.cluster_key)
+            .find_position(|cell| cell.component_name() == self.cluster_key)
             .map(|(pos, _)| pos);
 
         if time_point.is_timeless() {
@@ -176,9 +179,9 @@ impl DataStore {
 
         for cell in cells
             .iter()
-            .filter(|cell| cell.component() != self.cluster_key)
+            .filter(|cell| cell.component_name() != self.cluster_key)
         {
-            let component = cell.component();
+            let component = cell.component_name();
             let num_instances = cell.num_instances();
 
             if num_instances != cluster_len {
@@ -192,7 +195,7 @@ impl DataStore {
 
             let table = self
                 .timeless_components
-                .entry(cell.component())
+                .entry(cell.component_name())
                 .or_insert_with(|| PersistentComponentTable::new(component, cell.datatype()));
 
             let row_idx = table.push_cell(cell);
@@ -232,9 +235,9 @@ impl DataStore {
 
         for cell in cells
             .iter()
-            .filter(|cell| cell.component() != self.cluster_key)
+            .filter(|cell| cell.component_name() != self.cluster_key)
         {
-            let component = cell.component();
+            let component = cell.component_name();
             let num_instances = cell.num_instances();
 
             if num_instances != cluster_len {
@@ -955,7 +958,7 @@ impl PersistentComponentTable {
         self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
 
         // TODO(#589): support for non-unit-length chunks
-        self.chunks.push(values); // shallow
+        self.chunks.push(values);
 
         RowIndex::from_u63(RowIndexKind::Timeless, self.chunks.len() as u64 - 1)
     }

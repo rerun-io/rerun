@@ -87,8 +87,8 @@ impl EntityDb {
 
         for cell in &msg_bundle.cells {
             let component_path =
-                ComponentPath::new(msg_bundle.entity_path.clone(), cell.component());
-            if cell.component() == MsgId::name() {
+                ComponentPath::new(msg_bundle.entity_path.clone(), cell.component_name());
+            if cell.component_name() == MsgId::name() {
                 continue;
             }
             let pending_clears = self
@@ -98,7 +98,8 @@ impl EntityDb {
             for (msg_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
-                let cell = DataCell::from_arrow_empty(cell.component(), cell.datatype().clone());
+                let cell =
+                    DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
                 let msg_bundle = MsgBundle::new(
                     msg_id,
                     msg_bundle.entity_path.clone(),

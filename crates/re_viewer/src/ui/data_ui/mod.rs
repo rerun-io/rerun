@@ -78,7 +78,7 @@ impl DataUi for [DataCell] {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let mut sorted = self.to_vec();
-        sorted.sort_by_key(|cb| cb.component());
+        sorted.sort_by_key(|cb| cb.component_name());
 
         match verbosity {
             UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
@@ -101,7 +101,7 @@ fn format_cell(cell: &DataCell) -> String {
     format!(
         "{}x {}",
         cell.num_instances(),
-        cell.component().short_name()
+        cell.component_name().short_name()
     )
 }
 

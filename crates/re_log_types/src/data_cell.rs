@@ -12,7 +12,7 @@ pub enum DataCellError {
     #[error("Unsupported datatype: {0:?}")]
     UnsupportedDatatype(arrow2::datatypes::DataType),
 
-    #[error("Could not serialize/deserialize component instances to/from Arrow")]
+    #[error("Could not serialize/deserialize component instances to/from Arrow: {0}")]
     Arrow(#[from] arrow2::error::Error),
 }
 
@@ -96,10 +96,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 pub struct DataCell {
     /// Name of the component type used in this cell.
     //
-    // TODO(cmc): We need to store this extra information within the values array itself,
-    // rather than outside of it. Arrow has the concept of extensions specifically for storing
-    // type metadata, but we have had some issues with it in the past. This is an opportunity to
-    // revisit and improve upon that implementation.
+    // TODO(#1696): Store this within the datatype itself.
     pub(crate) name: ComponentName,
 
     /// A uniformly typed list of values for the given component type: `[C, C, C, ...]`
@@ -109,6 +106,7 @@ pub struct DataCell {
     ///
     /// Internally this is always stored as an erased arrow array to avoid bad surprises with
     /// frequent boxing/unboxing down the line.
+    /// Internally, this is most likely a slice of another, larger array (batching!).
     pub(crate) values: Box<dyn arrow2::array::Array>,
 }
 
@@ -174,8 +172,9 @@ impl DataCell {
 
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
     ///
-    /// ⚠ This requires allocating due to quirks in `arrow2-convert`, prefer [`Self::from_native`]
-    /// when performance matters.
+    /// ⚠ Due to quirks in `arrow2-convert`, this requires consuming and collecting the passed-in
+    /// iterator into a vector first.
+    /// Prefer [`Self::from_native`] when performance matters.
     pub fn from_component_sparse<C>(values: impl IntoIterator<Item = Option<impl Into<C>>>) -> Self
     where
         C: SerializableComponent,
@@ -189,8 +188,9 @@ impl DataCell {
 
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
     ///
-    /// ⚠ This requires allocating due to quirks in `arrow2-convert`, prefer [`Self::from_native`]
-    /// when performance matters.
+    /// ⚠ Due to quirks in `arrow2-convert`, this requires consuming and collecting the passed-in
+    /// iterator into a vector first.
+    /// Prefer [`Self::from_native`] when performance matters.
     pub fn from_component<C>(values: impl IntoIterator<Item = impl Into<C>>) -> Self
     where
         C: SerializableComponent,
@@ -258,7 +258,8 @@ impl DataCell {
 
     /// Returns the contents of the cell as an arrow array (shallow clone).
     ///
-    /// Avoid using raw arrow arrays unless you absolutely have to.
+    /// Avoid using raw arrow arrays unless you absolutely have to: prefer working directly with
+    /// `DataCell`s, `DataRow`s & `DataTable`s instead.
     /// If you do use them, try to keep the scope as short as possible: holding on to a raw array
     /// might prevent the datastore from releasing memory from garbage collected data.
     #[inline]
@@ -268,7 +269,8 @@ impl DataCell {
 
     /// Returns the contents of the cell as a reference to an arrow array.
     ///
-    /// Avoid using raw arrow arrays unless you absolutely have to.
+    /// Avoid using raw arrow arrays unless you absolutely have to: prefer working directly with
+    /// `DataCell`s, `DataRow`s & `DataTable`s instead.
     /// If you do use them, try to keep the scope as short as possible: holding on to a raw array
     /// might prevent the datastore from releasing memory from garbage collected data.
     #[inline]
@@ -308,7 +310,7 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     //
-    // TODO(#1694): There shouldn't need to be HRTBs here.
+    // TODO(#1694): There shouldn't need to be HRTBs (Higher-Rank Trait Bounds) here.
     #[inline]
     pub fn try_as_native<C: DeserializableComponent>(
         &self,
@@ -338,7 +340,7 @@ impl DataCell {
 impl DataCell {
     /// The name of the component type stored in the cell.
     #[inline]
-    pub fn component(&self) -> ComponentName {
+    pub fn component_name(&self) -> ComponentName {
         self.name
     }
 
@@ -356,7 +358,7 @@ impl DataCell {
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.num_instances() == 0
+        self.values.is_empty()
     }
 
     /// Returns `true` if the underlying array is dense (no nulls).
@@ -385,6 +387,7 @@ impl DataCell {
         let arr = self.as_arrow_ref();
 
         fn is_sorted_and_unique_primitive<T: NativeType + PartialOrd>(arr: &dyn Array) -> bool {
+            // NOTE: unwrap cannot fail, checked by caller just below
             let values = arr.as_any().downcast_ref::<PrimitiveArray<T>>().unwrap();
             values.values().windows(2).all(|v| v[0] < v[1])
         }
@@ -435,11 +438,11 @@ impl<C: SerializableComponent> From<&Vec<C>> for DataCell {
 
 impl std::fmt::Display for DataCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let table = re_format::arrow::format_table(
+        re_format::arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
             [&*self.as_arrow_monolist()],
-            [self.component()],
-        );
-        table.fmt(f)
+            [self.component_name()],
+        )
+        .fmt(f)
     }
 }

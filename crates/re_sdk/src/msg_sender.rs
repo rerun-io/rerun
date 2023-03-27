@@ -202,7 +202,7 @@ impl MsgSender {
             let collections = self
                 .instanced
                 .into_iter()
-                .map(|cell| (cell.component(), cell.num_instances()))
+                .map(|cell| (cell.component_name(), cell.num_instances()))
                 .collect();
             return Err(MsgSenderError::MismatchedRowLengths(collections));
         }
@@ -306,14 +306,14 @@ impl MsgSender {
         let mut all_cells: Vec<_> = instanced.into_iter().map(Some).collect();
         let standard_cells: Vec<_> = all_cells
             .iter_mut()
-            .filter(|cell| cell.as_ref().unwrap().component() != Transform::name())
+            .filter(|cell| cell.as_ref().unwrap().component_name() != Transform::name())
             .map(|cell| cell.take().unwrap())
             .collect();
         let transform_cells: Vec<_> = all_cells
             .iter_mut()
             .filter(|cell| {
                 cell.as_ref()
-                    .map_or(false, |cell| cell.component() == Transform::name())
+                    .map_or(false, |cell| cell.component_name() == Transform::name())
             })
             .map(|cell| cell.take().unwrap())
             .collect();
@@ -331,7 +331,7 @@ impl MsgSender {
             .chain(&transform_cells)
             .chain(&splatted)
         {
-            *rows_per_comptype.entry(cell.component()).or_default() += 1;
+            *rows_per_comptype.entry(cell.component_name()).or_default() += 1;
         }
         if rows_per_comptype.values().any(|num_rows| *num_rows > 1) {
             return Err(MsgSenderError::MoreThanOneRow(
