@@ -633,8 +633,10 @@ impl ViewBuilder {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                screenshot_texture.texture.width(),
-                screenshot_texture.texture.height(),
+                glam::uvec2(
+                    screenshot_texture.texture.width(),
+                    screenshot_texture.texture.height(),
+                ),
             );
         }
 

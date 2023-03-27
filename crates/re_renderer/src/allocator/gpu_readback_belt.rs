@@ -25,19 +25,15 @@ impl GpuReadbackBuffer {
         self,
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
-        copy_size_width: u32,
-        copy_size_height: u32,
+        copy_extents: glam::UVec2,
     ) -> GpuReadbackBufferIdentifier {
         let bytes_per_row =
-            texture_row_data_info(source.texture.format(), copy_size_width).bytes_per_row_padded;
+            texture_row_data_info(source.texture.format(), copy_extents.x).bytes_per_row_padded;
 
         // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
         // We go one step further and require the size to be exactly equal - there is no point in reading back more,
         // as this would imply sniffing on unused memory.
-        debug_assert_eq!(
-            (bytes_per_row * copy_size_height) as u64,
-            self.size_in_bytes
-        );
+        debug_assert_eq!((bytes_per_row * copy_extents.y) as u64, self.size_in_bytes);
         encoder.copy_texture_to_buffer(
             source,
             wgpu::ImageCopyBuffer {
@@ -49,8 +45,8 @@ impl GpuReadbackBuffer {
                 },
             },
             wgpu::Extent3d {
-                width: copy_size_width,
-                height: copy_size_height,
+                width: copy_extents.x,
+                height: copy_extents.y,
                 depth_or_array_layers: 1,
             },
         );
@@ -233,7 +229,7 @@ impl GpuReadbackBelt {
 
     /// Prepare used buffers for CPU read.
     ///
-    /// This should be called before the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
+    /// This should be called after the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
     pub fn after_queue_submit(&mut self) {
         crate::profile_function!();
         for chunk in self.active_chunks.drain(..) {
