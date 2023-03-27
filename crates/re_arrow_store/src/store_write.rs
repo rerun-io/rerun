@@ -122,7 +122,7 @@ impl DataStore {
         if time_point.is_timeless() {
             let mut row_indices = IntMap::default();
 
-            self._insert_timeless_row(cluster_comp_pos, cells, &mut row_indices)?;
+            self.insert_timeless_row_helper(cluster_comp_pos, cells, &mut row_indices)?;
 
             let index = self
                 .timeless_indices
@@ -132,7 +132,7 @@ impl DataStore {
         } else {
             let mut row_indices = IntMap::default();
 
-            self._insert_row(time_point, cluster_comp_pos, cells, &mut row_indices)?;
+            self.insert_row_helper(time_point, cluster_comp_pos, cells, &mut row_indices)?;
 
             for (timeline, time) in time_point.iter() {
                 let ent_path = ent_path.clone(); // shallow
@@ -150,7 +150,7 @@ impl DataStore {
         Ok(())
     }
 
-    fn _insert_timeless_row(
+    fn insert_timeless_row_helper(
         &mut self,
         cluster_comp_pos: Option<usize>,
         cells: &[DataCell],
@@ -205,7 +205,7 @@ impl DataStore {
         Ok(())
     }
 
-    fn _insert_row(
+    fn insert_row_helper(
         &mut self,
         time_point: &TimePoint,
         cluster_comp_pos: Option<usize>,
