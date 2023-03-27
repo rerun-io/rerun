@@ -15,6 +15,8 @@ use crate::{
     PersistentIndexTable, RowIndex,
 };
 
+// TODO(#1692): all of this stuff should be defined by Data{Cell,Row,Table}, not the store.
+
 // ---
 
 impl DataStore {

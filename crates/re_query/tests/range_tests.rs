@@ -5,9 +5,7 @@ use re_log_types::{
     component_types::InstanceKey,
     component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
-    msg_bundle::try_build_msg_bundle1,
-    msg_bundle::try_build_msg_bundle2,
-    Component, EntityPath, MsgId,
+    Component, DataRow, EntityPath, MsgId,
 };
 use re_query::range_entity_with_primary;
 
@@ -21,21 +19,20 @@ fn simple_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-        let bundle =
-            try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint1, &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), timepoint1, 2, points);
+        store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint1,
+            1,
             (color_instances, colors),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -43,23 +40,22 @@ fn simple_range() {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint2,
+            1,
             (color_instances, colors),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
-        let bundle =
-            try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint3, &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), timepoint3, 2, points);
+        store.insert_row(&row).unwrap();
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---
@@ -241,35 +237,34 @@ fn timeless_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-        let bundle =
-            try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint1, &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), timepoint1, 2, &points);
+        store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), [], &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), [], 2, &points);
+        store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint1,
+            1,
             (color_instances.clone(), colors.clone()),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             [],
+            1,
             (color_instances, colors),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -277,37 +272,36 @@ fn timeless_range() {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint2,
+            1,
             (color_instances.clone(), colors.clone()),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint2,
+            1,
             (color_instances, colors),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
-        let bundle =
-            try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint3, &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), timepoint3, 2, &points);
+        store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let bundle = try_build_msg_bundle1(MsgId::random(), ent_path.clone(), [], &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), [], 2, &points);
+        store.insert_row(&row).unwrap();
     }
 
     // ┌───────────┬──────────┬────────┬─────────────────┬────────────────────┬──────────────────────┬────────────────────────────┐
@@ -676,21 +670,20 @@ fn simple_splatted_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-        let bundle =
-            try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint1, &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), timepoint1, 2, points);
+        store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint1,
+            1,
             (color_instances, colors),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -698,23 +691,22 @@ fn simple_splatted_range() {
         // Assign one of them a color with a splatted instance
         let color_instances = vec![InstanceKey::SPLAT];
         let colors = vec![ColorRGBA(0x00ff0000)];
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::random(),
             ent_path.clone(),
             timepoint2,
+            1,
             (color_instances, colors),
-        )
-        .unwrap();
-        store.insert_row(&bundle).unwrap();
+        );
+        store.insert_row(&row).unwrap();
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
-        let bundle =
-            try_build_msg_bundle1(MsgId::random(), ent_path.clone(), timepoint3, &points).unwrap();
-        store.insert_row(&bundle).unwrap();
+        let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), timepoint3, 2, points);
+        store.insert_row(&row).unwrap();
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---

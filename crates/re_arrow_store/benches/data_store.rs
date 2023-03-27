@@ -8,8 +8,7 @@ use re_arrow_store::{DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, Time
 use re_log_types::{
     component_types::{InstanceKey, Rect2D},
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
-    msg_bundle::{try_build_msg_bundle2, MsgBundle},
-    Component as _, ComponentName, EntityPath, MsgId, TimeType, Timeline,
+    Component as _, ComponentName, DataRow, EntityPath, MsgId, TimeType, Timeline,
 };
 
 // ---
@@ -27,28 +26,30 @@ const NUM_RECTS: i64 = 1;
 
 // --- Benchmarks ---
 
+// TODO(cmc): need additional benches for full tables
+
 fn insert(c: &mut Criterion) {
     {
-        let msgs = build_messages(NUM_RECTS as usize);
+        let rows = build_rows(NUM_RECTS as usize);
         let mut group = c.benchmark_group("datastore/insert/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(Default::default(), InstanceKey::name(), msgs.iter()));
+            b.iter(|| insert_rows(Default::default(), InstanceKey::name(), rows.iter()));
         });
     }
 }
 
 fn latest_at_batch(c: &mut Criterion) {
     {
-        let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(Default::default(), InstanceKey::name(), msgs.iter());
+        let rows = build_rows(NUM_RECTS as usize);
+        let store = insert_rows(Default::default(), InstanceKey::name(), rows.iter());
         let mut group = c.benchmark_group("datastore/latest_at/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
             b.iter(|| {
-                let results = latest_messages_at(&store, Rect2D::name(), &[Rect2D::name()]);
+                let results = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
                 let rects = results[0]
                     .as_ref()
                     .unwrap()
@@ -70,27 +71,27 @@ fn latest_at_missing_components(c: &mut Criterion) {
     };
 
     {
-        let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(config.clone(), InstanceKey::name(), msgs.iter());
+        let msgs = build_rows(NUM_RECTS as usize);
+        let store = insert_rows(config.clone(), InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("primary", |b| {
             b.iter(|| {
                 let results =
-                    latest_messages_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
+                    latest_data_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
                 assert!(results[0].is_none());
             });
         });
     }
 
     {
-        let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(config, InstanceKey::name(), msgs.iter());
+        let msgs = build_rows(NUM_RECTS as usize);
+        let store = insert_rows(config, InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("secondaries", |b| {
             b.iter(|| {
-                let results = latest_messages_at(
+                let results = latest_data_at(
                     &store,
                     Rect2D::name(),
                     &[
@@ -109,15 +110,15 @@ fn latest_at_missing_components(c: &mut Criterion) {
 
 fn range_batch(c: &mut Criterion) {
     {
-        let msgs = build_messages(NUM_RECTS as usize);
-        let store = insert_messages(Default::default(), InstanceKey::name(), msgs.iter());
+        let msgs = build_rows(NUM_RECTS as usize);
+        let store = insert_rows(Default::default(), InstanceKey::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/range/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("query", |b| {
             b.iter(|| {
-                let msgs = range_messages(&store, [Rect2D::name()]);
+                let msgs = range_data(&store, [Rect2D::name()]);
                 for (cur_time, (time, results)) in msgs.enumerate() {
                     let time = time.unwrap();
                     assert_eq!(cur_time as i64, time.as_i64());
@@ -146,31 +147,31 @@ criterion_main!(benches);
 
 // --- Helpers ---
 
-fn build_messages(n: usize) -> Vec<MsgBundle> {
+fn build_rows(n: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES)
         .map(move |frame_idx| {
-            try_build_msg_bundle2(
-                MsgId::ZERO,
+            DataRow::from_cells2(
+                MsgId::random(),
                 "rects",
                 [build_frame_nr(frame_idx.into())],
+                n as _,
                 (build_some_instances(n), build_some_rects(n)),
             )
-            .unwrap()
         })
         .collect()
 }
 
-fn insert_messages<'a>(
+fn insert_rows<'a>(
     config: DataStoreConfig,
     cluster_key: ComponentName,
-    msgs: impl Iterator<Item = &'a MsgBundle>,
+    rows: impl Iterator<Item = &'a DataRow>,
 ) -> DataStore {
     let mut store = DataStore::new(cluster_key, config);
-    msgs.for_each(|msg_bundle| store.insert_row(msg_bundle).unwrap());
+    rows.for_each(|row| store.insert_row(row).unwrap());
     store
 }
 
-fn latest_messages_at<const N: usize>(
+fn latest_data_at<const N: usize>(
     store: &DataStore,
     primary: ComponentName,
     secondaries: &[ComponentName; N],
@@ -185,7 +186,7 @@ fn latest_messages_at<const N: usize>(
     store.get(secondaries, &row_indices)
 }
 
-fn range_messages<const N: usize>(
+fn range_data<const N: usize>(
     store: &DataStore,
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, [Option<Box<dyn Array>>; N])> + '_ {

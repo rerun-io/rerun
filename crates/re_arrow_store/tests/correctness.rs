@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use rand::Rng;
 
 use re_arrow_store::{
-    test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, WriteError,
+    test_row, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, WriteError,
 };
 use re_log_types::{
     component_types::InstanceKey,
@@ -32,12 +32,12 @@ fn write_errors() {
         }
 
         let mut store = DataStore::new(InstanceKey::name(), Default::default());
-        let bundle = test_bundle!(ent_path @
-            [build_frame_nr(32.into()), build_log_time(Time::now())] => [
+        let row = test_row!(ent_path @
+            [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                 build_sparse_instances(), build_some_point2d(3)
         ]);
         assert!(matches!(
-            store.insert_row(&bundle),
+            store.insert_row(&row),
             Err(WriteError::SparseClusteringComponent(_)),
         ));
     }
@@ -53,37 +53,25 @@ fn write_errors() {
 
         let mut store = DataStore::new(InstanceKey::name(), Default::default());
         {
-            let bundle = test_bundle!(ent_path @
-                [build_frame_nr(32.into()), build_log_time(Time::now())] => [
+            let row = test_row!(ent_path @
+                [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                     build_unsorted_instances(), build_some_point2d(3)
             ]);
             assert!(matches!(
-                store.insert_row(&bundle),
+                store.insert_row(&row),
                 Err(WriteError::InvalidClusteringComponent(_)),
             ));
         }
         {
-            let bundle = test_bundle!(ent_path @
-                [build_frame_nr(32.into()), build_log_time(Time::now())] => [
+            let row = test_row!(ent_path @
+                [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                     build_duped_instances(), build_some_point2d(3)
             ]);
             assert!(matches!(
-                store.insert_row(&bundle),
+                store.insert_row(&row),
                 Err(WriteError::InvalidClusteringComponent(_)),
             ));
         }
-    }
-
-    {
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
-        let bundle = test_bundle!(ent_path @
-            [build_frame_nr(32.into()), build_log_time(Time::now())] => [
-                build_some_instances(4), build_some_point2d(3)
-        ]);
-        assert!(matches!(
-            store.insert_row(&bundle),
-            Err(WriteError::MismatchedInstances { .. }),
-        ));
     }
 }
 
@@ -109,11 +97,9 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let num_instances = 3;
 
     store
-        .insert_row(
-            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
-                build_some_instances(num_instances),
-            ]),
-        )
+        .insert_row(&test_row!(ent_path @ [
+                build_log_time(now), build_frame_nr(frame40),
+            ] => num_instances; [build_some_instances(num_instances as _)]))
         .unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
@@ -246,9 +232,9 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
     let points = build_some_point2d(3);
     let colors = build_some_colors(3);
-    let bundle =
-        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), colors.clone()]);
-    store.insert_row(&bundle).unwrap();
+    let row =
+        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [points.clone(), colors.clone()]);
+    store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = re_arrow_store::RangeQuery::new(
@@ -310,10 +296,12 @@ fn gc_correct() {
         for i in 0..num_ents {
             let ent_path = EntityPath::from(format!("this/that/{i}"));
             let num_instances = rng.gen_range(0..=1_000);
-            let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
-                build_some_colors(num_instances),
+            let row = test_row!(ent_path @ [
+                build_frame_nr(frame_nr.into()),
+            ] => num_instances; [
+                build_some_colors(num_instances as _),
             ]);
-            store.insert_row(&bundle).unwrap();
+            store.insert_row(&row).unwrap();
         }
     }
 

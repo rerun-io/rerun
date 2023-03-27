@@ -6,7 +6,7 @@
 
 use polars_core::prelude::*;
 use re_arrow_store::polars_util::latest_components;
-use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
+use re_arrow_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
 use re_log_types::{
     component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
@@ -18,11 +18,11 @@ fn main() {
 
     let ent_path = EntityPath::from("my/entity");
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(2.into())] => [build_some_rects(4)]);
-    store.insert_row(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(2.into())] => 4; [build_some_rects(4)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(3.into())] => [build_some_point2d(2)]);
-    store.insert_row(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(3.into())] => 2; [build_some_point2d(2)]);
+    store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let df = latest_components(

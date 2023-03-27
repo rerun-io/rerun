@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, MsgId};
+use re_log_types::{entity_path, DataRow, DataTable, MsgId};
 
 fn main() {
     log_messages();
@@ -57,7 +57,6 @@ fn main() {
 fn log_messages() {
     use re_log_types::{
         datagen::{build_frame_nr, build_some_point2d},
-        msg_bundle::try_build_msg_bundle1,
         ArrowMsg, LogMsg, TimeInt, TimePoint, Timeline,
     };
 
@@ -107,13 +106,17 @@ fn log_messages() {
     {
         let used_bytes_start = live_bytes();
         let msg_bundle = Box::new(
-            try_build_msg_bundle1(
-                MsgId::random(),
-                entity_path!("points"),
-                [build_frame_nr(0.into())],
-                build_some_point2d(1),
+            DataTable::from_rows(
+                MsgId::ZERO, // not used (yet)
+                [DataRow::from_cells1(
+                    MsgId::random(),
+                    entity_path!("points"),
+                    [build_frame_nr(0.into())],
+                    1,
+                    build_some_point2d(1),
+                )],
             )
-            .unwrap(),
+            .into_msg_bundle(),
         );
         let msg_bundle_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
@@ -129,13 +132,17 @@ fn log_messages() {
     {
         let used_bytes_start = live_bytes();
         let msg_bundle = Box::new(
-            try_build_msg_bundle1(
-                MsgId::random(),
-                entity_path!("points"),
-                [build_frame_nr(0.into())],
-                build_some_point2d(NUM_POINTS),
+            DataTable::from_rows(
+                MsgId::ZERO, // not used (yet)
+                [DataRow::from_cells1(
+                    MsgId::random(),
+                    entity_path!("points"),
+                    [build_frame_nr(0.into())],
+                    NUM_POINTS as _,
+                    build_some_point2d(NUM_POINTS),
+                )],
             )
-            .unwrap(),
+            .into_msg_bundle(),
         );
         let msg_bundle_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));

@@ -1,6 +1,7 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use arrow2::{array::Array, datatypes::Field, ffi};
+use itertools::Itertools as _;
 use pyo3::{
     exceptions::{PyAttributeError, PyValueError},
     ffi::Py_uintptr_t,
@@ -9,9 +10,8 @@ use pyo3::{
     PyAny, PyResult,
 };
 use re_log_types::{
-    component_types,
-    msg_bundle::{MsgBundle, MsgBundleError},
-    DataCell, EntityPath, LogMsg, MsgId, TimePoint,
+    component_types, msg_bundle::MsgBundleError, DataCell, DataRow, EntityPath, LogMsg, MsgId,
+    TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
@@ -102,14 +102,20 @@ pub fn build_chunk_from_components(
         .into_iter()
         .zip(fields.into_iter())
         .map(|(value, field)| DataCell::from_arrow(field.name.into(), value))
-        .collect();
+        .collect_vec();
 
-    let msg_bundle = MsgBundle::new(
+    let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
+    let row = DataRow::from_cells(
         MsgId::random(),
-        entity_path.clone(),
         time_point.clone(),
+        entity_path.clone(),
+        num_instances,
         cells,
     );
+
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
 
     let msg = msg_bundle
         .try_into()
