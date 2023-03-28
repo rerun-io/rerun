@@ -138,7 +138,18 @@ impl framework::Example for Picking {
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
         builder
-            .batch("Random Points")
+            .batch("Random Points 1")
+            .picking_layer_object_id(re_renderer::PickingLayerObjectId([0, 10]))
+            .add_points(
+                self.random_points_positions.len(),
+                self.random_points_positions.iter().cloned(),
+            )
+            .radii(self.random_points_radii.iter().cloned())
+            .colors(self.random_points_colors.iter().cloned());
+        builder
+            .batch("Random Points 2")
+            .picking_layer_object_id(re_renderer::PickingLayerObjectId([10, 0]))
+            .world_from_obj(glam::Mat4::from_rotation_x(0.5))
             .add_points(
                 self.random_points_positions.len(),
                 self.random_points_positions.iter().cloned(),

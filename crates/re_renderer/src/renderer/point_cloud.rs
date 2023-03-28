@@ -17,7 +17,7 @@ use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerProcessor},
+    draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     DebugLabel, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
@@ -55,7 +55,7 @@ bitflags! {
 }
 
 mod gpu_data {
-    use crate::{wgpu_buffer_types, Size};
+    use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types, Size};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
     #[repr(C, packed)]
@@ -80,7 +80,8 @@ mod gpu_data {
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
         pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
-        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded, // Could pack into above, but this is easier to deal with.
+        pub outline_mask_ids: wgpu_buffer_types::UVec2,
+        pub picking_layer_object_id: PickingLayerObjectId,
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -137,6 +138,9 @@ pub struct PointCloudBatchInfo {
     /// This feature is meant for a limited number of "extra selections"
     /// If an overall mask is defined as well, the per-point-range masks is overwriting the overall mask.
     pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
+
+    /// Picking object id that applies for the entire batch.
+    pub picking_layer_object_id: PickingLayerObjectId,
 }
 
 /// Description of a point cloud.
@@ -203,6 +207,7 @@ impl PointCloudDrawData {
             point_count: vertices.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            picking_layer_object_id: Default::default(),
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -379,6 +384,7 @@ impl PointCloudDrawData {
                             .unwrap_or_default()
                             .into(),
                         end_padding: Default::default(),
+                        picking_layer_object_id: batch_info.picking_layer_object_id,
                     }),
             );
 
@@ -399,6 +405,7 @@ impl PointCloudDrawData {
                                     flags: batch_info.flags.bits.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     end_padding: Default::default(),
+                                    picking_layer_object_id: batch_info.picking_layer_object_id,
                                 })
                         })
                         .collect::<Vec<_>>()

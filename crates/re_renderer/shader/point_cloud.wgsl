@@ -26,6 +26,7 @@ struct BatchUniformBuffer {
     flags: u32,
     _padding: UVec2, // UVec3 would take its own 4xf32 row, UVec2 is on the same as flags
     outline_mask: UVec2,
+    picking_layer_object_id: UVec2,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -110,7 +111,7 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
     if coverage < 1.0 {
         discard;
     }
-    return UVec4(1u, 0u, 0u, 0u);
+    return UVec4(batch.picking_layer_object_id, 0u, 0u);
 }
 
 @fragment

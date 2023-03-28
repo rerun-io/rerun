@@ -8,19 +8,36 @@ use crate::{
     DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, RenderContext,
 };
 
-pub struct PickingLayerProcessor {
-    pub picking_target: GpuTexture,
-    picking_depth: GpuTexture,
-    readback_buffer: GpuReadbackBuffer,
-    bind_group_0: GpuBindGroup,
-}
-
 #[derive(Clone)]
 pub struct ScheduledPickingRect {
     pub identifier: GpuReadbackBufferIdentifier,
     pub screen_position: glam::IVec2,
     pub extent: glam::UVec2,
+    // TODO(andreas): Figure out how to handle depth data. Should ideally be forced to be available at the same time.
     pub row_info: TextureRowDataInfo,
+}
+
+/// The first 64bit of the picking layer.
+///
+/// Typically used to identify higher level objects
+/// Some renderers might allow to change this part of the picking identifier only at a coarse grained level.
+#[repr(C, align(8))]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default)]
+pub struct PickingLayerObjectId(pub [u32; 2]);
+
+/// The second 64bit of the picking layer.
+///
+/// Typically used to identify instances.
+/// Some renderers might allow to change only this part of the picking identifier at a fine grained level.
+#[repr(C, align(8))]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default)]
+pub struct PickingLayerInstanceId(pub [u32; 2]);
+
+pub struct PickingLayerProcessor {
+    pub picking_target: GpuTexture,
+    picking_depth: GpuTexture,
+    readback_buffer: GpuReadbackBuffer,
+    bind_group_0: GpuBindGroup,
 }
 
 impl PickingLayerProcessor {

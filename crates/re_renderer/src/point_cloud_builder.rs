@@ -1,5 +1,6 @@
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
+    draw_phases::PickingLayerObjectId,
     renderer::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
         PointCloudVertex,
@@ -65,6 +66,7 @@ where
             point_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            picking_layer_object_id: Default::default(),
         });
 
         PointCloudBatchBuilder(self)
@@ -300,6 +302,14 @@ where
     /// Set flags for this batch.
     pub fn flags(mut self, flags: PointCloudBatchFlags) -> Self {
         self.batch_mut().flags = flags;
+        self
+    }
+
+    pub fn picking_layer_object_id(
+        mut self,
+        picking_layer_object_id: PickingLayerObjectId,
+    ) -> Self {
+        self.batch_mut().picking_layer_object_id = picking_layer_object_id;
         self
     }
 }

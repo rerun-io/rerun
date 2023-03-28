@@ -5,7 +5,9 @@ mod outlines;
 pub use outlines::{OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor};
 
 mod picking_layer;
-pub use picking_layer::{PickingLayerProcessor, ScheduledPickingRect};
+pub use picking_layer::{
+    PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor, ScheduledPickingRect,
+};
 
 /// Determines a (very rough) order of rendering and describes the active [`wgpu::RenderPass`].
 ///

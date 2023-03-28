@@ -46,8 +46,9 @@ fn main_fs(in: VertexOutput) -> @location(0) Vec4 {
     if uniforms.mode == ShowFloatTexture {
         return Vec4(textureSample(debug_texture_float, nearest_sampler, in.texcoord).rgb, 1.0);
     } else if uniforms.mode == ShowUintTexture {
+        let num_color_levels = 20u;
         let coords = IVec2(in.texcoord * Vec2(textureDimensions(debug_texture_uint).xy));
-        return Vec4(Vec3(textureLoad(debug_texture_uint, coords, 0).rgb % 256u), 1.0);
+        return Vec4(Vec3(textureLoad(debug_texture_uint, coords, 0).rgb % num_color_levels) / f32(num_color_levels - 1u), 1.0);
     } else {
         return Vec4(1.0, 0.0, 1.0, 1.0);
     }
