@@ -36,7 +36,7 @@ pub use {
 };
 
 mod gpu_readbacks;
-pub use gpu_readbacks::ScheduledGpuReadback;
+pub use gpu_readbacks::{ScheduledGpuReadback, ScreenshotMode};
 
 // ----------------------------------------------------------------------------
 

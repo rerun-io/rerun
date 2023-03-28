@@ -429,7 +429,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    let (response, take_screenshot) = screenshot_context_menu(ctx, response);
+    let (response, screenshot_action) = screenshot_context_menu(ctx, response);
 
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
@@ -454,16 +454,17 @@ fn view_2d_scrollable(
             target_config, painter.clip_rect(),
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
-            take_screenshot,
+            screenshot_action.is_some(),
         ) else {
             return response;
         };
-        if let Some(screenshot) = screenshot {
+        if let (Some(screenshot), Some(screenshot_action)) = (screenshot, screenshot_action) {
             ctx.scheduled_gpu_readbacks.insert(
                 screenshot.identifier,
                 ScheduledGpuReadback::SpaceViewScreenshot {
                     space_view_id,
                     screenshot,
+                    mode: screenshot_action,
                 },
             );
         }

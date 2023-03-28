@@ -421,12 +421,14 @@ impl App {
                     ScheduledGpuReadback::SpaceViewScreenshot {
                         screenshot,
                         space_view_id,
+                        mode,
                     } => {
                         if let Some(blueprint) = self.state.blueprints.get_mut(application_id) {
                             blueprint.viewport.save_spaceview_screenshot(
                                 &screenshot,
                                 data,
                                 space_view_id,
+                                mode,
                             );
                         }
                     }

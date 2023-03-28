@@ -496,7 +496,7 @@ pub fn view_3d(
         }
     }
 
-    let (_, take_screenshot) = screenshot_context_menu(ctx, response);
+    let (_, screenshot_action) = screenshot_context_menu(ctx, response);
 
     let screenshot = paint_view(
         ui,
@@ -506,14 +506,15 @@ pub fn view_3d(
         ctx.render_ctx,
         &space.to_string(),
         state.auto_size_config(),
-        take_screenshot,
+        screenshot_action.is_some(),
     );
-    if let Some(screenshot) = screenshot {
+    if let (Some(screenshot), Some(screenshot_action)) = (screenshot, screenshot_action) {
         ctx.scheduled_gpu_readbacks.insert(
             screenshot.identifier,
             ScheduledGpuReadback::SpaceViewScreenshot {
                 space_view_id,
                 screenshot,
+                mode: screenshot_action,
             },
         );
     }

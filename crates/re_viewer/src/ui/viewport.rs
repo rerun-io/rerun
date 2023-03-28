@@ -9,7 +9,9 @@ use re_data_store::EntityPath;
 use re_renderer::ScheduledScreenshot;
 
 use crate::{
-    misc::{space_info::SpaceInfoCollection, Item, SpaceViewHighlights, ViewerContext},
+    misc::{
+        space_info::SpaceInfoCollection, Item, ScreenshotMode, SpaceViewHighlights, ViewerContext,
+    },
     ui::space_view_heuristics::default_created_space_views,
 };
 
@@ -552,6 +554,7 @@ impl Viewport {
         screenshot: &ScheduledScreenshot,
         data: &[u8],
         space_view_id: SpaceViewId,
+        mode: ScreenshotMode,
     ) {
         let Some(space_view_display_name) = self.space_views
             .get(&space_view_id)
@@ -577,6 +580,9 @@ impl Viewport {
         crate::misc::Clipboard::with(|clipboard| {
             clipboard.set_image([screenshot.width as _, screenshot.height as _], &buffer);
         });
+        if mode == ScreenshotMode::CopyToClipboard {
+            return;
+        }
 
         // Get next available file name.
         let safe_space_view_name =
@@ -600,7 +606,7 @@ impl Viewport {
         ) {
             Ok(_) => {
                 re_log::info!(
-                    "Saved screenshot to {:?} and copied to clipboard.",
+                    "Saved screenshot to {:?}.",
                     filename.canonicalize().unwrap_or(filename.to_path_buf())
                 );
             }
