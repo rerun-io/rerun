@@ -49,7 +49,6 @@ def log_annotated_bboxes(
     |  |-- centroid[]: the translation matrix (1,3) of bounding-box
     |  |-- normalizedAxes[]: the rotation matrix (3,3) of bounding-box
     """
-    # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view
     bbox_list = []
     bbox_labels = []
     num_objects = len(annotation["data"])
@@ -96,7 +95,11 @@ def log_annotated_bboxes(
 def compute_box_3d(
     scale: npt.NDArray[np.float64], transform: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.float64]:
-    """Given obb compute 3d keypoints of the box."""
+    """
+    Given obb compute 3d keypoints of the box.
+
+    TODO(pablovela5620): Once #1581 is resolved this can be removed
+    """
     scale = scale.tolist()
     scales = [i / 2 for i in scale]
     length, height, width = scales
@@ -128,6 +131,8 @@ def log_line_segments(
     . 2 -------- 3
     |/         |/
     1 -------- 0
+
+    TODO(pablovela5620): Once #1581 is resolved this can be removed
 
     :param bboxes_2d_filtered:
         A numpy array of shape (8, 2), representing the filtered 2D keypoints of the 3D bounding boxes.
@@ -179,6 +184,7 @@ def project_3d_bboxes_to_2d_keypoints(
     """
     Returns 2D keypoints of the 3D bounding box in the camera view.
 
+    TODO(pablovela5620): Once #1581 is resolved this can be removed
     Args:
         bboxes_3d: (nObjects, 8, 3) containing the 3D bounding box keypoints in world frame.
         camera_from_world: Tuple containing the camera translation and rotation_quaternion in world frame.
@@ -245,6 +251,7 @@ def log_camera(
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
 
+    # TODO(pablovela5620): Once #1581 is resolved this can be removed
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
     # Log line segments for each bounding box in the image
