@@ -388,7 +388,6 @@ def log_arkit(recording_path: Path) -> None:
             )
 
             rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb)
-            # TODO(pablovela5620): no clear way to change colormap for depth via log function
             rr.log_depth_image(f"{lowres_posed_entity_id}/depth", depth, meter=1000)
 
         # log the high res camera
