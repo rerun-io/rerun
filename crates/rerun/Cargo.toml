@@ -74,7 +74,6 @@ re_smart_channel.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
-crossbeam = "0.8"
 document-features = "0.2"
 egui = { workspace = true, default-features = false }
 itertools = { workspace = true }

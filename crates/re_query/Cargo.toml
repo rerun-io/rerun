@@ -38,9 +38,7 @@ arrow2 = { workspace = true, features = [
   "compute_aggregate",
 ] }
 document-features = "0.2"
-indent = "0.1"
 itertools = { workspace = true }
-nohash-hasher = "0.2"
 thiserror.workspace = true
 
 # Optional dependencies:

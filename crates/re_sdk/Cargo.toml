@@ -43,7 +43,6 @@ re_smart_channel.workspace = true
 
 anyhow.workspace = true
 arrow2.workspace = true
-crossbeam = "0.8"
 document-features = "0.2"
 lazy_static.workspace = true
 nohash-hasher = "0.2"
