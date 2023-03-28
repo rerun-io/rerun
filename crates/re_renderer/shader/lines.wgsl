@@ -225,7 +225,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // Push out positions as well along the quad dir.
         // This is especially important if there's no miters on a line-strip (TODO(#829)),
         // as this would enhance gaps between lines otherwise.
-        center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_right_triangle));
+        center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 
     var active_radius = strip_radius;
