@@ -71,10 +71,6 @@ def log_annotated_bboxes(
         transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
         rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
 
-        box3d = compute_box_3d(scale, transform, rotation)
-        bbox_list.append(box3d)
-        bbox_labels.append(label)
-
         rot = R.from_matrix(rotation).inv()
 
         rr.log_obb(
@@ -86,6 +82,10 @@ def log_annotated_bboxes(
             color=color_list[i],
             timeless=True,
         )
+        
+        box3d = compute_box_3d(scale, transform, rotation)
+        bbox_list.append(box3d)
+        bbox_labels.append(label)
     bboxes_3d = np.array(bbox_list)
     return bboxes_3d, bbox_labels, color_list
 
