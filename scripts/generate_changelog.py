@@ -39,7 +39,7 @@ def get_github_token() -> str:
 OWNER = "rerun-io"
 REPO = "rerun"
 COMMIT_RANGE = "latest..HEAD"
-INCLUDE_LABELS = False # It adds quite a bit of visual noise
+INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 
 
 def pr_title_labels(pr_number: int) -> Tuple[Optional[str], List[str]]:
