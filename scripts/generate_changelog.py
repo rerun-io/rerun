@@ -39,6 +39,7 @@ def get_github_token() -> str:
 OWNER = "rerun-io"
 REPO = "rerun"
 COMMIT_RANGE = "latest..HEAD"
+INCLUDE_LABELS = False # It adds quite a bit of visual noise
 
 
 def pr_title_labels(pr_number: int) -> Tuple[Optional[str], List[str]]:
@@ -104,6 +105,9 @@ for commit in tqdm(commits, desc="Processing commits"):
         (pr_title, labels) = pr_title_labels(pr_number)
         title = pr_title or title  # We prefer the PR title if available
         summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
+
+        if INCLUDE_LABELS and 0 < len(labels):
+            summary += f" ({', '.join(labels)})"
 
         added = False
 
