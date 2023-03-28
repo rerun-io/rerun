@@ -40,34 +40,42 @@ Release builds of the Python Wheels are triggered by pushing a release tag to Gi
 If we are doing a patch release, we do a branch off of the latest release tag (e.g. `v0.3.0`) and cherry-pick any fixes we want into that branch.
 
 ### Release checklist
-Copy this checklist to the the PR description, go through it from top to bottom, and check each item before moving onto the next. This is a living document. Strive to improve it on each new release.
+Go through this checklist from top to bottom, and check each item before moving onto the next.
+This is a living document. Strive to improve it on each new release.
 
 * [ ] Create a release branch called `release-0.x.y`
 * [ ] If it is a patch release branch off `latest` and cherry-pick the commits that should be included
-* [ ] For the draft PR description, add a:
+* [ ] Update `CHANGELOG.md` with the new version number with:
+    * [ ] A one-line summary of the release
+    * [ ] A multi-line summary of the release
+    * [ ] A gif showing a major new feature
+    * [ ] Run `pip install GitPython && scripts/generate_changelog.py`
+    * [ ] Edit PR descriptions/labels to improve the generated changelog
+    * [ ] Copy-paste the results into `CHANGELOG.md`.
+    * [ ] Editorialize the changelog if necessary
+    * [ ] Make sure the changelog includes instructions for handling any breaking changes
+    * [ ] Commit and push the changelog
+* [ ] Create a draft PR containing:
     * [ ] One-line summary of the release
     * [ ] A multi-line summary of the release
     * [ ] A gif showing a major new feature
 * [ ] Test the branch ([see below](#testing-a-release))
 * [ ] Open the PR up for review with the `⛴ release` label
-* [ ] `./scripts/publish_crates.sh --dry-run`
 * [ ] Bump version number in root `Cargo.toml`.
-* [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
-    * [ ] Run `pip install GitPython && scripts/generate_changelog.py`
-    * [ ] Edit PR descriptions/labels to improve the generated changelog
-    * [ ] Copy-paste the results into `CHANGELOG.md`.
-    * [ ] Editorialize the changelog if necessary
-    * [ ] Make sure the changelog  includes instructions for handling any breaking changes
-* [ ] Get the PR reviewed
 * [ ] Check that CI is green
 * [ ] Publish the crates (see below)
 * [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
     * `git push --tags`
     * This will trigger a PyPI release when pushed
-* [ ]  `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
+* [ ] `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
+* [ ] Manually trigger a new web viewer build and upload at https://github.com/rerun-io/rerun/actions/workflows/rust.yml
+* [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI.
 * [ ] Merge PR
-* [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI. Verify this at https://github.com/rerun-io/rerun/releases/new.
+* [ ] Edit the GitHub release to mark it at latest at the end of https://github.com/rerun-io/rerun/releases/edit/v0.x.0
+* [ ] Wait for wheel to appear on https://pypi.org/project/rerun-sdk/
+* [ ] Test the released Python and Rust libraries (see below)
 * [ ] Wait for documentation to build: https://docs.rs/releases/queue
+* [ ] Point <https://app.rerun.io/> to the latest release via instructions in <https://www.notion.so/rerunio/Ops-Notes-9232e436b80548a2b252c2312b4e4db6?pvs=4>.
 * [ ] Post on:
     * [ ] Community Discord
     * [ ] Rerun Twitter
@@ -85,8 +93,8 @@ Before pushing the release tag:
           * [ ] Mobile
 
 After tagging and the CI has published:
-  * [ ] Test the Python packages from PyPI: `pip install rerun_sdk==0.3.0a1`
-  * [ ] Test rust install version: `cargo install -f rerun@0.3.0-alpha.1 -F web_viewer && rerun --web-viewer api.rrd`
+  * [ ] Test the Python packages from PyPI: `pip install rerun_sdk==0.x.0a1`
+  * [ ] Test rust install version: `cargo install -f rerun@0.x.0-alpha.1 -F web_viewer && rerun --web-viewer api.rrd`
   * [ ] Test rust crate: Modify Cargo.toml of any example to not point to the workspace
     * [ ] run with `--serve` to test web player
 
