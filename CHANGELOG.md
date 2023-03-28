@@ -1,10 +1,16 @@
 # Rerun changelog
 
 
-## Unreleased
-[Commits since latest release](https://github.com/rerun-io/rerun/compare/latest...HEAD)
+## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
+…
 
 ## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements
+
+<video width="640" controls>
+  <source src="https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4" type="video/mp4">
+  https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
+</video>
+
 
 ## Overview & Highlights
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
