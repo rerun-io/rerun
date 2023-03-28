@@ -30,8 +30,11 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 
 #### 🦀 Rust SDK
-- Refactor: `re_sdk` no longer depends on `re_viewer` [#1507](https://github.com/rerun-io/rerun/pull/1507)
-- Refactor `re_sdk::Session` [#1528](https://github.com/rerun-io/rerun/pull/1528)
+- ⚠️ `Session::new` has been replaced with `SessionBuilder` [#1528](https://github.com/rerun-io/rerun/pull/1528)
+- ⚠️ `session.spawn(…)` -> `rerun::native_viewer::spawn(session, …)` [#1507](https://github.com/rerun-io/rerun/pull/1507)
+- ⚠️ `session.show()` -> `rerun::native_viewer::show(session)`  [#1507](https://github.com/rerun-io/rerun/pull/1507)
+- ⚠️ `session.serve(…)` -> `rerun::serve_web_viewer(session, …);`  [#1507](https://github.com/rerun-io/rerun/pull/1507)
+- ⚠️ `rerun::global_session` is now hidden behind the `global_session` feature flag  [#1507](https://github.com/rerun-io/rerun/pull/1507)
 - Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 
 #### 🪳 Bug Fixes

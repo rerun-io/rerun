@@ -34,7 +34,7 @@ if [ ${DRY_RUN} = ${EXECUTE} ]; then
     exit 1
 fi
 
-FLAGS=""
+FLAGS="--quiet"
 
 if [ ${DRY_RUN} = true ]; then
     FLAGS="--dry-run"
@@ -42,8 +42,6 @@ fi
 
 echo $FLAGS
 
-
-set -x
 
 # IMPORTANT! we need to build an optimized .wasm that will be bundled when we publish `re_web_viewer_server`.
 # Normally `re_web_viewer_server/build.rd` builds the wasm/js but during `cargo publish`
@@ -56,6 +54,9 @@ set -x
 # though, so unless you have tools set up to run build scripts with the `--release` flag, we _should_ be fine,
 # but just in case:
 echo "MAKE SURE RUST ANALYZER, BACON, CARGO-WATCH etc are all OFF!"
+
+set -x
+
 pkillexitstatus=0
 sudo pkill -9 rust-analyzer bacon cargo cargo-watch || pkillexitstatus=$?
 if [ $pkillexitstatus -eq 0 ]; then
