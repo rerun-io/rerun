@@ -105,6 +105,15 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 }
 
 @fragment
+fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
+    let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
+    if coverage < 1.0 {
+        discard;
+    }
+    return UVec4(1u, 0u, 0u, 0u);
+}
+
+@fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
     // Output is an integer target, can't use coverage therefore.
     // But we still want to discard fragments where coverage is low.
