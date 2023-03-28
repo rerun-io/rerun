@@ -48,7 +48,7 @@ impl nohash_hasher::IsEnabled for EntityPathHash {}
 
 impl std::fmt::Debug for EntityPathHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("EntityPathHash({:016X})", self.hash64()))
+        write!(f, "EntityPathHash({:016X})", self.hash64())
     }
 }
 
