@@ -40,9 +40,16 @@ OWNER = "rerun-io"
 REPO = "rerun"
 COMMIT_RANGE = "latest..HEAD"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
+OFFICIAL_RERUN_DEVS = [
+    "emilk",
+    "jleibs",
+    "nikolausWest",
+    "teh-cmc",
+    "Wumpf",
+]
 
 
-def pr_title_labels(pr_number: int) -> Tuple[Optional[str], List[str]]:
+def pr_user_title_labels(pr_number: int) -> Tuple[Optional[str], Optional[str], List[str]]:
     url = f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}"
     gh_access_token = get_github_token()
     headers = {"Authorization": f"Token {gh_access_token}"}
@@ -52,10 +59,11 @@ def pr_title_labels(pr_number: int) -> Tuple[Optional[str], List[str]]:
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         labels = [label["name"] for label in json["labels"]]
-        return (json["title"], labels)
+        gh_user_name = json["user"]["login"]
+        return (gh_user_name, json["title"], labels)
     else:
         print(f"ERROR: {response.status_code} - {json['message']}")
-        return (None, [])
+        return (None, None, [])
 
 
 def commit_title_pr_number(commit: Any) -> Tuple[str, Optional[int]]:
@@ -102,18 +110,20 @@ for commit in tqdm(commits, desc="Processing commits"):
         summary = f"{title} [{commit.hexsha}](https://github.com/{OWNER}/{REPO}/commit/{commit.hexsha})"
         misc.append(summary)
     else:
-        (pr_title, labels) = pr_title_labels(pr_number)
+        (gh_user_name, pr_title, labels) = pr_user_title_labels(pr_number)
         title = pr_title or title  # We prefer the PR title if available
         summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
 
         if INCLUDE_LABELS and 0 < len(labels):
             summary += f" ({', '.join(labels)})"
 
-        added = False
+        if gh_user_name not in OFFICIAL_RERUN_DEVS:
+            summary += f" (thanks [@{gh_user_name}](https://github.com/{gh_user_name})!)"
 
         if labels == ["⛴ release"]:
-            # Ignore release PRs
-            continue
+            continue  # Ignore release PRs
+
+        added = False
 
         # Some PRs can show up underm multiple sections:
         if "🐍 python API" in labels:
