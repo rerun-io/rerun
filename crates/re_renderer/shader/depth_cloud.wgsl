@@ -13,14 +13,6 @@
 
 // ---
 
-struct PointData {
-    pos_in_world: Vec3,
-    unresolved_radius: f32,
-    color: Vec4
-}
-
-// ---
-
 /// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
 ///
 /// Same for all draw-phases.
@@ -66,13 +58,30 @@ struct VertexOut {
     @location(3) point_radius: f32,
 };
 
+// ---
+
+struct PointData {
+    pos_in_world: Vec3,
+    unresolved_radius: f32,
+    color: Vec4
+}
+
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
 fn compute_point_data(quad_idx: i32) -> PointData {
     let wh = textureDimensions(depth_texture);
     let texcoords = IVec2(quad_idx % wh.x, quad_idx / wh.x);
 
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
-    let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
+    var world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
+
+    if (world_space_depth <= 0.0 || f32max <= world_space_depth) {
+        // Degenerate case - early-out!
+        var data: PointData;
+        data.pos_in_world = Vec3(0.);
+        data.unresolved_radius = 0.0;
+        data.color = Vec4(0.0);
+        return data;
+    }
 
     // TODO(cmc): albedo textures
     let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth_in_world), 1.0);
@@ -93,7 +102,6 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     data.pos_in_world = pos_in_world.xyz;
     data.unresolved_radius = depth_cloud_info.point_radius_from_world_depth * world_space_depth;
     data.color = color;
-
     return data;
 }
 
@@ -104,15 +112,22 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Compute point data (valid for the entire quad).
     let point_data = compute_point_data(quad_idx);
 
-    // Span quad
-    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, depth_cloud_info.radius_boost_in_ui_points);
-
     var out: VertexOut;
-    out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
-    out.pos_in_world = quad.pos_in_world;
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
-    out.point_radius = quad.point_resolved_radius;
+
+    if (point_data.unresolved_radius <= 0.0) {
+        // Degenerate case - early-out!
+        out.pos_in_clip = Vec4(0.0);
+        out.pos_in_world = Vec3(0.0);
+        out.point_radius = 0.0;
+    } else {
+        // Span quad
+        let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, depth_cloud_info.radius_boost_in_ui_points);
+        out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
+        out.pos_in_world = quad.pos_in_world;
+        out.point_radius = quad.point_resolved_radius;
+    }
 
     return out;
 }
