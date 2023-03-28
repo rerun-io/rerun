@@ -10,6 +10,17 @@ var position_data_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var color_texture: texture_2d<f32>;
 
+struct DrawDataUniformBuffer {
+    radius_boost_in_ui_points: f32,
+    // In actuality there is way more padding than this since we align all our uniform buffers to
+    // 256bytes in order to allow them to be buffer-suballocations.
+    // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
+    // if we wouldn't add padding here, which isn't available on WebGL.
+    _padding: Vec4,
+};
+@group(1) @binding(2)
+var<uniform> draw_data: DrawDataUniformBuffer;
+
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     flags: u32,
@@ -63,7 +74,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = read_data(quad_idx);
 
     // Span quad
-    let quad = sphere_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius);
+    let quad = sphere_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius, draw_data.radius_boost_in_ui_points);
 
     // Output, transform to projection space and done.
     var out: VertexOut;

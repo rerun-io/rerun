@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 

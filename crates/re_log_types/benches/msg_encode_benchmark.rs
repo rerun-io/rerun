@@ -7,8 +7,8 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     entity_path,
-    msg_bundle::{try_build_msg_bundle2, MsgBundle},
-    ArrowMsg, Index, LogMsg, MsgId,
+    msg_bundle::MsgBundle,
+    ArrowMsg, DataRow, DataTable, Index, LogMsg, MsgId,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -63,13 +63,17 @@ fn mono_points_arrow(c: &mut Criterion) {
     fn generate_message_bundles() -> Vec<MsgBundle> {
         (0..NUM_POINTS)
             .map(|i| {
-                try_build_msg_bundle2(
+                DataTable::from_rows(
                     MsgId::ZERO,
-                    entity_path!("points", Index::Sequence(i as _)),
-                    [build_frame_nr(0.into())],
-                    (build_some_point2d(1), build_some_colors(1)),
+                    [DataRow::from_cells2(
+                        MsgId::ZERO,
+                        entity_path!("points", Index::Sequence(i as _)),
+                        [build_frame_nr(0.into())],
+                        1,
+                        (build_some_point2d(1), build_some_colors(1)),
+                    )],
                 )
-                .unwrap()
+                .into_msg_bundle()
             })
             .collect()
     }
@@ -115,16 +119,20 @@ fn mono_points_arrow(c: &mut Criterion) {
 
 fn batch_points_arrow(c: &mut Criterion) {
     fn generate_message_bundles() -> Vec<MsgBundle> {
-        vec![try_build_msg_bundle2(
+        vec![DataTable::from_rows(
             MsgId::ZERO,
-            entity_path!("points"),
-            [build_frame_nr(0.into())],
-            (
-                build_some_point2d(NUM_POINTS),
-                build_some_colors(NUM_POINTS),
-            ),
+            [DataRow::from_cells2(
+                MsgId::ZERO,
+                entity_path!("points"),
+                [build_frame_nr(0.into())],
+                NUM_POINTS as _,
+                (
+                    build_some_point2d(NUM_POINTS),
+                    build_some_colors(NUM_POINTS),
+                ),
+            )],
         )
-        .unwrap()]
+        .into_msg_bundle()]
     }
 
     {

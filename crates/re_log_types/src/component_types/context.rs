@@ -7,7 +7,7 @@ use arrow2_convert::{
 
 use crate::{
     component_types::{ClassId, KeypointId},
-    msg_bundle::Component,
+    Component,
 };
 
 use super::{ColorRGBA, Label};

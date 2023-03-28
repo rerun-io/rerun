@@ -160,6 +160,14 @@ pub mod gpu_data {
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 
+    /// Uniform buffer that changes once per draw data rendering.
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DrawDataUniformBuffer {
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
+
     /// Uniform buffer that changes for every batch of line strips.
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -184,6 +192,7 @@ struct LineStripBatch {
 #[derive(Clone)]
 pub struct LineDrawData {
     bind_group_all_lines: Option<GpuBindGroup>,
+    bind_group_all_lines_outline_mask: Option<GpuBindGroup>,
     batches: Vec<LineStripBatch>,
 }
 
@@ -204,22 +213,22 @@ bitflags! {
         /// Adds a round cap at the end of a line strip (excludes other end caps).
         const CAP_END_ROUND = 0b0000_0010;
 
+        /// By default, line caps end at the last/first position of the the line strip.
+        /// This flag makes end caps extend outwards.
+        const CAP_END_EXTEND_OUTWARDS = 0b0000_0100;
+
         /// Puts a equilateral triangle at the start of the line strip (excludes other start caps).
-        const CAP_START_TRIANGLE = 0b0000_0100;
+        const CAP_START_TRIANGLE = 0b0000_1000;
 
         /// Adds a round cap at the start of a line strip (excludes other start caps).
-        const CAP_START_ROUND = 0b0000_1000;
+        const CAP_START_ROUND = 0b0001_0000;
+
+        /// By default, line caps end at the last/first position of the the line strip.
+        /// This flag makes end caps extend outwards.
+        const CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
         /// Disable color gradient which is on by default
-        const NO_COLOR_GRADIENT = 0b0001_0000;
-    }
-}
-
-impl LineStripFlags {
-    pub fn get_triangle_cap_tip_length(line_radius: f32) -> f32 {
-        // hardcoded in lines.wgsl
-        // Alternatively we could declare the entire last segment to be a tip, making the line length configurable!
-        line_radius * 4.0
+        const NO_COLOR_GRADIENT = 0b0100_0000;
     }
 }
 
@@ -312,9 +321,11 @@ impl LineDrawData {
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &mut RenderContext,
+        // TODO(andreas): Take LineBuilder directly
         vertices: &[gpu_data::LineVertex],
         strips: &[LineStripInfo],
         batches: &[LineBatchInfo],
+        radius_boost_in_ui_points_for_outlines: f32,
     ) -> Result<Self, LineDrawDataError> {
         let mut renderers = ctx.renderers.write();
         let line_renderer = renderers.get_or_create::<_, LineRenderer>(
@@ -327,6 +338,7 @@ impl LineDrawData {
         if strips.is_empty() {
             return Ok(LineDrawData {
                 bind_group_all_lines: None,
+                bind_group_all_lines_outline_mask: None,
                 batches: Vec::new(),
             });
         }
@@ -495,14 +507,43 @@ impl LineDrawData {
             },
         );
 
+        let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "LineDrawData::DrawDataUniformBuffer".into(),
+            [
+                gpu_data::DrawDataUniformBuffer {
+                    radius_boost_in_ui_points: 0.0.into(),
+                    end_padding: Default::default(),
+                },
+                gpu_data::DrawDataUniformBuffer {
+                    radius_boost_in_ui_points: radius_boost_in_ui_points_for_outlines.into(),
+                    end_padding: Default::default(),
+                },
+            ]
+            .into_iter(),
+        );
         let bind_group_all_lines = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
             &ctx.gpu_resources,
             &BindGroupDesc {
-                label: "line draw data".into(),
+                label: "LineDrawData::bind_group_all_lines".into(),
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    draw_data_uniform_buffer_bindings[0].clone(),
+                ],
+                layout: line_renderer.bind_group_layout_all_lines,
+            },
+        );
+        let bind_group_all_lines_outline_mask = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &ctx.gpu_resources,
+            &BindGroupDesc {
+                label: "LineDrawData::bind_group_all_lines_outline_mask".into(),
+                entries: smallvec![
+                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                    BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    draw_data_uniform_buffer_bindings[1].clone(),
                 ],
                 layout: line_renderer.bind_group_layout_all_lines,
             },
@@ -597,6 +638,7 @@ impl LineDrawData {
 
         Ok(LineDrawData {
             bind_group_all_lines: Some(bind_group_all_lines),
+            bind_group_all_lines_outline_mask: Some(bind_group_all_lines_outline_mask),
             batches: batches_internal,
         })
     }
@@ -676,6 +718,18 @@ impl Renderer for LineRenderer {
                             sample_type: wgpu::TextureSampleType::Uint,
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                                gpu_data::DrawDataUniformBuffer,
+                            >() as _),
                         },
                         count: None,
                     },
@@ -789,15 +843,18 @@ impl Renderer for LineRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        let Some(bind_group_all_lines) = &draw_data.bind_group_all_lines else {
+        let (pipeline_handle, bind_group_all_lines) = match phase {
+            DrawPhase::OutlineMask => (
+                self.render_pipeline_outline_mask,
+                &draw_data.bind_group_all_lines_outline_mask,
+            ),
+            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_lines),
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
+        let Some(bind_group_all_lines) = bind_group_all_lines else {
             return Ok(()); // No lines submitted.
         };
 
-        let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
-            DrawPhase::Opaque => self.render_pipeline_color,
-            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);

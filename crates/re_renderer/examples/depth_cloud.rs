@@ -20,8 +20,8 @@ use itertools::Itertools;
 use macaw::IsoTransform;
 use re_renderer::{
     renderer::{
-        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DrawData, GenericSkyboxDrawData,
-        RectangleDrawData, TexturedRect,
+        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds, DrawData,
+        GenericSkyboxDrawData, RectangleDrawData, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
@@ -47,7 +47,7 @@ struct RenderDepthClouds {
     albedo_handle: GpuTexture2DHandle,
 
     scale: f32,
-    radius_scale: f32,
+    point_radius_from_world_depth: f32,
     intrinsics: glam::Mat3,
 
     camera_control: CameraControl,
@@ -72,7 +72,7 @@ impl RenderDepthClouds {
         let Self {
             depth,
             scale,
-            radius_scale,
+            point_radius_from_world_depth,
             intrinsics,
             ..
         } = self;
@@ -93,7 +93,7 @@ impl RenderDepthClouds {
                     (
                         pos_in_world * *scale,
                         Color32::from_gray((linear_depth * 255.0) as u8),
-                        Size(linear_depth * *radius_scale),
+                        Size(linear_depth * *point_radius_from_world_depth),
                     )
                 })
                 .multiunzip();
@@ -163,7 +163,7 @@ impl RenderDepthClouds {
         let Self {
             depth,
             scale,
-            radius_scale,
+            point_radius_from_world_depth,
             intrinsics,
             ..
         } = self;
@@ -172,15 +172,20 @@ impl RenderDepthClouds {
 
         let depth_cloud_draw_data = DepthCloudDrawData::new(
             re_ctx,
-            &[DepthCloud {
-                depth_camera_extrinsics: world_from_obj,
-                depth_camera_intrinsics: *intrinsics,
-                radius_scale: *radius_scale,
-                depth_dimensions: depth.dimensions,
-                depth_data: depth.data.clone(),
-                colormap: re_renderer::ColorMap::ColorMapTurbo,
-                outline_mask_id: Default::default(),
-            }],
+            &DepthClouds {
+                clouds: vec![DepthCloud {
+                    world_from_obj,
+                    depth_camera_intrinsics: *intrinsics,
+                    world_depth_from_data_depth: 1.0,
+                    point_radius_from_world_depth: *point_radius_from_world_depth,
+                    max_depth_in_world: 5.0,
+                    depth_dimensions: depth.dimensions,
+                    depth_data: depth.data.clone(),
+                    colormap: re_renderer::ColorMap::ColorMapTurbo,
+                    outline_mask_id: Default::default(),
+                }],
+                radius_boost_in_ui_points_for_outlines: 2.5,
+            },
         )
         .unwrap();
 
@@ -246,7 +251,7 @@ impl framework::Example for RenderDepthClouds {
         );
 
         let scale = 50.0;
-        let radius_scale = 0.1;
+        let point_radius_from_world_depth = 0.1;
 
         // hardcoded intrinsics for nyud dataset
         let focal_length = depth.dimensions.x as f32 * 0.7;
@@ -264,7 +269,7 @@ impl framework::Example for RenderDepthClouds {
             albedo_handle,
 
             scale,
-            radius_scale,
+            point_radius_from_world_depth,
             intrinsics,
 
             camera_control: CameraControl::RotateAroundCenter,
@@ -305,7 +310,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineStripSeriesBuilder::<()>::default();
+            let mut builder = LineStripSeriesBuilder::<()>::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(

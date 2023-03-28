@@ -2,6 +2,7 @@ name: CI (Python)
 
 on:
   pull_request:
+    types: [labeled, synchronize, opened]
   push:
     branches:
       - "main"

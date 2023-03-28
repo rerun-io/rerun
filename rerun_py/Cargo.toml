@@ -60,7 +60,7 @@ document-features = "0.2"
 glam.workspace = true
 half.workspace = true
 image = { workspace = true, default-features = false, features = ["jpeg"] }
-itertools = "0.10"
+itertools = { workspace = true }
 macaw.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy = { version = "0.18.0", features = ["half"] }

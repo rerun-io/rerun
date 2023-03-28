@@ -8,8 +8,7 @@ use re_arrow_store::{DataStore, DataStoreConfig};
 use re_log_types::{
     component_types::InstanceKey,
     datagen::{build_frame_nr, build_some_instances},
-    msg_bundle::{Component as _, MsgBundle},
-    EntityPath, MsgId, TimePoint,
+    Component as _, DataRow, EntityPath, MsgId, TimePoint,
 };
 
 // --- Internals ---
@@ -51,23 +50,25 @@ fn pathological_bucket_topology() {
         let ent_path = EntityPath::from("this/that");
         let num_instances = 1;
 
-        let time_point = TimePoint::from([build_frame_nr(frame_nr.into())]);
+        let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
         for _ in 0..num {
-            let msg = MsgBundle::new(
+            let row = DataRow::from_cells1(
                 MsgId::ZERO,
                 ent_path.clone(),
-                time_point.clone(),
-                vec![build_some_instances(num_instances).try_into().unwrap()],
+                timepoint.clone(),
+                num_instances,
+                build_some_instances(num_instances as _),
             );
-            store_forward.insert(&msg).unwrap();
+            store_forward.insert_row(&row).unwrap();
 
-            let msg = MsgBundle::new(
+            let row = DataRow::from_cells1(
                 MsgId::ZERO,
                 ent_path.clone(),
-                time_point.clone(),
-                vec![build_some_instances(num_instances).try_into().unwrap()],
+                timepoint.clone(),
+                num_instances,
+                build_some_instances(num_instances as _),
             );
-            store_backward.insert(&msg).unwrap();
+            store_backward.insert_row(&row).unwrap();
         }
     }
 
@@ -79,24 +80,25 @@ fn pathological_bucket_topology() {
         let ent_path = EntityPath::from("this/that");
         let num_instances = 1;
 
-        let msgs = range
+        let rows = range
             .map(|frame_nr| {
-                let time_point = TimePoint::from([build_frame_nr(frame_nr.into())]);
-                MsgBundle::new(
+                let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
+                DataRow::from_cells1(
                     MsgId::ZERO,
                     ent_path.clone(),
-                    time_point,
-                    vec![build_some_instances(num_instances).try_into().unwrap()],
+                    timepoint,
+                    num_instances,
+                    build_some_instances(num_instances as _),
                 )
             })
             .collect::<Vec<_>>();
 
-        msgs.iter()
-            .for_each(|msg| store_forward.insert(msg).unwrap());
+        rows.iter()
+            .for_each(|row| store_forward.insert_row(row).unwrap());
 
-        msgs.iter()
+        rows.iter()
             .rev()
-            .for_each(|msg| store_backward.insert(msg).unwrap());
+            .for_each(|row| store_backward.insert_row(row).unwrap());
     }
 
     store_repeated_frame(1000, 10, &mut store_forward, &mut store_backward);

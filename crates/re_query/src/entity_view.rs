@@ -1,15 +1,13 @@
 use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, MutableArray, PrimitiveArray};
-use re_arrow_store::ArrayExt;
 use re_format::arrow;
 use re_log_types::{
     component_types::InstanceKey,
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
-    ComponentName,
+    Component, ComponentName, DeserializableComponent, SerializableComponent,
 };
 
 use crate::QueryError;
@@ -101,9 +99,6 @@ impl ComponentWithInstances {
         let offset = if let Some(instance_keys) = &self.instance_keys {
             // If `instance_keys` is set, extract the `PrimitiveArray`, and find
             // the index of the value by `binary_search`
-
-            // The store should guarantee this for us but assert to be sure
-            debug_assert!(instance_keys.is_sorted_and_unique().unwrap_or(false));
 
             let keys = instance_keys
                 .as_any()

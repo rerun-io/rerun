@@ -1,28 +1,16 @@
-use anyhow::bail;
 use arrow2::{
     array::{
-        growable::make_growable, Array, FixedSizeListArray, ListArray, PrimitiveArray, StructArray,
-        UnionArray,
+        growable::make_growable, Array, FixedSizeListArray, ListArray, StructArray, UnionArray,
     },
     bitmap::Bitmap,
     datatypes::{DataType, Field, UnionMode},
     offset::Offsets,
-    types::NativeType,
 };
 use itertools::Itertools;
 
 // ---
 
 pub trait ArrayExt: Array {
-    /// Returns `true` if the array is dense (no nulls).
-    fn is_dense(&self) -> bool;
-
-    /// Returns `true` if the array is both sorted (increasing order) and contains only unique
-    /// values.
-    ///
-    /// The array must be dense, otherwise the result of this method is undefined.
-    fn is_sorted_and_unique(&self) -> anyhow::Result<bool>;
-
     /// Returns the length of the child array at the given index.
     ///
     /// * Panics if `self` is not a `ListArray<i32>`.
@@ -40,38 +28,6 @@ pub trait ArrayExt: Array {
 }
 
 impl ArrayExt for dyn Array {
-    fn is_dense(&self) -> bool {
-        if let Some(validity) = self.validity() {
-            validity.unset_bits() == 0
-        } else {
-            true
-        }
-    }
-
-    fn is_sorted_and_unique(&self) -> anyhow::Result<bool> {
-        debug_assert!(self.is_dense());
-
-        fn is_sorted_and_unique_primitive<T: NativeType + PartialOrd>(arr: &dyn Array) -> bool {
-            let values = arr.as_any().downcast_ref::<PrimitiveArray<T>>().unwrap();
-            values.values().windows(2).all(|v| v[0] < v[1])
-        }
-
-        // TODO(cmc): support more datatypes as the need arise.
-        match self.data_type() {
-            DataType::Int8 => Ok(is_sorted_and_unique_primitive::<i8>(self)),
-            DataType::Int16 => Ok(is_sorted_and_unique_primitive::<i16>(self)),
-            DataType::Int32 => Ok(is_sorted_and_unique_primitive::<i32>(self)),
-            DataType::Int64 => Ok(is_sorted_and_unique_primitive::<i64>(self)),
-            DataType::UInt8 => Ok(is_sorted_and_unique_primitive::<u8>(self)),
-            DataType::UInt16 => Ok(is_sorted_and_unique_primitive::<u16>(self)),
-            DataType::UInt32 => Ok(is_sorted_and_unique_primitive::<u32>(self)),
-            DataType::UInt64 => Ok(is_sorted_and_unique_primitive::<u64>(self)),
-            DataType::Float32 => Ok(is_sorted_and_unique_primitive::<f32>(self)),
-            DataType::Float64 => Ok(is_sorted_and_unique_primitive::<f64>(self)),
-            _ => bail!("unsupported datatype: {:?}", self.data_type()),
-        }
-    }
-
     /// Return the length of the first child.
     ///
     /// ## Panics
@@ -262,103 +218,46 @@ impl ArrayExt for dyn Array {
 #[test]
 fn test_clean_for_polars_nomodify() {
     use re_log_types::datagen::build_some_colors;
-    use re_log_types::msg_bundle::ComponentBundle;
+    use re_log_types::DataCell;
 
     // Colors don't need polars cleaning
-    let bundle: ComponentBundle = build_some_colors(5).try_into().unwrap();
-    let cleaned = bundle.value_boxed().clean_for_polars();
-    assert_eq!(bundle.value_boxed(), cleaned);
+    let cell: DataCell = build_some_colors(5).try_into().unwrap();
+    let cleaned = cell.as_arrow_ref().clean_for_polars();
+    assert_eq!(cell.as_arrow_ref(), &*cleaned);
 }
 
 #[test]
 fn test_clean_for_polars_modify() {
-    use re_log_types::msg_bundle::ComponentBundle;
-    use re_log_types::{Pinhole, Transform};
+    use re_log_types::{DataCell, Pinhole, Transform};
     // transforms are a nice pathological type with both Unions and FixedSizeLists
     let transforms = vec![Transform::Pinhole(Pinhole {
         image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
         resolution: None,
     })];
 
-    let bundle: ComponentBundle = transforms.try_into().unwrap();
+    let cell: DataCell = transforms.try_into().unwrap();
     assert_eq!(
-        *bundle.value_boxed().data_type(),
-        DataType::List(Box::new(Field::new(
-            "item",
-            DataType::Union(
-                vec![
-                    Field::new("Unknown", DataType::Boolean, false),
-                    Field::new(
-                        "Rigid3",
-                        DataType::Struct(vec![
-                            Field::new(
-                                "rotation",
-                                DataType::FixedSizeList(
-                                    Box::new(Field::new("item", DataType::Float32, false)),
-                                    4
-                                ),
-                                false
-                            ),
-                            Field::new(
-                                "translation",
-                                DataType::FixedSizeList(
-                                    Box::new(Field::new("item", DataType::Float32, false)),
-                                    3
-                                ),
-                                false
-                            )
-                        ]),
-                        false
-                    ),
-                    Field::new(
-                        "Pinhole",
-                        DataType::Struct(vec![
-                            Field::new(
-                                "image_from_cam",
-                                DataType::FixedSizeList(
-                                    Box::new(Field::new("item", DataType::Float32, false)),
-                                    9
-                                ),
-                                false,
-                            ),
-                            Field::new(
-                                "resolution",
-                                DataType::FixedSizeList(
-                                    Box::new(Field::new("item", DataType::Float32, false)),
-                                    2
-                                ),
-                                true,
-                            ),
-                        ]),
-                        false
-                    )
-                ],
-                None,
-                UnionMode::Dense
-            ),
-            true
-        )))
-    );
-
-    let cleaned = bundle.value_boxed().clean_for_polars();
-
-    assert_eq!(
-        *cleaned.data_type(),
-        DataType::List(Box::new(Field::new(
-            "item",
-            DataType::Struct(vec![
+        *cell.datatype(),
+        DataType::Union(
+            vec![
                 Field::new("Unknown", DataType::Boolean, false),
                 Field::new(
                     "Rigid3",
                     DataType::Struct(vec![
                         Field::new(
                             "rotation",
-                            DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                            DataType::FixedSizeList(
+                                Box::new(Field::new("item", DataType::Float32, false)),
+                                4
+                            ),
                             false
                         ),
                         Field::new(
                             "translation",
-                            DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                            DataType::FixedSizeList(
+                                Box::new(Field::new("item", DataType::Float32, false)),
+                                3
+                            ),
                             false
                         )
                     ]),
@@ -369,19 +268,67 @@ fn test_clean_for_polars_modify() {
                     DataType::Struct(vec![
                         Field::new(
                             "image_from_cam",
-                            DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                            DataType::FixedSizeList(
+                                Box::new(Field::new("item", DataType::Float32, false)),
+                                9
+                            ),
                             false,
                         ),
                         Field::new(
                             "resolution",
-                            DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                            DataType::FixedSizeList(
+                                Box::new(Field::new("item", DataType::Float32, false)),
+                                2
+                            ),
                             true,
                         ),
                     ]),
                     false
                 )
-            ],),
-            true
-        )))
+            ],
+            None,
+            UnionMode::Dense
+        ),
+    );
+
+    let cleaned = cell.as_arrow_ref().clean_for_polars();
+
+    assert_eq!(
+        *cleaned.data_type(),
+        DataType::Struct(vec![
+            Field::new("Unknown", DataType::Boolean, false),
+            Field::new(
+                "Rigid3",
+                DataType::Struct(vec![
+                    Field::new(
+                        "rotation",
+                        DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                        false
+                    ),
+                    Field::new(
+                        "translation",
+                        DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                        false
+                    )
+                ]),
+                false
+            ),
+            Field::new(
+                "Pinhole",
+                DataType::Struct(vec![
+                    Field::new(
+                        "image_from_cam",
+                        DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                        false,
+                    ),
+                    Field::new(
+                        "resolution",
+                        DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                        true,
+                    ),
+                ]),
+                false
+            )
+        ],),
     );
 }

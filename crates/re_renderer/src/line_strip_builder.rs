@@ -5,7 +5,7 @@ use crate::{
         LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex,
         OutlineMaskPreference,
     },
-    Color32, DebugLabel, Size,
+    Color32, DebugLabel, RenderContext, Size,
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -14,7 +14,6 @@ use crate::{
 /// of writing to a GPU readable memory location.
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-#[derive(Default)]
 pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub vertices: Vec<LineVertex>,
 
@@ -23,12 +22,36 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub strip_user_data: Vec<PerStripUserData>,
 
     pub batches: Vec<LineBatchInfo>,
+
+    pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
 where
     PerStripUserData: Default + Copy,
 {
+    // TODO(andreas): ctx not yet needed since we don't write to GPU yet, but soon needed.
+    pub fn new(_ctx: &RenderContext) -> Self {
+        const RESERVE_SIZE: usize = 512;
+
+        Self {
+            vertices: Vec::with_capacity(RESERVE_SIZE * 2),
+            strips: Vec::with_capacity(RESERVE_SIZE),
+            strip_user_data: Vec::with_capacity(RESERVE_SIZE),
+            batches: Vec::with_capacity(16),
+            radius_boost_in_ui_points_for_outlines: 0.0,
+        }
+    }
+
+    /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
+    pub fn radius_boost_in_ui_points_for_outlines(
+        mut self,
+        radius_boost_in_ui_points_for_outlines: f32,
+    ) -> Self {
+        self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
+        self
+    }
+
     /// Start of a new batch.
     pub fn batch(
         &mut self,
@@ -65,7 +88,14 @@ where
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
-        LineDrawData::new(ctx, &self.vertices, &self.strips, &self.batches).unwrap()
+        LineDrawData::new(
+            ctx,
+            &self.vertices,
+            &self.strips,
+            &self.batches,
+            self.radius_boost_in_ui_points_for_outlines,
+        )
+        .unwrap()
     }
 
     /// Iterates over all line strips batches together with their strips and their respective vertices.
@@ -262,7 +292,9 @@ where
         .flags(
             LineStripFlags::CAP_END_ROUND
                 | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT,
+                | LineStripFlags::NO_COLOR_GRADIENT
+                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
         )
     }
 
@@ -295,7 +327,9 @@ where
         .flags(
             LineStripFlags::CAP_END_ROUND
                 | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT,
+                | LineStripFlags::NO_COLOR_GRADIENT
+                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
         )
     }
 

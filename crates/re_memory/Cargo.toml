@@ -23,7 +23,7 @@ re_log.workspace = true
 ahash.workspace = true
 emath.workspace = true
 instant = { version = "0.1", features = ["wasm-bindgen"] }
-itertools = "0.10"
+itertools = { workspace = true }
 nohash-hasher = "0.2"
 once_cell = "1.16"
 parking_lot.workspace = true

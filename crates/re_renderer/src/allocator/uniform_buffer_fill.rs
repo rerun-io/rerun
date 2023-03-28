@@ -76,7 +76,11 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod>(
         num_buffers as _,
     );
     staging_buffer.extend(content);
-    staging_buffer.copy_to_buffer(ctx.active_frame.encoder.lock().get(), &buffer, 0);
+    staging_buffer.copy_to_buffer(
+        ctx.active_frame.before_view_builder_encoder.lock().get(),
+        &buffer,
+        0,
+    );
 
     (0..num_buffers)
         .map(|i| BindGroupEntry::Buffer {

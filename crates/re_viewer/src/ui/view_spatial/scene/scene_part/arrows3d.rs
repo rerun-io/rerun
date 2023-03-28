@@ -2,11 +2,10 @@ use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Label, Radius},
-    msg_bundle::Component,
-    Arrow3D,
+    Arrow3D, Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::{renderer::LineStripFlags, Size};
+use re_renderer::Size;
 
 use crate::{
     misc::{SpaceViewHighlights, TransformCache, ViewerContext},
@@ -68,15 +67,17 @@ impl Arrows3DPart {
             let origin = glam::Vec3::from(origin);
 
             let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
-            let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
-            let vector_len = vector.length();
-            let end = origin + vector * ((vector_len - tip_length) / vector_len);
+            let end = origin + vector;
 
             let segment = line_batch
                 .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
-                .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+                .flags(
+                    re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE
+                        | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
+                        | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
+                )
                 .user_data(picking_instance_hash);
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {

@@ -1,7 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::DeserializableComponent, EntityPath,
+    DeserializableComponent, EntityPath,
 };
 
 use crate::log_db::EntityDb;
@@ -57,17 +57,15 @@ pub struct EntityProperties {
 
     /// Should the depth texture be backprojected into a point cloud?
     ///
-    /// Only applies to tensors with meaning=depth that are affected by a pinhole transform when
-    /// in a spatial view, using 3D navigation.
-    pub backproject_depth: bool,
-
-    /// Entity path of the pinhole transform used for the backprojection.
+    /// Only applies to tensors with meaning=depth that are affected by a pinhole transform.
     ///
-    /// `None` means backprojection is disabled.
-    pub backproject_pinhole_ent_path: Option<EntityPath>,
+    /// The default for 3D views is `true`, but for 2D views it is `false`.
+    pub backproject_depth: EditableAutoValue<bool>,
 
-    /// Used to scale the resulting point cloud.
-    pub backproject_scale: EditableAutoValue<f32>,
+    /// How many depth units per world-space unit. e.g. 1000 for millimeters.
+    ///
+    /// This corresponds to [`re_log_types::component_types::Tensor::meter`].
+    pub depth_from_world_scale: EditableAutoValue<f32>,
 
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>,
@@ -89,12 +87,11 @@ impl EntityProperties {
                 .or(&child.pinhole_image_plane_distance)
                 .clone(),
 
-            backproject_depth: self.backproject_depth || child.backproject_depth,
-            backproject_pinhole_ent_path: self
-                .backproject_pinhole_ent_path
-                .clone()
-                .or(child.backproject_pinhole_ent_path.clone()),
-            backproject_scale: self.backproject_scale.or(&child.backproject_scale).clone(),
+            backproject_depth: self.backproject_depth.or(&child.backproject_depth).clone(),
+            depth_from_world_scale: self
+                .depth_from_world_scale
+                .or(&child.depth_from_world_scale)
+                .clone(),
             backproject_radius_scale: self
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
@@ -112,10 +109,9 @@ impl Default for EntityProperties {
             interactive: true,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
-            backproject_depth: false,
-            backproject_pinhole_ent_path: None,
-            backproject_scale: EditableAutoValue::default(),
-            backproject_radius_scale: EditableAutoValue::default(),
+            backproject_depth: EditableAutoValue::Auto(true),
+            depth_from_world_scale: EditableAutoValue::default(),
+            backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
     }
 }
@@ -196,7 +192,7 @@ impl Default for ColorMapper {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value for a given [`re_log_types::msg_bundle::Component`].
+/// Get the latest value for a given [`re_log_types::Component`].
 ///
 /// This assumes that the row we get from the store only contains a single instance for this
 /// component; it will log a warning otherwise.

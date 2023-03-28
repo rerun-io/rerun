@@ -7,8 +7,8 @@ use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_log_types::{
     component_types::InstanceKey,
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    msg_bundle::{Component, DeserializableComponent, SerializableComponent},
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, Component,
+    DeserializableComponent, SerializableComponent,
 };
 
 use crate::{

@@ -13,19 +13,16 @@
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::{
-    num::{NonZeroU32, NonZeroU64},
-    ops::Range,
-};
+use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch, renderer::OutlineMaskProcessor, DebugLabel,
     PointCloudBuilder,
 };
 use bitflags::bitflags;
-use bytemuck::Zeroable;
+use bytemuck::Zeroable as _;
 use enumset::{enum_set, EnumSet};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
@@ -68,6 +65,14 @@ mod gpu_data {
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 
+    /// Uniform buffer that changes once per draw data rendering.
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct DrawDataUniformBuffer {
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
+
     /// Uniform buffer that changes for every batch of points.
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -93,6 +98,7 @@ struct PointCloudBatch {
 #[derive(Clone)]
 pub struct PointCloudDrawData {
     bind_group_all_points: Option<GpuBindGroup>,
+    bind_group_all_points_outline_mask: Option<GpuBindGroup>,
     batches: Vec<PointCloudBatch>,
 }
 
@@ -166,7 +172,7 @@ impl PointCloudDrawData {
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new<T>(
         ctx: &mut RenderContext,
-        builder: PointCloudBuilder<T>,
+        mut builder: PointCloudBuilder<T>,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
@@ -184,6 +190,7 @@ impl PointCloudDrawData {
         if vertices.is_empty() {
             return Ok(PointCloudDrawData {
                 bind_group_all_points: None,
+                bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
             });
         }
@@ -256,76 +263,102 @@ impl PointCloudDrawData {
             },
         );
 
-        // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
-        //                  These staging buffers would be provided by the belt.
-        // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
+        // To make the data upload simpler (and have it be done in copy-operation), we always update full rows of each of our textures
         let num_points_written =
             wgpu::util::align_to(vertices.len() as u32, DATA_TEXTURE_SIZE) as usize;
-        let num_points_zeroed = num_points_written - vertices.len();
-        let position_and_size_staging = {
-            crate::profile_scope!("collect_pos_size");
-            vertices
-                .iter()
-                .map(|point| gpu_data::PositionData {
-                    pos: point.position,
-                    radius: point.radius,
-                })
-                .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
-                .collect_vec()
-        };
-
-        // Upload data from staging buffers to gpu.
-        let size = wgpu::Extent3d {
-            width: DATA_TEXTURE_SIZE,
-            height: num_points_written as u32 / DATA_TEXTURE_SIZE,
-            depth_or_array_layers: 1,
-        };
+        let num_elements_padding = num_points_written - vertices.len();
+        let texture_copy_extent = glam::uvec2(
+            DATA_TEXTURE_SIZE,
+            num_points_written as u32 / DATA_TEXTURE_SIZE,
+        );
 
         {
             crate::profile_scope!("write_pos_size_texture");
-            ctx.queue.write_texture(
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                num_points_written,
+            );
+            staging_buffer.extend(vertices.iter().map(|point| gpu_data::PositionData {
+                pos: point.position,
+                radius: point.radius,
+            }));
+            staging_buffer.extend(
+                std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_elements_padding),
+            );
+            staging_buffer.copy_to_texture2d(
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
                     texture: &position_data_texture.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                bytemuck::cast_slice(&position_and_size_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: NonZeroU32::new(
-                        DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                size,
+                texture_copy_extent,
             );
         }
 
-        builder.color_buffer.copy_to_texture(
-            ctx.active_frame.encoder.lock().get(),
+        builder
+            .color_buffer
+            .extend(std::iter::repeat(ecolor::Color32::TRANSPARENT).take(num_elements_padding));
+        builder.color_buffer.copy_to_texture2d(
+            ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
                 texture: &color_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            NonZeroU32::new(DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
-            None,
-            size,
+            texture_copy_extent,
         );
 
-        let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: "line drawdata".into(),
-                entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(color_texture.handle),
-                ],
-                layout: point_renderer.bind_group_layout_all_points,
-            },
+        let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
+            ctx,
+            "PointCloudDrawData::DrawDataUniformBuffer".into(),
+            [
+                gpu_data::DrawDataUniformBuffer {
+                    radius_boost_in_ui_points: 0.0.into(),
+                    end_padding: Default::default(),
+                },
+                gpu_data::DrawDataUniformBuffer {
+                    radius_boost_in_ui_points: builder
+                        .radius_boost_in_ui_points_for_outlines
+                        .into(),
+                    end_padding: Default::default(),
+                },
+            ]
+            .into_iter(),
+        );
+        let (draw_data_uniform_buffer_bindings_normal, draw_data_uniform_buffer_bindings_outline) =
+            draw_data_uniform_buffer_bindings
+                .into_iter()
+                .collect_tuple()
+                .unwrap();
+
+        let mk_bind_group = |label, draw_data_uniform_buffer_binding| {
+            ctx.gpu_resources.bind_groups.alloc(
+                &ctx.device,
+                &ctx.gpu_resources,
+                &BindGroupDesc {
+                    label,
+                    entries: smallvec![
+                        BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                        BindGroupEntry::DefaultTextureView(color_texture.handle),
+                        draw_data_uniform_buffer_binding,
+                    ],
+                    layout: point_renderer.bind_group_layout_all_points,
+                },
+            )
+        };
+
+        let bind_group_all_points = mk_bind_group(
+            "PointCloudDrawData::bind_group_all_points".into(),
+            draw_data_uniform_buffer_bindings_normal,
+        );
+        let bind_group_all_points_outline_mask = mk_bind_group(
+            "PointCloudDrawData::bind_group_all_points_outline_mask".into(),
+            draw_data_uniform_buffer_bindings_outline,
         );
 
         // Process batches
@@ -413,6 +446,7 @@ impl PointCloudDrawData {
 
         Ok(PointCloudDrawData {
             bind_group_all_points: Some(bind_group_all_points),
+            bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
         })
     }
@@ -491,6 +525,18 @@ impl Renderer for PointCloudRenderer {
                             sample_type: wgpu::TextureSampleType::Float { filterable: false },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                                gpu_data::DrawDataUniformBuffer,
+                            >() as _),
                         },
                         count: None,
                     },
@@ -599,15 +645,18 @@ impl Renderer for PointCloudRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        let Some(bind_group_all_points) = &draw_data.bind_group_all_points else {
+        let (pipeline_handle, bind_group_all_points) = match phase {
+            DrawPhase::OutlineMask => (
+                self.render_pipeline_outline_mask,
+                &draw_data.bind_group_all_points_outline_mask,
+            ),
+            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_points),
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
+        let Some(bind_group_all_points) = bind_group_all_points else {
             return Ok(()); // No points submitted.
         };
 
-        let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
-            DrawPhase::Opaque => self.render_pipeline_color,
-            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);

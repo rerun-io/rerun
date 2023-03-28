@@ -7,7 +7,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 use super::Vec2D;
 use super::Vec3D;

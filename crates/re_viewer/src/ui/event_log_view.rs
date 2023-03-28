@@ -180,7 +180,7 @@ fn table_row(
                 msg_id,
                 entity_path,
                 time_point,
-                components,
+                cells: components,
             }) => {
                 row.col(|ui| {
                     ctx.msg_id_button(ui, msg_id);

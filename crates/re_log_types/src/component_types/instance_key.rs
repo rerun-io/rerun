@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 /// A number used to specify a specific instance in an entity.
 ///
@@ -67,6 +67,13 @@ impl std::fmt::Display for InstanceKey {
         } else {
             self.0.fmt(f)
         }
+    }
+}
+
+impl From<u64> for InstanceKey {
+    #[inline]
+    fn from(value: u64) -> Self {
+        Self(value)
     }
 }
 

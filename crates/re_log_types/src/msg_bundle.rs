@@ -21,17 +21,20 @@
 use std::collections::BTreeMap;
 
 use arrow2::{
-    array::{new_empty_array, Array, ListArray, StructArray},
+    array::{Array, ListArray, StructArray},
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
-    offset::Offsets,
 };
-use arrow2_convert::{
-    deserialize::{ArrowArray, ArrowDeserialize},
-    field::ArrowField,
-    serialize::{ArrowSerialize, TryIntoArrow},
+use arrow2_convert::{field::ArrowField, serialize::TryIntoArrow};
+
+use crate::{
+    parse_entity_path, ArrowMsg, ComponentName, DataCell, DataCellError, EntityPath, MsgId,
+    PathParseError, TimePoint,
 };
 
+// ---
+
+// TODO(cmc): can probably make that one pub(crate) already
 /// The errors that can occur when trying to convert between Arrow and `MessageBundle` types
 #[derive(thiserror::Error, Debug)]
 pub enum MsgBundleError {
@@ -59,6 +62,9 @@ pub enum MsgBundleError {
     #[error("Could not serialize components to Arrow")]
     ArrowSerializationError(#[from] arrow2::error::Error),
 
+    #[error("Error with one or more the underlying data cells")]
+    DataCell(#[from] DataCellError),
+
     // Needed to handle TryFrom<T> -> T
     #[error("Infallible")]
     Unreachable(#[from] std::convert::Infallible),
@@ -66,9 +72,7 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{
-    parse_entity_path, ArrowMsg, ComponentName, EntityPath, MsgId, PathParseError, TimePoint,
-};
+// ---
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -76,309 +80,42 @@ const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
 const COL_COMPONENTS: &str = "components";
 const COL_TIMELINES: &str = "timelines";
 
-/// A type that can used as a Component of an Entity.
-///
-/// Examples of components include positions and colors.
-pub trait Component: ArrowField {
-    /// The name of the component.
-    fn name() -> ComponentName;
-
-    /// Create a [`Field`] for this [`Component`].
-    fn field() -> Field {
-        Field::new(Self::name().as_str(), Self::data_type(), false)
-    }
-}
-
-/// A [`Component`] that fulfils all the conditions required to be serialized as an Arrow payload.
-pub trait SerializableComponent<ArrowFieldType = Self>
-where
-    Self: Component + ArrowSerialize + ArrowField<Type = Self> + 'static,
-{
-}
-
-impl<C> SerializableComponent for C where
-    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static
-{
-}
-
-/// A [`Component`] that fulfils all the conditions required to be deserialized from an Arrow
-/// payload.
-///
-/// Note that due to the use of HRTBs in `arrow2_convert` traits, you will still need an extra HRTB
-/// clause when marking a type as `DeserializableComponent`:
-/// ```ignore
-/// where
-///     T: SerializableComponent,
-///     for<'a> &'a T::ArrayType: IntoIterator,
-/// ```
-pub trait DeserializableComponent<ArrowFieldType = Self>
-where
-    Self: Component,
-    Self: ArrowDeserialize + ArrowField<Type = ArrowFieldType> + 'static,
-    Self::ArrayType: ArrowArray,
-    for<'b> &'b Self::ArrayType: IntoIterator,
-{
-}
-
-impl<C> DeserializableComponent for C
-where
-    C: Component,
-    C: ArrowDeserialize + ArrowField<Type = C> + 'static,
-    C::ArrayType: ArrowArray,
-    for<'b> &'b C::ArrayType: IntoIterator,
-{
-}
-
-/// A [`ComponentBundle`] holds an Arrow component column, and its field name.
-///
-/// A [`ComponentBundle`] can be created from a collection of any element that implements the
-/// [`Component`] and [`ArrowSerialize`] traits.
-///
-/// # Example
-///
-/// ```
-/// # use re_log_types::{component_types::Point2D, msg_bundle::ComponentBundle};
-/// let points = vec![Point2D { x: 0.0, y: 1.0 }];
-/// let bundle = ComponentBundle::try_from(points).unwrap();
-/// ```
-#[derive(Debug, Clone)]
-pub struct ComponentBundle {
-    /// The name of the Component, used as column name in the table `Field`.
-    name: ComponentName,
-
-    /// The Component payload `Array`.
-    value: ListArray<i32>,
-}
-
-impl ComponentBundle {
-    #[inline]
-    pub fn new_empty(name: ComponentName, data_type: DataType) -> Self {
-        Self {
-            name,
-            value: wrap_in_listarray(new_empty_array(data_type)),
-        }
-    }
-
-    #[inline]
-    pub fn new(name: ComponentName, value: ListArray<i32>) -> Self {
-        Self { name, value }
-    }
-
-    /// Create a new `ComponentBundle` from a boxed `Array`. The `Array` must be a `ListArray<i32>`.
-    #[inline]
-    pub fn new_from_boxed(name: ComponentName, value: &dyn Array) -> Self {
-        Self {
-            name,
-            value: value
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .clone(),
-        }
-    }
-
-    /// Returns the datatype of the bundled component, discarding the list array that wraps it (!).
-    #[inline]
-    pub fn data_type(&self) -> &DataType {
-        ListArray::<i32>::get_child_type(self.value.data_type())
-    }
-
-    #[inline]
-    pub fn name(&self) -> ComponentName {
-        self.name
-    }
-
-    /// Get the `ComponentBundle` value as a boxed `Array`.
-    #[inline]
-    pub fn value_boxed(&self) -> Box<dyn Array> {
-        self.value.to_boxed()
-    }
-
-    /// Get the `ComponentBundle` value
-    #[inline]
-    pub fn value_list(&self) -> &ListArray<i32> {
-        &self.value
-    }
-
-    /// Returns the number of _rows_ in this bundle, i.e. the length of the bundle.
-    ///
-    /// Currently always 1 as we don't yet support batch insertions.
-    #[inline]
-    pub fn num_rows(&self) -> usize {
-        self.value.len()
-    }
-
-    /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
-    /// specific row within the bundle.
-    #[inline]
-    pub fn num_instances(&self, row: usize) -> Option<usize> {
-        self.value.offsets().lengths().nth(row)
-    }
-}
-
-impl<C: SerializableComponent> TryFrom<&[C]> for ComponentBundle {
-    type Error = MsgBundleError;
-
-    fn try_from(c: &[C]) -> Result<Self> {
-        let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
-        let wrapped = wrap_in_listarray(array);
-        Ok(ComponentBundle::new(C::name(), wrapped))
-    }
-}
-
-impl<C: SerializableComponent> TryFrom<Vec<C>> for ComponentBundle {
-    type Error = MsgBundleError;
-
-    fn try_from(c: Vec<C>) -> Result<Self> {
-        c.as_slice().try_into()
-    }
-}
-
-impl<C: SerializableComponent> TryFrom<&Vec<C>> for ComponentBundle {
-    type Error = MsgBundleError;
-
-    fn try_from(c: &Vec<C>) -> Result<Self> {
-        c.as_slice().try_into()
-    }
-}
-
-// TODO(cmc): We'd like this, but orphan rules prevent us from having it:
-//
-// ```
-// = note: conflicting implementation in crate `core`:
-//         - impl<T, U> std::convert::TryFrom<U> for T
-//           where U: std::convert::Into<T>;
-// ```
-//
-// impl<'a, C: SerializableComponent, I: IntoIterator<Item = &'a C>> TryFrom<I> for ComponentBundle {
-//     type Error = MsgBundleError;
-
-//     fn try_from(c: I) -> Result<Self> {
-//         c.as_slice().try_into()
-//     }
-// }
+// ---
 
 /// A `MsgBundle` holds data necessary for composing a single log message.
-///
-/// # Example
-///
-/// Create a `MsgBundle` and add a component consisting of 2 [`crate::component_types::Rect2D`] values:
-/// ```
-/// # use re_log_types::{component_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
-/// let component = vec![
-///     Rect2D::from_xywh(0.0, 0.0, 0.0, 0.0),
-///     Rect2D::from_xywh(1.0, 1.0, 0.0, 0.0)
-/// ];
-/// let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
-/// bundle.try_append_component(&component).unwrap();
-/// println!("{:?}", &bundle.components[0].value_boxed());
-/// ```
-///
-/// The resultant Arrow [`arrow2::array::Array`] for the `Rect2D` component looks as follows:
-/// ```text
-/// ┌─────────────────┬──────────────────────────────┐
-/// │ rerun.msg_id    ┆ rerun.rect2d                 │
-/// │ ---             ┆ ---                          │
-/// │ list[struct[2]] ┆ list[union[6]]               │
-/// ╞═════════════════╪══════════════════════════════╡
-/// │ []              ┆ [[0, 0, 0, 0], [1, 1, 0, 0]] │
-/// └─────────────────┴──────────────────────────────┘
-/// ```
-/// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
-///
-/// ```
-/// # use re_log_types::{ArrowMsg, component_types::Rect2D, msg_bundle::MsgBundle, MsgId, EntityPath, TimePoint};
-/// # let mut bundle = MsgBundle::new(MsgId::ZERO, EntityPath::root(), TimePoint::default(), vec![]);
-/// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
-/// let msg: ArrowMsg = bundle.try_into().unwrap();
-/// dbg!(&msg);
-/// ```
-///
-/// And the resulting Arrow [`arrow2::array::Array`] in the [`ArrowMsg`] looks as follows:
-/// ```text
-/// ┌─────────────────┬────────────────────────────────────────────────────────────────┐
-/// │ timelines       ┆ components                                                     │
-/// │ ---             ┆ ---                                                            │
-/// │ list[struct[3]] ┆ struct[2]                                                      │
-/// ╞═════════════════╪════════════════════════════════════════════════════════════════╡
-/// │ []              ┆ {rerun.msg_id: [], rerun.rect2d: [[0, 0, 0, 0], [1, 1, 0, 0]]} │
-/// └─────────────────┴────────────────────────────────────────────────────────────────┘
-/// ```
 #[derive(Clone, Debug)]
 pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
     pub entity_path: EntityPath,
     pub time_point: TimePoint,
-    pub components: Vec<ComponentBundle>,
+    pub cells: Vec<DataCell>,
 }
 
 impl MsgBundle {
-    /// Create a new `MsgBundle` with a pre-built Vec of [`ComponentBundle`] components.
+    /// Create a new `MsgBundle` with a pre-built Vec of [`DataCell`] components.
     ///
     /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
     /// the backend to keep track of the origin of any row of data.
-    pub fn new(
+    pub(crate) fn new(
         msg_id: MsgId,
         entity_path: EntityPath,
         time_point: TimePoint,
-        components: Vec<ComponentBundle>,
+        cells: Vec<DataCell>,
     ) -> Self {
-        let mut this = Self {
+        Self {
             msg_id,
             entity_path,
             time_point,
-            components,
-        };
-
-        // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
-        // we need to craft an array of `MsgId`s that matches the length of the other components.
-        if let Some(num_instances) = this.num_instances(0) {
-            this.try_append_component(&vec![msg_id; num_instances])
-                .unwrap();
+            cells,
         }
-
-        this
-    }
-
-    /// Try to append a collection of `Component` onto the `MessageBundle`.
-    ///
-    /// This first converts the component collection into an Arrow array, and then wraps it in a [`ListArray`].
-    pub fn try_append_component<'a, Component, Collection>(
-        &mut self,
-        component: Collection,
-    ) -> Result<()>
-    where
-        Component: SerializableComponent,
-        Collection: IntoIterator<Item = &'a Component>,
-    {
-        let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(component)?;
-        let wrapped = wrap_in_listarray(array);
-
-        let bundle = ComponentBundle::new(Component::name(), wrapped);
-
-        self.components.push(bundle);
-        Ok(())
     }
 
     /// Returns the number of component collections in this bundle, i.e. the length of the bundle
     /// itself.
     #[inline]
     pub fn num_components(&self) -> usize {
-        self.components.len()
-    }
-
-    /// Returns the number of _rows_ for each component collections in this bundle, i.e. the
-    /// length of each component collections.
-    ///
-    /// All component collections within a `MsgBundle` must share the same number of rows!
-    ///
-    /// Currently always 1 as we don't yet support batch insertions.
-    #[inline]
-    pub fn num_rows(&self) -> usize {
-        self.components
-            .first()
-            .map_or(0, |bundle| bundle.num_rows())
+        self.cells.len()
     }
 
     /// Returns the number of _instances_ for a given `row` in the bundle, i.e. the length of a
@@ -388,10 +125,10 @@ impl MsgBundle {
     /// have the same number of instances, we simply pick the value for the first component
     /// collection.
     #[inline]
-    pub fn num_instances(&self, row: usize) -> Option<usize> {
-        self.components
+    pub fn num_instances(&self) -> usize {
+        self.cells
             .first()
-            .map_or(Some(0), |bundle| bundle.num_instances(row))
+            .map_or(0, |cell| cell.num_instances() as _)
     }
 
     /// Returns the index of `component` in the bundle, if it exists.
@@ -399,17 +136,17 @@ impl MsgBundle {
     /// This is `O(n)`.
     #[inline]
     pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
-        self.components
+        self.cells
             .iter()
-            .map(|bundle| bundle.name)
+            .map(|cell| cell.component_name())
             .position(|name| name == *component)
     }
 }
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let values = self.components.iter().map(|bundle| bundle.value_boxed());
-        let names = self.components.iter().map(|bundle| bundle.name.as_str());
+        let values = self.cells.iter().map(|cell| cell.as_arrow_ref());
+        let names = self.cells.iter().map(|cell| cell.component_name().as_str());
         let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
             "MsgBundle '{}' @ {:?}:\n{table}",
@@ -418,18 +155,21 @@ impl std::fmt::Display for MsgBundle {
     }
 }
 
-/// Pack the passed iterator of `ComponentBundle` into a `(Schema, StructArray)` tuple.
+/// Pack the passed iterator of [`DataCell`] into a `(Schema, StructArray)` tuple.
 #[inline]
-fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema, StructArray) {
-    let (component_fields, component_cols): (Vec<Field>, Vec<Box<dyn Array>>) = components
-        .map(|bundle| {
-            let ComponentBundle {
-                name,
-                value: component,
-            } = bundle;
+fn pack_components(cells: impl Iterator<Item = DataCell>) -> (Schema, StructArray) {
+    let (component_fields, component_cols): (Vec<Field>, Vec<Box<dyn Array>>) = cells
+        .map(|cell| {
+            // NOTE: wrap in a ListArray to emulate the presence of rows, this'll go away with
+            // batching.
+            let data = cell.as_arrow_monolist();
             (
-                Field::new(name.as_str(), component.data_type().clone(), false),
-                component.to_boxed(),
+                Field::new(
+                    cell.component_name().as_str(),
+                    data.data_type().clone(),
+                    false,
+                ),
+                data,
             )
         })
         .unzip();
@@ -438,11 +178,9 @@ fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema
     let packed = StructArray::new(data_type, component_cols, None);
 
     let schema = Schema {
-        fields: [Field::new(
-            COL_COMPONENTS,
-            packed.data_type().clone(),
-            false,
-        )]
+        fields: [
+            Field::new(COL_COMPONENTS, packed.data_type().clone(), false), //
+        ]
         .to_vec(),
         ..Default::default()
     };
@@ -476,7 +214,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             msg_id: *msg_id,
             entity_path: entity_path_cmp.into(),
             time_point,
-            components,
+            cells: components,
         })
     }
 }
@@ -501,7 +239,7 @@ impl TryFrom<MsgBundle> for ArrowMsg {
         cols.push(timelines_col);
 
         // Build & pack components
-        let (components_schema, components_data) = pack_components(bundle.components.into_iter());
+        let (components_schema, components_data) = pack_components(bundle.cells.into_iter());
 
         schema.fields.extend(components_schema.fields);
         schema.metadata.extend(components_schema.metadata);
@@ -543,12 +281,9 @@ pub fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Resu
     Ok(timepoint)
 }
 
-/// Extract a vector of `ComponentBundle` from the message. This is necessary since the
+/// Extract a vector of `DataCell` from the message. This is necessary since the
 /// "components" schema is flexible.
-fn extract_components(
-    schema: &Schema,
-    msg: &Chunk<Box<dyn Array>>,
-) -> Result<Vec<ComponentBundle>> {
+fn extract_components(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> Result<Vec<DataCell>> {
     let components = schema
         .fields
         .iter()
@@ -566,96 +301,14 @@ fn extract_components(
         .iter()
         .zip(components.values())
         .map(|(field, component)| {
-            ComponentBundle::new_from_boxed(
-                ComponentName::from(field.name.as_str()),
-                component.as_ref(),
-            )
+            // NOTE: unwrap the ListArray layer that we added during packing in order to emulate
+            // the presence of rows, this'll go away with batching.
+            let component = component
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .values();
+            DataCell::from_arrow(ComponentName::from(field.name.as_str()), component.clone())
         })
         .collect())
-}
-
-// ----------------------------------------------------------------------------
-
-/// Wrap `field_array` in a single-element `ListArray`
-pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
-    let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Offsets::try_from_lengths(std::iter::once(field_array.len()))
-        .unwrap()
-        .into();
-    let values = field_array;
-    let validity = None;
-    ListArray::<i32>::new(datatype, offsets, values, validity)
-}
-
-/// Helper to build a `MessageBundle` from 1 component
-pub fn try_build_msg_bundle1<O, T, C0>(
-    msg_id: MsgId,
-    into_entity_path: O,
-    into_time_point: T,
-    into_bundles: C0,
-) -> Result<MsgBundle>
-where
-    O: Into<EntityPath>,
-    T: Into<TimePoint>,
-    C0: TryInto<ComponentBundle>,
-    MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
-{
-    Ok(MsgBundle::new(
-        msg_id,
-        into_entity_path.into(),
-        into_time_point.into(),
-        vec![into_bundles.try_into()?],
-    ))
-}
-
-/// Helper to build a `MessageBundle` from 2 components
-pub fn try_build_msg_bundle2<O, T, C0, C1>(
-    msg_id: MsgId,
-    into_entity_path: O,
-    into_time_point: T,
-    into_bundles: (C0, C1),
-) -> Result<MsgBundle>
-where
-    O: Into<EntityPath>,
-    T: Into<TimePoint>,
-    C0: TryInto<ComponentBundle>,
-    C1: TryInto<ComponentBundle>,
-    MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
-    MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
-{
-    Ok(MsgBundle::new(
-        msg_id,
-        into_entity_path.into(),
-        into_time_point.into(),
-        vec![into_bundles.0.try_into()?, into_bundles.1.try_into()?],
-    ))
-}
-
-/// Helper to build a `MessageBundle` from 3 components
-pub fn try_build_msg_bundle3<O, T, C0, C1, C2>(
-    msg_id: MsgId,
-    into_entity_path: O,
-    into_time_point: T,
-    into_bundles: (C0, C1, C2),
-) -> Result<MsgBundle>
-where
-    O: Into<EntityPath>,
-    T: Into<TimePoint>,
-    C0: TryInto<ComponentBundle>,
-    C1: TryInto<ComponentBundle>,
-    C2: TryInto<ComponentBundle>,
-    MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
-    MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
-    MsgBundleError: From<<C2 as TryInto<ComponentBundle>>::Error>,
-{
-    Ok(MsgBundle::new(
-        msg_id,
-        into_entity_path.into(),
-        into_time_point.into(),
-        vec![
-            into_bundles.0.try_into()?,
-            into_bundles.1.try_into()?,
-            into_bundles.2.try_into()?,
-        ],
-    ))
 }

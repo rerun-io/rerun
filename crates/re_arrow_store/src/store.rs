@@ -212,7 +212,7 @@ pub struct DataStore {
     /// This makes the cluster key a perfect candidate for joining query results together, and
     /// doing so as efficiently as possible.
     ///
-    /// See [`Self::insert`] for more information.
+    /// See [`Self::insert_row`] for more information.
     pub(crate) cluster_key: ComponentName,
 
     /// The configuration of the data store (e.g. bucket sizes).
@@ -225,7 +225,7 @@ pub struct DataStore {
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
     /// so that they can be properly deduplicated.
-    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
+    pub(crate) cluster_comp_cache: IntMap<u32, RowIndex>,
 
     /// Dedicated index tables for timeless data. Never garbage collected.
     ///

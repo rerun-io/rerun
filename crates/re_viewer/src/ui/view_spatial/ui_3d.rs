@@ -83,7 +83,7 @@ impl Default for View3DState {
 
 impl View3DState {
     pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
-        self.interpolate_to_eye(default_eye(scene_bbox_accum, &self.space_specs).to_eye());
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
@@ -242,7 +242,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Op
 
 pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     Drag with secondary mouse button to pan.\n\
-    Drag with middle mouse button (or primary mouse button + holding Alt/⌥ key) to roll the view.\n\
+    Drag with middle mouse button (or primary mouse button + holding SHIFT) to roll the view.\n\
     Scroll to zoom.\n\
     \n\
     While hovering the 3D view, navigate with WSAD and QE.\n\
@@ -503,7 +503,7 @@ pub fn view_3d(
         scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config(rect.size()),
+        state.auto_size_config(),
     );
 
     // Add egui driven labels on top of re_renderer content.

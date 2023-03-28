@@ -487,81 +487,94 @@ fn depth_props_ui(
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
-) {
+) -> Option<()> {
+    crate::profile_function!();
+
     let query = ctx.current_query();
-
-    // Find closest pinhole transform, if any.
-    let mut pinhole_ent_path = None;
-    let mut cur_path = Some(entity_path.clone());
-    while let Some(path) = cur_path {
-        if let Some(re_log_types::Transform::Pinhole(_)) =
-            query_latest_single::<Transform>(&ctx.log_db.entity_db, &path, &query)
-        {
-            pinhole_ent_path = Some(path);
-            break;
-        }
-        cur_path = path.parent();
+    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query)?;
+    if tensor.meaning != TensorDataMeaning::Depth {
+        return Some(());
     }
+    let pinhole_ent_path =
+        crate::misc::queries::closest_pinhole_transform(ctx, entity_path, &query)?;
 
-    // Early out if there's no pinhole transform upwards in the tree.
-    let Some(pinhole_ent_path) = pinhole_ent_path else { return; };
+    let mut backproject_depth = *entity_props.backproject_depth.get();
 
-    entity_props.backproject_pinhole_ent_path = Some(pinhole_ent_path.clone());
-
-    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query);
-    if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
-        ui.checkbox(&mut entity_props.backproject_depth, "Backproject Depth")
-            .on_hover_text(
-                "If enabled, the depth texture will be backprojected into a point cloud rather \
+    if ui
+        .checkbox(&mut backproject_depth, "Backproject Depth")
+        .on_hover_text(
+            "If enabled, the depth texture will be backprojected into a point cloud rather \
                 than simply displayed as an image.",
+        )
+        .changed()
+    {
+        entity_props.backproject_depth = EditableAutoValue::UserEdited(backproject_depth);
+    }
+    ui.end_row();
+
+    if backproject_depth {
+        ui.label("Pinhole");
+        ctx.entity_path_button(ui, None, &pinhole_ent_path)
+            .on_hover_text(
+                "The entity path of the pinhole transform being used to do the backprojection.",
             );
         ui.end_row();
 
-        if entity_props.backproject_depth {
-            ui.label("Pinhole");
-            ctx.entity_path_button(ui, None, &pinhole_ent_path)
-                .on_hover_text(
-                    "The entity path of the pinhole transform being used to do the backprojection.",
-                );
-            ui.end_row();
+        depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
 
-            ui.label("Backproject scale");
-            let mut scale = *entity_props.backproject_scale.get();
-            let speed = (scale * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_scale = EditableAutoValue::UserEdited(scale);
-            }
-            ui.end_row();
+        backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
 
-            ui.label("Backproject radius scale");
-            let mut radius_scale = *entity_props.backproject_radius_scale.get();
-            let speed = (radius_scale * 0.001).at_least(0.001);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut radius_scale)
-                        .clamp_range(0.0..=1.0e8)
-                        .speed(speed),
-                )
-                .on_hover_text("Scales the radii of the points in the backprojected point cloud")
-                .changed()
-            {
-                entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
-            }
-            ui.end_row();
-
-            // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
-            // need to get the current hardcoded colormapping out of the image cache first.
-            colormap_props_ui(ui, entity_props);
-        } else {
-            entity_props.backproject_pinhole_ent_path = None;
-        }
+        // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
+        // need to get the current hardcoded colormapping out of the image cache first.
+        colormap_props_ui(ui, entity_props);
     }
+
+    Some(())
+}
+
+fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+    ui.label("Backproject meter");
+    let mut value = *property.get();
+    let speed = (value * 0.05).at_least(0.01);
+    let response = ui
+    .add(
+        egui::DragValue::new(&mut value)
+            .clamp_range(0.0..=1.0e8)
+            .speed(speed),
+    )
+    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
+                    Double-click to reset.");
+    if response.double_clicked() {
+        // reset to auto - the exact value will be restored somewhere else
+        *property = EditableAutoValue::Auto(value);
+        response.surrender_focus();
+    } else if response.changed() {
+        *property = EditableAutoValue::UserEdited(value);
+    }
+    ui.end_row();
+}
+
+fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+    ui.label("Backproject radius scale");
+    let mut value = *property.get();
+    let speed = (value * 0.01).at_least(0.001);
+    let response = ui
+        .add(
+            egui::DragValue::new(&mut value)
+                .clamp_range(0.0..=1.0e8)
+                .speed(speed),
+        )
+        .on_hover_text(
+            "Scales the radii of the points in the backprojected point cloud.\n\
+            This is a factor of the projected pixel diameter. \
+            This means a scale of 0.5 will leave adjacent pixels at the same depth value just touching.\n\
+            Double-click to reset.",
+        );
+    if response.double_clicked() {
+        *property = EditableAutoValue::Auto(2.0);
+        response.surrender_focus();
+    } else if response.changed() {
+        *property = EditableAutoValue::UserEdited(value);
+    }
+    ui.end_row();
 }

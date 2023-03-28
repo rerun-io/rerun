@@ -7,8 +7,7 @@ use itertools::Itertools;
 use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, TensorTrait},
-    msg_bundle::Component,
-    Transform,
+    Component, Transform,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -153,22 +152,30 @@ impl ImagesPart {
 
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                if tensor.meaning == TensorDataMeaning::Depth {
-                    if let Some(pinhole_ent_path) = properties.backproject_pinhole_ent_path.as_ref()
-                    {
+                if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth
+                {
+                    let query = ctx.current_query();
+                    let pinhole_ent_path =
+                        crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
+
+                    if let Some(pinhole_ent_path) = pinhole_ent_path {
                         // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                         // transform of the projection plane, which is of no use to us here.
                         // What we want are the extrinsics of the depth camera!
-                        Self::process_entity_view_as_depth_cloud(
+                        match Self::process_entity_view_as_depth_cloud(
                             scene,
                             ctx,
                             transforms,
                             properties,
                             &tensor,
-                            pinhole_ent_path,
+                            &pinhole_ent_path,
                             entity_highlight,
-                        );
-                        return Ok(());
+                        ) {
+                            Ok(()) => return Ok(()),
+                            Err(err) => {
+                                re_log::warn_once!("{err}");
+                            }
+                        }
                     };
                 }
 
@@ -265,7 +272,7 @@ impl ImagesPart {
         tensor: &Tensor,
         pinhole_ent_path: &EntityPath,
         entity_highlight: &SpaceViewOutlineMasks,
-    ) {
+    ) -> Result<(), String> {
         crate::profile_function!();
 
         let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
@@ -273,16 +280,15 @@ impl ImagesPart {
             pinhole_ent_path,
             &ctx.current_query(),
         ) else {
-            re_log::warn_once!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}");
-            return;
+            return Err(format!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}"));
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
-        let Some(extrinsics) = pinhole_ent_path
-        .parent()
-        .and_then(|ent_path| transforms.reference_from_entity(&ent_path)) else {
-            re_log::warn_once!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}");
-            return;
+        let world_from_obj = pinhole_ent_path
+            .parent()
+            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+        let Some(world_from_obj) = world_from_obj else {
+            return Err(format!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}"));
         };
 
         // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
@@ -291,21 +297,18 @@ impl ImagesPart {
             TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
             TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
             _ => {
-                let discriminant = std::mem::discriminant(&tensor.data);
-                re_log::warn_once!(
-                    "Tensor datatype is not supported for backprojection ({discriminant:?})"
-                );
-                return;
+                return Err(format!(
+                    "Tensor datatype {} is not supported for backprojection",
+                    tensor.dtype()
+                ));
             }
         };
 
-        let scale = *properties.backproject_scale.get();
-        let radius_scale = *properties.backproject_radius_scale.get();
+        let depth_from_world_scale = *properties.depth_from_world_scale.get();
+        let world_depth_from_data_depth = 1.0 / depth_from_world_scale;
 
         let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
         let dimensions = glam::UVec2::new(w as _, h as _);
-
-        let world_from_obj = extrinsics * glam::Mat4::from_scale(glam::Vec3::splat(scale));
 
         let colormap = match *properties.color_mapper.get() {
             re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
@@ -318,15 +321,39 @@ impl ImagesPart {
             },
         };
 
-        scene.primitives.depth_clouds.push(DepthCloud {
-            depth_camera_extrinsics: world_from_obj,
+        // We want point radius to be defined in a scale where the radius of a point
+        // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
+        // at that distance.
+        let fov_y = intrinsics.fov_y().unwrap_or(1.0);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
+        let radius_scale = *properties.backproject_radius_scale.get();
+        let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
+
+        let max_data_value = if let Some((_min, max)) = ctx.cache.tensor_stats(tensor).range {
+            max as f32
+        } else {
+            // This could only happen for Jpegs, and we should never get here.
+            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
+            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
+            match data {
+                DepthCloudDepthData::U16(_) => u16::MAX as f32,
+                DepthCloudDepthData::F32(_) => 10.0,
+            }
+        };
+
+        scene.primitives.depth_clouds.clouds.push(DepthCloud {
+            world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            radius_scale,
+            world_depth_from_data_depth,
+            point_radius_from_world_depth,
+            max_depth_in_world: world_depth_from_data_depth * max_data_value,
             depth_dimensions: dimensions,
             depth_data: data,
             colormap,
             outline_mask_id: entity_highlight.overall,
         });
+
+        Ok(())
     }
 }
 

@@ -390,16 +390,16 @@ pub fn show_zoomed_image_region(
                 let tensor = tensor_view.tensor;
 
                 let text = match tensor.num_dim() {
-                    2 => tensor.get(&[x, y]).map(|v| format!("Val: {v}")),
+                    2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
                     3 => match tensor.shape()[2].size {
                         0 => Some("Cannot preview 0-size channel".to_owned()),
-                        1 => tensor.get(&[x, y, 0]).map(|v| format!("Val: {v}")),
+                        1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
                         3 => {
                             // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                             if let (Some(r), Some(g), Some(b)) = (
-                                tensor_view.tensor.get(&[x, y, 0]),
-                                tensor_view.tensor.get(&[x, y, 1]),
-                                tensor_view.tensor.get(&[x, y, 2]),
+                                tensor_view.tensor.get(&[y, x, 0]),
+                                tensor_view.tensor.get(&[y, x, 1]),
+                                tensor_view.tensor.get(&[y, x, 2]),
                             ) {
                                 match (r, g, b) {
                                     (
@@ -420,10 +420,10 @@ pub fn show_zoomed_image_region(
                         4 => {
                             // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                             if let (Some(r), Some(g), Some(b), Some(a)) = (
-                                tensor_view.tensor.get(&[x, y, 0]),
-                                tensor_view.tensor.get(&[x, y, 1]),
-                                tensor_view.tensor.get(&[x, y, 2]),
-                                tensor_view.tensor.get(&[x, y, 3]),
+                                tensor_view.tensor.get(&[y, x, 0]),
+                                tensor_view.tensor.get(&[y, x, 1]),
+                                tensor_view.tensor.get(&[y, x, 2]),
+                                tensor_view.tensor.get(&[y, x, 3]),
                             ) {
                                 match (r, g, b, a) {
                                     (

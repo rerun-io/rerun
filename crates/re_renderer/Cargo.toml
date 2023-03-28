@@ -53,7 +53,7 @@ ecolor = { workspace = true, features = ["bytemuck"] }
 enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
-itertools = "0.10"
+itertools = { workspace = true }
 macaw.workspace = true
 memoffset = "0.8"
 ordered-float = "3.2"

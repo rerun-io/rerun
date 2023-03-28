@@ -1,15 +1,15 @@
-use std::sync::Arc;
-
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
+use arrow2::buffer::Buffer;
 use arrow2::datatypes::DataType;
 use arrow2_convert::arrow_enable_vec_for_type;
 use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
-use super::{ColorRGBA, FieldError, Vec4D};
+use super::arrow_convert_shims::BinaryBuffer;
+use super::{FieldError, Vec4D};
 
 // ----------------------------------------------------------------------------
 
@@ -137,7 +137,6 @@ pub enum RawMeshError {
 /// );
 /// ```
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RawMesh3D {
     pub mesh_id: MeshId,
 
@@ -145,23 +144,24 @@ pub struct RawMesh3D {
     ///
     /// The length of this vector should always be divisible by three (since this is a 3D mesh).
     ///
-    /// If no indices are specified, then each triplet of vertex positions are intrpreted as a triangle
+    /// If no indices are specified, then each triplet of vertex positions are interpreted as a triangle
     /// and the length of this must be divisible by 9.
-    pub vertex_positions: Vec<f32>,
+    pub vertex_positions: Buffer<f32>,
 
     /// Per-vertex albedo colors.
-    pub vertex_colors: Option<Vec<ColorRGBA>>,
+    /// This is actually an encoded [`super::ColorRGBA`]
+    pub vertex_colors: Option<Buffer<u32>>,
 
     /// Optionally, the flattened normals array for this mesh.
     ///
     /// If specified, this must match the length of `Self::positions`.
-    pub vertex_normals: Option<Vec<f32>>,
+    pub vertex_normals: Option<Buffer<f32>>,
 
     /// Optionally, the flattened indices array for this mesh.
     ///
     /// Meshes are always triangle lists, i.e. the length of this vector should always be
     /// divisible by three.
-    pub indices: Option<Vec<u32>>,
+    pub indices: Option<Buffer<u32>>,
 
     /// Albedo factor applied to the final color of the mesh.
     ///
@@ -190,7 +190,7 @@ impl RawMesh3D {
                 return Err(RawMeshError::IndicesNotDivisibleBy3(indices.len()));
             }
 
-            for &index in indices {
+            for &index in indices.iter() {
                 if num_vertices <= index as usize {
                     return Err(RawMeshError::IndexOutOfBounds {
                         index,
@@ -257,13 +257,12 @@ impl RawMesh3D {
 /// );
 /// ```
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EncodedMesh3D {
     pub mesh_id: MeshId,
 
     pub format: MeshFormat,
 
-    pub bytes: Arc<[u8]>,
+    pub bytes: BinaryBuffer,
 
     /// four columns of an affine transformation matrix
     pub transform: [[f32; 3]; 4],
@@ -276,7 +275,7 @@ pub struct EncodedMesh3DArrow {
 
     pub format: MeshFormat,
 
-    pub bytes: Vec<u8>,
+    pub bytes: BinaryBuffer,
 
     #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<f32, 12>")]
     pub transform: Vec<f32>,
@@ -293,7 +292,7 @@ impl From<&EncodedMesh3D> for EncodedMesh3DArrow {
         Self {
             mesh_id: *mesh_id,
             format: *format,
-            bytes: bytes.as_ref().into(),
+            bytes: bytes.clone(),
             transform: transform.iter().flat_map(|c| c.iter().cloned()).collect(),
         }
     }
@@ -313,7 +312,7 @@ impl TryFrom<EncodedMesh3DArrow> for EncodedMesh3D {
         Ok(Self {
             mesh_id,
             format,
-            bytes: bytes.into(),
+            bytes,
             transform: [
                 transform.as_slice()[0..3].try_into()?,
                 transform.as_slice()[3..6].try_into()?,
@@ -406,7 +405,6 @@ impl std::fmt::Display for MeshFormat {
 /// ```
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
     Raw(RawMesh3D),
@@ -436,14 +434,12 @@ mod tests {
     fn example_raw_mesh() -> RawMesh3D {
         let mesh = RawMesh3D {
             mesh_id: MeshId::random(),
-            vertex_positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0],
-            vertex_colors: Some(vec![
-                ColorRGBA(0xff0000ff),
-                ColorRGBA(0x00ff00ff),
-                ColorRGBA(0x0000ffff),
-            ]),
-            indices: vec![0, 1, 2].into(),
-            vertex_normals: vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
+            vertex_positions: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0].into(),
+            vertex_colors: Some(vec![0xff0000ff, 0x00ff00ff, 0x0000ffff].into()),
+            indices: Some(vec![0, 1, 2].into()),
+            vertex_normals: Some(
+                vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 80.0, 90.0, 100.0].into(),
+            ),
             albedo_factor: Vec4D([0.5, 0.5, 0.5, 1.0]).into(),
         };
         mesh.sanity_check().unwrap();
@@ -460,7 +456,7 @@ mod tests {
             let mesh_in = vec![Mesh3D::Encoded(EncodedMesh3D {
                 mesh_id: MeshId::random(),
                 format: MeshFormat::Glb,
-                bytes: std::sync::Arc::new([5, 9, 13, 95, 38, 42, 98, 17]),
+                bytes: vec![5, 9, 13, 95, 38, 42, 98, 17].into(),
                 transform: [
                     [1.0, 2.0, 3.0],
                     [4.0, 5.0, 6.0],

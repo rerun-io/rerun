@@ -8,7 +8,7 @@
 //! * See [`DataStore`] for an overview of the core data structures.
 //! * See [`DataStore::latest_at`] and [`DataStore::range`] for the documentation of the public
 //!   read APIs.
-//! * See [`DataStore::insert`] for the documentation of the public write APIs.
+//! * See [`DataStore::insert_row`] for the documentation of the public write APIs.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]

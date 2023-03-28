@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 // TODO(cmc): Points should just be containers of Vecs.
 

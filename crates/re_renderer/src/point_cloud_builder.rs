@@ -16,13 +16,15 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub user_data: Vec<PerPointUserData>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
+
+    pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
 impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
 where
     PerPointUserData: Default + Copy,
 {
-    pub fn new(ctx: &mut RenderContext) -> Self {
+    pub fn new(ctx: &RenderContext) -> Self {
         const RESERVE_SIZE: usize = 512;
 
         // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
@@ -37,7 +39,17 @@ where
             color_buffer,
             user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
+            radius_boost_in_ui_points_for_outlines: 0.0,
         }
+    }
+
+    /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
+    pub fn radius_boost_in_ui_points_for_outlines(
+        mut self,
+        radius_boost_in_ui_points_for_outlines: f32,
+    ) -> Self {
+        self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
+        self
     }
 
     /// Start of a new batch.
