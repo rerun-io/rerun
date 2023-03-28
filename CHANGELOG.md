@@ -147,7 +147,7 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
   * Switch pre-release action to ncipollo/release-action [#1466](https://github.com/rerun-io/rerun/pull/1466)
 * Disallow some methods and types via Clippy[#1411](https://github.com/rerun-io/rerun/pull/1411)
 
-#### Other not user facing refactors
+#### Other non-user-facing refactors
 * Fix: don't create a dummy LogDb when opening the Rerun Menu [#1440](https://github.com/rerun-io/rerun/pull/1440)
 * `re_renderer`
   * `Draw Phases` in preparation of executing `Renderer` several times on different targets [#1419](https://github.com/rerun-io/rerun/pull/1419)
