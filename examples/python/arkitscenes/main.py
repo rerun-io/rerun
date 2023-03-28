@@ -416,8 +416,8 @@ def log_arkit(recording_path: Path) -> None:
             rr.log_depth_image(f"{highres_entity_id}/depth", highres_depth, meter=1000)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Visualizes the ARKitScenes dataset using the Rerun SDK.")
     parser.add_argument(
         "--video-id",
         type=str,
@@ -429,7 +429,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     rr.script_setup(args, "arkitscenes")
-    recording_path = dir = ensure_recording_available(args.video_id)
+    recording_path = ensure_recording_available(args.video_id)
     log_arkit(recording_path)
 
     rr.script_teardown(args)
+    
+if __name__ == "__main__":
+    main()
