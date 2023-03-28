@@ -12,6 +12,20 @@ use std::task::{Context, Poll};
 use futures_util::future;
 use hyper::{server::conn::AddrIncoming, service::Service, Body, Request, Response};
 
+#[cfg(not(feature = "__ci"))]
+mod data {
+    #![allow(dead_code)] // Some of these are only used in debug or release builds.
+
+    // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
+    pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index_bundled.html");
+    pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
+    pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
+    pub const VIEWER_JS_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug.js");
+    pub const VIEWER_WASM_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug_bg.wasm");
+    pub const VIEWER_JS_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
+    pub const VIEWER_WASM_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+}
+
 struct Svc {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
@@ -70,29 +84,14 @@ impl Service<Request<Body>> for Svc {
         let response = Response::builder();
 
         let (mime, bytes) = match req.uri().path() {
-            "/" | "/index.html" => (
-                "text/html",
-                &include_bytes!("../web_viewer/index_bundled.html")[..],
-            ),
-            "/favicon.svg" => (
-                "image/svg+xml",
-                &include_bytes!("../web_viewer/favicon.svg")[..],
-            ),
-            "/sw.js" => (
-                "text/javascript",
-                &include_bytes!("../web_viewer/sw.js")[..],
-            ),
+            "/" | "/index.html" => ("text/html", data::INDEX_HTML),
+            "/favicon.svg" => ("image/svg+xml", data::FAVICON),
+            "/sw.js" => ("text/javascript", data::SW_JS),
 
             #[cfg(debug_assertions)]
-            "/re_viewer.js" => (
-                "text/javascript",
-                &include_bytes!("../web_viewer/re_viewer_debug.js")[..],
-            ),
+            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS_DEBUG),
             #[cfg(not(debug_assertions))]
-            "/re_viewer.js" => (
-                "text/javascript",
-                &include_bytes!("../web_viewer/re_viewer.js")[..],
-            ),
+            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS_RELEASE),
 
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
@@ -101,17 +100,11 @@ impl Service<Request<Body>> for Svc {
                 #[cfg(debug_assertions)]
                 {
                     re_log::info_once!("Serving DEBUG web-viewer");
-                    (
-                        "application/wasm",
-                        &include_bytes!("../web_viewer/re_viewer_debug_bg.wasm")[..],
-                    )
+                    ("application/wasm", data::VIEWER_WASM_DEBUG)
                 }
                 #[cfg(not(debug_assertions))]
                 {
-                    (
-                        "application/wasm",
-                        &include_bytes!("../web_viewer/re_viewer_bg.wasm")[..],
-                    )
+                    ("application/wasm", data::VIEWER_WASM_RELEASE)
                 }
             }
             _ => {
