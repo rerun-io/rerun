@@ -3,8 +3,7 @@ use glam::Mat4;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey},
-    msg_bundle::Component,
-    Mesh3D,
+    Component, Mesh3D,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 

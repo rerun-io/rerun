@@ -14,7 +14,7 @@ use arrow2_convert::{
 };
 use lazy_static::lazy_static;
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 mod arrow;
 mod arrow_convert_shims;

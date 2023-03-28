@@ -31,8 +31,7 @@ pub use self::session::{Session, SessionBuilder};
 pub use re_sdk_comms::default_server_addr;
 
 pub use re_log_types::{
-    msg_bundle::{Component, SerializableComponent},
-    ApplicationId, ComponentName, EntityPath, RecordingId,
+    ApplicationId, Component, ComponentName, EntityPath, RecordingId, SerializableComponent,
 };
 
 // ---------------
@@ -54,10 +53,7 @@ pub mod sink {
 
 /// Things directly related to logging.
 pub mod log {
-    pub use re_log_types::{
-        msg_bundle::{ComponentBundle, MsgBundle},
-        LogMsg, MsgId, PathOp,
-    };
+    pub use re_log_types::{msg_bundle::MsgBundle, DataCell, LogMsg, MsgId, PathOp};
 }
 
 /// Time-related types.

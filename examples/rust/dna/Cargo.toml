@@ -9,5 +9,5 @@ publish = false
 [dependencies]
 rerun.workspace = true
 
-itertools = "0.10"
+itertools = { workspace = true }
 rand = "0.8"

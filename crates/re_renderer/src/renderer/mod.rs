@@ -12,7 +12,7 @@ pub use point_cloud::{
 
 mod depth_cloud;
 pub use self::depth_cloud::{
-    DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthCloudRenderer,
+    DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthCloudRenderer, DepthClouds,
 };
 
 mod test_triangle;
@@ -98,6 +98,10 @@ pub enum DrawPhase {
 
     /// Drawn when compositing with the main target.
     Compositing,
+
+    /// Drawn when compositing with the main target, but for screenshots.
+    /// This is a separate phase primarily because screenshots may be rendered with a different texture format.
+    CompositingScreenshot,
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.

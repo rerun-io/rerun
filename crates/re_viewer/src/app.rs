@@ -1576,7 +1576,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 }
 
-fn options_menu_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, options: &mut AppOptions) {
+fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut AppOptions) {
     ui.style_mut().wrap = Some(false);
 
     if ui
@@ -1594,7 +1594,7 @@ fn options_menu_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, options: &mut A
 
         egui_debug_options_ui(ui);
         ui.separator();
-        debug_menu_options_ui(ui, frame);
+        debug_menu_options_ui(ui, _frame);
     }
 }
 

@@ -1,56 +1,40 @@
-use arrow2::{
-    array::{new_empty_array, Array, ListArray, UInt64Array},
-    datatypes::DataType,
-};
+use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
-    ComponentName, EntityPath, MsgId, TimeInt, TimePoint, TimeRange, Timeline,
+    component_types::InstanceKey, ComponentName, DataCell, DataCellError, DataRow, DataTable,
+    EntityPath, MsgId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 use crate::{
-    ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex,
-    RowIndexKind, TimeIndex,
+    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, RowIndexKind, TimeIndex,
 };
+
+// TODO(#1619):
+// - The store should insert column-per-column rather than row-per-row (purely a performance
+//   matter)
+// - The store shouldn't ever deal with raw arrow arrays, use cells/rows/tables instead
 
 // --- Data store ---
 
 #[derive(thiserror::Error, Debug)]
 pub enum WriteError {
-    // Batches
-    #[error("Cannot insert more than 1 row at a time, got {0}")]
-    MoreThanOneRow(usize),
-
-    #[error("All components must have the same number of rows, got {0:?}")]
-    MismatchedRows(Vec<(ComponentName, usize)>),
+    #[error("Error with one or more the underlying data cells")]
+    DataCell(#[from] DataCellError),
 
     // Clustering key
     #[error("The cluster component must be dense, got {0:?}")]
-    SparseClusteringComponent(Box<dyn Array>),
+    SparseClusteringComponent(DataCell),
 
     #[error(
         "The cluster component must be increasingly sorted and not contain \
-                any duplicates, got {0:?}"
+            any duplicates, got {0:?}"
     )]
-    InvalidClusteringComponent(Box<dyn Array>),
-
-    // Instances
-    #[error(
-        "All components within a row must have the same number of instances as the \
-            cluster component, got {cluster_comp}={cluster_comp_nb_instances} vs. \
-                {key}={num_instances}"
-    )]
-    MismatchedInstances {
-        cluster_comp: ComponentName,
-        cluster_comp_nb_instances: usize,
-        key: ComponentName,
-        num_instances: usize,
-    },
+    InvalidClusteringComponent(DataCell),
 
     // Misc
     #[error("Other error")]
@@ -60,84 +44,68 @@ pub enum WriteError {
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
 impl DataStore {
-    /// Inserts a [`MsgBundle`]'s worth of components into the datastore.
+    /// Inserts a [`DataTable`]'s worth of components into the datastore.
     ///
-    /// * All components across the bundle must share the same number of rows.
-    /// * All components within a single row must share the same number of instances.
+    /// This iteratively inserts all rows from the table on a row-by-row basis.
+    /// The entire method fails if any row fails.
+    ///
+    /// Both the write and read paths transparently benefit from the contiguous memory of the
+    /// table's columns: the bigger the tables, the bigger the benefits!
+    ///
+    /// See [`Self::insert_row`].
+    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
+        for row in table.as_rows() {
+            self.insert_row(&row)?;
+        }
+        Ok(())
+    }
+
+    /// Inserts a [`DataRow`]'s worth of components into the datastore.
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
     /// based on the length of the components in the payload, in the form of an array of
     /// monotonically increasing u64s going from `0` to `N-1`.
-    pub fn insert(&mut self, msg: &MsgBundle) -> WriteResult<()> {
+    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
-        let MsgBundle {
-            msg_id,
-            entity_path: ent_path,
-            time_point,
-            components: bundles,
-        } = msg;
-
-        if bundles.is_empty() {
+        if row.num_cells() == 0 {
             return Ok(());
         }
 
         crate::profile_function!();
 
-        let ent_path_hash = ent_path.hash();
-        let num_rows = bundles[0].num_rows();
+        let DataRow {
+            row_id,
+            timepoint,
+            entity_path: ent_path,
+            num_instances: _,
+            cells,
+        } = row;
 
-        // Effectively the same thing as having a non-unit length batch, except it's really not
-        // worth more than an assertion since:
-        // - A) `MsgBundle` should already guarantee this
-        // - B) this limitation should be gone soon enough
-        debug_assert!(
-            msg.components
-                .iter()
-                .map(|bundle| bundle.name())
-                .all_unique(),
-            "cannot insert same component multiple times, this is equivalent to multiple rows",
-        );
-        // Batches cannot contain more than 1 row at the moment.
-        if num_rows != 1 {
-            return Err(WriteError::MoreThanOneRow(num_rows));
-        }
-        // Components must share the same number of rows.
-        if !bundles.iter().all(|bundle| bundle.num_rows() == num_rows) {
-            return Err(WriteError::MismatchedRows(
-                bundles
-                    .iter()
-                    .map(|bundle| (bundle.name(), bundle.num_rows()))
-                    .collect(),
-            ));
-        }
+        let ent_path_hash = ent_path.hash();
 
         trace!(
             kind = "insert",
             id = self.insert_id,
             cluster_key = %self.cluster_key,
-            timelines = ?time_point.iter()
+            timelines = ?timepoint.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
-            components = ?bundles.iter().map(|bundle| bundle.name()).collect::<Vec<_>>(),
-            num_rows,
+            components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
             "insertion started..."
         );
 
-        let cluster_comp_pos = bundles
+        let cluster_cell_pos = cells
             .iter()
-            .find_position(|bundle| bundle.name() == self.cluster_key)
+            .find_position(|cell| cell.component_name() == self.cluster_key)
             .map(|(pos, _)| pos);
 
-        if time_point.is_timeless() {
+        if timepoint.is_timeless() {
             let mut row_indices = IntMap::default();
 
-            // TODO(#589): support for batched row component insertions
-            for row_nr in 0..num_rows {
-                self.insert_timeless_row(row_nr, cluster_comp_pos, bundles, &mut row_indices)?;
-            }
+            self.insert_timeless_row_helper(cluster_cell_pos, cells, &mut row_indices)?;
 
             let index = self
                 .timeless_indices
@@ -147,18 +115,9 @@ impl DataStore {
         } else {
             let mut row_indices = IntMap::default();
 
-            // TODO(#589): support for batched row component insertions
-            for row_nr in 0..num_rows {
-                self.insert_row(
-                    time_point,
-                    row_nr,
-                    cluster_comp_pos,
-                    bundles,
-                    &mut row_indices,
-                )?;
-            }
+            self.insert_row_helper(timepoint, cluster_cell_pos, cells, &mut row_indices)?;
 
-            for (timeline, time) in time_point.iter() {
+            for (timeline, time) in timepoint.iter() {
                 let ent_path = ent_path.clone(); // shallow
                 let index = self
                     .indices
@@ -169,26 +128,21 @@ impl DataStore {
         }
 
         // This is valuable information, even for a timeless timepoint!
-        self.messages.insert(*msg_id, time_point.clone());
+        self.messages.insert(*row_id, timepoint.clone());
 
         Ok(())
     }
 
-    fn insert_timeless_row(
+    fn insert_timeless_row_helper(
         &mut self,
-        row_nr: usize,
-        cluster_comp_pos: Option<usize>,
-        components: &[ComponentBundle],
+        cluster_cell_pos: Option<usize>,
+        cells: &[DataCell],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         crate::profile_function!();
 
-        let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
-            row_nr,
-            cluster_comp_pos,
-            components,
-            &TimePoint::default(),
-        )?;
+        let cluster_row_idx =
+            self.get_or_create_cluster_component(cluster_cell_pos, cells, &TimePoint::default())?;
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
@@ -206,61 +160,35 @@ impl DataStore {
             );
         }
 
-        for bundle in components
+        for cell in cells
             .iter()
-            .filter(|bundle| bundle.name() != self.cluster_key)
+            .filter(|cell| cell.component_name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name(), bundle.value_list());
-
-            // Unwrapping a ListArray is somewhat costly, especially considering we're just
-            // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
-            // one instead.
-            //
-            // let rows_single = rows.slice(row_nr, 1);
-            //
-            // Except it turns out that slicing is _extremely_ costly!
-            // So use the fact that `rows` is always of unit-length for now.
-            let rows_single = rows;
-
-            let num_instances = rows_single.offsets().lengths().next().unwrap();
-            if num_instances != cluster_len {
-                return Err(WriteError::MismatchedInstances {
-                    cluster_comp: self.cluster_key,
-                    cluster_comp_nb_instances: cluster_len,
-                    key: name,
-                    num_instances,
-                });
-            }
+            let component = cell.component_name();
 
             let table = self
                 .timeless_components
-                .entry(bundle.name())
-                .or_insert_with(|| {
-                    PersistentComponentTable::new(
-                        name,
-                        ListArray::<i32>::get_child_type(rows_single.data_type()),
-                    )
-                });
+                .entry(cell.component_name())
+                .or_insert_with(|| PersistentComponentTable::new(component, cell.datatype()));
 
-            let row_idx = table.push(rows_single);
-            row_indices.insert(name, row_idx);
+            let row_idx = table.push_cell(cell);
+            row_indices.insert(component, row_idx);
         }
 
         Ok(())
     }
 
-    fn insert_row(
+    fn insert_row_helper(
         &mut self,
         time_point: &TimePoint,
-        row_nr: usize,
-        cluster_comp_pos: Option<usize>,
-        components: &[ComponentBundle],
+        cluster_cell_pos: Option<usize>,
+        cells: &[DataCell],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         crate::profile_function!();
 
-        let (cluster_row_idx, cluster_len) =
-            self.get_or_create_cluster_component(row_nr, cluster_comp_pos, components, time_point)?;
+        let cluster_row_idx =
+            self.get_or_create_cluster_component(cluster_cell_pos, cells, time_point)?;
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
@@ -278,42 +206,19 @@ impl DataStore {
             );
         }
 
-        for bundle in components
+        for cell in cells
             .iter()
-            .filter(|bundle| bundle.name() != self.cluster_key)
+            .filter(|cell| cell.component_name() != self.cluster_key)
         {
-            let (name, rows) = (bundle.name(), bundle.value_list());
+            let component = cell.component_name();
 
-            // Unwrapping a ListArray is somewhat costly, especially considering we're just
-            // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
-            // one instead.
-            //
-            // let rows_single = rows.slice(row_nr, 1);
-            //
-            // Except it turns out that slicing is _extremely_ costly!
-            // So use the fact that `rows` is always of unit-length for now.
-            let rows_single = rows;
+            let table = self
+                .components
+                .entry(component)
+                .or_insert_with(|| ComponentTable::new(component, cell.datatype()));
 
-            // TODO(#440): support for splats
-            let num_instances = rows_single.offsets().lengths().next().unwrap();
-            if num_instances != cluster_len {
-                return Err(WriteError::MismatchedInstances {
-                    cluster_comp: self.cluster_key,
-                    cluster_comp_nb_instances: cluster_len,
-                    key: name,
-                    num_instances,
-                });
-            }
-
-            let table = self.components.entry(bundle.name()).or_insert_with(|| {
-                ComponentTable::new(
-                    name,
-                    ListArray::<i32>::get_child_type(rows_single.data_type()),
-                )
-            });
-
-            let row_idx = table.push(&self.config, time_point, rows_single);
-            row_indices.insert(name, row_idx);
+            let row_idx = table.push_cell(&self.config, time_point, cell);
+            row_indices.insert(component, row_idx);
         }
 
         Ok(())
@@ -327,37 +232,37 @@ impl DataStore {
     /// deduplication.
     fn get_or_create_cluster_component(
         &mut self,
-        _row_nr: usize,
-        cluster_comp_pos: Option<usize>,
-        components: &[ComponentBundle],
+        cluster_cell_pos: Option<usize>,
+        cells: &[DataCell],
         time_point: &TimePoint,
-    ) -> WriteResult<(RowIndex, usize)> {
+    ) -> WriteResult<RowIndex> {
         crate::profile_function!();
 
         enum ClusterData<'a> {
             Cached(RowIndex),
-            GenData(Box<dyn Array>),
-            UserData(&'a ListArray<i32>),
+            GenData(DataCell),
+            UserData(&'a DataCell),
         }
 
-        let (cluster_len, cluster_data) = if let Some(cluster_comp_pos) = cluster_comp_pos {
+        let (cluster_len, cluster_data) = if let Some(cluster_cell_pos) = cluster_cell_pos {
             // We found a component with a name matching the cluster key's, let's make sure it's
             // valid (dense, sorted, no duplicates) and use that if so.
 
-            let cluster_comp = &components[cluster_comp_pos];
-            let data = cluster_comp.value_list().values(); // abusing the fact that num_rows==1
-            let len = data.len();
+            let cluster_cell = &cells[cluster_cell_pos];
 
             // Clustering component must be dense.
-            if !data.is_dense() {
-                return Err(WriteError::SparseClusteringComponent(data.clone()));
+            if !cluster_cell.is_dense() {
+                return Err(WriteError::SparseClusteringComponent(cluster_cell.clone()));
             }
             // Clustering component must be sorted and not contain any duplicates.
-            if !data.is_sorted_and_unique()? {
-                return Err(WriteError::InvalidClusteringComponent(data.clone()));
+            if !cluster_cell.is_sorted_and_unique()? {
+                return Err(WriteError::InvalidClusteringComponent(cluster_cell.clone()));
             }
 
-            (len, ClusterData::UserData(cluster_comp.value_list()))
+            (
+                cluster_cell.num_instances(),
+                ClusterData::UserData(cluster_cell),
+            )
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
             // one... unless we've already generated one of this exact length in the past,
@@ -365,24 +270,33 @@ impl DataStore {
 
             // Use the length of any other component in the batch, they are guaranteed to all
             // share the same length at this point anyway.
-            let len = components.first().map_or(0, |comp| {
-                comp.value_list().offsets().lengths().next().unwrap()
-            });
+            let len = cells.first().map_or(0, |comp| comp.num_instances());
 
             if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
                 // Cache hit! Re-use that row index.
                 (len, ClusterData::Cached(*row_idx))
             } else {
-                // Cache miss! Craft a new u64 array from the ground up.
-                let data = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
-                let data = wrap_in_listarray(data).to_boxed();
-                (len, ClusterData::GenData(data))
+                // Cache miss! Craft a new instance keys from the ground up.
+
+                // TODO(#1712): That's exactly how one should create a cell of instance keys... but
+                // it turns out that running `TryIntoArrow` on a primitive type is orders of
+                // magnitude slower than manually creating the equivalent primitive array for some
+                // reason...
+                // let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
+
+                // ...so we create it manually instead.
+                use re_log_types::Component as _;
+                let values =
+                    arrow2::array::UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
+                let cell = DataCell::from_arrow(InstanceKey::name(), values);
+
+                (len, ClusterData::GenData(cell))
             }
         };
 
         match cluster_data {
-            ClusterData::Cached(row_idx) => Ok((row_idx, cluster_len)),
-            ClusterData::GenData(data) => {
+            ClusterData::Cached(row_idx) => Ok(row_idx),
+            ClusterData::GenData(cell) => {
                 // We had to generate a cluster component of the given length for the first time,
                 // let's store it forever.
 
@@ -390,18 +304,15 @@ impl DataStore {
                     .timeless_components
                     .entry(self.cluster_key)
                     .or_insert_with(|| {
-                        PersistentComponentTable::new(
-                            self.cluster_key,
-                            ListArray::<i32>::get_child_type(data.data_type()),
-                        )
+                        PersistentComponentTable::new(self.cluster_key, cell.datatype())
                     });
-                let row_idx = table.push(&*data);
+                let row_idx = table.push_cell(&cell);
 
                 self.cluster_comp_cache.insert(cluster_len, row_idx);
 
-                Ok((row_idx, cluster_len))
+                Ok(row_idx)
             }
-            ClusterData::UserData(data) => {
+            ClusterData::UserData(cell) => {
                 // If we didn't hit the cache, then we have to insert this cluster component in
                 // the right tables, just like any other component.
 
@@ -410,23 +321,18 @@ impl DataStore {
                         .timeless_components
                         .entry(self.cluster_key)
                         .or_insert_with(|| {
-                            PersistentComponentTable::new(
-                                self.cluster_key,
-                                ListArray::<i32>::get_child_type(data.data_type()),
-                            )
+                            PersistentComponentTable::new(self.cluster_key, cell.datatype())
                         });
-                    table.push(data)
+                    table.push_cell(cell)
                 } else {
-                    let table = self.components.entry(self.cluster_key).or_insert_with(|| {
-                        ComponentTable::new(
-                            self.cluster_key,
-                            ListArray::<i32>::get_child_type(data.data_type()),
-                        )
-                    });
-                    table.push(&self.config, time_point, data)
+                    let table = self
+                        .components
+                        .entry(self.cluster_key)
+                        .or_insert_with(|| ComponentTable::new(self.cluster_key, cell.datatype()));
+                    table.push_cell(&self.config, time_point, cell)
                 };
 
-                Ok((row_idx, cluster_len))
+                Ok(row_idx)
             }
         }
     }
@@ -977,8 +883,8 @@ impl PersistentComponentTable {
     /// `datatype` must be the type of the component itself, devoid of any wrapping layers
     /// (i.e. _not_ a `ListArray<...>`!).
     fn new(name: ComponentName, datatype: &DataType) -> Self {
-        // TODO(cmc): think about this when implementing deletion.
-        let chunks = vec![wrap_in_listarray(new_empty_array(datatype.clone())).to_boxed()];
+        // TODO(#1619): the whole fake row thing needs to go
+        let chunks = vec![DataCell::from_arrow_empty(name, datatype.clone()).as_arrow_monolist()];
         let total_rows = chunks.iter().map(|values| values.len() as u64).sum();
         let total_size_bytes = chunks
             .iter()
@@ -994,42 +900,28 @@ impl PersistentComponentTable {
         }
     }
 
-    /// Pushes `rows_single` to the end of the bucket, returning the _global_ `RowIndex` of the
+    /// Pushes `cell` to the end of the bucket, returning the _global_ `RowIndex` of the
     /// freshly added row.
-    ///
-    /// `rows_single` must be a unit-length list of arrays of structs,
-    /// i.e. `ListArray<StructArray>`:
-    /// - the list layer corresponds to the different rows (always unit-length for now),
-    /// - the array layer corresponds to the different instances within that single row,
-    /// - and finally the struct layer holds the components themselves.
-    /// E.g.:
-    /// ```text
-    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
-    /// ```
-    //
-    // TODO(#589): support for batched row component insertions
-    pub fn push(&mut self, rows_single: &dyn Array) -> RowIndex {
+    pub fn push_cell(&mut self, cell: &DataCell) -> RowIndex {
         crate::profile_function!();
 
         debug_assert!(
-            ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
+            cell.datatype() == &self.datatype,
             "trying to insert data of the wrong datatype in a component table, \
                 expected {:?}, got {:?}",
             &self.datatype,
-            ListArray::<i32>::get_child_type(rows_single.data_type()),
+            cell.datatype(),
         );
-        debug_assert!(
-            rows_single.len() == 1,
-            "batched row component insertions are not supported yet"
-        );
+
+        // TODO(#1619): don't use raw arrays
+        let values = cell.as_arrow_monolist();
 
         self.total_rows += 1;
         // Warning: this is surprisingly costly!
-        self.total_size_bytes +=
-            arrow2::compute::aggregate::estimated_bytes_size(rows_single) as u64;
+        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
 
         // TODO(#589): support for non-unit-length chunks
-        self.chunks.push(rows_single.to_boxed()); // shallow
+        self.chunks.push(values);
 
         RowIndex::from_u63(RowIndexKind::Timeless, self.chunks.len() as u64 - 1)
     }
@@ -1050,38 +942,22 @@ impl ComponentTable {
         }
     }
 
-    /// Finds the appropriate bucket in this component table and pushes `rows_single` at the
+    /// Finds the appropriate bucket in this component table and pushes `cell` at the
     /// end of it, returning the _global_ `RowIndex` for this new row.
-    ///
-    /// `rows_single` must be a unit-length list of arrays of structs,
-    /// i.e. `ListArray<StructArray>`:
-    /// - the list layer corresponds to the different rows (always unit-length for now),
-    /// - the array layer corresponds to the different instances within that single row,
-    /// - and finally the struct layer holds the components themselves.
-    /// E.g.:
-    /// ```text
-    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
-    /// ```
-    //
-    // TODO(#589): support for batched row component insertions
-    pub fn push(
+    pub fn push_cell(
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
-        rows_single: &dyn Array,
+        cell: &DataCell,
     ) -> RowIndex {
         crate::profile_function!();
 
         debug_assert!(
-            ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
+            cell.datatype() == &self.datatype,
             "trying to insert data of the wrong datatype in a component table, \
                 expected {:?}, got {:?}",
             &self.datatype,
-            ListArray::<i32>::get_child_type(rows_single.data_type()),
-        );
-        debug_assert!(
-            rows_single.len() == 1,
-            "batched row component insertions are not supported yet"
+            cell.datatype()
         );
 
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
@@ -1124,7 +1000,7 @@ impl ComponentTable {
         let active_bucket = self.buckets.back_mut().unwrap();
         let row_idx = RowIndex::from_u63(
             RowIndexKind::Temporal,
-            active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
+            active_bucket.push_cell(time_point, cell) + active_bucket.row_offset,
         );
 
         trace!(
@@ -1149,8 +1025,9 @@ impl ComponentBucket {
     pub fn new(name: ComponentName, datatype: &DataType, row_offset: u64) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
+        // TODO(#1619): the whole fake row thing needs to go
         let chunks = if row_offset == 0 {
-            vec![wrap_in_listarray(new_empty_array(datatype.clone())).to_boxed()]
+            vec![DataCell::from_arrow_empty(name, datatype.clone()).as_arrow_monolist()]
         } else {
             vec![]
         };
@@ -1172,28 +1049,13 @@ impl ComponentBucket {
         }
     }
 
-    /// Pushes `rows_single` to the end of the bucket, returning the _local_ index of the
+    /// Pushes `cell` to the end of the bucket, returning the _local_ index of the
     /// freshly added row.
-    ///
-    /// `rows_single` must be a unit-length list of arrays of structs,
-    /// i.e. `ListArray<StructArray>`:
-    /// - the list layer corresponds to the different rows (always unit-length for now),
-    /// - the array layer corresponds to the different instances within that single row,
-    /// - and finally the struct layer holds the components themselves.
-    /// E.g.:
-    /// ```text
-    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
-    /// ```
-    pub fn push(&mut self, time_point: &TimePoint, rows_single: &dyn Array) -> u64 {
+    pub fn push_cell(&mut self, timepoint: &TimePoint, cell: &DataCell) -> u64 {
         crate::profile_function!();
 
-        debug_assert!(
-            rows_single.len() == 1,
-            "batched row component insertions are not supported yet"
-        );
-
         // Keep track of all affected time ranges, for garbage collection purposes.
-        for (timeline, &time) in time_point {
+        for (timeline, &time) in timepoint {
             self.time_ranges
                 .entry(*timeline)
                 .and_modify(|range| {
@@ -1202,13 +1064,15 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
+        // TODO(cmc): don't use raw arrays
+        let values = cell.as_arrow_monolist();
+
         self.total_rows += 1;
         // Warning: this is surprisingly costly!
-        self.total_size_bytes +=
-            arrow2::compute::aggregate::estimated_bytes_size(rows_single) as u64;
+        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
 
         // TODO(#589): support for non-unit-length chunks
-        self.chunks.push(rows_single.to_boxed()); // shallow
+        self.chunks.push(values);
 
         self.chunks.len() as u64 - 1
     }

@@ -1,7 +1,7 @@
 use egui::Color32;
 use re_data_store::InstancePathHash;
 use re_renderer::{
-    renderer::{DepthCloud, MeshInstance},
+    renderer::{DepthClouds, MeshInstance},
     LineStripSeriesBuilder, PointCloudBuilder,
 };
 
@@ -24,9 +24,8 @@ pub struct SceneSpatialPrimitives {
 
     pub line_strips: LineStripSeriesBuilder<InstancePathHash>,
     pub points: PointCloudBuilder<InstancePathHash>,
-
     pub meshes: Vec<MeshSource>,
-    pub depth_clouds: Vec<DepthCloud>,
+    pub depth_clouds: DepthClouds,
 
     pub any_outlines: bool,
 }
@@ -45,11 +44,14 @@ impl SceneSpatialPrimitives {
             textured_rectangles_ids: Default::default(),
             textured_rectangles: Default::default(),
             line_strips: LineStripSeriesBuilder::new(re_ctx)
-                .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
+                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
             points: PointCloudBuilder::new(re_ctx)
-                .size_boost_in_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
+                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
             meshes: Default::default(),
-            depth_clouds: Default::default(),
+            depth_clouds: DepthClouds {
+                clouds: Default::default(),
+                radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+            },
             any_outlines: false,
         }
     }
@@ -76,7 +78,7 @@ impl SceneSpatialPrimitives {
             + line_strips.vertices.len()
             + points.vertices.len()
             + meshes.len()
-            + depth_clouds.len()
+            + depth_clouds.clouds.len()
     }
 
     pub fn recalculate_bounding_box(&mut self) {

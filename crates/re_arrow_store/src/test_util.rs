@@ -4,24 +4,24 @@ use crate::DataStoreConfig;
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! test_bundle {
-    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
-        ::re_log_types::msg_bundle::try_build_msg_bundle1(
+macro_rules! test_row {
+    ($entity:ident @ $frames:tt => $n:expr; [$c0:expr $(,)*]) => {
+        ::re_log_types::DataRow::from_cells1(
             ::re_log_types::MsgId::random(),
             $entity.clone(),
             $frames,
+            $n,
             $c0,
         )
-        .unwrap()
     };
-    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle2(
+    ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {
+        ::re_log_types::DataRow::from_cells2(
             ::re_log_types::MsgId::random(),
             $entity.clone(),
             $frames,
+            $n,
             ($c0, $c1),
         )
-        .unwrap()
     };
 }
 

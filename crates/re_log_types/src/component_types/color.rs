@@ -1,4 +1,4 @@
-use crate::msg_bundle::Component;
+use crate::Component;
 
 /// An RGBA color tuple with unmultiplied/separate alpha,
 /// in sRGB gamma space with linear alpha.

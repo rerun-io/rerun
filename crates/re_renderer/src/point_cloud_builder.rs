@@ -17,7 +17,7 @@ pub struct PointCloudBuilder<PerPointUserData> {
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
 
-    pub(crate) size_boost_in_points_for_outlines: f32,
+    pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
 impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
@@ -39,16 +39,16 @@ where
             color_buffer,
             user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
-            size_boost_in_points_for_outlines: 0.0,
+            radius_boost_in_ui_points_for_outlines: 0.0,
         }
     }
 
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
-    pub fn size_boost_in_points_for_outlines(
+    pub fn radius_boost_in_ui_points_for_outlines(
         mut self,
-        size_boost_in_points_for_outlines: f32,
+        radius_boost_in_ui_points_for_outlines: f32,
     ) -> Self {
-        self.size_boost_in_points_for_outlines = size_boost_in_points_for_outlines;
+        self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
         self
     }
 

@@ -11,8 +11,9 @@ use pyo3::{
     types::PyDict,
 };
 
+use re_log_types::DataRow;
 use rerun::{
-    log::{LogMsg, MsgBundle, MsgId, PathOp},
+    log::{LogMsg, MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
@@ -463,14 +464,18 @@ fn log_transform(
     // python side will take a bit of additional work and testing to ensure we aren't
     // introducing new numerical issues.
 
-    let bundle = MsgBundle::new(
+    let row = DataRow::from_cells1(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![vec![transform].try_into().unwrap()],
+        1,
+        [transform].as_slice(),
     );
 
-    let msg = bundle.try_into().unwrap();
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
+    let msg = msg_bundle.try_into().unwrap();
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -543,14 +548,19 @@ fn log_view_coordinates(
     // non-trivial. Implementing this functionality on the python side will take
     // a bit of additional work and testing to ensure we aren't introducing new
     // conversion errors.
-    let bundle = MsgBundle::new(
+
+    let row = DataRow::from_cells1(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![vec![coordinates].try_into().unwrap()],
+        1,
+        [coordinates].as_slice(),
     );
 
-    let msg = bundle.try_into().unwrap();
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
+    let msg = msg_bundle.try_into().unwrap();
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -674,14 +684,18 @@ fn log_meshes(
     //
     // TODO(jleibs) replace with python-native implementation
 
-    let bundle = MsgBundle::new(
+    let row = DataRow::from_cells1(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![meshes.try_into().unwrap()],
+        meshes.len() as _,
+        meshes,
     );
 
-    let msg = bundle.try_into().unwrap();
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
+    let msg = msg_bundle.try_into().unwrap();
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -752,14 +766,18 @@ fn log_mesh_file(
     //
     // TODO(jleibs) replace with python-native implementation
 
-    let bundle = MsgBundle::new(
+    let row = DataRow::from_cells1(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![vec![mesh3d].try_into().unwrap()],
+        1,
+        [mesh3d].as_slice(),
     );
 
-    let msg = bundle.try_into().unwrap();
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
+    let msg = msg_bundle.try_into().unwrap();
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -829,26 +847,30 @@ fn log_image_file(
 
     let time_point = time(timeless);
 
-    let bundle = MsgBundle::new(
+    let tensor = re_log_types::component_types::Tensor {
+        tensor_id: TensorId::random(),
+        shape: vec![
+            TensorDimension::height(h as _),
+            TensorDimension::width(w as _),
+            TensorDimension::depth(3),
+        ],
+        data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
+        meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
+        meter: None,
+    };
+
+    let row = DataRow::from_cells1(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![vec![re_log_types::component_types::Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
-                TensorDimension::height(h as _),
-                TensorDimension::width(w as _),
-                TensorDimension::depth(3),
-            ],
-            data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
-            meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
-            meter: None,
-        }]
-        .try_into()
-        .unwrap()],
+        1,
+        [tensor].as_slice(),
     );
 
-    let msg = bundle.try_into().unwrap();
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
+    let msg = msg_bundle.try_into().unwrap();
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -916,14 +938,19 @@ fn log_annotation_context(
     // implementation.
     //
     // TODO(jleibs) replace with python-native implementation
-    let bundle = MsgBundle::new(
+
+    let row = DataRow::from_cells1(
         MsgId::random(),
         entity_path,
         time_point,
-        vec![vec![annotation_context.clone()].try_into().unwrap()],
+        1,
+        [annotation_context].as_slice(),
     );
 
-    let msg = bundle.try_into().unwrap();
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
+    let msg = msg_bundle.try_into().unwrap();
 
     session.send(LogMsg::ArrowMsg(msg));
 

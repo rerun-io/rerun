@@ -7,7 +7,7 @@ use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath};
 use re_log_types::{
     component_types::{Tensor, TensorTrait},
-    msg_bundle::Component,
+    Component,
 };
 
 use crate::{

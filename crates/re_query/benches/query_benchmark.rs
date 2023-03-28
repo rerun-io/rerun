@@ -8,9 +8,7 @@ use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Point2D, Vec3D},
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
-    entity_path,
-    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2, Component, MsgBundle},
-    EntityPath, Index, MsgId, TimeType, Timeline,
+    entity_path, Component, DataRow, EntityPath, Index, MsgId, TimeType, Timeline,
 };
 use re_query::query_entity_with_primary;
 
@@ -45,7 +43,7 @@ fn mono_points(c: &mut Criterion) {
     let paths = (0..NUM_POINTS)
         .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
         .collect_vec();
-    let msgs = build_points_messages(&paths, 1);
+    let msgs = build_points_rows(&paths, 1);
 
     {
         let mut group = c.benchmark_group("arrow_mono_points");
@@ -55,14 +53,14 @@ fn mono_points(c: &mut Criterion) {
             (NUM_POINTS * NUM_FRAMES_POINTS) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(msgs.iter()));
+            b.iter(|| insert_rows(msgs.iter()));
         });
     }
 
     {
         let mut group = c.benchmark_group("arrow_mono_points");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
             b.iter(|| query_and_visit_points(&mut store, &paths));
         });
@@ -72,7 +70,7 @@ fn mono_points(c: &mut Criterion) {
 fn batch_points(c: &mut Criterion) {
     // Batch points are logged together at a single path
     let paths = [EntityPath::from("points")];
-    let msgs = build_points_messages(&paths, NUM_POINTS as _);
+    let msgs = build_points_rows(&paths, NUM_POINTS as _);
 
     {
         let mut group = c.benchmark_group("arrow_batch_points");
@@ -80,14 +78,14 @@ fn batch_points(c: &mut Criterion) {
             (NUM_POINTS * NUM_FRAMES_POINTS) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(msgs.iter()));
+            b.iter(|| insert_rows(msgs.iter()));
         });
     }
 
     {
         let mut group = c.benchmark_group("arrow_batch_points");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
             b.iter(|| query_and_visit_points(&mut store, &paths));
         });
@@ -97,7 +95,7 @@ fn batch_points(c: &mut Criterion) {
 fn batch_vecs(c: &mut Criterion) {
     // Batch points are logged together at a single path
     let paths = [EntityPath::from("vec")];
-    let msgs = build_vecs_messages(&paths, NUM_VECS as _);
+    let msgs = build_vecs_rows(&paths, NUM_VECS as _);
 
     {
         let mut group = c.benchmark_group("arrow_batch_vecs");
@@ -105,14 +103,14 @@ fn batch_vecs(c: &mut Criterion) {
             (NUM_VECS * NUM_FRAMES_VECS) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(msgs.iter()));
+            b.iter(|| insert_rows(msgs.iter()));
         });
     }
 
     {
         let mut group = c.benchmark_group("arrow_batch_vecs");
         group.throughput(criterion::Throughput::Elements(NUM_VECS as _));
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
             b.iter(|| query_and_visit_vecs(&mut store, &paths));
         });
@@ -121,41 +119,41 @@ fn batch_vecs(c: &mut Criterion) {
 
 // --- Helpers ---
 
-fn build_points_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
+fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_POINTS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                try_build_msg_bundle2(
+                DataRow::from_cells2(
                     MsgId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
+                    pts as _,
                     (build_some_point2d(pts), build_some_colors(pts)),
                 )
-                .unwrap()
             })
         })
         .collect()
 }
 
-fn build_vecs_messages(paths: &[EntityPath], pts: usize) -> Vec<MsgBundle> {
+fn build_vecs_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_VECS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                try_build_msg_bundle1(
+                DataRow::from_cells1(
                     MsgId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
+                    pts as _,
                     build_some_vec3d(pts),
                 )
-                .unwrap()
             })
         })
         .collect()
 }
 
-fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
+fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
-    msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
+    msgs.for_each(|row| store.insert_row(row).unwrap());
     store
 }
 

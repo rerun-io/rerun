@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{
-    component_types::InstanceKey, msg_bundle::Component, ComponentName, EntityPath,
-};
+use re_log_types::{component_types::InstanceKey, Component, ComponentName, DataRow, EntityPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::Point2D, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::Point2D, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -76,7 +74,7 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, msg_bundle::Component};
+/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -150,7 +148,6 @@ pub fn __populate_example_store() -> DataStore {
     use re_log_types::{
         component_types::{ColorRGBA, Point2D},
         datagen::build_frame_nr,
-        msg_bundle::try_build_msg_bundle2,
         MsgId,
     };
 
@@ -162,15 +159,26 @@ pub fn __populate_example_store() -> DataStore {
     let instances = vec![InstanceKey(42), InstanceKey(96)];
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
 
-    let bundle =
-        try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (&instances, &points)).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells2(
+        MsgId::ZERO,
+        ent_path,
+        timepoint,
+        instances.len() as _,
+        (&instances, &points),
+    );
+    store.insert_row(&row).unwrap();
 
     let instances = vec![InstanceKey(96)];
     let colors = vec![ColorRGBA(0xff000000)];
-    let bundle =
-        try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (instances, colors)).unwrap();
-    store.insert(&bundle).unwrap();
+
+    let row = DataRow::from_cells2(
+        MsgId::ZERO,
+        ent_path,
+        timepoint,
+        instances.len() as _,
+        (instances, colors),
+    );
+    store.insert_row(&row).unwrap();
 
     store
 }
@@ -179,7 +187,7 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
-    use re_log_types::{component_types::Point2D, msg_bundle::Component as _, Timeline};
+    use re_log_types::{component_types::Point2D, Component as _, Timeline};
 
     let store = __populate_example_store();
 
@@ -216,8 +224,7 @@ fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::{
         component_types::{ColorRGBA, Point2D},
-        msg_bundle::Component as _,
-        Timeline,
+        Component as _, Timeline,
     };
 
     let store = __populate_example_store();

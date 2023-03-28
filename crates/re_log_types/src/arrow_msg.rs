@@ -117,7 +117,7 @@ mod tests {
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        msg_bundle::try_build_msg_bundle2,
+        DataRow,
     };
 
     #[test]
@@ -162,15 +162,23 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let bundle = try_build_msg_bundle2(
+        let row = DataRow::from_cells2(
             MsgId::ZERO,
             "world/rects",
             [build_frame_nr(0.into())],
+            1,
             (build_some_point2d(1), build_some_rects(1)),
-        )
-        .unwrap();
+        );
 
-        let msg_in: ArrowMsg = bundle.try_into().unwrap();
+        let msg_bundle = row
+            .into_table(MsgId::ZERO /* not used (yet) */)
+            .into_msg_bundle();
+
+        // TODO(#1619): test the full roundtrip:
+        // cell -> row -> table_in -> msg_in -> msg_out -> table_out
+        //     => msg_in == msg_out
+        //     => table_in == table_out
+        let msg_in: ArrowMsg = msg_bundle.try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
         assert_eq!(msg_in, msg_out);

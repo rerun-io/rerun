@@ -1,6 +1,7 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use arrow2::{array::Array, datatypes::Field, ffi};
+use itertools::Itertools as _;
 use pyo3::{
     exceptions::{PyAttributeError, PyValueError},
     ffi::Py_uintptr_t,
@@ -9,9 +10,8 @@ use pyo3::{
     PyAny, PyResult,
 };
 use re_log_types::{
-    component_types,
-    msg_bundle::{self, ComponentBundle, MsgBundle, MsgBundleError},
-    EntityPath, LogMsg, MsgId, TimePoint,
+    component_types, msg_bundle::MsgBundleError, DataCell, DataRow, EntityPath, LogMsg, MsgId,
+    TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
@@ -44,9 +44,9 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         // Force the type to be correct.
         // https://github.com/rerun-io/rerun/issues/795s
         if let Some(name) = name {
-            if name == <component_types::Tensor as msg_bundle::Component>::name() {
+            if name == <component_types::Tensor as re_log_types::Component>::name() {
                 field.data_type = <component_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name == <component_types::Rect2D as msg_bundle::Component>::name() {
+            } else if name == <component_types::Rect2D as re_log_types::Component>::name() {
                 field.data_type = <component_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
@@ -98,20 +98,24 @@ pub fn build_chunk_from_components(
         |iter| iter.unzip(),
     )?;
 
-    let cmp_bundles = arrays
+    let cells = arrays
         .into_iter()
         .zip(fields.into_iter())
-        .map(|(value, field)| {
-            ComponentBundle::new(field.name.into(), msg_bundle::wrap_in_listarray(value))
-        })
-        .collect();
+        .map(|(value, field)| DataCell::from_arrow(field.name.into(), value))
+        .collect_vec();
 
-    let msg_bundle = MsgBundle::new(
+    let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
+    let row = DataRow::from_cells(
         MsgId::random(),
-        entity_path.clone(),
         time_point.clone(),
-        cmp_bundles,
+        entity_path.clone(),
+        num_instances,
+        cells,
     );
+
+    let msg_bundle = row
+        .into_table(MsgId::ZERO /* not used (yet) */)
+        .into_msg_bundle();
 
     let msg = msg_bundle
         .try_into()

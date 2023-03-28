@@ -150,7 +150,7 @@ impl ViewSpatialState {
                 &entity_path,
                 scene_size,
             );
-            Self::update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
+            self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
@@ -186,16 +186,23 @@ impl ViewSpatialState {
     }
 
     fn update_depth_cloud_property_heuristics(
+        &self,
         ctx: &mut ViewerContext<'_>,
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-    ) {
-        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query);
-        if tensor.as_ref().map(|t| t.meaning) == Some(TensorDataMeaning::Depth) {
-            let tensor = tensor.as_ref().unwrap();
+    ) -> Option<()> {
+        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query)?;
 
-            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+        let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+        if properties.backproject_depth.is_auto() {
+            properties.backproject_depth = EditableAutoValue::Auto(
+                tensor.meaning == TensorDataMeaning::Depth
+                    && *self.nav_mode.get() == SpatialNavigationMode::ThreeD,
+            );
+        }
+
+        if tensor.meaning == TensorDataMeaning::Depth {
             if properties.depth_from_world_scale.is_auto() {
                 let auto = tensor.meter.unwrap_or_else(|| {
                     use re_log_types::component_types::TensorTrait as _;
@@ -216,6 +223,8 @@ impl ViewSpatialState {
                 .data_blueprints_individual()
                 .set(entity_path.clone(), properties);
         }
+
+        Some(())
     }
 
     pub fn selection_ui(
@@ -276,24 +285,26 @@ impl ViewSpatialState {
                 .on_hover_text("The virtual camera which controls what is shown on screen.");
             ui.vertical(|ui| {
                 let mut nav_mode = *self.nav_mode.get();
-                let nav_mode_response =  egui::ComboBox::from_id_source("nav_mode")
+                let mut changed = false;
+                egui::ComboBox::from_id_source("nav_mode")
                     .selected_text(nav_mode)
                     .show_ui(ui, |ui| {
                         ui.style_mut().wrap = Some(false);
                         ui.set_min_width(64.0);
 
-                        ui.selectable_value(
+                        changed |= ui.selectable_value(
                             &mut nav_mode,
                             SpatialNavigationMode::TwoD,
                             SpatialNavigationMode::TwoD,
-                        );
-                        ui.selectable_value(
+                        ).changed();
+
+                        changed |= ui.selectable_value(
                             &mut nav_mode,
                             SpatialNavigationMode::ThreeD,
                             SpatialNavigationMode::ThreeD,
-                        );
-                    }).response;
-                    if nav_mode_response.changed() {
+                        ).changed();
+                    });
+                    if changed {
                         self.nav_mode = EditableAutoValue::UserEdited(nav_mode);
                     }
 

@@ -2,6 +2,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::SharedRendererData,
     include_file,
+    view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
@@ -32,7 +33,8 @@ mod gpu_data {
 }
 
 pub struct Compositor {
-    render_pipeline: GpuRenderPipelineHandle,
+    render_pipeline_regular: GpuRenderPipelineHandle,
+    render_pipeline_screenshot: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
@@ -160,41 +162,54 @@ impl Renderer for Compositor {
         );
 
         let vertex_handle = screen_triangle_vertex_shader(pools, device, resolver);
-        let render_pipeline = pools.render_pipelines.get_or_create(
+
+        let render_pipeline_descriptor = RenderPipelineDesc {
+            label: "CompositorDrawData::render_pipeline_regular".into(),
+            pipeline_layout: pools.pipeline_layouts.get_or_create(
+                device,
+                &PipelineLayoutDesc {
+                    label: "compositor".into(),
+                    entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                },
+                &pools.bind_group_layouts,
+            ),
+            vertex_entrypoint: "main".into(),
+            vertex_handle,
+            fragment_entrypoint: "main".into(),
+            fragment_handle: pools.shader_modules.get_or_create(
+                device,
+                resolver,
+                &ShaderModuleDesc {
+                    label: "tonemap (fragment)".into(),
+                    source: include_file!("../../shader/composite.wgsl"),
+                },
+            ),
+            vertex_buffers: smallvec![],
+            render_targets: smallvec![Some(shared_data.config.output_format_color.into())],
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+        };
+        let render_pipeline_regular = pools.render_pipelines.get_or_create(
+            device,
+            &render_pipeline_descriptor,
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+        let render_pipeline_screenshot = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "compositor".into(),
-                pipeline_layout: pools.pipeline_layouts.get_or_create(
-                    device,
-                    &PipelineLayoutDesc {
-                        label: "compositor".into(),
-                        entries: vec![shared_data.global_bindings.layout, bind_group_layout],
-                    },
-                    &pools.bind_group_layouts,
-                ),
-                vertex_entrypoint: "main".into(),
-                vertex_handle,
-                fragment_entrypoint: "main".into(),
-                fragment_handle: pools.shader_modules.get_or_create(
-                    device,
-                    resolver,
-                    &ShaderModuleDesc {
-                        label: "tonemap (fragment)".into(),
-                        source: include_file!("../../shader/composite.wgsl"),
-                    },
-                ),
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(shared_data.config.output_format_color.into())],
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
+                label: "CompositorDrawData::render_pipeline_screenshot".into(),
+                render_targets: smallvec![Some(ViewBuilder::SCREENSHOT_COLOR_FORMAT.into())],
+                ..render_pipeline_descriptor
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
 
         Compositor {
-            render_pipeline,
+            render_pipeline_regular,
+            render_pipeline_screenshot,
             bind_group_layout,
         }
     }
@@ -202,11 +217,16 @@ impl Renderer for Compositor {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
-        _phase: DrawPhase,
+        phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a CompositorDrawData,
     ) -> anyhow::Result<()> {
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline_handle = match phase {
+            DrawPhase::Compositing => self.render_pipeline_regular,
+            DrawPhase::CompositingScreenshot => self.render_pipeline_screenshot,
+            _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+        };
+        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, &draw_data.bind_group, &[]);
@@ -216,6 +236,6 @@ impl Renderer for Compositor {
     }
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Compositing]
+        &[DrawPhase::Compositing, DrawPhase::CompositingScreenshot]
     }
 }

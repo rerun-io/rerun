@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
-use re_log_types::{msg_bundle::Component, ComponentName, EntityPath};
+use re_log_types::{Component, ComponentName, EntityPath};
 
 use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 

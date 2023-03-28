@@ -3,6 +3,7 @@ pub mod caches;
 pub mod format_time;
 mod item;
 pub(crate) mod mesh_loader;
+pub mod queries;
 mod selection_state;
 pub(crate) mod space_info;
 pub(crate) mod time_control;

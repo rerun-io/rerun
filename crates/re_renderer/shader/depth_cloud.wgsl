@@ -19,6 +19,53 @@ struct PointData {
     color: Vec4
 }
 
+// ---
+
+/// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
+///
+/// Same for all draw-phases.
+struct DepthCloudInfo {
+    /// The extrinsincs of the camera used for the projection.
+    world_from_obj: Mat4,
+
+    /// The intrinsics of the camera used for the projection.
+    ///
+    /// Only supports pinhole cameras at the moment.
+    depth_camera_intrinsics: Mat3,
+
+    /// Outline mask id for the outline mask pass.
+    outline_mask_id: UVec2,
+
+    /// Multiplier to get world-space depth from whatever is in the texture.
+    world_depth_from_texture_value: f32,
+
+    /// Point radius is calculated as world-space depth times this value.
+    point_radius_from_world_depth: f32,
+
+    /// The maximum depth value in world-space, for use with the colormap.
+    max_depth_in_world: f32,
+
+    /// Configures color mapping mode, see `colormap.wgsl`.
+    colormap: u32,
+
+    /// Changes between the opaque and outline draw-phases.
+    radius_boost_in_ui_points: f32,
+};
+
+@group(1) @binding(0)
+var<uniform> depth_cloud_info: DepthCloudInfo;
+
+@group(1) @binding(1)
+var depth_texture: texture_2d<f32>;
+
+struct VertexOut {
+    @builtin(position) pos_in_clip: Vec4,
+    @location(0) pos_in_world: Vec3,
+    @location(1) point_pos_in_world: Vec3,
+    @location(2) point_color: Vec4,
+    @location(3) point_radius: f32,
+};
+
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
 fn compute_point_data(quad_idx: i32) -> PointData {
     let wh = textureDimensions(depth_texture);
@@ -50,48 +97,6 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     return data;
 }
 
-// ---
-
-/// Keep in sync with `DepthCloudInfoUBO` in `depth_cloud.rs`.
-struct DepthCloudInfo {
-    /// The extrinsincs of the camera used for the projection.
-    world_from_obj: Mat4,
-
-    /// The intrinsics of the camera used for the projection.
-    ///
-    /// Only supports pinhole cameras at the moment.
-    depth_camera_intrinsics: Mat3,
-
-    /// Outline mask id for the outline mask pass.
-    outline_mask_id: UVec2,
-
-    /// Multiplier to get world-space depth from whatever is in the texture.
-    world_depth_from_texture_value: f32,
-
-    /// Point radius is calculated as world-space depth times this value.
-    point_radius_from_world_depth: f32,
-
-    /// The maximum depth value in world-space, for use with the colormap.
-    max_depth_in_world: f32,
-
-    /// Configures color mapping mode, see `colormap.wgsl`.
-    colormap: u32,
-};
-
-@group(1) @binding(0)
-var<uniform> depth_cloud_info: DepthCloudInfo;
-
-@group(1) @binding(1)
-var depth_texture: texture_2d<f32>;
-
-struct VertexOut {
-    @builtin(position) pos_in_clip: Vec4,
-    @location(0) pos_in_world: Vec3,
-    @location(1) point_pos_in_world: Vec3,
-    @location(2) point_color: Vec4,
-    @location(3) point_radius: f32,
-};
-
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let quad_idx = sphere_quad_index(vertex_idx);
@@ -100,8 +105,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = compute_point_data(quad_idx);
 
     // Span quad
-    // TODO(andreas): Implement outline-mask size boost for depth cloud as well.
-    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, 0.0);
+    let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, depth_cloud_info.radius_boost_in_ui_points);
 
     var out: VertexOut;
     out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);

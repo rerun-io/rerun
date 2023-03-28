@@ -1,6 +1,6 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
 use re_data_store::ExtraQueryHistory;
-use re_log_types::{msg_bundle::Component, ComponentName, EntityPath};
+use re_log_types::{Component, ComponentName, EntityPath};
 
 use crate::{query_entity_with_primary, range_entity_with_primary, EntityView};
 

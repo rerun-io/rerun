@@ -13,19 +13,16 @@
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::{
-    num::{NonZeroU32, NonZeroU64},
-    ops::Range,
-};
+use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch, renderer::OutlineMaskProcessor, DebugLabel,
     PointCloudBuilder,
 };
 use bitflags::bitflags;
-use bytemuck::Zeroable;
+use bytemuck::Zeroable as _;
 use enumset::{enum_set, EnumSet};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
@@ -72,7 +69,7 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
-        pub size_boost_in_points: wgpu_buffer_types::F32RowPadded,
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 
@@ -175,7 +172,7 @@ impl PointCloudDrawData {
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new<T>(
         ctx: &mut RenderContext,
-        builder: PointCloudBuilder<T>,
+        mut builder: PointCloudBuilder<T>,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
@@ -266,63 +263,54 @@ impl PointCloudDrawData {
             },
         );
 
-        // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
-        //                  These staging buffers would be provided by the belt.
-        // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
+        // To make the data upload simpler (and have it be done in copy-operation), we always update full rows of each of our textures
         let num_points_written =
             wgpu::util::align_to(vertices.len() as u32, DATA_TEXTURE_SIZE) as usize;
-        let num_points_zeroed = num_points_written - vertices.len();
-        let position_and_size_staging = {
-            crate::profile_scope!("collect_pos_size");
-            vertices
-                .iter()
-                .map(|point| gpu_data::PositionData {
-                    pos: point.position,
-                    radius: point.radius,
-                })
-                .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
-                .collect_vec()
-        };
-
-        // Upload data from staging buffers to gpu.
-        let size = wgpu::Extent3d {
-            width: DATA_TEXTURE_SIZE,
-            height: num_points_written as u32 / DATA_TEXTURE_SIZE,
-            depth_or_array_layers: 1,
-        };
+        let num_elements_padding = num_points_written - vertices.len();
+        let texture_copy_extent = glam::uvec2(
+            DATA_TEXTURE_SIZE,
+            num_points_written as u32 / DATA_TEXTURE_SIZE,
+        );
 
         {
             crate::profile_scope!("write_pos_size_texture");
-            ctx.queue.write_texture(
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                num_points_written,
+            );
+            staging_buffer.extend(vertices.iter().map(|point| gpu_data::PositionData {
+                pos: point.position,
+                radius: point.radius,
+            }));
+            staging_buffer.extend(
+                std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_elements_padding),
+            );
+            staging_buffer.copy_to_texture2d(
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
                     texture: &position_data_texture.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                bytemuck::cast_slice(&position_and_size_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: NonZeroU32::new(
-                        DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                size,
+                texture_copy_extent,
             );
         }
 
-        builder.color_buffer.copy_to_texture(
-            ctx.active_frame.encoder.lock().get(),
+        builder
+            .color_buffer
+            .extend(std::iter::repeat(ecolor::Color32::TRANSPARENT).take(num_elements_padding));
+        builder.color_buffer.copy_to_texture2d(
+            ctx.active_frame.before_view_builder_encoder.lock().get(),
             wgpu::ImageCopyTexture {
                 texture: &color_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            NonZeroU32::new(DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
-            None,
-            size,
+            texture_copy_extent,
         );
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
@@ -330,42 +318,47 @@ impl PointCloudDrawData {
             "PointCloudDrawData::DrawDataUniformBuffer".into(),
             [
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: 0.0.into(),
+                    radius_boost_in_ui_points: 0.0.into(),
                     end_padding: Default::default(),
                 },
                 gpu_data::DrawDataUniformBuffer {
-                    size_boost_in_points: builder.size_boost_in_points_for_outlines.into(),
+                    radius_boost_in_ui_points: builder
+                        .radius_boost_in_ui_points_for_outlines
+                        .into(),
                     end_padding: Default::default(),
                 },
             ]
             .into_iter(),
         );
+        let (draw_data_uniform_buffer_bindings_normal, draw_data_uniform_buffer_bindings_outline) =
+            draw_data_uniform_buffer_bindings
+                .into_iter()
+                .collect_tuple()
+                .unwrap();
 
-        let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: "PointCloudDrawData::bind_group_all_points".into(),
-                entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(color_texture.handle),
-                    draw_data_uniform_buffer_bindings[0].clone(),
-                ],
-                layout: point_renderer.bind_group_layout_all_points,
-            },
+        let mk_bind_group = |label, draw_data_uniform_buffer_binding| {
+            ctx.gpu_resources.bind_groups.alloc(
+                &ctx.device,
+                &ctx.gpu_resources,
+                &BindGroupDesc {
+                    label,
+                    entries: smallvec![
+                        BindGroupEntry::DefaultTextureView(position_data_texture.handle),
+                        BindGroupEntry::DefaultTextureView(color_texture.handle),
+                        draw_data_uniform_buffer_binding,
+                    ],
+                    layout: point_renderer.bind_group_layout_all_points,
+                },
+            )
+        };
+
+        let bind_group_all_points = mk_bind_group(
+            "PointCloudDrawData::bind_group_all_points".into(),
+            draw_data_uniform_buffer_bindings_normal,
         );
-        let bind_group_all_points_outline_mask = ctx.gpu_resources.bind_groups.alloc(
-            &ctx.device,
-            &ctx.gpu_resources,
-            &BindGroupDesc {
-                label: "PointCloudDrawData::bind_group_all_points_outline_mask".into(),
-                entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(color_texture.handle),
-                    draw_data_uniform_buffer_bindings[1].clone(),
-                ],
-                layout: point_renderer.bind_group_layout_all_points,
-            },
+        let bind_group_all_points_outline_mask = mk_bind_group(
+            "PointCloudDrawData::bind_group_all_points_outline_mask".into(),
+            draw_data_uniform_buffer_bindings_outline,
         );
 
         // Process batches

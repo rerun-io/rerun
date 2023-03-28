@@ -23,7 +23,7 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
 
     pub batches: Vec<LineBatchInfo>,
 
-    pub(crate) size_boost_in_points_for_outlines: f32,
+    pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
@@ -39,16 +39,16 @@ where
             strips: Vec::with_capacity(RESERVE_SIZE),
             strip_user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
-            size_boost_in_points_for_outlines: 0.0,
+            radius_boost_in_ui_points_for_outlines: 0.0,
         }
     }
 
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
-    pub fn size_boost_in_points_for_outlines(
+    pub fn radius_boost_in_ui_points_for_outlines(
         mut self,
-        size_boost_in_points_for_outlines: f32,
+        radius_boost_in_ui_points_for_outlines: f32,
     ) -> Self {
-        self.size_boost_in_points_for_outlines = size_boost_in_points_for_outlines;
+        self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
         self
     }
 
@@ -93,7 +93,7 @@ where
             &self.vertices,
             &self.strips,
             &self.batches,
-            self.size_boost_in_points_for_outlines,
+            self.radius_boost_in_ui_points_for_outlines,
         )
         .unwrap()
     }
@@ -292,7 +292,9 @@ where
         .flags(
             LineStripFlags::CAP_END_ROUND
                 | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT,
+                | LineStripFlags::NO_COLOR_GRADIENT
+                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
         )
     }
 
@@ -325,7 +327,9 @@ where
         .flags(
             LineStripFlags::CAP_END_ROUND
                 | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT,
+                | LineStripFlags::NO_COLOR_GRADIENT
+                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
         )
     }
 

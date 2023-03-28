@@ -156,13 +156,6 @@ impl PythonSession {
     ///
     /// This function returns immediately.
     /// Disconnect with [`Self::disconnect`].
-    ///
-    /// ## Example:
-    ///
-    /// ``` no_run
-    /// # let mut session = re_sdk::Session::new();
-    /// session.connect(re_sdk::default_server_addr());
-    /// ```
     pub fn connect(&mut self, addr: SocketAddr) {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to connect() ignored");

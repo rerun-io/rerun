@@ -5,7 +5,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-use crate::msg_bundle::Component;
+use crate::Component;
 
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -5,12 +5,11 @@
 //! ```
 
 use polars_core::prelude::JoinType;
-use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
+use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
 use re_log_types::{
     component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    msg_bundle::Component as _,
-    EntityPath, TimeType, Timeline,
+    Component as _, EntityPath, TimeType, Timeline,
 };
 
 fn main() {
@@ -23,26 +22,26 @@ fn main() {
     let frame3 = 3.into();
     let frame4 = 4.into();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_rects(2)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_point2d(2)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_point2d(2)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(4)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 4; [build_some_point2d(4)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_rects(3)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(1)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 1; [build_some_point2d(1)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_rects(3)]);
+    store.insert_row(&row).unwrap();
 
-    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(3)]);
-    store.insert(&bundle).unwrap();
+    let row = test_row!(ent_path @ [build_frame_nr(frame4)] => 3; [build_some_point2d(3)]);
+    store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(2.into(), 4.into()));

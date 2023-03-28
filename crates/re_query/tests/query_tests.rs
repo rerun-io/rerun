@@ -5,10 +5,7 @@ use re_log_types::{
     component_types::InstanceKey,
     component_types::{ColorRGBA, Point2D},
     datagen::build_frame_nr,
-    msg_bundle::try_build_msg_bundle1,
-    msg_bundle::try_build_msg_bundle2,
-    msg_bundle::Component,
-    MsgId,
+    Component, DataRow, MsgId,
 };
 use re_query::query_entity_with_primary;
 
@@ -21,20 +18,20 @@ fn simple_query() {
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells1(MsgId::random(), ent_path, timepoint, 2, points);
+    store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![ColorRGBA(0xff000000)];
-    let bundle = try_build_msg_bundle2(
+    let row = DataRow::from_cells2(
         MsgId::random(),
         ent_path,
         timepoint,
+        1,
         (color_instances, colors),
-    )
-    .unwrap();
-    store.insert(&bundle).unwrap();
+    );
+    store.insert_row(&row).unwrap();
 
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
@@ -92,15 +89,14 @@ fn timeless_query() {
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells1(MsgId::random(), ent_path, timepoint, 2, points);
+    store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance.. timelessly!
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![ColorRGBA(0xff000000)];
-    let bundle =
-        try_build_msg_bundle2(MsgId::random(), ent_path, [], (color_instances, colors)).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells2(MsgId::random(), ent_path, [], 1, (color_instances, colors));
+    store.insert_row(&row).unwrap();
 
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
@@ -158,13 +154,13 @@ fn no_instance_join_query() {
 
     // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells1(MsgId::random(), ent_path, timepoint, 2, points);
+    store.insert_row(&row).unwrap();
 
     // Assign them colors with explicit instances
     let colors = vec![ColorRGBA(0xff000000), ColorRGBA(0x00ff0000)];
-    let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &colors).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells1(MsgId::random(), ent_path, timepoint, 2, colors);
+    store.insert_row(&row).unwrap();
 
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
@@ -222,8 +218,8 @@ fn missing_column_join_query() {
 
     // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells1(MsgId::random(), ent_path, timepoint, 2, points);
+    store.insert_row(&row).unwrap();
 
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
@@ -280,20 +276,20 @@ fn splatted_query() {
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
-    store.insert(&bundle).unwrap();
+    let row = DataRow::from_cells1(MsgId::random(), ent_path, timepoint, 2, points);
+    store.insert_row(&row).unwrap();
 
     // Assign all of them a color via splat
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![ColorRGBA(0xff000000)];
-    let bundle = try_build_msg_bundle2(
+    let row = DataRow::from_cells2(
         MsgId::random(),
         ent_path,
         timepoint,
+        1,
         (color_instances, colors),
-    )
-    .unwrap();
-    store.insert(&bundle).unwrap();
+    );
+    store.insert_row(&row).unwrap();
 
     // Retrieve the view
     let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
