@@ -72,7 +72,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let texcoords = IVec2(quad_idx % wh.x, quad_idx / wh.x);
 
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
-    var world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
+    let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
     var data: PointData;
     if (0.0 < world_space_depth && world_space_depth < f32max) {
