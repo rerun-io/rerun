@@ -21,7 +21,7 @@ pub struct ScheduledPickingRect {
 ///
 /// Typically used to identify higher level objects
 /// Some renderers might allow to change this part of the picking identifier only at a coarse grained level.
-#[repr(C, align(8))]
+#[repr(C)]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
 pub struct PickingLayerObjectId(pub u64);
 
@@ -29,14 +29,14 @@ pub struct PickingLayerObjectId(pub u64);
 ///
 /// Typically used to identify instances.
 /// Some renderers might allow to change only this part of the picking identifier at a fine grained level.
-#[repr(C, align(8))]
+#[repr(C)]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
 pub struct PickingLayerInstanceId(pub u64);
 
 /// Combination of `PickingLayerObjectId` and `PickingLayerInstanceId`.
 ///
 /// This is the same memory order as it is found in the GPU picking layer texture.
-#[repr(C, align(16))]
+#[repr(C)]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
 pub struct PickingLayerId {
     pub object: PickingLayerObjectId,
