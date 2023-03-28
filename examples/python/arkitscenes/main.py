@@ -40,13 +40,16 @@ def log_annotated_bboxes(
     """
     Logs annotated oriented bounding boxes to Rerun.
 
+    We currently calculate and return the 3D bounding boxes keypoints, labels, and colors for each object to log them in
+    each camera frame TODO(pablovela5620): Once #1581 is resolved this can be removed.
+
     annotation json file
     |  |-- label: object name of bounding box
     |  |-- axesLengths[x, y, z]: size of the origin bounding-box before transforming
     |  |-- centroid[]: the translation matrix (1,3) of bounding-box
     |  |-- normalizedAxes[]: the rotation matrix (3,3) of bounding-box
     """
-    # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view`
+    # TODO(pablovela5620): Once #1581 is resolved log bounding boxes into camera view
     bbox_list = []
     bbox_labels = []
     num_objects = len(annotation["data"])
@@ -82,7 +85,7 @@ def log_annotated_bboxes(
             color=color_list[i],
             timeless=True,
         )
-        
+
         box3d = compute_box_3d(scale, transform, rotation)
         bbox_list.append(box3d)
         bbox_labels.append(label)
@@ -432,6 +435,6 @@ def main() -> None:
     log_arkit(recording_path)
 
     rr.script_teardown(args)
-    
+
 if __name__ == "__main__":
     main()
