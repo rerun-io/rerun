@@ -71,7 +71,9 @@ This is a living document. Strive to improve it on each new release.
 * [ ] Manually trigger a new web viewer build and upload at https://github.com/rerun-io/rerun/actions/workflows/rust.yml
 * [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI.
 * [ ] Merge PR
-* [ ] Edit the GitHub release to mark it at latest at the end of https://github.com/rerun-io/rerun/releases/edit/v0.x.0
+* [ ] Edit the GitHub release at https://github.com/rerun-io/rerun/releases/edit/v0.x.0
+  * [ ] Mark it as as the latest release
+  * [ ] Paste in the `CHANGELOG.md`
 * [ ] Wait for wheel to appear on https://pypi.org/project/rerun-sdk/
 * [ ] Test the released Python and Rust libraries (see below)
 * [ ] Wait for documentation to build: https://docs.rs/releases/queue
