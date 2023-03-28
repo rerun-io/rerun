@@ -5,13 +5,20 @@ struct UniformBuffer {
     screen_resolution: Vec2,
     position_in_pixel: Vec2,
     extent_in_pixel: Vec2,
-    _padding: Vec2,
+    mode: u32,
+    _padding: u32,
 };
 @group(1) @binding(0)
 var<uniform> uniforms: UniformBuffer;
 
 @group(1) @binding(1)
-var debug_texture: texture_2d<f32>;
+var debug_texture_float: texture_2d<f32>;
+@group(1) @binding(2)
+var debug_texture_uint: texture_2d<u32>;
+
+// Mode options, see `DebugOverlayMode`
+const ShowFloatTexture: u32 = 0u;
+const ShowUintTexture: u32 = 1u;
 
 struct VertexOutput {
     @builtin(position) position: Vec4,
@@ -36,5 +43,12 @@ fn main_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn main_fs(in: VertexOutput) -> @location(0) Vec4 {
-    return Vec4(textureSample(debug_texture, nearest_sampler, in.texcoord).rgb, 1.0);
+    if uniforms.mode == ShowFloatTexture {
+        return Vec4(textureSample(debug_texture_float, nearest_sampler, in.texcoord).rgb, 1.0);
+    } else if uniforms.mode == ShowUintTexture {
+        let coords = IVec2(in.texcoord * Vec2(textureDimensions(debug_texture_uint).xy));
+        return Vec4(Vec3(textureLoad(debug_texture_uint, coords, 0).rgb % 256u), 1.0);
+    } else {
+        return Vec4(1.0, 0.0, 1.0, 1.0);
+    }
 }

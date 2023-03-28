@@ -14,6 +14,12 @@ use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
 
 use smallvec::smallvec;
 
+#[derive(Copy, Clone)]
+pub enum DebugOverlayMode {
+    ShowFloatTexture = 0,
+    ShowUintTexture = 1,
+}
+
 mod gpu_data {
     use crate::wgpu_buffer_types;
 
@@ -23,7 +29,9 @@ mod gpu_data {
     pub struct DebugOverlayUniformBuffer {
         pub screen_resolution: wgpu_buffer_types::Vec2,
         pub position_in_pixel: wgpu_buffer_types::Vec2,
-        pub extent_in_pixel: wgpu_buffer_types::Vec2RowPadded,
+        pub extent_in_pixel: wgpu_buffer_types::Vec2,
+        pub mode: u32,
+        pub _padding: u32,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
 }
@@ -58,6 +66,15 @@ impl DebugOverlayDrawData {
             &mut ctx.resolver,
         );
 
+        let mode = match debug_texture.texture.format().describe().sample_type {
+            wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { filterable: _ } => {
+                DebugOverlayMode::ShowFloatTexture
+            }
+            wgpu::TextureSampleType::Sint | wgpu::TextureSampleType::Uint => {
+                DebugOverlayMode::ShowUintTexture
+            }
+        };
+
         let uniform_buffer_binding = create_and_fill_uniform_buffer(
             ctx,
             "DebugOverlayDrawData".into(),
@@ -65,9 +82,22 @@ impl DebugOverlayDrawData {
                 screen_resolution: screen_resolution.as_vec2().into(),
                 position_in_pixel: position_in_pixel.as_vec2().into(),
                 extent_in_pixel: extent_in_pixel.as_vec2().into(),
+                mode: mode as u32,
+                _padding: 0,
                 end_padding: Default::default(),
             },
         );
+
+        let fallback_texture = ctx
+            .texture_manager_2d
+            .get(ctx.texture_manager_2d.white_texture_handle())
+            .expect("white fallback texture missing")
+            .handle;
+
+        let (texture_float, texture_uint) = match mode {
+            DebugOverlayMode::ShowFloatTexture => (debug_texture.handle, fallback_texture),
+            DebugOverlayMode::ShowUintTexture => (fallback_texture, debug_texture.handle),
+        };
 
         DebugOverlayDrawData {
             bind_group: ctx.gpu_resources.bind_groups.alloc(
@@ -77,7 +107,8 @@ impl DebugOverlayDrawData {
                     label: "DebugOverlay".into(),
                     entries: smallvec![
                         uniform_buffer_binding,
-                        BindGroupEntry::DefaultTextureView(debug_texture.handle),
+                        BindGroupEntry::DefaultTextureView(texture_float),
+                        BindGroupEntry::DefaultTextureView(texture_uint),
                     ],
                     layout: debug_overlay.bind_group_layout,
                 },
@@ -119,6 +150,16 @@ impl Renderer for DebugOverlayRenderer {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
