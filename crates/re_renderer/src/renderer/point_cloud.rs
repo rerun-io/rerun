@@ -81,7 +81,7 @@ mod gpu_data {
         pub world_from_obj: wgpu_buffer_types::Mat4,
         pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
-        pub picking_layer_object_id: PickingLayerObjectId,
+        pub picking_object_id: PickingLayerObjectId,
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -140,7 +140,7 @@ pub struct PointCloudBatchInfo {
     pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
 
     /// Picking object id that applies for the entire batch.
-    pub picking_layer_object_id: PickingLayerObjectId,
+    pub picking_object_id: PickingLayerObjectId,
 }
 
 /// Description of a point cloud.
@@ -207,7 +207,7 @@ impl PointCloudDrawData {
             point_count: vertices.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
-            picking_layer_object_id: Default::default(),
+            picking_object_id: Default::default(),
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -262,9 +262,16 @@ impl PointCloudDrawData {
         let color_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: "point cloud color data".into(),
-                dimension: wgpu::TextureDimension::D2,
+                label: "PointCloudDrawData::color_texture".into(),
                 format: wgpu::TextureFormat::Rgba8UnormSrgb, // Declaring this as srgb here saves us manual conversion in the shader!
+                ..position_data_texture_desc
+            },
+        );
+        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &TextureDesc {
+                label: "PointCloudDrawData::picking_layer_instance_id_texture".into(),
+                format: wgpu::TextureFormat::Rg32Uint,
                 ..position_data_texture_desc
             },
         );
@@ -319,6 +326,20 @@ impl PointCloudDrawData {
             texture_copy_extent,
         );
 
+        builder
+            .picking_instance_ids_buffer
+            .extend(std::iter::repeat(Default::default()).take(num_elements_padding));
+        builder.picking_instance_ids_buffer.copy_to_texture2d(
+            ctx.active_frame.before_view_builder_encoder.lock().get(),
+            wgpu::ImageCopyTexture {
+                texture: &picking_instance_id_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            texture_copy_extent,
+        );
+
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
             "PointCloudDrawData::DrawDataUniformBuffer".into(),
@@ -351,6 +372,7 @@ impl PointCloudDrawData {
                     entries: smallvec![
                         BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                         BindGroupEntry::DefaultTextureView(color_texture.handle),
+                        BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                         draw_data_uniform_buffer_binding,
                     ],
                     layout: point_renderer.bind_group_layout_all_points,
@@ -384,7 +406,7 @@ impl PointCloudDrawData {
                             .unwrap_or_default()
                             .into(),
                         end_padding: Default::default(),
-                        picking_layer_object_id: batch_info.picking_layer_object_id,
+                        picking_object_id: batch_info.picking_object_id,
                     }),
             );
 
@@ -405,7 +427,7 @@ impl PointCloudDrawData {
                                     flags: batch_info.flags.bits.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     end_padding: Default::default(),
-                                    picking_layer_object_id: batch_info.picking_layer_object_id,
+                                    picking_object_id: batch_info.picking_object_id,
                                 })
                         })
                         .collect::<Vec<_>>()
@@ -543,6 +565,16 @@ impl Renderer for PointCloudRenderer {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,

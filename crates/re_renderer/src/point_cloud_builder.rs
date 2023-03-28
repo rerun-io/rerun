@@ -5,7 +5,7 @@ use crate::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
         PointCloudVertex,
     },
-    Color32, DebugLabel, OutlineMaskPreference, RenderContext, Size,
+    Color32, DebugLabel, OutlineMaskPreference, PickingLayerInstanceId, RenderContext, Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
@@ -14,6 +14,7 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub vertices: Vec<PointCloudVertex>,
 
     pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
+    pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
     pub user_data: Vec<PerPointUserData>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
@@ -34,10 +35,19 @@ where
             &ctx.gpu_resources.buffers,
             PointCloudDrawData::MAX_NUM_POINTS,
         );
+        let picking_instance_ids_buffer = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .allocate::<PickingLayerInstanceId>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                PointCloudDrawData::MAX_NUM_POINTS,
+            );
 
         Self {
             vertices: Vec::with_capacity(RESERVE_SIZE),
             color_buffer,
+            picking_instance_ids_buffer,
             user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
@@ -66,7 +76,7 @@ where
             point_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
-            picking_layer_object_id: Default::default(),
+            picking_object_id: Default::default(),
         });
 
         PointCloudBatchBuilder(self)
@@ -183,6 +193,14 @@ where
             );
         }
 
+        if self.0.picking_instance_ids_buffer.num_written() < self.0.vertices.len() {
+            self.0
+                .picking_instance_ids_buffer
+                .extend(std::iter::repeat(Default::default()).take(
+                    self.0.vertices.len() - self.0.picking_instance_ids_buffer.num_written(),
+                ));
+        }
+
         if self.0.user_data.len() < self.0.vertices.len() {
             self.0.user_data.extend(
                 std::iter::repeat(PerPointUserData::default())
@@ -237,6 +255,7 @@ where
             vertices: &mut self.0.vertices[new_range],
             max_points,
             colors: &mut self.0.color_buffer,
+            picking_instance_ids: &mut self.0.picking_instance_ids_buffer,
             user_data: &mut self.0.user_data,
             additional_outline_mask_ids: &mut self
                 .0
@@ -305,11 +324,8 @@ where
         self
     }
 
-    pub fn picking_layer_object_id(
-        mut self,
-        picking_layer_object_id: PickingLayerObjectId,
-    ) -> Self {
-        self.batch_mut().picking_layer_object_id = picking_layer_object_id;
+    pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
+        self.batch_mut().picking_object_id = picking_object_id;
         self
     }
 }
@@ -371,6 +387,7 @@ pub struct PointsBuilder<'a, PerPointUserData> {
     vertices: &'a mut [PointCloudVertex],
     max_points: usize,
     colors: &'a mut CpuWriteGpuReadBuffer<Color32>,
+    picking_instance_ids: &'a mut CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
     user_data: &'a mut Vec<PerPointUserData>,
     additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
     start_vertex_index: u32,
@@ -408,6 +425,18 @@ where
         crate::profile_function!();
         self.colors
             .extend(colors.take(self.max_points - self.colors.num_written()));
+        self
+    }
+
+    #[inline]
+    pub fn picking_instance_ids(
+        self,
+        picking_instance_ids: impl Iterator<Item = PickingLayerInstanceId>,
+    ) -> Self {
+        crate::profile_function!();
+        self.picking_instance_ids.extend(
+            picking_instance_ids.take(self.max_points - self.picking_instance_ids.num_written()),
+        );
         self
     }
 

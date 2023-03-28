@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
+    Color32, PickingLayerInstanceId, PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
 };
 
 mod framework;
@@ -11,6 +11,7 @@ struct Picking {
     random_points_positions: Vec<glam::Vec3>,
     random_points_radii: Vec<Size>,
     random_points_colors: Vec<Color32>,
+    random_points_picking_ids: Vec<PickingLayerInstanceId>,
 
     scheduled_picking_rects: Vec<ScheduledPickingRect>,
 
@@ -77,10 +78,15 @@ impl framework::Example for Picking {
         let random_points_colors = (0..point_count)
             .map(|_| random_color(&mut rnd))
             .collect_vec();
+        let random_points_picking_ids = (0..point_count)
+            .map(|i| PickingLayerInstanceId([0, i]))
+            .collect_vec();
+
         Picking {
             random_points_positions,
             random_points_radii,
             random_points_colors,
+            random_points_picking_ids,
             scheduled_picking_rects: Vec::new(),
             picking_position: glam::UVec2::ZERO,
         }
@@ -139,23 +145,25 @@ impl framework::Example for Picking {
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
         builder
             .batch("Random Points 1")
-            .picking_layer_object_id(re_renderer::PickingLayerObjectId([0, 10]))
+            .picking_object_id(re_renderer::PickingLayerObjectId([0, 10]))
             .add_points(
                 self.random_points_positions.len(),
                 self.random_points_positions.iter().cloned(),
             )
             .radii(self.random_points_radii.iter().cloned())
-            .colors(self.random_points_colors.iter().cloned());
+            .colors(self.random_points_colors.iter().cloned())
+            .picking_instance_ids(self.random_points_picking_ids.iter().cloned());
         builder
             .batch("Random Points 2")
-            .picking_layer_object_id(re_renderer::PickingLayerObjectId([10, 0]))
+            .picking_object_id(re_renderer::PickingLayerObjectId([10, 0]))
             .world_from_obj(glam::Mat4::from_rotation_x(0.5))
             .add_points(
                 self.random_points_positions.len(),
                 self.random_points_positions.iter().cloned(),
             )
             .radii(self.random_points_radii.iter().cloned())
-            .colors(self.random_points_colors.iter().cloned());
+            .colors(self.random_points_colors.iter().cloned())
+            .picking_instance_ids(self.random_points_picking_ids.iter().cloned());
 
         view_builder.queue_draw(&builder.to_draw_data(re_ctx).unwrap());
         view_builder.queue_draw(&re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
