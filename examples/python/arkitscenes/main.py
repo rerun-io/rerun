@@ -52,16 +52,11 @@ def log_annotated_bboxes(
     bbox_list = []
     bbox_labels = []
     num_objects = len(annotation["data"])
-    # Generate an array of evenly spaced values from 0 to 1
+    # Generate a color per object that can be reused across both 3D obb and their 2D projections
+    # TODO(pablovela5620): Once #1581 or #1728 is resolved this can be removed
     color_positions = np.linspace(0, 1, num_objects)
-
-    # Create a colormap
     colormap = plt.cm.get_cmap("viridis")
-
-    # Generate the array of colors (0-1 range) rgba
     color_array_float = [colormap(pos) for pos in color_positions]
-
-    # Convert the color values from 0-1 to 0-255
     color_list = [(int(r * 255), int(g * 255), int(b * 255), int(a * 255)) for r, g, b, a in color_array_float]
 
     for i, label_info in enumerate(annotation["data"]):
