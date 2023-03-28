@@ -213,22 +213,22 @@ bitflags! {
         /// Adds a round cap at the end of a line strip (excludes other end caps).
         const CAP_END_ROUND = 0b0000_0010;
 
+        /// By default, line caps end at the last/first position of the the line strip.
+        /// This flag makes end caps extend outwards.
+        const CAP_END_EXTEND_OUTWARDS = 0b0000_0100;
+
         /// Puts a equilateral triangle at the start of the line strip (excludes other start caps).
-        const CAP_START_TRIANGLE = 0b0000_0100;
+        const CAP_START_TRIANGLE = 0b0000_1000;
 
         /// Adds a round cap at the start of a line strip (excludes other start caps).
-        const CAP_START_ROUND = 0b0000_1000;
+        const CAP_START_ROUND = 0b0001_0000;
+
+        /// By default, line caps end at the last/first position of the the line strip.
+        /// This flag makes end caps extend outwards.
+        const CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
         /// Disable color gradient which is on by default
-        const NO_COLOR_GRADIENT = 0b0001_0000;
-    }
-}
-
-impl LineStripFlags {
-    pub fn get_triangle_cap_tip_length(line_radius: f32) -> f32 {
-        // hardcoded in lines.wgsl
-        // Alternatively we could declare the entire last segment to be a tip, making the line length configurable!
-        line_radius * 4.0
+        const NO_COLOR_GRADIENT = 0b0100_0000;
     }
 }
 

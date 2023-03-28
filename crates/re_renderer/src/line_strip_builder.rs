@@ -292,7 +292,9 @@ where
         .flags(
             LineStripFlags::CAP_END_ROUND
                 | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT,
+                | LineStripFlags::NO_COLOR_GRADIENT
+                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
         )
     }
 
@@ -325,7 +327,9 @@ where
         .flags(
             LineStripFlags::CAP_END_ROUND
                 | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT,
+                | LineStripFlags::NO_COLOR_GRADIENT
+                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
         )
     }
 
