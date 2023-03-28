@@ -6,10 +6,7 @@
 
 ## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements
 
-<video width="640" controls>
-  <source src="https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4" type="video/mp4">
-  https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
-</video>
+https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
 
 
 ## Overview & Highlights
@@ -191,10 +188,7 @@ After a successful launch a couple of weeks ago, we're back with our second rele
 With a few exceptions this release focuses on internal refactors & improving our processes.
 However, we think you'll enjoy these goodies that made it in nonetheless!
 
-<video controls>
-  <source src="https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-bbd2-37baab4247e8.mp4" type="video/mp4">
-  https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-bbd2-37baab4247e8.mp4
-</video>
+https://user-images.githubusercontent.com/2910679/222510504-23871b8c-0bef-49c2-bbd2-37baab4247e8.mp4
 
 
 You can now generate point clouds directly from depth textures and choose a wide variety of color maps.
