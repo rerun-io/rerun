@@ -5,7 +5,7 @@
 //!
 //! There are two channels (in shader code referred to as A and B) that are handled simultaneously.
 //! For configuring the look of the outline refer to [`OutlineConfig`].
-//! For setting outlines for an individual primitive from another [`super::Renderer`]/[`super::DrawData`],
+//! For setting outlines for an individual primitive from another [`crate::renderer::Renderer`]/[`crate::renderer::DrawData`],
 //! check for [`OutlineMaskPreference`] settings on that primitive.
 //!
 //! How it works:
