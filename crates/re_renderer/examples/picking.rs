@@ -2,16 +2,17 @@ use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, PickingLayerInstanceId, PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
+    Color32, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId, PointCloudBuilder,
+    RenderContext, ScheduledPickingRect, Size,
 };
 
 mod framework;
 
 struct Picking {
-    random_points_positions: Vec<glam::Vec3>,
-    random_points_radii: Vec<Size>,
-    random_points_colors: Vec<Color32>,
-    random_points_picking_ids: Vec<PickingLayerInstanceId>,
+    points_positions: Vec<glam::Vec3>,
+    points_radii: Vec<Size>,
+    points_colors: Vec<Color32>,
+    points_picking_ids: Vec<PickingLayerInstanceId>,
 
     scheduled_picking_rects: Vec<ScheduledPickingRect>,
 
@@ -30,19 +31,34 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
 
 impl Picking {
     #[allow(clippy::unused_self)]
-    fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext) {
+    fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext, time: f32) {
         re_ctx
             .gpu_readback_belt
             .lock()
-            .receive_data(|_data, identifier| {
+            .receive_data(|data, identifier| {
                 if let Some(index) = self
                     .scheduled_picking_rects
                     .iter()
                     .position(|s| s.identifier == identifier)
                 {
                     let picking_rect_info = self.scheduled_picking_rects.swap_remove(index);
-                    // TODO(andreas): Process picking data
-                    let _ = picking_rect_info;
+
+                    // TODO(andreas): Move this into a utility function?
+                    let picking_data_without_padding =
+                        picking_rect_info.row_info.remove_padding(data);
+                    let picking_data: &[PickingLayerId] =
+                        bytemuck::cast_slice(&picking_data_without_padding);
+
+                    // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
+                    let picked_pixel = picking_data[(picking_rect_info.extent.x / 2
+                        + (picking_rect_info.extent.y / 2) * picking_rect_info.extent.x)
+                        as usize];
+                    if picked_pixel.object.0 != 0 {
+                        let index = picked_pixel.instance.0
+                            + (self.points_radii.len() as u64 / 2) * (picked_pixel.object.0 - 1);
+                        self.points_radii[index as usize] = Size::new_scene(0.1);
+                        self.points_colors[index as usize] = Color32::DEBUG_COLOR;
+                    }
                 } else {
                     re_log::error!("Received picking data for unknown identifier");
                 }
@@ -62,8 +78,8 @@ impl framework::Example for Picking {
     fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
-        let point_count = 1000;
-        let random_points_positions = (0..point_count)
+        let point_count = 10000;
+        let points_positions = (0..point_count)
             .map(|_| {
                 glam::vec3(
                     rnd.gen_range(random_point_range.clone()),
@@ -72,21 +88,21 @@ impl framework::Example for Picking {
                 )
             })
             .collect_vec();
-        let random_points_radii = (0..point_count)
-            .map(|_| Size::new_scene(rnd.gen_range(0.05..0.1)))
+        let points_radii = std::iter::repeat(Size::new_scene(0.08))
+            .take(point_count)
             .collect_vec();
-        let random_points_colors = (0..point_count)
+        let points_colors = (0..point_count)
             .map(|_| random_color(&mut rnd))
             .collect_vec();
-        let random_points_picking_ids = (0..point_count)
-            .map(|i| PickingLayerInstanceId([0, i]))
+        let points_picking_ids = (0..point_count as u64)
+            .map(PickingLayerInstanceId)
             .collect_vec();
 
         Picking {
-            random_points_positions,
-            random_points_radii,
-            random_points_colors,
-            random_points_picking_ids,
+            points_positions,
+            points_radii,
+            points_colors,
+            points_picking_ids,
             scheduled_picking_rects: Vec::new(),
             picking_position: glam::UVec2::ZERO,
         }
@@ -96,10 +112,10 @@ impl framework::Example for Picking {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        _time: &framework::Time,
+        time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
-        self.handle_incoming_picking_data(re_ctx);
+        self.handle_incoming_picking_data(re_ctx, time.seconds_since_startup());
 
         let mut view_builder = ViewBuilder::default();
 
@@ -129,7 +145,7 @@ impl framework::Example for Picking {
             )
             .unwrap();
 
-        let picking_rect_size = 128;
+        let picking_rect_size = 32;
         self.scheduled_picking_rects.push(
             view_builder
                 .schedule_picking_readback(
@@ -137,33 +153,35 @@ impl framework::Example for Picking {
                     self.picking_position.as_ivec2()
                         - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
                     picking_rect_size as u32,
-                    true,
+                    false,
                 )
                 .unwrap(),
         );
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
+
+        // Split into two batches to test picking of multiple batches.
+        let num_per_batch = self.points_positions.len() / 2;
         builder
             .batch("Random Points 1")
-            .picking_object_id(re_renderer::PickingLayerObjectId([0, 10]))
+            .picking_object_id(re_renderer::PickingLayerObjectId(1))
             .add_points(
-                self.random_points_positions.len(),
-                self.random_points_positions.iter().cloned(),
+                num_per_batch,
+                self.points_positions.iter().take(num_per_batch).cloned(),
             )
-            .radii(self.random_points_radii.iter().cloned())
-            .colors(self.random_points_colors.iter().cloned())
-            .picking_instance_ids(self.random_points_picking_ids.iter().cloned());
+            .radii(self.points_radii.iter().take(num_per_batch).cloned())
+            .colors(self.points_colors.iter().take(num_per_batch).cloned())
+            .picking_instance_ids(self.points_picking_ids.iter().cloned());
         builder
             .batch("Random Points 2")
-            .picking_object_id(re_renderer::PickingLayerObjectId([10, 0]))
-            .world_from_obj(glam::Mat4::from_rotation_x(0.5))
+            .picking_object_id(re_renderer::PickingLayerObjectId(2))
             .add_points(
-                self.random_points_positions.len(),
-                self.random_points_positions.iter().cloned(),
+                num_per_batch,
+                self.points_positions.iter().skip(num_per_batch).cloned(),
             )
-            .radii(self.random_points_radii.iter().cloned())
-            .colors(self.random_points_colors.iter().cloned())
-            .picking_instance_ids(self.random_points_picking_ids.iter().cloned());
+            .radii(self.points_radii.iter().skip(num_per_batch).cloned())
+            .colors(self.points_colors.iter().skip(num_per_batch).cloned())
+            .picking_instance_ids(self.points_picking_ids.iter().cloned());
 
         view_builder.queue_draw(&builder.to_draw_data(re_ctx).unwrap());
         view_builder.queue_draw(&re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));

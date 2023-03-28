@@ -45,8 +45,8 @@ pub use wgpu_resources::WgpuResourcePoolStatistics;
 mod draw_phases;
 pub(crate) use draw_phases::DrawPhase;
 pub use draw_phases::{
-    OutlineConfig, OutlineMaskPreference, PickingLayerInstanceId, PickingLayerObjectId,
-    ScheduledPickingRect,
+    OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
+    PickingLayerObjectId, ScheduledPickingRect,
 };
 
 mod file_system;

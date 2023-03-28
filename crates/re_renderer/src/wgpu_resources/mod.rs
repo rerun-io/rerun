@@ -138,3 +138,25 @@ pub fn texture_row_data_info(format: wgpu::TextureFormat, width: u32) -> Texture
         ),
     }
 }
+
+impl TextureRowDataInfo {
+    /// Removes the padding from a buffer containing gpu texture data.
+    pub fn remove_padding(&self, buffer: &[u8]) -> Vec<u8> {
+        if self.bytes_per_row_padded == self.bytes_per_row_unpadded {
+            return buffer.to_vec();
+        }
+
+        let height = (buffer.len() as u32) / self.bytes_per_row_padded;
+        let mut unpadded_buffer =
+            Vec::with_capacity((self.bytes_per_row_unpadded * height) as usize);
+
+        for row in 0..height {
+            let offset = (self.bytes_per_row_padded * row) as usize;
+            unpadded_buffer.extend_from_slice(
+                &buffer[offset..(offset + self.bytes_per_row_unpadded as usize)],
+            );
+        }
+
+        unpadded_buffer
+    }
+}

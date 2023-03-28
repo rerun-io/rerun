@@ -22,16 +22,23 @@ pub struct ScheduledPickingRect {
 /// Typically used to identify higher level objects
 /// Some renderers might allow to change this part of the picking identifier only at a coarse grained level.
 #[repr(C, align(8))]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default)]
-pub struct PickingLayerObjectId(pub [u32; 2]);
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
+pub struct PickingLayerObjectId(pub u64);
 
 /// The second 64bit of the picking layer.
 ///
 /// Typically used to identify instances.
 /// Some renderers might allow to change only this part of the picking identifier at a fine grained level.
 #[repr(C, align(8))]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default)]
-pub struct PickingLayerInstanceId(pub [u32; 2]);
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
+pub struct PickingLayerInstanceId(pub u64);
+
+#[repr(C, align(16))]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
+pub struct PickingLayerId {
+    pub object: PickingLayerObjectId,
+    pub instance: PickingLayerInstanceId,
+}
 
 pub struct PickingLayerProcessor {
     pub picking_target: GpuTexture,
