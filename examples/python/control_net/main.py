@@ -22,15 +22,6 @@ def get_canny_filter(image):
     return canny_image
 
 
-def generate_images(image, prompt):
-    canny_image = get_canny_filter(image)
-    all_outputs = []
-    all_outputs.append(canny_image)
-    for image in output.images:
-        all_outputs.append(image)
-    return all_outputs
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     # parser.add_argument(
@@ -64,17 +55,19 @@ def main() -> None:
     pipe.enable_attention_slicing()
 
     image = Image.open(image_path)
+    prompt = "Blake Lively, best quality, extremely detailed"
 
     canny_image = get_canny_filter(image)
 
     output = pipe(
-        "Blake Lively, best quality, extremely detailed",
+        prompt,
         canny_image,
         generator=generator,
         num_images_per_prompt=1,
         num_inference_steps=5,
     )
 
+    rr.log_text_entry("prompt", prompt)
     rr.log_image('canny_image', canny_image)
     rr.log_image('image', image)
     rr.log_image('output', output.images[0])
