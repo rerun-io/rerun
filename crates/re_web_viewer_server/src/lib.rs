@@ -14,15 +14,21 @@ use hyper::{server::conn::AddrIncoming, service::Service, Body, Request, Respons
 
 #[cfg(not(feature = "__ci"))]
 mod data {
-    #![allow(dead_code)] // Some of these are only used in debug or release builds.
-
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
     pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index_bundled.html");
     pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
     pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
+
+    #[cfg(debug_assertions)]
     pub const VIEWER_JS_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug.js");
+
+    #[cfg(debug_assertions)]
     pub const VIEWER_WASM_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug_bg.wasm");
+
+    #[cfg(not(debug_assertions))]
     pub const VIEWER_JS_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
+
+    #[cfg(not(debug_assertions))]
     pub const VIEWER_WASM_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
 }
 
