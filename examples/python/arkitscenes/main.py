@@ -254,6 +254,8 @@ def log_camera(
     # TODO(pablovela5620): Once #1581 is resolved this can be removed
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
+    # clear previous centroid labels
+    rr.log_cleared(f"{entity_id}/bbox-2d-segments", recursive=True)
     # Log line segments for each bounding box in the image
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
         log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), color_list[i], label)
