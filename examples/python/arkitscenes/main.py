@@ -30,8 +30,8 @@ assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
 def load_json(js_path: Path) -> Dict[str, Any]:
     with open(js_path, "r") as f:
-        json_data = json.load(f)
-    return dict(json_data)
+        json_data = json.load(f)  # type: Dict[str, Any]
+    return json_data
 
 
 def log_annotated_bboxes(
