@@ -68,7 +68,7 @@ struct VertexOut {
     round_cap_circle_center: Vec3,
 
     @location(5) @interpolate(flat)
-    currently_active_flags: u32,
+    fragment_flags: u32,
 };
 
 struct LineStripData {
@@ -112,16 +112,6 @@ fn read_position_data(idx: u32) -> PositionData {
     return data;
 }
 
-fn cap_length(flags: u32, radius: f32) -> f32 {
-    if has_any_flag(flags, CAP_END_TRIANGLE | CAP_START_TRIANGLE) {
-        return radius * 4.0;
-    } else if has_any_flag(flags, CAP_END_ROUND | CAP_START_ROUND) {
-        return radius;
-    } else {
-        return 0.0;
-    }
-}
-
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     //
@@ -152,6 +142,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let local_idx = vertex_idx % 6u;
     let top_bottom = select(-1.0, 1.0, (local_idx <= 1u || local_idx == 3u)); // 1 for a top vertex, -1 for a bottom vertex.
 
+    // There's a left and a right triangle in every quad, see sketch above.
+    // Right triangle can form end caps, left triangles can form start caps.
+    let is_right_triangle = local_idx >= 3u;
+
     // Let's assume for starters this vertex is part of a regular quad in a line strip.
     // Fetch position data at the beginning and the end of that quad, as well as the position data before and after this quad.
     let pos_data_quad_before = read_position_data(pos_data_idx - 1u);
@@ -161,7 +155,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // If the strip indices don't match up for start/end, then we're in a cap triangle!
     let is_cap_triangle = pos_data_quad_begin.strip_index != pos_data_quad_end.strip_index;
-    let is_end_cap = is_cap_triangle && local_idx >= 3u;
 
     // Let's determine which one of the two position data is closer to our vertex.
     // Which tells us things:
@@ -170,7 +163,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     //
     // For caps, we determine the "only valid one" (as one of them belongs to another strip)
     var pos_data_current: PositionData;
-    if is_end_cap || (!is_cap_triangle && !is_at_quad_end) {
+    if (is_cap_triangle && is_right_triangle) || (!is_cap_triangle && !is_at_quad_end) {
         pos_data_current = pos_data_quad_begin;
     } else {
         pos_data_current = pos_data_quad_end;
@@ -183,31 +176,24 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Data valid for the entire strip that this vertex belongs to.
     let strip_data = read_strip_data(pos_data_current.strip_index);
 
-    // Active flags are all flags that we react to at the current vertex.
-    // I.e. cap flags are only active in the respective cap triangle.
-    var currently_active_flags = strip_data.flags &
-        (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND | CAP_START_EXTEND_OUTWARDS | CAP_END_EXTEND_OUTWARDS));
-
-    // Compute quad_dir and correct the currently_active_flags & correct center_position triangle caps.
+    // Compute quad_dir & correct center_position for triangle caps.
     var quad_dir: Vec3;
     var is_at_pointy_end = false;
-    if is_cap_triangle {
-        if is_end_cap && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
-            currently_active_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
-            is_at_pointy_end = is_at_quad_end;
-            quad_dir = pos_data_quad_begin.pos - pos_data_quad_before.pos; // Go one pos data back
-        } else if !is_end_cap && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
-            currently_active_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
-            is_at_pointy_end = !is_at_quad_end;
-            quad_dir = pos_data_quad_after.pos - pos_data_quad_end.pos; // Go one pos data forward
-        } else {
-            // Discard vertex.
-            center_position = Vec3(0.0/0.0, 0.0/0.0, 0.0/0.0);
-        }
-        quad_dir = normalize(quad_dir);
+    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND);
+    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND);
+    if is_end_cap_triangle {
+        is_at_pointy_end = is_at_quad_end;
+        quad_dir = pos_data_quad_begin.pos - pos_data_quad_before.pos; // Go one pos data back.
+    } else if is_start_cap_triangle {
+        is_at_pointy_end = !is_at_quad_end;
+        quad_dir = pos_data_quad_after.pos - pos_data_quad_end.pos; // Go one pos data forward.
+    } else if is_cap_triangle {
+        // Discard vertex.
+        center_position = Vec3(0.0/0.0, 0.0/0.0, 0.0/0.0);
     } else {
-        quad_dir = normalize(pos_data_quad_end.pos - pos_data_quad_begin.pos);
+        quad_dir = pos_data_quad_end.pos - pos_data_quad_begin.pos;
     }
+    quad_dir = normalize(quad_dir);
 
     // Resolve radius.
     // (slight inaccuracy: End caps are going to adjust their center_position)
@@ -216,23 +202,19 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
-    if !has_any_flag(strip_data.flags, CAP_END_EXTEND_OUTWARDS) {
-        var neighbor_cap_flags = currently_active_flags;
-        if is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index {
-            neighbor_cap_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
-        }
-        if has_any_flag(neighbor_cap_flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
-            center_position -= quad_dir * cap_length(neighbor_cap_flags, strip_radius);
-        }
+    if !has_any_flag(strip_data.flags, CAP_END_EXTEND_OUTWARDS) &&
+        (is_end_cap_triangle || (is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index)) {
+        var cap_length =
+            f32(has_any_flag(strip_data.flags, CAP_END_ROUND)) +
+            f32(has_any_flag(strip_data.flags, CAP_END_TRIANGLE)) * 4.0;
+        center_position -= quad_dir * (cap_length * strip_radius);
     }
-    if !has_any_flag(strip_data.flags, CAP_START_EXTEND_OUTWARDS) {
-        var neighbor_cap_flags = currently_active_flags;
-        if !is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index {
-            neighbor_cap_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
-        }
-        if has_any_flag(neighbor_cap_flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
-            center_position += quad_dir * cap_length(neighbor_cap_flags, strip_radius);
-        }
+    if !has_any_flag(strip_data.flags, CAP_START_EXTEND_OUTWARDS) &&
+        (is_start_cap_triangle || (!is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index)) {
+        var cap_length =
+            f32(has_any_flag(strip_data.flags, CAP_START_ROUND)) +
+            f32(has_any_flag(strip_data.flags, CAP_START_TRIANGLE)) * 4.0;
+        center_position += quad_dir * (cap_length * strip_radius);
     }
 
     // Boost radius only now that we subtracted/added the cap length.
@@ -243,12 +225,13 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // Push out positions as well along the quad dir.
         // This is especially important if there's no miters on a line-strip (TODO(#829)),
         // as this would enhance gaps between lines otherwise.
-        center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
+        center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_right_triangle));
     }
 
     var active_radius = strip_radius;
     // If this is a triangle cap, we blow up our ("virtual") quad by twice the size.
-    if has_any_flag(currently_active_flags, CAP_START_TRIANGLE | CAP_END_TRIANGLE)  {
+    if (is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE)) ||
+       (is_start_cap_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE)) {
         active_radius *= 2.0;
     }
 
@@ -263,7 +246,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // and far enough to do rounded caps without any visible clipping.
         // There is _some_ clipping, but we can't see it ;)
         // If we want to do it properly, we would extend the radius for rounded caps too.
-        center_position += quad_dir * (strip_radius * 4.0 * select(-1.0, 1.0, is_end_cap));
+        center_position += quad_dir * (strip_radius * 4.0 * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
         pos = center_position + (active_radius * top_bottom) * dir_up;
@@ -277,14 +260,15 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.round_cap_circle_center = round_cap_circle_center;
     out.color = strip_data.color;
     out.active_radius = active_radius;
-    out.currently_active_flags = currently_active_flags;
+    out.fragment_flags = strip_data.flags &
+                    (NO_COLOR_GRADIENT | (u32(is_cap_triangle) * select(CAP_START_ROUND, CAP_END_ROUND, is_right_triangle)));
 
     return out;
 }
 
 fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
-    if has_any_flag(in.currently_active_flags, CAP_START_ROUND | CAP_END_ROUND) {
+    if has_any_flag(in.fragment_flags, CAP_START_ROUND | CAP_END_ROUND) {
         let distance_to_skeleton = length(in.position_world - in.round_cap_circle_center);
         let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
@@ -306,7 +290,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // TODO(andreas): lighting setup
     var shading = 1.0;
-    if !has_any_flag(in.currently_active_flags, NO_COLOR_GRADIENT) { // TODO(andreas): Flip flag meaning.
+    if !has_any_flag(in.fragment_flags, NO_COLOR_GRADIENT) { // TODO(andreas): Flip flag meaning.
         let to_center = in.position_world - in.center_position;
         let relative_distance_to_center_sq = dot(to_center, to_center) / (in.active_radius * in.active_radius);
         shading = max(0.2, 1.0 - relative_distance_to_center_sq) * 0.9;
