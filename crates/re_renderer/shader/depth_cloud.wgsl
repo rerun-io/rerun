@@ -74,34 +74,32 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
     var world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
-    if (world_space_depth <= 0.0 || f32max <= world_space_depth) {
-        // Degenerate case - early-out!
-        var data: PointData;
-        data.pos_in_world = Vec3(0.);
+    var data: PointData;
+    if (0.0 < world_space_depth && world_space_depth < f32max) {
+        // TODO(cmc): albedo textures
+        let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth_in_world), 1.0);
+
+        // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
+        let intrinsics = depth_cloud_info.depth_camera_intrinsics;
+        let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
+        let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
+
+        let pos_in_obj = Vec3(
+            (Vec2(texcoords) - offset) * world_space_depth / focal_length,
+            world_space_depth,
+        );
+
+        let pos_in_world = depth_cloud_info.world_from_obj * Vec4(pos_in_obj, 1.0);
+
+        data.pos_in_world = pos_in_world.xyz;
+        data.unresolved_radius = depth_cloud_info.point_radius_from_world_depth * world_space_depth;
+        data.color = color;
+    } else {
+        // Degenerate case
+        data.pos_in_world = Vec3(0.0);
         data.unresolved_radius = 0.0;
         data.color = Vec4(0.0);
-        return data;
     }
-
-    // TODO(cmc): albedo textures
-    let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth_in_world), 1.0);
-
-    // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
-    let intrinsics = depth_cloud_info.depth_camera_intrinsics;
-    let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);
-    let offset = Vec2(intrinsics[2][0], intrinsics[2][1]);
-
-    let pos_in_obj = Vec3(
-        (Vec2(texcoords) - offset) * world_space_depth / focal_length,
-        world_space_depth,
-    );
-
-    let pos_in_world = depth_cloud_info.world_from_obj * Vec4(pos_in_obj, 1.0);
-
-    var data: PointData;
-    data.pos_in_world = pos_in_world.xyz;
-    data.unresolved_radius = depth_cloud_info.point_radius_from_world_depth * world_space_depth;
-    data.color = color;
     return data;
 }
 
@@ -116,17 +114,17 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
 
-    if (point_data.unresolved_radius <= 0.0) {
-        // Degenerate case - early-out!
-        out.pos_in_clip = Vec4(0.0);
-        out.pos_in_world = Vec3(0.0);
-        out.point_radius = 0.0;
-    } else {
+    if (0.0 < point_data.unresolved_radius) {
         // Span quad
         let quad = sphere_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius, depth_cloud_info.radius_boost_in_ui_points);
         out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
         out.pos_in_world = quad.pos_in_world;
         out.point_radius = quad.point_resolved_radius;
+    } else {
+        // Degenerate case - early-out!
+        out.pos_in_clip = Vec4(0.0);
+        out.pos_in_world = Vec3(0.0);
+        out.point_radius = 0.0;
     }
 
     return out;
