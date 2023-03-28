@@ -33,6 +33,9 @@ pub struct PickingLayerObjectId(pub u64);
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
 pub struct PickingLayerInstanceId(pub u64);
 
+/// Combination of `PickingLayerObjectId` and `PickingLayerInstanceId`.
+///
+/// This is the same memory order as it is found in the GPU picking layer texture.
 #[repr(C, align(16))]
 #[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
 pub struct PickingLayerId {

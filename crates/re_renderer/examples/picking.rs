@@ -2,8 +2,8 @@ use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId, PointCloudBuilder,
-    RenderContext, ScheduledPickingRect, Size,
+    Color32, PickingLayerId, PickingLayerInstanceId, PointCloudBuilder, RenderContext,
+    ScheduledPickingRect, Size,
 };
 
 mod framework;
@@ -31,7 +31,7 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
 
 impl Picking {
     #[allow(clippy::unused_self)]
-    fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext, time: f32) {
+    fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext, _time: f32) {
         re_ctx
             .gpu_readback_belt
             .lock()
