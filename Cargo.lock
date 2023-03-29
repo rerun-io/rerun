@@ -4027,10 +4027,8 @@ name = "re_sdk"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "arrow2",
  "arrow2_convert",
  "document-features",
- "lazy_static",
  "ndarray",
  "ndarray-rand",
  "nohash-hasher",
