@@ -6,12 +6,12 @@ use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use itertools::izip;
 use pyo3::{
-    exceptions::{PyRuntimeError, PyTypeError},
+    exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::PyDict,
 };
 
-use re_log_types::DataRow;
+use re_log_types::{DataRow, DataTableError};
 use rerun::{
     log::{LogMsg, MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
@@ -472,10 +472,9 @@ fn log_transform(
         [transform].as_slice(),
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-    let msg = msg_bundle.try_into().unwrap();
+    let msg = (&row.into_table())
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -557,10 +556,9 @@ fn log_view_coordinates(
         [coordinates].as_slice(),
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-    let msg = msg_bundle.try_into().unwrap();
+    let msg = (&row.into_table())
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -692,10 +690,9 @@ fn log_meshes(
         meshes,
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-    let msg = msg_bundle.try_into().unwrap();
+    let msg = (&row.into_table())
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -774,10 +771,9 @@ fn log_mesh_file(
         [mesh3d].as_slice(),
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-    let msg = msg_bundle.try_into().unwrap();
+    let msg = (&row.into_table())
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -867,10 +863,9 @@ fn log_image_file(
         [tensor].as_slice(),
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-    let msg = msg_bundle.try_into().unwrap();
+    let msg = (&row.into_table())
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send(LogMsg::ArrowMsg(msg));
 
@@ -947,10 +942,9 @@ fn log_annotation_context(
         [annotation_context].as_slice(),
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-    let msg = msg_bundle.try_into().unwrap();
+    let msg = (&row.into_table())
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send(LogMsg::ArrowMsg(msg));
 

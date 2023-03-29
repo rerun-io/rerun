@@ -53,7 +53,7 @@ pub mod sink {
 
 /// Things directly related to logging.
 pub mod log {
-    pub use re_log_types::{msg_bundle::MsgBundle, DataCell, LogMsg, MsgId, PathOp};
+    pub use re_log_types::{DataCell, DataRow, DataTable, LogMsg, MsgId, PathOp};
 }
 
 /// Time-related types.

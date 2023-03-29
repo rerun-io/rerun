@@ -3926,6 +3926,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_test",
+ "smallvec",
  "thiserror",
  "time 0.3.20",
  "typenum",

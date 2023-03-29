@@ -3,10 +3,10 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
 use re_log_types::{
     component_types::InstanceKey,
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::MsgBundle,
-    ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
-    EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
-    TimePoint, Timeline,
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, ArrowMsg,
+    BeginRecordingMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
+    EntityPathHash, EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint,
+    Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -76,9 +76,8 @@ impl EntityDb {
             .or_insert_with(|| entity_path.clone());
     }
 
-    fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
-        let table = DataTable::from_msg_bundle(msg_bundle);
+    fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
+        let table: DataTable = msg.try_into()?;
 
         // TODO(#1619): batch all of this
         for row in table.as_rows() {
@@ -95,7 +94,7 @@ impl EntityDb {
 
         self.register_entity_path(&row.entity_path);
 
-        for cell in row.cells() {
+        for cell in row.cells().iter() {
             let component_path =
                 ComponentPath::new(row.entity_path().clone(), cell.component_name());
             if cell.component_name() == MsgId::name() {
@@ -233,6 +232,7 @@ impl LogDb {
 
     pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
         crate::profile_function!();
+
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::EntityPathOpMsg(msg) => {
@@ -243,13 +243,16 @@ impl LogDb {
                 } = msg;
                 self.entity_db.add_path_op(*msg_id, time_point, path_op);
             }
-            LogMsg::ArrowMsg(msg) => {
-                self.entity_db.try_add_arrow_data_msg(msg)?;
-            }
+            LogMsg::ArrowMsg(inner) => self.entity_db.try_add_arrow_msg(inner)?,
             LogMsg::Goodbye(_) => {}
         }
+
+        // TODO(#1619): the following only makes sense because, while we support sending and
+        // receiving batches, we don't actually do so yet.
+        // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
+
         Ok(())
     }
 
