@@ -7,6 +7,8 @@
 //! higher level resources that arise from processing user provided data.
 
 mod bind_group_layout_pool;
+use std::borrow::Cow;
+
 pub use bind_group_layout_pool::{
     BindGroupLayoutDesc, GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool,
 };
@@ -143,9 +145,9 @@ impl TextureRowDataInfo {
     }
 
     /// Removes the padding from a buffer containing gpu texture data.
-    pub fn remove_padding(&self, buffer: &[u8]) -> Vec<u8> {
+    pub fn remove_padding<'a>(&self, buffer: &'a [u8]) -> Cow<'a, [u8]> {
         if self.bytes_per_row_padded == self.bytes_per_row_unpadded {
-            return buffer.to_vec();
+            return Cow::Borrowed(buffer);
         }
 
         let height = (buffer.len() as u32) / self.bytes_per_row_padded;
@@ -159,6 +161,6 @@ impl TextureRowDataInfo {
             );
         }
 
-        unpadded_buffer
+        unpadded_buffer.into()
     }
 }
