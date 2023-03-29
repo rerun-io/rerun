@@ -14,6 +14,17 @@ use super::{
 
 slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
+/// Create a shader module using the [`include_file!`] macro and set the path name as debug string.
+#[macro_export]
+macro_rules! include_shader_module {
+    ($path:expr $(,)?) => {{
+        $crate::wgpu_resources::ShaderModuleDesc {
+            label: $crate::DebugLabel::from(stringify!($path)),
+            source: $crate::include_file!($path),
+        }
+    }};
+}
+
 #[derive(Clone, Eq, Debug)]
 pub struct ShaderModuleDesc {
     /// Debug label of the shader.

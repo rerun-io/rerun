@@ -2,11 +2,9 @@ use smallvec::smallvec;
 
 use crate::{
     context::SharedRendererData,
-    include_file,
+    include_shader_module,
     view_builder::ViewBuilder,
-    wgpu_resources::{
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
-    },
+    wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
 };
 
 use super::*;
@@ -60,19 +58,13 @@ impl Renderer for TestTriangle {
                 vertex_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
-                    &ShaderModuleDesc {
-                        label: "test_triangle (vertex)".into(),
-                        source: include_file!("../../shader/test_triangle.wgsl"),
-                    },
+                    &include_shader_module!("../../shader/test_triangle.wgsl"),
                 ),
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
-                    &ShaderModuleDesc {
-                        label: "test_triangle (fragment)".into(),
-                        source: include_file!("../../shader/test_triangle.wgsl"),
-                    },
+                    &include_shader_module!("../../shader/test_triangle.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
                 render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],

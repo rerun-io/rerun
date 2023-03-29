@@ -3,12 +3,11 @@ use smallvec::smallvec;
 use crate::{
     context::SharedRendererData,
     draw_phases::DrawPhase,
-    include_file,
+    include_shader_module,
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
-        WgpuResourcePools,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, WgpuResourcePools,
     },
 };
 
@@ -73,10 +72,7 @@ impl Renderer for GenericSkybox {
                 fragment_handle: pools.shader_modules.get_or_create(
                     device,
                     resolver,
-                    &ShaderModuleDesc {
-                        label: "generic_skybox (fragment)".into(),
-                        source: include_file!("../../shader/generic_skybox.wgsl"),
-                    },
+                    &include_shader_module!("../../shader/generic_skybox.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
                 render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],

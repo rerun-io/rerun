@@ -16,13 +16,12 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_file,
+    include_shader_module,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc,
-        ShaderModuleDesc,
     },
     OutlineMaskPreference, Rgba,
 };
@@ -276,10 +275,7 @@ impl Renderer for RectangleRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "rectangle".into(),
-                source: include_file!("../../shader/rectangle.wgsl"),
-            },
+            &include_shader_module!("../../shader/rectangle.wgsl"),
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {

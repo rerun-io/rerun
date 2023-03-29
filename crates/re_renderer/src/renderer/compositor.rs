@@ -1,13 +1,13 @@
 use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::SharedRendererData,
-    include_file,
+    include_shader_module,
     renderer::{screen_triangle_vertex_shader, DrawData, Renderer},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-        ShaderModuleDesc, WgpuResourcePools,
+        WgpuResourcePools,
     },
     OutlineConfig, Rgba,
 };
@@ -172,10 +172,7 @@ impl Renderer for Compositor {
             fragment_handle: pools.shader_modules.get_or_create(
                 device,
                 resolver,
-                &ShaderModuleDesc {
-                    label: "tonemap (fragment)".into(),
-                    source: include_file!("../../shader/composite.wgsl"),
-                },
+                &include_shader_module!("../../shader/composite.wgsl"),
             ),
             vertex_buffers: smallvec![],
             render_targets: smallvec![Some(shared_data.config.output_format_color.into())],

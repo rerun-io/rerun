@@ -10,13 +10,13 @@ use smallvec::smallvec;
 
 use crate::{
     draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_file,
+    include_shader_module,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
     resource_managers::{GpuMeshHandle, ResourceHandle},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
     },
     Color32, OutlineMaskPreference,
 };
@@ -328,10 +328,7 @@ impl Renderer for MeshRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "MeshRenderer".into(),
-                source: include_file!("../../shader/instanced_mesh.wgsl"),
-            },
+            &include_shader_module!("../../shader/instanced_mesh.wgsl"),
         );
 
         let primitive = wgpu::PrimitiveState {

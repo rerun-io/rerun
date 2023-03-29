@@ -18,7 +18,7 @@ use std::{num::NonZeroU64, ops::Range};
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
-    DebugLabel, OutlineMaskPreference, PointCloudBuilder,
+    include_shader_module, DebugLabel, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable as _;
@@ -27,12 +27,10 @@ use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
-    include_file,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
-        TextureDesc,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
     },
     Size,
 };
@@ -624,10 +622,7 @@ impl Renderer for PointCloudRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "point cloud".into(),
-                source: include_file!("../../shader/point_cloud.wgsl"),
-            },
+            &include_shader_module!("../../shader/point_cloud.wgsl"),
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {

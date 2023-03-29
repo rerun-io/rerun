@@ -117,13 +117,12 @@ use smallvec::smallvec;
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_file,
+    include_shader_module,
     size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        ShaderModuleDesc, TextureDesc,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc, TextureDesc,
     },
     Color32, DebugLabel, OutlineMaskPreference,
 };
@@ -768,10 +767,7 @@ impl Renderer for LineRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "LineRenderer".into(),
-                source: include_file!("../../shader/lines.wgsl"),
-            },
+            &include_shader_module!("../../shader/lines.wgsl"),
         );
 
         let render_pipeline_color = pools.render_pipelines.get_or_create(

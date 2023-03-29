@@ -16,13 +16,13 @@ use smallvec::smallvec;
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_file,
+    include_shader_module,
     resource_managers::ResourceManagerError,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-        ShaderModuleDesc, TextureDesc, TextureRowDataInfo,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
+        TextureRowDataInfo,
     },
     ColorMap, OutlineMaskPreference,
 };
@@ -450,10 +450,7 @@ impl Renderer for DepthCloudRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "depth_cloud".into(),
-                source: include_file!("../../shader/depth_cloud.wgsl"),
-            },
+            &include_shader_module!("../../shader/depth_cloud.wgsl"),
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {

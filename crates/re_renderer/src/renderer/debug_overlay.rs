@@ -2,11 +2,11 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     context::SharedRendererData,
     draw_phases::DrawPhase,
-    include_file,
+    include_shader_module,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-        ShaderModuleDesc, WgpuResourcePools,
+        WgpuResourcePools,
     },
     IntRect,
 };
@@ -185,10 +185,7 @@ impl Renderer for DebugOverlayRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "DebugOverlay".into(),
-                source: include_file!("../../shader/debug_overlay.wgsl"),
-            },
+            &include_shader_module!("../../shader/debug_overlay.wgsl"),
         );
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
