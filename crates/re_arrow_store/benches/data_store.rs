@@ -177,7 +177,7 @@ fn latest_at_missing(c: &mut Criterion) {
                     assert!(results[0].is_none());
                 });
             });
-            group.bench_function("secondaries/bucketsz={num_rows_per_bucket}", |b| {
+            group.bench_function(format!("secondaries/bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
                     let results = latest_data_at(
                         &store,
