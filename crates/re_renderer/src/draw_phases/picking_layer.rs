@@ -16,6 +16,9 @@ use crate::{
     DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, RenderContext,
 };
 
+/// Previously scheduled picking rect, waiting for readback from GPU to finish.
+///
+/// Contains information in order to identify & interpret the readback data.
 #[derive(Clone)]
 pub struct ScheduledPickingRect {
     pub identifier: GpuReadbackBufferIdentifier,

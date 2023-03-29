@@ -672,6 +672,8 @@ impl ViewBuilder {
     /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
     /// Returns screenshot data properties for convenience.
     ///
+    /// Can only be called once per frame per [`ViewBuilder`].
+    ///
     /// Data from the screenshot needs to be retrieved from the [`crate::GpuReadbackBelt`] on [`RenderContext`].
     /// For this the user needs to store the returned scheduled screenshot like so:
     /// ```no_run
@@ -717,8 +719,11 @@ impl ViewBuilder {
 
     /// Schedules the readback of a rectangle from the picking layer.
     ///
+    /// Can only be called once per frame per [`ViewBuilder`].
+    ///
     /// The result will still be valid if the rectangle is partially or fully outside of bounds.
-    /// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger.
+    /// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger,
+    /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
     ///
     /// Note that the picking layer will not be created in the first place if this isn't called.
     pub fn schedule_picking_readback(

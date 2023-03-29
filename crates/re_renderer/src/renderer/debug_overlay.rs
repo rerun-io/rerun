@@ -46,6 +46,12 @@ pub struct DebugOverlayRenderer {
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
+/// Debug overlay for quick & dirty display of texture contents.
+///
+/// Executed as part of the composition draw phase in order to allow "direct" output to the screen.
+///
+/// Do *not* use this in production!
+/// See also `debug_overlay.wgsl` - you are encouraged to edit this shader for your concrete debugging needs!
 #[derive(Clone)]
 pub struct DebugOverlayDrawData {
     bind_group: GpuBindGroup,
