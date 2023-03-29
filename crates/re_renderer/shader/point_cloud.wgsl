@@ -131,7 +131,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
     let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
-    if coverage == 0.0 {
+    if coverage <= 0.5 {
         discard;
     }
     return UVec4(batch.picking_layer_object_id, in.picking_instance_id);

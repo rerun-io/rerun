@@ -12,6 +12,14 @@ pub struct IntRect {
 
 impl IntRect {
     #[inline]
+    pub fn from_middle_and_extent(middle: glam::IVec2, size: glam::UVec2) -> Self {
+        Self {
+            top_left_corner: middle - size.as_ivec2() / 2,
+            extent: size,
+        }
+    }
+
+    #[inline]
     pub fn width(&self) -> u32 {
         self.extent.x
     }

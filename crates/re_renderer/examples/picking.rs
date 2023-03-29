@@ -145,15 +145,17 @@ impl framework::Example for Picking {
             )
             .unwrap();
 
-        let picking_rect_size = 32;
+        // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
+        // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
+        let picking_rect_size = 31;
+
         let picking_rect = view_builder
             .schedule_picking_readback(
                 re_ctx,
-                IntRect {
-                    top_left_corner: self.picking_position.as_ivec2()
-                        - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
-                    extent: glam::ivec2(picking_rect_size, picking_rect_size).as_uvec2(),
-                },
+                IntRect::from_middle_and_extent(
+                    self.picking_position.as_ivec2(),
+                    glam::uvec2(picking_rect_size, picking_rect_size),
+                ),
                 false,
             )
             .unwrap();
