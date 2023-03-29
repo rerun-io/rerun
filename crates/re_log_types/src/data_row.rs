@@ -1,10 +1,8 @@
 use ahash::HashSetExt;
-use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+use smallvec::SmallVec;
 
-use crate::{
-    Component, ComponentName, DataCell, DataCellError, DataTable, EntityPath, MsgId, TimePoint,
-};
+use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, MsgId, TimePoint};
 
 // ---
 
@@ -31,10 +29,10 @@ pub enum DataRowError {
         component: ComponentName,
     },
 
-    #[error("Error with one or more the underlying data cells")]
+    #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] DataCellError),
 
-    #[error("Could not serialize/deserialize data to/from Arrow")]
+    #[error("Could not serialize/deserialize data to/from Arrow: {0}")]
     Arrow(#[from] arrow2::error::Error),
 
     // Needed to handle TryFrom<T> -> T
@@ -43,6 +41,49 @@ pub enum DataRowError {
 }
 
 pub type DataRowResult<T> = ::std::result::Result<T, DataRowError>;
+
+// ---
+
+type DataCellVec = SmallVec<[DataCell; 4]>;
+
+/// A row's worth of [`DataCell`]s: a collection of independent [`DataCell`]s with different
+/// underlying datatypes and pointing to different parts of the heap.
+///
+/// Each cell in the row corresponds to a different column of the same row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DataCellRow(pub DataCellVec);
+
+impl std::ops::Deref for DataCellRow {
+    type Target = [DataCell];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DataCellRow {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl std::ops::Index<usize> for DataCellRow {
+    type Output = DataCell;
+
+    #[inline]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for DataCellRow {
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
 
 // ---
 
@@ -100,7 +141,7 @@ pub type DataRowResult<T> = ::std::result::Result<T, DataRowError>;
 /// # let row_id = MsgId::ZERO;
 /// # let timepoint = [
 /// #     (Timeline::new_sequence("frame_nr"), 42.into()), //
-/// #     (Timeline::new_sequence("pouet"), 666.into()),   //
+/// #     (Timeline::new_sequence("clock"), 666.into()),   //
 /// # ];
 /// #
 /// let num_instances = 2;
@@ -139,7 +180,7 @@ pub struct DataRow {
     pub num_instances: u32,
 
     /// The actual cells (== columns, == components).
-    pub cells: Vec<DataCell>,
+    pub cells: DataCellRow,
 }
 
 impl DataRow {
@@ -155,13 +196,13 @@ impl DataRow {
         num_instances: u32,
         cells: impl IntoIterator<Item = DataCell>,
     ) -> DataRowResult<Self> {
-        let cells = cells.into_iter().collect_vec();
+        let cells = DataCellRow(cells.into_iter().collect());
 
         let entity_path = entity_path.into();
         let timepoint = timepoint.into();
 
         let mut components = IntSet::with_capacity(cells.len());
-        for cell in &cells {
+        for cell in cells.iter() {
             let component = cell.component_name();
 
             if !components.insert(component) {
@@ -195,10 +236,12 @@ impl DataRow {
 
         // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
         // we need to craft an array of `MsgId`s that matches the length of the other components.
-        // TODO(#1619): This goes away with batching & al
+        // TODO(#1619): This goes away once the store supports the new control columns
+        use crate::Component as _;
         if !components.contains(&MsgId::name()) {
-            this.cells.push(DataCell::from_native(
-                vec![row_id; this.num_instances() as _].iter(),
+            let num_instances = this.num_instances();
+            this.cells.0.push(DataCell::from_native(
+                vec![row_id; num_instances as _].iter(),
             ));
         }
 
@@ -222,9 +265,13 @@ impl DataRow {
         Self::try_from_cells(row_id, timepoint, entity_path, num_instances, cells).unwrap()
     }
 
+    /// Turns the `DataRow` into a single-row [`DataTable`] that carries the same ID.
+    ///
+    /// This only makes sense as part of our transition to batching. See #1619.
+    #[doc(hidden)]
     #[inline]
-    pub fn into_table(self, table_id: MsgId) -> DataTable {
-        DataTable::from_rows(table_id, [self])
+    pub fn into_table(self) -> DataTable {
+        DataTable::from_rows(self.row_id, [self])
     }
 }
 
@@ -260,12 +307,12 @@ impl DataRow {
     }
 
     #[inline]
-    pub fn cells(&self) -> &[DataCell] {
+    pub fn cells(&self) -> &DataCellRow {
         &self.cells
     }
 
     #[inline]
-    pub fn into_cells(self) -> Vec<DataCell> {
+    pub fn into_cells(self) -> DataCellRow {
         self.cells
     }
 
@@ -448,7 +495,10 @@ impl std::fmt::Display for DataRow {
 mod tests {
     use super::*;
 
-    use crate::component_types::{ColorRGBA, Label, Point2D};
+    use crate::{
+        component_types::{ColorRGBA, Label, Point2D},
+        Component as _,
+    };
 
     #[test]
     fn data_row_error_num_instances() {

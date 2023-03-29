@@ -8,11 +8,13 @@ use re_log_types::component_types::TensorTrait;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{
-    eye::Eye, scene::AdditionalPickingInfo, ui::create_labels, SpatialNavigationMode,
-    ViewSpatialState,
+    eye::Eye,
+    scene::AdditionalPickingInfo,
+    ui::{create_labels, screenshot_context_menu},
+    SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
-    misc::{HoveredSpace, Item, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, ScheduledGpuReadback, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -427,6 +429,8 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    let (response, screenshot_action) = screenshot_context_menu(ctx, response);
+
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
     {
@@ -445,14 +449,25 @@ fn view_2d_scrollable(
             return response;
         };
 
-        let Ok(callback) = create_scene_paint_callback(
+        let Ok((callback, screenshot)) = create_scene_paint_callback(
             ctx.render_ctx,
             target_config, painter.clip_rect(),
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
+            screenshot_action.is_some(),
         ) else {
             return response;
         };
+        if let (Some(screenshot), Some(screenshot_action)) = (screenshot, screenshot_action) {
+            ctx.scheduled_gpu_readbacks.insert(
+                screenshot.identifier,
+                ScheduledGpuReadback::SpaceViewScreenshot {
+                    space_view_id,
+                    screenshot,
+                    mode: screenshot_action,
+                },
+            );
+        }
 
         painter.add(callback);
     }

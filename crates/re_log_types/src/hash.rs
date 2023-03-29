@@ -12,6 +12,8 @@ use std::hash::BuildHasher;
 pub struct Hash64(u64);
 
 impl Hash64 {
+    pub const ZERO: Hash64 = Hash64(0);
+
     pub fn hash(value: impl std::hash::Hash + Copy) -> Self {
         Self(hash(value))
     }

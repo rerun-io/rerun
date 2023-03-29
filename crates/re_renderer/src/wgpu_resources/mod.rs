@@ -115,7 +115,7 @@ impl WgpuResourcePools {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone, Copy)]
 pub struct TextureRowDataInfo {
     /// How many bytes per row contain actual data.
     pub bytes_per_row_unpadded: u32,

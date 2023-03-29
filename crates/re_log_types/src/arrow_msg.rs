@@ -10,20 +10,23 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrowMsg {
-    /// A unique id per [`crate::LogMsg`].
-    pub msg_id: MsgId,
+    /// Unique identifier for the [`crate::DataTable`] in this message.
+    ///
+    /// NOTE(#1619): While we're in the process of transitioning towards end-to-end batching, the
+    /// `table_id` is always the same as the `row_id` as the first and only row.
+    pub table_id: MsgId,
 
-    /// Arrow schema
+    /// The maximum values for all timelines across the entire batch of data.
+    ///
+    /// Used to timestamp the batch as a whole for e.g. latency measurements without having to
+    /// deserialize the arrow payload.
+    pub timepoint_max: TimePoint,
+
+    /// Schema for all control & data columns.
     pub schema: Schema,
 
-    /// Arrow chunk
+    /// Data for all control & data columns.
     pub chunk: Chunk<Box<dyn Array>>,
-}
-
-impl ArrowMsg {
-    pub fn time_point(&self) -> Result<TimePoint, crate::msg_bundle::MsgBundleError> {
-        crate::msg_bundle::extract_timelines(&self.schema, &self.chunk)
-    }
 }
 
 #[cfg(feature = "serde")]
@@ -47,8 +50,9 @@ impl serde::Serialize for ArrowMsg {
             .finish()
             .map_err(|e| serde::ser::Error::custom(e.to_string()))?;
 
-        let mut inner = serializer.serialize_tuple(2)?;
-        inner.serialize_element(&self.msg_id)?;
+        let mut inner = serializer.serialize_tuple(3)?;
+        inner.serialize_element(&self.table_id)?;
+        inner.serialize_element(&self.timepoint_max)?;
         inner.serialize_element(&serde_bytes::ByteBuf::from(buf))?;
         inner.end()
     }
@@ -68,17 +72,20 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
             type Value = ArrowMsg;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("Tuple Data")
+                formatter.write_str("(table_id, timepoint, buf)")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let msg_id: Option<MsgId> = seq.next_element()?;
+                let table_id: Option<MsgId> = seq.next_element()?;
+                let timepoint_min: Option<TimePoint> = seq.next_element()?;
                 let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
-                if let (Some(msg_id), Some(buf)) = (msg_id, buf) {
+                if let (Some(table_id), Some(timepoint_min), Some(buf)) =
+                    (table_id, timepoint_min, buf)
+                {
                     let mut cursor = std::io::Cursor::new(buf);
                     let metadata = read_stream_metadata(&mut cursor).unwrap();
                     let mut stream = StreamReader::new(cursor, metadata, None);
@@ -93,17 +100,20 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                         .ok_or_else(|| serde::de::Error::custom("No Chunk found in stream"))?;
 
                     Ok(ArrowMsg {
-                        msg_id,
+                        table_id,
+                        timepoint_max: timepoint_min,
                         schema: stream.metadata().schema.clone(),
                         chunk,
                     })
                 } else {
-                    Err(serde::de::Error::custom("Expected msg_id and buf"))
+                    Err(serde::de::Error::custom(
+                        "Expected (table_id, timepoint, buf)",
+                    ))
                 }
             }
         }
 
-        deserializer.deserialize_tuple(2, FieldVisitor)
+        deserializer.deserialize_tuple(3, FieldVisitor)
     }
 }
 
@@ -112,75 +122,30 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 #[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
-    use serde_test::{assert_tokens, Token};
+    use super::*;
 
-    use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        DataRow,
+        DataRow, DataTable, MsgId,
     };
 
     #[test]
-    fn test_serialized_tokens() {
-        let schema = Schema::default();
-        let chunk = Chunk::new(vec![]);
-        let msg = ArrowMsg {
-            msg_id: MsgId::ZERO,
-            schema,
-            chunk,
-        };
-
-        assert_tokens(
-            &msg,
-            &[
-                Token::Tuple { len: 2 },
-                // MsgId portion
-                Token::NewtypeStruct { name: "MsgId" },
-                Token::Struct {
-                    name: "Tuid",
-                    len: 2,
-                },
-                Token::Str("time_ns"),
-                Token::U64(0),
-                Token::Str("inc"),
-                Token::U64(0),
-                Token::StructEnd,
-                // Arrow buffer portion. This is flatbuffers encoded schema+chunk.
-                Token::Bytes(&[
-                    255, 255, 255, 255, 48, 0, 0, 0, 4, 0, 0, 0, 242, 255, 255, 255, 20, 0, 0, 0,
-                    4, 0, 1, 0, 0, 0, 10, 0, 11, 0, 8, 0, 10, 0, 4, 0, 248, 255, 255, 255, 12, 0,
-                    0, 0, 8, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 255, 255, 255, 255, 72, 0, 0, 0, 8,
-                    0, 0, 0, 0, 0, 0, 0, 242, 255, 255, 255, 20, 0, 0, 0, 4, 0, 3, 0, 0, 0, 10, 0,
-                    11, 0, 8, 0, 10, 0, 4, 0, 242, 255, 255, 255, 28, 0, 0, 0, 16, 0, 0, 0, 0, 0,
-                    10, 0, 12, 0, 0, 0, 4, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    255, 255, 255, 255, 0, 0, 0, 0,
-                ]),
-                Token::TupleEnd,
-            ],
-        );
-    }
-
-    #[test]
-    fn test_roundtrip_payload() {
+    fn arrow_msg_roundtrip() {
         let row = DataRow::from_cells2(
-            MsgId::ZERO,
+            MsgId::random(),
             "world/rects",
             [build_frame_nr(0.into())],
             1,
             (build_some_point2d(1), build_some_rects(1)),
         );
 
-        let msg_bundle = row
-            .into_table(MsgId::ZERO /* not used (yet) */)
-            .into_msg_bundle();
-
-        // TODO(#1619): test the full roundtrip:
-        // cell -> row -> table_in -> msg_in -> msg_out -> table_out
-        //     => msg_in == msg_out
-        //     => table_in == table_out
-        let msg_in: ArrowMsg = msg_bundle.try_into().unwrap();
+        let table_in = row.into_table();
+        let msg_in: ArrowMsg = (&table_in).try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
+        let table_out: DataTable = (&msg_out).try_into().unwrap();
+
         assert_eq!(msg_in, msg_out);
+        assert_eq!(table_in, table_out);
     }
 }

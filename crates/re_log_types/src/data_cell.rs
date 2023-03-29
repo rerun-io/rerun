@@ -89,7 +89,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # assert_eq!(points, cell.as_native().collect_vec().as_slice());
 /// ```
 ///
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DataCell {
     /// Name of the component type used in this cell.
     //

@@ -1,5 +1,5 @@
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, EntityPathOpMsg, LogMsg, RecordingInfo,
+    ArrowMsg, BeginRecordingMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo,
 };
 
 use crate::{misc::ViewerContext, ui::UiVerbosity};
@@ -101,33 +101,32 @@ impl DataUi for ArrowMsg {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        match self.try_into() {
-            Ok(MsgBundle {
-                msg_id: _,
-                entity_path,
-                time_point,
-                cells: components,
-            }) => {
-                egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-                    ui.monospace("entity_path:");
-                    ctx.entity_path_button(ui, None, &entity_path);
-                    ui.end_row();
-
-                    ui.monospace("time_point:");
-                    time_point.data_ui(ctx, ui, verbosity, query);
-                    ui.end_row();
-
-                    ui.monospace("components:");
-                    components.as_slice().data_ui(ctx, ui, verbosity, query);
-                    ui.end_row();
-                });
-            }
+        let table: DataTable = match self.try_into() {
+            Ok(table) => table,
             Err(err) => {
                 ui.label(
                     ctx.re_ui
                         .error_text(format!("Error parsing ArrowMsg: {err}")),
                 );
+                return;
             }
+        };
+
+        // TODO(cmc): Come up with something a bit nicer once data tables become a common sight.
+        for row in table.as_rows() {
+            egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+                ui.monospace("entity_path:");
+                ctx.entity_path_button(ui, None, row.entity_path());
+                ui.end_row();
+
+                ui.monospace("time_point:");
+                row.timepoint().data_ui(ctx, ui, verbosity, query);
+                ui.end_row();
+
+                ui.monospace("components:");
+                row.cells().data_ui(ctx, ui, verbosity, query);
+                ui.end_row();
+            });
         }
     }
 }

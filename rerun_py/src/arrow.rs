@@ -10,8 +10,7 @@ use pyo3::{
     PyAny, PyResult,
 };
 use re_log_types::{
-    component_types, msg_bundle::MsgBundleError, DataCell, DataRow, EntityPath, LogMsg, MsgId,
-    TimePoint,
+    component_types, DataCell, DataRow, DataTableError, EntityPath, LogMsg, MsgId, TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
@@ -113,13 +112,9 @@ pub fn build_chunk_from_components(
         cells,
     );
 
-    let msg_bundle = row
-        .into_table(MsgId::ZERO /* not used (yet) */)
-        .into_msg_bundle();
-
-    let msg = msg_bundle
+    let msg = (&row.into_table())
         .try_into()
-        .map_err(|e: MsgBundleError| PyValueError::new_err(e.to_string()))?;
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     Ok(LogMsg::ArrowMsg(msg))
 }

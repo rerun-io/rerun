@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
 use crate::{
-    hash::Hash128, parse_entity_path, path::entity_path_impl::EntityPathImpl, EntityPathPart,
+    hash::Hash64, parse_entity_path, path::entity_path_impl::EntityPathImpl, EntityPathPart,
 };
 
 // ----------------------------------------------------------------------------
 
-/// A 128 bit hash of [`EntityPath`] with negligible risk of collision.
+/// A 64 bit hash of [`EntityPath`] with very small risk of collision.
 #[derive(Copy, Clone, Eq)]
-pub struct EntityPathHash(Hash128);
+pub struct EntityPathHash(Hash64);
 
 impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
-    pub const NONE: EntityPathHash = EntityPathHash(Hash128::ZERO);
+    pub const NONE: EntityPathHash = EntityPathHash(Hash64::ZERO);
 
     #[inline]
     pub fn hash64(&self) -> u64 {
@@ -33,7 +33,7 @@ impl EntityPathHash {
 impl std::hash::Hash for EntityPathHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.hash64());
+        self.0.hash(state);
     }
 }
 
@@ -48,11 +48,7 @@ impl nohash_hasher::IsEnabled for EntityPathHash {}
 
 impl std::fmt::Debug for EntityPathHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "EntityPathHash({:016X}{:016X})",
-            self.0.first64(),
-            self.0.second64()
-        ))
+        write!(f, "EntityPathHash({:016X})", self.hash64())
     }
 }
 
@@ -63,6 +59,16 @@ impl std::fmt::Debug for EntityPathHash {
 /// Cheap to clone.
 ///
 /// Implements [`nohash_hasher::IsEnabled`].
+///
+/// ```
+/// # use re_log_types::EntityPath;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     EntityPath::data_type(),
+///     DataType::Extension("rerun.entity_path".into(), Box::new(DataType::Utf8), None),
+/// );
+/// ```
 #[derive(Clone, Eq)]
 pub struct EntityPath {
     /// precomputed hash
@@ -154,7 +160,7 @@ impl From<EntityPathImpl> for EntityPath {
     #[inline]
     fn from(path: EntityPathImpl) -> Self {
         Self {
-            hash: EntityPathHash(Hash128::hash(&path)),
+            hash: EntityPathHash(Hash64::hash(&path)),
             path: Arc::new(path),
         }
     }
@@ -193,6 +199,60 @@ impl From<EntityPath> for String {
     #[inline]
     fn from(path: EntityPath) -> Self {
         path.to_string()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+use arrow2::{
+    array::{MutableUtf8ValuesArray, TryPush, Utf8Array},
+    datatypes::DataType,
+    offset::Offsets,
+};
+use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
+
+arrow2_convert::arrow_enable_vec_for_type!(EntityPath);
+
+impl ArrowField for EntityPath {
+    type Type = Self;
+
+    #[inline]
+    fn data_type() -> DataType {
+        DataType::Extension(
+            "rerun.entity_path".to_owned(),
+            Box::new(DataType::Utf8),
+            None,
+        )
+    }
+}
+
+impl ArrowSerialize for EntityPath {
+    type MutableArrayType = MutableUtf8ValuesArray<i32>;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        MutableUtf8ValuesArray::<i32>::try_new(
+            <Self as ArrowField>::data_type(),
+            Offsets::new(),
+            Vec::<u8>::new(),
+        )
+        .unwrap() // literally cannot fail
+    }
+
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
+        array.try_push(v.to_string())
+    }
+}
+
+impl ArrowDeserialize for EntityPath {
+    type ArrayType = Utf8Array<i32>;
+
+    #[inline]
+    fn arrow_deserialize(v: Option<&str>) -> Option<Self> {
+        v.map(Into::into)
     }
 }
 

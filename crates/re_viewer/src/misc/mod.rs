@@ -35,6 +35,9 @@ pub use {
     },
 };
 
+mod gpu_readbacks;
+pub use gpu_readbacks::{ScheduledGpuReadback, ScreenshotMode};
+
 // ----------------------------------------------------------------------------
 
 pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {

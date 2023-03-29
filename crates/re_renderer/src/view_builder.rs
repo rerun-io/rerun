@@ -185,6 +185,7 @@ impl Default for TargetConfiguration {
     }
 }
 
+#[derive(Clone)]
 pub struct ScheduledScreenshot {
     pub identifier: GpuReadbackBufferIdentifier,
     pub extent: glam::UVec2,
