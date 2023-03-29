@@ -116,25 +116,25 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 ///
 /// Consider this example:
 /// ```ignore
-/// let row1 = {
+/// let row0 = {
 ///     let num_instances = 2;
 ///     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
 ///     DataRow::from_cells3(MsgId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))
 /// };
-/// let row2 = {
+/// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[ColorRGBA] = &[];
 ///     DataRow::from_cells1(MsgId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
-/// let row3 = {
+/// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
 ///     DataRow::from_cells2(MsgId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))
 /// };
-/// let table = DataTable::from_rows(table_id, [row1, row2, row3]);
+/// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
 ///
 /// A table has no arrow representation nor datatype of its own, as it is merely a collection of
@@ -170,7 +170,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 /// #     ])
 /// # };
 /// #
-/// let row1 = {
+/// let row0 = {
 ///     let num_instances = 2;
 ///     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
@@ -185,14 +185,14 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 ///     )
 /// };
 ///
-/// let row2 = {
+/// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[ColorRGBA] = &[];
 ///
 ///     DataRow::from_cells1(MsgId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
 ///
-/// let row3 = {
+/// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
@@ -206,7 +206,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 ///     )
 /// };
 ///
-/// let table_in = DataTable::from_rows(table_id, [row1, row2, row3]);
+/// let table_in = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// eprintln!("Table in:\n{table_in}");
 ///
 /// let (schema, columns) = table_in.serialize().unwrap();
