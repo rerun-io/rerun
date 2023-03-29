@@ -61,7 +61,7 @@ impl GlobalBindings {
             layout: pools.bind_group_layouts.get_or_create(
                 device,
                 &BindGroupLayoutDesc {
-                    label: "global bind group layout".into(),
+                    label: "GlobalBindings::layout".into(),
 
                     // Needs to be kept in sync with `global_bindings.wgsl` / `create_bind_group`
                     entries: vec![
@@ -99,7 +99,7 @@ impl GlobalBindings {
             nearest_neighbor_sampler: pools.samplers.get_or_create(
                 device,
                 &SamplerDesc {
-                    label: "nearest".into(),
+                    label: "GlobalBindings::nearest_neighbor_sampler".into(),
                     address_mode_u: wgpu::AddressMode::Repeat,
                     address_mode_v: wgpu::AddressMode::Repeat,
                     address_mode_w: wgpu::AddressMode::Repeat,
@@ -109,7 +109,7 @@ impl GlobalBindings {
             trilinear_sampler: pools.samplers.get_or_create(
                 device,
                 &SamplerDesc {
-                    label: "linear".into(),
+                    label: "GlobalBindings::trilinear_sampler".into(),
                     mag_filter: wgpu::FilterMode::Linear,
                     min_filter: wgpu::FilterMode::Linear,
                     mipmap_filter: wgpu::FilterMode::Linear,
@@ -134,7 +134,7 @@ impl GlobalBindings {
             pools,
             // Needs to be kept in sync with `global_bindings.wgsl` / `self.layout`
             &BindGroupDesc {
-                label: "global bind group".into(),
+                label: "GlobalBindings::create_bind_group".into(),
                 entries: smallvec![
                     frame_uniform_buffer_binding,
                     BindGroupEntry::Sampler(self.nearest_neighbor_sampler),

@@ -16,13 +16,12 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_file,
+    include_shader_module,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc,
-        ShaderModuleDesc,
     },
     OutlineMaskPreference, Rgba,
 };
@@ -190,7 +189,7 @@ impl RectangleDrawData {
                     &ctx.device,
                     &ctx.gpu_resources,
                     &BindGroupDesc {
-                        label: "rectangle".into(),
+                        label: "RectangleInstance::bind_group".into(),
                         entries: smallvec![
                             uniform_buffer,
                             BindGroupEntry::DefaultTextureView(texture.handle),
@@ -227,7 +226,7 @@ impl Renderer for RectangleRenderer {
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "rectangles".into(),
+                label: "RectangleRenderer::bind_group_layout".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -267,7 +266,7 @@ impl Renderer for RectangleRenderer {
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
-                label: "rectangle".into(),
+                label: "RectangleRenderer::pipeline_layout".into(),
                 entries: vec![shared_data.global_bindings.layout, bind_group_layout],
             },
             &pools.bind_group_layouts,
@@ -276,10 +275,7 @@ impl Renderer for RectangleRenderer {
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &ShaderModuleDesc {
-                label: "rectangle".into(),
-                source: include_file!("../../shader/rectangle.wgsl"),
-            },
+            &include_shader_module!("../../shader/rectangle.wgsl"),
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {

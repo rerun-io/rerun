@@ -546,7 +546,7 @@ impl ViewBuilder {
             crate::profile_scope!("main target pass");
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: setup.name.clone().push_str(" - main pass").get(),
+                label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
                     resolve_target: Some(&setup.main_target_resolved.default_view),
@@ -617,7 +617,7 @@ impl ViewBuilder {
             let screenshot_texture = ctx.gpu_resources.textures.alloc(
                 &ctx.device,
                 &TextureDesc {
-                    label: setup.name.clone().push_str(" - screenshot target"),
+                    label: format!("{} - screenshot target", setup.name).into(),
                     size: wgpu::Extent3d {
                         width: setup.resolution_in_pixel[0],
                         height: setup.resolution_in_pixel[1],
@@ -633,7 +633,7 @@ impl ViewBuilder {
 
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: setup.name.clone().push_str(" - screenshot").get(),
+                    label: DebugLabel::from(format!("{} - screenshot", setup.name)).get(),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &screenshot_texture.default_view,
                         resolve_target: None,

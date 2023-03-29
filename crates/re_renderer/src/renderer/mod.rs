@@ -34,6 +34,7 @@ pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayRenderer};
 use crate::{
     context::{RenderContext, SharedRendererData},
     draw_phases::DrawPhase,
+    include_shader_module,
     wgpu_resources::WgpuResourcePools,
     FileResolver, FileSystem,
 };
@@ -87,9 +88,6 @@ pub fn screen_triangle_vertex_shader<Fs: FileSystem>(
     pools.shader_modules.get_or_create(
         device,
         resolver,
-        &crate::wgpu_resources::ShaderModuleDesc {
-            label: "screen_triangle (vertex)".into(),
-            source: crate::include_file!("../../shader/screen_triangle.wgsl"),
-        },
+        &include_shader_module!("../../shader/screen_triangle.wgsl"),
     )
 }

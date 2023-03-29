@@ -346,7 +346,7 @@ impl CpuWriteGpuReadBelt {
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {
-                        label: "CpuWriteGpuReadBelt buffer".into(),
+                        label: "CpuWriteGpuReadBelt chunk buffer".into(),
                         size: buffer_size,
                         usage: wgpu::BufferUsages::MAP_WRITE | wgpu::BufferUsages::COPY_SRC,
                         mapped_at_creation: true,
