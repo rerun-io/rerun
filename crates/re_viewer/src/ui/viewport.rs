@@ -563,22 +563,15 @@ impl Viewport {
                 return;
             };
 
-        // Need to do a memcpy to remove the padding.
-        // TODO(andreas): This should be a utility in the render crate.
-        let row_info = screenshot.row_info;
-        let mut buffer =
-            Vec::with_capacity((row_info.bytes_per_row_unpadded * screenshot.height) as usize);
-        for row in 0..screenshot.height {
-            let offset = (row_info.bytes_per_row_padded * row) as usize;
-            buffer.extend_from_slice(
-                &data[offset..(offset + row_info.bytes_per_row_unpadded as usize)],
-            );
-        }
+        let mut buffer = screenshot.row_info.remove_padding(data);
 
         // Set to clipboard.
         #[cfg(not(target_arch = "wasm32"))]
         crate::misc::Clipboard::with(|clipboard| {
-            clipboard.set_image([screenshot.width as _, screenshot.height as _], &buffer);
+            clipboard.set_image(
+                [screenshot.extent.x as _, screenshot.extent.y as _],
+                &buffer,
+            );
         });
         if mode == ScreenshotMode::CopyToClipboard {
             return;
