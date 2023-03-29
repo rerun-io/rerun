@@ -2,7 +2,14 @@ use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, TextureRowDataInfo};
 
-pub type GpuReadbackBufferIdentifier = u32;
+pub type GpuReadbackIdentifier = u64;
+pub type GpuReadbackUserData = Box<dyn std::any::Any + 'static + Send>;
+
+struct PendingReadbackRange {
+    identifier: GpuReadbackIdentifier,
+    buffer_range: Range<wgpu::BufferAddress>,
+    user_data: GpuReadbackUserData,
+}
 
 /// A reserved slice for GPU readback.
 ///
@@ -10,9 +17,7 @@ pub type GpuReadbackBufferIdentifier = u32;
 /// The `identifier` field is used to identify the buffer upon retrieval of the data in `receive_data`.
 pub struct GpuReadbackBuffer {
     chunk_buffer: GpuBuffer,
-    byte_offset_in_chunk_buffer: wgpu::BufferAddress,
-    size_in_bytes: wgpu::BufferAddress,
-    pub identifier: GpuReadbackBufferIdentifier,
+    range_in_chunk: Range<wgpu::BufferAddress>,
 }
 
 impl GpuReadbackBuffer {
@@ -26,41 +31,72 @@ impl GpuReadbackBuffer {
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
         copy_extents: glam::UVec2,
-    ) -> GpuReadbackBufferIdentifier {
-        let bytes_per_row =
-            TextureRowDataInfo::new(source.texture.format(), copy_extents.x).bytes_per_row_padded;
+    ) {
+        self.read_multiple_texture2d(encoder, &[(source, copy_extents)])
+    }
 
-        // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
-        // We go one step further and require the size to be exactly equal - there is no point in reading back more,
-        // as this would imply sniffing on unused memory.
-        debug_assert_eq!((bytes_per_row * copy_extents.y) as u64, self.size_in_bytes);
-        encoder.copy_texture_to_buffer(
-            source,
-            wgpu::ImageCopyBuffer {
-                buffer: &self.chunk_buffer,
-                layout: wgpu::ImageDataLayout {
-                    offset: self.byte_offset_in_chunk_buffer,
-                    bytes_per_row: NonZeroU32::new(bytes_per_row),
-                    rows_per_image: None,
+    /// Reads multiple textures into the same buffer.
+    ///
+    /// This is primarily useful if you need to make sure that data from all textures is available at the same time.
+    ///
+    /// Special care has to be taken to ensure that the buffer is large enough.
+    ///
+    /// ATTENTION: Keep in mind that internal offsets need to be a multiple of the texture block size!
+    /// While readback buffer starts are guaranteed to be aligned correctly, there might need to be extra padding needed between texture copies.
+    /// This method will add the required padding between the texture copies if necessary.
+    /// Panics if the buffer is too small.
+    pub fn read_multiple_texture2d(
+        mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, glam::UVec2)],
+    ) {
+        for (source, copy_extents) in sources_and_extents {
+            let start_offset = wgpu::util::align_to(
+                self.range_in_chunk.start,
+                source.texture.format().describe().block_size as u64,
+            );
+
+            let bytes_per_row = TextureRowDataInfo::new(source.texture.format(), copy_extents.x)
+                .bytes_per_row_padded;
+            let num_bytes = bytes_per_row * copy_extents.y;
+
+            // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
+            debug_assert!(
+                (num_bytes as u64) <= self.range_in_chunk.end - start_offset,
+                "Texture data is too large to fit into the readback buffer!"
+            );
+
+            encoder.copy_texture_to_buffer(
+                source.clone(),
+                wgpu::ImageCopyBuffer {
+                    buffer: &self.chunk_buffer,
+                    layout: wgpu::ImageDataLayout {
+                        offset: start_offset,
+                        bytes_per_row: NonZeroU32::new(bytes_per_row),
+                        rows_per_image: None,
+                    },
                 },
-            },
-            wgpu::Extent3d {
-                width: copy_extents.x,
-                height: copy_extents.y,
-                depth_or_array_layers: 1,
-            },
-        );
-        self.identifier
+                wgpu::Extent3d {
+                    width: copy_extents.x,
+                    height: copy_extents.y,
+                    depth_or_array_layers: 1,
+                },
+            );
+
+            self.range_in_chunk = start_offset..self.range_in_chunk.end;
+        }
     }
 
     /// Populates the buffer with data from a buffer.
+    ///
+    /// Panics if the readback buffer is too small to fit the data.
     pub fn read_buffer(
         self,
         encoder: &mut wgpu::CommandEncoder,
         source: &GpuBuffer,
         source_offset: wgpu::BufferAddress,
-    ) -> GpuReadbackBufferIdentifier {
-        let copy_size = self.size_in_bytes;
+    ) {
+        let copy_size = self.range_in_chunk.end - self.range_in_chunk.start;
 
         // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
         debug_assert!(copy_size <= source_offset + source.size(),
@@ -71,10 +107,9 @@ impl GpuReadbackBuffer {
             source,
             source_offset,
             &self.chunk_buffer,
-            self.byte_offset_in_chunk_buffer,
+            self.range_in_chunk.start,
             copy_size,
         );
-        self.identifier
     }
 }
 
@@ -82,37 +117,43 @@ impl GpuReadbackBuffer {
 struct Chunk {
     buffer: GpuBuffer,
 
+    /// Offset from which on the buffer is unused.
+    unused_offset: wgpu::BufferAddress,
+
     /// All ranges that are currently in use, i.e. there is a GPU write to it scheduled.
-    ranges_in_use: Vec<(Range<wgpu::BufferAddress>, GpuReadbackBufferIdentifier)>,
+    ranges_in_use: Vec<PendingReadbackRange>,
 }
 
 impl Chunk {
-    fn unused_offset(&self) -> wgpu::BufferAddress {
-        self.ranges_in_use.last().map_or(0, |(range, _)| range.end)
-    }
-
     fn remaining_capacity(&self) -> wgpu::BufferAddress {
-        self.buffer.size() - self.unused_offset()
+        self.buffer.size() - self.unused_offset
     }
 
     /// Caller needs to make sure that there is enough space.
     fn allocate(
         &mut self,
         size_in_bytes: wgpu::BufferAddress,
-        identifier: GpuReadbackBufferIdentifier,
+        identifier: GpuReadbackIdentifier,
+        user_data: GpuReadbackUserData,
     ) -> GpuReadbackBuffer {
         debug_assert!(size_in_bytes <= self.remaining_capacity());
 
-        let start_offset = self.unused_offset();
-        self.ranges_in_use
-            .push((start_offset..start_offset + size_in_bytes, identifier));
+        let buffer_range = self.unused_offset..self.unused_offset + size_in_bytes;
 
-        GpuReadbackBuffer {
-            chunk_buffer: self.buffer.clone(),
-            byte_offset_in_chunk_buffer: start_offset,
-            size_in_bytes,
+        self.ranges_in_use.push(PendingReadbackRange {
             identifier,
-        }
+            buffer_range: buffer_range.clone(),
+            user_data,
+        });
+
+        let buffer = GpuReadbackBuffer {
+            chunk_buffer: self.buffer.clone(),
+            range_in_chunk: buffer_range,
+        };
+
+        self.unused_offset += size_in_bytes;
+
+        buffer
     }
 }
 
@@ -126,16 +167,17 @@ pub struct GpuReadbackBelt {
     /// Chunks which the GPU writes are scheduled, but we haven't mapped them yet.
     active_chunks: Vec<Chunk>,
 
-    /// Chunks that have been mapped by the CPU and are
+    /// Chunks that have been unmapped and are ready for writing by the GPU.
     free_chunks: Vec<Chunk>,
+
+    /// Chunks that are currently mapped and ready for reading by the CPU.
+    pending_chunks: Vec<Chunk>,
 
     /// When a chunk mapping is successful, it is moved to this sender to be read by the CPU.
     sender: mpsc::Sender<Chunk>,
 
     /// Chunks are received here are ready to be read by the CPU.
     receiver: mpsc::Receiver<Chunk>,
-
-    next_identifier: GpuReadbackBufferIdentifier,
 }
 
 impl GpuReadbackBelt {
@@ -163,9 +205,9 @@ impl GpuReadbackBelt {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),
             active_chunks: Vec::new(),
             free_chunks: Vec::new(),
+            pending_chunks: Vec::new(),
             sender,
             receiver,
-            next_identifier: 0,
         }
     }
 
@@ -175,6 +217,8 @@ impl GpuReadbackBelt {
         device: &wgpu::Device,
         buffer_pool: &GpuBufferPool,
         size_in_bytes: wgpu::BufferAddress,
+        identifier: GpuReadbackIdentifier,
+        user_data: GpuReadbackUserData,
     ) -> GpuReadbackBuffer {
         crate::profile_function!();
 
@@ -214,15 +258,14 @@ impl GpuReadbackBelt {
 
                 Chunk {
                     buffer,
+                    unused_offset: 0,
                     ranges_in_use: Vec::new(),
                 }
             }
         };
 
-        let buffer_slice = chunk.allocate(size_in_bytes, self.next_identifier);
+        let buffer_slice = chunk.allocate(size_in_bytes, identifier, user_data);
         self.active_chunks.push(chunk);
-
-        self.next_identifier += 1;
 
         buffer_slice
     }
@@ -234,54 +277,69 @@ impl GpuReadbackBelt {
         crate::profile_function!();
         for chunk in self.active_chunks.drain(..) {
             let sender = self.sender.clone();
-            chunk
-                .buffer
-                .clone()
-                .slice(..chunk.unused_offset())
-                .map_async(wgpu::MapMode::Read, move |result| {
+            chunk.buffer.clone().slice(..chunk.unused_offset).map_async(
+                wgpu::MapMode::Read,
+                move |result| {
                     if result.is_err() {
                         // This should never happen. Drop the chunk and report.
                         re_log::error_once!("Failed to map staging buffer for reading");
                     } else {
                         let _ = sender.send(chunk);
                     }
-                });
+                },
+            );
         }
     }
 
-    /// Receive all buffers that have been written by the GPU and are ready to be read by the CPU.
+    /// Try to receive a pending data readback with the given identifier.
+    ///
+    /// If several pieces of data have the same identifier, only the callback is invoked only on the oldest received.
+    /// (which is typically the oldest scheduled as well, but there is not strict guarantee for this)
     ///
     /// ATTENTION: Do NOT assume any alignment on the slice passed to `on_data_received`.
     /// See this issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508).
-    ///
-    /// This should be called every frame to ensure that we're not accumulating too many buffers.
-    /// After this call, internal chunks will be re-used by subsequent [`Self::allocate`] calls.
-    pub fn receive_data(
+    pub fn readback_data<UserDataType: 'static>(
         &mut self,
-        mut on_data_received: impl FnMut(&[u8], GpuReadbackBufferIdentifier),
+        identifier: GpuReadbackIdentifier,
+        mut callback: impl FnMut(&[u8], Box<UserDataType>),
     ) {
         crate::profile_function!();
 
-        while let Ok(mut chunk) = self.receiver.try_recv() {
-            {
-                let buffer_view = chunk
-                    .buffer
-                    .slice(..chunk.unused_offset())
-                    .get_mapped_range();
+        // Check if any new chunks are ready to be read.
+        while let Ok(chunk) = self.receiver.try_recv() {
+            self.pending_chunks.push(chunk);
+        }
 
-                for (range, identifier) in chunk.ranges_in_use.drain(..) {
-                    on_data_received(
-                        &buffer_view[range.start as usize..range.end as usize],
-                        identifier,
-                    );
+        // Search for the user data in the readback chunks.
+        // A linear search is suited best since we expect the number both the number of pending chunks
+        // (typically just one or two!)
+        // as well as the number of readbacks per chunk to be small!
+        // Also note that identifiers may not be unique!
+        for (chunk_index, chunk) in self.pending_chunks.iter_mut().enumerate() {
+            for (range_index, range) in chunk.ranges_in_use.iter().enumerate() {
+                if range.identifier != identifier || !range.user_data.is::<UserDataType>() {
+                    continue;
                 }
-            }
 
-            // Ready for re-use!
-            chunk.buffer.unmap();
-            self.free_chunks.push(chunk);
+                {
+                    let range = chunk.ranges_in_use.swap_remove(range_index);
+                    let slice = chunk.buffer.slice(range.buffer_range.clone());
+                    let data = slice.get_mapped_range();
+                    callback(&data, range.user_data.downcast::<UserDataType>().unwrap());
+                }
+
+                // If this was the last range from this chunk, the chunk is ready for re-use!
+                if chunk.ranges_in_use.is_empty() {
+                    let chunk = self.pending_chunks.swap_remove(chunk_index);
+                    chunk.buffer.unmap();
+                    self.free_chunks.push(chunk);
+                }
+                return;
+            }
         }
     }
+
+    // TODO: Have a GC mechanism that deals with chunks that have lingering data.
 }
 
 impl std::fmt::Debug for GpuReadbackBelt {
@@ -290,7 +348,6 @@ impl std::fmt::Debug for GpuReadbackBelt {
             .field("chunk_size", &self.chunk_size)
             .field("active_chunks", &self.active_chunks.len())
             .field("free_chunks", &self.free_chunks.len())
-            .field("next_identifier", &self.next_identifier)
             .finish_non_exhaustive()
     }
 }

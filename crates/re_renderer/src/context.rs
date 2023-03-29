@@ -27,8 +27,8 @@ pub struct RenderContext {
 
     pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
-    pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
-    pub gpu_readback_belt: Mutex<GpuReadbackBelt>,
+    pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
+    pub(crate) gpu_readback_belt: Mutex<GpuReadbackBelt>,
 
     /// List of unfinished queue submission via this context.
     ///

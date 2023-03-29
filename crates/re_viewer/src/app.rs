@@ -11,7 +11,7 @@ use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
-use re_renderer::{GpuReadbackBufferIdentifier, WgpuResourcePoolStatistics};
+use re_renderer::{GpuReadbackIdentifier, WgpuResourcePoolStatistics};
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 
@@ -89,7 +89,7 @@ pub struct App {
 
     /// List of all data we're currently waiting for from the GPU for each application id
     scheduled_gpu_readbacks_per_application:
-        HashMap<ApplicationId, HashMap<GpuReadbackBufferIdentifier, ScheduledGpuReadback>>,
+        HashMap<ApplicationId, HashMap<GpuReadbackIdentifier, ScheduledGpuReadback>>,
 
     /// Measures how long a frame takes to paint
     frame_time_history: egui::util::History<f32>,
@@ -411,7 +411,7 @@ impl App {
             });
     }
 
-    fn process_gpu_readback_data(&mut self, data: &[u8], identifier: GpuReadbackBufferIdentifier) {
+    fn process_gpu_readback_data(&mut self, data: &[u8], identifier: GpuReadbackIdentifier) {
         for (application_id, scheduled_gpu_readbacks) in
             &mut self.scheduled_gpu_readbacks_per_application
         {
@@ -988,7 +988,7 @@ impl AppState {
         &mut self,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
-        scheduled_gpu_readbacks: &mut HashMap<GpuReadbackBufferIdentifier, ScheduledGpuReadback>,
+        scheduled_gpu_readbacks: &mut HashMap<GpuReadbackIdentifier, ScheduledGpuReadback>,
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,

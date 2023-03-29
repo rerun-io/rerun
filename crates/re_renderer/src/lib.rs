@@ -27,7 +27,7 @@ mod size;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
-pub use allocator::{GpuReadbackBelt, GpuReadbackBuffer, GpuReadbackBufferIdentifier};
+pub use allocator::{GpuReadbackBelt, GpuReadbackBuffer, GpuReadbackIdentifier};
 pub use color::Rgba32Unmul;
 pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
@@ -46,7 +46,7 @@ mod draw_phases;
 pub(crate) use draw_phases::DrawPhase;
 pub use draw_phases::{
     OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
-    PickingLayerObjectId, ScheduledPickingRect,
+    PickingLayerObjectId, PickingLayerProcessor,
 };
 
 mod file_system;

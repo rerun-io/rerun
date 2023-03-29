@@ -7,8 +7,10 @@ pub use outlines::{OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor};
 mod picking_layer;
 pub use picking_layer::{
     PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor,
-    ScheduledPickingRect,
 };
+
+mod screenshot;
+pub use screenshot::ScreenshotProcessor;
 
 /// Determines a (very rough) order of rendering and describes the active [`wgpu::RenderPass`].
 ///

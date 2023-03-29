@@ -3,8 +3,8 @@ use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackBufferIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
-    PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
+    Color32, GpuReadbackIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
+    PickingLayerProcessor, PointCloudBuilder, RenderContext, Size,
 };
 
 mod framework;
@@ -18,7 +18,6 @@ struct PointSet {
 
 struct Picking {
     point_sets: Vec<PointSet>,
-    scheduled_picking_rects: HashMap<GpuReadbackBufferIdentifier, ScheduledPickingRect>,
     picking_position: glam::UVec2,
 }
 
@@ -32,34 +31,25 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     .into()
 }
 
+// TODO:
+const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
+
 impl Picking {
-    #[allow(clippy::unused_self)]
     fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext, _time: f32) {
-        re_ctx
-            .gpu_readback_belt
-            .lock()
-            .receive_data(|data, identifier| {
-                if let Some(picking_rect_info) = self.scheduled_picking_rects.remove(&identifier) {
-                    // TODO(andreas): Move this into a utility function?
-                    let picking_data_without_padding =
-                        picking_rect_info.row_info.remove_padding(data);
-                    let picking_data: &[PickingLayerId] =
-                        bytemuck::cast_slice(&picking_data_without_padding);
+        while let Some(picking_result) =
+            PickingLayerProcessor::next_readback_result(re_ctx, READBACK_IDENTIFIER)
+        {
+            // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
+            let picked_pixel = picking_result.picking_data[(picking_result.rect.extent.x / 2
+                + (picking_result.rect.extent.y / 2) * picking_result.rect.extent.x)
+                as usize];
 
-                    // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
-                    let picked_pixel = picking_data[(picking_rect_info.rect.extent.x / 2
-                        + (picking_rect_info.rect.extent.y / 2) * picking_rect_info.rect.extent.x)
-                        as usize];
-
-                    if picked_pixel.object.0 != 0 {
-                        let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
-                        point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
-                        point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
-                    }
-                } else {
-                    re_log::error!("Received picking data for unknown identifier");
-                }
-            });
+            if picked_pixel.object.0 != 0 {
+                let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
+                point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
+                point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
+            }
+        }
     }
 }
 
@@ -103,7 +93,6 @@ impl framework::Example for Picking {
 
         Picking {
             point_sets,
-            scheduled_picking_rects: HashMap::default(),
             picking_position: glam::UVec2::ZERO,
         }
     }
@@ -148,19 +137,18 @@ impl framework::Example for Picking {
         // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
         // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
         let picking_rect_size = 31;
-
-        let picking_rect = view_builder
+        view_builder
             .schedule_picking_readback(
                 re_ctx,
                 IntRect::from_middle_and_extent(
                     self.picking_position.as_ivec2(),
                     glam::uvec2(picking_rect_size, picking_rect_size),
                 ),
+                READBACK_IDENTIFIER,
+                Box::new(()),
                 false,
             )
             .unwrap();
-        self.scheduled_picking_rects
-            .insert(picking_rect.identifier, picking_rect);
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
 
