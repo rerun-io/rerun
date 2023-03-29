@@ -3,8 +3,8 @@
 //! This module provides the [`PickingLayerProcessor`] which is responsible for rendering & processing the picking layer.
 //! Picking is done in a separate pass to a as-small-as needed render target (size is user configurable).
 //!
-//! The picking layer is a RGBA texture with 32bit per channel, the RG channel are used for the [`PikcingLayerObjectId`],
-//! the BA channel are used for the [`PickingLayerInstanceId`].
+//! The picking layer is a RGBA texture with 32bit per channel, the red & green channel are used for the [`PickingLayerObjectId`],
+//! the blue & alpha channel are used for the [`PickingLayerInstanceId`].
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
