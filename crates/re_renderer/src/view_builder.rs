@@ -670,12 +670,12 @@ impl ViewBuilder {
     ///
     /// Note that the picking layer will not be created in the first place if this isn't called.
     /// TODO: update doc
-    pub fn schedule_picking_readback(
+    pub fn schedule_picking_readback<T: 'static + Send + Sync>(
         &mut self,
         ctx: &mut RenderContext,
         picking_rect: IntRect,
         readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: GpuReadbackUserData,
+        readback_user_data: T,
         show_debug_view: bool,
     ) -> Result<(), ViewBuilderError> {
         if self.picking_processor.is_some() {

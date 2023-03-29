@@ -86,7 +86,7 @@ impl framework::Example for Picking {
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         while let Some(picking_result) =
-            PickingLayerProcessor::next_readback_result(re_ctx, READBACK_IDENTIFIER)
+            PickingLayerProcessor::next_readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
             let picked_pixel = picking_result.picking_data[(picking_result.rect.extent.x / 2
@@ -139,7 +139,7 @@ impl framework::Example for Picking {
                     glam::uvec2(picking_rect_size, picking_rect_size),
                 ),
                 READBACK_IDENTIFIER,
-                Box::new(()),
+                (),
                 false,
             )
             .unwrap();

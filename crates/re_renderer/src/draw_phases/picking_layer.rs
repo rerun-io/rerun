@@ -17,9 +17,9 @@ use crate::{
 };
 
 // TODO: docstring
-pub struct PickingResult {
+pub struct PickingResult<T: 'static + Send + Sync> {
     /// User data supplied on picking request.
-    pub user_data: GpuReadbackUserData,
+    pub user_data: T,
 
     /// Picking rect supplied on picking request.
     /// Describes the area of the picking layer that was read back.
@@ -33,9 +33,9 @@ pub struct PickingResult {
 }
 
 /// Type used as user data on the gpu readback belt.
-struct ReadbackBeltMetadata {
+struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
     picking_rect: IntRect,
-    user_data: GpuReadbackUserData,
+    user_data: T,
 }
 
 /// The first 64bit of the picking layer.
@@ -99,7 +99,7 @@ impl PickingLayerProcessor {
     ///
     /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
     /// It allows to sample the picking layer texture in a shader.
-    pub fn new(
+    pub fn new<T: 'static + Send + Sync>(
         // TODO: many arguments
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
@@ -108,7 +108,7 @@ impl PickingLayerProcessor {
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
         readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: GpuReadbackUserData,
+        readback_user_data: T,
     ) -> Self {
         let row_info = TextureRowDataInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.width());
         let buffer_size = row_info.bytes_per_row_padded * picking_rect.height();
@@ -252,14 +252,14 @@ impl PickingLayerProcessor {
     }
 
     // TODO: docstring
-    pub fn next_readback_result(
+    pub fn next_readback_result<T: 'static + Send + Sync>(
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
-    ) -> Option<PickingResult> {
+    ) -> Option<PickingResult<T>> {
         let mut result = None;
         ctx.gpu_readback_belt
             .lock()
-            .readback_data::<ReadbackBeltMetadata>(identifier, |data, metadata| {
+            .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data, metadata| {
                 // Due to https://github.com/gfx-rs/wgpu/issues/3508 the data might be completely unaligned,
                 // so much, that we can't interpret it just as `PickingLayerId`.
                 // Therefore, we have to do a copy of the data regardless.
