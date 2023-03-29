@@ -11,6 +11,9 @@ use re_log_types::{
     Component as _, ComponentName, DataRow, DataTable, EntityPath, MsgId, TimeType, Timeline,
 };
 
+criterion_group!(benches, insert, latest_at, latest_at_missing, range);
+criterion_main!(benches);
+
 // ---
 
 #[cfg(not(debug_assertions))]
@@ -75,7 +78,17 @@ fn latest_at(c: &mut Criterion) {
 
         // Default config
         group.bench_function("default", |b| {
-            b.iter(|| insert_table(Default::default(), InstanceKey::name(), &table));
+            let store = insert_table(Default::default(), InstanceKey::name(), &table);
+            b.iter(|| {
+                let results = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
+                let rects = results[0]
+                    .as_ref()
+                    .unwrap()
+                    .as_any()
+                    .downcast_ref::<UnionArray>()
+                    .unwrap();
+                assert_eq!(NUM_INSTANCES as usize, rects.len());
+            });
         });
 
         // Emulate more or less buckets
@@ -157,16 +170,27 @@ fn latest_at_missing(c: &mut Criterion) {
                 InstanceKey::name(),
                 &table,
             );
-            group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
+            group.bench_function(format!("primary/bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    let results = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
-                    let rects = results[0]
-                        .as_ref()
-                        .unwrap()
-                        .as_any()
-                        .downcast_ref::<UnionArray>()
-                        .unwrap();
-                    assert_eq!(NUM_INSTANCES as usize, rects.len());
+                    let results =
+                        latest_data_at(&store, "non_existing_component".into(), &[Rect2D::name()]);
+                    assert!(results[0].is_none());
+                });
+            });
+            group.bench_function("secondaries/bucketsz={num_rows_per_bucket}", |b| {
+                b.iter(|| {
+                    let results = latest_data_at(
+                        &store,
+                        Rect2D::name(),
+                        &[
+                            "non_existing_component1".into(),
+                            "non_existing_component2".into(),
+                            "non_existing_component3".into(),
+                        ],
+                    );
+                    assert!(results[0].is_none());
+                    assert!(results[1].is_none());
+                    assert!(results[2].is_none());
                 });
             });
         }
@@ -223,9 +247,6 @@ fn range(c: &mut Criterion) {
         }
     }
 }
-
-criterion_group!(benches, insert, latest_at, latest_at_missing, range);
-criterion_main!(benches);
 
 // --- Helpers ---
 
