@@ -19,7 +19,7 @@ slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 macro_rules! include_shader_module {
     ($path:expr $(,)?) => {{
         $crate::wgpu_resources::ShaderModuleDesc {
-            label: $crate::DebugLabel::from(stringify!($path)),
+            label: $crate::DebugLabel::from(stringify!($path).strip_prefix("../../shader/")),
             source: $crate::include_file!($path),
         }
     }};
