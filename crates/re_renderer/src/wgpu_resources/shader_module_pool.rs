@@ -14,7 +14,7 @@ use super::{
 
 slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
-/// Create a shader module using the [`include_file!`] macro and set the path name as debug string.
+/// Create a shader module using the `include_file!` macro and set the path name as debug string.
 #[macro_export]
 macro_rules! include_shader_module {
     ($path:expr $(,)?) => {{
