@@ -3811,7 +3811,6 @@ name = "re_build_build_info"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "glob",
  "time 0.3.20",
 ]
 
@@ -3955,7 +3954,6 @@ dependencies = [
 name = "re_query"
 version = "0.4.0"
 dependencies = [
- "anyhow",
  "arrow2",
  "criterion",
  "document-features",
@@ -4292,8 +4290,6 @@ dependencies = [
  "mimalloc",
  "once_cell",
  "parking_lot 0.12.1",
- "puffin",
- "puffin_http",
  "re_analytics",
  "re_build_build_info",
  "re_build_info",

@@ -42,9 +42,7 @@ re_sdk_comms = { workspace = true, features = ["client"] }
 re_smart_channel.workspace = true
 
 anyhow.workspace = true
-arrow2.workspace = true
 document-features = "0.2"
-lazy_static.workspace = true
 nohash-hasher = "0.2"
 parking_lot.workspace = true
 thiserror.workspace = true
