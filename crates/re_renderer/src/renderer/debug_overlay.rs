@@ -8,6 +8,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, WgpuResourcePools,
     },
+    IntRect,
 };
 
 use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
@@ -66,8 +67,7 @@ impl DebugOverlayDrawData {
         ctx: &mut RenderContext,
         debug_texture: &GpuTexture,
         screen_resolution: glam::UVec2,
-        position_in_pixel: glam::IVec2,
-        extent_in_pixel: glam::UVec2,
+        overlay_rect: IntRect,
     ) -> Self {
         let mut renderers = ctx.renderers.write();
         let debug_overlay = renderers.get_or_create::<_, DebugOverlayRenderer>(
@@ -78,7 +78,7 @@ impl DebugOverlayDrawData {
         );
 
         let mode = match debug_texture.texture.format().describe().sample_type {
-            wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { filterable: _ } => {
+            wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { .. } => {
                 DebugOverlayMode::SHOW_FLOAT_TEXTURE
             }
             wgpu::TextureSampleType::Sint | wgpu::TextureSampleType::Uint => {
@@ -91,8 +91,8 @@ impl DebugOverlayDrawData {
             "DebugOverlayDrawData".into(),
             gpu_data::DebugOverlayUniformBuffer {
                 screen_resolution: screen_resolution.as_vec2().into(),
-                position_in_pixel: position_in_pixel.as_vec2().into(),
-                extent_in_pixel: extent_in_pixel.as_vec2().into(),
+                position_in_pixel: overlay_rect.top_left_corner.as_vec2().into(),
+                extent_in_pixel: overlay_rect.extent.as_vec2().into(),
                 mode: mode as u32,
                 _padding: 0,
                 end_padding: Default::default(),

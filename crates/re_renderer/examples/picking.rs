@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackBufferIdentifier, PickingLayerId, PickingLayerInstanceId,
+    Color32, GpuReadbackBufferIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
     PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
 };
 
@@ -47,8 +47,8 @@ impl Picking {
                         bytemuck::cast_slice(&picking_data_without_padding);
 
                     // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
-                    let picked_pixel = picking_data[(picking_rect_info.extent.x / 2
-                        + (picking_rect_info.extent.y / 2) * picking_rect_info.extent.x)
+                    let picked_pixel = picking_data[(picking_rect_info.rect.extent.x / 2
+                        + (picking_rect_info.rect.extent.y / 2) * picking_rect_info.rect.extent.x)
                         as usize];
 
                     if picked_pixel.object.0 != 0 {
@@ -149,9 +149,11 @@ impl framework::Example for Picking {
         let picking_rect = view_builder
             .schedule_picking_readback(
                 re_ctx,
-                self.picking_position.as_ivec2()
-                    - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
-                picking_rect_size as u32,
+                IntRect {
+                    top_left_corner: self.picking_position.as_ivec2()
+                        - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
+                    extent: glam::ivec2(picking_rect_size, picking_rect_size).as_uvec2(),
+                },
                 false,
             )
             .unwrap();
@@ -163,7 +165,7 @@ impl framework::Example for Picking {
         for (i, point_set) in self.point_sets.iter().enumerate() {
             builder
                 .batch(format!("Random Points {i}"))
-                .picking_object_id(re_renderer::PickingLayerObjectId(i as u64 + 1))
+                .picking_object_id(re_renderer::PickingLayerObjectId(i as u64 + 1)) // offset by one since 0=default=no hit
                 .add_points(
                     point_set.positions.len(),
                     point_set.positions.iter().cloned(),

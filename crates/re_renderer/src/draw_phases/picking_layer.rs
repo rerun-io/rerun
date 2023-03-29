@@ -13,7 +13,7 @@ use crate::{
     global_bindings::FrameUniformBuffer,
     view_builder::ViewBuilder,
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
-    DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, RenderContext,
+    DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, IntRect, RenderContext,
 };
 
 /// Previously scheduled picking rect, waiting for readback from GPU to finish.
@@ -22,8 +22,7 @@ use crate::{
 #[derive(Clone)]
 pub struct ScheduledPickingRect {
     pub identifier: GpuReadbackBufferIdentifier,
-    pub screen_position: glam::IVec2,
-    pub extent: glam::UVec2,
+    pub rect: IntRect,
     // TODO(andreas): Figure out how to handle depth data. Should ideally be forced to be available at the same time.
     pub row_info: TextureRowDataInfo,
 }
@@ -93,13 +92,12 @@ impl PickingLayerProcessor {
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
-        picking_rect_min: glam::IVec2,
-        picking_rect_extent: u32,
+        picking_rect: IntRect,
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
     ) -> (Self, ScheduledPickingRect) {
-        let row_info = TextureRowDataInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect_extent);
-        let buffer_size = row_info.bytes_per_row_padded * picking_rect_extent;
+        let row_info = TextureRowDataInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.width());
+        let buffer_size = row_info.bytes_per_row_padded * picking_rect.height();
         let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
@@ -117,11 +115,7 @@ impl PickingLayerProcessor {
             &ctx.device,
             &TextureDesc {
                 label: view_name.clone().push_str(" - PickingLayerProcessor"),
-                size: wgpu::Extent3d {
-                    width: picking_rect_extent,
-                    height: picking_rect_extent,
-                    depth_or_array_layers: 1,
-                },
+                size: picking_rect.wgpu_extent(),
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -139,9 +133,8 @@ impl PickingLayerProcessor {
             },
         );
 
-        let rect_min = picking_rect_min.as_vec2();
-        let rect_max =
-            rect_min + glam::vec2(picking_rect_extent as f32, picking_rect_extent as f32);
+        let rect_min = picking_rect.top_left_corner.as_vec2();
+        let rect_max = rect_min + picking_rect.extent.as_vec2();
         let screen_resolution = screen_resolution.as_vec2();
         let rect_min_ndc = glam::vec2(
             rect_min.x / screen_resolution.x * 2.0 - 1.0,
@@ -151,10 +144,10 @@ impl PickingLayerProcessor {
             rect_max.x / screen_resolution.x * 2.0 - 1.0,
             1.0 - rect_min.y / screen_resolution.y * 2.0,
         );
-        let rect_center = (rect_min_ndc + rect_max_ndc) * 0.5;
+        let rect_center_ndc = (rect_min_ndc + rect_max_ndc) * 0.5;
         let cropped_projection_from_projection =
             glam::Mat4::from_scale(2.0 / (rect_max_ndc - rect_min_ndc).extend(1.0))
-                * glam::Mat4::from_translation(-rect_center.extend(0.0));
+                * glam::Mat4::from_translation(-rect_center_ndc.extend(0.0));
 
         // Setup frame uniform buffer
         let previous_projection_from_world: glam::Mat4 =
@@ -187,8 +180,7 @@ impl PickingLayerProcessor {
 
         let scheduled_rect = ScheduledPickingRect {
             identifier: readback_buffer.identifier,
-            screen_position: picking_rect_min,
-            extent: glam::uvec2(picking_rect_extent, picking_rect_extent),
+            rect: picking_rect,
             row_info,
         };
 

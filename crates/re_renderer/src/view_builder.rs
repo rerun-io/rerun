@@ -9,7 +9,7 @@ use crate::{
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
-    DebugLabel, Rgba, ScheduledPickingRect, Size,
+    DebugLabel, IntRect, Rgba, ScheduledPickingRect, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(
@@ -729,8 +729,7 @@ impl ViewBuilder {
     pub fn schedule_picking_readback(
         &mut self,
         ctx: &mut RenderContext,
-        picking_rect_min: glam::IVec2,
-        picking_rect_extent: u32,
+        picking_rect: IntRect,
         show_debug_view: bool,
     ) -> Result<ScheduledPickingRect, ViewBuilderError> {
         if self.picking_processor.is_some() {
@@ -743,8 +742,7 @@ impl ViewBuilder {
             ctx,
             &setup.name,
             setup.resolution_in_pixel.into(),
-            picking_rect_min,
-            picking_rect_extent,
+            picking_rect,
             &setup.frame_uniform_buffer_content,
             show_debug_view,
         );
@@ -754,8 +752,7 @@ impl ViewBuilder {
                 ctx,
                 &picking_processor.picking_target,
                 setup.resolution_in_pixel.into(),
-                scheduled_rect.screen_position,
-                scheduled_rect.extent,
+                scheduled_rect.rect,
             ));
         }
 

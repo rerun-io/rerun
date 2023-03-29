@@ -63,6 +63,9 @@ pub use self::file_resolver::{
 mod file_server;
 pub use self::file_server::FileServer;
 
+mod rect;
+pub use rect::IntRect;
+
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
 #[rustfmt::skip] // it's auto-generated
 mod workspace_shaders;
