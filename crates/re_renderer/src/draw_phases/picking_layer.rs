@@ -1,3 +1,13 @@
+//! GPU driven picking.
+//!
+//! This module provides the [`PickingLayerProcessor`] which is responsible for rendering & processing the picking layer.
+//! Picking is done in a separate pass to a as-small-as needed render target (size is user configurable).
+//!
+//! The picking layer is a RGBA texture with 32bit per channel, the RG channel are used for the [`PikcingLayerObjectId`],
+//! the BA channel are used for the [`PickingLayerInstanceId`].
+//!
+//! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
+
 use crate::{
     allocator::create_and_fill_uniform_buffer,
     global_bindings::FrameUniformBuffer,
@@ -43,6 +53,9 @@ pub struct PickingLayerId {
     pub instance: PickingLayerInstanceId,
 }
 
+/// Manages the rendering of the picking layer pass, its render targets & readback buffer.
+///
+/// The view builder creates this for every frame that requests a picking result.
 pub struct PickingLayerProcessor {
     pub picking_target: GpuTexture,
     picking_depth: GpuTexture,
@@ -66,6 +79,15 @@ impl PickingLayerProcessor {
     pub const PICKING_LAYER_DEPTH_STATE: Option<wgpu::DepthStencilState> =
         ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
 
+    /// New picking layer for a given screen.
+    ///
+    /// Note that out-of-bounds rectangles *are* allowed, the picking layer will *not* be clipped to the screen.
+    /// This means that the content of the picking layer rectangle will behave as-if the screen was bigger,
+    /// containing valid picking data.
+    /// It's up to the user when interpreting the picking data to do any required clipping.
+    ///
+    /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
+    /// It allows to sample the picking layer texture in a shader.
     pub fn new(
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
@@ -129,7 +151,7 @@ impl PickingLayerProcessor {
             1.0 - rect_min.y / screen_resolution.y * 2.0,
         );
         let rect_center = (rect_min_ndc + rect_max_ndc) * 0.5;
-        let adjusted_projection_from_projection =
+        let cropped_projection_from_projection =
             glam::Mat4::from_scale(2.0 / (rect_max_ndc - rect_min_ndc).extend(1.0))
                 * glam::Mat4::from_translation(-rect_center.extend(0.0));
 
@@ -139,10 +161,10 @@ impl PickingLayerProcessor {
         let previous_projection_from_view: glam::Mat4 =
             frame_uniform_buffer_content.projection_from_view.into();
         let frame_uniform_buffer_content = FrameUniformBuffer {
-            projection_from_world: (adjusted_projection_from_projection
+            projection_from_world: (cropped_projection_from_projection
                 * previous_projection_from_world)
                 .into(),
-            projection_from_view: (adjusted_projection_from_projection
+            projection_from_view: (cropped_projection_from_projection
                 * previous_projection_from_view)
                 .into(),
             ..*frame_uniform_buffer_content
