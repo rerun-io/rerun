@@ -15,19 +15,18 @@ use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
 
 use smallvec::smallvec;
 
-/// Modes configuring what the debug overlay shader shows.
-#[derive(Copy, Clone)]
-#[allow(non_camel_case_types)]
-enum DebugOverlayMode {
-    /// Show the texture on the f32 texture binding slot.
-    SHOW_FLOAT_TEXTURE = 0,
-
-    /// Show the texture on the uint texture binding slot.
-    SHOW_UINT_TEXTURE = 1,
-}
-
 mod gpu_data {
     use crate::wgpu_buffer_types;
+
+    /// Modes configuring what the debug overlay shader shows.
+    #[derive(Copy, Clone)]
+    pub enum DebugOverlayMode {
+        /// Show the texture on the f32 texture binding slot.
+        ShowFloatTexture = 0,
+
+        /// Show the texture on the uint texture binding slot.
+        ShowUintTexture = 1,
+    }
 
     /// Keep in sync with `debug_overlay.wgsl`
     #[repr(C, align(256))]
@@ -36,7 +35,10 @@ mod gpu_data {
         pub screen_resolution: wgpu_buffer_types::Vec2,
         pub position_in_pixel: wgpu_buffer_types::Vec2,
         pub extent_in_pixel: wgpu_buffer_types::Vec2,
+
+        /// A value of `DebugOverlayMode`
         pub mode: u32,
+
         pub _padding: u32,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
@@ -79,10 +81,10 @@ impl DebugOverlayDrawData {
 
         let mode = match debug_texture.texture.format().describe().sample_type {
             wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { .. } => {
-                DebugOverlayMode::SHOW_FLOAT_TEXTURE
+                gpu_data::DebugOverlayMode::ShowFloatTexture
             }
             wgpu::TextureSampleType::Sint | wgpu::TextureSampleType::Uint => {
-                DebugOverlayMode::SHOW_UINT_TEXTURE
+                gpu_data::DebugOverlayMode::ShowUintTexture
             }
         };
 
@@ -100,11 +102,11 @@ impl DebugOverlayDrawData {
         );
 
         let (texture_float, texture_uint) = match mode {
-            DebugOverlayMode::SHOW_FLOAT_TEXTURE => (
+            gpu_data::DebugOverlayMode::ShowFloatTexture => (
                 debug_texture.handle,
                 ctx.texture_manager_2d.zeroed_texture_uint().handle,
             ),
-            DebugOverlayMode::SHOW_UINT_TEXTURE => (
+            gpu_data::DebugOverlayMode::ShowUintTexture => (
                 ctx.texture_manager_2d.white_texture_unorm().handle,
                 debug_texture.handle,
             ),

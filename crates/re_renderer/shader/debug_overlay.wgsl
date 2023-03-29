@@ -25,9 +25,9 @@ var debug_texture_float: texture_2d<f32>;
 @group(1) @binding(2)
 var debug_texture_uint: texture_2d<u32>;
 
-// Mode options, see `DebugOverlayMode`
-const SHOW_FLOAT_TEXTURE: u32 = 0u;
-const SHOW_UINT_TEXTURE: u32 = 1u;
+// Mode options, see `DebugOverlayMode` in `debug_overlay.rs`
+const ShowFloatTexture: u32 = 0u;
+const ShowUintTexture: u32 = 1u;
 
 struct VertexOutput {
     @builtin(position) position: Vec4,
@@ -52,9 +52,9 @@ fn main_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn main_fs(in: VertexOutput) -> @location(0) Vec4 {
-    if uniforms.mode == SHOW_FLOAT_TEXTURE {
+    if uniforms.mode == ShowFloatTexture {
         return Vec4(textureSample(debug_texture_float, nearest_sampler, in.texcoord).rgb, 1.0);
-    } else if uniforms.mode == SHOW_UINT_TEXTURE {
+    } else if uniforms.mode == ShowUintTexture {
         let coords = IVec2(in.texcoord * Vec2(textureDimensions(debug_texture_uint).xy));
         let raw_values = textureLoad(debug_texture_uint, coords, 0);
 
