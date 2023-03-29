@@ -1,9 +1,10 @@
+use ahash::HashMap;
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, PickingLayerId, PickingLayerInstanceId, PointCloudBuilder, RenderContext,
-    ScheduledPickingRect, Size,
+    Color32, GpuReadbackBufferIdentifier, PickingLayerId, PickingLayerInstanceId,
+    PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
 };
 
 mod framework;
@@ -14,7 +15,7 @@ struct Picking {
     points_colors: Vec<Color32>,
     points_picking_ids: Vec<PickingLayerInstanceId>,
 
-    scheduled_picking_rects: Vec<ScheduledPickingRect>,
+    scheduled_picking_rects: HashMap<GpuReadbackBufferIdentifier, ScheduledPickingRect>,
 
     picking_position: glam::UVec2,
 }
@@ -36,13 +37,7 @@ impl Picking {
             .gpu_readback_belt
             .lock()
             .receive_data(|data, identifier| {
-                if let Some(index) = self
-                    .scheduled_picking_rects
-                    .iter()
-                    .position(|s| s.identifier == identifier)
-                {
-                    let picking_rect_info = self.scheduled_picking_rects.swap_remove(index);
-
+                if let Some(picking_rect_info) = self.scheduled_picking_rects.remove(&identifier) {
                     // TODO(andreas): Move this into a utility function?
                     let picking_data_without_padding =
                         picking_rect_info.row_info.remove_padding(data);
@@ -103,7 +98,7 @@ impl framework::Example for Picking {
             points_radii,
             points_colors,
             points_picking_ids,
-            scheduled_picking_rects: Vec::new(),
+            scheduled_picking_rects: HashMap::default(),
             picking_position: glam::UVec2::ZERO,
         }
     }
@@ -146,17 +141,17 @@ impl framework::Example for Picking {
             .unwrap();
 
         let picking_rect_size = 32;
-        self.scheduled_picking_rects.push(
-            view_builder
-                .schedule_picking_readback(
-                    re_ctx,
-                    self.picking_position.as_ivec2()
-                        - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
-                    picking_rect_size as u32,
-                    false,
-                )
-                .unwrap(),
-        );
+        let picking_rect = view_builder
+            .schedule_picking_readback(
+                re_ctx,
+                self.picking_position.as_ivec2()
+                    - glam::ivec2(picking_rect_size / 2, picking_rect_size / 2),
+                picking_rect_size as u32,
+                false,
+            )
+            .unwrap();
+        self.scheduled_picking_rects
+            .insert(picking_rect.identifier, picking_rect);
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
 
