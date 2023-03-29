@@ -216,7 +216,7 @@ impl Multiview {
                     {
                         let screenshot = self.scheduled_screenshots.swap_remove(index);
 
-                        re_log::info!("Received screenshot. Total bytes {:?}", data.len());
+                        re_log::info!("Received screenshot. Total bytes {}", data.len());
 
                         // Get next available file name.
                         let mut i = 1;
