@@ -47,7 +47,7 @@ impl Renderer for TestTriangle {
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "Test Triangle".into(),
+                label: "TestTriangle::render_pipeline".into(),
                 pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
                     &PipelineLayoutDesc {

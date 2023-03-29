@@ -346,7 +346,7 @@ impl LineDrawData {
 
         let fallback_batches = [LineBatchInfo {
             world_from_obj: glam::Mat4::IDENTITY,
-            label: "all lines".into(),
+            label: "LineDrawData::fallback_batch".into(),
             line_vertex_count: vertices.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
@@ -400,7 +400,7 @@ impl LineDrawData {
         let position_data_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: "line position data".into(),
+                label: "LineDrawData::position_data_texture".into(),
                 size: wgpu::Extent3d {
                     width: POSITION_TEXTURE_SIZE,
                     height: POSITION_TEXTURE_SIZE,
@@ -416,7 +416,7 @@ impl LineDrawData {
         let line_strip_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: "line strips".into(),
+                label: "LineDrawData::line_strip_texture".into(),
                 size: wgpu::Extent3d {
                     width: LINE_STRIP_TEXTURE_SIZE,
                     height: LINE_STRIP_TEXTURE_SIZE,
@@ -695,7 +695,7 @@ impl Renderer for LineRenderer {
         let bind_group_layout_all_lines = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "line renderer - all".into(),
+                label: "LineRenderer::bind_group_layout_all_lines".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -736,7 +736,7 @@ impl Renderer for LineRenderer {
         let bind_group_layout_batch = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "line renderer - batch".into(),
+                label: "LineRenderer::bind_group_layout_batch".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
@@ -755,7 +755,7 @@ impl Renderer for LineRenderer {
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
-                label: "line renderer".into(),
+                label: "LineRenderer::pipeline_layout".into(),
                 entries: vec![
                     shared_data.global_bindings.layout,
                     bind_group_layout_all_lines,

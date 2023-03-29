@@ -89,7 +89,7 @@ impl CompositorDrawData {
                 &ctx.device,
                 &ctx.gpu_resources,
                 &BindGroupDesc {
-                    label: "compositor".into(),
+                    label: "CompositorDrawData::bind_group".into(),
                     entries: smallvec![
                         uniform_buffer_binding,
                         BindGroupEntry::DefaultTextureView(color_texture.handle),

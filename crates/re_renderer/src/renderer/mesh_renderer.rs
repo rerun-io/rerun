@@ -168,7 +168,7 @@ impl MeshDrawData {
         let instance_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
-                label: "MeshDrawData instance buffer".into(),
+                label: "MeshDrawData::instance_buffer".into(),
                 size: instance_buffer_size,
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
@@ -289,7 +289,7 @@ impl Renderer for MeshRenderer {
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "mesh renderer".into(),
+                label: "MeshRenderer::bind_group_layout".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -319,7 +319,7 @@ impl Renderer for MeshRenderer {
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
-                label: "mesh renderer".into(),
+                label: "MeshRenderer::pipeline_layout".into(),
                 entries: vec![shared_data.global_bindings.layout, bind_group_layout],
             },
             &pools.bind_group_layouts,
@@ -329,7 +329,7 @@ impl Renderer for MeshRenderer {
             device,
             resolver,
             &ShaderModuleDesc {
-                label: "mesh renderer".into(),
+                label: "MeshRenderer".into(),
                 source: include_file!("../../shader/instanced_mesh.wgsl"),
             },
         );
@@ -348,7 +348,7 @@ impl Renderer for MeshRenderer {
         let render_pipeline_shaded = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "mesh renderer - shaded".into(),
+                label: "MeshRenderer::render_pipeline_shaded".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,
@@ -367,7 +367,7 @@ impl Renderer for MeshRenderer {
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "mesh renderer - outline mask".into(),
+                label: "MeshRenderer::render_pipeline_outline_mask".into(),
                 pipeline_layout,
                 vertex_entrypoint: "vs_main".into(),
                 vertex_handle: shader_module,

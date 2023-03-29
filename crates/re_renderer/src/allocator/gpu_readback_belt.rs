@@ -205,7 +205,7 @@ impl GpuReadbackBelt {
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {
-                        label: "GpuReadbackBelt buffer".into(),
+                        label: "GpuReadbackBelt chunk buffer".into(),
                         size: buffer_size,
                         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                         mapped_at_creation: false,

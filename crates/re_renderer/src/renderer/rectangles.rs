@@ -190,7 +190,7 @@ impl RectangleDrawData {
                     &ctx.device,
                     &ctx.gpu_resources,
                     &BindGroupDesc {
-                        label: "rectangle".into(),
+                        label: "RectangleInstance::bind_group".into(),
                         entries: smallvec![
                             uniform_buffer,
                             BindGroupEntry::DefaultTextureView(texture.handle),
@@ -227,7 +227,7 @@ impl Renderer for RectangleRenderer {
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "rectangles".into(),
+                label: "RectangleRenderer::bind_group_layout".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -267,7 +267,7 @@ impl Renderer for RectangleRenderer {
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
-                label: "rectangle".into(),
+                label: "RectangleRenderer::pipeline_layout".into(),
                 entries: vec![shared_data.global_bindings.layout, bind_group_layout],
             },
             &pools.bind_group_layouts,

@@ -57,11 +57,11 @@ impl Renderer for GenericSkybox {
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
-                label: "generic_skybox".into(),
+                label: "GenericSkybox::render_pipeline".into(),
                 pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
                     &PipelineLayoutDesc {
-                        label: "global only".into(),
+                        label: "GenericSkybox::render_pipeline".into(),
                         entries: vec![shared_data.global_bindings.layout],
                     },
                     &pools.bind_group_layouts,

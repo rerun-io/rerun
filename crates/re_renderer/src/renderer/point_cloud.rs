@@ -201,7 +201,7 @@ impl PointCloudDrawData {
         }
 
         let fallback_batches = [PointCloudBatchInfo {
-            label: "all points".into(),
+            label: "fallback_batches".into(),
             world_from_obj: glam::Mat4::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
             point_count: vertices.len() as _,
@@ -242,7 +242,7 @@ impl PointCloudDrawData {
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawData!
         let position_data_texture_desc = TextureDesc {
-            label: "point cloud position data".into(),
+            label: "PointCloudDrawData::position_data_texture".into(),
             size: wgpu::Extent3d {
                 width: DATA_TEXTURE_SIZE,
                 height: DATA_TEXTURE_SIZE,
@@ -541,7 +541,7 @@ impl Renderer for PointCloudRenderer {
         let bind_group_layout_all_points = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "point cloud - all".into(),
+                label: "PointCloudRenderer::bind_group_layout_all_points".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -592,7 +592,7 @@ impl Renderer for PointCloudRenderer {
         let bind_group_layout_batch = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "point cloud - batch".into(),
+                label: "PointCloudRenderer::bind_group_layout_batch".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
@@ -611,7 +611,7 @@ impl Renderer for PointCloudRenderer {
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
-                label: "point cloud".into(),
+                label: "PointCloudRenderer::pipeline_layout".into(),
                 entries: vec![
                     shared_data.global_bindings.layout,
                     bind_group_layout_all_points,
