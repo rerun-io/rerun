@@ -14,10 +14,15 @@ use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
 
 use smallvec::smallvec;
 
+/// Modes configuring what the debug overlay shader shows.
 #[derive(Copy, Clone)]
-pub enum DebugOverlayMode {
-    ShowFloatTexture = 0,
-    ShowUintTexture = 1,
+#[allow(non_camel_case_types)]
+enum DebugOverlayMode {
+    /// Show the texture on the f32 texture binding slot.
+    SHOW_FLOAT_TEXTURE = 0,
+
+    /// Show the texture on the uint texture binding slot.
+    SHOW_UINT_TEXTURE = 1,
 }
 
 mod gpu_data {
@@ -68,10 +73,10 @@ impl DebugOverlayDrawData {
 
         let mode = match debug_texture.texture.format().describe().sample_type {
             wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { filterable: _ } => {
-                DebugOverlayMode::ShowFloatTexture
+                DebugOverlayMode::SHOW_FLOAT_TEXTURE
             }
             wgpu::TextureSampleType::Sint | wgpu::TextureSampleType::Uint => {
-                DebugOverlayMode::ShowUintTexture
+                DebugOverlayMode::SHOW_UINT_TEXTURE
             }
         };
 
@@ -95,8 +100,8 @@ impl DebugOverlayDrawData {
             .handle;
 
         let (texture_float, texture_uint) = match mode {
-            DebugOverlayMode::ShowFloatTexture => (debug_texture.handle, fallback_texture),
-            DebugOverlayMode::ShowUintTexture => (fallback_texture, debug_texture.handle),
+            DebugOverlayMode::SHOW_FLOAT_TEXTURE => (debug_texture.handle, fallback_texture),
+            DebugOverlayMode::SHOW_UINT_TEXTURE => (fallback_texture, debug_texture.handle),
         };
 
         DebugOverlayDrawData {
