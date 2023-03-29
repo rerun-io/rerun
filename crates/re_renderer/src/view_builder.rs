@@ -8,9 +8,7 @@ use crate::{
     draw_phases::{DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerProcessor},
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
-    wgpu_resources::{
-        texture_row_data_info, GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo,
-    },
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
     DebugLabel, Rgba, ScheduledPickingRect, Size,
 };
 
@@ -699,7 +697,7 @@ impl ViewBuilder {
         let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
 
         let row_info =
-            texture_row_data_info(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
+            TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
         let buffer_size = row_info.bytes_per_row_padded * setup.resolution_in_pixel[1];
         let screenshot_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,

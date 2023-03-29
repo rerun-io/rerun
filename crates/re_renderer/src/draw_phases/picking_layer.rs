@@ -12,9 +12,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     global_bindings::FrameUniformBuffer,
     view_builder::ViewBuilder,
-    wgpu_resources::{
-        texture_row_data_info, GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo,
-    },
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
     DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, RenderContext,
 };
 
@@ -97,7 +95,7 @@ impl PickingLayerProcessor {
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
     ) -> (Self, ScheduledPickingRect) {
-        let row_info = texture_row_data_info(Self::PICKING_LAYER_FORMAT, picking_rect_extent);
+        let row_info = TextureRowDataInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect_extent);
         let buffer_size = row_info.bytes_per_row_padded * picking_rect_extent;
         let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,

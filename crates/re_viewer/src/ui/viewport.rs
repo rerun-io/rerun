@@ -563,7 +563,7 @@ impl Viewport {
                 return;
             };
 
-        let mut buffer = screenshot.row_info.remove_padding(data);
+        let buffer = screenshot.row_info.remove_padding(data);
 
         // Set to clipboard.
         #[cfg(not(target_arch = "wasm32"))]
@@ -593,8 +593,8 @@ impl Viewport {
         match image::save_buffer(
             filename,
             &buffer,
-            screenshot.width,
-            screenshot.height,
+            screenshot.extent.x,
+            screenshot.extent.y,
             image::ColorType::Rgba8,
         ) {
             Ok(_) => {

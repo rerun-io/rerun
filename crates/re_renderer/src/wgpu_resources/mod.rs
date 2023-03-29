@@ -115,31 +115,33 @@ impl WgpuResourcePools {
     }
 }
 
+/// Utility for dealing with rows of raw texture data.
 #[derive(Clone, Copy)]
 pub struct TextureRowDataInfo {
     /// How many bytes per row contain actual data.
     pub bytes_per_row_unpadded: u32,
 
     /// How many bytes per row are required to be allocated in total.
+    ///
+    /// Padding bytes are always at the end of a row.
     pub bytes_per_row_padded: u32,
 }
 
-/// Returns the number of required bytes per row of a texture with the given format and width.
-pub fn texture_row_data_info(format: wgpu::TextureFormat, width: u32) -> TextureRowDataInfo {
-    let format_info = format.describe();
-    let width_blocks = width / format_info.block_dimensions.0 as u32;
-    let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
-
-    TextureRowDataInfo {
-        bytes_per_row_unpadded: bytes_per_row_unaligned,
-        bytes_per_row_padded: wgpu::util::align_to(
-            bytes_per_row_unaligned,
-            wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-        ),
-    }
-}
-
 impl TextureRowDataInfo {
+    pub fn new(format: wgpu::TextureFormat, width: u32) -> Self {
+        let format_info = format.describe();
+        let width_blocks = width / format_info.block_dimensions.0 as u32;
+        let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+
+        Self {
+            bytes_per_row_unpadded: bytes_per_row_unaligned,
+            bytes_per_row_padded: wgpu::util::align_to(
+                bytes_per_row_unaligned,
+                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
+            ),
+        }
+    }
+
     /// Removes the padding from a buffer containing gpu texture data.
     pub fn remove_padding(&self, buffer: &[u8]) -> Vec<u8> {
         if self.bytes_per_row_padded == self.bytes_per_row_unpadded {

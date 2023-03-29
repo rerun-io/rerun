@@ -20,9 +20,9 @@ use crate::{
     resource_managers::ResourceManagerError,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        texture_row_data_info, BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc,
-        RenderPipelineDesc, ShaderModuleDesc, TextureDesc, TextureRowDataInfo,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc, TextureRowDataInfo,
     },
     ColorMap, OutlineMaskPreference,
 };
@@ -339,7 +339,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     let TextureRowDataInfo {
         bytes_per_row_unpadded: bytes_per_row_unaligned,
         bytes_per_row_padded,
-    } = texture_row_data_info(depth_texture_desc.format, depth_texture_desc.size.width);
+    } = TextureRowDataInfo::new(depth_texture_desc.format, depth_texture_desc.size.width);
 
     // Not supporting compressed formats here.
     debug_assert!(depth_texture_desc.format.describe().block_dimensions == (1, 1));
