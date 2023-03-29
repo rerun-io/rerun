@@ -11,8 +11,8 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData, OutlineMaskPreference},
-    ColorMap,
+    renderer::{DepthCloud, DepthCloudDepthData},
+    ColorMap, OutlineMaskPreference,
 };
 
 use crate::{

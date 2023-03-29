@@ -154,7 +154,10 @@ impl LoadedMesh {
             materials: smallvec::smallvec![re_renderer::mesh::Material {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
-                albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
+                albedo: render_ctx
+                    .texture_manager_2d
+                    .white_texture_unorm_handle()
+                    .clone(),
                 albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |v| {
                     re_renderer::Rgba::from_rgba_unmultiplied(v.x(), v.y(), v.z(), v.w())
                 }),

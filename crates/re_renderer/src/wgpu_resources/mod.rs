@@ -7,6 +7,8 @@
 //! higher level resources that arise from processing user provided data.
 
 mod bind_group_layout_pool;
+use std::borrow::Cow;
+
 pub use bind_group_layout_pool::{
     BindGroupLayoutDesc, GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool,
 };
@@ -115,26 +117,50 @@ impl WgpuResourcePools {
     }
 }
 
+/// Utility for dealing with rows of raw texture data.
 #[derive(Clone, Copy)]
 pub struct TextureRowDataInfo {
     /// How many bytes per row contain actual data.
     pub bytes_per_row_unpadded: u32,
 
     /// How many bytes per row are required to be allocated in total.
+    ///
+    /// Padding bytes are always at the end of a row.
     pub bytes_per_row_padded: u32,
 }
 
-/// Returns the number of required bytes per row of a texture with the given format and width.
-pub fn texture_row_data_info(format: wgpu::TextureFormat, width: u32) -> TextureRowDataInfo {
-    let format_info = format.describe();
-    let width_blocks = width / format_info.block_dimensions.0 as u32;
-    let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+impl TextureRowDataInfo {
+    pub fn new(format: wgpu::TextureFormat, width: u32) -> Self {
+        let format_info = format.describe();
+        let width_blocks = width / format_info.block_dimensions.0 as u32;
+        let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
 
-    TextureRowDataInfo {
-        bytes_per_row_unpadded: bytes_per_row_unaligned,
-        bytes_per_row_padded: wgpu::util::align_to(
-            bytes_per_row_unaligned,
-            wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-        ),
+        Self {
+            bytes_per_row_unpadded: bytes_per_row_unaligned,
+            bytes_per_row_padded: wgpu::util::align_to(
+                bytes_per_row_unaligned,
+                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
+            ),
+        }
+    }
+
+    /// Removes the padding from a buffer containing gpu texture data.
+    pub fn remove_padding<'a>(&self, buffer: &'a [u8]) -> Cow<'a, [u8]> {
+        if self.bytes_per_row_padded == self.bytes_per_row_unpadded {
+            return Cow::Borrowed(buffer);
+        }
+
+        let height = (buffer.len() as u32) / self.bytes_per_row_padded;
+        let mut unpadded_buffer =
+            Vec::with_capacity((self.bytes_per_row_unpadded * height) as usize);
+
+        for row in 0..height {
+            let offset = (self.bytes_per_row_padded * row) as usize;
+            unpadded_buffer.extend_from_slice(
+                &buffer[offset..(offset + self.bytes_per_row_unpadded as usize)],
+            );
+        }
+
+        unpadded_buffer.into()
     }
 }

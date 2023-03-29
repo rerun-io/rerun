@@ -6,7 +6,7 @@ use re_log_types::{
     component_types::{ClassId, KeypointId, Tensor},
     MeshId,
 };
-use re_renderer::{renderer::OutlineMaskPreference, Color32, Size};
+use re_renderer::{Color32, OutlineMaskPreference, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{

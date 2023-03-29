@@ -71,7 +71,7 @@ pub fn load_obj_from_buffer(
                 .collect();
             vertex_texcoords.resize(vertex_positions.len(), glam::Vec2::ZERO);
 
-            let texture = ctx.texture_manager_2d.white_texture_handle();
+            let texture = ctx.texture_manager_2d.white_texture_unorm_handle();
 
             let num_indices = mesh.indices.len();
 

@@ -5,7 +5,7 @@ use nohash_hasher::IntMap;
 
 use re_data_store::{EntityPath, LogDb};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
-use re_renderer::renderer::OutlineMaskPreference;
+use re_renderer::OutlineMaskPreference;
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 

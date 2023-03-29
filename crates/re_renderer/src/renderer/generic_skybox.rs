@@ -2,6 +2,7 @@ use smallvec::smallvec;
 
 use crate::{
     context::SharedRendererData,
+    draw_phases::DrawPhase,
     include_file,
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
@@ -11,7 +12,7 @@ use crate::{
     },
 };
 
-use super::{DrawData, DrawPhase, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
 
 /// Renders a generated skybox from a color gradient
 ///

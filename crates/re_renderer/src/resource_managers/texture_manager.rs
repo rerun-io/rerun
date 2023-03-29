@@ -59,7 +59,8 @@ pub struct TextureManager2D {
     // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
     // optimize for short lived textures as we do with buffer data.
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
-    white_texture: GpuTexture2DHandle,
+    white_texture_unorm: GpuTexture2DHandle,
+    zeroed_texture_uint: GpuTexture2DHandle,
 
     // For convenience to reduce amount of times we need to pass them around
     device: Arc<wgpu::Device>,
@@ -82,21 +83,42 @@ impl TextureManager2D {
         queue: Arc<wgpu::Queue>,
         texture_pool: &mut GpuTexturePool,
     ) -> Self {
-        let white_texture = Self::create_and_upload_texture(
+        crate::profile_function!();
+
+        let white_texture_unorm = Self::create_and_upload_texture(
             &device,
             &queue,
             texture_pool,
             &Texture2DCreationDesc {
-                label: "placeholder".into(),
+                label: "white pixel - unorm".into(),
                 data: &[255, 255, 255, 255],
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                format: wgpu::TextureFormat::Rgba8Unorm,
                 width: 1,
                 height: 1,
             },
         );
 
+        // Wgpu zeros out new textures automatically
+        let zeroed_texture_uint = GpuTexture2DHandle(Some(texture_pool.alloc(
+            &device,
+            &TextureDesc {
+                label: "zeroed pixel - uint".into(),
+                format: wgpu::TextureFormat::Rgba8Uint,
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            },
+        )));
+
         Self {
-            white_texture,
+            white_texture_unorm,
+            zeroed_texture_uint,
             device,
             queue,
             texture_cache: Default::default(),
@@ -145,9 +167,19 @@ impl TextureManager2D {
         texture_handle.clone()
     }
 
-    /// Returns a single pixel white pixel.
-    pub fn white_texture_handle(&self) -> &GpuTexture2DHandle {
-        &self.white_texture
+    /// Returns a single pixel white pixel with an rgba8unorm format.
+    pub fn white_texture_unorm_handle(&self) -> &GpuTexture2DHandle {
+        &self.white_texture_unorm
+    }
+
+    /// Returns a single pixel white pixel with an rgba8unorm format.
+    pub fn white_texture_unorm(&self) -> &GpuTexture {
+        self.white_texture_unorm.0.as_ref().unwrap()
+    }
+
+    /// Returns a single pixel white pixel with an rgba8unorm format.
+    pub fn zeroed_texture_uint(&self) -> &GpuTexture {
+        self.zeroed_texture_uint.0.as_ref().unwrap()
     }
 
     fn create_and_upload_texture(

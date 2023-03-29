@@ -5,14 +5,11 @@ use std::sync::Arc;
 use crate::{
     allocator::{create_and_fill_uniform_buffer, GpuReadbackBuffer, GpuReadbackBufferIdentifier},
     context::RenderContext,
+    draw_phases::{DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerProcessor},
     global_bindings::FrameUniformBuffer,
-    renderer::{
-        CompositorDrawData, DrawData, DrawPhase, OutlineConfig, OutlineMaskProcessor, Renderer,
-    },
-    wgpu_resources::{
-        texture_row_data_info, GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo,
-    },
-    DebugLabel, Rgba, Size,
+    renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
+    DebugLabel, IntRect, Rgba, ScheduledPickingRect, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(
@@ -38,6 +35,9 @@ pub enum ViewBuilderError {
 
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
+
+    #[error("Picking rectangle readback was already scheduled.")]
+    PickingRectAlreadyScheduled,
 }
 
 /// The highest level rendering block in `re_renderer`.
@@ -50,8 +50,9 @@ pub struct ViewBuilder {
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
+    picking_processor: Option<PickingLayerProcessor>,
 
-    scheduled_screenshot: Option<GpuReadbackBuffer>,
+    scheduled_screenshot: Option<GpuReadbackBuffer>, // TODO(andreas): This should also be a "render processor"?
 }
 
 struct ViewTargetSetup {
@@ -61,6 +62,8 @@ struct ViewTargetSetup {
     main_target_msaa: GpuTexture,
     main_target_resolved: GpuTexture,
     depth_buffer: GpuTexture,
+
+    frame_uniform_buffer_content: FrameUniformBuffer,
 
     resolution_in_pixel: [u32; 2],
 }
@@ -183,8 +186,7 @@ impl Default for TargetConfiguration {
 #[derive(Clone)]
 pub struct ScheduledScreenshot {
     pub identifier: GpuReadbackBufferIdentifier,
-    pub width: u32,
-    pub height: u32,
+    pub extent: glam::UVec2,
     pub row_info: TextureRowDataInfo,
 }
 
@@ -430,24 +432,25 @@ impl ViewBuilder {
         };
 
         // Setup frame uniform buffer
+        let frame_uniform_buffer_content = FrameUniformBuffer {
+            view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
+            projection_from_view: projection_from_view.into(),
+            projection_from_world: projection_from_world.into(),
+            camera_position,
+            camera_forward,
+            tan_half_fov: tan_half_fov.into(),
+            pixel_world_size_from_camera_distance,
+            pixels_from_point: config.pixels_from_point,
+
+            auto_size_points: auto_size_points.0,
+            auto_size_lines: auto_size_lines.0,
+
+            end_padding: Default::default(),
+        };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
             format!("{:?} - frame uniform buffer", config.name).into(),
-            FrameUniformBuffer {
-                view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
-                projection_from_view: projection_from_view.into(),
-                projection_from_world: projection_from_world.into(),
-                camera_position,
-                camera_forward,
-                tan_half_fov: tan_half_fov.into(),
-                pixel_world_size_from_camera_distance,
-                pixels_from_point: config.pixels_from_point,
-
-                auto_size_points: auto_size_points.0,
-                auto_size_lines: auto_size_lines.0,
-
-                end_padding: Default::default(),
-            },
+            frame_uniform_buffer_content,
         );
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
@@ -463,6 +466,7 @@ impl ViewBuilder {
             main_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
+            frame_uniform_buffer_content,
         });
 
         Ok(self)
@@ -570,6 +574,25 @@ impl ViewBuilder {
             }
         }
 
+        if let Some(picking_processor) = self.picking_processor.take() {
+            {
+                let mut pass = picking_processor.begin_render_pass(&setup.name, &mut encoder);
+                // PickingProcessor has as custom frame uniform buffer.
+                //
+                // TODO(andreas): Formalize this somehow.
+                // Maybe just every processor should have its own and gets abstract information from the view builder to set it up?
+                // ... or we change this whole thing again so slice things differently:
+                // 0: Truly view Global: Samplers, time, point conversions, etc.
+                // 1: Phase global (camera & projection goes here)
+                // 2: Specific renderer
+                // 3: Draw call in renderer.
+                //
+                //pass.set_bind_group(0, &setup.bind_group_0, &[]);
+                self.draw_phase(ctx, DrawPhase::PickingLayer, &mut pass);
+            }
+            picking_processor.end_render_pass(&mut encoder);
+        }
+
         if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
             crate::profile_scope!("outlines");
             {
@@ -649,6 +672,8 @@ impl ViewBuilder {
     /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
     /// Returns screenshot data properties for convenience.
     ///
+    /// Can only be called once per frame per [`ViewBuilder`].
+    ///
     /// Data from the screenshot needs to be retrieved from the [`crate::GpuReadbackBelt`] on [`RenderContext`].
     /// For this the user needs to store the returned scheduled screenshot like so:
     /// ```no_run
@@ -674,7 +699,7 @@ impl ViewBuilder {
         let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
 
         let row_info =
-            texture_row_data_info(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
+            TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
         let buffer_size = row_info.bytes_per_row_padded * setup.resolution_in_pixel[1];
         let screenshot_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
@@ -688,9 +713,52 @@ impl ViewBuilder {
         Ok(ScheduledScreenshot {
             row_info,
             identifier,
-            width: setup.resolution_in_pixel[0],
-            height: setup.resolution_in_pixel[1],
+            extent: setup.resolution_in_pixel.into(),
         })
+    }
+
+    /// Schedules the readback of a rectangle from the picking layer.
+    ///
+    /// Can only be called once per frame per [`ViewBuilder`].
+    ///
+    /// The result will still be valid if the rectangle is partially or fully outside of bounds.
+    /// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger,
+    /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
+    ///
+    /// Note that the picking layer will not be created in the first place if this isn't called.
+    pub fn schedule_picking_readback(
+        &mut self,
+        ctx: &mut RenderContext,
+        picking_rect: IntRect,
+        show_debug_view: bool,
+    ) -> Result<ScheduledPickingRect, ViewBuilderError> {
+        if self.picking_processor.is_some() {
+            return Err(ViewBuilderError::PickingRectAlreadyScheduled);
+        };
+
+        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
+
+        let (picking_processor, scheduled_rect) = PickingLayerProcessor::new(
+            ctx,
+            &setup.name,
+            setup.resolution_in_pixel.into(),
+            picking_rect,
+            &setup.frame_uniform_buffer_content,
+            show_debug_view,
+        );
+
+        if show_debug_view {
+            self.queue_draw(&DebugOverlayDrawData::new(
+                ctx,
+                &picking_processor.picking_target,
+                setup.resolution_in_pixel.into(),
+                scheduled_rect.rect,
+            ));
+        }
+
+        self.picking_processor = Some(picking_processor);
+
+        Ok(scheduled_rect)
     }
 
     /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.

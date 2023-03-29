@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
-use crate::wgpu_resources::{texture_row_data_info, BufferDesc, GpuBuffer, GpuBufferPool};
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, TextureRowDataInfo};
 
 pub type GpuReadbackBufferIdentifier = u32;
 
@@ -28,7 +28,7 @@ impl GpuReadbackBuffer {
         copy_extents: glam::UVec2,
     ) -> GpuReadbackBufferIdentifier {
         let bytes_per_row =
-            texture_row_data_info(source.texture.format(), copy_extents.x).bytes_per_row_padded;
+            TextureRowDataInfo::new(source.texture.format(), copy_extents.x).bytes_per_row_padded;
 
         // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
         // We go one step further and require the size to be exactly equal - there is no point in reading back more,

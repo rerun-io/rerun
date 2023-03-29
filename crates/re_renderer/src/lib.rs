@@ -42,6 +42,13 @@ pub use size::Size;
 pub use view_builder::{AutoSizeConfig, ScheduledScreenshot};
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
+mod draw_phases;
+pub(crate) use draw_phases::DrawPhase;
+pub use draw_phases::{
+    OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
+    PickingLayerObjectId, ScheduledPickingRect,
+};
+
 mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};
 #[allow(unused_imports)] // they can be handy from time to time
@@ -55,6 +62,9 @@ pub use self::file_resolver::{
 
 mod file_server;
 pub use self::file_server::FileServer;
+
+mod rect;
+pub use rect::IntRect;
 
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
 #[rustfmt::skip] // it's auto-generated

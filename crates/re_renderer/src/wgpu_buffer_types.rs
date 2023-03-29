@@ -235,6 +235,13 @@ impl From<crate::Rgba> for Vec4 {
     }
 }
 
+impl From<Vec4> for glam::Vec4 {
+    #[inline]
+    fn from(val: Vec4) -> Self {
+        glam::vec4(val.x, val.y, val.z, val.w)
+    }
+}
+
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Mat3 {
@@ -272,6 +279,13 @@ impl From<glam::Mat4> for Mat4 {
             c2: m.z_axis.into(),
             c3: m.w_axis.into(),
         }
+    }
+}
+
+impl From<Mat4> for glam::Mat4 {
+    #[inline]
+    fn from(val: Mat4) -> Self {
+        glam::Mat4::from_cols(val.c0.into(), val.c1.into(), val.c2.into(), val.c3.into())
     }
 }
 

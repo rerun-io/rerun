@@ -28,12 +28,12 @@ pub use mesh_renderer::{MeshDrawData, MeshInstance};
 mod compositor;
 pub(crate) use compositor::CompositorDrawData;
 
-mod outlines;
-pub(crate) use outlines::OutlineMaskProcessor;
-pub use outlines::{OutlineConfig, OutlineMaskPreference};
+mod debug_overlay;
+pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayRenderer};
 
 use crate::{
     context::{RenderContext, SharedRendererData},
+    draw_phases::DrawPhase,
     wgpu_resources::WgpuResourcePools,
     FileResolver, FileSystem,
 };
@@ -78,34 +78,8 @@ pub trait Renderer {
     }
 }
 
-/// Determines a (very rough) order of rendering and describes the active [`wgpu::RenderPass`].
-///
-/// Currently we do not support sorting *within* a rendering phase!
-/// See [#702](https://github.com/rerun-io/rerun/issues/702)
-/// Within a phase `DrawData` are drawn in the order they are submitted in.
-#[derive(Debug, enumset::EnumSetType)]
-pub enum DrawPhase {
-    /// Opaque objects, performing reads/writes to the depth buffer.
-    ///
-    /// Typically they are order independent, so everything uses this same index.
-    Opaque,
-
-    /// Background, rendering where depth wasn't written.
-    Background,
-
-    /// Render mask for things that should get outlines.
-    OutlineMask,
-
-    /// Drawn when compositing with the main target.
-    Compositing,
-
-    /// Drawn when compositing with the main target, but for screenshots.
-    /// This is a separate phase primarily because screenshots may be rendered with a different texture format.
-    CompositingScreenshot,
-}
-
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.
-fn screen_triangle_vertex_shader<Fs: FileSystem>(
+pub fn screen_triangle_vertex_shader<Fs: FileSystem>(
     pools: &mut WgpuResourcePools,
     device: &wgpu::Device,
     resolver: &mut FileResolver<Fs>,

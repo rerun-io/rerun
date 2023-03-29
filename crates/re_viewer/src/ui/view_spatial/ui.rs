@@ -5,7 +5,7 @@ use re_format::format_f32;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
-use re_renderer::renderer::OutlineConfig;
+use re_renderer::OutlineConfig;
 
 use crate::{
     misc::{

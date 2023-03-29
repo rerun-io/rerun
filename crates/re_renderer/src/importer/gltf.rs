@@ -223,7 +223,7 @@ fn import_mesh(
 
             gpu_image_handles[texture.source().index()].clone()
         } else {
-            texture_manager.white_texture_handle().clone()
+            texture_manager.white_texture_unorm_handle().clone()
         };
 
         // The color factor *is* in linear space, making things easier for us
