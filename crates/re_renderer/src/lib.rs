@@ -46,7 +46,7 @@ mod draw_phases;
 pub(crate) use draw_phases::DrawPhase;
 pub use draw_phases::{
     OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
-    PickingLayerObjectId, PickingLayerProcessor,
+    PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
 };
 
 mod file_system;

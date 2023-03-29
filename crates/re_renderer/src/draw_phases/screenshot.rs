@@ -10,13 +10,16 @@
 //! We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
 //! Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
 
-use ecolor::Rgba;
-
 use crate::{
-    allocator::GpuReadbackUserData,
     wgpu_resources::{GpuTexture, TextureDesc, TextureRowDataInfo},
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
 };
+
+/// Type used as user data on the gpu readback belt.
+struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
+    extent: glam::UVec2,
+    user_data: T,
+}
 
 pub struct ScreenshotProcessor {
     screenshot_texture: GpuTexture,
@@ -27,12 +30,12 @@ impl ScreenshotProcessor {
     /// The texture format used for screenshots.
     pub const SCREENSHOT_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-    pub fn new(
+    pub fn new<T: 'static + Send + Sync>(
         ctx: &RenderContext,
         view_name: &DebugLabel,
         resolution: glam::UVec2,
         readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: GpuReadbackUserData,
+        readback_user_data: T,
     ) -> Self {
         let row_info = TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, resolution.x);
         let buffer_size = row_info.bytes_per_row_padded * resolution.y;
@@ -41,7 +44,10 @@ impl ScreenshotProcessor {
             &ctx.gpu_resources.buffers,
             buffer_size as u64,
             readback_identifier,
-            readback_user_data,
+            Box::new(ReadbackBeltMetadata {
+                extent: resolution,
+                user_data: readback_user_data,
+            }),
         );
 
         let screenshot_texture = ctx.gpu_resources.textures.alloc(
@@ -104,5 +110,21 @@ impl ScreenshotProcessor {
                 self.screenshot_texture.texture.height(),
             ),
         );
+    }
+
+    // TODO: docstring
+    pub fn next_readback_result<T: 'static + Send + Sync>(
+        ctx: &RenderContext,
+        identifier: GpuReadbackIdentifier,
+        on_screenshot: impl FnOnce(std::borrow::Cow<'_, [u8]>, glam::UVec2, T),
+    ) {
+        ctx.gpu_readback_belt
+            .lock()
+            .readback_data::<ReadbackBeltMetadata<T>>(identifier, move |data: &[u8], metadata| {
+                let texture_row_info =
+                    TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent.x);
+                let texture_data = texture_row_info.remove_padding(data);
+                on_screenshot(texture_data, metadata.extent, metadata.user_data);
+            });
     }
 }

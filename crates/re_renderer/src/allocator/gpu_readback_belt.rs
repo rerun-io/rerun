@@ -301,7 +301,7 @@ impl GpuReadbackBelt {
     pub fn readback_data<UserDataType: 'static>(
         &mut self,
         identifier: GpuReadbackIdentifier,
-        mut callback: impl FnMut(&[u8], Box<UserDataType>),
+        callback: impl FnOnce(&[u8], Box<UserDataType>),
     ) {
         crate::profile_function!();
 

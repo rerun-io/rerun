@@ -34,25 +34,6 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
 // TODO:
 const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
 
-impl Picking {
-    fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext, _time: f32) {
-        while let Some(picking_result) =
-            PickingLayerProcessor::next_readback_result(re_ctx, READBACK_IDENTIFIER)
-        {
-            // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
-            let picked_pixel = picking_result.picking_data[(picking_result.rect.extent.x / 2
-                + (picking_result.rect.extent.y / 2) * picking_result.rect.extent.x)
-                as usize];
-
-            if picked_pixel.object.0 != 0 {
-                let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
-                point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
-                point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
-            }
-        }
-    }
-}
-
 impl framework::Example for Picking {
     fn title() -> &'static str {
         "Picking"
@@ -104,7 +85,20 @@ impl framework::Example for Picking {
         time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
-        self.handle_incoming_picking_data(re_ctx, time.seconds_since_startup());
+        while let Some(picking_result) =
+            PickingLayerProcessor::next_readback_result(re_ctx, READBACK_IDENTIFIER)
+        {
+            // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
+            let picked_pixel = picking_result.picking_data[(picking_result.rect.extent.x / 2
+                + (picking_result.rect.extent.y / 2) * picking_result.rect.extent.x)
+                as usize];
+
+            if picked_pixel.object.0 != 0 {
+                let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
+                point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
+                point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
+            }
+        }
 
         let mut view_builder = ViewBuilder::default();
 

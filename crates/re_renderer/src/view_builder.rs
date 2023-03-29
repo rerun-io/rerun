@@ -606,6 +606,7 @@ impl ViewBuilder {
         if let Some(screenshot_processor) = self.screenshot_processor.take() {
             {
                 let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
+                pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::CompositingScreenshot, &mut pass);
             }
             screenshot_processor.end_render_pass(&mut encoder);
@@ -636,11 +637,11 @@ impl ViewBuilder {
     /// }
     /// ```
     /// TODO: update doc
-    pub fn schedule_screenshot(
+    pub fn schedule_screenshot<T: 'static + Send + Sync>(
         &mut self,
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
-        user_data: GpuReadbackUserData,
+        user_data: T,
     ) -> Result<(), ViewBuilderError> {
         if self.screenshot_processor.is_some() {
             return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
