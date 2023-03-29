@@ -9,14 +9,16 @@ use re_renderer::{
 
 mod framework;
 
+struct PointSet {
+    positions: Vec<glam::Vec3>,
+    radii: Vec<Size>,
+    colors: Vec<Color32>,
+    picking_ids: Vec<PickingLayerInstanceId>,
+}
+
 struct Picking {
-    points_positions: Vec<glam::Vec3>,
-    points_radii: Vec<Size>,
-    points_colors: Vec<Color32>,
-    points_picking_ids: Vec<PickingLayerInstanceId>,
-
+    point_sets: Vec<PointSet>,
     scheduled_picking_rects: HashMap<GpuReadbackBufferIdentifier, ScheduledPickingRect>,
-
     picking_position: glam::UVec2,
 }
 
@@ -48,11 +50,11 @@ impl Picking {
                     let picked_pixel = picking_data[(picking_rect_info.extent.x / 2
                         + (picking_rect_info.extent.y / 2) * picking_rect_info.extent.x)
                         as usize];
+
                     if picked_pixel.object.0 != 0 {
-                        let index = picked_pixel.instance.0
-                            + (self.points_radii.len() as u64 / 2) * (picked_pixel.object.0 - 1);
-                        self.points_radii[index as usize] = Size::new_scene(0.1);
-                        self.points_colors[index as usize] = Color32::DEBUG_COLOR;
+                        let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
+                        point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
+                        point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
                     }
                 } else {
                     re_log::error!("Received picking data for unknown identifier");
@@ -74,30 +76,33 @@ impl framework::Example for Picking {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
         let point_count = 10000;
-        let points_positions = (0..point_count)
-            .map(|_| {
-                glam::vec3(
-                    rnd.gen_range(random_point_range.clone()),
-                    rnd.gen_range(random_point_range.clone()),
-                    rnd.gen_range(random_point_range.clone()),
-                )
+
+        // Split point cloud into several batches to test picking of multiple objects.
+        let point_sets = (0..2)
+            .map(|_| PointSet {
+                positions: (0..point_count)
+                    .map(|_| {
+                        glam::vec3(
+                            rnd.gen_range(random_point_range.clone()),
+                            rnd.gen_range(random_point_range.clone()),
+                            rnd.gen_range(random_point_range.clone()),
+                        )
+                    })
+                    .collect_vec(),
+                radii: std::iter::repeat(Size::new_scene(0.08))
+                    .take(point_count)
+                    .collect_vec(),
+                colors: (0..point_count)
+                    .map(|_| random_color(&mut rnd))
+                    .collect_vec(),
+                picking_ids: (0..point_count as u64)
+                    .map(PickingLayerInstanceId)
+                    .collect_vec(),
             })
-            .collect_vec();
-        let points_radii = std::iter::repeat(Size::new_scene(0.08))
-            .take(point_count)
-            .collect_vec();
-        let points_colors = (0..point_count)
-            .map(|_| random_color(&mut rnd))
-            .collect_vec();
-        let points_picking_ids = (0..point_count as u64)
-            .map(PickingLayerInstanceId)
             .collect_vec();
 
         Picking {
-            points_positions,
-            points_radii,
-            points_colors,
-            points_picking_ids,
+            point_sets,
             scheduled_picking_rects: HashMap::default(),
             picking_position: glam::UVec2::ZERO,
         }
@@ -155,29 +160,18 @@ impl framework::Example for Picking {
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);
 
-        // Split into two batches to test picking of multiple batches.
-        let num_per_batch = self.points_positions.len() / 2;
-        builder
-            .batch("Random Points 1")
-            .picking_object_id(re_renderer::PickingLayerObjectId(1))
-            .add_points(
-                num_per_batch,
-                self.points_positions.iter().take(num_per_batch).cloned(),
-            )
-            .radii(self.points_radii.iter().take(num_per_batch).cloned())
-            .colors(self.points_colors.iter().take(num_per_batch).cloned())
-            .picking_instance_ids(self.points_picking_ids.iter().cloned());
-        builder
-            .batch("Random Points 2")
-            .picking_object_id(re_renderer::PickingLayerObjectId(2))
-            .add_points(
-                num_per_batch,
-                self.points_positions.iter().skip(num_per_batch).cloned(),
-            )
-            .radii(self.points_radii.iter().skip(num_per_batch).cloned())
-            .colors(self.points_colors.iter().skip(num_per_batch).cloned())
-            .picking_instance_ids(self.points_picking_ids.iter().cloned());
-
+        for (i, point_set) in self.point_sets.iter().enumerate() {
+            builder
+                .batch(format!("Random Points {i}"))
+                .picking_object_id(re_renderer::PickingLayerObjectId(i as u64 + 1))
+                .add_points(
+                    point_set.positions.len(),
+                    point_set.positions.iter().cloned(),
+                )
+                .radii(point_set.radii.iter().cloned())
+                .colors(point_set.colors.iter().cloned())
+                .picking_instance_ids(point_set.picking_ids.iter().cloned());
+        }
         view_builder.queue_draw(&builder.to_draw_data(re_ctx).unwrap());
         view_builder.queue_draw(&re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
 
