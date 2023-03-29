@@ -51,6 +51,8 @@ fn insert(c: &mut Criterion) {
                         DataStoreConfig {
                             index_bucket_nb_rows: num_rows_per_bucket,
                             component_bucket_nb_rows: num_rows_per_bucket,
+                            index_bucket_size_bytes: u64::MAX,
+                            component_bucket_size_bytes: u64::MAX,
                             ..Default::default()
                         },
                         InstanceKey::name(),
@@ -83,6 +85,8 @@ fn latest_at(c: &mut Criterion) {
                 DataStoreConfig {
                     index_bucket_nb_rows: num_rows_per_bucket,
                     component_bucket_nb_rows: num_rows_per_bucket,
+                    index_bucket_size_bytes: u64::MAX,
+                    component_bucket_size_bytes: u64::MAX,
                     ..Default::default()
                 },
                 InstanceKey::name(),
@@ -146,6 +150,8 @@ fn latest_at_missing(c: &mut Criterion) {
                 DataStoreConfig {
                     index_bucket_nb_rows: num_rows_per_bucket,
                     component_bucket_nb_rows: num_rows_per_bucket,
+                    index_bucket_size_bytes: u64::MAX,
+                    component_bucket_size_bytes: u64::MAX,
                     ..Default::default()
                 },
                 InstanceKey::name(),
@@ -190,6 +196,8 @@ fn range(c: &mut Criterion) {
                 DataStoreConfig {
                     index_bucket_nb_rows: num_rows_per_bucket,
                     component_bucket_nb_rows: num_rows_per_bucket,
+                    index_bucket_size_bytes: u64::MAX,
+                    component_bucket_size_bytes: u64::MAX,
                     ..Default::default()
                 },
                 InstanceKey::name(),
