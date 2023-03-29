@@ -80,12 +80,7 @@ impl CompositorDrawData {
         );
 
         let outline_final_voronoi_handle = outline_final_voronoi.map_or_else(
-            || {
-                ctx.texture_manager_2d
-                    .get(ctx.texture_manager_2d.white_texture_handle())
-                    .expect("white fallback texture missing")
-                    .handle
-            },
+            || ctx.texture_manager_2d.white_texture_unorm().handle,
             |t| t.handle,
         );
 

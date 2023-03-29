@@ -59,7 +59,7 @@ fn main_fs(in: VertexOutput) -> @location(0) Vec4 {
         let raw_values = textureLoad(debug_texture_uint, coords, 0);
 
         let num_color_levels = 20u;
-        let mapped_values = (raw_values % num_color_levels) / f32(num_color_levels - 1u);
+        let mapped_values = Vec4(raw_values % num_color_levels) / f32(num_color_levels - 1u);
 
         return Vec4(mapped_values.rgb, 1.0);
     } else {

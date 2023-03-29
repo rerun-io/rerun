@@ -99,15 +99,15 @@ impl DebugOverlayDrawData {
             },
         );
 
-        let fallback_texture = ctx
-            .texture_manager_2d
-            .get(ctx.texture_manager_2d.white_texture_handle())
-            .expect("white fallback texture missing")
-            .handle;
-
         let (texture_float, texture_uint) = match mode {
-            DebugOverlayMode::SHOW_FLOAT_TEXTURE => (debug_texture.handle, fallback_texture),
-            DebugOverlayMode::SHOW_UINT_TEXTURE => (fallback_texture, debug_texture.handle),
+            DebugOverlayMode::SHOW_FLOAT_TEXTURE => (
+                debug_texture.handle,
+                ctx.texture_manager_2d.zeroed_texture_uint().handle,
+            ),
+            DebugOverlayMode::SHOW_UINT_TEXTURE => (
+                ctx.texture_manager_2d.white_texture_unorm().handle,
+                debug_texture.handle,
+            ),
         };
 
         DebugOverlayDrawData {
