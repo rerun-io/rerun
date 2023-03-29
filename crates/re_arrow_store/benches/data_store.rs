@@ -70,7 +70,6 @@ fn latest_at(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
         let table = build_table(NUM_INSTANCES as usize, packed);
-        let store = insert_table(Default::default(), InstanceKey::name(), &table);
 
         // Default config
         group.bench_function("default", |b| {
@@ -80,6 +79,15 @@ fn latest_at(c: &mut Criterion) {
         // Emulate more or less buckets
         let num_rows_per_bucket = [0, 2, 32, 2048];
         for num_rows_per_bucket in num_rows_per_bucket {
+            let store = insert_table(
+                DataStoreConfig {
+                    index_bucket_nb_rows: num_rows_per_bucket,
+                    component_bucket_nb_rows: num_rows_per_bucket,
+                    ..Default::default()
+                },
+                InstanceKey::name(),
+                &table,
+            );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
                     let results = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
@@ -104,9 +112,9 @@ fn latest_at_missing(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
         let table = build_table(NUM_INSTANCES as usize, packed);
-        let store = insert_table(Default::default(), InstanceKey::name(), &table);
 
         // Default config
+        let store = insert_table(Default::default(), InstanceKey::name(), &table);
         group.bench_function("primary/default", |b| {
             b.iter(|| {
                 let results =
@@ -134,6 +142,15 @@ fn latest_at_missing(c: &mut Criterion) {
         // Emulate more or less buckets
         let num_rows_per_bucket = [0, 2, 32, 2048];
         for num_rows_per_bucket in num_rows_per_bucket {
+            let store = insert_table(
+                DataStoreConfig {
+                    index_bucket_nb_rows: num_rows_per_bucket,
+                    component_bucket_nb_rows: num_rows_per_bucket,
+                    ..Default::default()
+                },
+                InstanceKey::name(),
+                &table,
+            );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
                     let results = latest_data_at(&store, Rect2D::name(), &[Rect2D::name()]);
@@ -160,7 +177,6 @@ fn range(c: &mut Criterion) {
         ));
 
         let table = build_table(NUM_INSTANCES as usize, packed);
-        let store = insert_table(Default::default(), InstanceKey::name(), &table);
 
         // Default config
         group.bench_function("default", |b| {
@@ -170,6 +186,15 @@ fn range(c: &mut Criterion) {
         // Emulate more or less buckets
         let num_rows_per_bucket = [0, 2, 32, 2048];
         for num_rows_per_bucket in num_rows_per_bucket {
+            let store = insert_table(
+                DataStoreConfig {
+                    index_bucket_nb_rows: num_rows_per_bucket,
+                    component_bucket_nb_rows: num_rows_per_bucket,
+                    ..Default::default()
+                },
+                InstanceKey::name(),
+                &table,
+            );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
                     let msgs = range_data(&store, [Rect2D::name()]);
