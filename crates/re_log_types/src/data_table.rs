@@ -15,7 +15,7 @@ pub enum DataTableError {
     #[error("Trying to deserialize data that is missing a column present in the schema: {0:?}")]
     MissingColumn(String),
 
-    #[error("Trying to deserialize data that cannot possibly be a column: {0:?}")]
+    #[error("Trying to deserialize column data that doesn't contain any ListArrays: {0:?}")]
     NotAColumn(String),
 
     #[error("Error with one or more the underlying data rows: {0}")]
@@ -50,7 +50,7 @@ type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 pub struct DataCellColumn(pub DataCellOptVec);
 
 impl std::ops::Deref for DataCellColumn {
-    type Target = DataCellOptVec;
+    type Target = [Option<DataCell>];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -338,11 +338,11 @@ impl DataTable {
             timepoint,
             entity_path,
             num_instances,
-            columns: table,
+            columns,
         } = self;
 
         (0..num_rows).map(move |i| {
-            let cells = table
+            let cells = columns
                 .values()
                 .filter_map(|rows| rows[i].clone() /* shallow */);
 
@@ -404,6 +404,8 @@ impl DataTable {
     ///   They are optional, potentially sparse, and never deserialized on the server-side (not by
     ///   the storage systems, at least).
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
+        crate::profile_function!();
+
         let mut schema = Schema::default();
         let mut columns = Vec::new();
 
@@ -430,6 +432,8 @@ impl DataTable {
     /// They are always present, always dense, and always deserialized upon reception by the
     /// server.
     fn serialize_control_columns(&self) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
+        crate::profile_function!();
+
         /// Serializes an iterable of dense arrow-like data.
         fn serialize_dense_column<C: ArrowSerialize + ArrowField<Type = C> + 'static>(
             name: &str,
@@ -511,6 +515,8 @@ impl DataTable {
     /// They are optional, potentially sparse, and never deserialized on the server-side (not by
     /// the storage systems, at least).
     fn serialize_data_columns(&self) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
+        crate::profile_function!();
+
         let Self {
             table_id: _,
             row_id: _,
@@ -595,6 +601,8 @@ impl DataTable {
         schema: &Schema,
         chunk: &Chunk<Box<dyn Array>>,
     ) -> DataTableResult<Self> {
+        crate::profile_function!();
+
         let control_indices: HashMap<&str, usize> = schema
             .fields
             .iter()
@@ -695,12 +703,12 @@ impl TryFrom<&DataTable> for ArrowMsg {
 
     #[inline]
     fn try_from(table: &DataTable) -> DataTableResult<Self> {
-        let timepoint_min = table.timepoint_max();
+        let timepoint_max = table.timepoint_max();
         let (schema, chunk) = table.serialize()?;
 
         Ok(ArrowMsg {
             table_id: table.table_id,
-            timepoint_max: timepoint_min,
+            timepoint_max,
             schema,
             chunk,
         })

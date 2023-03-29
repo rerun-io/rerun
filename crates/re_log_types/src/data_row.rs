@@ -54,7 +54,7 @@ type DataCellVec = SmallVec<[DataCell; 4]>;
 pub struct DataCellRow(pub DataCellVec);
 
 impl std::ops::Deref for DataCellRow {
-    type Target = DataCellVec;
+    type Target = [DataCell];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -240,7 +240,7 @@ impl DataRow {
         use crate::Component as _;
         if !components.contains(&MsgId::name()) {
             let num_instances = this.num_instances();
-            this.cells.push(DataCell::from_native(
+            this.cells.0.push(DataCell::from_native(
                 vec![row_id; num_instances as _].iter(),
             ));
         }
