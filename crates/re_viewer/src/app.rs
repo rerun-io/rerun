@@ -11,13 +11,13 @@ use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
-use re_renderer::WgpuResourcePoolStatistics;
+use re_renderer::{GpuReadbackBufferIdentifier, WgpuResourcePoolStatistics};
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 
 use crate::{
     app_icon::setup_app_icon,
-    misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
+    misc::{AppOptions, Caches, RecordingConfig, ScheduledGpuReadback, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
     viewer_analytics::ViewerAnalytics,
 };
@@ -87,6 +87,10 @@ pub struct App {
 
     latest_queue_interest: instant::Instant,
 
+    /// List of all data we're currently waiting for from the GPU for each application id
+    scheduled_gpu_readbacks_per_application:
+        HashMap<ApplicationId, HashMap<GpuReadbackBufferIdentifier, ScheduledGpuReadback>>,
+
     /// Measures how long a frame takes to paint
     frame_time_history: egui::util::History<f32>,
 
@@ -142,6 +146,8 @@ impl App {
             memory_panel_open: false,
 
             latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+
+            scheduled_gpu_readbacks_per_application: HashMap::default(),
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -404,6 +410,37 @@ impl App {
                 );
             });
     }
+
+    fn process_gpu_readback_data(&mut self, data: &[u8], identifier: GpuReadbackBufferIdentifier) {
+        for (application_id, scheduled_gpu_readbacks) in
+            &mut self.scheduled_gpu_readbacks_per_application
+        {
+            if let Some((_, scheduled_readback)) = scheduled_gpu_readbacks.remove_entry(&identifier)
+            {
+                match scheduled_readback {
+                    ScheduledGpuReadback::SpaceViewScreenshot {
+                        screenshot,
+                        space_view_id,
+                        mode,
+                    } => {
+                        if let Some(blueprint) = self.state.blueprints.get_mut(application_id) {
+                            blueprint.viewport.save_spaceview_screenshot(
+                                &screenshot,
+                                data,
+                                space_view_id,
+                                mode,
+                            );
+                        }
+                    }
+                }
+                return;
+            }
+        }
+        re_log::warn_once!(
+            "Received unexpected GPU readback. (Size: {}, identifier {identifier}).",
+            data.len()
+        );
+    }
 }
 
 impl eframe::App for App {
@@ -449,8 +486,8 @@ impl eframe::App for App {
             egui_ctx.set_pixels_per_point(pixels_per_point);
         }
 
+        // TODO(andreas): store the re_renderer somewhere else.
         let gpu_resource_stats = {
-            // TODO(andreas): store the re_renderer somewhere else.
             let egui_renderer = {
                 let render_state = frame.wgpu_render_state().unwrap();
                 &mut render_state.renderer.read()
@@ -459,6 +496,13 @@ impl eframe::App for App {
                 .paint_callback_resources
                 .get::<re_renderer::RenderContext>()
                 .unwrap();
+
+            // Handle GPU readback data.
+            render_ctx
+                .gpu_readback_belt
+                .lock()
+                .receive_data(|data, identifier| self.process_gpu_readback_data(data, identifier));
+
             // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
         };
@@ -505,7 +549,7 @@ impl eframe::App for App {
                 let blueprint = self
                     .state
                     .blueprints
-                    .entry(selected_app_id)
+                    .entry(selected_app_id.clone())
                     .or_insert_with(|| Blueprint::new(egui_ctx));
 
                 recording_config_entry(
@@ -535,6 +579,9 @@ impl eframe::App for App {
                         self.state.show(
                             ui,
                             render_ctx,
+                            self.scheduled_gpu_readbacks_per_application
+                                .entry(selected_app_id)
+                                .or_default(),
                             log_db,
                             &self.re_ui,
                             &self.component_ui_registry,
@@ -936,10 +983,12 @@ struct AppState {
 }
 
 impl AppState {
+    #[allow(clippy::too_many_arguments)]
     fn show(
         &mut self,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
+        scheduled_gpu_readbacks: &mut HashMap<GpuReadbackBufferIdentifier, ScheduledGpuReadback>,
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
@@ -977,6 +1026,7 @@ impl AppState {
             rec_cfg,
             re_ui,
             render_ctx,
+            scheduled_gpu_readbacks,
         };
 
         let blueprint = blueprints
@@ -1585,6 +1635,17 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
         .clicked()
     {
         ui.close_menu();
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui
+            .checkbox(&mut options.experimental_space_view_screenshots, "(experimental) Space View screenshots")
+            .on_hover_text("Allow taking screenshots of 2D & 3D space views via their context menu. Does not contain labels.")
+            .clicked()
+        {
+            ui.close_menu();
+        }
     }
 
     #[cfg(debug_assertions)]

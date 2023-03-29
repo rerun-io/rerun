@@ -18,6 +18,10 @@ pub struct AppOptions {
     /// (Since this is serialized, even between sessions!)
     #[cfg(not(target_arch = "wasm32"))]
     pub zoom_factor: f32,
+
+    /// Enable the experimental feature for space view screenshots.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub experimental_space_view_screenshots: bool,
 }
 
 impl Default for AppOptions {
@@ -32,6 +36,9 @@ impl Default for AppOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             zoom_factor: 1.0,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            experimental_space_view_screenshots: false,
         }
     }
 }

@@ -9,7 +9,8 @@ use re_renderer::renderer::OutlineConfig;
 
 use crate::{
     misc::{
-        space_info::query_view_coordinates, SelectionHighlight, SpaceViewHighlights, ViewerContext,
+        space_info::query_view_coordinates, ScreenshotMode, SelectionHighlight,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::{data_blueprint::DataBlueprintTree, view_spatial::UiLabelTarget, SpaceViewId},
 };
@@ -618,5 +619,33 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
         outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.5).at_least(0.5),
         color_layer_a: hover_outline_color,
         color_layer_b: selection_outline_color,
+    }
+}
+
+pub fn screenshot_context_menu(
+    _ctx: &ViewerContext<'_>,
+    response: egui::Response,
+) -> (egui::Response, Option<ScreenshotMode>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if _ctx.app_options.experimental_space_view_screenshots {
+            let mut take_screenshot = None;
+            let response = response.context_menu(|ui| {
+                if ui.button("Screenshot (save to disk)").clicked() {
+                    take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
+                    ui.close_menu();
+                } else if ui.button("Screenshot (clipboard only)").clicked() {
+                    take_screenshot = Some(ScreenshotMode::CopyToClipboard);
+                    ui.close_menu();
+                }
+            });
+            (response, take_screenshot)
+        } else {
+            (response, None)
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        (response, None)
     }
 }
