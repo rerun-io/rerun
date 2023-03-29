@@ -114,7 +114,7 @@ impl PickingLayerProcessor {
         let picking_target = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: view_name.clone().push_str(" - PickingLayerProcessor"),
+                label: format!("{view_name} - PickingLayerProcessor").into(),
                 size: picking_rect.wgpu_extent(),
                 mip_level_count: 1,
                 sample_count: 1,
@@ -126,7 +126,7 @@ impl PickingLayerProcessor {
         let picking_depth = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: view_name.clone().push_str(" - picking_layer depth"),
+                label: format!("{view_name} - picking_layer depth").into(),
                 format: Self::PICKING_LAYER_DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 ..picking_target.creation_desc
@@ -166,9 +166,7 @@ impl PickingLayerProcessor {
 
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
-            view_name
-                .clone()
-                .push_str(" - picking_layer frame uniform buffer"),
+            format!("{view_name} - picking_layer frame uniform buffer").into(),
             frame_uniform_buffer_content,
         );
 
@@ -203,7 +201,7 @@ impl PickingLayerProcessor {
         crate::profile_function!();
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: view_name.clone().push_str(" - picking_layer pass").get(),
+            label: DebugLabel::from(format!("{view_name} - picking_layer pass")).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.picking_target.default_view,
                 resolve_target: None,

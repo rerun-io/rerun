@@ -5,20 +5,19 @@ pub struct DebugLabel {
     label: String,
 }
 
-impl DebugLabel {
+impl std::fmt::Debug for DebugLabel {
     #[cfg(debug_assertions)]
-    pub fn push_str(mut self, append_this: &str) -> DebugLabel {
-        self.label.push_str(append_this);
-        self
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.label.fmt(f)
     }
 
     #[cfg(not(debug_assertions))]
-    pub fn push_str(&mut self, _append_this: &str) -> DebugLabel {
-        DebugLabel {}
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DebugLabel").finish_non_exhaustive()
     }
 }
 
-impl std::fmt::Debug for DebugLabel {
+impl std::fmt::Display for DebugLabel {
     #[cfg(debug_assertions)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.label.fmt(f)

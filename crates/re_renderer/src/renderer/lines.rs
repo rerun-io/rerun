@@ -614,18 +614,13 @@ impl LineDrawData {
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
-                    batches_internal.push(
-                        line_renderer.create_linestrip_batch(
-                            ctx,
-                            batch_info
-                                .label
-                                .clone()
-                                .push_str(&format!("strip-only {range:?}")),
-                            uniform_buffer_bindings_mask_only_batches.next().unwrap(),
-                            range.clone(),
-                            enum_set![DrawPhase::OutlineMask],
-                        ),
-                    );
+                    batches_internal.push(line_renderer.create_linestrip_batch(
+                        ctx,
+                        format!("{} strip-only {range:?}", batch_info.label).into(),
+                        uniform_buffer_bindings_mask_only_batches.next().unwrap(),
+                        range.clone(),
+                        enum_set![DrawPhase::OutlineMask],
+                    ));
                 }
 
                 start_vertex_for_next_batch = line_vertex_range_end;

@@ -218,7 +218,7 @@ impl GpuMesh {
             let vertex_buffer_combined = pools.buffers.alloc(
                 device,
                 &BufferDesc {
-                    label: data.label.clone().push_str(" - vertices"),
+                    label: format!("{} - vertices", data.label).into(),
                     size: vb_combined_size,
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
@@ -247,7 +247,7 @@ impl GpuMesh {
             let index_buffer = pools.buffers.alloc(
                 device,
                 &BufferDesc {
-                    label: data.label.clone().push_str(" - indices"),
+                    label: format!("{} - indices", data.label).into(),
                     size: index_buffer_size,
                     usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
@@ -271,7 +271,7 @@ impl GpuMesh {
         let materials = {
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
-                data.label.clone().push_str(" - material uniforms"),
+                format!("{} - material uniforms", data.label).into(),
                 data.materials
                     .iter()
                     .map(|material| gpu_data::MaterialUniformBuffer {
