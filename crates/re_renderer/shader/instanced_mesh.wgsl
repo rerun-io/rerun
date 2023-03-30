@@ -55,7 +55,7 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) Vec4 {
                  * material.albedo_factor.rgb
                  + in.additive_tint_rgb;
 
-    if (all(in.normal_world_space == Vec3(0.0, 0.0, 0.0))) {
+    if all(in.normal_world_space == Vec3(0.0, 0.0, 0.0)) {
         // no normal, no shading
         return Vec4(albedo, 1.0);
     } else {
