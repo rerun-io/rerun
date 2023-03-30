@@ -195,20 +195,21 @@ pub fn picking(
     {
         gpu_picking_result = Some(picking_result);
     }
-    if let Some(gpu_picking_result) = gpu_picking_result {
-        // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
-        let rect = gpu_picking_result.rect;
-        let picked_id = gpu_picking_result.picking_data
-            [(rect.width() / 2 + (rect.height() / 2) * rect.width()) as usize];
-        let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
+    // TODO(andreas): Use gpu picking as fallback for now to fix meshes. Should combine instead!
+    if state.closest_opaque_pick.instance_path_hash == InstancePathHash::NONE {
+        if let Some(gpu_picking_result) = gpu_picking_result {
+            // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
+            let rect = gpu_picking_result.rect;
+            let picked_id = gpu_picking_result.picking_data
+                [(rect.width() / 2 + (rect.height() / 2) * rect.width()) as usize];
+            let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
 
-        // TODO: don't bulldozer over
-        state.closest_opaque_pick.instance_path_hash = picked_object;
-        state.closest_opaque_pick.ray_t = 1.0;
-        state.closest_opaque_side_ui_dist_sq = 0.0;
-    } else {
-        // TODO: It is *possible* that some frames we don't get a picking result and the frame after we get several.
-        // We need to cache the last picking result and use it until we get a new one!
+            // TODO(andreas): We're lacking depth information!
+            state.closest_opaque_pick.instance_path_hash = picked_object;
+        } else {
+            // TODO: It is *possible* that some frames we don't get a picking result and the frame after we get several.
+            // We need to cache the last picking result and use it until we get a new one!
+        }
     }
 
     state.sort_and_remove_hidden_transparent();
