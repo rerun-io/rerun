@@ -377,11 +377,13 @@ pub fn view_3d(
         let picking_result = scene.picking(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
+            &state.previous_picking_result,
             glam::vec2(pointer_pos.x, pointer_pos.y),
             &rect,
             &eye,
             5.0,
         );
+        state.previous_picking_result = Some(picking_result.clone());
 
         for hit in picking_result.iter_hits() {
             let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
@@ -459,6 +461,8 @@ pub fn view_3d(
             .map(|hit| picking_result.space_position(hit));
 
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
+    } else {
+        state.previous_picking_result = None;
     }
 
     ctx.select_hovered_on_click(&response);

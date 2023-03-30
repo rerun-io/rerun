@@ -367,11 +367,13 @@ fn view_2d_scrollable(
         let picking_result = scene.picking(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
+            &state.previous_picking_result,
             glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
             &scene_rect_accum,
             &eye,
             hover_radius,
         );
+        state.previous_picking_result = Some(picking_result.clone());
 
         for hit in picking_result.iter_hits() {
             let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
@@ -462,6 +464,8 @@ fn view_2d_scrollable(
                     .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
             }));
         }
+    } else {
+        state.previous_picking_result = None;
     }
 
     ctx.select_hovered_on_click(&response);

@@ -10,6 +10,7 @@ use crate::{
     ui::view_spatial::eye::Eye,
 };
 
+#[derive(Clone)]
 pub enum AdditionalPickingInfo {
     /// No additional picking information.
     None,
@@ -21,6 +22,7 @@ pub enum AdditionalPickingInfo {
     GuiOverlay,
 }
 
+#[derive(Clone)]
 pub struct PickingRayHit {
     /// What entity or instance got hit by the picking ray.
     ///
@@ -34,6 +36,9 @@ pub struct PickingRayHit {
 
     /// Any additional information about the picking hit.
     pub info: AdditionalPickingInfo,
+
+    /// True if this picking result came from a GPU picking pass.
+    pub used_gpu_picking: bool,
 }
 
 impl PickingRayHit {
@@ -43,10 +48,12 @@ impl PickingRayHit {
             ray_t: t,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
+            used_gpu_picking: false,
         }
     }
 }
 
+#[derive(Clone)]
 pub struct PickingResult {
     /// Picking ray hit for an opaque object (if any).
     pub opaque_hit: Option<PickingRayHit>,
@@ -131,11 +138,11 @@ impl PickingState {
     }
 }
 
-// TODO(andreas): This should be temporary. As we switch over (almost) everything over to gpu based picking this should go away.
 #[allow(clippy::too_many_arguments)]
 pub fn picking(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
+    previous_picking_result: &Option<PickingResult>,
     pointer_in_ui: glam::Vec2,
     ui_rect: &egui::Rect,
     eye: &Eye,
@@ -160,6 +167,7 @@ pub fn picking(
             ray_t: f32::INFINITY,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
+            used_gpu_picking: false,
         },
         // Combined, sorted (and partially "hidden") by opaque results later.
         transparent_hits: Vec::new(),
@@ -206,9 +214,20 @@ pub fn picking(
 
             // TODO(andreas): We're lacking depth information!
             state.closest_opaque_pick.instance_path_hash = picked_object;
+            state.closest_opaque_pick.used_gpu_picking = true;
         } else {
-            // TODO(andreas): It is *possible* that some frames we don't get a picking result and the frame after we get several.
+            // It is possible that some frames we don't get a picking result and the frame after we get several.
             // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
+            // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
+            if let Some(PickingResult {
+                opaque_hit: Some(previous_opaque_hit),
+                ..
+            }) = previous_picking_result
+            {
+                if previous_opaque_hit.used_gpu_picking {
+                    state.closest_opaque_pick = previous_opaque_hit.clone();
+                }
+            }
         }
     }
 
@@ -368,6 +387,7 @@ fn picking_textured_rects(
                 ray_t: t,
                 info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
+                used_gpu_picking: false,
             };
             state.check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
         }
@@ -391,6 +411,7 @@ fn picking_ui_rects(
                 ray_t: 0.0,
                 info: AdditionalPickingInfo::GuiOverlay,
                 depth_offset: 0,
+                used_gpu_picking: false,
             },
             false,
         );

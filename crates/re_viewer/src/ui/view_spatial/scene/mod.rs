@@ -247,10 +247,12 @@ impl SceneSpatial {
         SpatialNavigationMode::ThreeD
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn picking(
         &self,
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
+        previous_picking_result: &Option<PickingResult>,
         pointer_in_ui: glam::Vec2,
         ui_rect: &egui::Rect,
         eye: &Eye,
@@ -259,6 +261,7 @@ impl SceneSpatial {
         picking::picking(
             render_ctx,
             gpu_readback_identifier,
+            previous_picking_result,
             pointer_in_ui,
             ui_rect,
             eye,
