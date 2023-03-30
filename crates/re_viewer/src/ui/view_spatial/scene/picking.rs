@@ -131,6 +131,8 @@ impl PickingState {
     }
 }
 
+// TODO(andreas): This should be temporary. As we switch over (almost) everything over to gpu based picking this should go away.
+#[allow(clippy::too_many_arguments)]
 pub fn picking(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
@@ -194,9 +196,11 @@ pub fn picking(
         gpu_picking_result = Some(picking_result);
     }
     if let Some(gpu_picking_result) = gpu_picking_result {
-        // TODO(andreas): We have a 1x1 picking rect so far. But we soon want to snap to the closest object using a bigger picking rect.
-        let picked_object =
-            instance_path_hash_from_picking_layer_id(gpu_picking_result.picking_data[0]);
+        // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
+        let rect = gpu_picking_result.rect;
+        let picked_id = gpu_picking_result.picking_data
+            [(rect.width() / 2 + (rect.height() / 2) * rect.width()) as usize];
+        let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
 
         // TODO: don't bulldozer over
         state.closest_opaque_pick.instance_path_hash = picked_object;

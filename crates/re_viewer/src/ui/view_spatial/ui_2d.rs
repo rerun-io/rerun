@@ -10,7 +10,7 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use super::{
     eye::Eye,
     scene::AdditionalPickingInfo,
-    ui::{create_labels, screenshot_context_menu},
+    ui::{create_labels, screenshot_context_menu, PICKING_RECT_SIZE},
     SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
@@ -311,6 +311,26 @@ fn view_2d_scrollable(
         fov_y: None,
     };
 
+    let Ok(target_config) = setup_target_config(
+        &painter,
+        space_from_ui,
+        space_from_pixel,
+        &space.to_string(),
+        state.auto_size_config(),
+        scene
+            .primitives
+            .any_outlines,
+    ) else {
+        return response;
+    };
+
+    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
+    let mut view_builder = ViewBuilder::default();
+    if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", error);
+        return response;
+    }
+
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
         &mut scene.ui,
@@ -327,6 +347,21 @@ fn view_2d_scrollable(
     // Check if we're hovering any hover primitive.
     let mut depth_at_pointer = None;
     if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
+        // Schedule GPU picking.
+        let pointer_in_pixel = ((pointer_pos_ui - response.rect.left_top())
+            * parent_ui.ctx().pixels_per_point())
+        .round();
+        let _ = view_builder.schedule_picking_rect(
+            ctx.render_ctx,
+            re_renderer::IntRect::from_middle_and_extent(
+                glam::ivec2(pointer_in_pixel.x as i32, pointer_in_pixel.y as i32),
+                glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
+            ),
+            space_view_id.gpu_readback_id(),
+            (),
+            ctx.app_options.show_picking_debug_overlay,
+        );
+
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
@@ -432,26 +467,6 @@ fn view_2d_scrollable(
     ctx.select_hovered_on_click(&response);
 
     // ------------------------------------------------------------------------
-
-    let Ok(target_config) = setup_target_config(
-        &painter,
-        space_from_ui,
-        space_from_pixel,
-        &space.to_string(),
-        state.auto_size_config(),
-        scene
-            .primitives
-            .any_outlines,
-    ) else {
-        return response;
-    };
-
-    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-    let mut view_builder = ViewBuilder::default();
-    if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", error);
-        return response;
-    }
 
     // Screenshot context menu.
     let (response, screenshot_mode) = screenshot_context_menu(ctx, response);

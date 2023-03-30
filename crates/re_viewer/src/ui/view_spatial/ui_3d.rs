@@ -361,7 +361,6 @@ pub fn view_3d(
     // Check if we're hovering any hover primitive.
     if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
         // Schedule GPU picking.
-
         let pointer_in_pixel =
             ((pointer_pos - rect.left_top()) * ui.ctx().pixels_per_point()).round();
         let _ = view_builder.schedule_picking_rect(
@@ -372,7 +371,7 @@ pub fn view_3d(
             ),
             space_view_id.gpu_readback_id(),
             (),
-            false, // TODO: Have a debug option to enable this.
+            ctx.app_options.show_picking_debug_overlay,
         );
 
         let picking_result = scene.picking(
