@@ -3811,7 +3811,6 @@ name = "re_build_build_info"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "glob",
  "time 0.3.20",
 ]
 
@@ -3831,13 +3830,11 @@ name = "re_data_store"
 version = "0.4.0"
 dependencies = [
  "ahash 0.8.2",
- "anyhow",
  "criterion",
  "document-features",
  "itertools",
  "mimalloc",
  "nohash-hasher",
- "once_cell",
  "puffin",
  "rand",
  "re_arrow_store",
@@ -3958,14 +3955,11 @@ dependencies = [
 name = "re_query"
 version = "0.4.0"
 dependencies = [
- "anyhow",
  "arrow2",
  "criterion",
  "document-features",
- "indent",
  "itertools",
  "mimalloc",
- "nohash-hasher",
  "polars-core",
  "puffin",
  "re_arrow_store",
@@ -4002,7 +3996,6 @@ dependencies = [
  "itertools",
  "log",
  "macaw",
- "memoffset 0.8.0",
  "notify",
  "ordered-float",
  "parking_lot 0.12.1",
@@ -4035,11 +4028,8 @@ name = "re_sdk"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "arrow2",
  "arrow2_convert",
- "crossbeam",
  "document-features",
- "lazy_static",
  "ndarray",
  "ndarray-rand",
  "nohash-hasher",
@@ -4097,11 +4087,9 @@ name = "re_tensor_ops"
 version = "0.4.0"
 dependencies = [
  "ahash 0.8.2",
- "bytemuck",
  "ndarray",
  "re_log_types",
  "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -4160,14 +4148,12 @@ dependencies = [
  "js-sys",
  "lazy_static",
  "macaw",
- "mint",
  "ndarray",
  "nohash-hasher",
  "objc",
  "poll-promise",
  "puffin",
  "puffin_http",
- "rand",
  "re_analytics",
  "re_arrow_store",
  "re_build_build_info",
@@ -4295,7 +4281,6 @@ dependencies = [
  "anyhow",
  "backtrace",
  "clap 4.1.4",
- "crossbeam",
  "ctrlc",
  "document-features",
  "egui",
@@ -4304,8 +4289,6 @@ dependencies = [
  "mimalloc",
  "once_cell",
  "parking_lot 0.12.1",
- "puffin",
- "puffin_http",
  "re_analytics",
  "re_build_build_info",
  "re_build_info",

@@ -20,7 +20,5 @@ all-features = true
 re_log_types.workspace = true
 
 ahash.workspace = true
-bytemuck = { version = "1.12", features = ["extern_crate_alloc"] }
 ndarray.workspace = true
 serde = { version = "1", features = ["derive"] }
-thiserror = "1.0"

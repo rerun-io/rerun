@@ -74,12 +74,10 @@ re_smart_channel.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
-crossbeam = "0.8"
 document-features = "0.2"
 egui = { workspace = true, default-features = false }
 itertools = { workspace = true }
 parking_lot.workspace = true
-puffin.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
@@ -96,7 +94,6 @@ webbrowser = { version = "0.8", optional = true }
 backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 mimalloc.workspace = true
-puffin_http = "0.11"
 ctrlc.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 

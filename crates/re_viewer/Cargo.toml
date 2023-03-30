@@ -90,11 +90,9 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = { workspace = true }
 lazy_static.workspace = true
 macaw = { workspace = true, features = ["with_serde"] }
-mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
 poll-promise = "0.2"
-rand = { version = "0.8", features = ["small_rng"] }
 rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",
 ] }

@@ -32,15 +32,12 @@ re_log_types.workspace = true
 re_log.workspace = true
 
 # External dependencies:
-anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
 ] }
 document-features = "0.2"
-indent = "0.1"
 itertools = { workspace = true }
-nohash-hasher = "0.2"
 thiserror.workspace = true
 
 # Optional dependencies:
