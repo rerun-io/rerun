@@ -1,7 +1,5 @@
-use ahash::HashMap;
 use re_data_store::{log_db::LogDb, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, MsgId, TimeInt, Timeline};
-use re_renderer::GpuReadbackIdentifier;
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
@@ -10,7 +8,7 @@ use crate::ui::{
 
 use super::{
     item::{Item, ItemCollection},
-    HoverHighlight, ScheduledGpuReadback,
+    HoverHighlight,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -34,9 +32,6 @@ pub struct ViewerContext<'a> {
     pub re_ui: &'a re_ui::ReUi,
 
     pub render_ctx: &'a mut re_renderer::RenderContext,
-
-    /// List of all data we're currently waiting for from the GPU.
-    pub scheduled_gpu_readbacks: &'a mut HashMap<GpuReadbackIdentifier, ScheduledGpuReadback>,
 }
 
 impl<'a> ViewerContext<'a> {

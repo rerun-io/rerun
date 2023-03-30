@@ -1,5 +1,9 @@
+use std::borrow::Cow;
+
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
+use re_log_types::hash::{self, Hash64};
+use re_renderer::{GpuReadbackIdentifier, ScreenshotProcessor};
 
 use crate::{
     misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache, ViewerContext},
@@ -27,9 +31,23 @@ impl SpaceViewId {
     pub fn random() -> Self {
         Self(uuid::Uuid::new_v4())
     }
+
+    pub fn gpu_readback_id(self) -> GpuReadbackIdentifier {
+        Hash64::hash(self).hash64()
+    }
 }
 
 // ----------------------------------------------------------------------------
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+#[allow(dead_code)] // Not used on the web.
+pub enum ScreenshotMode {
+    /// The screenshot will be saved to disc and copied to the clipboard.
+    SaveAndCopyToClipboard,
+
+    /// The screenshot will be copied to the clipboard.
+    CopyToClipboard,
+}
 
 /// A view of a space.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -101,6 +119,60 @@ impl SpaceView {
                 default_queried_entities(ctx, &self.space_path, spaces_info, self.category);
             self.data_blueprint
                 .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
+        }
+
+        while ScreenshotProcessor::next_readback_result(
+            &ctx.render_ctx,
+            self.id.gpu_readback_id(),
+            |data, extent, mode| self.handle_pending_screenshots(data, extent, mode),
+        )
+        .is_some()
+        {}
+    }
+
+    fn handle_pending_screenshots(
+        &self,
+        data: Cow<'_, [u8]>,
+        extent: glam::UVec2,
+        mode: ScreenshotMode,
+    ) {
+        // Set to clipboard.
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::misc::Clipboard::with(|clipboard| {
+            clipboard.set_image([extent.x as _, extent.y as _], &data);
+        });
+        if mode == ScreenshotMode::CopyToClipboard {
+            return;
+        }
+
+        // Get next available file name.
+        let safe_display_name = self
+            .display_name
+            .replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
+        let mut i = 1;
+        let filename = loop {
+            let filename = format!("Screenshot {safe_display_name} - {i}.png");
+            if !std::path::Path::new(&filename).exists() {
+                break filename;
+            }
+            i += 1;
+        };
+        let filename = std::path::Path::new(&filename);
+
+        match image::save_buffer(filename, &data, extent.x, extent.y, image::ColorType::Rgba8) {
+            Ok(_) => {
+                re_log::info!(
+                    "Saved screenshot to {:?}.",
+                    filename.canonicalize().unwrap_or(filename.to_path_buf())
+                );
+            }
+            Err(err) => {
+                re_log::error!(
+                    "Failed to safe screenshot to {:?}: {}",
+                    filename.canonicalize().unwrap_or(filename.to_path_buf()),
+                    err
+                );
+            }
         }
     }
 

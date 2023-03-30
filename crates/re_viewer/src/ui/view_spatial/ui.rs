@@ -9,10 +9,12 @@ use re_renderer::OutlineConfig;
 
 use crate::{
     misc::{
-        space_info::query_view_coordinates, ScreenshotMode, SelectionHighlight,
-        SpaceViewHighlights, ViewerContext,
+        space_info::query_view_coordinates, SelectionHighlight, SpaceViewHighlights, ViewerContext,
     },
-    ui::{data_blueprint::DataBlueprintTree, view_spatial::UiLabelTarget, SpaceViewId},
+    ui::{
+        data_blueprint::DataBlueprintTree, space_view::ScreenshotMode, view_spatial::UiLabelTarget,
+        SpaceViewId,
+    },
 };
 
 use super::{

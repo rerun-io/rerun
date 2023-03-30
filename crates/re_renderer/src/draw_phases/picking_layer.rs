@@ -9,7 +9,7 @@
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer, GpuReadbackUserData},
+    allocator::create_and_fill_uniform_buffer,
     global_bindings::FrameUniformBuffer,
     view_builder::ViewBuilder,
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},

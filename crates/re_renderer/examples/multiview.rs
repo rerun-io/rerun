@@ -12,9 +12,7 @@ use re_renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
         TestTriangleDrawData,
     },
-    view_builder::{
-        OrthographicCameraMode, Projection, ScheduledScreenshot, TargetConfiguration, ViewBuilder,
-    },
+    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
     Color32, GpuReadbackIdentifier, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba,
     ScreenshotProcessor, Size,
 };

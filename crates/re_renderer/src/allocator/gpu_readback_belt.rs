@@ -32,7 +32,7 @@ impl GpuReadbackBuffer {
         source: wgpu::ImageCopyTexture<'_>,
         copy_extents: glam::UVec2,
     ) {
-        self.read_multiple_texture2d(encoder, &[(source, copy_extents)])
+        self.read_multiple_texture2d(encoder, &[(source, copy_extents)]);
     }
 
     /// Reads multiple textures into the same buffer.
@@ -67,7 +67,7 @@ impl GpuReadbackBuffer {
             );
 
             encoder.copy_texture_to_buffer(
-                source.clone(),
+                *source,
                 wgpu::ImageCopyBuffer {
                     buffer: &self.chunk_buffer,
                     layout: wgpu::ImageDataLayout {
@@ -87,30 +87,32 @@ impl GpuReadbackBuffer {
         }
     }
 
-    /// Populates the buffer with data from a buffer.
-    ///
-    /// Panics if the readback buffer is too small to fit the data.
-    pub fn read_buffer(
-        self,
-        encoder: &mut wgpu::CommandEncoder,
-        source: &GpuBuffer,
-        source_offset: wgpu::BufferAddress,
-    ) {
-        let copy_size = self.range_in_chunk.end - self.range_in_chunk.start;
+    // TODO(andreas): Unused & untested so far!
+    //
+    // Populates the buffer with data from a buffer.
+    //
+    // Panics if the readback buffer is too small to fit the data.
+    // pub fn read_buffer(
+    //     self,
+    //     encoder: &mut wgpu::CommandEncoder,
+    //     source: &GpuBuffer,
+    //     source_offset: wgpu::BufferAddress,
+    // ) {
+    //     let copy_size = self.range_in_chunk.end - self.range_in_chunk.start;
 
-        // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
-        debug_assert!(copy_size <= source_offset + source.size(),
-            "Source buffer has a size of {}, can't write {copy_size} bytes with an offset of {source_offset}!",
-            source.size());
+    //     // Wgpu does validation as well, but in debug mode we want to panic if the buffer doesn't fit.
+    //     debug_assert!(copy_size <= source_offset + source.size(),
+    //         "Source buffer has a size of {}, can't write {copy_size} bytes with an offset of {source_offset}!",
+    //         source.size());
 
-        encoder.copy_buffer_to_buffer(
-            source,
-            source_offset,
-            &self.chunk_buffer,
-            self.range_in_chunk.start,
-            copy_size,
-        );
-    }
+    //     encoder.copy_buffer_to_buffer(
+    //         source,
+    //         source_offset,
+    //         &self.chunk_buffer,
+    //         self.range_in_chunk.start,
+    //         copy_size,
+    //     );
+    // }
 }
 
 /// Internal chunk of the staging belt.

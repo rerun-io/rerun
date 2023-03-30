@@ -3,14 +3,14 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier, GpuReadbackUserData},
+    allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
     context::RenderContext,
     draw_phases::{
         DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerProcessor, ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
-    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
     DebugLabel, IntRect, Rgba, Size,
 };
 
@@ -182,13 +182,6 @@ impl Default for TargetConfiguration {
             outline_config: None,
         }
     }
-}
-
-#[derive(Clone)]
-pub struct ScheduledScreenshot {
-    pub identifier: GpuReadbackIdentifier,
-    pub extent: glam::UVec2,
-    pub row_info: TextureRowDataInfo,
 }
 
 impl ViewBuilder {

@@ -1,10 +1,9 @@
-use ahash::HashMap;
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
-    PickingLayerProcessor, PointCloudBuilder, RenderContext, Size,
+    Color32, GpuReadbackIdentifier, IntRect, PickingLayerInstanceId, PickingLayerProcessor,
+    PointCloudBuilder, Size,
 };
 
 mod framework;
@@ -82,7 +81,7 @@ impl framework::Example for Picking {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        time: &framework::Time,
+        _time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         while let Some(picking_result) =
@@ -131,17 +130,12 @@ impl framework::Example for Picking {
         // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
         // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
         let picking_rect_size = 31;
+        let picking_rect = IntRect::from_middle_and_extent(
+            self.picking_position.as_ivec2(),
+            glam::uvec2(picking_rect_size, picking_rect_size),
+        );
         view_builder
-            .schedule_picking_readback(
-                re_ctx,
-                IntRect::from_middle_and_extent(
-                    self.picking_position.as_ivec2(),
-                    glam::uvec2(picking_rect_size, picking_rect_size),
-                ),
-                READBACK_IDENTIFIER,
-                (),
-                false,
-            )
+            .schedule_picking_readback(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
             .unwrap();
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);

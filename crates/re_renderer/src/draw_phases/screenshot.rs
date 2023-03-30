@@ -80,7 +80,7 @@ impl ScreenshotProcessor {
     ) -> wgpu::RenderPass<'a> {
         crate::profile_function!();
 
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: DebugLabel::from(format!("{view_name} - screenshot")).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.screenshot_texture.default_view,
@@ -117,14 +117,17 @@ impl ScreenshotProcessor {
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
         on_screenshot: impl FnOnce(std::borrow::Cow<'_, [u8]>, glam::UVec2, T),
-    ) {
+    ) -> Option<()> {
+        let mut screenshot_was_available = None;
         ctx.gpu_readback_belt
             .lock()
-            .readback_data::<ReadbackBeltMetadata<T>>(identifier, move |data: &[u8], metadata| {
+            .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data: &[u8], metadata| {
+                screenshot_was_available = Some(());
                 let texture_row_info =
                     TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent.x);
                 let texture_data = texture_row_info.remove_padding(data);
                 on_screenshot(texture_data, metadata.extent, metadata.user_data);
             });
+        screenshot_was_available
     }
 }
