@@ -18,4 +18,5 @@ struct InstanceIn {
     @location(9) world_from_mesh_normal_row_2: Vec3,
     @location(10) additive_tint_srgb: Vec4,
     @location(11) outline_mask_ids: UVec2,
+    @location(12) picking_layer_id: UVec4,
 };

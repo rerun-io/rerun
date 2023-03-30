@@ -64,6 +64,12 @@ pub struct PickingLayerId {
     pub instance: PickingLayerInstanceId,
 }
 
+impl Into<[u32; 4]> for PickingLayerId {
+    fn into(self) -> [u32; 4] {
+        bytemuck::cast(self)
+    }
+}
+
 /// Manages the rendering of the picking layer pass, its render targets & readback buffer.
 ///
 /// The view builder creates this for every frame that requests a picking result.
