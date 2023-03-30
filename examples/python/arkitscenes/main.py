@@ -310,7 +310,7 @@ def find_closest_frame_id(target_id: str, frame_ids: Dict[str, Any]) -> str:
     return closest_id
 
 
-def log_arkit(recording_path: Path) -> None:
+def log_arkit(recording_path: Path, include_highres: bool) -> None:
     """
     Logs ARKit recording data using Rerun.
 
@@ -379,7 +379,7 @@ def log_arkit(recording_path: Path) -> None:
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         depth = cv2.imread(f"{lowres_depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
 
-        high_res_exists: bool = (image_dir / f"{video_id}_{frame_timestamp}.png").exists()
+        high_res_exists: bool = (image_dir / f"{video_id}_{frame_timestamp}.png").exists() and include_highres
 
         # Log the camera transforms:
         if frame_timestamp in camera_from_world_dict:
@@ -431,12 +431,17 @@ def main() -> None:
         default=AVAILABLE_RECORDINGS[0],
         help="Video ID of the ARKitScenes Dataset",
     )
+    parser.add_argument(
+        "--include-highres",
+        action="store_true",
+        help="Include the high resolution camera and depth images",
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     rr.script_setup(args, "arkitscenes")
-    recording_path = ensure_recording_available(args.video_id)
-    log_arkit(recording_path)
+    recording_path = ensure_recording_available(args.video_id, args.include_highres)
+    log_arkit(recording_path, args.include_highres)
 
     rr.script_teardown(args)
 

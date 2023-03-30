@@ -276,32 +276,32 @@ def download_data(
                 unzip_file(file_name, dst_dir, keep_zip)
 
 
-def ensure_recording_downloaded(video_id: str) -> Path:
+def ensure_recording_downloaded(video_id: str, include_highres: bool) -> Path:
     """Only downloads from validation set."""
     data_path = DATASET_DIR / "raw" / "Validation" / video_id
+    assets_to_download = [
+        "lowres_wide",
+        "lowres_depth",
+        "lowres_wide_intrinsics",
+        "lowres_wide.traj",
+        "annotation",
+        "mesh",
+    ]
+    if include_highres:
+        assets_to_download.extend(["highres_depth", "wide", "wide_intrinsics"])
     download_data(
         dataset="raw",
         video_ids=[video_id],
         dataset_splits=[VALIDATION],
         download_dir=DATASET_DIR,
         keep_zip=False,
-        raw_dataset_assets=[
-            "lowres_wide",
-            "lowres_depth",
-            "lowres_wide_intrinsics",
-            "lowres_wide.traj",
-            "wide",
-            "wide_intrinsics",
-            "highres_depth",
-            "annotation",
-            "mesh",
-        ],
+        raw_dataset_assets=assets_to_download,
         should_download_laser_scanner_point_cloud=False,
     )
     return data_path
 
 
-def ensure_recording_available(video_id: str) -> Path:
+def ensure_recording_available(video_id: str, include_highres: bool) -> Path:
     """
     Returns the path to the recording for a given video_id.
 
@@ -316,6 +316,6 @@ def ensure_recording_available(video_id: str) -> Path:
     ------
         AssertionError: If the recording path does not exist.
     """
-    recording_path = ensure_recording_downloaded(video_id)
+    recording_path = ensure_recording_downloaded(video_id, include_highres)
     assert recording_path.exists(), f"Recording path {recording_path} does not exist."
     return recording_path  # Return the path to the recording
