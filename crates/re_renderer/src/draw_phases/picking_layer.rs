@@ -5,6 +5,7 @@
 //!
 //! The picking layer is a RGBA texture with 32bit per channel, the red & green channel are used for the [`PickingLayerObjectId`],
 //! the blue & alpha channel are used for the [`PickingLayerInstanceId`].
+//! (Keep in mind that GPUs are little endian, so R will have the lower bytes and G the higher ones)
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
@@ -43,7 +44,7 @@ struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
 /// Typically used to identify higher level objects
 /// Some renderers might allow to change this part of the picking identifier only at a coarse grained level.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug, PartialEq, Eq)]
 pub struct PickingLayerObjectId(pub u64);
 
 /// The second 64bit of the picking layer.
@@ -51,22 +52,27 @@ pub struct PickingLayerObjectId(pub u64);
 /// Typically used to identify instances.
 /// Some renderers might allow to change only this part of the picking identifier at a fine grained level.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug, PartialEq, Eq)]
 pub struct PickingLayerInstanceId(pub u64);
 
 /// Combination of `PickingLayerObjectId` and `PickingLayerInstanceId`.
 ///
 /// This is the same memory order as it is found in the GPU picking layer texture.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug)]
+#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug, PartialEq, Eq)]
 pub struct PickingLayerId {
     pub object: PickingLayerObjectId,
     pub instance: PickingLayerInstanceId,
 }
 
-impl Into<[u32; 4]> for PickingLayerId {
-    fn into(self) -> [u32; 4] {
-        bytemuck::cast(self)
+impl From<PickingLayerId> for [u32; 4] {
+    fn from(val: PickingLayerId) -> Self {
+        [
+            val.object.0 as u32,
+            (val.object.0 >> 32) as u32,
+            val.instance.0 as u32,
+            (val.instance.0 >> 32) as u32,
+        ]
     }
 }
 

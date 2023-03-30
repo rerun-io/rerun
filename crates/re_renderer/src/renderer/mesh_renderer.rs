@@ -48,10 +48,11 @@ mod gpu_data {
         pub world_from_mesh_normal_row_2: [f32; 3],
 
         pub additive_tint: Color32,
+
+        pub picking_layer_id: [u32; 4],
+
         // Need only the first two bytes, but we want to keep everything aligned to at least 4 bytes.
         pub outline_mask_ids: [u8; 4],
-
-        pub picking_layer_id: [u32; 4], // PickingLayerId
     }
 
     impl InstanceData {
@@ -74,12 +75,12 @@ mod gpu_data {
                         wgpu::VertexFormat::Float32x3,
                         // Tint color
                         wgpu::VertexFormat::Unorm8x4,
-                        // Outline mask.
-                        // This adds a tiny bit of overhead to all instances during non-outline pass, but the alternative is having yet another vertex buffer.
-                        wgpu::VertexFormat::Uint8x2,
                         // Picking id.
                         // Again this adds overhead for non-picking passes, more this time. Consider moving this elsewhere.
                         wgpu::VertexFormat::Uint32x4,
+                        // Outline mask.
+                        // This adds a tiny bit of overhead to all instances during non-outline pass, but the alternative is having yet another vertex buffer.
+                        wgpu::VertexFormat::Uint8x2,
                     ]
                     .into_iter(),
                 ),
@@ -364,7 +365,7 @@ impl Renderer for MeshRenderer {
             vertex_handle: shader_module,
             fragment_entrypoint: "fs_main_shaded".into(),
             fragment_handle: shader_module,
-            vertex_buffers: vertex_buffers.clone(),
+            vertex_buffers,
             render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
             primitive,
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
