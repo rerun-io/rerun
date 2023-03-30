@@ -124,7 +124,7 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc, TextureDesc,
     },
-    Color32, DebugLabel, OutlineMaskPreference,
+    Color32, DebugLabel, OutlineMaskPreference, PickingLayerProcessor,
 };
 
 use super::{
@@ -641,6 +641,7 @@ impl LineDrawData {
 
 pub struct LineRenderer {
     render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout_all_lines: GpuBindGroupLayoutHandle,
     bind_group_layout_batch: GpuBindGroupLayoutHandle,
@@ -682,7 +683,11 @@ impl Renderer for LineRenderer {
     type RendererDrawData = LineDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Opaque, DrawPhase::OutlineMask]
+        &[
+            DrawPhase::Opaque,
+            DrawPhase::OutlineMask,
+            DrawPhase::PickingLayer,
+        ]
     }
 
     fn create_renderer<Fs: FileSystem>(
@@ -770,27 +775,41 @@ impl Renderer for LineRenderer {
             &include_shader_module!("../../shader/lines.wgsl"),
         );
 
+        let render_pipeline_desc_color = RenderPipelineDesc {
+            label: "LineRenderer::render_pipeline_color".into(),
+            pipeline_layout,
+            vertex_entrypoint: "vs_main".into(),
+            vertex_handle: shader_module,
+            fragment_entrypoint: "fs_main".into(),
+            fragment_handle: shader_module,
+            vertex_buffers: smallvec![],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            multisample: wgpu::MultisampleState {
+                // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
+                alpha_to_coverage_enabled: true,
+                ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+            },
+        };
         let render_pipeline_color = pools.render_pipelines.get_or_create(
             device,
+            &render_pipeline_desc_color,
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
+            device,
             &RenderPipelineDesc {
-                label: "LineRenderer::render_pipeline_color".into(),
-                pipeline_layout,
-                vertex_entrypoint: "vs_main".into(),
-                vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main".into(),
-                fragment_handle: shader_module,
-                vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: wgpu::MultisampleState {
-                    // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
-                    alpha_to_coverage_enabled: true,
-                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
-                },
+                label: "LineRenderer::render_pipeline_picking_layer".into(),
+                fragment_entrypoint: "fs_main_picking_layer".into(),
+                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+                depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
+                multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
+                ..render_pipeline_desc_color.clone()
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
@@ -822,6 +841,7 @@ impl Renderer for LineRenderer {
 
         LineRenderer {
             render_pipeline_color,
+            render_pipeline_picking_layer,
             render_pipeline_outline_mask,
             bind_group_layout_all_lines,
             bind_group_layout_batch,
@@ -841,6 +861,10 @@ impl Renderer for LineRenderer {
                 &draw_data.bind_group_all_lines_outline_mask,
             ),
             DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_lines),
+            DrawPhase::PickingLayer => (
+                self.render_pipeline_picking_layer,
+                &draw_data.bind_group_all_lines,
+            ),
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let Some(bind_group_all_lines) = bind_group_all_lines else {

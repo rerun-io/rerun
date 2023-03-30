@@ -207,8 +207,8 @@ pub fn picking(
             // TODO(andreas): We're lacking depth information!
             state.closest_opaque_pick.instance_path_hash = picked_object;
         } else {
-            // TODO: It is *possible* that some frames we don't get a picking result and the frame after we get several.
-            // We need to cache the last picking result and use it until we get a new one!
+            // TODO(andreas): It is *possible* that some frames we don't get a picking result and the frame after we get several.
+            // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
         }
     }
 
