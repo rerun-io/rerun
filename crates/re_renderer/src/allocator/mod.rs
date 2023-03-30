@@ -9,7 +9,7 @@ mod uniform_buffer_fill;
 
 pub use cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};
 pub use gpu_readback_belt::{
-    GpuReadbackBelt, GpuReadbackBuffer, GpuReadbackIdentifier, GpuReadbackUserData,
+    GpuReadbackBelt, GpuReadbackBuffer, GpuReadbackIdentifier, GpuReadbackUserDataStorage,
 };
 pub use uniform_buffer_fill::{
     create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch,

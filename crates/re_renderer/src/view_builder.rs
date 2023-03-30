@@ -611,25 +611,25 @@ impl ViewBuilder {
     /// Schedules the taking of a screenshot.
     ///
     /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
-    /// Returns screenshot data properties for convenience.
-    ///
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
-    /// Data from the screenshot needs to be retrieved from the [`crate::GpuReadbackBelt`] on [`RenderContext`].
-    /// For this the user needs to store the returned scheduled screenshot like so:
+    /// Data from the screenshot needs to be retrieved via [`crate::ScreenshotProcessor::next_readback_result`].
+    /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
     /// ```no_run
-    /// use re_renderer::{RenderContext, ScheduledScreenshot};
-    /// fn handle_readback_data(ctx: &RenderContext, scheduled_screenshot: ScheduledScreenshot) {
-    ///     ctx.gpu_readback_belt.lock().receive_data(|data, identifier| {
-    ///         if identifier == scheduled_screenshot.identifier {
-    ///             // Do something with the screenshot data.
-    ///         } else {
-    ///            re_log::warn_once!("Unknown readback buffer identifier {:?}", identifier);
-    ///         }
-    ///     });
+    /// use re_renderer::{view_builder::ViewBuilder, RenderContext, ScreenshotProcessor};
+    /// fn take_screenshot(ctx: &RenderContext, view_builder: &mut ViewBuilder) {
+    ///     view_builder.schedule_screenshot(&ctx, 42, "My screenshot".to_owned());
+    /// }
+    /// fn receive_screenshots(ctx: &RenderContext) {
+    ///     while ScreenshotProcessor::next_readback_result::<String>(ctx, 42, |data, extent, user_data| {
+    ///             re_log::info!("Received screenshot {}", user_data);
+    ///         },
+    ///     ).is_some()
+    ///     {}
     /// }
     /// ```
-    /// TODO: update doc
+    ///
+    /// Received data that that isn't retrieved for more than a frame, will be automatically discarded.
     pub fn schedule_screenshot<T: 'static + Send + Sync>(
         &mut self,
         ctx: &RenderContext,
@@ -655,6 +655,7 @@ impl ViewBuilder {
 
     /// Schedules the readback of a rectangle from the picking layer.
     ///
+    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// The result will still be valid if the rectangle is partially or fully outside of bounds.
@@ -662,8 +663,29 @@ impl ViewBuilder {
     /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
     ///
     /// Note that the picking layer will not be created in the first place if this isn't called.
-    /// TODO: update doc
-    pub fn schedule_picking_readback<T: 'static + Send + Sync>(
+    ///
+    /// Data from the screenshot needs to be retrieved via [`crate::PickingLayerProcessor::next_readback_result`].
+    /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
+    /// ```no_run
+    /// use re_renderer::{view_builder::ViewBuilder, IntRect, PickingLayerProcessor, RenderContext};
+    /// fn take_screenshot(
+    ///     ctx: &mut RenderContext,
+    ///     view_builder: &mut ViewBuilder,
+    ///     picking_rect: IntRect,
+    /// ) {
+    ///     view_builder.schedule_picking_readback(
+    ///         ctx, picking_rect, 42, "My screenshot".to_owned(), false,
+    ///     );
+    /// }
+    /// fn receive_screenshots(ctx: &RenderContext) {
+    ///     while let Some(result) = PickingLayerProcessor::next_readback_result::<String>(ctx, 42) {
+    ///         re_log::info!("Received picking_data {}", result.user_data);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Received data that that isn't retrieved for more than a frame, will be automatically discarded.
+    pub fn schedule_picking_rect<T: 'static + Send + Sync>(
         &mut self,
         ctx: &mut RenderContext,
         picking_rect: IntRect,

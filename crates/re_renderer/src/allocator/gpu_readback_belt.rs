@@ -2,19 +2,24 @@ use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, TextureRowDataInfo};
 
+/// Identifier used to identify a buffer upon retrieval of the data.
+///
+/// Does not need to be unique!
 pub type GpuReadbackIdentifier = u64;
-pub type GpuReadbackUserData = Box<dyn std::any::Any + 'static + Send>;
+
+/// Type used for storing user data on the gpu readback belt.
+pub type GpuReadbackUserDataStorage = Box<dyn std::any::Any + 'static + Send>;
 
 struct PendingReadbackRange {
     identifier: GpuReadbackIdentifier,
     buffer_range: Range<wgpu::BufferAddress>,
-    user_data: GpuReadbackUserData,
+    user_data: GpuReadbackUserDataStorage,
 }
 
 /// A reserved slice for GPU readback.
 ///
 /// Readback should happen from a buffer/texture with copy-source usage.
-/// The `identifier` field is used to identify the buffer upon retrieval of the data in `receive_data`.
+/// The `identifier` field is used to identify the buffer upon retrieval of the data in `readback_data`.
 pub struct GpuReadbackBuffer {
     chunk_buffer: GpuBuffer,
     range_in_chunk: Range<wgpu::BufferAddress>,
@@ -136,7 +141,7 @@ impl Chunk {
         &mut self,
         size_in_bytes: wgpu::BufferAddress,
         identifier: GpuReadbackIdentifier,
-        user_data: GpuReadbackUserData,
+        user_data: GpuReadbackUserDataStorage,
     ) -> GpuReadbackBuffer {
         debug_assert!(size_in_bytes <= self.remaining_capacity());
 
@@ -220,7 +225,7 @@ impl GpuReadbackBelt {
         buffer_pool: &GpuBufferPool,
         size_in_bytes: wgpu::BufferAddress,
         identifier: GpuReadbackIdentifier,
-        user_data: GpuReadbackUserData,
+        user_data: GpuReadbackUserDataStorage,
     ) -> GpuReadbackBuffer {
         crate::profile_function!();
 
@@ -293,10 +298,11 @@ impl GpuReadbackBelt {
         }
     }
 
-    /// Try to receive a pending data readback with the given identifier.
+    /// Try to receive a pending data readback with the given identifier and the given user data type.
     ///
-    /// If several pieces of data have the same identifier, only the callback is invoked only on the oldest received.
-    /// (which is typically the oldest scheduled as well, but there is not strict guarantee for this)
+    /// Returns the oldest received data with the given identifier & type.
+    /// This is *almost certainly* also the oldest scheduled readback. But there is no *strict* guarantee for this.
+    /// It could in theory happen that a readback is scheduled after a previous one, but finishes before it!
     ///
     /// ATTENTION: Do NOT assume any alignment on the slice passed to `on_data_received`.
     /// See this issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508).

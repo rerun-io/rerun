@@ -30,7 +30,8 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     .into()
 }
 
-// TODO:
+/// Readback identifier for screenshots.
+/// Identifiers don't need to be unique and we don't have anything interesting to distinguish here!
 const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
 
 impl framework::Example for Picking {
@@ -135,7 +136,7 @@ impl framework::Example for Picking {
             glam::uvec2(picking_rect_size, picking_rect_size),
         );
         view_builder
-            .schedule_picking_readback(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
+            .schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
             .unwrap();
 
         let mut builder = PointCloudBuilder::<()>::new(re_ctx);

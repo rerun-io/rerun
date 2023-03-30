@@ -162,10 +162,11 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     .into()
 }
 
-// TODO:
+/// Readback identifier for screenshots.
+/// Identifiers don't need to be unique and we don't have anything interesting to distinguish here!
 const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
 
-fn handle_incoming_screenshots(re_ctx: &mut RenderContext) {
+fn handle_incoming_screenshots(re_ctx: &RenderContext) {
     ScreenshotProcessor::next_readback_result(
         re_ctx,
         READBACK_IDENTIFIER,

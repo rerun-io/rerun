@@ -16,7 +16,7 @@ use crate::{
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, IntRect, RenderContext,
 };
 
-// TODO: docstring
+/// GPU retrieved & processed picking data result.
 pub struct PickingResult<T: 'static + Send + Sync> {
     /// User data supplied on picking request.
     pub user_data: T,
@@ -251,7 +251,14 @@ impl PickingLayerProcessor {
         );
     }
 
-    // TODO: docstring
+    /// Returns the oldest received picking results for a given identifier and user data type.
+    ///
+    /// It is recommended to call this method repeatedly until it returns `None` to ensure that all
+    /// pending data is flushed.
+    ///
+    /// Ready data that hasn't been retrieved for more than a frame will be discarded.
+    ///
+    /// See also [`crate::view_builder::ViewBuilder::schedule_picking_rect`]
     pub fn next_readback_result<T: 'static + Send + Sync>(
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,

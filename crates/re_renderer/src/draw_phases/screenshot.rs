@@ -112,7 +112,14 @@ impl ScreenshotProcessor {
         );
     }
 
-    // TODO: docstring
+    /// Returns the oldest received screenshot results for a given identifier and user data type.
+    ///
+    /// It is recommended to call this method repeatedly until it returns `None` to ensure that all
+    /// pending data is flushed.
+    ///
+    /// Ready data that hasn't been retrieved for more than a frame will be discarded.
+    ///
+    /// See also [`crate::view_builder::ViewBuilder::schedule_screenshot`]
     pub fn next_readback_result<T: 'static + Send + Sync>(
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
