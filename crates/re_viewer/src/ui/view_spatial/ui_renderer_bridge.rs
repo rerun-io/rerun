@@ -2,10 +2,8 @@ use egui::mutex::Mutex;
 use re_renderer::{
     renderer::{DepthCloudDrawData, GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
     view_builder::ViewBuilder,
-    GpuReadbackIdentifier, RenderContext,
+    RenderContext,
 };
-
-use crate::ui::space_view::ScreenshotMode;
 
 use super::scene::SceneSpatialPrimitives;
 

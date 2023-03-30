@@ -1,10 +1,12 @@
 use itertools::Itertools as _;
 
 use re_data_store::InstancePathHash;
+use re_renderer::PickingLayerProcessor;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
     math::{line_segment_distance_sq_to_point_2d, ray_closest_t_line_segment},
+    misc::instance_hash_conversions::instance_path_hash_from_picking_layer_id,
     ui::view_spatial::eye::Eye,
 };
 
@@ -130,6 +132,8 @@ impl PickingState {
 }
 
 pub fn picking(
+    render_ctx: &re_renderer::RenderContext,
+    gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
     pointer_in_ui: glam::Vec2,
     ui_rect: &egui::Rect,
     eye: &Eye,
@@ -180,6 +184,28 @@ pub fn picking(
         textured_rectangles_ids,
     );
     picking_ui_rects(&context, &mut state, ui_data);
+
+    // GPU based picking.
+    // Only look at newest available result, discard everything else.
+    let mut gpu_picking_result = None;
+    while let Some(picking_result) =
+        PickingLayerProcessor::next_readback_result::<()>(render_ctx, gpu_readback_identifier)
+    {
+        gpu_picking_result = Some(picking_result);
+    }
+    if let Some(gpu_picking_result) = gpu_picking_result {
+        // TODO(andreas): We have a 1x1 picking rect so far. But we soon want to snap to the closest object using a bigger picking rect.
+        let picked_object =
+            instance_path_hash_from_picking_layer_id(gpu_picking_result.picking_data[0]);
+
+        // TODO: don't bulldozer over
+        state.closest_opaque_pick.instance_path_hash = picked_object;
+        state.closest_opaque_pick.ray_t = 1.0;
+        state.closest_opaque_side_ui_dist_sq = 0.0;
+    } else {
+        // TODO: It is *possible* that some frames we don't get a picking result and the frame after we get several.
+        // We need to cache the last picking result and use it until we get a new one!
+    }
 
     state.sort_and_remove_hidden_transparent();
 
@@ -282,7 +308,7 @@ fn picking_meshes(
     crate::profile_function!();
 
     for mesh in meshes {
-        if !mesh.instance_path_hash.is_some() {
+        if !mesh.picking_instance_hash.is_some() {
             continue;
         }
         let ray_in_mesh = (mesh.world_from_mesh.inverse() * context.ray_in_world).normalize();
@@ -292,7 +318,7 @@ fn picking_meshes(
             let side_ui_dist_sq = 0.0;
             state.check_hit(
                 side_ui_dist_sq,
-                PickingRayHit::from_instance_and_t(mesh.instance_path_hash, t),
+                PickingRayHit::from_instance_and_t(mesh.picking_instance_hash, t),
                 false,
             );
         }

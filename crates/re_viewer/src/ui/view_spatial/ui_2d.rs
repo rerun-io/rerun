@@ -330,6 +330,8 @@ fn view_2d_scrollable(
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
+            ctx.render_ctx,
+            space_view_id.gpu_readback_id(),
             glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
             &scene_rect_accum,
             &eye,
@@ -454,7 +456,8 @@ fn view_2d_scrollable(
     // Screenshot context menu.
     let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
     if let Some(mode) = screenshot_mode {
-        view_builder.schedule_screenshot(&ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
+        let _ =
+            view_builder.schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
     }
 
     // Draw a re_renderer driven view.

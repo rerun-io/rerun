@@ -7,17 +7,16 @@ use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    GpuReadbackIdentifier, RenderContext, Size,
+    Size,
 };
 
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
-        space_view::ScreenshotMode,
         view_spatial::{
             scene::AdditionalPickingInfo,
-            ui::{create_labels, outline_config, screenshot_context_menu},
+            ui::{create_labels, outline_config, screenshot_context_menu, PICKING_RECT_SIZE},
             ui_renderer_bridge::{
                 fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
             },
@@ -361,8 +360,29 @@ pub fn view_3d(
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     // Check if we're hovering any hover primitive.
     if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
-        let picking_result =
-            scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
+        // Schedule GPU picking.
+
+        let pointer_in_pixel =
+            ((pointer_pos - rect.left_top()) * ui.ctx().pixels_per_point()).round();
+        let _ = view_builder.schedule_picking_rect(
+            ctx.render_ctx,
+            re_renderer::IntRect::from_middle_and_extent(
+                glam::ivec2(pointer_in_pixel.x as i32, pointer_in_pixel.y as i32),
+                glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
+            ),
+            space_view_id.gpu_readback_id(),
+            (),
+            false, // TODO: Have a debug option to enable this.
+        );
+
+        let picking_result = scene.picking(
+            ctx.render_ctx,
+            space_view_id.gpu_readback_id(),
+            glam::vec2(pointer_pos.x, pointer_pos.y),
+            &rect,
+            &eye,
+            5.0,
+        );
 
         for hit in picking_result.iter_hits() {
             let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
@@ -487,9 +507,10 @@ pub fn view_3d(
     }
 
     // Screenshot context menu.
-    let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
+    let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
     if let Some(mode) = screenshot_mode {
-        view_builder.schedule_screenshot(&ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
+        let _ =
+            view_builder.schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
     }
 
     show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);

@@ -5,6 +5,8 @@ use re_renderer::{
     LineStripSeriesBuilder, PointCloudBuilder,
 };
 
+use crate::misc::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
+
 use super::MeshSource;
 
 /// Primitives sent off to `re_renderer`.
@@ -150,6 +152,9 @@ impl SceneSpatialPrimitives {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),
                         world_from_mesh: base_transform * mesh_instance.world_from_mesh,
                         outline_mask_ids: mesh.outline_mask_ids,
+                        picking_layer_id: picking_layer_id_from_instance_path_hash(
+                            mesh.picking_instance_hash,
+                        ),
                         ..Default::default()
                     })
             })

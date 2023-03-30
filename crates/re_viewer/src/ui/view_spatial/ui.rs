@@ -56,6 +56,9 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
+/// TODO(andreas): We want to do snapping to closest, we should have a larger picking rect!
+pub const PICKING_RECT_SIZE: u32 = 1;
+
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
