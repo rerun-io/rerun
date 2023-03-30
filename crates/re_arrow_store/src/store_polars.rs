@@ -1,21 +1,23 @@
+#![allow(clippy::all, unused_variables, dead_code)]
+
 use std::collections::BTreeSet;
 
 use arrow2::{
-    array::{new_empty_array, Array, BooleanArray, ListArray, UInt64Array, Utf8Array},
+    array::{new_empty_array, Array, BooleanArray, ListArray, Utf8Array},
     bitmap::Bitmap,
     compute::concatenate::concatenate,
     offset::Offsets,
 };
-use nohash_hasher::IntMap;
 use polars_core::{functions::diag_concat_df, prelude::*};
-use re_log_types::ComponentName;
+use re_log_types::{ComponentName, DataCell};
 
 use crate::{
-    store::SecondaryIndex, ArrayExt, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
-    PersistentIndexTable, RowIndex,
+    store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
+    PersistentIndexedTable,
 };
 
 // TODO(#1692): all of this stuff should be defined by Data{Cell,Row,Table}, not the store.
+// TODO: remove this and reimplement it on top of store serialization
 
 // ---
 
@@ -29,7 +31,7 @@ impl DataStore {
 
         const TIMELESS_COL: &str = "_is_timeless";
 
-        let timeless_dfs = self.timeless_indices.values().map(|index| {
+        let timeless_dfs = self.timeless_tables.values().map(|index| {
             let ent_path = index.ent_path.clone();
 
             let mut df = index.to_dataframe(self, &self.config);
@@ -45,7 +47,7 @@ impl DataStore {
             (ent_path, df.clone())
         });
 
-        let temporal_dfs = self.indices.values().map(|index| {
+        let temporal_dfs = self.tables.values().map(|index| {
             let dfs: Vec<_> = index
                 .buckets
                 .values()
@@ -109,7 +111,7 @@ impl DataStore {
 
         // Arrange the columns in the order that makes the most sense as a user.
         let timelines: BTreeSet<&str> = self
-            .indices
+            .tables
             .keys()
             .map(|(timeline, _)| timeline.name().as_str())
             .collect();
@@ -159,7 +161,7 @@ impl DataStore {
     }
 }
 
-impl PersistentIndexTable {
+impl PersistentIndexedTable {
     /// Dumps the entire table as a flat, denormalized dataframe.
     ///
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
@@ -170,24 +172,27 @@ impl PersistentIndexTable {
         let Self {
             ent_path: _,
             cluster_key: _,
-            num_rows,
-            indices,
-            all_components: _,
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+            total_size_bytes: _,
         } = self;
 
+        let num_rows = self.total_rows() as usize;
+
+        // TODO: these are not arrowified anymore
         let insert_ids = config
             .store_insert_ids
-            .then(|| insert_ids_as_series(*num_rows as usize, indices))
-            .flatten();
+            .then(|| insert_ids_as_series(&col_insert_id));
 
         let comp_series =
         // One column for insert IDs, if they are available.
         std::iter::once(insert_ids)
             .flatten() // filter options
-            // One column for each component index.
-            .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
-            let datatype = find_component_datatype(store, component)?;
-                component_as_series(store, *num_rows as usize, datatype, *component, comp_row_nrs).into()
+            .chain(columns.iter().filter_map(|(component, cells)| {
+                let datatype = store.lookup_datatype(component)?.clone();
+                column_as_series(store, num_rows, datatype, *component, cells).into()
             }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -197,7 +202,7 @@ impl PersistentIndexTable {
     }
 }
 
-impl IndexBucket {
+impl IndexedBucket {
     /// Dumps the entire bucket as a flat, denormalized dataframe.
     ///
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
@@ -208,17 +213,21 @@ impl IndexBucket {
         let (_, times) = self.times();
         let num_rows = times.len();
 
-        let IndexBucketIndices {
+        let IndexedBucketInner {
             is_sorted: _,
             time_range: _,
-            times: _,
-            indices,
-        } = &*self.indices.read();
+            col_time: _,
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+            total_size_bytes: _,
+        } = &*self.inner.read();
 
+        // TODO
         let insert_ids = config
             .store_insert_ids
-            .then(|| insert_ids_as_series(num_rows, indices))
-            .flatten();
+            .then(|| insert_ids_as_series(&col_insert_id));
 
         // Need to create one `Series` for the time index and one for each component index.
         let comp_series = [
@@ -234,9 +243,9 @@ impl IndexBucket {
         .into_iter()
         .flatten() // filter options
         // One column for each component index.
-        .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
-            let datatype = find_component_datatype(store, component)?;
-            component_as_series(store, num_rows, datatype, *component, comp_row_nrs).into()
+        .chain(columns.iter().filter_map(|(component, cells)| {
+            let datatype = store.lookup_datatype(component)?.clone();
+            column_as_series(store, num_rows, datatype, *component, cells).into()
         }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -248,67 +257,44 @@ impl IndexBucket {
 
 // ---
 
-fn insert_ids_as_series(
-    num_rows: usize,
-    indices: &IntMap<ComponentName, SecondaryIndex>,
-) -> Option<Series> {
+// TODO: mess
+
+fn insert_ids_as_series(col_insert_id: &InsertIdVec) -> Series {
     crate::profile_function!();
 
-    indices.get(&DataStore::insert_id_key()).map(|insert_ids| {
-        let insert_ids = insert_ids
-            .iter()
-            .map(|id| id.map(|id| id.0.get()))
-            .collect::<Vec<_>>();
-        let insert_ids = UInt64Array::from(insert_ids);
-        new_infallible_series(DataStore::insert_id_key().as_str(), &insert_ids, num_rows)
-    })
+    let insert_ids = arrow2::array::UInt64Array::from_slice(col_insert_id.as_slice());
+    new_infallible_series(
+        DataStore::insert_id_key().as_str(),
+        &insert_ids,
+        insert_ids.len(),
+    )
 }
 
-fn find_component_datatype(
-    store: &DataStore,
-    component: &ComponentName,
-) -> Option<arrow2::datatypes::DataType> {
-    crate::profile_function!();
-
-    let timeless = store
-        .timeless_components
-        .get(component)
-        .map(|table| table.datatype.clone());
-    let temporal = store
-        .components
-        .get(component)
-        .map(|table| table.datatype.clone());
-    timeless.or(temporal)
-}
-
-fn component_as_series(
+// TODO: that belongs to DataCellColumn
+fn column_as_series(
     store: &DataStore,
     num_rows: usize,
     datatype: arrow2::datatypes::DataType,
     component: ComponentName,
-    comp_row_nrs: &[Option<RowIndex>],
+    cells: &[Option<DataCell>],
 ) -> Series {
     crate::profile_function!();
 
-    let components = &[component];
-
-    // For each row in the index, grab the associated data from the component tables.
-    let comp_rows: Vec<Option<_>> = comp_row_nrs
-        .iter()
-        .cloned()
-        .map(|comp_row_nr| store.get(components, &[comp_row_nr])[0].clone())
-        .collect();
-
     // Computing the validity bitmap is just a matter of checking whether the data was
     // available in the component tables.
-    let comp_validity: Vec<_> = comp_rows.iter().map(|row| row.is_some()).collect();
+    let comp_validity: Vec<_> = cells.iter().map(|cell| cell.is_some()).collect();
 
     // Each cell is actually a list, so we need to compute offsets one cell at a time.
-    let comp_lengths = comp_rows
-        .iter()
-        .map(|row| row.as_ref().map_or(0, |row| row.len()));
+    let comp_lengths = cells.iter().map(|cell| {
+        cell.as_ref()
+            .map_or(0, |cell| cell.num_instances() as usize)
+    });
 
-    let comp_values: Vec<_> = comp_rows.iter().flatten().map(|row| row.as_ref()).collect();
+    let comp_values: Vec<_> = cells
+        .iter()
+        .flatten()
+        .map(|cell| cell.as_arrow_ref())
+        .collect();
 
     // Bring everything together into one big list.
     let comp_values = ListArray::<i32>::new(
@@ -330,6 +316,8 @@ fn component_as_series(
 
 // ---
 
+// TODO: mess
+
 fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
     crate::profile_function!();
 
@@ -339,6 +327,7 @@ fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
     })
 }
 
+// TODO: needs all the new control columns in there
 /// Sorts the columns of the given dataframe according to the following rules:
 // - insert ID comes first if it's available,
 // - followed by lexically sorted timelines,
@@ -358,13 +347,6 @@ fn sort_df_columns(
 
         all.remove(all.binary_search(&"entity").expect("has to exist"));
 
-        if store_insert_ids {
-            all.remove(
-                all.binary_search(&DataStore::insert_id_key().as_str())
-                    .expect("has to exist"),
-            );
-        }
-
         let timelines = timelines.iter().copied().map(Some).collect::<Vec<_>>();
 
         let native_components = all
@@ -382,7 +364,7 @@ fn sort_df_columns(
             .collect::<Vec<_>>();
 
         [
-            vec![store_insert_ids.then(|| DataStore::insert_id_key().as_str())],
+            // vec![store_insert_ids.then(|| DataStore::insert_id_key().as_str())],
             timelines,
             vec![Some("entity")],
             native_components,

@@ -3788,6 +3788,7 @@ dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "criterion",
  "document-features",
  "indent",
@@ -3802,6 +3803,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "smallvec",
  "static_assertions",
  "thiserror",
 ]

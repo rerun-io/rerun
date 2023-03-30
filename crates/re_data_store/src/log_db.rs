@@ -1,12 +1,10 @@
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeInt};
+use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
-    component_types::InstanceKey,
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, ArrowMsg,
-    BeginRecordingMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
-    EntityPathHash, EntityPathOpMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo, TimePoint,
-    Timeline,
+    component_types::InstanceKey, ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath,
+    DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, MsgId,
+    PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -37,26 +35,8 @@ impl Default for EntityDb {
             data_store: re_arrow_store::DataStore::new(
                 InstanceKey::name(),
                 DataStoreConfig {
-                    // Garbage collection of the datastore is currently driven by the `MsgId`
-                    // component column, as a workaround for the `MsgId` mismatch issue.
-                    //
-                    // Since this component is only a few bytes large, trying to trigger a GC
-                    // based on bucket size is a lost cause, so make sure to have a small enough
-                    // row limit.
-                    //
-                    // TODO(cmc): Reasses once the whole `MsgId` mismatch issue is resolved
-                    // (probably once batching is implemented).
-                    component_bucket_nb_rows: 128,
-                    component_bucket_size_bytes: 10 * 1024 * 1024, // 10 MiB
-                    // We do not garbage collect index buckets at the moment, and so the size of
-                    // individual index buckets is irrelevant, only their total number of rows
-                    // matter.
-                    // See https://github.com/rerun-io/rerun/pull/1558 for details.
-                    //
-                    // TODO(cmc): Bring back index GC once the whole `MsgId` mismatch issue is
-                    // resolved (probably once batching is implemented).
-                    index_bucket_size_bytes: u64::MAX,
-                    index_bucket_nb_rows: 2048,
+                    // TODO
+                    indexed_bucket_num_rows: 2048,
                     ..Default::default()
                 },
             ),
@@ -131,7 +111,7 @@ impl EntityDb {
         for component_path in cleared_paths {
             if let Some(data_type) = self
                 .data_store
-                .lookup_data_type(&component_path.component_name)
+                .lookup_datatype(&component_path.component_name)
             {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
@@ -280,21 +260,23 @@ impl LogDb {
         crate::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let drop_msg_ids = {
-            let msg_id_chunks = self.entity_db.data_store.gc(
-                GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
-                Timeline::log_time(),
-                MsgId::name(),
-            );
+        // TODO
+        let drop_msg_ids: ahash::HashSet<_> = Default::default();
+        // let drop_msg_ids = {
+        //     let msg_id_chunks = self.entity_db.data_store.gc(
+        //         GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
+        //         Timeline::log_time(),
+        //         MsgId::name(),
+        //     );
 
-            msg_id_chunks
-                .iter()
-                .flat_map(|chunk| {
-                    arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap()
-                })
-                .map(Option::unwrap) // MsgId is always present
-                .collect::<ahash::HashSet<_>>()
-        };
+        //     msg_id_chunks
+        //         .iter()
+        //         .flat_map(|chunk| {
+        //             arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap()
+        //         })
+        //         .map(Option::unwrap) // MsgId is always present
+        //         .collect::<ahash::HashSet<_>>()
+        // };
 
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 

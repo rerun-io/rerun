@@ -39,11 +39,13 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
 ] }
+arrow2_convert.workspace = true
 document-features = "0.2"
 indent = "0.1"
 itertools = { workspace = true }
 nohash-hasher = "0.2"
 parking_lot.workspace = true
+smallvec = { version = "1.0", features = ["const_generics"]}
 static_assertions = "1.1"
 thiserror.workspace = true
 

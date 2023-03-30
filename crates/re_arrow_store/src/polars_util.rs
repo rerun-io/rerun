@@ -1,8 +1,7 @@
-use arrow2::array::Array;
 use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::*;
-use re_log_types::{ComponentName, EntityPath, TimeInt};
+use re_log_types::{ComponentName, DataCell, EntityPath, TimeInt};
 
 use crate::{ArrayExt, DataStore, LatestAtQuery, RangeQuery};
 
@@ -38,12 +37,11 @@ pub fn latest_component(
     let cluster_key = store.cluster_key();
 
     let components = &[cluster_key, primary];
-    let row_indices = store
+    let cells = store
         .latest_at(query, ent_path, primary, components)
-        .unwrap_or([None; 2]);
-    let results = store.get(components, &row_indices);
+        .unwrap_or([(); 2].map(|_| None));
 
-    dataframe_from_results(components, results)
+    dataframe_from_cells(&cells)
 }
 
 /// Queries any number of components and their cluster keys from their respective point-of-views,
@@ -161,12 +159,11 @@ pub fn range_components<'a, const N: usize>(
         .chain(
             store
                 .range(query, ent_path, components)
-                .map(move |(time, _, row_indices)| {
-                    let results = store.get(&components, &row_indices);
+                .map(move |(time, _, cells)| {
                     (
                         time,
-                        row_indices[primary_col].is_some(), // is_primary
-                        dataframe_from_results(&components, results),
+                        cells[primary_col].is_some(), // is_primary
+                        dataframe_from_cells(&cells),
                     )
                 }),
         )
@@ -200,16 +197,19 @@ pub fn range_components<'a, const N: usize>(
 
 // --- Joins ---
 
-pub fn dataframe_from_results<const N: usize>(
-    components: &[ComponentName; N],
-    results: [Option<Box<dyn Array>>; N],
+// TODO: none of this mess should be here
+
+pub fn dataframe_from_cells<const N: usize>(
+    cells: &[Option<DataCell>; N],
 ) -> SharedResult<DataFrame> {
-    let series: Result<Vec<_>, _> = components
+    let series: Result<Vec<_>, _> = cells
         .iter()
-        .zip(results)
-        .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| {
-            Series::try_from((component.as_str(), col.as_ref().clean_for_polars()))
+        .flatten()
+        .map(|cell| {
+            Series::try_from((
+                cell.component_name().as_str(),
+                cell.as_arrow_ref().clean_for_polars(),
+            ))
         })
         .collect();
 
