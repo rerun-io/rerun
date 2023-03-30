@@ -26,8 +26,9 @@ pub fn fill_view_builder(
     view_builder: &mut ViewBuilder,
     primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
-    take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
 ) -> anyhow::Result<wgpu::CommandBuffer> {
+    crate::profile_function!();
+
     view_builder
         .queue_draw(&DepthCloudDrawData::new(render_ctx, &primitives.depth_clouds).unwrap())
         .queue_draw(&MeshDrawData::new(render_ctx, &primitives.mesh_instances()).unwrap())
@@ -40,10 +41,6 @@ pub fn fill_view_builder(
 
     if matches!(background, ScreenBackground::GenericSkybox) {
         view_builder.queue_draw(&GenericSkyboxDrawData::new(render_ctx));
-    }
-
-    if let Some((id, mode)) = take_screenshot {
-        let _ = view_builder.schedule_screenshot(render_ctx, id, mode);
     }
 
     let command_buffer = view_builder.draw(
@@ -68,6 +65,8 @@ pub fn renderer_paint_callback(
     clip_rect: egui::Rect,
     pixels_from_point: f32,
 ) -> egui::PaintCallback {
+    crate::profile_function!();
+
     // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
     let command_buffer = std::sync::Arc::new(Mutex::new(Some(command_buffer)));
 

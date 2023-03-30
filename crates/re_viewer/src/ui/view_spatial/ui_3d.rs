@@ -312,6 +312,39 @@ pub fn view_3d(
         }
     }
 
+    // Determine view port resolution and position.
+    let resolution_in_pixel = get_viewport(rect, ui.ctx().pixels_per_point());
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return;
+    }
+
+    let target_config = TargetConfiguration {
+        name: space.to_string().into(),
+
+        resolution_in_pixel,
+
+        view_from_world: eye.world_from_view.inverse(),
+        projection_from_view: Projection::Perspective {
+            vertical_fov: eye.fov_y.unwrap(),
+            near_plane_distance: eye.near(),
+        },
+
+        pixels_from_point: ui.ctx().pixels_per_point(),
+        auto_size_config: state.auto_size_config(),
+
+        outline_config: scene
+            .primitives
+            .any_outlines
+            .then(|| outline_config(ui.ctx())),
+    };
+
+    let mut view_builder = ViewBuilder::default();
+    // TODO(andreas): separate setup_view doesn't make sense, add a `new` method instead.
+    if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", error);
+        return;
+    }
+
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
         &mut scene.ui,
@@ -453,6 +486,12 @@ pub fn view_3d(
         }
     }
 
+    // Screenshot context menu.
+    let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
+    if let Some(mode) = screenshot_mode {
+        view_builder.schedule_screenshot(&ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
+    }
+
     show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
 
     if state.state_3d.show_axes {
@@ -499,76 +538,12 @@ pub fn view_3d(
         }
     }
 
-    let (_, screenshot_action) = screenshot_context_menu(ctx, response);
-
-    paint_view(
-        ui,
-        eye,
-        rect,
-        scene,
-        ctx.render_ctx,
-        &space.to_string(),
-        state.auto_size_config(),
-        screenshot_action.map(|s| (space_view_id.gpu_readback_id(), s)),
-    );
-
-    // Add egui driven labels on top of re_renderer content.
-    let painter = ui.painter().with_clip_rect(ui.max_rect());
-    painter.extend(label_shapes);
-}
-
-#[allow(clippy::too_many_arguments)]
-fn paint_view(
-    ui: &mut egui::Ui,
-    eye: Eye,
-    rect: egui::Rect,
-    scene: SceneSpatial,
-    render_ctx: &mut RenderContext,
-    name: &str,
-    auto_size_config: re_renderer::AutoSizeConfig,
-    take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
-) {
-    crate::profile_function!();
-
-    // Determine view port resolution and position.
-    let pixels_from_point = ui.ctx().pixels_per_point();
-    let resolution_in_pixel = get_viewport(rect, pixels_from_point);
-    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return;
-    }
-
-    let target_config = TargetConfiguration {
-        name: name.into(),
-
-        resolution_in_pixel,
-
-        view_from_world: eye.world_from_view.inverse(),
-        projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y.unwrap(),
-            near_plane_distance: eye.near(),
-        },
-
-        pixels_from_point,
-        auto_size_config,
-
-        outline_config: scene
-            .primitives
-            .any_outlines
-            .then(|| outline_config(ui.ctx())),
-    };
-
-    let mut view_builder = ViewBuilder::default();
-    if let Err(error) = view_builder.setup_view(render_ctx, target_config) {
-        // TODO(andreas): separate setup_view doesn't make sense.
-        re_log::error!("Failed to setup view: {}", error);
-        return;
-    }
+    // Composite viewbuilder into egui.
     let command_buffer = match fill_view_builder(
-        render_ctx,
+        ctx.render_ctx,
         &mut view_builder,
         scene.primitives,
         &ScreenBackground::GenericSkybox,
-        take_screenshot,
     ) {
         Ok(command_buffer) => command_buffer,
         Err(error) => {
@@ -577,12 +552,16 @@ fn paint_view(
         }
     };
     ui.painter().add(renderer_paint_callback(
-        render_ctx,
+        ctx.render_ctx,
         command_buffer,
         view_builder,
         rect,
-        pixels_from_point,
+        ui.ctx().pixels_per_point(),
     ));
+
+    // Add egui driven labels on top of re_renderer content.
+    let painter = ui.painter().with_clip_rect(ui.max_rect());
+    painter.extend(label_shapes);
 }
 
 fn show_projections_from_2d_space(

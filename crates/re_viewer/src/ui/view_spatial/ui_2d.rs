@@ -431,38 +431,40 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    let (response, screenshot_action) = screenshot_context_menu(ctx, response);
+    let Ok(target_config) = setup_target_config(
+        &painter,
+        space_from_ui,
+        space_from_pixel,
+        &space.to_string(),
+        state.auto_size_config(),
+        scene
+            .primitives
+            .any_outlines,
+    ) else {
+        return response;
+    };
+
+    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
+    let mut view_builder = ViewBuilder::default();
+    if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", error);
+        return response;
+    }
+
+    // Screenshot context menu.
+    let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
+    if let Some(mode) = screenshot_mode {
+        view_builder.schedule_screenshot(&ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
+    }
 
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
     {
-        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
-
-        let Ok(target_config) = setup_target_config(
-            &painter,
-            space_from_ui,
-            space_from_pixel,
-            &space.to_string(),
-            state.auto_size_config(),
-            scene
-                .primitives
-                .any_outlines,
-        ) else {
-            return response;
-        };
-
-        // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-        let mut view_builder = ViewBuilder::default();
-        if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
-            re_log::error!("Failed to setup view: {}", error);
-            return response;
-        }
         let command_buffer = match fill_view_builder(
             ctx.render_ctx,
             &mut view_builder,
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
-            screenshot_action.map(|s| (space_view_id.gpu_readback_id(), s)),
         ) {
             Ok(command_buffer) => command_buffer,
             Err(error) => {
