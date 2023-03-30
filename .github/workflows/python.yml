@@ -289,7 +289,7 @@ jobs:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
-      - name: "Upload RRD"
+      - name: "Upload RRD (commit)"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "rrd"
@@ -310,6 +310,14 @@ jobs:
         with:
           path: "rrd"
           destination: "rerun-example-rrd/version/${{github.ref_name}}"
+          parent: false
+
+      - name: "Upload RRD (latest release)"
+        if: github.ref == 'latest'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/latest"
           parent: false
 
   # See https://github.com/ncipollo/release-action
