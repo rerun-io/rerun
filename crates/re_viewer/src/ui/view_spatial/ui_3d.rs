@@ -6,7 +6,7 @@ use macaw::{vec3, BoundingBox, Quat, Vec3};
 use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
-    view_builder::{Projection, TargetConfiguration},
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     GpuReadbackIdentifier, RenderContext, Size,
 };
 
@@ -555,9 +555,16 @@ fn paint_view(
             .then(|| outline_config(ui.ctx())),
     };
 
+    let mut view_builder = ViewBuilder::default();
+    if let Err(error) = view_builder.setup_view(render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", error);
+        return;
+    }
+
     let Ok(callback) = create_scene_paint_callback(
         render_ctx,
-        target_config,
+        view_builder,
+        pixels_from_point,
         rect,
         scene.primitives, &ScreenBackground::GenericSkybox,
         take_screenshot)

@@ -5,7 +5,7 @@ use egui::{
 use macaw::IsoTransform;
 use re_data_store::EntityPath;
 use re_log_types::component_types::TensorTrait;
-use re_renderer::view_builder::TargetConfiguration;
+use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use super::{
     eye::Eye,
@@ -449,9 +449,17 @@ fn view_2d_scrollable(
             return response;
         };
 
+        // TODO(andreas): separate setup for viewbuilder doesn't make sense.
+        let mut view_builder = ViewBuilder::default();
+        if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
+            re_log::error!("Failed to setup view: {}", error);
+            return response;
+        }
+
         let Ok(callback) = create_scene_paint_callback(
             ctx.render_ctx,
-            target_config, painter.clip_rect(),
+            view_builder,
+            painter.ctx().pixels_per_point(), painter.clip_rect(),
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
             screenshot_action.map(|s| (space_view_id.gpu_readback_id(), s)),

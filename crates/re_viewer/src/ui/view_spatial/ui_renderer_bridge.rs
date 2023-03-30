@@ -18,16 +18,16 @@ pub fn get_viewport(clip_rect: egui::Rect, pixels_from_point: f32) -> [u32; 2] {
 
 pub fn create_scene_paint_callback(
     render_ctx: &mut RenderContext,
-    target_config: TargetConfiguration,
+    mut view_builder: ViewBuilder,
+    pixels_from_point: f32,
     clip_rect: egui::Rect,
     primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
     take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
 ) -> anyhow::Result<egui::PaintCallback> {
-    let pixels_from_point = target_config.pixels_from_point;
-    let (command_buffer, view_builder) = create_and_fill_view_builder(
+    let command_buffer = fill_view_builder(
         render_ctx,
-        target_config,
+        &mut view_builder,
         primitives,
         background,
         take_screenshot,
@@ -46,16 +46,13 @@ pub enum ScreenBackground {
     ClearColor(re_renderer::Rgba),
 }
 
-fn create_and_fill_view_builder(
+fn fill_view_builder(
     render_ctx: &mut RenderContext,
-    target_config: TargetConfiguration,
+    view_builder: &mut ViewBuilder,
     primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
     take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
-) -> anyhow::Result<(wgpu::CommandBuffer, ViewBuilder)> {
-    let mut view_builder = ViewBuilder::default();
-    view_builder.setup_view(render_ctx, target_config)?;
-
+) -> anyhow::Result<wgpu::CommandBuffer> {
     view_builder
         .queue_draw(&DepthCloudDrawData::new(render_ctx, &primitives.depth_clouds).unwrap())
         .queue_draw(&MeshDrawData::new(render_ctx, &primitives.mesh_instances()).unwrap())
@@ -82,7 +79,7 @@ fn create_and_fill_view_builder(
         },
     )?;
 
-    Ok((command_buffer, view_builder))
+    Ok(command_buffer)
 }
 
 slotmap::new_key_type! { pub struct ViewBuilderHandle; }
