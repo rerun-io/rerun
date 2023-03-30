@@ -312,7 +312,7 @@ jobs:
           destination: "rerun-example-rrd/version/${{github.ref_name}}"
           parent: false
 
-      - name: "Upload web-viewer (latest release)"
+      - name: "Upload RRD (latest release)"
         if: github.ref == 'latest'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
