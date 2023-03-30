@@ -19,7 +19,9 @@ use crate::{
         data_ui::{self, DataUi},
         view_spatial::{
             ui::outline_config,
-            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            ui_renderer_bridge::{
+                fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
+            },
             SceneSpatial,
         },
         SpaceViewId, UiVerbosity,
@@ -455,19 +457,26 @@ fn view_2d_scrollable(
             re_log::error!("Failed to setup view: {}", error);
             return response;
         }
-
-        let Ok(callback) = create_scene_paint_callback(
+        let command_buffer = match fill_view_builder(
             ctx.render_ctx,
-            view_builder,
-            painter.ctx().pixels_per_point(), painter.clip_rect(),
+            &mut view_builder,
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
             screenshot_action.map(|s| (space_view_id.gpu_readback_id(), s)),
-        ) else {
-            return response;
+        ) {
+            Ok(command_buffer) => command_buffer,
+            Err(error) => {
+                re_log::error!("Failed to fill view builder: {}", error);
+                return response;
+            }
         };
-
-        painter.add(callback);
+        painter.add(renderer_paint_callback(
+            ctx.render_ctx,
+            command_buffer,
+            view_builder,
+            painter.clip_rect(),
+            painter.ctx().pixels_per_point(),
+        ));
     }
 
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);

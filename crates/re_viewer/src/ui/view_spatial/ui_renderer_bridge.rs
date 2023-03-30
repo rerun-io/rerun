@@ -1,7 +1,7 @@
 use egui::mutex::Mutex;
 use re_renderer::{
     renderer::{DepthCloudDrawData, GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::ViewBuilder,
     GpuReadbackIdentifier, RenderContext,
 };
 
@@ -16,37 +16,12 @@ pub fn get_viewport(clip_rect: egui::Rect, pixels_from_point: f32) -> [u32; 2] {
     [resolution.x as u32, resolution.y as u32]
 }
 
-pub fn create_scene_paint_callback(
-    render_ctx: &mut RenderContext,
-    mut view_builder: ViewBuilder,
-    pixels_from_point: f32,
-    clip_rect: egui::Rect,
-    primitives: SceneSpatialPrimitives,
-    background: &ScreenBackground,
-    take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
-) -> anyhow::Result<egui::PaintCallback> {
-    let command_buffer = fill_view_builder(
-        render_ctx,
-        &mut view_builder,
-        primitives,
-        background,
-        take_screenshot,
-    )?;
-    Ok(renderer_paint_callback(
-        render_ctx,
-        command_buffer,
-        view_builder,
-        clip_rect,
-        pixels_from_point,
-    ))
-}
-
 pub enum ScreenBackground {
     GenericSkybox,
     ClearColor(re_renderer::Rgba),
 }
 
-fn fill_view_builder(
+pub fn fill_view_builder(
     render_ctx: &mut RenderContext,
     view_builder: &mut ViewBuilder,
     primitives: SceneSpatialPrimitives,
@@ -86,7 +61,7 @@ slotmap::new_key_type! { pub struct ViewBuilderHandle; }
 
 type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
 
-fn renderer_paint_callback(
+pub fn renderer_paint_callback(
     render_ctx: &mut RenderContext,
     command_buffer: wgpu::CommandBuffer,
     view_builder: ViewBuilder,

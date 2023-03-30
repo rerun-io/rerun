@@ -18,7 +18,9 @@ use crate::{
         view_spatial::{
             scene::AdditionalPickingInfo,
             ui::{create_labels, outline_config, screenshot_context_menu},
-            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            ui_renderer_bridge::{
+                fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
+            },
             SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
         SpaceViewId, UiVerbosity,
@@ -557,21 +559,30 @@ fn paint_view(
 
     let mut view_builder = ViewBuilder::default();
     if let Err(error) = view_builder.setup_view(render_ctx, target_config) {
+        // TODO(andreas): separate setup_view doesn't make sense.
         re_log::error!("Failed to setup view: {}", error);
         return;
     }
-
-    let Ok(callback) = create_scene_paint_callback(
+    let command_buffer = match fill_view_builder(
         render_ctx,
-        view_builder,
-        pixels_from_point,
-        rect,
-        scene.primitives, &ScreenBackground::GenericSkybox,
-        take_screenshot)
-    else {
-        return;
+        &mut view_builder,
+        scene.primitives,
+        &ScreenBackground::GenericSkybox,
+        take_screenshot,
+    ) {
+        Ok(command_buffer) => command_buffer,
+        Err(error) => {
+            re_log::error!("Failed to fill view builder: {}", error);
+            return;
+        }
     };
-    ui.painter().add(callback);
+    ui.painter().add(renderer_paint_callback(
+        render_ctx,
+        command_buffer,
+        view_builder,
+        rect,
+        pixels_from_point,
+    ));
 }
 
 fn show_projections_from_2d_space(
