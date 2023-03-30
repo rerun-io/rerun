@@ -188,7 +188,7 @@ fn handle_incoming_screenshots(re_ctx: &mut RenderContext) {
                 };
 
                 #[cfg(not(target_arch = "wasm32"))]
-                image::save_buffer(filename, &data, extent.x, extent.y, image::ColorType::Rgba8)
+                image::save_buffer(filename, data, extent.x, extent.y, image::ColorType::Rgba8)
                     .expect("Failed to save screenshot");
             }
         },

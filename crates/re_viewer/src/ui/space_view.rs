@@ -1,8 +1,5 @@
-use std::borrow::Cow;
-
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
-use re_log_types::hash::{self, Hash64};
 use re_renderer::{GpuReadbackIdentifier, ScreenshotProcessor};
 
 use crate::{
@@ -33,7 +30,7 @@ impl SpaceViewId {
     }
 
     pub fn gpu_readback_id(self) -> GpuReadbackIdentifier {
-        Hash64::hash(self).hash64()
+        re_log_types::hash::Hash64::hash(self).hash64()
     }
 }
 
@@ -122,7 +119,7 @@ impl SpaceView {
         }
 
         while ScreenshotProcessor::next_readback_result(
-            &ctx.render_ctx,
+            ctx.render_ctx,
             self.id.gpu_readback_id(),
             |data, extent, mode| self.handle_pending_screenshots(data, extent, mode),
         )
@@ -130,16 +127,11 @@ impl SpaceView {
         {}
     }
 
-    fn handle_pending_screenshots(
-        &self,
-        data: Cow<'_, [u8]>,
-        extent: glam::UVec2,
-        mode: ScreenshotMode,
-    ) {
+    fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
         // Set to clipboard.
         #[cfg(not(target_arch = "wasm32"))]
         crate::misc::Clipboard::with(|clipboard| {
-            clipboard.set_image([extent.x as _, extent.y as _], &data);
+            clipboard.set_image([extent.x as _, extent.y as _], data);
         });
         if mode == ScreenshotMode::CopyToClipboard {
             return;
@@ -159,7 +151,7 @@ impl SpaceView {
         };
         let filename = std::path::Path::new(&filename);
 
-        match image::save_buffer(filename, &data, extent.x, extent.y, image::ColorType::Rgba8) {
+        match image::save_buffer(filename, data, extent.x, extent.y, image::ColorType::Rgba8) {
             Ok(_) => {
                 re_log::info!(
                     "Saved screenshot to {:?}.",

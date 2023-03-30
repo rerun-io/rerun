@@ -99,8 +99,8 @@ impl PickingLayerProcessor {
     ///
     /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
     /// It allows to sample the picking layer texture in a shader.
+    #[allow(clippy::too_many_arguments)]
     pub fn new<T: 'static + Send + Sync>(
-        // TODO: many arguments
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,

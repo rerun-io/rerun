@@ -11,7 +11,7 @@ use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
-use re_renderer::{GpuReadbackIdentifier, WgpuResourcePoolStatistics};
+use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 
@@ -506,7 +506,7 @@ impl eframe::App for App {
                 let blueprint = self
                     .state
                     .blueprints
-                    .entry(selected_app_id.clone())
+                    .entry(selected_app_id)
                     .or_insert_with(|| Blueprint::new(egui_ctx));
 
                 recording_config_entry(

@@ -116,7 +116,7 @@ impl ScreenshotProcessor {
     pub fn next_readback_result<T: 'static + Send + Sync>(
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
-        on_screenshot: impl FnOnce(std::borrow::Cow<'_, [u8]>, glam::UVec2, T),
+        on_screenshot: impl FnOnce(&[u8], glam::UVec2, T),
     ) -> Option<()> {
         let mut screenshot_was_available = None;
         ctx.gpu_readback_belt
@@ -126,7 +126,7 @@ impl ScreenshotProcessor {
                 let texture_row_info =
                     TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent.x);
                 let texture_data = texture_row_info.remove_padding(data);
-                on_screenshot(texture_data, metadata.extent, metadata.user_data);
+                on_screenshot(&texture_data, metadata.extent, metadata.user_data);
             });
         screenshot_was_available
     }
