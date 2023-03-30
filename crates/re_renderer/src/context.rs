@@ -89,10 +89,11 @@ impl RenderContext {
 
     /// Chunk size for our gpu->cpu buffer manager.
     ///
-    /// We expect large screenshots to be rare occurrences, so we go with fairly small chunks of 1MiB
-    /// (this is as much memory as a 512x512 rgba8 texture)
+    /// We expect large screenshots to be rare occurrences, so we go with fairly small chunks of just 64 kiB.
+    /// (this is as much memory as a 128x128 rgba8 texture, or a little bit less than a 64x64 picking target with depth)
+    /// I.e. screenshots will end up in dedicated chunks.
     const GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
-        wgpu::BufferSize::new(1024 * 1024);
+        wgpu::BufferSize::new(1024 * 64);
 
     /// Limit maximum number of in flight submissions to this number.
     ///
@@ -258,9 +259,9 @@ impl RenderContext {
 
         // Request write used staging buffer back.
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
-        self.cpu_write_gpu_read_belt.lock().after_queue_submit();
+        self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
         // Map all read staging buffers.
-        self.gpu_readback_belt.lock().after_queue_submit();
+        self.gpu_readback_belt.get_mut().after_queue_submit();
 
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
@@ -285,6 +286,7 @@ impl RenderContext {
 
         self.mesh_manager.get_mut().begin_frame(frame_index);
         self.texture_manager_2d.begin_frame(frame_index);
+        self.gpu_readback_belt.get_mut().begin_frame(frame_index);
 
         {
             let WgpuResourcePools {

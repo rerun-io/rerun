@@ -129,6 +129,9 @@ struct Chunk {
 
     /// All ranges that are currently in use, i.e. there is a GPU write to it scheduled.
     ranges_in_use: Vec<PendingReadbackRange>,
+
+    /// Last frame this chunk was received, i.e. the last time a map_async action operation finished with it.
+    last_received_frame_index: u64,
 }
 
 impl Chunk {
@@ -171,20 +174,23 @@ pub struct GpuReadbackBelt {
     /// Minimum size for new buffers.
     chunk_size: u64,
 
-    /// Chunks which the GPU writes are scheduled, but we haven't mapped them yet.
+    /// Chunks for which the GPU writes are scheduled, but we haven't mapped them yet.
     active_chunks: Vec<Chunk>,
 
     /// Chunks that have been unmapped and are ready for writing by the GPU.
     free_chunks: Vec<Chunk>,
 
     /// Chunks that are currently mapped and ready for reading by the CPU.
-    pending_chunks: Vec<Chunk>,
+    received_chunks: Vec<Chunk>,
 
     /// When a chunk mapping is successful, it is moved to this sender to be read by the CPU.
     sender: mpsc::Sender<Chunk>,
 
     /// Chunks are received here are ready to be read by the CPU.
     receiver: mpsc::Receiver<Chunk>,
+
+    /// Current frame index, used for keeping track of how old chunks are.
+    frame_index: u64,
 }
 
 impl GpuReadbackBelt {
@@ -205,16 +211,17 @@ impl GpuReadbackBelt {
     /// * bigger is better, within these bounds.
     ///
     /// TODO(andreas): Adaptive chunk sizes
-    /// TODO(andreas): Shrinking after usage spikes?
+    /// TODO(andreas): Shrinking after usage spikes (e.g. screenshots of different sizes!)
     pub fn new(chunk_size: wgpu::BufferSize) -> Self {
         let (sender, receiver) = mpsc::channel();
         GpuReadbackBelt {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),
             active_chunks: Vec::new(),
             free_chunks: Vec::new(),
-            pending_chunks: Vec::new(),
+            received_chunks: Vec::new(),
             sender,
             receiver,
+            frame_index: 0,
         }
     }
 
@@ -267,6 +274,7 @@ impl GpuReadbackBelt {
                     buffer,
                     unused_offset: 0,
                     ranges_in_use: Vec::new(),
+                    last_received_frame_index: u64::MAX,
                 }
             }
         };
@@ -298,6 +306,40 @@ impl GpuReadbackBelt {
         }
     }
 
+    /// Should be called at the beginning of a new frame.
+    ///
+    /// Discards stale data that hasn't been received by [`readback_data`] for more than a frame.
+    pub fn begin_frame(&mut self, frame_index: u64) {
+        // Make sure each frame has at least one `receive_chunk` call before it ends (from the pov of the readback belt).
+        // It's important to do this before bumping the frame index, because we want to mark all these chunks as "old"
+        // chunks that were available for the previous frame.
+        // (A user could have done this just before beginning a frame via `receive_chunks` or not call it at all)
+        self.receive_chunks();
+
+        self.frame_index = frame_index;
+
+        // Kill off all stale chunks.
+        // Note that this happening is unfortunate but not _really_ a user bug as this can happen very easily:
+        // For example, if a picking operation is scheduled on view that is immediately closed after!
+
+        // TODO(andreas): just use `Vec::drain_filter` once it goes stable.
+        let (discarded, retained) = self.received_chunks.drain(..).partition(|chunk| {
+            // If the chunk was received last frame it is too early to discard it, we need to wait one more.
+            // Imagine it was received just at the end of that frame - the user has no chance of getting it back
+            // at the code that they might be running at the beginning of a frame.
+            chunk.last_received_frame_index + 1 < self.frame_index
+        });
+        self.received_chunks = retained;
+
+        for chunk in discarded {
+            re_log::debug!(
+                "Unread data from a GpuReadbackBelt was discarded. {} ranges remained unread.",
+                chunk.ranges_in_use.len()
+            );
+            self.reuse_chunk(chunk);
+        }
+    }
+
     /// Try to receive a pending data readback with the given identifier and the given user data type.
     ///
     /// Returns the oldest received data with the given identifier & type.
@@ -313,17 +355,14 @@ impl GpuReadbackBelt {
     ) {
         crate::profile_function!();
 
-        // Check if any new chunks are ready to be read.
-        while let Ok(chunk) = self.receiver.try_recv() {
-            self.pending_chunks.push(chunk);
-        }
+        self.receive_chunks();
 
         // Search for the user data in the readback chunks.
         // A linear search is suited best since we expect the number both the number of pending chunks
         // (typically just one or two!)
         // as well as the number of readbacks per chunk to be small!
         // Also note that identifiers may not be unique!
-        for (chunk_index, chunk) in self.pending_chunks.iter_mut().enumerate() {
+        for (chunk_index, chunk) in self.received_chunks.iter_mut().enumerate() {
             for (range_index, range) in chunk.ranges_in_use.iter().enumerate() {
                 if range.identifier != identifier || !range.user_data.is::<UserDataType>() {
                     continue;
@@ -338,16 +377,28 @@ impl GpuReadbackBelt {
 
                 // If this was the last range from this chunk, the chunk is ready for re-use!
                 if chunk.ranges_in_use.is_empty() {
-                    let chunk = self.pending_chunks.swap_remove(chunk_index);
-                    chunk.buffer.unmap();
-                    self.free_chunks.push(chunk);
+                    let chunk = self.received_chunks.swap_remove(chunk_index);
+                    self.reuse_chunk(chunk);
                 }
                 return;
             }
         }
     }
 
-    // TODO: Have a GC mechanism that deals with chunks that have lingering data.
+    /// Check if any new chunks are ready to be read.
+    fn receive_chunks(&mut self) {
+        while let Ok(mut chunk) = self.receiver.try_recv() {
+            chunk.last_received_frame_index = self.frame_index;
+            self.received_chunks.push(chunk);
+        }
+    }
+
+    fn reuse_chunk(&mut self, mut chunk: Chunk) {
+        chunk.buffer.unmap();
+        chunk.ranges_in_use.clear();
+        chunk.unused_offset = 0;
+        self.free_chunks.push(chunk);
+    }
 }
 
 impl std::fmt::Debug for GpuReadbackBelt {
