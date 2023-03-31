@@ -18,8 +18,8 @@ struct PendingReadbackRange {
 
 /// A reserved slice for GPU readback.
 ///
-/// Readback should happen from a buffer/texture with copy-source usage.
-/// The `identifier` field is used to identify the buffer upon retrieval of the data in `readback_data`.
+/// Readback needs to happen from a buffer/texture with copy-source usage,
+/// as we need to copy the data from the GPU to this CPU accessible buffer.
 pub struct GpuReadbackBuffer {
     chunk_buffer: GpuBuffer,
     range_in_chunk: Range<wgpu::BufferAddress>,
@@ -358,8 +358,7 @@ impl GpuReadbackBelt {
         self.receive_chunks();
 
         // Search for the user data in the readback chunks.
-        // A linear search is suited best since we expect the number both the number of pending chunks
-        // (typically just one or two!)
+        // A linear search is suited best since we expect both the number of pending chunks (typically just one or two!)
         // as well as the number of readbacks per chunk to be small!
         // Also note that identifiers may not be unique!
         for (chunk_index, chunk) in self.received_chunks.iter_mut().enumerate() {

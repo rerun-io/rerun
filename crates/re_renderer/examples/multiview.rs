@@ -170,7 +170,7 @@ fn handle_incoming_screenshots(re_ctx: &RenderContext) {
     ScreenshotProcessor::next_readback_result(
         re_ctx,
         READBACK_IDENTIFIER,
-        |data, extent, view_idx: u32| {
+        |data, _extent, view_idx: u32| {
             re_log::info!(
                 "Received screenshot for view {view_idx}. Total bytes {:?}",
                 data.len()
@@ -188,9 +188,14 @@ fn handle_incoming_screenshots(re_ctx: &RenderContext) {
                     i += 1;
                 };
 
-                #[cfg(not(target_arch = "wasm32"))]
-                image::save_buffer(filename, data, extent.x, extent.y, image::ColorType::Rgba8)
-                    .expect("Failed to save screenshot");
+                image::save_buffer(
+                    filename,
+                    data,
+                    _extent.x,
+                    _extent.y,
+                    image::ColorType::Rgba8,
+                )
+                .expect("Failed to save screenshot");
             }
         },
     );

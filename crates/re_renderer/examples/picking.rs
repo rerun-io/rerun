@@ -30,7 +30,7 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     .into()
 }
 
-/// Readback identifier for screenshots.
+/// Readback identifier for picking rects.
 /// Identifiers don't need to be unique and we don't have anything interesting to distinguish here!
 const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
 
