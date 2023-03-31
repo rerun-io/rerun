@@ -111,3 +111,7 @@ required-features = ["polars"]
 [[bench]]
 name = "data_store"
 harness = false
+
+[[bench]]
+name = "arrow2_convert"
+harness = false
