@@ -72,7 +72,7 @@ def log_obb(
     splats: Dict[str, Any] = {}
 
     if half_size is not None:
-        size = np.require(half_size, dtype="float32")
+        size = np.require(half_size, dtype="float32") * 2.0
 
         if size.shape[0] == 3:
             instanced["rerun.box3d"] = Box3DArray.from_numpy(size.reshape(1, 3))
