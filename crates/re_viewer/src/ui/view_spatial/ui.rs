@@ -18,8 +18,11 @@ use crate::{
 };
 
 use super::{
-    eye::Eye, scene::SceneSpatialUiData, ui_2d::View2DState, ui_3d::View3DState, SceneSpatial,
-    SpaceSpecs,
+    eye::Eye,
+    scene::{PickingResult, SceneSpatialUiData},
+    ui_2d::View2DState,
+    ui_3d::View3DState,
+    SceneSpatial, SpaceSpecs,
 };
 
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
@@ -56,6 +59,8 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
+pub const PICKING_RECT_SIZE: u32 = 15;
+
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
@@ -74,6 +79,10 @@ pub struct ViewSpatialState {
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     #[serde(skip)]
     pub scene_num_primitives: usize,
+
+    /// Last frame's picking result.
+    #[serde(skip)]
+    pub previous_picking_result: Option<PickingResult>,
 
     pub(super) state_2d: View2DState,
     pub(super) state_3d: View3DState,
@@ -95,6 +104,7 @@ impl Default for ViewSpatialState {
                 point_radius: re_renderer::Size::AUTO, // let re_renderer decide
                 line_radius: re_renderer::Size::AUTO,  // let re_renderer decide
             },
+            previous_picking_result: None,
         }
     }
 }

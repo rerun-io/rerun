@@ -18,6 +18,12 @@ impl Hash64 {
         Self(hash(value))
     }
 
+    /// From an existing u64. Use this only for data conversions.
+    #[inline]
+    pub fn from_u64(i: u64) -> Self {
+        Self(i)
+    }
+
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.0

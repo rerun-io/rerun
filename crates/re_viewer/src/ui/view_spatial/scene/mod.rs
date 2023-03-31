@@ -48,7 +48,7 @@ impl MeshSourceData {
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
-    pub instance_path_hash: InstancePathHash,
+    pub picking_instance_hash: InstancePathHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
@@ -247,14 +247,21 @@ impl SceneSpatial {
         SpatialNavigationMode::ThreeD
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn picking(
         &self,
+        render_ctx: &re_renderer::RenderContext,
+        gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
+        previous_picking_result: &Option<PickingResult>,
         pointer_in_ui: glam::Vec2,
         ui_rect: &egui::Rect,
         eye: &Eye,
         ui_interaction_radius: f32,
     ) -> PickingResult {
         picking::picking(
+            render_ctx,
+            gpu_readback_identifier,
+            previous_picking_result,
             pointer_in_ui,
             ui_rect,
             eye,

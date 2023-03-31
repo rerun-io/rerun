@@ -14,6 +14,12 @@ impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
     pub const NONE: EntityPathHash = EntityPathHash(Hash64::ZERO);
 
+    /// From an existing u64. Use this only for data conversions.
+    #[inline]
+    pub fn from_u64(i: u64) -> Self {
+        Self(Hash64::from_u64(i))
+    }
+
     #[inline]
     pub fn hash64(&self) -> u64 {
         self.0.hash64()

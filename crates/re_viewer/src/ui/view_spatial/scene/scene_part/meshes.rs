@@ -59,7 +59,7 @@ impl MeshPart {
                         ctx.render_ctx,
                     )
                     .map(|cpu_mesh| MeshSource {
-                        instance_path_hash: picking_instance_hash,
+                        picking_instance_hash,
                         world_from_mesh: world_from_obj_affine,
                         mesh: cpu_mesh,
                         outline_mask_ids,

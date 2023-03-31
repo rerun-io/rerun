@@ -55,6 +55,11 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 }
 
 @fragment
+fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
+    return UVec4(0u, 0u, 0u, 0u); // TODO(andreas): Implement picking layer id pass-through.
+}
+
+@fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
     return rect_info.outline_mask;
 }

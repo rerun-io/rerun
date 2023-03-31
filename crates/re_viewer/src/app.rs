@@ -1607,7 +1607,7 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
 
         egui_debug_options_ui(ui);
         ui.separator();
-        debug_menu_options_ui(ui, _frame);
+        debug_menu_options_ui(ui, options, _frame);
     }
 }
 
@@ -1651,7 +1651,7 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+fn debug_menu_options_ui(ui: &mut egui::Ui, options: &mut AppOptions, _frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         if ui.button("Mobile size").clicked() {
@@ -1666,6 +1666,12 @@ fn debug_menu_options_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
     if ui.button("Log info").clicked() {
         re_log::info!("Logging some info");
     }
+
+    ui.checkbox(
+        &mut options.show_picking_debug_overlay,
+        "Picking Debug Overlay",
+    )
+    .on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

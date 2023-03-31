@@ -24,7 +24,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
         TextureRowDataInfo,
     },
-    ColorMap, OutlineMaskPreference,
+    ColorMap, OutlineMaskPreference, PickingLayerProcessor,
 };
 
 use super::{
@@ -387,6 +387,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
 
 pub struct DepthCloudRenderer {
     render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
@@ -395,7 +396,11 @@ impl Renderer for DepthCloudRenderer {
     type RendererDrawData = DepthCloudDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::OutlineMask, DrawPhase::Opaque]
+        &[
+            DrawPhase::Opaque,
+            DrawPhase::PickingLayer,
+            DrawPhase::OutlineMask,
+        ]
     }
 
     fn create_renderer<Fs: FileSystem>(
@@ -480,7 +485,19 @@ impl Renderer for DepthCloudRenderer {
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
-
+        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "DepthCloudRenderer::render_pipeline_picking_layer".into(),
+                fragment_entrypoint: "fs_main_picking_layer".into(),
+                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+                depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
+                multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
+                ..render_pipeline_desc_color.clone()
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
@@ -500,6 +517,7 @@ impl Renderer for DepthCloudRenderer {
 
         DepthCloudRenderer {
             render_pipeline_color,
+            render_pipeline_picking_layer,
             render_pipeline_outline_mask,
             bind_group_layout,
         }
@@ -518,8 +536,9 @@ impl Renderer for DepthCloudRenderer {
         }
 
         let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
