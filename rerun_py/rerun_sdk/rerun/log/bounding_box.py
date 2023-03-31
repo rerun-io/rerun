@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,7 @@ from rerun.components.label import LabelArray
 from rerun.components.quaternion import QuaternionArray
 from rerun.components.radius import RadiusArray
 from rerun.components.vec import Vec3DArray
-from rerun.log import _normalize_colors, _normalize_ids, _normalize_radii
+from rerun.log import Color, _normalize_colors, _normalize_ids, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 
@@ -27,7 +27,7 @@ def log_obb(
     half_size: Optional[npt.ArrayLike],
     position: Optional[npt.ArrayLike] = None,
     rotation_q: Optional[npt.ArrayLike] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
@@ -54,7 +54,7 @@ def log_obb(
     rotation_q:
         Optional array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
     stroke_width:
         Optional width of the line edges.
     label:

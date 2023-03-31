@@ -36,7 +36,7 @@ def log_point(
     position: Optional[npt.ArrayLike] = None,
     *,
     radius: Optional[float] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     keypoint_id: Optional[int] = None,
@@ -66,7 +66,7 @@ def log_point(
     radius:
         Optional radius (make it a sphere).
     color:
-        Optional color of the point.
+        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
     label:
         Optional text to show with the point.
     class_id:

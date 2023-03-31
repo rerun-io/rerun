@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,7 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
-from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 
@@ -24,7 +24,7 @@ def log_arrow(
     origin: Optional[npt.ArrayLike],
     vector: Optional[npt.ArrayLike] = None,
     *,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     label: Optional[str] = None,
     width_scale: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
@@ -48,7 +48,7 @@ def log_arrow(
     vector
         The vector along which the arrow will be drawn.
     color
-        An optional RGB or RGBA triplet in 0-255 sRGB.
+        An Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
     label
         An optional text to show beside the arrow.
     width_scale

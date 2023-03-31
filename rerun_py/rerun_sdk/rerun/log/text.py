@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Final, Optional, Sequence
+from typing import Any, Dict, Final, Optional
 
 # Fully qualified to avoid circular import
 import rerun.log.extension_components
@@ -7,7 +7,7 @@ from rerun import bindings
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
-from rerun.log import _normalize_colors
+from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
 from rerun.log.text_internal import LogLevel
 
@@ -71,7 +71,7 @@ def log_text_entry(
     text: str,
     *,
     level: Optional[str] = LogLevel.INFO,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
@@ -89,7 +89,7 @@ def log_text_entry(
         be an arbitrary string, but it's recommended to use one of the constants
         from [LogLevel][rerun.log.text.LogLevel]
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:

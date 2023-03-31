@@ -34,7 +34,7 @@ def log_rect(
     rect: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     ext: Optional[Dict[str, Any]] = None,
@@ -52,7 +52,7 @@ def log_rect(
     rect_format:
         how to interpret the `rect` argument
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
     label:
         Optional text to show inside the rectangle.
     class_id:
