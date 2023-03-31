@@ -326,8 +326,8 @@ fn view_2d_scrollable(
 
     // TODO(andreas): separate setup for viewbuilder doesn't make sense.
     let mut view_builder = ViewBuilder::default();
-    if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", error);
+    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", err);
         return response;
     }
 
@@ -489,8 +489,8 @@ fn view_2d_scrollable(
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
         ) {
             Ok(command_buffer) => command_buffer,
-            Err(error) => {
-                re_log::error!("Failed to fill view builder: {}", error);
+            Err(err) => {
+                re_log::error!("Failed to fill view builder: {}", err);
                 return response;
             }
         };

@@ -339,8 +339,8 @@ pub fn view_3d(
 
     let mut view_builder = ViewBuilder::default();
     // TODO(andreas): separate setup_view doesn't make sense, add a `new` method instead.
-    if let Err(error) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", error);
+    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", err);
         return;
     }
 
@@ -570,8 +570,8 @@ pub fn view_3d(
         &ScreenBackground::GenericSkybox,
     ) {
         Ok(command_buffer) => command_buffer,
-        Err(error) => {
-            re_log::error!("Failed to fill view builder: {}", error);
+        Err(err) => {
+            re_log::error!("Failed to fill view builder: {}", err);
             return;
         }
     };
