@@ -308,7 +308,7 @@ impl GpuReadbackBelt {
 
     /// Should be called at the beginning of a new frame.
     ///
-    /// Discards stale data that hasn't been received by [`readback_data`] for more than a frame.
+    /// Discards stale data that hasn't been received by [`GpuReadbackBelt::readback_data`] for more than a frame.
     pub fn begin_frame(&mut self, frame_index: u64) {
         // Make sure each frame has at least one `receive_chunk` call before it ends (from the pov of the readback belt).
         // It's important to do this before bumping the frame index, because we want to mark all these chunks as "old"
