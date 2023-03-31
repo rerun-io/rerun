@@ -26,16 +26,54 @@ pub struct PickingResult<T: 'static + Send + Sync> {
     /// Describes the area of the picking layer that was read back.
     pub rect: IntRect,
 
-    /// Picking data for the requested rectangle.
+    /// Picking id data for the requested rectangle.
     ///
     /// GPU internal row padding has already been removed.
     /// Data is stored row wise, left to right, top to bottom.
-    pub picking_data: Vec<PickingLayerId>,
+    pub picking_id_data: Vec<PickingLayerId>,
+
+    /// Picking depth data for the requested rectangle.
+    /// TODO: refer to utility for interpretation
+    ///
+    /// GPU internal row padding has already been removed.
+    /// Data is stored row wise, left to right, top to bottom.
+    pub picking_depth_data: Vec<f32>,
+
+    /// Transforms a position on the picking rect to a world position.
+    world_from_cropped_projection: glam::Mat4,
+}
+
+impl<T: 'static + Send + Sync> PickingResult<T> {
+    /// Returns the picked world position.
+    ///
+    /// Panics if the position is outside of the picking rect.
+    ///
+    /// Keep in mind that the picked position may be (negative) infinity if nothing was picked.
+    #[inline]
+    pub fn picked_world_position(&self, pos_on_picking_rect: glam::UVec2) -> glam::Vec3 {
+        let raw_depth = self.picking_depth_data
+            [(pos_on_picking_rect.y * self.rect.width() + pos_on_picking_rect.x) as usize];
+
+        self.world_from_cropped_projection.project_point3(
+            pixel_coord_to_ndc(pos_on_picking_rect.as_vec2(), self.rect.extent.as_vec2())
+                .extend(raw_depth),
+        )
+    }
+
+    /// Returns the picked picking id.
+    ///
+    /// Panics if the position is outside of the picking rect.
+    #[inline]
+    pub fn picked_id(&self, pos_on_picking_rect: glam::UVec2) -> PickingLayerId {
+        self.picking_id_data
+            [(pos_on_picking_rect.y * self.rect.width() + pos_on_picking_rect.x) as usize]
+    }
 }
 
 /// Type used as user data on the gpu readback belt.
 struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
     picking_rect: IntRect,
+    world_from_cropped_projection: glam::Mat4,
     user_data: T,
 }
 
@@ -76,6 +114,14 @@ impl From<PickingLayerId> for [u32; 4] {
     }
 }
 
+/// Converts a pixel coordinate to normalized device coordinates.
+fn pixel_coord_to_ndc(coord: glam::Vec2, target_resolution: glam::Vec2) -> glam::Vec2 {
+    glam::vec2(
+        coord.x / target_resolution.x * 2.0 - 1.0,
+        1.0 - coord.y / target_resolution.y * 2.0,
+    )
+}
+
 /// Manages the rendering of the picking layer pass, its render targets & readback buffer.
 ///
 /// The view builder creates this for every frame that requests a picking result.
@@ -89,9 +135,8 @@ pub struct PickingLayerProcessor {
 impl PickingLayerProcessor {
     /// The texture format used for the picking layer.
     pub const PICKING_LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
-
-    pub const PICKING_LAYER_DEPTH_FORMAT: wgpu::TextureFormat =
-        ViewBuilder::MAIN_TARGET_DEPTH_FORMAT;
+    /// The depth format used for the picking layer - f32 makes it easiest to deal with retrieved depth and is guaranteed to be copyable.
+    pub const PICKING_LAYER_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub const PICKING_LAYER_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
         count: 1,
@@ -122,30 +167,6 @@ impl PickingLayerProcessor {
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
     ) -> Self {
-        let row_info_id = Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.extent);
-        //let row_info_depth =
-        //Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.extent);
-
-        // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
-        // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
-        debug_assert!(
-            Self::PICKING_LAYER_FORMAT.describe().block_size
-                % Self::PICKING_LAYER_DEPTH_FORMAT.describe().block_size
-                == 0
-        );
-        let buffer_size = row_info_id.buffer_size_padded; // + row_info_depth.buffer_size_padded;
-
-        let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
-            &ctx.device,
-            &ctx.gpu_resources.buffers,
-            buffer_size,
-            readback_identifier,
-            Box::new(ReadbackBeltMetadata {
-                picking_rect,
-                user_data: readback_user_data,
-            }),
-        );
-
         let mut picking_target_usage =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
         picking_target_usage.set(
@@ -170,7 +191,6 @@ impl PickingLayerProcessor {
             &TextureDesc {
                 label: format!("{view_name} - picking_layer depth").into(),
                 format: Self::PICKING_LAYER_DEPTH_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 ..picking_target.creation_desc
             },
         );
@@ -178,14 +198,11 @@ impl PickingLayerProcessor {
         let rect_min = picking_rect.top_left_corner.as_vec2();
         let rect_max = rect_min + picking_rect.extent.as_vec2();
         let screen_resolution = screen_resolution.as_vec2();
-        let rect_min_ndc = glam::vec2(
-            rect_min.x / screen_resolution.x * 2.0 - 1.0,
-            1.0 - rect_max.y / screen_resolution.y * 2.0,
-        );
-        let rect_max_ndc = glam::vec2(
-            rect_max.x / screen_resolution.x * 2.0 - 1.0,
-            1.0 - rect_min.y / screen_resolution.y * 2.0,
-        );
+        // y axis is flipped in NDC, therefore we need to flip the y axis of the rect.
+        let rect_min_ndc =
+            pixel_coord_to_ndc(glam::vec2(rect_min.x, rect_max.y), screen_resolution);
+        let rect_max_ndc =
+            pixel_coord_to_ndc(glam::vec2(rect_max.x, rect_min.y), screen_resolution);
         let rect_center_ndc = (rect_min_ndc + rect_max_ndc) * 0.5;
         let cropped_projection_from_projection =
             glam::Mat4::from_scale(2.0 / (rect_max_ndc - rect_min_ndc).extend(1.0))
@@ -194,15 +211,16 @@ impl PickingLayerProcessor {
         // Setup frame uniform buffer
         let previous_projection_from_world: glam::Mat4 =
             frame_uniform_buffer_content.projection_from_world.into();
+        let cropped_projection_from_world =
+            cropped_projection_from_projection * previous_projection_from_world;
         let previous_projection_from_view: glam::Mat4 =
             frame_uniform_buffer_content.projection_from_view.into();
+        let cropped_projection_from_view =
+            cropped_projection_from_projection * previous_projection_from_view;
+
         let frame_uniform_buffer_content = FrameUniformBuffer {
-            projection_from_world: (cropped_projection_from_projection
-                * previous_projection_from_world)
-                .into(),
-            projection_from_view: (cropped_projection_from_projection
-                * previous_projection_from_view)
-                .into(),
+            projection_from_world: cropped_projection_from_world.into(),
+            projection_from_view: cropped_projection_from_view.into(),
             ..*frame_uniform_buffer_content
         };
 
@@ -216,6 +234,31 @@ impl PickingLayerProcessor {
             &mut ctx.gpu_resources,
             &ctx.device,
             frame_uniform_buffer,
+        );
+
+        let row_info_id = Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.extent);
+        let row_info_depth =
+            Texture2DBufferInfo::new(Self::PICKING_LAYER_DEPTH_FORMAT, picking_rect.extent);
+
+        // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
+        // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
+        debug_assert!(
+            Self::PICKING_LAYER_FORMAT.describe().block_size
+                % Self::PICKING_LAYER_DEPTH_FORMAT.describe().block_size
+                == 0
+        );
+        let buffer_size = row_info_id.buffer_size_padded + row_info_depth.buffer_size_padded;
+
+        let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
+            &ctx.device,
+            &ctx.gpu_resources.buffers,
+            buffer_size,
+            readback_identifier,
+            Box::new(ReadbackBeltMetadata {
+                picking_rect,
+                user_data: readback_user_data,
+                world_from_cropped_projection: cropped_projection_from_world.inverse(),
+            }),
         );
 
         PickingLayerProcessor {
@@ -247,7 +290,7 @@ impl PickingLayerProcessor {
                 view: &self.picking_depth.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: false,
+                    store: true,
                 }),
                 stencil_ops: None,
             }),
@@ -259,18 +302,32 @@ impl PickingLayerProcessor {
     }
 
     pub fn end_render_pass(self, encoder: &mut wgpu::CommandEncoder) {
-        self.readback_buffer.read_texture2d(
+        let extent = glam::uvec2(
+            self.picking_target.texture.width(),
+            self.picking_target.texture.height(),
+        );
+        self.readback_buffer.read_multiple_texture2d(
             encoder,
-            wgpu::ImageCopyTexture {
-                texture: &self.picking_target.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            glam::uvec2(
-                self.picking_target.texture.width(),
-                self.picking_target.texture.height(),
-            ),
+            &[
+                (
+                    wgpu::ImageCopyTexture {
+                        texture: &self.picking_target.texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    extent,
+                ),
+                (
+                    wgpu::ImageCopyTexture {
+                        texture: &self.picking_depth.texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::DepthOnly,
+                    },
+                    extent,
+                ),
+            ],
         );
     }
 
@@ -294,13 +351,22 @@ impl PickingLayerProcessor {
                     Self::PICKING_LAYER_FORMAT,
                     metadata.picking_rect.extent,
                 );
+                let buffer_info_depth = Texture2DBufferInfo::new(
+                    Self::PICKING_LAYER_DEPTH_FORMAT,
+                    metadata.picking_rect.extent,
+                );
 
-                let picking_data = buffer_info_id.remove_padding_and_convert(data);
+                let picking_id_data = buffer_info_id
+                    .remove_padding_and_convert(&data[..buffer_info_id.buffer_size_padded as _]);
+                let picking_depth_data = buffer_info_depth
+                    .remove_padding_and_convert(&data[buffer_info_id.buffer_size_padded as _..]);
 
                 result = Some(PickingResult {
-                    picking_data,
+                    picking_id_data,
+                    picking_depth_data,
                     user_data: metadata.user_data,
                     rect: metadata.picking_rect,
+                    world_from_cropped_projection: metadata.world_from_cropped_projection,
                 });
             });
         result

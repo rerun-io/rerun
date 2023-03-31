@@ -208,7 +208,7 @@ pub fn picking(
         if let Some(gpu_picking_result) = gpu_picking_result {
             // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
             let rect = gpu_picking_result.rect;
-            let picked_id = gpu_picking_result.picking_data
+            let picked_id = gpu_picking_result.picking_id_data
                 [(rect.width() / 2 + (rect.height() / 2) * rect.width()) as usize];
             let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
 
