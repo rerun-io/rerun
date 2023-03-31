@@ -1,9 +1,11 @@
 use egui::mutex::Mutex;
 use re_renderer::{
     renderer::{DepthCloudDrawData, GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
-    view_builder::{ScheduledScreenshot, TargetConfiguration, ViewBuilder},
-    RenderContext,
+    view_builder::{TargetConfiguration, ViewBuilder},
+    GpuReadbackIdentifier, RenderContext,
 };
+
+use crate::ui::space_view::ScreenshotMode;
 
 use super::scene::SceneSpatialPrimitives;
 
@@ -20,25 +22,22 @@ pub fn create_scene_paint_callback(
     clip_rect: egui::Rect,
     primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
-    take_screenshot: bool,
-) -> anyhow::Result<(egui::PaintCallback, Option<ScheduledScreenshot>)> {
+    take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
+) -> anyhow::Result<egui::PaintCallback> {
     let pixels_from_point = target_config.pixels_from_point;
-    let (command_buffer, view_builder, scheduled_screenshot) = create_and_fill_view_builder(
+    let (command_buffer, view_builder) = create_and_fill_view_builder(
         render_ctx,
         target_config,
         primitives,
         background,
         take_screenshot,
     )?;
-    Ok((
-        renderer_paint_callback(
-            render_ctx,
-            command_buffer,
-            view_builder,
-            clip_rect,
-            pixels_from_point,
-        ),
-        scheduled_screenshot,
+    Ok(renderer_paint_callback(
+        render_ctx,
+        command_buffer,
+        view_builder,
+        clip_rect,
+        pixels_from_point,
     ))
 }
 
@@ -52,12 +51,8 @@ fn create_and_fill_view_builder(
     target_config: TargetConfiguration,
     primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
-    take_screenshot: bool,
-) -> anyhow::Result<(
-    wgpu::CommandBuffer,
-    ViewBuilder,
-    Option<ScheduledScreenshot>,
-)> {
+    take_screenshot: Option<(GpuReadbackIdentifier, ScreenshotMode)>,
+) -> anyhow::Result<(wgpu::CommandBuffer, ViewBuilder)> {
     let mut view_builder = ViewBuilder::default();
     view_builder.setup_view(render_ctx, target_config)?;
 
@@ -75,9 +70,9 @@ fn create_and_fill_view_builder(
         view_builder.queue_draw(&GenericSkyboxDrawData::new(render_ctx));
     }
 
-    let scheduled_screenshot = take_screenshot
-        .then(|| view_builder.schedule_screenshot(render_ctx).ok())
-        .flatten();
+    if let Some((id, mode)) = take_screenshot {
+        let _ = view_builder.schedule_screenshot(render_ctx, id, mode);
+    }
 
     let command_buffer = view_builder.draw(
         render_ctx,
@@ -87,7 +82,7 @@ fn create_and_fill_view_builder(
         },
     )?;
 
-    Ok((command_buffer, view_builder, scheduled_screenshot))
+    Ok((command_buffer, view_builder))
 }
 
 slotmap::new_key_type! { pub struct ViewBuilderHandle; }

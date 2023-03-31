@@ -12,10 +12,9 @@ use re_renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
         TestTriangleDrawData,
     },
-    view_builder::{
-        OrthographicCameraMode, Projection, ScheduledScreenshot, TargetConfiguration, ViewBuilder,
-    },
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba, Size,
+    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
+    Color32, GpuReadbackIdentifier, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba,
+    ScreenshotProcessor, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -151,7 +150,6 @@ struct Multiview {
     random_points_colors: Vec<Color32>,
 
     take_screenshot_next_frame_for_view: Option<u32>,
-    scheduled_screenshots: Vec<ScheduledScreenshot>,
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
@@ -162,6 +160,45 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
         a: 1.0,
     }
     .into()
+}
+
+/// Readback identifier for screenshots.
+/// Identifiers don't need to be unique and we don't have anything interesting to distinguish here!
+const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
+
+fn handle_incoming_screenshots(re_ctx: &RenderContext) {
+    ScreenshotProcessor::next_readback_result(
+        re_ctx,
+        READBACK_IDENTIFIER,
+        |data, _extent, view_idx: u32| {
+            re_log::info!(
+                "Received screenshot for view {view_idx}. Total bytes {:?}",
+                data.len()
+            );
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                // Get next available file name.
+                let mut i = 1;
+                let filename = loop {
+                    let filename = format!("screenshot_{i}.png");
+                    if !std::path::Path::new(&filename).exists() {
+                        break filename;
+                    }
+                    i += 1;
+                };
+
+                image::save_buffer(
+                    filename,
+                    data,
+                    _extent.x,
+                    _extent.y,
+                    image::ColorType::Rgba8,
+                )
+                .expect("Failed to save screenshot");
+            }
+        },
+    );
 }
 
 impl Multiview {
@@ -180,8 +217,9 @@ impl Multiview {
             .take_screenshot_next_frame_for_view
             .map_or(false, |i| i == index)
         {
-            self.scheduled_screenshots
-                .push(view_builder.schedule_screenshot(re_ctx).unwrap());
+            view_builder
+                .schedule_screenshot(re_ctx, READBACK_IDENTIFIER, index)
+                .unwrap();
             re_log::info!("Scheduled screenshot for view {}", index);
         }
 
@@ -192,54 +230,6 @@ impl Multiview {
             .unwrap();
 
         (view_builder, command_buffer)
-    }
-
-    fn handle_incoming_screenshots(&mut self, re_ctx: &mut RenderContext) {
-        re_ctx
-            .gpu_readback_belt
-            .lock()
-            .receive_data(|data, identifier| {
-                if let Some(index) = self
-                    .scheduled_screenshots
-                    .iter()
-                    .position(|s| s.identifier == identifier)
-                {
-                    re_log::info!(
-                        "Received screenshot. Total bytes {:?}. Identifier {identifier}",
-                        data.len()
-                    );
-
-                    #[cfg(target_arch = "wasm32")]
-                    self.scheduled_screenshots.remove(index);
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let screenshot = self.scheduled_screenshots.swap_remove(index);
-
-                        re_log::info!("Received screenshot. Total bytes {}", data.len());
-
-                        // Get next available file name.
-                        let mut i = 1;
-                        let filename = loop {
-                            let filename = format!("screenshot_{i}.png");
-                            if !std::path::Path::new(&filename).exists() {
-                                break filename;
-                            }
-                            i += 1;
-                        };
-
-                        #[cfg(not(target_arch = "wasm32"))]
-                        image::save_buffer(
-                            filename,
-                            &screenshot.row_info.remove_padding(data),
-                            screenshot.extent.x,
-                            screenshot.extent.y,
-                            image::ColorType::Rgba8,
-                        )
-                        .expect("Failed to save screenshot");
-                    }
-                }
-            });
     }
 }
 
@@ -297,7 +287,6 @@ impl Example for Multiview {
             random_points_colors,
 
             take_screenshot_next_frame_for_view: None,
-            scheduled_screenshots: Vec::new(),
         }
     }
 
@@ -317,7 +306,7 @@ impl Example for Multiview {
             ) * 10.0;
         }
 
-        self.handle_incoming_screenshots(re_ctx);
+        handle_incoming_screenshots(re_ctx);
 
         let seconds_since_startup = time.seconds_since_startup();
         let view_from_world =

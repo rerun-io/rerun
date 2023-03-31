@@ -27,7 +27,9 @@ mod size;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
-pub use allocator::{GpuReadbackBelt, GpuReadbackBuffer, GpuReadbackBufferIdentifier};
+use allocator::GpuReadbackBuffer;
+pub use allocator::GpuReadbackIdentifier;
+
 pub use color::Rgba32Unmul;
 pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
@@ -39,14 +41,14 @@ pub use depth_offset::DepthOffset;
 pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use size::Size;
-pub use view_builder::{AutoSizeConfig, ScheduledScreenshot};
+pub use view_builder::AutoSizeConfig;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
 mod draw_phases;
 pub(crate) use draw_phases::DrawPhase;
 pub use draw_phases::{
     OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
-    PickingLayerObjectId, ScheduledPickingRect,
+    PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
 };
 
 mod file_system;

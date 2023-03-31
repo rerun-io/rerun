@@ -14,7 +14,7 @@ use super::{
     SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
-    misc::{HoveredSpace, Item, ScheduledGpuReadback, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -449,25 +449,15 @@ fn view_2d_scrollable(
             return response;
         };
 
-        let Ok((callback, screenshot)) = create_scene_paint_callback(
+        let Ok(callback) = create_scene_paint_callback(
             ctx.render_ctx,
             target_config, painter.clip_rect(),
             scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
-            screenshot_action.is_some(),
+            screenshot_action.map(|s| (space_view_id.gpu_readback_id(), s)),
         ) else {
             return response;
         };
-        if let (Some(screenshot), Some(screenshot_action)) = (screenshot, screenshot_action) {
-            ctx.scheduled_gpu_readbacks.insert(
-                screenshot.identifier,
-                ScheduledGpuReadback::SpaceViewScreenshot {
-                    space_view_id,
-                    screenshot,
-                    mode: screenshot_action,
-                },
-            );
-        }
 
         painter.add(callback);
     }

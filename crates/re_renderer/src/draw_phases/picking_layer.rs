@@ -13,18 +13,29 @@ use crate::{
     global_bindings::FrameUniformBuffer,
     view_builder::ViewBuilder,
     wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
-    DebugLabel, GpuReadbackBuffer, GpuReadbackBufferIdentifier, IntRect, RenderContext,
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, IntRect, RenderContext,
 };
 
-/// Previously scheduled picking rect, waiting for readback from GPU to finish.
-///
-/// Contains information in order to identify & interpret the readback data.
-#[derive(Clone)]
-pub struct ScheduledPickingRect {
-    pub identifier: GpuReadbackBufferIdentifier,
+/// GPU retrieved & processed picking data result.
+pub struct PickingResult<T: 'static + Send + Sync> {
+    /// User data supplied on picking request.
+    pub user_data: T,
+
+    /// Picking rect supplied on picking request.
+    /// Describes the area of the picking layer that was read back.
     pub rect: IntRect,
-    // TODO(andreas): Figure out how to handle depth data. Should ideally be forced to be available at the same time.
-    pub row_info: TextureRowDataInfo,
+
+    /// Picking data for the requested rectangle.
+    ///
+    /// GPU internal row padding has already been removed.
+    /// Data is stored row wise, left to right, top to bottom.
+    pub picking_data: Vec<PickingLayerId>,
+}
+
+/// Type used as user data on the gpu readback belt.
+struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
+    picking_rect: IntRect,
+    user_data: T,
 }
 
 /// The first 64bit of the picking layer.
@@ -88,20 +99,28 @@ impl PickingLayerProcessor {
     ///
     /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
     /// It allows to sample the picking layer texture in a shader.
-    pub fn new(
+    #[allow(clippy::too_many_arguments)]
+    pub fn new<T: 'static + Send + Sync>(
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
         picking_rect: IntRect,
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
-    ) -> (Self, ScheduledPickingRect) {
+        readback_identifier: GpuReadbackIdentifier,
+        readback_user_data: T,
+    ) -> Self {
         let row_info = TextureRowDataInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.width());
         let buffer_size = row_info.bytes_per_row_padded * picking_rect.height();
         let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
             buffer_size as u64,
+            readback_identifier,
+            Box::new(ReadbackBeltMetadata {
+                picking_rect,
+                user_data: readback_user_data,
+            }),
         );
 
         let mut picking_target_usage =
@@ -176,21 +195,12 @@ impl PickingLayerProcessor {
             frame_uniform_buffer,
         );
 
-        let scheduled_rect = ScheduledPickingRect {
-            identifier: readback_buffer.identifier,
-            rect: picking_rect,
-            row_info,
-        };
-
-        (
-            PickingLayerProcessor {
-                bind_group_0,
-                picking_target,
-                picking_depth,
-                readback_buffer,
-            },
-            scheduled_rect,
-        )
+        PickingLayerProcessor {
+            bind_group_0,
+            picking_target,
+            picking_depth,
+            readback_buffer,
+        }
     }
 
     pub fn begin_render_pass<'a>(
@@ -239,5 +249,56 @@ impl PickingLayerProcessor {
                 self.picking_target.texture.height(),
             ),
         );
+    }
+
+    /// Returns the oldest received picking results for a given identifier and user data type.
+    ///
+    /// It is recommended to call this method repeatedly until it returns `None` to ensure that all
+    /// pending data is flushed.
+    ///
+    /// Ready data that hasn't been retrieved for more than a frame will be discarded.
+    ///
+    /// See also [`crate::view_builder::ViewBuilder::schedule_picking_rect`]
+    pub fn next_readback_result<T: 'static + Send + Sync>(
+        ctx: &RenderContext,
+        identifier: GpuReadbackIdentifier,
+    ) -> Option<PickingResult<T>> {
+        let mut result = None;
+        ctx.gpu_readback_belt
+            .lock()
+            .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data, metadata| {
+                // Due to https://github.com/gfx-rs/wgpu/issues/3508 the data might be completely unaligned,
+                // so much, that we can't interpret it just as `PickingLayerId`.
+                // Therefore, we have to do a copy of the data regardless.
+                let row_info = TextureRowDataInfo::new(
+                    Self::PICKING_LAYER_FORMAT,
+                    metadata.picking_rect.extent.x,
+                );
+
+                // Copies need to use [u8] because of aforementioned alignment issues.
+                let mut picking_data = vec![
+                    PickingLayerId::default();
+                    (metadata.picking_rect.extent.x * metadata.picking_rect.extent.y)
+                        as usize
+                ];
+                let picking_data_as_u8 = bytemuck::cast_slice_mut(&mut picking_data);
+                for row in 0..metadata.picking_rect.extent.y {
+                    let offset_padded = (row_info.bytes_per_row_padded * row) as usize;
+                    let offset_unpadded = (row_info.bytes_per_row_unpadded * row) as usize;
+                    picking_data_as_u8[offset_unpadded
+                        ..(offset_unpadded + row_info.bytes_per_row_unpadded as usize)]
+                        .copy_from_slice(
+                            &data[offset_padded
+                                ..(offset_padded + row_info.bytes_per_row_unpadded as usize)],
+                        );
+                }
+
+                result = Some(PickingResult {
+                    picking_data,
+                    user_data: metadata.user_data,
+                    rect: metadata.picking_rect,
+                });
+            });
+        result
     }
 }

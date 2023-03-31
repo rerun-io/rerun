@@ -3,13 +3,15 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer, GpuReadbackBuffer, GpuReadbackBufferIdentifier},
+    allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
     context::RenderContext,
-    draw_phases::{DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerProcessor},
+    draw_phases::{
+        DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerProcessor, ScreenshotProcessor,
+    },
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
-    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
-    DebugLabel, IntRect, Rgba, ScheduledPickingRect, Size,
+    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
+    DebugLabel, IntRect, Rgba, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(
@@ -50,9 +52,8 @@ pub struct ViewBuilder {
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
+    screenshot_processor: Option<ScreenshotProcessor>,
     picking_processor: Option<PickingLayerProcessor>,
-
-    scheduled_screenshot: Option<GpuReadbackBuffer>, // TODO(andreas): This should also be a "render processor"?
 }
 
 struct ViewTargetSetup {
@@ -181,13 +182,6 @@ impl Default for TargetConfiguration {
             outline_config: None,
         }
     }
-}
-
-#[derive(Clone)]
-pub struct ScheduledScreenshot {
-    pub identifier: GpuReadbackBufferIdentifier,
-    pub extent: glam::UVec2,
-    pub row_info: TextureRowDataInfo,
 }
 
 impl ViewBuilder {
@@ -535,13 +529,6 @@ impl ViewBuilder {
                 label: setup.name.clone().get(),
             });
 
-        let clear_color = wgpu::Color {
-            r: clear_color.r() as f64,
-            g: clear_color.g() as f64,
-            b: clear_color.b() as f64,
-            a: clear_color.a() as f64,
-        };
-
         {
             crate::profile_scope!("main target pass");
 
@@ -551,7 +538,12 @@ impl ViewBuilder {
                     view: &setup.main_target_msaa.default_view,
                     resolve_target: Some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear_color),
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: clear_color.r() as f64,
+                            g: clear_color.g() as f64,
+                            b: clear_color.b() as f64,
+                            a: clear_color.a() as f64,
+                        }),
                         // Don't care about the result, it's going to be resolved to the resolve target.
                         // This can have be much better perf, especially on tiler gpus.
                         store: false,
@@ -604,64 +596,13 @@ impl ViewBuilder {
             outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?;
         }
 
-        // Execute compositing into a special target if we want to take a screenshot.
-        // This is necessary because `composite` is expected to write directly into the final output
-        // from which we can't read back and of which we don't control the format.
-        //
-        // This comes with the perk that we can do extra things here if we want!
-        //
-        // TODO(andreas): One thing to add would be more anti-aliasing!
-        // We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
-        // Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
-        if let Some(screenshot_target_buffer) = self.scheduled_screenshot.take() {
-            let screenshot_texture = ctx.gpu_resources.textures.alloc(
-                &ctx.device,
-                &TextureDesc {
-                    label: format!("{} - screenshot target", setup.name).into(),
-                    size: wgpu::Extent3d {
-                        width: setup.resolution_in_pixel[0],
-                        height: setup.resolution_in_pixel[1],
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: Self::SCREENSHOT_COLOR_FORMAT,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-                },
-            );
-
+        if let Some(screenshot_processor) = self.screenshot_processor.take() {
             {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: DebugLabel::from(format!("{} - screenshot", setup.name)).get(),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &screenshot_texture.default_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(clear_color),
-                            store: true,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                });
-
+                let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::CompositingScreenshot, &mut pass);
             }
-
-            screenshot_target_buffer.read_texture2d(
-                &mut encoder,
-                wgpu::ImageCopyTexture {
-                    texture: &screenshot_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                glam::uvec2(
-                    screenshot_texture.texture.width(),
-                    screenshot_texture.texture.height(),
-                ),
-            );
+            screenshot_processor.end_render_pass(&mut encoder);
         }
 
         Ok(encoder.finish())
@@ -670,55 +611,51 @@ impl ViewBuilder {
     /// Schedules the taking of a screenshot.
     ///
     /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
-    /// Returns screenshot data properties for convenience.
-    ///
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
-    /// Data from the screenshot needs to be retrieved from the [`crate::GpuReadbackBelt`] on [`RenderContext`].
-    /// For this the user needs to store the returned scheduled screenshot like so:
+    /// Data from the screenshot needs to be retrieved via [`crate::ScreenshotProcessor::next_readback_result`].
+    /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
     /// ```no_run
-    /// use re_renderer::{RenderContext, ScheduledScreenshot};
-    /// fn handle_readback_data(ctx: &RenderContext, scheduled_screenshot: ScheduledScreenshot) {
-    ///     ctx.gpu_readback_belt.lock().receive_data(|data, identifier| {
-    ///         if identifier == scheduled_screenshot.identifier {
-    ///             // Do something with the screenshot data.
-    ///         } else {
-    ///            re_log::warn_once!("Unknown readback buffer identifier {:?}", identifier);
-    ///         }
-    ///     });
+    /// use re_renderer::{view_builder::ViewBuilder, RenderContext, ScreenshotProcessor};
+    /// fn take_screenshot(ctx: &RenderContext, view_builder: &mut ViewBuilder) {
+    ///     view_builder.schedule_screenshot(&ctx, 42, "My screenshot".to_owned());
+    /// }
+    /// fn receive_screenshots(ctx: &RenderContext) {
+    ///     while ScreenshotProcessor::next_readback_result::<String>(ctx, 42, |data, extent, user_data| {
+    ///             re_log::info!("Received screenshot {}", user_data);
+    ///         },
+    ///     ).is_some()
+    ///     {}
     /// }
     /// ```
-    pub fn schedule_screenshot(
+    ///
+    /// Received data that that isn't retrieved for more than a frame, will be automatically discarded.
+    pub fn schedule_screenshot<T: 'static + Send + Sync>(
         &mut self,
         ctx: &RenderContext,
-    ) -> Result<ScheduledScreenshot, ViewBuilderError> {
-        if self.scheduled_screenshot.is_some() {
+        identifier: GpuReadbackIdentifier,
+        user_data: T,
+    ) -> Result<(), ViewBuilderError> {
+        if self.screenshot_processor.is_some() {
             return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
         };
 
         let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
 
-        let row_info =
-            TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, setup.resolution_in_pixel[0]);
-        let buffer_size = row_info.bytes_per_row_padded * setup.resolution_in_pixel[1];
-        let screenshot_buffer = ctx.gpu_readback_belt.lock().allocate(
-            &ctx.device,
-            &ctx.gpu_resources.buffers,
-            buffer_size as u64,
-        );
-
-        let identifier = screenshot_buffer.identifier;
-        self.scheduled_screenshot = Some(screenshot_buffer);
-
-        Ok(ScheduledScreenshot {
-            row_info,
+        self.screenshot_processor = Some(ScreenshotProcessor::new(
+            ctx,
+            &setup.name,
+            setup.resolution_in_pixel.into(),
             identifier,
-            extent: setup.resolution_in_pixel.into(),
-        })
+            user_data,
+        ));
+
+        Ok(())
     }
 
     /// Schedules the readback of a rectangle from the picking layer.
     ///
+    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// The result will still be valid if the rectangle is partially or fully outside of bounds.
@@ -726,25 +663,51 @@ impl ViewBuilder {
     /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
     ///
     /// Note that the picking layer will not be created in the first place if this isn't called.
-    pub fn schedule_picking_readback(
+    ///
+    /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::next_readback_result`].
+    /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
+    /// ```no_run
+    /// use re_renderer::{view_builder::ViewBuilder, IntRect, PickingLayerProcessor, RenderContext};
+    /// fn schedule_picking_readback(
+    ///     ctx: &mut RenderContext,
+    ///     view_builder: &mut ViewBuilder,
+    ///     picking_rect: IntRect,
+    /// ) {
+    ///     view_builder.schedule_picking_rect(
+    ///         ctx, picking_rect, 42, "My screenshot".to_owned(), false,
+    ///     );
+    /// }
+    /// fn receive_screenshots(ctx: &RenderContext) {
+    ///     while let Some(result) = PickingLayerProcessor::next_readback_result::<String>(ctx, 42) {
+    ///         re_log::info!("Received picking_data {}", result.user_data);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Received data that that isn't retrieved for more than a frame, will be automatically discarded.
+    pub fn schedule_picking_rect<T: 'static + Send + Sync>(
         &mut self,
         ctx: &mut RenderContext,
         picking_rect: IntRect,
+        readback_identifier: GpuReadbackIdentifier,
+        readback_user_data: T,
         show_debug_view: bool,
-    ) -> Result<ScheduledPickingRect, ViewBuilderError> {
+    ) -> Result<(), ViewBuilderError> {
         if self.picking_processor.is_some() {
             return Err(ViewBuilderError::PickingRectAlreadyScheduled);
         };
 
         let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
 
-        let (picking_processor, scheduled_rect) = PickingLayerProcessor::new(
+        let picking_processor = PickingLayerProcessor::new(
             ctx,
             &setup.name,
             setup.resolution_in_pixel.into(),
             picking_rect,
             &setup.frame_uniform_buffer_content,
             show_debug_view,
+            readback_identifier,
+            readback_user_data,
         );
 
         if show_debug_view {
@@ -752,13 +715,13 @@ impl ViewBuilder {
                 ctx,
                 &picking_processor.picking_target,
                 setup.resolution_in_pixel.into(),
-                scheduled_rect.rect,
+                picking_rect,
             ));
         }
 
         self.picking_processor = Some(picking_processor);
 
-        Ok(scheduled_rect)
+        Ok(())
     }
 
     /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.
