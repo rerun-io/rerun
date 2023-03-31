@@ -41,6 +41,7 @@ fn serialize(c: &mut Criterion) {
                     cell.datatype().to_physical_type(),
                     PhysicalType::Primitive(PrimitiveType::UInt64)
                 );
+                cell
             });
         });
     }
@@ -55,6 +56,7 @@ fn serialize(c: &mut Criterion) {
                     cell.datatype().to_physical_type(),
                     PhysicalType::Primitive(PrimitiveType::UInt64)
                 );
+                cell
             });
         });
     }
@@ -62,6 +64,11 @@ fn serialize(c: &mut Criterion) {
     {
         group.bench_function("arrow2/from_vec", |b| {
             b.iter(|| {
+                // NOTE: We do the `collect()` here on purpose!
+                //
+                // All of these APIs have to allocate an array under the hood, except `from_vec`
+                // which is O(1) (it just unsafely reuses the vec's data pointer).
+                // We need to measure the collection in order to have a leveled playing field.
                 let values = PrimitiveArray::from_vec((0..NUM_INSTANCES as u64).collect()).boxed();
                 let cell = crate::DataCell::from_arrow(InstanceKey::name(), values);
                 assert_eq!(NUM_INSTANCES as u32, cell.num_instances());
@@ -69,6 +76,7 @@ fn serialize(c: &mut Criterion) {
                     cell.datatype().to_physical_type(),
                     PhysicalType::Primitive(PrimitiveType::UInt64)
                 );
+                cell
             });
         });
     }
@@ -92,6 +100,7 @@ fn deserialize(c: &mut Criterion) {
                     InstanceKey(NUM_INSTANCES as u64 / 2),
                     keys[NUM_INSTANCES / 2]
                 );
+                keys
             });
         });
     }
@@ -109,6 +118,7 @@ fn deserialize(c: &mut Criterion) {
                     InstanceKey(NUM_INSTANCES as u64 / 2),
                     keys[NUM_INSTANCES / 2]
                 );
+                keys
             });
         });
     }
@@ -124,6 +134,7 @@ fn deserialize(c: &mut Criterion) {
                     InstanceKey(NUM_INSTANCES as u64 / 2),
                     keys[NUM_INSTANCES / 2]
                 );
+                keys
             });
         });
     }
