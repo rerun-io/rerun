@@ -201,7 +201,10 @@ fn swap(c: &mut Criterion) {
                 }
                 assert_eq!(NUM_INSTANCES, data1.len());
                 assert_eq!(NUM_INSTANCES, data2.len());
-                assert_eq!(NUM_INSTANCES as i64 / 2 - 1, data1[NUM_INSTANCES / 2]);
+                assert_eq!(
+                    (NUM_INSTANCES as i64 / 2).max(1) - 1,
+                    data1[NUM_INSTANCES / 2]
+                );
                 (data1, data2)
             });
         });
@@ -220,7 +223,10 @@ fn swap(c: &mut Criterion) {
                 }
                 assert_eq!(NUM_INSTANCES, data1.len());
                 assert_eq!(NUM_INSTANCES, data2.len());
-                assert_eq!(NUM_INSTANCES as i64 / 2 - 1, data1[NUM_INSTANCES / 2]);
+                assert_eq!(
+                    (NUM_INSTANCES as i64 / 2).max(1) - 1,
+                    data1[NUM_INSTANCES / 2]
+                );
                 (data1, data2)
             });
         });
@@ -239,7 +245,10 @@ fn swap(c: &mut Criterion) {
                 }
                 assert_eq!(NUM_INSTANCES, data1.len());
                 assert_eq!(NUM_INSTANCES, data2.len());
-                assert_eq!(NUM_INSTANCES as i64 / 2 - 1, data1[NUM_INSTANCES / 2]);
+                assert_eq!(
+                    (NUM_INSTANCES as i64 / 2).max(1) - 1,
+                    data1[NUM_INSTANCES / 2]
+                );
                 (data1, data2)
             });
         });
@@ -264,7 +273,10 @@ fn swap_opt(c: &mut Criterion) {
                 }
                 assert_eq!(NUM_INSTANCES, data1.len());
                 assert_eq!(NUM_INSTANCES, data2.len());
-                assert_eq!(Some(NUM_INSTANCES as i64 / 2 - 1), data1[NUM_INSTANCES / 2]);
+                assert_eq!(
+                    Some((NUM_INSTANCES as i64 / 2).max(1) - 1),
+                    data1[NUM_INSTANCES / 2]
+                );
                 (data1, data2)
             });
         });
@@ -284,7 +296,10 @@ fn swap_opt(c: &mut Criterion) {
                 }
                 assert_eq!(NUM_INSTANCES, data1.len());
                 assert_eq!(NUM_INSTANCES, data2.len());
-                assert_eq!(Some(NUM_INSTANCES as i64 / 2 - 1), data1[NUM_INSTANCES / 2]);
+                assert_eq!(
+                    Some((NUM_INSTANCES as i64 / 2).max(1) - 1),
+                    data1[NUM_INSTANCES / 2]
+                );
                 (data1, data2)
             });
         });
@@ -303,7 +318,10 @@ fn swap_opt(c: &mut Criterion) {
                 }
                 assert_eq!(NUM_INSTANCES, data1.len());
                 assert_eq!(NUM_INSTANCES, data2.len());
-                assert_eq!(Some(NUM_INSTANCES as i64 / 2 - 1), data1[NUM_INSTANCES / 2]);
+                assert_eq!(
+                    Some((NUM_INSTANCES as i64 / 2).max(1) - 1),
+                    data1[NUM_INSTANCES / 2]
+                );
                 (data1, data2)
             });
         });
