@@ -41,6 +41,7 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
                 f.write(chunk)
     return str(destination_path)
 
+
 def get_canny_filter(image):
     if not isinstance(image, np.ndarray):
         image = np.array(image)
@@ -104,11 +105,10 @@ expense of slower inference. This parameter will be modulated by `strength`.
         image_path = get_downloaded_path(args.dataset_dir, args.image)
 
     # Models
-    controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny")#, torch_dtype=torch.float16)
+    controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny")  # , torch_dtype=torch.float16)
     pipe = StableDiffusionControlNetPipeline.from_pretrained(
-        "runwayml/stable-diffusion-v1-5", controlnet=controlnet, safety_checker=None)#, torch_dtype=torch.float16
-
-    # tomesd.apply_patch(pipe, ratio=0.5) # Can also use pipe.unet in place of pipe here
+        "runwayml/stable-diffusion-v1-5", controlnet=controlnet, safety_checker=None
+    )  # , torch_dtype=torch.float16
 
     pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
 
@@ -118,12 +118,15 @@ expense of slower inference. This parameter will be modulated by `strength`.
         pipe = pipe.to("cpu")
 
     pipe.enable_attention_slicing()
+    tomesd.apply_patch(pipe, ratio=0.5)
 
     image = Image.open(image_path)
-
     canny_image = get_canny_filter(image)
     # Generator seed,
     torch.manual_seed(0)
+
+    rr.log_image("original_image", image)
+
     output = pipe(
         args.prompt,
         canny_image,
@@ -131,10 +134,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
         num_inference_steps=args.num_inference_steps,
     )
 
-    rr.log_text_entry("prompt", args.prompt)
-    rr.log_image('canny_image', canny_image)
-    rr.log_image('image', image)
-    rr.log_image('output', output.images[0])
+    rr.log_image("image/diffused_image", output.images[0])
     rr.script_teardown(args)
 
 
