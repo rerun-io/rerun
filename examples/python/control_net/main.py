@@ -13,6 +13,8 @@ from diffusers import ControlNetModel, UniPCMultistepScheduler
 from huggingface_pipeline import StableDiffusionControlNetPipeline
 from PIL import Image
 
+torch.manual_seed(0)
+
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 CACHE_DIR: Final = EXAMPLE_DIR / "cache"
@@ -21,7 +23,17 @@ IMAGE_NAME_TO_URL: Final = {
     "vermeer": "https://hf.co/datasets/huggingface/documentation-images/resolve/main/diffusers/input_image_vermeer.png",  # noqa: E501 line too long
 }
 IMAGE_NAMES: Final = list(IMAGE_NAME_TO_URL.keys())
-CONTROL_TYPE = ["canny"]
+CONTROLNET_MODEL_IDS = {
+    'canny': 'lllyasviel/sd-controlnet-canny',
+    'hough': 'lllyasviel/sd-controlnet-mlsd',
+    'hed': 'lllyasviel/sd-controlnet-hed',
+    'scribble': 'lllyasviel/sd-controlnet-scribble',
+    'pose': 'lllyasviel/sd-controlnet-openpose',
+    'seg': 'lllyasviel/sd-controlnet-seg',
+    'depth': 'lllyasviel/sd-controlnet-depth',
+    'normal': 'lllyasviel/sd-controlnet-normal',
+}
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
@@ -79,14 +91,15 @@ def main() -> None:
         default="longbody,lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
     )
 
-    # parser.add_argument(
-    #     "--control-type",
-    #     type=str,
-    #     help="Positive prompt describing the image you want to generate.",
-    #     default="Emilia Clarke, best quality, extremely detailed",
-    # )
     parser.add_argument(
-        "--num_inference_steps",
+        "--control-type",
+        type=str,
+        help="Positive prompt describing the image you want to generate.",
+        default="canny",
+        choices=CONTROLNET_MODEL_IDS.keys(),
+    )
+    parser.add_argument(
+        "--num-inference-steps",
         type=int,
         default=10,
         help="""
@@ -105,31 +118,35 @@ expense of slower inference. This parameter will be modulated by `strength`.
         image_path = get_downloaded_path(args.dataset_dir, args.image)
 
     # Models
-    controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny")  # , torch_dtype=torch.float16)
+    # controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny")  # , torch_dtype=torch.float16)
+    controlnet = ControlNetModel.from_pretrained(CONTROLNET_MODEL_IDS[args.control_type])
     pipe = StableDiffusionControlNetPipeline.from_pretrained(
         "runwayml/stable-diffusion-v1-5", controlnet=controlnet, safety_checker=None
     )  # , torch_dtype=torch.float16
 
     pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
 
-    if torch.cuda.is_available():
-        pipe = pipe.to("cuda")
-    else:
-        pipe = pipe.to("cpu")
+    pipe = pipe.to(DEVICE)
 
     pipe.enable_attention_slicing()
     tomesd.apply_patch(pipe, ratio=0.5)
 
     image = Image.open(image_path)
-    canny_image = get_canny_filter(image)
-    # Generator seed,
-    torch.manual_seed(0)
+
+    if args.control_type == "depth":
+        depth_model = torch.hub.load('isl-org/ZoeDepth', "ZoeD_N", pretrained=True).to(DEVICE).eval()
+        depth = depth_model.infer_pil(image)
+        controlnet_input = Image.fromarray(depth)
+    elif args.control_type == "canny":
+        controlnet_input = get_canny_filter(image)
+    else:
+        raise NotImplementedError
 
     rr.log_image("original_image", image)
 
     output = pipe(
         args.prompt,
-        canny_image,
+        controlnet_input,
         negative_prompt=args.n_prompt,
         num_inference_steps=args.num_inference_steps,
     )
