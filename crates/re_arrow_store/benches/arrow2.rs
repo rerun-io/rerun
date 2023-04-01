@@ -173,6 +173,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
                     .map(|_| build_some_point2d(NUM_INSTANCES))
                     .collect()
             }
+
             fn generate_keys() -> Vec<Vec<InstanceKey>> {
                 (0..NUM_ROWS)
                     .map(|_| build_some_instances(NUM_INSTANCES))
