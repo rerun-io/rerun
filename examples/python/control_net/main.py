@@ -24,16 +24,16 @@ IMAGE_NAME_TO_URL: Final = {
 }
 IMAGE_NAMES: Final = list(IMAGE_NAME_TO_URL.keys())
 CONTROLNET_MODEL_IDS = {
-    'canny': 'lllyasviel/sd-controlnet-canny',
-    'hough': 'lllyasviel/sd-controlnet-mlsd',
-    'hed': 'lllyasviel/sd-controlnet-hed',
-    'scribble': 'lllyasviel/sd-controlnet-scribble',
-    'pose': 'lllyasviel/sd-controlnet-openpose',
-    'seg': 'lllyasviel/sd-controlnet-seg',
-    'depth': 'lllyasviel/sd-controlnet-depth',
-    'normal': 'lllyasviel/sd-controlnet-normal',
+    "canny": "lllyasviel/sd-controlnet-canny",
+    "hough": "lllyasviel/sd-controlnet-mlsd",
+    "hed": "lllyasviel/sd-controlnet-hed",
+    "scribble": "lllyasviel/sd-controlnet-scribble",
+    "pose": "lllyasviel/sd-controlnet-openpose",
+    "seg": "lllyasviel/sd-controlnet-seg",
+    "depth": "lllyasviel/sd-controlnet-depth",
+    "normal": "lllyasviel/sd-controlnet-normal",
 }
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
@@ -118,7 +118,6 @@ expense of slower inference. This parameter will be modulated by `strength`.
         image_path = get_downloaded_path(args.dataset_dir, args.image)
 
     # Models
-    # controlnet = ControlNetModel.from_pretrained("lllyasviel/sd-controlnet-canny")  # , torch_dtype=torch.float16)
     controlnet = ControlNetModel.from_pretrained(CONTROLNET_MODEL_IDS[args.control_type])
     pipe = StableDiffusionControlNetPipeline.from_pretrained(
         "runwayml/stable-diffusion-v1-5", controlnet=controlnet, safety_checker=None
@@ -134,7 +133,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
     image = Image.open(image_path)
 
     if args.control_type == "depth":
-        depth_model = torch.hub.load('isl-org/ZoeDepth', "ZoeD_N", pretrained=True).to(DEVICE).eval()
+        depth_model = torch.hub.load("isl-org/ZoeDepth", "ZoeD_N", pretrained=True).to(DEVICE).eval()
         depth = depth_model.infer_pil(image)
         controlnet_input = Image.fromarray(depth)
     elif args.control_type == "canny":
