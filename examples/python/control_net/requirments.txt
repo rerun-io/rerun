@@ -9,3 +9,4 @@ rerun-sdk
 scipy
 torch>=1.13.0
 transformers>=4.26.0
+git+https://github.com/dbolya/tomesd
