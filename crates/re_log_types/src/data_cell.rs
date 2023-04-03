@@ -107,6 +107,15 @@ pub struct DataCell {
     pub(crate) values: Box<dyn arrow2::array::Array>,
 }
 
+impl Default for DataCell {
+    fn default() -> Self {
+        Self {
+            name: "".into(),
+            values: arrow2::array::NullArray::new_empty(arrow2::datatypes::DataType::Null).boxed(),
+        }
+    }
+}
+
 // TODO(cmc): We should be able to build a cell from non-reference types.
 // TODO(#1619): We shouldn't have to specify the component name separately, this should be
 // part of the metadata by using an extension.

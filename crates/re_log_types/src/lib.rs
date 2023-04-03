@@ -47,7 +47,7 @@ pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMe
 pub use self::component_types::{MsgId, RowId, TableId};
 pub use self::data::*;
 pub use self::data_cell::{DataCell, DataCellError, DataCellResult};
-pub use self::data_row::{DataRow, DataRowError, DataRowResult};
+pub use self::data_row::{DataCellVec, DataRow, DataRowError, DataRowResult};
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
     ErasedTimeVec, NumInstancesVec, RowIdVec, TimePointVec, COLUMN_ENTITY_PATH,

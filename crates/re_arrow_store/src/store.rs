@@ -4,7 +4,7 @@ use std::sync::atomic::AtomicU64;
 use ahash::HashMap;
 use arrow2::array::Int64Array;
 use arrow2::datatypes::{DataType, TimeUnit};
-use smallvec::SmallVec;
+use tinyvec::TinyVec;
 
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
@@ -62,7 +62,7 @@ impl DataStoreConfig {
 
 // ---
 
-pub type InsertIdVec = SmallVec<[u64; 4]>;
+pub type InsertIdVec = TinyVec<[u64; 4]>;
 
 /// Keeps track of datatype information for all component types that have been written to the store
 /// so far.

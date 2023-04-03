@@ -6,7 +6,7 @@ use re_log::trace;
 use re_log_types::{
     ComponentName, DataCell, EntityPath, MsgId, RowId, TimeInt, TimePoint, TimeRange, Timeline,
 };
-use smallvec::SmallVec;
+use tinyvec::TinyVec;
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
 
@@ -899,8 +899,8 @@ impl IndexedBucketInner {
 
         {
             crate::profile_scope!("control");
-            fn reshuffle_control_column<T: Copy, const N: usize>(
-                column: &mut SmallVec<[T; N]>,
+            fn reshuffle_control_column<T: Default + Copy, const N: usize>(
+                column: &mut TinyVec<[T; N]>,
                 swaps: &[(usize, usize)],
             ) {
                 let source = {
@@ -933,7 +933,7 @@ impl IndexedBucketInner {
                 {
                     crate::profile_scope!("rotate");
                     for (from, to) in swaps.iter().copied() {
-                        column[to] = source[from].take();
+                        column[to] = source[from].take(); // TODO: why take?
                     }
                 }
             }

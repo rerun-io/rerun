@@ -44,9 +44,9 @@ indent = "0.1"
 itertools = { workspace = true }
 nohash-hasher = "0.2"
 parking_lot.workspace = true
-smallvec = { version = "1.0", features = ["const_generics", "union"] }
 static_assertions = "1.1"
 thiserror.workspace = true
+tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

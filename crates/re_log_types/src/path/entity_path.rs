@@ -85,6 +85,12 @@ pub struct EntityPath {
     path: Arc<EntityPathImpl>,
 }
 
+impl Default for EntityPath {
+    fn default() -> Self {
+        Self::root()
+    }
+}
+
 impl EntityPath {
     #[inline]
     pub fn root() -> Self {
