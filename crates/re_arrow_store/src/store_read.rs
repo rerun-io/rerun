@@ -899,6 +899,7 @@ impl IndexedBucketInner {
 
         {
             crate::profile_scope!("control");
+
             fn reshuffle_control_column<T: Copy, const N: usize>(
                 column: &mut SmallVec<[T; N]>,
                 swaps: &[(usize, usize)],
@@ -914,6 +915,7 @@ impl IndexedBucketInner {
                     }
                 }
             }
+
             reshuffle_control_column(col_time, &swaps);
             if !col_insert_id.is_empty() {
                 reshuffle_control_column(col_insert_id, &swaps);

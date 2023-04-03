@@ -46,7 +46,7 @@ pub use self::component_types::ViewCoordinates;
 pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::component_types::{MsgId, RowId, TableId};
 pub use self::data::*;
-pub use self::data_cell::{DataCell, DataCellError, DataCellResult};
+pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{DataRow, DataRowError, DataRowResult};
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,

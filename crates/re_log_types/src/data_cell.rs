@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use itertools::Itertools as _;
 
 use crate::{Component, ComponentName, DeserializableComponent, SerializableComponent};
@@ -91,6 +93,22 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 ///
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataCell {
+    /// While the arrow data is already refcounted, the contents of the `DataCell` still have to
+    /// be wrapped in an `Arc` to work around performance issues in `arrow2`.
+    ///
+    /// See [`DataCellInner`] for more information.
+    pub inner: Arc<DataCellInner>,
+}
+
+/// The actual contents of a [`DataCell`].
+///
+/// Despite the fact that the arrow data is already refcounted, this has to live separately, behind
+/// an `Arc`, to work around performance issues in `arrow2` that stem from its heavy use of nested
+/// virtual calls.
+///
+/// See #1746 for details.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DataCellInner {
     /// Name of the component type used in this cell.
     //
     // TODO(#1696): Store this within the datatype itself.
@@ -204,7 +222,9 @@ impl DataCell {
         name: ComponentName,
         values: Box<dyn arrow2::array::Array>,
     ) -> DataCellResult<Self> {
-        Ok(Self { name, values })
+        Ok(Self {
+            inner: Arc::new(DataCellInner { name, values }),
+        })
     }
 
     /// Builds a new `DataCell` from an arrow array.
@@ -237,8 +257,10 @@ impl DataCell {
     ) -> DataCellResult<Self> {
         // TODO(cmc): check that it is indeed a component datatype
         Ok(Self {
-            name,
-            values: arrow2::array::new_empty_array(datatype),
+            inner: Arc::new(DataCellInner {
+                name,
+                values: arrow2::array::new_empty_array(datatype),
+            }),
         })
     }
 
@@ -253,17 +275,6 @@ impl DataCell {
 
     // ---
 
-    /// Returns the contents of the cell as an arrow array.
-    ///
-    /// Avoid using raw arrow arrays unless you absolutely have to: prefer working directly with
-    /// `DataCell`s, `DataRow`s & `DataTable`s instead.
-    /// If you do use them, try to keep the scope as short as possible: holding on to a raw array
-    /// might prevent the datastore from releasing memory from garbage collected data.
-    #[inline]
-    pub fn into_arrow(self) -> Box<dyn arrow2::array::Array> {
-        self.values
-    }
-
     /// Returns the contents of the cell as an arrow array (shallow clone).
     ///
     /// Avoid using raw arrow arrays unless you absolutely have to: prefer working directly with
@@ -272,7 +283,7 @@ impl DataCell {
     /// might prevent the datastore from releasing memory from garbage collected data.
     #[inline]
     pub fn as_arrow(&self) -> Box<dyn arrow2::array::Array> {
-        self.values.clone() /* shallow */
+        self.inner.values.clone() /* shallow */
     }
 
     /// Returns the contents of the cell as a reference to an arrow array.
@@ -283,7 +294,7 @@ impl DataCell {
     /// might prevent the datastore from releasing memory from garbage collected data.
     #[inline]
     pub fn as_arrow_ref(&self) -> &dyn arrow2::array::Array {
-        &*self.values
+        &*self.inner.values
     }
 
     /// Returns the contents of the cell as an arrow array (shallow clone) wrapped in a unit-length
@@ -327,7 +338,7 @@ impl DataCell {
         for<'a> &'a C::ArrayType: IntoIterator,
     {
         use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
-        arrow_array_deserialize_iterator(&*self.values).map_err(Into::into)
+        arrow_array_deserialize_iterator(&*self.inner.values).map_err(Into::into)
     }
 
     /// Returns the contents of the cell as an iterator of native components.
@@ -349,24 +360,24 @@ impl DataCell {
     /// The name of the component type stored in the cell.
     #[inline]
     pub fn component_name(&self) -> ComponentName {
-        self.name
+        self.inner.name
     }
 
     /// The type of the component stored in the cell, i.e. the cell is an array of that type.
     #[inline]
     pub fn datatype(&self) -> &arrow2::datatypes::DataType {
-        self.values.data_type()
+        self.inner.values.data_type()
     }
 
     /// The length of the cell's array, i.e. how many component instances are in the cell?
     #[inline]
     pub fn num_instances(&self) -> u32 {
-        self.values.len() as _
+        self.inner.values.len() as _
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
+        self.inner.values.is_empty()
     }
 
     /// Returns `true` if the underlying array is dense (no nulls).
@@ -462,7 +473,7 @@ impl DataCell {
     ///
     /// Beware: this is costly! Cache the returned value as much as possible.
     pub fn size_bytes(&self) -> u64 {
-        let Self { name, values } = self;
+        let DataCellInner { name, values } = &*self.inner;
 
         std::mem::size_of_val(name) as u64 +
             // Warning: this is surprisingly costly!

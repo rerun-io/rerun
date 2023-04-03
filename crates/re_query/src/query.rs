@@ -55,10 +55,10 @@ pub fn get_component_with_instances(
 
     Ok(ComponentWithInstances {
         name: component,
-        instance_keys: cells[0].take().map(|cell| cell.into_arrow()),
+        instance_keys: cells[0].take().map(|cell| cell.as_arrow()),
         values: cells[1]
             .take()
-            .map(|cell| cell.into_arrow())
+            .map(|cell| cell.as_arrow())
             .ok_or(QueryError::PrimaryNotFound)?,
     })
 }
