@@ -30,12 +30,6 @@ pub type TableId = MsgId;
 
 pub type RowId = MsgId;
 
-impl Default for MsgId {
-    fn default() -> Self {
-        Self::ZERO
-    }
-}
-
 impl std::fmt::Debug for MsgId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.0.as_u128())

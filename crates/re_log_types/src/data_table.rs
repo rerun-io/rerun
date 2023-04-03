@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
-use tinyvec::TinyVec;
+use smallvec::SmallVec;
 
 use crate::{
     ArrowMsg, ComponentName, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId,
@@ -41,17 +41,17 @@ pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 
 // ---
 
-pub type RowIdVec = TinyVec<[RowId; 4]>;
+pub type RowIdVec = SmallVec<[RowId; 4]>;
 
-pub type TimePointVec = TinyVec<[TimePoint; 4]>;
+pub type TimePointVec = SmallVec<[TimePoint; 4]>;
 
-pub type ErasedTimeVec = TinyVec<[i64; 4]>;
+pub type ErasedTimeVec = SmallVec<[i64; 4]>;
 
-pub type EntityPathVec = TinyVec<[EntityPath; 4]>;
+pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
 
-pub type NumInstancesVec = TinyVec<[u32; 4]>;
+pub type NumInstancesVec = SmallVec<[u32; 4]>;
 
-pub type DataCellOptVec = TinyVec<[Option<DataCell>; 4]>;
+pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 
 /// A column's worth of [`DataCell`]s: a sparse collection of [`DataCell`]s that share the same
 /// underlying type and likely point to shared, contiguous memory.
@@ -97,7 +97,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 impl DataCellColumn {
     #[inline]
     pub fn empty(num_rows: usize) -> Self {
-        Self(TinyVec::Heap(vec![None; num_rows]))
+        Self(smallvec::smallvec![None; num_rows])
     }
 }
 
@@ -317,7 +317,7 @@ impl DataTable {
         for component in components {
             columns.insert(
                 component,
-                DataCellColumn(TinyVec::Heap(vec![None; column.len()])),
+                DataCellColumn(smallvec::smallvec![None; column.len()]),
             );
         }
 

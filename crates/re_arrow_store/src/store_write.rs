@@ -2,7 +2,7 @@ use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
-use tinyvec::TinyVec;
+use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
@@ -486,6 +486,19 @@ impl IndexedBucket {
         // Used in debug builds to assert that we've left everything in a sane state.
         let _total_rows = col_time1.len();
 
+        fn split_off_column<T: Copy, const N: usize>(
+            column: &mut SmallVec<[T; N]>,
+            split_idx: usize,
+        ) -> SmallVec<[T; N]> {
+            if split_idx >= column.len() {
+                return SmallVec::default();
+            }
+
+            let second_half = SmallVec::from_slice(&column[split_idx..]);
+            column.truncate(split_idx);
+            second_half
+        }
+
         let (min2, bucket2) = {
             let split_idx = find_split_index(col_time1).expect("must be splittable at this point");
 
@@ -495,13 +508,13 @@ impl IndexedBucket {
                     // this updates `time_range1` in-place!
                     split_time_range_off(split_idx, col_time1, time_range1),
                     // this updates `col_time1` in-place!
-                    col_time1.split_off(split_idx),
+                    split_off_column(col_time1, split_idx),
                     // this updates `col_insert_id1` in-place!
-                    (!col_insert_id1.is_empty()).then(|| col_insert_id1.split_off(split_idx)),
+                    split_off_column(col_insert_id1, split_idx),
                     // this updates `col_row_id1` in-place!
-                    col_row_id1.split_off(split_idx),
+                    split_off_column(col_row_id1, split_idx),
                     // this updates `col_num_instances1` in-place!
-                    col_num_instances1.split_off(split_idx),
+                    split_off_column(col_num_instances1, split_idx),
                 )
             };
 
@@ -512,12 +525,12 @@ impl IndexedBucket {
                     .iter_mut()
                     .map(|(name, column1)| {
                         if split_idx >= column1.len() {
-                            return (*name, DataCellColumn(TinyVec::default()));
+                            return (*name, DataCellColumn(SmallVec::default()));
                         }
 
                         // this updates `column1` in-place!
                         let column2 = DataCellColumn({
-                            let second_half = TinyVec::from(&column1.0[split_idx..]);
+                            let second_half = SmallVec::from(&column1.0[split_idx..]);
                             column1.0.truncate(split_idx);
                             second_half
                         });
@@ -533,7 +546,7 @@ impl IndexedBucket {
                     is_sorted: true,
                     time_range: time_range2,
                     col_time: col_time2,
-                    col_insert_id: col_insert_id2.unwrap_or_default(),
+                    col_insert_id: col_insert_id2,
                     col_row_id: col_row_id2,
                     col_num_instances: col_num_instances2,
                     columns: columns2,

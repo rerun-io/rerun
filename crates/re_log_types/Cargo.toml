@@ -77,12 +77,12 @@ ndarray.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
+smallvec = { version = "1.10", features = ["union"] }
 thiserror.workspace = true
 time = { workspace = true, default-features = false, features = [
   "formatting",
   "macros",
 ] }
-tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 

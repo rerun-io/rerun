@@ -1,6 +1,6 @@
 use ahash::HashSetExt;
 use nohash_hasher::IntSet;
-use tinyvec::TinyVec;
+use smallvec::SmallVec;
 
 use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, RowId, TimePoint};
 
@@ -44,7 +44,7 @@ pub type DataRowResult<T> = ::std::result::Result<T, DataRowError>;
 
 // ---
 
-pub type DataCellVec = TinyVec<[DataCell; 4]>;
+type DataCellVec = SmallVec<[DataCell; 4]>;
 
 /// A row's worth of [`DataCell`]s: a collection of independent [`DataCell`]s with different
 /// underlying datatypes and pointing to different parts of the heap.
