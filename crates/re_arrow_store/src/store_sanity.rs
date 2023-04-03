@@ -1,15 +1,36 @@
-use std::collections::BTreeMap;
-
-use anyhow::{anyhow, ensure};
-use nohash_hasher::IntMap;
-use re_log_types::{TimeInt, Timeline};
-
-use crate::{
-    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
-    PersistentComponentTable, PersistentIndexTable,
+use re_log_types::{
+    ComponentName, DataCellColumn, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID, COLUMN_TIMEPOINT,
 };
 
-// TODO(#527): Typed errors.
+use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
+
+// ---
+
+#[derive(thiserror::Error, Debug)]
+pub enum SanityError {
+    #[error("Column '{component}' has too few/many rows: got {got} instead of {expected}")]
+    ColumnLengthMismatch {
+        component: ComponentName,
+        expected: u64,
+        got: u64,
+    },
+
+    #[error("Couldn't find any column for the configured cluster key ('{cluster_key}')")]
+    ClusterColumnMissing { cluster_key: ComponentName },
+
+    #[error("The cluster column must be dense, found holes: {cluster_column:?}")]
+    ClusterColumnSparse { cluster_column: Box<DataCellColumn> },
+
+    #[error("Found overlapping indexed buckets: {t1_max_formatted} ({t1_max}) <-> {t2_max_formatted} ({t2_max})")]
+    OverlappingBuckets {
+        t1_max: i64,
+        t1_max_formatted: String,
+        t2_max: i64,
+        t2_max_formatted: String,
+    },
+}
+
+pub type SanityResult<T> = ::std::result::Result<T, SanityError>;
 
 // --- Data store ---
 
@@ -17,151 +38,86 @@ impl DataStore {
     /// Runs the sanity check suite for the entire datastore.
     ///
     /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
+    pub fn sanity_check(&self) -> SanityResult<()> {
         crate::profile_function!();
 
-        // Row indices should be continuous across all index tables.
-        if self.gc_id == 0 {
-            let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
-            for table in self.indices.values() {
-                for bucket in table.buckets.values() {
-                    for (comp, index) in &bucket.indices.read().indices {
-                        let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
-                    }
-                }
-            }
-
-            for (comp, mut row_indices) in row_indices {
-                // Not an actual row index!
-                if comp == DataStore::insert_id_key() {
-                    continue;
-                }
-
-                row_indices.sort();
-                row_indices.dedup();
-                for pair in row_indices.windows(2) {
-                    let &[i1, i2] = pair else { unreachable!() };
-                    ensure!(
-                        i1 + 1 == i2,
-                        "found hole in index coverage for {comp:?}: \
-                            in {row_indices:?}, {i1} -> {i2}"
-                    );
-                }
-            }
-        }
-
-        // Row indices should be continuous across all timeless index tables.
-        {
-            let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
-            for table in self.timeless_indices.values() {
-                for (comp, index) in &table.indices {
-                    let row_indices = row_indices.entry(*comp).or_default();
-                    row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
-                }
-            }
-
-            for (comp, mut row_indices) in row_indices {
-                // Not an actual row index!
-                if comp == DataStore::insert_id_key() {
-                    continue;
-                }
-
-                row_indices.sort();
-                row_indices.dedup();
-                for pair in row_indices.windows(2) {
-                    let &[i1, i2] = pair else { unreachable!() };
-                    ensure!(
-                        i1 + 1 == i2,
-                        "found hole in timeless index coverage for {comp:?}: \
-                            in {row_indices:?}, {i1} -> {i2}"
-                    );
-                }
-            }
-        }
-
-        for table in self.timeless_indices.values() {
-            table.sanity_check()?;
-        }
-        for table in self.timeless_components.values() {
+        for table in self.timeless_tables.values() {
             table.sanity_check()?;
         }
 
-        for table in self.indices.values() {
-            table.sanity_check()?;
-        }
-        for table in self.components.values() {
+        for table in self.tables.values() {
             table.sanity_check()?;
         }
 
         Ok(())
     }
-
-    /// The oldest time for which we have any data.
-    ///
-    /// Ignores timeless data.
-    ///
-    /// Useful to call after a gc.
-    pub fn oldest_time_per_timeline(&self) -> BTreeMap<Timeline, TimeInt> {
-        crate::profile_function!();
-
-        let mut oldest_time_per_timeline = BTreeMap::default();
-
-        for component_table in self.components.values() {
-            for bucket in &component_table.buckets {
-                for (timeline, time_range) in &bucket.time_ranges {
-                    let entry = oldest_time_per_timeline
-                        .entry(*timeline)
-                        .or_insert(TimeInt::MAX);
-                    *entry = time_range.min.min(*entry);
-                }
-            }
-        }
-
-        oldest_time_per_timeline
-    }
 }
 
 // --- Persistent Indices ---
 
-impl PersistentIndexTable {
+impl PersistentIndexedTable {
     /// Runs the sanity check suite for the entire table.
     ///
     /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
+    pub fn sanity_check(&self) -> SanityResult<()> {
         crate::profile_function!();
 
         let Self {
             ent_path: _,
             cluster_key,
-            num_rows,
-            indices,
-            all_components: _,
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+            total_size_bytes: _, // TODO(#1619)
         } = self;
 
-        // All indices should be `Self::num_rows` long.
+        // All columns should be `Self::num_rows` long.
         {
-            for (comp, index) in indices {
-                let secondary_len = index.len() as u64;
-                ensure!(
-                    *num_rows == secondary_len,
-                    "found rogue secondary index for {comp:?}: \
-                        expected {num_rows} rows, got {secondary_len} instead",
-                );
+            let num_rows = self.total_rows();
+
+            let column_lengths = [
+                (!col_insert_id.is_empty())
+                    .then(|| (DataStore::insert_id_key(), col_insert_id.len())), //
+                Some((COLUMN_ROW_ID.into(), col_row_id.len())),
+                Some((COLUMN_NUM_INSTANCES.into(), col_num_instances.len())),
+            ]
+            .into_iter()
+            .flatten()
+            .chain(
+                columns
+                    .iter()
+                    .map(|(component, column)| (*component, column.len())),
+            )
+            .map(|(component, len)| (component, len as u64));
+
+            for (component, len) in column_lengths {
+                if len != num_rows {
+                    return Err(SanityError::ColumnLengthMismatch {
+                        component,
+                        expected: num_rows,
+                        got: len,
+                    });
+                }
             }
         }
 
-        // The cluster index must be fully dense.
+        // The cluster column must be fully dense.
         {
-            let cluster_idx = indices
-                .get(cluster_key)
-                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
-            ensure!(
-                cluster_idx.iter().all(|row| row.is_some()),
-                "the cluster index ({cluster_key:?}) must be fully dense: \
-                    got {cluster_idx:?}",
-            );
+            let cluster_column =
+                columns
+                    .get(cluster_key)
+                    .ok_or(SanityError::ClusterColumnMissing {
+                        cluster_key: *cluster_key,
+                    })?;
+            if !cluster_column.iter().all(|cell| cell.is_some()) {
+                return Err(SanityError::ClusterColumnSparse {
+                    cluster_column: cluster_column.clone().into(),
+                });
+            }
         }
+
+        // TODO(#1619): recomputing shouldnt change the size
 
         Ok(())
     }
@@ -169,11 +125,11 @@ impl PersistentIndexTable {
 
 // --- Indices ---
 
-impl IndexTable {
+impl IndexedTable {
     /// Runs the sanity check suite for the entire table.
     ///
     /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
+    pub fn sanity_check(&self) -> SanityResult<()> {
         crate::profile_function!();
 
         // No two buckets should ever overlap time-range-wise.
@@ -181,18 +137,18 @@ impl IndexTable {
             let time_ranges = self
                 .buckets
                 .values()
-                .map(|bucket| bucket.indices.read().time_range)
+                .map(|bucket| bucket.inner.read().time_range)
                 .collect::<Vec<_>>();
             for time_ranges in time_ranges.windows(2) {
                 let &[t1, t2] = time_ranges else { unreachable!() };
-                ensure!(
-                    t1.max.as_i64() < t2.min.as_i64(),
-                    "found overlapping index buckets: {} ({}) <-> {} ({})",
-                    self.timeline.typ().format(t1.max),
-                    t1.max.as_i64(),
-                    self.timeline.typ().format(t2.min),
-                    t2.min.as_i64(),
-                );
+                if t1.max.as_i64() >= t2.min.as_i64() {
+                    return Err(SanityError::OverlappingBuckets {
+                        t1_max: t1.max.as_i64(),
+                        t1_max_formatted: self.timeline.typ().format(t1.max),
+                        t2_max: t2.max.as_i64(),
+                        t2_max_formatted: self.timeline.typ().format(t2.max),
+                    });
+                }
             }
         }
 
@@ -205,122 +161,77 @@ impl IndexTable {
     }
 }
 
-impl IndexBucket {
+impl IndexedBucket {
     /// Runs the sanity check suite for the entire bucket.
     ///
     /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
+    pub fn sanity_check(&self) -> SanityResult<()> {
         crate::profile_function!();
 
-        let IndexBucketIndices {
+        let Self {
+            timeline: _,
+            cluster_key,
+            inner,
+        } = self;
+
+        let IndexedBucketInner {
             is_sorted: _,
             time_range: _,
-            times,
-            indices,
-        } = &*self.indices.read();
+            col_time,
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+            total_size_bytes: _, // TODO(#1619)
+        } = &*inner.read();
 
-        // All indices should contain the exact same number of rows as the time index.
+        // All columns should be `Self::num_rows` long.
         {
-            let primary_len = times.len();
-            for (comp, index) in indices {
-                let secondary_len = index.len();
-                ensure!(
-                    primary_len == secondary_len,
-                    "found rogue secondary index for {comp:?}: \
-                        expected {primary_len} rows, got {secondary_len} instead",
-                );
+            let num_rows = self.total_rows();
+
+            let column_lengths = [
+                (!col_insert_id.is_empty())
+                    .then(|| (DataStore::insert_id_key(), col_insert_id.len())), //
+                Some((COLUMN_TIMEPOINT.into(), col_time.len())),
+                Some((COLUMN_ROW_ID.into(), col_row_id.len())),
+                Some((COLUMN_NUM_INSTANCES.into(), col_num_instances.len())),
+            ]
+            .into_iter()
+            .flatten()
+            .chain(
+                columns
+                    .iter()
+                    .map(|(component, column)| (*component, column.len())),
+            )
+            .map(|(component, len)| (component, len as u64));
+
+            for (component, len) in column_lengths {
+                if len != num_rows {
+                    return Err(SanityError::ColumnLengthMismatch {
+                        component,
+                        expected: num_rows,
+                        got: len,
+                    });
+                }
             }
         }
 
-        // The cluster index must be fully dense.
+        // The cluster column must be fully dense.
         {
-            let cluster_key = self.cluster_key;
-            let cluster_idx = indices
-                .get(&cluster_key)
-                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
-            ensure!(
-                cluster_idx.iter().all(|row| row.is_some()),
-                "the cluster index ({cluster_key:?}) must be fully dense: \
-                    got {cluster_idx:?}",
-            );
-        }
-
-        Ok(())
-    }
-}
-
-// --- Persistent Components ---
-
-impl PersistentComponentTable {
-    /// Runs the sanity check suite for the entire table.
-    ///
-    /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
-        crate::profile_function!();
-
-        // All chunks should always be dense
-        {
-            for chunk in &self.chunks {
-                ensure!(
-                    chunk.validity().is_none(),
-                    "persistent component chunks should always be dense",
-                );
+            let cluster_column =
+                columns
+                    .get(cluster_key)
+                    .ok_or(SanityError::ClusterColumnMissing {
+                        cluster_key: *cluster_key,
+                    })?;
+            if !cluster_column.iter().all(|cell| cell.is_some()) {
+                return Err(SanityError::ClusterColumnSparse {
+                    cluster_column: cluster_column.clone().into(),
+                });
             }
         }
 
-        Ok(())
-    }
-}
-
-// --- Components ---
-
-impl ComponentTable {
-    /// Runs the sanity check suite for the entire table.
-    ///
-    /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
-        crate::profile_function!();
-
-        // No two buckets should ever overlap row-range-wise.
-        {
-            let row_ranges = self
-                .buckets
-                .iter()
-                .map(|bucket| bucket.row_offset..bucket.row_offset + bucket.total_rows())
-                .collect::<Vec<_>>();
-            for row_ranges in row_ranges.windows(2) {
-                let &[r1, r2] = &row_ranges else { unreachable!() };
-                ensure!(
-                    !r1.contains(&r2.start),
-                    "found overlapping component buckets: {r1:?} <-> {r2:?}"
-                );
-            }
-        }
-
-        for bucket in &self.buckets {
-            bucket.sanity_check()?;
-        }
-
-        Ok(())
-    }
-}
-
-impl ComponentBucket {
-    /// Runs the sanity check suite for the entire table.
-    ///
-    /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> anyhow::Result<()> {
-        crate::profile_function!();
-
-        // All chunks should always be dense
-        {
-            for chunk in &self.chunks {
-                ensure!(
-                    chunk.validity().is_none(),
-                    "component bucket chunks should always be dense",
-                );
-            }
-        }
+        // TODO(#1619): recomputing shouldnt change the size
 
         Ok(())
     }

@@ -53,7 +53,7 @@ pub use label::Label;
 pub use linestrip::{LineStrip2D, LineStrip3D};
 pub use mat::Mat3x3;
 pub use mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
-pub use msg_id::MsgId;
+pub use msg_id::{MsgId, RowId, TableId};
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use radius::Radius;

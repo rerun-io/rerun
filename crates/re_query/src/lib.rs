@@ -6,6 +6,8 @@
 
 // TODO(jleibs) better crate documentation.
 
+// TODO(cmc): make DataCells first-class citizens in re_query too.
+
 mod entity_view;
 mod query;
 mod range;

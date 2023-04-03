@@ -6,16 +6,13 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use rand::Rng;
 
-use re_arrow_store::{
-    test_row, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, WriteError,
-};
+use re_arrow_store::{test_row, DataStore, DataStoreConfig, LatestAtQuery, WriteError};
 use re_log_types::{
     component_types::InstanceKey,
     datagen::{
         build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    Component as _, DataCell, Duration, EntityPath, MsgId, Time, TimeType, Timeline,
+    Component as _, DataCell, Duration, EntityPath, Time, TimeType, Timeline,
 };
 
 // ---
@@ -115,41 +112,41 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
     // empty frame_nr
     {
-        let row_indices = store.latest_at(
+        let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &ent_path,
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(cells.is_none());
     }
 
     // empty log_time
     {
-        let row_indices = store.latest_at(
+        let cells = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &ent_path,
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(cells.is_none());
     }
 
     // wrong entity path
     {
-        let row_indices = store.latest_at(
+        let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(cells.is_none());
     }
 
     // bunch of non-existing components
     {
         let components = &["they".into(), "dont".into(), "exist".into()];
-        let row_indices = store
+        let cells = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -157,13 +154,12 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
                 components,
             )
             .unwrap();
-        let rows = store.get(components, &row_indices);
-        rows.iter().all(|row| row.is_none());
+        cells.iter().all(|cell| cell.is_none());
     }
 
     // empty component list
     {
-        let row_indices = store
+        let cells = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -171,29 +167,29 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
                 &[],
             )
             .unwrap();
-        assert!(row_indices.is_empty());
+        assert!(cells.is_empty());
     }
 
     // wrong timeline name
     {
-        let row_indices = store.latest_at(
+        let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(cells.is_none());
     }
 
     // wrong timeline kind
     {
-        let row_indices = store.latest_at(
+        let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(cells.is_none());
     }
 }
 
@@ -282,7 +278,6 @@ fn gc_correct() {
     let mut store = DataStore::new(
         InstanceKey::name(),
         DataStoreConfig {
-            component_bucket_nb_rows: 0,
             ..Default::default()
         },
     );
@@ -312,62 +307,64 @@ fn gc_correct() {
     }
     check_still_readable(&store);
 
-    let msg_id_chunks = store.gc(
-        GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-        Timeline::new("frame_nr", TimeType::Sequence),
-        MsgId::name(),
-    );
+    // TODO(#1619): bring back garbage collection
 
-    let msg_ids = msg_id_chunks
-        .iter()
-        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
-        .map(Option::unwrap) // MsgId is always present
-        .collect::<ahash::HashSet<_>>();
-    assert!(!msg_ids.is_empty());
+    // let msg_id_chunks = store.gc(
+    //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+    //     Timeline::new("frame_nr", TimeType::Sequence),
+    //     MsgId::name(),
+    // );
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-    check_still_readable(&store);
-    for msg_id in &msg_ids {
-        assert!(store.get_msg_metadata(msg_id).is_some());
-    }
+    // let msg_ids = msg_id_chunks
+    //     .iter()
+    //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+    //     .map(Option::unwrap) // MsgId is always present
+    //     .collect::<ahash::HashSet<_>>();
+    // assert!(!msg_ids.is_empty());
 
-    store.clear_msg_metadata(&msg_ids);
+    // if let err @ Err(_) = store.sanity_check() {
+    //     store.sort_indices_if_needed();
+    //     eprintln!("{store}");
+    //     err.unwrap();
+    // }
+    // check_still_readable(&store);
+    // for msg_id in &msg_ids {
+    //     assert!(store.get_msg_metadata(msg_id).is_some());
+    // }
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-    check_still_readable(&store);
-    for msg_id in &msg_ids {
-        assert!(store.get_msg_metadata(msg_id).is_none());
-    }
+    // store.clear_msg_metadata(&msg_ids);
 
-    let msg_id_chunks = store.gc(
-        GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-        Timeline::new("frame_nr", TimeType::Sequence),
-        MsgId::name(),
-    );
+    // if let err @ Err(_) = store.sanity_check() {
+    //     store.sort_indices_if_needed();
+    //     eprintln!("{store}");
+    //     err.unwrap();
+    // }
+    // check_still_readable(&store);
+    // for msg_id in &msg_ids {
+    //     assert!(store.get_msg_metadata(msg_id).is_none());
+    // }
 
-    let msg_ids = msg_id_chunks
-        .iter()
-        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
-        .map(Option::unwrap) // MsgId is always present
-        .collect::<ahash::HashSet<_>>();
-    assert!(msg_ids.is_empty());
+    // let msg_id_chunks = store.gc(
+    //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+    //     Timeline::new("frame_nr", TimeType::Sequence),
+    //     MsgId::name(),
+    // );
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-    check_still_readable(&store);
+    // let msg_ids = msg_id_chunks
+    //     .iter()
+    //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+    //     .map(Option::unwrap) // MsgId is always present
+    //     .collect::<ahash::HashSet<_>>();
+    // assert!(msg_ids.is_empty());
 
-    assert_eq!(2, store.total_temporal_component_rows());
+    // if let err @ Err(_) = store.sanity_check() {
+    //     store.sort_indices_if_needed();
+    //     eprintln!("{store}");
+    //     err.unwrap();
+    // }
+    // check_still_readable(&store);
+
+    // assert_eq!(2, store.total_temporal_component_rows());
 }
 
 fn check_still_readable(_store: &DataStore) {

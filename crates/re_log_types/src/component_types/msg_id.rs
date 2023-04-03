@@ -25,6 +25,11 @@ use crate::{Component, ComponentName};
 #[arrow_field(transparent)]
 pub struct MsgId(re_tuid::Tuid);
 
+// TODO(#1619): Turn these two into actual independent types.
+pub type TableId = MsgId;
+
+pub type RowId = MsgId;
+
 impl std::fmt::Debug for MsgId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.0.as_u128())

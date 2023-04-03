@@ -3788,6 +3788,7 @@ dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "criterion",
  "document-features",
  "indent",

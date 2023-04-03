@@ -8,7 +8,7 @@ use re_arrow_store::{DataStore, DataStoreConfig};
 use re_log_types::{
     component_types::InstanceKey,
     datagen::{build_frame_nr, build_some_instances},
-    Component as _, DataRow, EntityPath, MsgId, TimePoint,
+    Component as _, DataRow, EntityPath, RowId, TimePoint,
 };
 
 // --- Internals ---
@@ -29,14 +29,14 @@ fn pathological_bucket_topology() {
     let mut store_forward = DataStore::new(
         InstanceKey::name(),
         DataStoreConfig {
-            index_bucket_nb_rows: 10,
+            indexed_bucket_num_rows: 10,
             ..Default::default()
         },
     );
     let mut store_backward = DataStore::new(
         InstanceKey::name(),
         DataStoreConfig {
-            index_bucket_nb_rows: 10,
+            indexed_bucket_num_rows: 10,
             ..Default::default()
         },
     );
@@ -53,7 +53,7 @@ fn pathological_bucket_topology() {
         let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
         for _ in 0..num {
             let row = DataRow::from_cells1(
-                MsgId::ZERO,
+                RowId::ZERO,
                 ent_path.clone(),
                 timepoint.clone(),
                 num_instances,
@@ -62,7 +62,7 @@ fn pathological_bucket_topology() {
             store_forward.insert_row(&row).unwrap();
 
             let row = DataRow::from_cells1(
-                MsgId::ZERO,
+                RowId::ZERO,
                 ent_path.clone(),
                 timepoint.clone(),
                 num_instances,
@@ -84,7 +84,7 @@ fn pathological_bucket_topology() {
             .map(|frame_nr| {
                 let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
                 DataRow::from_cells1(
-                    MsgId::ZERO,
+                    RowId::ZERO,
                     ent_path.clone(),
                     timepoint,
                     num_instances,
