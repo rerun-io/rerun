@@ -13,7 +13,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     global_bindings::FrameUniformBuffer,
     view_builder::ViewBuilder,
-    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc, TextureRowDataInfo},
+    wgpu_resources::{GpuBindGroup, GpuTexture, Texture2DBufferInfo, TextureDesc},
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, IntRect, RenderContext,
 };
 
@@ -122,12 +122,23 @@ impl PickingLayerProcessor {
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
     ) -> Self {
-        let row_info = TextureRowDataInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.width());
-        let buffer_size = row_info.bytes_per_row_padded * picking_rect.height();
+        let row_info_id = Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.extent);
+        //let row_info_depth =
+        //Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.extent);
+
+        // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
+        // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
+        debug_assert!(
+            Self::PICKING_LAYER_FORMAT.describe().block_size
+                % Self::PICKING_LAYER_DEPTH_FORMAT.describe().block_size
+                == 0
+        );
+        let buffer_size = row_info_id.buffer_size_padded; // + row_info_depth.buffer_size_padded;
+
         let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
-            buffer_size as u64,
+            buffer_size,
             readback_identifier,
             Box::new(ReadbackBeltMetadata {
                 picking_rect,
@@ -279,31 +290,12 @@ impl PickingLayerProcessor {
         ctx.gpu_readback_belt
             .lock()
             .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data, metadata| {
-                // Due to https://github.com/gfx-rs/wgpu/issues/3508 the data might be completely unaligned,
-                // so much, that we can't interpret it just as `PickingLayerId`.
-                // Therefore, we have to do a copy of the data regardless.
-                let row_info = TextureRowDataInfo::new(
+                let buffer_info_id = Texture2DBufferInfo::new(
                     Self::PICKING_LAYER_FORMAT,
-                    metadata.picking_rect.extent.x,
+                    metadata.picking_rect.extent,
                 );
 
-                // Copies need to use [u8] because of aforementioned alignment issues.
-                let mut picking_data = vec![
-                    PickingLayerId::default();
-                    (metadata.picking_rect.extent.x * metadata.picking_rect.extent.y)
-                        as usize
-                ];
-                let picking_data_as_u8 = bytemuck::cast_slice_mut(&mut picking_data);
-                for row in 0..metadata.picking_rect.extent.y {
-                    let offset_padded = (row_info.bytes_per_row_padded * row) as usize;
-                    let offset_unpadded = (row_info.bytes_per_row_unpadded * row) as usize;
-                    picking_data_as_u8[offset_unpadded
-                        ..(offset_unpadded + row_info.bytes_per_row_unpadded as usize)]
-                        .copy_from_slice(
-                            &data[offset_padded
-                                ..(offset_padded + row_info.bytes_per_row_unpadded as usize)],
-                        );
-                }
+                let picking_data = buffer_info_id.remove_padding_and_convert(data);
 
                 result = Some(PickingResult {
                     picking_data,

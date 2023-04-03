@@ -21,8 +21,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
-        TextureRowDataInfo,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+        Texture2DBufferInfo, TextureDesc,
     },
     ColorMap, OutlineMaskPreference, PickingLayerProcessor,
 };
@@ -336,34 +336,33 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
         .textures
         .alloc(&ctx.device, &depth_texture_desc);
 
-    let TextureRowDataInfo {
-        bytes_per_row_unpadded: bytes_per_row_unaligned,
-        bytes_per_row_padded,
-    } = TextureRowDataInfo::new(depth_texture_desc.format, depth_texture_desc.size.width);
-
     // Not supporting compressed formats here.
     debug_assert!(depth_texture_desc.format.describe().block_dimensions == (1, 1));
 
+    let buffer_info =
+        Texture2DBufferInfo::new(depth_texture_desc.format, depth_cloud.depth_dimensions);
+
     // TODO(andreas): CpuGpuWriteBelt should make it easier to do this.
-    let bytes_padding_per_row = (bytes_per_row_padded - bytes_per_row_unaligned) as usize;
+    let bytes_padding_per_row =
+        (buffer_info.bytes_per_row_padded - buffer_info.bytes_per_row_unpadded) as usize;
     // Sanity check the padding size. If this happens something is seriously wrong, as it would imply
     // that we can't express the required alignment with the block size.
     debug_assert!(
         bytes_padding_per_row % std::mem::size_of::<T>() == 0,
         "Padding is not a multiple of pixel size. Can't correctly pad the texture data"
     );
-    let num_pixel_padding_per_row = bytes_padding_per_row / std::mem::size_of::<T>();
 
     let mut depth_texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
         &ctx.device,
         &ctx.gpu_resources.buffers,
-        data.len() + num_pixel_padding_per_row * depth_texture_desc.size.height as usize,
+        buffer_info.buffer_size_padded as usize / std::mem::size_of::<T>(),
     );
 
     // Fill with a single copy if possible, otherwise do multiple, filling in padding.
-    if num_pixel_padding_per_row == 0 {
+    if bytes_padding_per_row == 0 {
         depth_texture_staging.extend_from_slice(data);
     } else {
+        let num_pixel_padding_per_row = bytes_padding_per_row / std::mem::size_of::<T>();
         for row in data.chunks(depth_texture_desc.size.width as usize) {
             depth_texture_staging.extend_from_slice(row);
             depth_texture_staging

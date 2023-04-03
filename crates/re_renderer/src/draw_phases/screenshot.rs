@@ -11,7 +11,7 @@
 //! Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
 
 use crate::{
-    wgpu_resources::{GpuTexture, TextureDesc, TextureRowDataInfo},
+    wgpu_resources::{GpuTexture, Texture2DBufferInfo, TextureDesc},
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
 };
 
@@ -37,12 +37,11 @@ impl ScreenshotProcessor {
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
     ) -> Self {
-        let row_info = TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, resolution.x);
-        let buffer_size = row_info.bytes_per_row_padded * resolution.y;
+        let buffer_info = Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, resolution);
         let screenshot_readback_buffer = ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
-            buffer_size as u64,
+            buffer_info.buffer_size_padded,
             readback_identifier,
             Box::new(ReadbackBeltMetadata {
                 extent: resolution,
@@ -130,9 +129,9 @@ impl ScreenshotProcessor {
             .lock()
             .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data: &[u8], metadata| {
                 screenshot_was_available = Some(());
-                let texture_row_info =
-                    TextureRowDataInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent.x);
-                let texture_data = texture_row_info.remove_padding(data);
+                let buffer_info =
+                    Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent);
+                let texture_data = buffer_info.remove_padding(data);
                 on_screenshot(&texture_data, metadata.extent, metadata.user_data);
             });
         screenshot_was_available

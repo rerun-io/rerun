@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, ops::Range, sync::mpsc};
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, TextureRowDataInfo};
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, Texture2DBufferInfo};
 
 /// Identifier used to identify a buffer upon retrieval of the data.
 ///
@@ -61,13 +61,11 @@ impl GpuReadbackBuffer {
                 source.texture.format().describe().block_size as u64,
             );
 
-            let bytes_per_row = TextureRowDataInfo::new(source.texture.format(), copy_extents.x)
-                .bytes_per_row_padded;
-            let num_bytes = bytes_per_row * copy_extents.y;
+            let buffer_info = Texture2DBufferInfo::new(source.texture.format(), *copy_extents);
 
             // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
             debug_assert!(
-                (num_bytes as u64) <= self.range_in_chunk.end - start_offset,
+                buffer_info.buffer_size_padded <= self.range_in_chunk.end - start_offset,
                 "Texture data is too large to fit into the readback buffer!"
             );
 
@@ -77,7 +75,7 @@ impl GpuReadbackBuffer {
                     buffer: &self.chunk_buffer,
                     layout: wgpu::ImageDataLayout {
                         offset: start_offset,
-                        bytes_per_row: NonZeroU32::new(bytes_per_row),
+                        bytes_per_row: NonZeroU32::new(buffer_info.bytes_per_row_padded),
                         rows_per_image: None,
                     },
                 },
