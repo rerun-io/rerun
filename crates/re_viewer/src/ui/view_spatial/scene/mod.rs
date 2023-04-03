@@ -232,7 +232,7 @@ impl SceneSpatial {
         if self
             .space_cameras
             .iter()
-            .any(|camera| &camera.entity_path != space_info_path)
+            .any(|camera| camera.instance_path_hash.entity_path_hash != space_info_path.hash())
         {
             return SpatialNavigationMode::ThreeD;
         }
