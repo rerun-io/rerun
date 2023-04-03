@@ -467,7 +467,8 @@ impl DepthReadbackWorkaround {
     /// There's two layers of workarounds here:
     /// * WebGL (via spec) not being able to read back depth textures
     /// * unclear behavior for any readback that isn't RGBA
-    ///     Furthermore, integer textures also seemed to be problematic, but it seems to work fine for RgbaU32 which we use for our picking ID
+    ///     Furthermore, integer textures also seemed to be problematic,
+    ///     but it seems to work fine for [`wgpu::TextureFormat::Rgba32Uint`] which we use for our picking ID
     ///     Details see [wgpu#3644](https://github.com/gfx-rs/wgpu/issues/3644)
     const READBACK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
