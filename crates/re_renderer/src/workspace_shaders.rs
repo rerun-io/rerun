@@ -26,6 +26,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/copy_texture.wgsl");
+        let content = include_str!("../shader/copy_texture.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/debug_overlay.wgsl");
         let content = include_str!("../shader/debug_overlay.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

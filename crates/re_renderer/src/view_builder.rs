@@ -582,7 +582,7 @@ impl ViewBuilder {
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::PickingLayer, &mut pass);
             }
-            picking_processor.end_render_pass(&mut encoder);
+            picking_processor.end_render_pass(&mut encoder, &ctx.gpu_resources)?;
         }
 
         if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
