@@ -6,7 +6,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use std::sync::Arc;
 
 use arrow2::{
-    array::{Array, PrimitiveArray, StructArray},
+    array::{Array, PrimitiveArray, StructArray, UnionArray},
     compute::aggregate::estimated_bytes_size,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -253,59 +253,40 @@ fn estimated_size_bytes(c: &mut Criterion) {
 
             match kind {
                 ArrayKind::Primitive => {
-                    let cells = generate_cells(kind);
-                    let arrays = cells
-                        .iter()
-                        .map(|cell| {
-                            cell.as_arrow_ref()
-                                .as_any()
-                                .downcast_ref::<PrimitiveArray<u64>>()
-                                .unwrap()
-                                .clone()
-                        })
-                        .collect_vec();
-                    let total_instances =
-                        arrays.iter().map(|array| array.len() as u32).sum::<u32>();
-                    assert_eq!(total_instances, (NUM_ROWS * NUM_INSTANCES) as u32);
-
-                    group.bench_function("array/downcast_first", |b| {
-                        b.iter(|| {
-                            let arrays = arrays.clone();
-                            assert_eq!(
-                                total_instances,
-                                arrays.iter().map(|array| array.len() as u32).sum::<u32>()
-                            );
-                            arrays
-                        });
-                    });
+                    bench_downcast_first::<PrimitiveArray<u64>>(&mut group, kind);
                 }
-                ArrayKind::Struct | ArrayKind::StructLarge => {
-                    let cells = generate_cells(kind);
-                    let arrays = cells
-                        .iter()
-                        .map(|cell| {
-                            cell.as_arrow_ref()
-                                .as_any()
-                                .downcast_ref::<StructArray>()
-                                .unwrap()
-                                .clone()
-                        })
-                        .collect_vec();
-                    let total_instances =
-                        arrays.iter().map(|array| array.len() as u32).sum::<u32>();
-                    assert_eq!(total_instances, (NUM_ROWS * NUM_INSTANCES) as u32);
+                ArrayKind::Struct => bench_downcast_first::<StructArray>(&mut group, kind),
+                ArrayKind::StructLarge => bench_downcast_first::<UnionArray>(&mut group, kind),
+            }
 
-                    group.bench_function("array/downcast_first", |b| {
-                        b.iter(|| {
-                            let arrays = arrays.clone();
-                            assert_eq!(
-                                total_instances,
-                                arrays.iter().map(|array| array.len() as u32).sum::<u32>()
-                            );
-                            arrays
-                        });
+            fn bench_downcast_first<T: arrow2::array::Array + Clone>(
+                group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
+                kind: ArrayKind,
+            ) {
+                let cells = generate_cells(kind);
+                let arrays = cells
+                    .iter()
+                    .map(|cell| {
+                        cell.as_arrow_ref()
+                            .as_any()
+                            .downcast_ref::<T>()
+                            .unwrap()
+                            .clone()
+                    })
+                    .collect_vec();
+                let total_instances = arrays.iter().map(|array| array.len() as u32).sum::<u32>();
+                assert_eq!(total_instances, (NUM_ROWS * NUM_INSTANCES) as u32);
+
+                group.bench_function("array/downcast_first", |b| {
+                    b.iter(|| {
+                        let arrays = arrays.clone();
+                        assert_eq!(
+                            total_instances,
+                            arrays.iter().map(|array| array.len() as u32).sum::<u32>()
+                        );
+                        arrays
                     });
-                }
+                });
             }
         }
 
