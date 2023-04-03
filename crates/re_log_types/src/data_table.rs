@@ -34,7 +34,7 @@ pub enum DataTableError {
 
 pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 
-// TODO(cmc): The timepoint should be serialized as one column per timeline... that would be both
+// TODO(#1757): The timepoint should be serialized as one column per timeline... that would be both
 // more efficient and yield much better debugging views of our tables.
 
 // TODO(#1712): implement fast ser/deser paths for primitive types, both control & data.
