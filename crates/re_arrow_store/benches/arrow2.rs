@@ -38,6 +38,7 @@ const NUM_INSTANCES: usize = 1;
 enum ArrayKind {
     /// E.g. an array of `InstanceKey`.
     Primitive,
+
     /// E.g. an array of `Point2D`.
     Struct,
 }
