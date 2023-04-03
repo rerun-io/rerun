@@ -178,13 +178,12 @@ pub fn picking(
         textured_rectangles,
         textured_rectangles_ids,
         line_strips,
-        points,
+        points: _,
         meshes,
         depth_clouds: _, // no picking for depth clouds yet
         any_outlines: _,
     } = primitives;
 
-    picking_points(&context, &mut state, points);
     picking_lines(&context, &mut state, line_strips);
     picking_meshes(&context, &mut state, meshes);
     picking_textured_rects(
@@ -203,7 +202,7 @@ pub fn picking(
     {
         gpu_picking_result = Some(picking_result);
     }
-    // TODO(andreas): Use gpu picking as fallback for now to fix meshes. Should combine instead!
+    // TODO(andreas): Use gpu picking as fallback for now. Should combine instead!
     if state.closest_opaque_pick.instance_path_hash == InstancePathHash::NONE {
         if let Some(gpu_picking_result) = gpu_picking_result {
             // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
@@ -211,15 +210,12 @@ pub fn picking(
             let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
             let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
 
-            // It is old data, the object might be gone by now!
-            if picked_object.is_some() {
-                // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's entirely correct either!
-                state.closest_opaque_pick.ray_t = gpu_picking_result
-                    .picked_world_position(pos_on_picking_rect)
-                    .distance(context.ray_in_world.origin);
-                state.closest_opaque_pick.instance_path_hash = picked_object;
-                state.closest_opaque_pick.used_gpu_picking = true;
-            }
+            // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
+            state.closest_opaque_pick.ray_t = gpu_picking_result
+                .picked_world_position(pos_on_picking_rect)
+                .distance(context.ray_in_world.origin);
+            state.closest_opaque_pick.instance_path_hash = picked_object;
+            state.closest_opaque_pick.used_gpu_picking = true;
         } else {
             // It is possible that some frames we don't get a picking result and the frame after we get several.
             // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
@@ -246,40 +242,6 @@ pub fn picking(
             .then_some(state.closest_opaque_pick),
         transparent_hits: state.transparent_hits,
         picking_ray: context.ray_in_world,
-    }
-}
-
-fn picking_points(
-    context: &PickingContext,
-    state: &mut PickingState,
-    points: &re_renderer::PointCloudBuilder<InstancePathHash>,
-) {
-    crate::profile_function!();
-
-    for (batch, vertex_iter) in points.iter_vertices_and_userdata_by_batch() {
-        // For getting the closest point we could transform the mouse ray into the "batch space".
-        // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
-        let ui_from_batch = context.ui_from_world * batch.world_from_obj;
-
-        for (point, instance_hash) in vertex_iter {
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            // TODO(emilk): take point radius into account
-            let pos_in_ui = ui_from_batch.project_point3(point.position);
-            let dist_sq = pos_in_ui.truncate().distance_squared(context.pointer_in_ui);
-            if dist_sq <= state.closest_opaque_side_ui_dist_sq {
-                let t = context
-                    .ray_in_world
-                    .closest_t_to_point(batch.world_from_obj.transform_point3(point.position));
-                state.check_hit(
-                    dist_sq,
-                    PickingRayHit::from_instance_and_t(*instance_hash, t),
-                    false,
-                );
-            }
-        }
     }
 }
 

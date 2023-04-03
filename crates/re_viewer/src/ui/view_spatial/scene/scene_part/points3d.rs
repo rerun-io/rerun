@@ -9,7 +9,7 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{PickingLayerObjectId, Size};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
@@ -176,6 +176,8 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) =
             Self::process_annotations(query, entity_view, &annotations)?;
+
+        // TODO: remove
         let instance_path_hashes_for_picking = {
             crate::profile_scope!("instance_hashes");
             entity_view
@@ -215,12 +217,17 @@ impl Points3DPart {
                 .points
                 .batch("3d points")
                 .world_from_obj(world_from_obj)
-                .outline_mask_ids(entity_highlight.overall);
+                .outline_mask_ids(entity_highlight.overall)
+                .picking_object_id(PickingLayerObjectId(ent_path.hash64()));
             let mut point_range_builder = point_batch
                 .add_points(entity_view.num_instances(), point_positions)
                 .colors(colors)
                 .radii(radii)
-                .user_data(instance_path_hashes_for_picking.into_iter());
+                .picking_instance_ids(
+                    entity_view
+                        .iter_instance_keys()?
+                        .map(|key| re_renderer::PickingLayerInstanceId(key.0)),
+                );
 
             // Determine if there's any subranges that need extra highlighting.
             {

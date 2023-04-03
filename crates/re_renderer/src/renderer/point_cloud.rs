@@ -173,9 +173,9 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new<T>(
+    pub fn new(
         ctx: &mut RenderContext,
-        mut builder: PointCloudBuilder<T>,
+        mut builder: PointCloudBuilder,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 

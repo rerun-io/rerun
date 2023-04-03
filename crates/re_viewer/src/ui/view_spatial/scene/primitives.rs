@@ -25,7 +25,7 @@ pub struct SceneSpatialPrimitives {
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
     pub line_strips: LineStripSeriesBuilder<InstancePathHash>,
-    pub points: PointCloudBuilder<InstancePathHash>,
+    pub points: PointCloudBuilder,
     pub meshes: Vec<MeshSource>,
     pub depth_clouds: DepthClouds,
 

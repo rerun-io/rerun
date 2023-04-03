@@ -92,7 +92,7 @@ impl Points2DPart {
                 .add_point_2d(pos)
                 .color(color)
                 .radius(radius)
-                .user_data(picking_instance_hash);
+                .picking_instance_id(re_renderer::PickingLayerInstanceId(instance_key.0));
 
             // Check if this point is individually highlighted.
             if let Some(instance_mask_ids) = entity_highlight.instances.get(&instance_key) {
