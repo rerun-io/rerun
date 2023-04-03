@@ -34,8 +34,25 @@ const NUM_INSTANCES: usize = 1;
 
 // ---
 
+#[derive(Debug, Clone, Copy)]
+enum ArrayKind {
+    /// E.g. an array of `InstanceKey`.
+    Primitive,
+    /// E.g. an array of `Point2D`.
+    Struct,
+}
+
+impl std::fmt::Display for ArrayKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ArrayKind::Primitive => "primitive",
+            ArrayKind::Struct => "struct",
+        })
+    }
+}
+
 fn estimated_size_bytes(c: &mut Criterion) {
-    let kind = ["primitive", "struct"];
+    let kind = [ArrayKind::Primitive, ArrayKind::Struct];
 
     for kind in kind {
         let mut group = c.benchmark_group(format!(
@@ -43,15 +60,14 @@ fn estimated_size_bytes(c: &mut Criterion) {
         ));
         group.throughput(criterion::Throughput::Elements(NUM_ROWS as _));
 
-        fn generate_cells(kind: &str) -> Vec<DataCell> {
+        fn generate_cells(kind: ArrayKind) -> Vec<DataCell> {
             match kind {
-                "primitive" => (0..NUM_ROWS)
+                ArrayKind::Primitive => (0..NUM_ROWS)
                     .map(|_| DataCell::from_native(build_some_instances(NUM_INSTANCES).as_slice()))
                     .collect(),
-                "struct" => (0..NUM_ROWS)
+                ArrayKind::Struct => (0..NUM_ROWS)
                     .map(|_| DataCell::from_native(build_some_point2d(NUM_INSTANCES).as_slice()))
                     .collect(),
-                _ => unreachable!(),
             }
         }
 
@@ -109,7 +125,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
             }
 
             match kind {
-                "primitive" => {
+                ArrayKind::Primitive => {
                     let cells = generate_cells(kind);
                     let arrays = cells
                         .iter()
@@ -136,7 +152,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
                         });
                     });
                 }
-                "struct" => {
+                ArrayKind::Struct => {
                     let cells = generate_cells(kind);
                     let arrays = cells
                         .iter()
@@ -163,7 +179,6 @@ fn estimated_size_bytes(c: &mut Criterion) {
                         });
                     });
                 }
-                _ => unreachable!(),
             }
         }
 
@@ -181,9 +196,8 @@ fn estimated_size_bytes(c: &mut Criterion) {
             }
 
             match kind {
-                "primitive" => bench_std(&mut group, generate_keys()),
-                "struct" => bench_std(&mut group, generate_points()),
-                _ => unreachable!(),
+                ArrayKind::Primitive => bench_std(&mut group, generate_keys()),
+                ArrayKind::Struct => bench_std(&mut group, generate_points()),
             }
 
             fn bench_std<T: Clone>(
