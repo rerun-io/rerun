@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
 
 pub struct Points2DPart;
 
@@ -26,7 +26,7 @@ impl Points2DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &EntityProperties,
+        properties: &EntityProperties,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -50,6 +50,11 @@ impl Points2DPart {
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall);
 
+        if properties.interactive {
+            point_batch =
+                point_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+        }
+
         // TODO(andreas): This should follow the same batch processing as points3d.
         let visitor = |instance_key: InstanceKey,
                        pos: Point2D,
@@ -62,7 +67,7 @@ impl Points2DPart {
                 ent_path,
                 instance_key,
                 entity_view,
-                props,
+                properties,
                 entity_highlight.any_selection_highlight,
             );
 
@@ -88,11 +93,17 @@ impl Points2DPart {
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-            let point_range_builder = point_batch
-                .add_point_2d(pos)
-                .color(color)
-                .radius(radius)
-                .picking_instance_id(re_renderer::PickingLayerInstanceId(instance_key.0));
+            let mut point_range_builder = point_batch.add_point_2d(pos).color(color).radius(radius);
+
+            // Set picking instance id if interactive.
+            if properties.interactive {
+                point_range_builder =
+                    point_range_builder.picking_instance_id(instance_key_to_picking_id(
+                        instance_key,
+                        entity_view,
+                        entity_highlight.any_selection_highlight,
+                    ));
+            }
 
             // Check if this point is individually highlighted.
             if let Some(instance_mask_ids) = entity_highlight.instances.get(&instance_key) {
@@ -119,7 +130,7 @@ impl Points2DPart {
         }
 
         // Generate keypoint connections if any.
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations, props.interactive);
+        scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
 
         Ok(())
     }

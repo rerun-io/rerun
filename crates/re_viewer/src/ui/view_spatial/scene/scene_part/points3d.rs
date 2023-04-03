@@ -9,7 +9,7 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::{PickingLayerObjectId, Size};
+use re_renderer::Size;
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
@@ -17,7 +17,10 @@ use crate::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
         view_spatial::{
-            scene::{scene_part::instance_path_hash_for_picking, Keypoints},
+            scene::{
+                scene_part::{instance_key_to_picking_id, instance_path_hash_for_picking},
+                Keypoints,
+            },
             SceneSpatial, UiLabel, UiLabelTarget,
         },
         Annotations, DefaultColor,
@@ -177,30 +180,29 @@ impl Points3DPart {
         let (annotation_infos, keypoints) =
             Self::process_annotations(query, entity_view, &annotations)?;
 
-        // TODO: remove
-        let instance_path_hashes_for_picking = {
-            crate::profile_scope!("instance_hashes");
-            entity_view
-                .iter_instance_keys()?
-                .map(|instance_key| {
-                    instance_path_hash_for_picking(
-                        ent_path,
-                        instance_key,
-                        entity_view,
-                        properties,
-                        entity_highlight.any_selection_highlight,
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-
         let colors = Self::process_colors(entity_view, ent_path, &annotation_infos)?;
         let radii = Self::process_radii(ent_path, entity_view)?;
 
-        if show_labels && instance_path_hashes_for_picking.len() <= self.max_labels {
+        if show_labels && entity_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
                 Self::process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+
+            let instance_path_hashes_for_picking = {
+                crate::profile_scope!("instance_hashes");
+                entity_view
+                    .iter_instance_keys()?
+                    .map(|instance_key| {
+                        instance_path_hash_for_picking(
+                            ent_path,
+                            instance_key,
+                            entity_view,
+                            properties,
+                            entity_highlight.any_selection_highlight,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
 
             scene.ui.labels.extend(Self::process_labels(
                 entity_view,
@@ -217,19 +219,28 @@ impl Points3DPart {
                 .points
                 .batch("3d points")
                 .world_from_obj(world_from_obj)
-                .outline_mask_ids(entity_highlight.overall)
-                .picking_object_id(PickingLayerObjectId(ent_path.hash64()));
+                .outline_mask_ids(entity_highlight.overall);
+            if properties.interactive {
+                point_batch = point_batch
+                    .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            }
             let mut point_range_builder = point_batch
                 .add_points(entity_view.num_instances(), point_positions)
                 .colors(colors)
-                .radii(radii)
-                .picking_instance_ids(
-                    entity_view
-                        .iter_instance_keys()?
-                        .map(|key| re_renderer::PickingLayerInstanceId(key.0)),
+                .radii(radii);
+            if properties.interactive {
+                point_range_builder = point_range_builder.picking_instance_ids(
+                    entity_view.iter_instance_keys()?.map(|instance_key| {
+                        instance_key_to_picking_id(
+                            instance_key,
+                            entity_view,
+                            entity_highlight.any_selection_highlight,
+                        )
+                    }),
                 );
+            }
 
-            // Determine if there's any subranges that need extra highlighting.
+            // Determine if there's any sub-ranges that need extra highlighting.
             {
                 crate::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {

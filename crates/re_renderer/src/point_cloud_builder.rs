@@ -303,11 +303,13 @@ impl<'a> PointBuilder<'a> {
     /// Pushes additional outline mask ids for this point
     ///
     /// Prefer the `overall_outline_mask_ids` setting to set the outline mask ids for the entire batch whenever possible!
+    #[inline]
     pub fn outline_mask_id(mut self, outline_mask_id: OutlineMaskPreference) -> Self {
         self.outline_mask_id = outline_mask_id;
         self
     }
 
+    /// This mustn't call this more than once.
     #[inline]
     pub fn picking_instance_id(self, picking_instance_id: PickingLayerInstanceId) -> Self {
         self.picking_instance_id.push(picking_instance_id);
