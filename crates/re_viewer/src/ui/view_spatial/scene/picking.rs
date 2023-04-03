@@ -18,6 +18,9 @@ pub enum AdditionalPickingInfo {
     /// The hit was a textured rect at the given uv coordinates (ranging from 0 to 1)
     TexturedRect(glam::Vec2),
 
+    /// The result came from GPU based picking.
+    GpuPickingResult,
+
     /// We hit a egui ui element, meaning that depth information is not usable.
     GuiOverlay,
 }
@@ -36,9 +39,6 @@ pub struct PickingRayHit {
 
     /// Any additional information about the picking hit.
     pub info: AdditionalPickingInfo,
-
-    /// True if this picking result came from a GPU picking pass.
-    pub used_gpu_picking: bool,
 }
 
 impl PickingRayHit {
@@ -48,7 +48,6 @@ impl PickingRayHit {
             ray_t: t,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
-            used_gpu_picking: false,
         }
     }
 }
@@ -167,7 +166,6 @@ pub fn picking(
             ray_t: f32::INFINITY,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
-            used_gpu_picking: false,
         },
         // Combined, sorted (and partially "hidden") by opaque results later.
         transparent_hits: Vec::new(),
@@ -195,42 +193,13 @@ pub fn picking(
     picking_ui_rects(&context, &mut state, ui_data);
 
     // GPU based picking.
-    // Only look at newest available result, discard everything else.
-    let mut gpu_picking_result = None;
-    while let Some(picking_result) =
-        PickingLayerProcessor::next_readback_result::<()>(render_ctx, gpu_readback_identifier)
-    {
-        gpu_picking_result = Some(picking_result);
-    }
-    // TODO(andreas): Use gpu picking as fallback for now. Should combine instead!
-    if state.closest_opaque_pick.instance_path_hash == InstancePathHash::NONE {
-        if let Some(gpu_picking_result) = gpu_picking_result {
-            // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
-            let pos_on_picking_rect = gpu_picking_result.rect.extent / 2;
-            let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
-            let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
-
-            // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
-            state.closest_opaque_pick.ray_t = gpu_picking_result
-                .picked_world_position(pos_on_picking_rect)
-                .distance(context.ray_in_world.origin);
-            state.closest_opaque_pick.instance_path_hash = picked_object;
-            state.closest_opaque_pick.used_gpu_picking = true;
-        } else {
-            // It is possible that some frames we don't get a picking result and the frame after we get several.
-            // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
-            // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
-            if let Some(PickingResult {
-                opaque_hit: Some(previous_opaque_hit),
-                ..
-            }) = previous_picking_result
-            {
-                if previous_opaque_hit.used_gpu_picking {
-                    state.closest_opaque_pick = previous_opaque_hit.clone();
-                }
-            }
-        }
-    }
+    picking_gpu(
+        render_ctx,
+        gpu_readback_identifier,
+        &mut state,
+        &context,
+        previous_picking_result,
+    );
 
     state.sort_and_remove_hidden_transparent();
 
@@ -242,6 +211,62 @@ pub fn picking(
             .then_some(state.closest_opaque_pick),
         transparent_hits: state.transparent_hits,
         picking_ray: context.ray_in_world,
+    }
+}
+
+fn picking_gpu(
+    render_ctx: &re_renderer::RenderContext,
+    gpu_readback_identifier: u64,
+    state: &mut PickingState,
+    context: &PickingContext,
+    previous_picking_result: &Option<PickingResult>,
+) {
+    crate::profile_function!();
+
+    // Only look at newest available result, discard everything else.
+    let mut gpu_picking_result = None;
+    while let Some(picking_result) =
+        PickingLayerProcessor::next_readback_result::<()>(render_ctx, gpu_readback_identifier)
+    {
+        gpu_picking_result = Some(picking_result);
+    }
+
+    if let Some(gpu_picking_result) = gpu_picking_result {
+        // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
+        let pos_on_picking_rect = gpu_picking_result.rect.extent / 2;
+        let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
+        let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
+
+        // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
+
+        state.check_hit(
+            0.0,
+            PickingRayHit {
+                instance_path_hash: picked_object,
+                ray_t: gpu_picking_result
+                    .picked_world_position(pos_on_picking_rect)
+                    .distance(context.ray_in_world.origin),
+                depth_offset: 0,
+                info: AdditionalPickingInfo::GpuPickingResult,
+            },
+            false,
+        );
+    } else {
+        // It is possible that some frames we don't get a picking result and the frame after we get several.
+        // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
+        // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
+        if let Some(PickingResult {
+            opaque_hit: Some(previous_opaque_hit),
+            ..
+        }) = previous_picking_result
+        {
+            if matches!(
+                previous_opaque_hit.info,
+                AdditionalPickingInfo::GpuPickingResult
+            ) {
+                state.closest_opaque_pick = previous_opaque_hit.clone();
+            }
+        }
     }
 }
 
@@ -354,7 +379,6 @@ fn picking_textured_rects(
                 ray_t: t,
                 info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
-                used_gpu_picking: false,
             };
             state.check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
         }
@@ -378,7 +402,6 @@ fn picking_ui_rects(
                 ray_t: 0.0,
                 info: AdditionalPickingInfo::GuiOverlay,
                 depth_offset: 0,
-                used_gpu_picking: false,
             },
             false,
         );

@@ -59,7 +59,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-pub const PICKING_RECT_SIZE: u32 = 15;
+pub const PICKING_RECT_SIZE: u32 = 63;
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
