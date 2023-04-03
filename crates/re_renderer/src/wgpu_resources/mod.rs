@@ -162,7 +162,7 @@ impl Texture2DBufferInfo {
 
     /// Removes the padding from a buffer containing gpu texture data.
     ///
-    /// The buffer have the expected size for a padded buffer to hold the texture data.
+    /// The passed in buffer is to be expected to be exactly of size [`Texture2DBufferInfo::buffer_size_padded`].
     ///
     /// Note that if you're passing in gpu data, there no alignment guarantees on the returned slice,
     /// do NOT convert it using [`bytemuck`]. Use [`Texture2DBufferInfo::remove_padding_and_convert`] instead.
@@ -189,7 +189,7 @@ impl Texture2DBufferInfo {
 
     /// Removes the padding from a buffer containing gpu texture data and remove convert to a given type.
     ///
-    /// The buffer have the expected size for a padded buffer to hold the texture data.
+    /// The passed in buffer is to be expected to be exactly of size [`Texture2DBufferInfo::buffer_size_padded`].
     ///
     /// The unpadded row size is expected to be a multiple of the size of the target type.
     /// (Which means that, while uncommon, it technically doesn't need to be as big as a block in the pixel - this can be useful for e.g. packing wide bitfields)
@@ -207,13 +207,15 @@ impl Texture2DBufferInfo {
             T::zeroed();
             (self.num_rows() * self.bytes_per_row_unpadded / std::mem::size_of::<T>() as u32)
                 as usize
-        ]; // Consider using unsafe set_len() instead of vec![] to avoid zeroing the memory.
-        let unpaadded_buffer_u8 = bytemuck::cast_slice_mut(&mut unpadded_buffer);
+        ]; // TODO(andreas): Consider using unsafe set_len() instead of vec![] to avoid zeroing the memory.
+
+        // The copy has to happen on a u8 slice, because any other type would assume some alignment that we can't guarantee because of the above.
+        let unpadded_buffer_u8_view = bytemuck::cast_slice_mut(&mut unpadded_buffer);
 
         for row in 0..self.num_rows() {
             let offset_padded = (self.bytes_per_row_padded * row) as usize;
             let offset_unpadded = (self.bytes_per_row_unpadded * row) as usize;
-            unpaadded_buffer_u8
+            unpadded_buffer_u8_view
                 [offset_unpadded..(offset_unpadded + self.bytes_per_row_unpadded as usize)]
                 .copy_from_slice(
                     &buffer[offset_padded..(offset_padded + self.bytes_per_row_unpadded as usize)],
