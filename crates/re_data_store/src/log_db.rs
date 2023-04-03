@@ -34,11 +34,7 @@ impl Default for EntityDb {
             tree: crate::EntityTree::root(),
             data_store: re_arrow_store::DataStore::new(
                 InstanceKey::name(),
-                DataStoreConfig {
-                    // TODO: sorting and splitting is now pretty costly
-                    indexed_bucket_num_rows: 64,
-                    ..Default::default()
-                },
+                DataStoreConfig::default(),
             ),
         }
     }
