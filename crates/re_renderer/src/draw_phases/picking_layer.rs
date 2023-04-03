@@ -147,6 +147,7 @@ pub struct PickingLayerProcessor {
 impl PickingLayerProcessor {
     /// The texture format used for the picking layer.
     pub const PICKING_LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
+
     /// The depth format used for the picking layer - f32 makes it easiest to deal with retrieved depth and is guaranteed to be copyable.
     pub const PICKING_LAYER_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
