@@ -35,10 +35,7 @@ OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
 def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
-    if isinstance(array, np.ndarray):
-        return np.require(array, float).tolist()  # type: ignore[no-any-return]
-
-    return array  # type: ignore[return-value]
+    return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
 
 def _normalize_colors(colors: Optional[Union[Color, Colors]] = None) -> npt.NDArray[np.uint8]:
