@@ -141,7 +141,7 @@ fn table_row(
                 ui.monospace(format!("{application_id} - {recording_id:?}"));
             });
         }
-        LogMsg::EntityPathOpMsg(msg) => {
+        LogMsg::EntityPathOpMsg(_, msg) => {
             let EntityPathOpMsg {
                 msg_id,
                 time_point,
@@ -176,7 +176,7 @@ fn table_row(
         // NOTE: This really only makes sense because we don't yet have batches with more than a
         // single row at the moment... and by the time we do, the event log view will have
         // disappeared entirely.
-        LogMsg::ArrowMsg(msg) => match DataTable::try_from(msg) {
+        LogMsg::ArrowMsg(_, msg) => match DataTable::try_from(msg) {
             Ok(table) => {
                 for datarow in table.as_rows() {
                     row.col(|ui| {

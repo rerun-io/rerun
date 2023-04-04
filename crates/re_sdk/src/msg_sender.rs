@@ -1,8 +1,9 @@
-use re_log_types::{component_types::InstanceKey, DataRow, DataTableError};
+use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId};
 
 use crate::{
     components::Transform,
     log::{DataCell, LogMsg, MsgId},
+    session::RecordingLogSink,
     sink::LogSink,
     time::{Time, TimeInt, TimePoint, Timeline},
     Component, EntityPath, SerializableComponent,
@@ -229,13 +230,17 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send(self, sink: &impl std::borrow::Borrow<dyn LogSink>) -> Result<(), DataTableError> {
-        self.send_to_sink(sink.borrow())
+    pub fn send(self, sink: &impl RecordingLogSink) -> Result<(), DataTableError> {
+        self.send_to_sink(sink.get_recording_id(), sink.borrow())
     }
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    fn send_to_sink(self, sink: &dyn LogSink) -> Result<(), DataTableError> {
+    fn send_to_sink(
+        self,
+        recording_id: RecordingId,
+        sink: &dyn LogSink,
+    ) -> Result<(), DataTableError> {
         if !sink.is_enabled() {
             return Ok(()); // silently drop the message
         }
@@ -243,15 +248,24 @@ impl MsgSender {
         let [row_standard, row_transforms, row_splats] = self.into_rows();
 
         if let Some(row_transforms) = row_transforms {
-            sink.send(LogMsg::ArrowMsg((&row_transforms.into_table()).try_into()?));
+            sink.send(LogMsg::ArrowMsg(
+                recording_id,
+                (&row_transforms.into_table()).try_into()?,
+            ));
         }
         if let Some(row_splats) = row_splats {
-            sink.send(LogMsg::ArrowMsg((&row_splats.into_table()).try_into()?));
+            sink.send(LogMsg::ArrowMsg(
+                recording_id,
+                (&row_splats.into_table()).try_into()?,
+            ));
         }
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
         if let Some(row_standard) = row_standard {
-            sink.send(LogMsg::ArrowMsg((&row_standard.into_table()).try_into()?));
+            sink.send(LogMsg::ArrowMsg(
+                recording_id,
+                (&row_standard.into_table()).try_into()?,
+            ));
         }
 
         Ok(())

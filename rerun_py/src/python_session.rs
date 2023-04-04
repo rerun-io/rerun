@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
+    ApplicationId, ArrowMsg, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
     RecordingSource, Time, TimePoint,
 };
 
@@ -226,12 +226,20 @@ impl PythonSession {
         self.sink.send(log_msg);
     }
 
+    pub fn send_arrow_msg(&mut self, arrow_msg: ArrowMsg) {
+        let recording_id = self.recording_id().unwrap_or_default();
+        self.send(LogMsg::ArrowMsg(recording_id, arrow_msg));
+    }
+
     /// Send a [`PathOp`].
     pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
-        self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
-            msg_id: MsgId::random(),
-            time_point: time_point.clone(),
-            path_op,
-        }));
+        self.send(LogMsg::EntityPathOpMsg(
+            self.recording_id().unwrap_or_default(),
+            re_log_types::EntityPathOpMsg {
+                msg_id: MsgId::random(),
+                time_point: time_point.clone(),
+                path_op,
+            },
+        ));
     }
 }

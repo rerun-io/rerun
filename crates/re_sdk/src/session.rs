@@ -189,6 +189,7 @@ impl SessionBuilder {
 #[must_use]
 #[derive(Clone)]
 pub struct Session {
+    recording_info: Option<RecordingInfo>,
     sink: Arc<dyn LogSink>,
     // TODO(emilk): add convenience `TimePoint` here so that users can
     // do things like `session.set_time_sequence("frame", frame_idx);`
@@ -222,13 +223,16 @@ impl Session {
             sink.send(
                 re_log_types::BeginRecordingMsg {
                     msg_id: re_log_types::MsgId::random(),
-                    info: recording_info,
+                    info: recording_info.clone(),
                 }
                 .into(),
             );
         }
 
-        Self { sink: sink.into() }
+        Self {
+            recording_info: Some(recording_info),
+            sink: sink.into(),
+        }
     }
 
     /// Construct a new session with a disabled "dummy" sink that drops all logging messages.
@@ -236,6 +240,7 @@ impl Session {
     /// [`Self::is_enabled`] will return `false`.
     pub fn disabled() -> Self {
         Self {
+            recording_info: None,
             sink: crate::sink::disabled().into(),
         }
     }
@@ -272,11 +277,14 @@ impl Session {
         time_point: &re_log_types::TimePoint,
         path_op: re_log_types::PathOp,
     ) {
-        self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
-            msg_id: re_log_types::MsgId::random(),
-            time_point: time_point.clone(),
-            path_op,
-        }));
+        self.send(LogMsg::EntityPathOpMsg(
+            self.get_recording_id(),
+            re_log_types::EntityPathOpMsg {
+                msg_id: re_log_types::MsgId::random(),
+                time_point: time_point.clone(),
+                path_op,
+            },
+        ));
     }
 
     /// Drain all buffered [`LogMsg`]es and return them.
@@ -296,3 +304,18 @@ impl std::borrow::Borrow<dyn LogSink> for Session {
         self.sink.as_ref()
     }
 }
+
+pub trait HasRecordingId {
+    fn get_recording_id(&self) -> RecordingId;
+}
+
+impl HasRecordingId for Session {
+    fn get_recording_id(&self) -> RecordingId {
+        self.recording_info
+            .as_ref()
+            .map_or(RecordingId::default(), |i| i.recording_id)
+    }
+}
+
+pub trait RecordingLogSink: std::borrow::Borrow<dyn LogSink> + HasRecordingId {}
+impl<T: std::borrow::Borrow<dyn LogSink> + HasRecordingId> RecordingLogSink for T {}
