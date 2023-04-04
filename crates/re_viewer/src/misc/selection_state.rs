@@ -7,7 +7,7 @@ use re_data_store::{EntityPath, InstancePath, InstancePathHash, LogDb};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
 
-use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
+use crate::ui::{Blueprint, SelectionHistory, SpaceView, SpaceViewId};
 
 use super::{Item, ItemCollection};
 
@@ -205,13 +205,17 @@ impl SelectionState {
     }
 
     /// Selects the previous element in the history if any.
-    pub fn select_previous(&mut self) -> Option<HistoricalSelection> {
-        self.history.select_previous()
+    pub fn select_previous(&mut self) {
+        if let Some(selection) = self.history.select_previous() {
+            self.selection = selection;
+        }
     }
 
     /// Selections the next element in the history if any.
-    pub fn select_next(&mut self) -> Option<HistoricalSelection> {
-        self.history.select_next()
+    pub fn select_next(&mut self) {
+        if let Some(seletion) = self.history.select_next() {
+            self.selection = seletion;
+        }
     }
 
     /// Clears the current selection out.
