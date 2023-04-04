@@ -15,13 +15,26 @@ struct MaterialUniformBuffer {
 var<uniform> material: MaterialUniformBuffer;
 
 struct VertexOut {
-    @builtin(position) position: Vec4,
-    @location(0) color: Vec4, // 0-1 linear space with unmultiplied/separate alpha
-    @location(1) texcoord: Vec2,
-    @location(2) normal_world_space: Vec3,
-    @location(3) additive_tint_rgb: Vec3, // 0-1 linear space
+    @builtin(position)
+    position: Vec4,
+
+    @location(0)
+    color: Vec4, // 0-1 linear space with unmultiplied/separate alpha
+
+    @location(1)
+    texcoord: Vec2,
+
+    @location(2)
+    normal_world_space: Vec3,
+
+    @location(3) @interpolate(flat)
+    additive_tint_rgb: Vec3, // 0-1 linear space
+
     @location(4) @interpolate(flat)
     outline_mask_ids: UVec2,
+
+    @location(5) @interpolate(flat)
+    picking_layer_id: UVec4,
 };
 
 @vertex
@@ -44,6 +57,7 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
     out.normal_world_space = world_normal;
     out.additive_tint_rgb = linear_from_srgb(in_instance.additive_tint_srgb.rgb);
     out.outline_mask_ids = in_instance.outline_mask_ids;
+    out.picking_layer_id = in_instance.picking_layer_id;
 
     return out;
 }
@@ -68,6 +82,11 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) Vec4 {
 
         return Vec4(radiance, 1.0);
     }
+}
+
+@fragment
+fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
+    return in.picking_layer_id;
 }
 
 @fragment

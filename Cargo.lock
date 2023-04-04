@@ -3802,8 +3802,10 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "smallvec",
  "static_assertions",
  "thiserror",
+ "tinyvec",
 ]
 
 [[package]]

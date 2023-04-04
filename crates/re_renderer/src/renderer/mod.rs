@@ -74,9 +74,7 @@ pub trait Renderer {
     ) -> anyhow::Result<()>;
 
     /// Combination of flags indicating in which phases [`Renderer::draw`] should be called.
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Opaque]
-    }
+    fn participated_phases() -> &'static [DrawPhase];
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.

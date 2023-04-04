@@ -21,10 +21,10 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
-        TextureRowDataInfo,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+        Texture2DBufferInfo, TextureDesc,
     },
-    ColorMap, OutlineMaskPreference,
+    ColorMap, OutlineMaskPreference, PickingLayerProcessor,
 };
 
 use super::{
@@ -336,34 +336,33 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
         .textures
         .alloc(&ctx.device, &depth_texture_desc);
 
-    let TextureRowDataInfo {
-        bytes_per_row_unpadded: bytes_per_row_unaligned,
-        bytes_per_row_padded,
-    } = TextureRowDataInfo::new(depth_texture_desc.format, depth_texture_desc.size.width);
-
     // Not supporting compressed formats here.
     debug_assert!(depth_texture_desc.format.describe().block_dimensions == (1, 1));
 
+    let buffer_info =
+        Texture2DBufferInfo::new(depth_texture_desc.format, depth_cloud.depth_dimensions);
+
     // TODO(andreas): CpuGpuWriteBelt should make it easier to do this.
-    let bytes_padding_per_row = (bytes_per_row_padded - bytes_per_row_unaligned) as usize;
+    let bytes_padding_per_row =
+        (buffer_info.bytes_per_row_padded - buffer_info.bytes_per_row_unpadded) as usize;
     // Sanity check the padding size. If this happens something is seriously wrong, as it would imply
     // that we can't express the required alignment with the block size.
     debug_assert!(
         bytes_padding_per_row % std::mem::size_of::<T>() == 0,
         "Padding is not a multiple of pixel size. Can't correctly pad the texture data"
     );
-    let num_pixel_padding_per_row = bytes_padding_per_row / std::mem::size_of::<T>();
 
     let mut depth_texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
         &ctx.device,
         &ctx.gpu_resources.buffers,
-        data.len() + num_pixel_padding_per_row * depth_texture_desc.size.height as usize,
+        buffer_info.buffer_size_padded as usize / std::mem::size_of::<T>(),
     );
 
     // Fill with a single copy if possible, otherwise do multiple, filling in padding.
-    if num_pixel_padding_per_row == 0 {
+    if bytes_padding_per_row == 0 {
         depth_texture_staging.extend_from_slice(data);
     } else {
+        let num_pixel_padding_per_row = bytes_padding_per_row / std::mem::size_of::<T>();
         for row in data.chunks(depth_texture_desc.size.width as usize) {
             depth_texture_staging.extend_from_slice(row);
             depth_texture_staging
@@ -387,6 +386,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
 
 pub struct DepthCloudRenderer {
     render_pipeline_color: GpuRenderPipelineHandle,
+    render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
@@ -395,7 +395,11 @@ impl Renderer for DepthCloudRenderer {
     type RendererDrawData = DepthCloudDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::OutlineMask, DrawPhase::Opaque]
+        &[
+            DrawPhase::Opaque,
+            DrawPhase::PickingLayer,
+            DrawPhase::OutlineMask,
+        ]
     }
 
     fn create_renderer<Fs: FileSystem>(
@@ -480,7 +484,19 @@ impl Renderer for DepthCloudRenderer {
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
-
+        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
+            device,
+            &RenderPipelineDesc {
+                label: "DepthCloudRenderer::render_pipeline_picking_layer".into(),
+                fragment_entrypoint: "fs_main_picking_layer".into(),
+                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+                depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
+                multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
+                ..render_pipeline_desc_color.clone()
+            },
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
@@ -500,6 +516,7 @@ impl Renderer for DepthCloudRenderer {
 
         DepthCloudRenderer {
             render_pipeline_color,
+            render_pipeline_picking_layer,
             render_pipeline_outline_mask,
             bind_group_layout,
         }
@@ -518,8 +535,9 @@ impl Renderer for DepthCloudRenderer {
         }
 
         let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
@@ -533,7 +551,7 @@ impl Renderer for DepthCloudRenderer {
 
             let bind_group = match phase {
                 DrawPhase::OutlineMask => &instance.bind_group_outline,
-                DrawPhase::Opaque => &instance.bind_group_opaque,
+                DrawPhase::PickingLayer | DrawPhase::Opaque => &instance.bind_group_opaque,
                 _ => unreachable!(),
             };
 

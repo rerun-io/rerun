@@ -1,13 +1,16 @@
 use itertools::Itertools as _;
 
 use re_data_store::InstancePathHash;
+use re_renderer::PickingLayerProcessor;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
     math::{line_segment_distance_sq_to_point_2d, ray_closest_t_line_segment},
+    misc::instance_hash_conversions::instance_path_hash_from_picking_layer_id,
     ui::view_spatial::eye::Eye,
 };
 
+#[derive(Clone)]
 pub enum AdditionalPickingInfo {
     /// No additional picking information.
     None,
@@ -19,6 +22,7 @@ pub enum AdditionalPickingInfo {
     GuiOverlay,
 }
 
+#[derive(Clone)]
 pub struct PickingRayHit {
     /// What entity or instance got hit by the picking ray.
     ///
@@ -32,6 +36,9 @@ pub struct PickingRayHit {
 
     /// Any additional information about the picking hit.
     pub info: AdditionalPickingInfo,
+
+    /// True if this picking result came from a GPU picking pass.
+    pub used_gpu_picking: bool,
 }
 
 impl PickingRayHit {
@@ -41,10 +48,12 @@ impl PickingRayHit {
             ray_t: t,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
+            used_gpu_picking: false,
         }
     }
 }
 
+#[derive(Clone)]
 pub struct PickingResult {
     /// Picking ray hit for an opaque object (if any).
     pub opaque_hit: Option<PickingRayHit>,
@@ -129,7 +138,11 @@ impl PickingState {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn picking(
+    render_ctx: &re_renderer::RenderContext,
+    gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
+    previous_picking_result: &Option<PickingResult>,
     pointer_in_ui: glam::Vec2,
     ui_rect: &egui::Rect,
     eye: &Eye,
@@ -154,6 +167,7 @@ pub fn picking(
             ray_t: f32::INFINITY,
             info: AdditionalPickingInfo::None,
             depth_offset: 0,
+            used_gpu_picking: false,
         },
         // Combined, sorted (and partially "hidden") by opaque results later.
         transparent_hits: Vec::new(),
@@ -180,6 +194,47 @@ pub fn picking(
         textured_rectangles_ids,
     );
     picking_ui_rects(&context, &mut state, ui_data);
+
+    // GPU based picking.
+    // Only look at newest available result, discard everything else.
+    let mut gpu_picking_result = None;
+    while let Some(picking_result) =
+        PickingLayerProcessor::next_readback_result::<()>(render_ctx, gpu_readback_identifier)
+    {
+        gpu_picking_result = Some(picking_result);
+    }
+    // TODO(andreas): Use gpu picking as fallback for now to fix meshes. Should combine instead!
+    if state.closest_opaque_pick.instance_path_hash == InstancePathHash::NONE {
+        if let Some(gpu_picking_result) = gpu_picking_result {
+            // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
+            let pos_on_picking_rect = gpu_picking_result.rect.extent / 2;
+            let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
+            let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
+
+            // It is old data, the object might be gone by now!
+            if picked_object.is_some() {
+                // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's entirely correct either!
+                state.closest_opaque_pick.ray_t = gpu_picking_result
+                    .picked_world_position(pos_on_picking_rect)
+                    .distance(context.ray_in_world.origin);
+                state.closest_opaque_pick.instance_path_hash = picked_object;
+                state.closest_opaque_pick.used_gpu_picking = true;
+            }
+        } else {
+            // It is possible that some frames we don't get a picking result and the frame after we get several.
+            // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
+            // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
+            if let Some(PickingResult {
+                opaque_hit: Some(previous_opaque_hit),
+                ..
+            }) = previous_picking_result
+            {
+                if previous_opaque_hit.used_gpu_picking {
+                    state.closest_opaque_pick = previous_opaque_hit.clone();
+                }
+            }
+        }
+    }
 
     state.sort_and_remove_hidden_transparent();
 
@@ -282,7 +337,7 @@ fn picking_meshes(
     crate::profile_function!();
 
     for mesh in meshes {
-        if !mesh.instance_path_hash.is_some() {
+        if !mesh.picking_instance_hash.is_some() {
             continue;
         }
         let ray_in_mesh = (mesh.world_from_mesh.inverse() * context.ray_in_world).normalize();
@@ -292,7 +347,7 @@ fn picking_meshes(
             let side_ui_dist_sq = 0.0;
             state.check_hit(
                 side_ui_dist_sq,
-                PickingRayHit::from_instance_and_t(mesh.instance_path_hash, t),
+                PickingRayHit::from_instance_and_t(mesh.picking_instance_hash, t),
                 false,
             );
         }
@@ -337,6 +392,7 @@ fn picking_textured_rects(
                 ray_t: t,
                 info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
+                used_gpu_picking: false,
             };
             state.check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
         }
@@ -360,6 +416,7 @@ fn picking_ui_rects(
                 ray_t: 0.0,
                 info: AdditionalPickingInfo::GuiOverlay,
                 depth_offset: 0,
+                used_gpu_picking: false,
             },
             false,
         );

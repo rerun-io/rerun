@@ -13,6 +13,8 @@ mod viewer_context;
 
 pub use caches::Caches;
 
+pub mod instance_hash_conversions;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use clipboard::Clipboard;
 
@@ -34,9 +36,6 @@ pub use {
         SelectionHighlight, SelectionState, SpaceViewHighlights, SpaceViewOutlineMasks,
     },
 };
-
-mod gpu_readbacks;
-pub use gpu_readbacks::{ScheduledGpuReadback, ScreenshotMode};
 
 // ----------------------------------------------------------------------------
 

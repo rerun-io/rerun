@@ -1,6 +1,6 @@
 use std::{num::NonZeroU32, sync::mpsc};
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, TextureRowDataInfo};
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, Texture2DBufferInfo};
 
 /// A sub-allocated staging buffer that can be written to.
 ///
@@ -100,15 +100,13 @@ where
         destination: wgpu::ImageCopyTexture<'_>,
         copy_extent: glam::UVec2,
     ) {
-        let bytes_per_row = TextureRowDataInfo::new(destination.texture.format(), copy_extent.x)
-            .bytes_per_row_padded;
+        let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_extent);
 
         // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
         // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
         // (and if you did you probably have regrets anyways!)
-        let required_buffer_size = bytes_per_row * copy_extent.y;
         debug_assert_eq!(
-            required_buffer_size as usize,
+            buffer_info.buffer_size_padded as usize,
             self.num_written() * std::mem::size_of::<T>()
         );
 
@@ -117,7 +115,7 @@ where
                 buffer: &self.chunk_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: self.byte_offset_in_chunk_buffer,
-                    bytes_per_row: NonZeroU32::new(bytes_per_row),
+                    bytes_per_row: NonZeroU32::new(buffer_info.bytes_per_row_padded),
                     rows_per_image: None,
                 },
             },

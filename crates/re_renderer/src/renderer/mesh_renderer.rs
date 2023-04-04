@@ -18,7 +18,7 @@ use crate::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
     },
-    Color32, OutlineMaskPreference,
+    Color32, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
 };
 
 use super::{
@@ -48,6 +48,9 @@ mod gpu_data {
         pub world_from_mesh_normal_row_2: [f32; 3],
 
         pub additive_tint: Color32,
+
+        pub picking_layer_id: [u32; 4],
+
         // Need only the first two bytes, but we want to keep everything aligned to at least 4 bytes.
         pub outline_mask_ids: [u8; 4],
     }
@@ -72,6 +75,9 @@ mod gpu_data {
                         wgpu::VertexFormat::Float32x3,
                         // Tint color
                         wgpu::VertexFormat::Unorm8x4,
+                        // Picking id.
+                        // Again this adds overhead for non-picking passes, more this time. Consider moving this elsewhere.
+                        wgpu::VertexFormat::Uint32x4,
                         // Outline mask.
                         // This adds a tiny bit of overhead to all instances during non-outline pass, but the alternative is having yet another vertex buffer.
                         wgpu::VertexFormat::Uint8x2,
@@ -123,6 +129,9 @@ pub struct MeshInstance {
 
     /// Optional outline mask setting for this instance.
     pub outline_mask_ids: OutlineMaskPreference,
+
+    /// Picking layer id.
+    pub picking_layer_id: PickingLayerId,
 }
 
 impl Default for MeshInstance {
@@ -133,6 +142,7 @@ impl Default for MeshInstance {
             world_from_mesh: macaw::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
             outline_mask_ids: OutlineMaskPreference::NONE,
+            picking_layer_id: PickingLayerId::default(),
         }
     }
 }
@@ -237,6 +247,7 @@ impl MeshDrawData {
                             .outline_mask_ids
                             .0
                             .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
+                        picking_layer_id: instance.picking_layer_id.into(),
                     });
                 }
                 num_processed_instances += count;
@@ -267,6 +278,7 @@ impl MeshDrawData {
 
 pub struct MeshRenderer {
     render_pipeline_shaded: GpuRenderPipelineHandle,
+    render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
     pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
@@ -275,7 +287,11 @@ impl Renderer for MeshRenderer {
     type RendererDrawData = MeshDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Opaque, DrawPhase::OutlineMask]
+        &[
+            DrawPhase::Opaque,
+            DrawPhase::OutlineMask,
+            DrawPhase::PickingLayer,
+        ]
     }
 
     fn create_renderer<Fs: FileSystem>(
@@ -342,41 +358,49 @@ impl Renderer for MeshRenderer {
                 .chain(mesh_vertices::vertex_buffer_layouts())
                 .collect();
 
+        let render_pipeline_shaded_desc = RenderPipelineDesc {
+            label: "MeshRenderer::render_pipeline_shaded".into(),
+            pipeline_layout,
+            vertex_entrypoint: "vs_main".into(),
+            vertex_handle: shader_module,
+            fragment_entrypoint: "fs_main_shaded".into(),
+            fragment_handle: shader_module,
+            vertex_buffers,
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            primitive,
+            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+        };
         let render_pipeline_shaded = pools.render_pipelines.get_or_create(
             device,
+            &render_pipeline_shaded_desc,
+            &pools.pipeline_layouts,
+            &pools.shader_modules,
+        );
+        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
+            device,
             &RenderPipelineDesc {
-                label: "MeshRenderer::render_pipeline_shaded".into(),
-                pipeline_layout,
-                vertex_entrypoint: "vs_main".into(),
-                vertex_handle: shader_module,
-                fragment_entrypoint: "fs_main_shaded".into(),
-                fragment_handle: shader_module,
-                vertex_buffers: vertex_buffers.clone(),
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
-                primitive,
-                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+                label: "MeshRenderer::render_pipeline_picking_layer".into(),
+                fragment_entrypoint: "fs_main_picking_layer".into(),
+                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+                depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
+                multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
+                ..render_pipeline_shaded_desc.clone()
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
-
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
             &RenderPipelineDesc {
                 label: "MeshRenderer::render_pipeline_outline_mask".into(),
-                pipeline_layout,
-                vertex_entrypoint: "vs_main".into(),
-                vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main_outline_mask".into(),
-                fragment_handle: shader_module,
-                vertex_buffers,
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
-                primitive,
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(
                     shared_data.config.hardware_tier,
                 ),
+                ..render_pipeline_shaded_desc
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
@@ -384,6 +408,7 @@ impl Renderer for MeshRenderer {
 
         MeshRenderer {
             render_pipeline_shaded,
+            render_pipeline_picking_layer,
             render_pipeline_outline_mask,
             bind_group_layout,
         }
@@ -405,6 +430,7 @@ impl Renderer for MeshRenderer {
         let pipeline_handle = match phase {
             DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             DrawPhase::Opaque => self.render_pipeline_shaded,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
         let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;

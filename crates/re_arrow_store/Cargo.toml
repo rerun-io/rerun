@@ -81,6 +81,8 @@ polars-core = { workspace = true, features = [
   "sort_multiple",
 ] }
 rand = "0.8"
+smallvec = { version = "1.0", features = ["const_generics", "union"] }
+tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 
 
 [lib]
@@ -110,4 +112,16 @@ required-features = ["polars"]
 
 [[bench]]
 name = "data_store"
+harness = false
+
+[[bench]]
+name = "arrow2"
+harness = false
+
+[[bench]]
+name = "arrow2_convert"
+harness = false
+
+[[bench]]
+name = "vectors"
 harness = false

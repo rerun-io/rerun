@@ -6,18 +6,20 @@ use macaw::{vec3, BoundingBox, Quat, Vec3};
 use re_data_store::{InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
-    view_builder::{Projection, ScheduledScreenshot, TargetConfiguration},
-    RenderContext, Size,
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
+    Size,
 };
 
 use crate::{
-    misc::{HoveredSpace, Item, ScheduledGpuReadback, SpaceViewHighlights},
+    misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
             scene::AdditionalPickingInfo,
-            ui::{create_labels, outline_config, screenshot_context_menu},
-            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            ui::{create_labels, outline_config, screenshot_context_menu, PICKING_RECT_SIZE},
+            ui_renderer_bridge::{
+                fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
+            },
             SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
         SpaceViewId, UiVerbosity,
@@ -27,6 +29,7 @@ use crate::{
 
 use super::{
     eye::{Eye, OrbitEye},
+    scene::SceneSpatialPrimitives,
     ViewSpatialState,
 };
 
@@ -309,6 +312,39 @@ pub fn view_3d(
         }
     }
 
+    // Determine view port resolution and position.
+    let resolution_in_pixel = get_viewport(rect, ui.ctx().pixels_per_point());
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return;
+    }
+
+    let target_config = TargetConfiguration {
+        name: space.to_string().into(),
+
+        resolution_in_pixel,
+
+        view_from_world: eye.world_from_view.inverse(),
+        projection_from_view: Projection::Perspective {
+            vertical_fov: eye.fov_y.unwrap(),
+            near_plane_distance: eye.near(),
+        },
+
+        pixels_from_point: ui.ctx().pixels_per_point(),
+        auto_size_config: state.auto_size_config(),
+
+        outline_config: scene
+            .primitives
+            .any_outlines
+            .then(|| outline_config(ui.ctx())),
+    };
+
+    let mut view_builder = ViewBuilder::default();
+    // TODO(andreas): separate setup_view doesn't make sense, add a `new` method instead.
+    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
+        re_log::error!("Failed to setup view: {}", err);
+        return;
+    }
+
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
         &mut scene.ui,
@@ -325,8 +361,30 @@ pub fn view_3d(
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     // Check if we're hovering any hover primitive.
     if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
-        let picking_result =
-            scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
+        // Schedule GPU picking.
+        let pointer_in_pixel =
+            ((pointer_pos - rect.left_top()) * ui.ctx().pixels_per_point()).round();
+        let _ = view_builder.schedule_picking_rect(
+            ctx.render_ctx,
+            re_renderer::IntRect::from_middle_and_extent(
+                glam::ivec2(pointer_in_pixel.x as i32, pointer_in_pixel.y as i32),
+                glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
+            ),
+            space_view_id.gpu_readback_id(),
+            (),
+            ctx.app_options.show_picking_debug_overlay,
+        );
+
+        let picking_result = scene.picking(
+            ctx.render_ctx,
+            space_view_id.gpu_readback_id(),
+            &state.previous_picking_result,
+            glam::vec2(pointer_pos.x, pointer_pos.y),
+            &rect,
+            &eye,
+            5.0,
+        );
+        state.previous_picking_result = Some(picking_result.clone());
 
         for hit in picking_result.iter_hits() {
             let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
@@ -397,13 +455,31 @@ pub fn view_3d(
                 .resolve(&ctx.log_db.entity_db)
                 .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
         }));
-        state.state_3d.hovered_point = picking_result
+
+        let hovered_point = picking_result
             .opaque_hit
             .as_ref()
             .or_else(|| picking_result.transparent_hits.last())
             .map(|hit| picking_result.space_position(hit));
 
-        project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
+        ctx.selection_state_mut()
+            .set_hovered_space(HoveredSpace::ThreeD {
+                space_3d: space.clone(),
+                pos: hovered_point,
+                tracked_space_camera: state.state_3d.tracked_camera.clone(),
+                point_in_space_cameras: scene
+                    .space_cameras
+                    .iter()
+                    .map(|cam| {
+                        (
+                            cam.instance_path_hash,
+                            hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
+                        )
+                    })
+                    .collect(),
+            });
+    } else {
+        state.previous_picking_result = None;
     }
 
     ctx.select_hovered_on_click(&response);
@@ -450,7 +526,19 @@ pub fn view_3d(
         }
     }
 
-    show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
+    // Screenshot context menu.
+    let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
+    if let Some(mode) = screenshot_mode {
+        let _ =
+            view_builder.schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
+    }
+
+    show_projections_from_2d_space(
+        ctx,
+        &mut scene,
+        &state.state_3d.tracked_camera,
+        &state.scene_bbox_accum,
+    );
 
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
@@ -496,98 +584,45 @@ pub fn view_3d(
         }
     }
 
-    let (_, screenshot_action) = screenshot_context_menu(ctx, response);
-
-    let screenshot = paint_view(
-        ui,
-        eye,
-        rect,
-        scene,
+    // Composite viewbuilder into egui.
+    let command_buffer = match fill_view_builder(
         ctx.render_ctx,
-        &space.to_string(),
-        state.auto_size_config(),
-        screenshot_action.is_some(),
-    );
-    if let (Some(screenshot), Some(screenshot_action)) = (screenshot, screenshot_action) {
-        ctx.scheduled_gpu_readbacks.insert(
-            screenshot.identifier,
-            ScheduledGpuReadback::SpaceViewScreenshot {
-                space_view_id,
-                screenshot,
-                mode: screenshot_action,
-            },
-        );
-    }
+        &mut view_builder,
+        scene.primitives,
+        &ScreenBackground::GenericSkybox,
+    ) {
+        Ok(command_buffer) => command_buffer,
+        Err(err) => {
+            re_log::error!("Failed to fill view builder: {}", err);
+            return;
+        }
+    };
+    ui.painter().add(renderer_paint_callback(
+        ctx.render_ctx,
+        command_buffer,
+        view_builder,
+        rect,
+        ui.ctx().pixels_per_point(),
+    ));
 
     // Add egui driven labels on top of re_renderer content.
     let painter = ui.painter().with_clip_rect(ui.max_rect());
     painter.extend(label_shapes);
 }
 
-#[allow(clippy::too_many_arguments)]
-fn paint_view(
-    ui: &mut egui::Ui,
-    eye: Eye,
-    rect: egui::Rect,
-    scene: SceneSpatial,
-    render_ctx: &mut RenderContext,
-    name: &str,
-    auto_size_config: re_renderer::AutoSizeConfig,
-    take_screenshot: bool,
-) -> Option<ScheduledScreenshot> {
-    crate::profile_function!();
-
-    // Determine view port resolution and position.
-    let pixels_from_point = ui.ctx().pixels_per_point();
-    let resolution_in_pixel = get_viewport(rect, pixels_from_point);
-    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return None;
-    }
-
-    let target_config = TargetConfiguration {
-        name: name.into(),
-
-        resolution_in_pixel,
-
-        view_from_world: eye.world_from_view.inverse(),
-        projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y.unwrap(),
-            near_plane_distance: eye.near(),
-        },
-
-        pixels_from_point,
-        auto_size_config,
-
-        outline_config: scene
-            .primitives
-            .any_outlines
-            .then(|| outline_config(ui.ctx())),
-    };
-
-    let Ok((callback, scheduled_screenshot)) = create_scene_paint_callback(
-        render_ctx,
-        target_config,
-        rect,
-        scene.primitives, &ScreenBackground::GenericSkybox,
-        take_screenshot)
-    else {
-        return None;
-    };
-    ui.painter().add(callback);
-
-    scheduled_screenshot
-}
-
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     scene: &mut SceneSpatial,
+    tracked_space_camera: &Option<InstancePath>,
     scene_bbox_accum: &BoundingBox,
 ) {
-    if let HoveredSpace::TwoD { space_2d, pos } = ctx.selection_state().hovered_space() {
-        let mut line_batch = scene.primitives.line_strips.batch("picking ray");
-
-        for cam in &scene.space_cameras {
-            if &cam.entity_path == space_2d {
+    match ctx.selection_state().hovered_space() {
+        HoveredSpace::TwoD { space_2d, pos } => {
+            if let Some(cam) = scene
+                .space_cameras
+                .iter()
+                .find(|cam| cam.instance_path_hash.entity_path_hash == space_2d.hash())
+            {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
                     // If we don't have a z value, we only render the thick one.
@@ -597,54 +632,72 @@ fn show_projections_from_2d_space(
                         cam.picture_plane_distance
                     };
 
-                    let origin = ray.point_along(0.0);
-                    // No harm in making this ray _very_ long. (Infinite messes with things though!)
-                    let fallback_ray_end = ray.point_along(scene_bbox_accum.size().length() * 10.0);
-
-                    if let Some(line_length) = thick_ray_length {
-                        let main_ray_end = ray.point_along(line_length);
-                        line_batch
-                            .add_segment(origin, main_ray_end)
-                            .color(egui::Color32::WHITE)
-                            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
-                            .radius(Size::new_points(1.0));
-                        line_batch
-                            .add_segment(main_ray_end, fallback_ray_end)
-                            .color(egui::Color32::DARK_GRAY)
-                            // TODO(andreas): Make this dashed.
-                            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
-                            .radius(Size::new_points(0.5));
-                    } else {
-                        line_batch
-                            .add_segment(origin, fallback_ray_end)
-                            .color(egui::Color32::WHITE)
-                            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
-                            .radius(Size::new_points(1.0));
-                    }
+                    add_picking_ray(
+                        &mut scene.primitives,
+                        ray,
+                        scene_bbox_accum,
+                        thick_ray_length,
+                    );
                 }
             }
         }
+        HoveredSpace::ThreeD {
+            pos: Some(pos),
+            tracked_space_camera: Some(camera_path),
+            ..
+        } => {
+            if tracked_space_camera
+                .as_ref()
+                .map_or(true, |tracked| tracked != camera_path)
+            {
+                if let Some(cam) = scene
+                    .space_cameras
+                    .iter()
+                    .find(|cam| cam.instance_path_hash == camera_path.hash())
+                {
+                    let cam_to_pos = *pos - cam.position();
+                    let distance = cam_to_pos.length();
+                    let ray = macaw::Ray3::from_origin_dir(cam.position(), cam_to_pos / distance);
+                    add_picking_ray(&mut scene.primitives, ray, scene_bbox_accum, Some(distance));
+                }
+            }
+        }
+        _ => {}
     }
 }
 
-fn project_onto_other_spaces(
-    ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera3D],
-    state: &mut View3DState,
-    space: &EntityPath,
+fn add_picking_ray(
+    primitives: &mut SceneSpatialPrimitives,
+    ray: macaw::Ray3,
+    scene_bbox_accum: &BoundingBox,
+    thick_ray_length: Option<f32>,
 ) {
-    let mut target_spaces = vec![];
-    for cam in space_cameras {
-        let point_in_2d = state
-            .hovered_point
-            .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
-        target_spaces.push((cam.entity_path.clone(), point_in_2d));
+    let mut line_batch = primitives.line_strips.batch("picking ray");
+
+    let origin = ray.point_along(0.0);
+    // No harm in making this ray _very_ long. (Infinite messes with things though!)
+    let fallback_ray_end = ray.point_along(scene_bbox_accum.size().length() * 10.0);
+
+    if let Some(line_length) = thick_ray_length {
+        let main_ray_end = ray.point_along(line_length);
+        line_batch
+            .add_segment(origin, main_ray_end)
+            .color(egui::Color32::WHITE)
+            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+            .radius(Size::new_points(1.0));
+        line_batch
+            .add_segment(main_ray_end, fallback_ray_end)
+            .color(egui::Color32::DARK_GRAY)
+            // TODO(andreas): Make this dashed.
+            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+            .radius(Size::new_points(0.5));
+    } else {
+        line_batch
+            .add_segment(origin, fallback_ray_end)
+            .color(egui::Color32::WHITE)
+            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+            .radius(Size::new_points(1.0));
     }
-    ctx.selection_state_mut()
-        .set_hovered_space(HoveredSpace::ThreeD {
-            space_3d: space.clone(),
-            target_spaces,
-        });
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {

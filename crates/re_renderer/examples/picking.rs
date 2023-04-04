@@ -1,10 +1,10 @@
-use ahash::HashMap;
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
+    renderer::MeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackBufferIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
-    PointCloudBuilder, RenderContext, ScheduledPickingRect, Size,
+    Color32, GpuReadbackIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
+    PickingLayerProcessor, PointCloudBuilder, Size,
 };
 
 mod framework;
@@ -18,8 +18,9 @@ struct PointSet {
 
 struct Picking {
     point_sets: Vec<PointSet>,
-    scheduled_picking_rects: HashMap<GpuReadbackBufferIdentifier, ScheduledPickingRect>,
     picking_position: glam::UVec2,
+    model_mesh_instances: Vec<MeshInstance>,
+    mesh_is_hovered: bool,
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
@@ -32,36 +33,15 @@ fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     .into()
 }
 
-impl Picking {
-    #[allow(clippy::unused_self)]
-    fn handle_incoming_picking_data(&mut self, re_ctx: &mut RenderContext, _time: f32) {
-        re_ctx
-            .gpu_readback_belt
-            .lock()
-            .receive_data(|data, identifier| {
-                if let Some(picking_rect_info) = self.scheduled_picking_rects.remove(&identifier) {
-                    // TODO(andreas): Move this into a utility function?
-                    let picking_data_without_padding =
-                        picking_rect_info.row_info.remove_padding(data);
-                    let picking_data: &[PickingLayerId] =
-                        bytemuck::cast_slice(&picking_data_without_padding);
+/// Readback identifier for picking rects.
+/// Identifiers don't need to be unique and we don't have anything interesting to distinguish here!
+const READBACK_IDENTIFIER: GpuReadbackIdentifier = 0;
 
-                    // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
-                    let picked_pixel = picking_data[(picking_rect_info.rect.extent.x / 2
-                        + (picking_rect_info.rect.extent.y / 2) * picking_rect_info.rect.extent.x)
-                        as usize];
-
-                    if picked_pixel.object.0 != 0 {
-                        let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
-                        point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
-                        point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
-                    }
-                } else {
-                    re_log::error!("Received picking data for unknown identifier");
-                }
-            });
-    }
-}
+/// Mesh ID used for picking. Uses the entire 64bit range for testing.
+const MESH_ID: PickingLayerId = PickingLayerId {
+    object: re_renderer::PickingLayerObjectId(0x1234_5678_9012_3456),
+    instance: re_renderer::PickingLayerInstanceId(0x3456_1234_5678_9012),
+};
 
 impl framework::Example for Picking {
     fn title() -> &'static str {
@@ -72,10 +52,10 @@ impl framework::Example for Picking {
         self.picking_position = position_in_pixel;
     }
 
-    fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
-        let point_count = 10000;
+        let point_count = 1000;
 
         // Split point cloud into several batches to test picking of multiple objects.
         let point_sets = (0..2)
@@ -101,10 +81,13 @@ impl framework::Example for Picking {
             })
             .collect_vec();
 
+        let model_mesh_instances = crate::framework::load_rerun_mesh(re_ctx);
+
         Picking {
             point_sets,
-            scheduled_picking_rects: HashMap::default(),
+            model_mesh_instances,
             picking_position: glam::UVec2::ZERO,
+            mesh_is_hovered: false,
         }
     }
 
@@ -112,10 +95,28 @@ impl framework::Example for Picking {
         &mut self,
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
-        time: &framework::Time,
+        _time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
-        self.handle_incoming_picking_data(re_ctx, time.seconds_since_startup());
+        while let Some(picking_result) =
+            PickingLayerProcessor::next_readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
+        {
+            // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
+            let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
+            //let picked_position =
+            //    picking_result.picked_world_position(picking_result.rect.extent / 2);
+            //dbg!(picked_position, picked_id);
+
+            self.mesh_is_hovered = false;
+            if picked_id == MESH_ID {
+                self.mesh_is_hovered = true;
+            } else if picked_id.object.0 != 0 && picked_id.object.0 <= self.point_sets.len() as u64
+            {
+                let point_set = &mut self.point_sets[picked_id.object.0 as usize - 1];
+                point_set.radii[picked_id.instance.0 as usize] = Size::new_scene(0.1);
+                point_set.colors[picked_id.instance.0 as usize] = Color32::DEBUG_COLOR;
+            }
+        }
 
         let mut view_builder = ViewBuilder::default();
 
@@ -148,24 +149,17 @@ impl framework::Example for Picking {
         // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
         // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
         let picking_rect_size = 31;
-
-        let picking_rect = view_builder
-            .schedule_picking_readback(
-                re_ctx,
-                IntRect::from_middle_and_extent(
-                    self.picking_position.as_ivec2(),
-                    glam::uvec2(picking_rect_size, picking_rect_size),
-                ),
-                false,
-            )
+        let picking_rect = IntRect::from_middle_and_extent(
+            self.picking_position.as_ivec2(),
+            glam::uvec2(picking_rect_size, picking_rect_size),
+        );
+        view_builder
+            .schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
             .unwrap();
-        self.scheduled_picking_rects
-            .insert(picking_rect.identifier, picking_rect);
 
-        let mut builder = PointCloudBuilder::<()>::new(re_ctx);
-
+        let mut point_builder = PointCloudBuilder::<()>::new(re_ctx);
         for (i, point_set) in self.point_sets.iter().enumerate() {
-            builder
+            point_builder
                 .batch(format!("Random Points {i}"))
                 .picking_object_id(re_renderer::PickingLayerObjectId(i as u64 + 1)) // offset by one since 0=default=no hit
                 .add_points(
@@ -176,7 +170,29 @@ impl framework::Example for Picking {
                 .colors(point_set.colors.iter().cloned())
                 .picking_instance_ids(point_set.picking_ids.iter().cloned());
         }
-        view_builder.queue_draw(&builder.to_draw_data(re_ctx).unwrap());
+        view_builder.queue_draw(&point_builder.to_draw_data(re_ctx).unwrap());
+
+        let instances = self
+            .model_mesh_instances
+            .iter()
+            .map(|instance| MeshInstance {
+                gpu_mesh: instance.gpu_mesh.clone(),
+                mesh: None,
+                world_from_mesh: glam::Affine3A::from_translation(glam::vec3(0.0, 0.0, 0.0)),
+                picking_layer_id: MESH_ID,
+                additive_tint: if self.mesh_is_hovered {
+                    Color32::DEBUG_COLOR
+                } else {
+                    Color32::TRANSPARENT
+                },
+                ..Default::default()
+            })
+            .collect_vec();
+
+        view_builder.queue_draw(&re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
+        view_builder
+            .queue_draw(&re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
+
         view_builder.queue_draw(&re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
 
         let command_buffer = view_builder

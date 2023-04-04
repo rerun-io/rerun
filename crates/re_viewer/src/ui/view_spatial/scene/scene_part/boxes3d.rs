@@ -64,7 +64,7 @@ impl Boxes3DPart {
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            let scale = glam::Vec3::from(half_size);
+            let scale = glam::Vec3::from(half_size) * 2.0;
             let rot = rotation.map(glam::Quat::from).unwrap_or_default();
             let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
             let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
