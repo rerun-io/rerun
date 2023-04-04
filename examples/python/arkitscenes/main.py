@@ -36,9 +36,7 @@ def load_json(js_path: Path) -> Dict[str, Any]:
     return json_data
 
 
-def log_annotated_bboxes(
-    annotation: Dict[str, Any]
-) -> Tuple[npt.NDArray[np.float64], List[str], List[Color]]:
+def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.float64], List[str], List[Color]]:
     """
     Logs annotated oriented bounding boxes to Rerun.
 
@@ -113,9 +111,7 @@ def compute_box_3d(
     return bbox3d_raw
 
 
-def log_line_segments(
-    entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Color, label: str
-) -> None:
+def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Color, label: str) -> None:
     """
     Generates line segments for each object's bounding box in 2d.
 
