@@ -71,7 +71,7 @@ def log_mesh(
         Optional color multiplier of the mesh using RGB or unmuliplied RGBA in linear 0-1 space.
     vertex_colors:
         Optional array of RGB(A) vertex colors, in sRGB gamma space, either as 0-1 floats or 0-255 integers.
-        If spacified, the alpha is considered separate (unmultiplied).
+        If specified, the alpha is considered separate (unmultiplied).
     timeless:
         If true, the mesh will be timeless (default: False)
 
