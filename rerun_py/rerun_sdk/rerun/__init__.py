@@ -367,9 +367,7 @@ def disconnect() -> None:
 
 def save(path: str) -> None:
     """
-    Save previously logged data to a file.
-
-    This only works if you have not called `connect`.
+    Stream all log-data to a file.
 
     Parameters
     ----------
