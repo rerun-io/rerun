@@ -93,7 +93,7 @@ impl SceneSpatialPrimitives {
             line_strips,
             points,
             meshes,
-            depth_clouds: _, // no bbox for depth clouds
+            depth_clouds,
             any_outlines: _,
         } = self;
 
@@ -132,6 +132,10 @@ impl SceneSpatialPrimitives {
             // TODO(jleibs): is this safe for meshes or should we be doing the equivalent of the above?
             *bounding_box =
                 bounding_box.union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
+        }
+
+        for cloud in &depth_clouds.clouds {
+            *bounding_box = bounding_box.union(cloud.bbox());
         }
     }
 

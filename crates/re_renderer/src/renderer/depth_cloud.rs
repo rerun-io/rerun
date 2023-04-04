@@ -166,6 +166,37 @@ pub struct DepthCloud {
     pub outline_mask_id: OutlineMaskPreference,
 }
 
+impl DepthCloud {
+    /// World-space bounding-box.
+    pub fn bbox(&self) -> macaw::BoundingBox {
+        let max_depth = self.max_depth_in_world;
+        let w = self.depth_dimensions.x as f32;
+        let h = self.depth_dimensions.y as f32;
+        let corners = [
+            glam::Vec3::ZERO, // camera origin
+            glam::Vec3::new(0.0, 0.0, max_depth),
+            glam::Vec3::new(0.0, h, max_depth),
+            glam::Vec3::new(w, 0.0, max_depth),
+            glam::Vec3::new(w, h, max_depth),
+        ];
+
+        let intrinsics = self.depth_camera_intrinsics;
+        let focal_length = glam::vec2(intrinsics.col(0).x, intrinsics.col(1).y);
+        let offset = intrinsics.col(2).truncate();
+
+        let mut bbox = macaw::BoundingBox::nothing();
+
+        for corner in corners {
+            let depth = corner.z;
+            let pos_in_obj = ((corner.truncate() - offset) * depth / focal_length).extend(depth);
+            let pos_in_world = self.world_from_obj.transform_point3(pos_in_obj);
+            bbox.extend(pos_in_world);
+        }
+
+        bbox
+    }
+}
+
 pub struct DepthClouds {
     pub clouds: Vec<DepthCloud>,
     pub radius_boost_in_ui_points_for_outlines: f32,
