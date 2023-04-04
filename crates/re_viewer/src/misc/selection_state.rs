@@ -213,8 +213,8 @@ impl SelectionState {
 
     /// Selections the next element in the history if any.
     pub fn select_next(&mut self) {
-        if let Some(seletion) = self.history.select_next() {
-            self.selection = seletion;
+        if let Some(selection) = self.history.select_next() {
+            self.selection = selection;
         }
     }
 
