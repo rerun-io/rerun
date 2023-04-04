@@ -24,6 +24,7 @@ __all__ = [
 @log_decorator
 def log_obb(
     entity_path: str,
+    *,
     half_size: Optional[npt.ArrayLike],
     position: Optional[npt.ArrayLike] = None,
     rotation_q: Optional[npt.ArrayLike] = None,
@@ -72,12 +73,12 @@ def log_obb(
     splats: Dict[str, Any] = {}
 
     if half_size is not None:
-        size = np.require(half_size, dtype="float32")
+        half_size = np.require(half_size, dtype="float32")
 
-        if size.shape[0] == 3:
-            instanced["rerun.box3d"] = Box3DArray.from_numpy(size.reshape(1, 3))
+        if half_size.shape[0] == 3:
+            instanced["rerun.box3d"] = Box3DArray.from_numpy(half_size.reshape(1, 3))
         else:
-            raise TypeError("Position should be 1x3")
+            raise TypeError("half_size should be 1x3")
 
     if position is not None:
         position = np.require(position, dtype="float32")
@@ -85,7 +86,7 @@ def log_obb(
         if position.shape[0] == 3:
             instanced["rerun.vec3d"] = Vec3DArray.from_numpy(position.reshape(1, 3))
         else:
-            raise TypeError("Position should be 1x3")
+            raise TypeError("position should be 1x3")
 
     if rotation_q is not None:
         rotation = np.require(rotation_q, dtype="float32")
@@ -93,7 +94,7 @@ def log_obb(
         if rotation.shape[0] == 4:
             instanced["rerun.quaternion"] = QuaternionArray.from_numpy(rotation.reshape(1, 4))
         else:
-            raise TypeError("Rotation should be 1x4")
+            raise TypeError("rotation should be 1x4")
 
     if color:
         colors = _normalize_colors([color])
