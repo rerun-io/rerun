@@ -102,19 +102,19 @@ impl framework::Example for Picking {
             PickingLayerProcessor::next_readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the the closest object of interest.
-            let picked_pixel = picking_result.picking_data[(picking_result.rect.extent.x / 2
-                + (picking_result.rect.extent.y / 2) * picking_result.rect.extent.x)
-                as usize];
+            let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
+            //let picked_position =
+            //    picking_result.picked_world_position(picking_result.rect.extent / 2);
+            //dbg!(picked_position, picked_id);
 
             self.mesh_is_hovered = false;
-            if picked_pixel == MESH_ID {
+            if picked_id == MESH_ID {
                 self.mesh_is_hovered = true;
-            } else if picked_pixel.object.0 != 0
-                && picked_pixel.object.0 <= self.point_sets.len() as u64
+            } else if picked_id.object.0 != 0 && picked_id.object.0 <= self.point_sets.len() as u64
             {
-                let point_set = &mut self.point_sets[picked_pixel.object.0 as usize - 1];
-                point_set.radii[picked_pixel.instance.0 as usize] = Size::new_scene(0.1);
-                point_set.colors[picked_pixel.instance.0 as usize] = Color32::DEBUG_COLOR;
+                let point_set = &mut self.point_sets[picked_id.object.0 as usize - 1];
+                point_set.radii[picked_id.instance.0 as usize] = Size::new_scene(0.1);
+                point_set.colors[picked_id.instance.0 as usize] = Color32::DEBUG_COLOR;
             }
         }
 

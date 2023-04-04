@@ -189,7 +189,7 @@ impl Renderer for DebugOverlayRenderer {
         );
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
-            &(RenderPipelineDesc {
+            &RenderPipelineDesc {
                 label: "DebugOverlayDrawData::render_pipeline_regular".into(),
                 pipeline_layout: pools.pipeline_layouts.get_or_create(
                     device,
@@ -212,7 +212,7 @@ impl Renderer for DebugOverlayRenderer {
                 },
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
-            }),
+            },
             &pools.pipeline_layouts,
             &pools.shader_modules,
         );
