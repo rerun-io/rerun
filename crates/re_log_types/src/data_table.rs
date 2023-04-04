@@ -440,8 +440,9 @@ impl DataTable {
     /// * Control columns are those that drive the behavior of the storage systems.
     ///   They are always present, always dense, and always deserialized upon reception by the
     ///   server.
-    ///   Internally, time columns are handled separately from the rest of the control columns,
-    ///   although they are control columns in and of themselves.
+    ///   Internally, time columns are (de)serialized separately from the rest of the control
+    ///   columns for efficiency/QOL concerns: that doesn't change the fact that they are control
+    ///   columns all the same!
     /// * Data columns are the one that hold component data.
     ///   They are optional, potentially sparse, and never deserialized on the server-side (not by
     ///   the storage systems, at least).
@@ -492,7 +493,7 @@ impl DataTable {
         }
 
         let Self {
-            table_id,
+            table_id: _,
             row_id: _,
             col_timelines,
             entity_path: _,
@@ -508,8 +509,6 @@ impl DataTable {
             schema.fields.push(time_field);
             columns.push(time_column);
         }
-
-        schema.metadata = [(METADATA_TABLE_ID.into(), table_id.to_string())].into();
 
         (schema, columns)
     }
