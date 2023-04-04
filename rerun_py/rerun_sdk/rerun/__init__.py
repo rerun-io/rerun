@@ -306,9 +306,14 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
         print("Rerun is disabled - spawn() call ignored")
         return
 
+    import os
     import subprocess
     import sys
     from time import sleep
+
+    # Let the spawned rerun process know it's just an app
+    new_env = os.environ.copy()
+    new_env["RERUN_APP_ONLY"] = "true"
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
@@ -317,7 +322,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 
     # start_new_session=True ensures the spawned process does NOT die when
     # we hit ctrl-c in the terminal running the parent Python process.
-    subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
+    subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], env=new_env, start_new_session=True)
 
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
     # For example, wait until it prints "Hosting a SDK server over TCP at …"

@@ -107,16 +107,27 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // called more than once.
     re_log::setup_native_logging();
 
+    // We always want main to be available
+    m.add_function(wrap_pyfunction!(main, m)?)?;
+
+    // These two components are necessary for imports to work
+    // TODO(jleibs): Refactor import logic so all we need is main
+    m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
+    m.add_class::<TensorDataMeaning>()?;
+
+    // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
+    // can bypass everything else, which keeps us from preparing an SDK session
+    // that never gets used.
+    if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
+        return Ok(());
+    }
+
     python_session().set_python_version(python_version(py));
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
     // See `default_recording_id` for extra information.
     python_session().set_recording_id(default_recording_id(py));
-
-    m.add_function(wrap_pyfunction!(main, m)?)?;
-
-    m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
 
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
@@ -149,8 +160,6 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-
-    m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
 }
