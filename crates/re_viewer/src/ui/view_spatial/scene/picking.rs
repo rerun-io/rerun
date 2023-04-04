@@ -207,15 +207,15 @@ pub fn picking(
     if state.closest_opaque_pick.instance_path_hash == InstancePathHash::NONE {
         if let Some(gpu_picking_result) = gpu_picking_result {
             // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
-            let picking_rect_position = gpu_picking_result.rect.extent / 2;
-            let picked_id = gpu_picking_result.picked_id(picking_rect_position);
+            let pos_on_picking_rect = gpu_picking_result.rect.extent / 2;
+            let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
             let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
 
             // It is old data, the object might be gone by now!
             if picked_object.is_some() {
                 // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's entirely correct either!
                 state.closest_opaque_pick.ray_t = gpu_picking_result
-                    .picked_world_position(picking_rect_position)
+                    .picked_world_position(pos_on_picking_rect)
                     .distance(context.ray_in_world.origin);
                 state.closest_opaque_pick.instance_path_hash = picked_object;
                 state.closest_opaque_pick.used_gpu_picking = true;

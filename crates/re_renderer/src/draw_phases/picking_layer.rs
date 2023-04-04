@@ -35,16 +35,16 @@ pub struct PickingResult<T: 'static + Send + Sync> {
 
     /// Picking id data for the requested rectangle.
     ///
-    /// GPU internal row padding has already been removed.
-    /// Data is stored row wise, left to right, top to bottom.
+    /// GPU internal row padding has already been removed from this buffer.
+    /// Pixel data is stored in the normal fashion - row wise, left to right, top to bottom.
     pub picking_id_data: Vec<PickingLayerId>,
 
     /// Picking depth data for the requested rectangle.
     ///
     /// Use [`PickingResult::picked_world_position`] for easy interpretation of the data.
     ///
-    /// GPU internal row padding has already been removed.
-    /// Data is stored row wise, left to right, top to bottom.
+    /// GPU internal row padding has already been removed from this buffer.
+    /// Pixel data is stored in the normal fashion - row wise, left to right, top to bottom.
     pub picking_depth_data: Vec<f32>,
 
     /// Transforms a NDC position on the picking rect to a world position.
