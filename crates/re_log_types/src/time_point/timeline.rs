@@ -1,3 +1,5 @@
+use arrow2::datatypes::{DataType, TimeUnit};
+
 use crate::{TimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
@@ -83,6 +85,15 @@ impl Timeline {
             self.typ.format(time_range.min),
             self.typ.format(time_range.max),
         )
+    }
+
+    /// Returns the appropriate arrow datatype to represent this timeline.
+    #[inline]
+    pub fn datatype(&self) -> DataType {
+        match self.typ {
+            TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
+            TimeType::Sequence => DataType::Int64,
+        }
     }
 }
 
