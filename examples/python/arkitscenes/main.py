@@ -15,6 +15,8 @@ from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
+Color = Tuple[float, float, float, float]
+
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
 ORIENTATION = {
     "48458663": "landscape",
@@ -34,9 +36,7 @@ def load_json(js_path: Path) -> Dict[str, Any]:
     return json_data
 
 
-def log_annotated_bboxes(
-    annotation: Dict[str, Any]
-) -> Tuple[npt.NDArray[np.float64], List[str], List[Tuple[int, int, int, int]]]:
+def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.float64], List[str], List[Color]]:
     """
     Logs annotated oriented bounding boxes to Rerun.
 
@@ -56,8 +56,7 @@ def log_annotated_bboxes(
     # TODO(pablovela5620): Once #1581 or #1728 is resolved this can be removed
     color_positions = np.linspace(0, 1, num_objects)
     colormap = plt.cm.get_cmap("viridis")
-    color_array_float = [colormap(pos) for pos in color_positions]
-    color_list = [(int(r * 255), int(g * 255), int(b * 255), int(a * 255)) for r, g, b, a in color_array_float]
+    colors = [colormap(pos) for pos in color_positions]
 
     for i, label_info in enumerate(annotation["data"]):
         uid = label_info["uid"]
@@ -75,7 +74,7 @@ def log_annotated_bboxes(
             position=centroid,
             rotation_q=rot.as_quat(),
             label=label,
-            color=color_list[i],
+            color=colors[i],
             timeless=True,
         )
 
@@ -83,7 +82,7 @@ def log_annotated_bboxes(
         bbox_list.append(box3d)
         bbox_labels.append(label)
     bboxes_3d = np.array(bbox_list)
-    return bboxes_3d, bbox_labels, color_list
+    return bboxes_3d, bbox_labels, colors
 
 
 def compute_box_3d(
@@ -109,9 +108,7 @@ def compute_box_3d(
     return bbox3d_raw
 
 
-def log_line_segments(
-    entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Tuple[int, int, int, int], label: str
-) -> None:
+def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Color, label: str) -> None:
     """
     Generates line segments for each object's bounding box in 2d.
 
@@ -236,7 +233,7 @@ def log_camera(
     entity_id: str,
     bboxes: npt.NDArray[np.float64],
     bbox_labels: List[str],
-    color_list: List[Tuple[int, int, int, int]],
+    colors: List[Color],
 ) -> None:
     """Logs camera transform and 3D bounding boxes in the image frame."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
@@ -250,7 +247,7 @@ def log_camera(
     rr.log_cleared(f"{entity_id}/bbox-2d-segments", recursive=True)
     # Log line segments for each bounding box in the image
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
-        log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), color_list[i], label)
+        log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
     rr.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string

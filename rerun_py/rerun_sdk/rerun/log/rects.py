@@ -34,7 +34,7 @@ def log_rect(
     rect: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     ext: Optional[Dict[str, Any]] = None,
@@ -52,7 +52,7 @@ def log_rect(
     rect_format:
         how to interpret the `rect` argument
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     label:
         Optional text to show inside the rectangle.
     class_id:
@@ -139,7 +139,7 @@ def log_rects(
     identifiers:
         Unique numeric id that shows up when you hover or select the point.
     colors:
-        Optional per-rectangle RGB or RGBA triplet in 0-255 sRGB.
+        Optional per-rectangle gamma-space RGB or RGBA as 0-1 floats or 0-255 integers.
     labels:
         Optional per-rectangle text to show inside the rectangle.
     class_ids:

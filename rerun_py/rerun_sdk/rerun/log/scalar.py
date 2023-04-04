@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.radius import RadiusArray
 from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
-from rerun.log import _normalize_colors
+from rerun.log import Color, _normalize_colors
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 
@@ -23,7 +23,7 @@ def log_scalar(
     scalar: float,
     *,
     label: Optional[str] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     radius: Optional[float] = None,
     scattered: Optional[bool] = None,
     ext: Optional[Dict[str, Any]] = None,
@@ -82,7 +82,7 @@ def log_scalar(
         line will be named after the entity path. The plot itself is named after
         the space it's in.
     color:
-        An optional color in the form of a RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
 
         If left unspecified, a pseudo-random color will be used instead. That
         same color will apply to all points residing in the same entity path
@@ -122,7 +122,7 @@ def log_scalar(
         instanced["rerun.label"] = LabelArray.new([label])
 
     if color:
-        colors = _normalize_colors(np.array([color]))
+        colors = _normalize_colors([color])
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:
