@@ -68,7 +68,7 @@ def log_text_entry_internal(
         be an arbitrary string, but it's recommended to use one of the constants
         from [LogLevel][rerun.log.text.LogLevel]
     color:
-        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     timeless:
         Whether the text entry should be timeless.
 

@@ -48,7 +48,7 @@ def log_arrow(
     vector
         The vector along which the arrow will be drawn.
     color
-        An Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     label
         An optional text to show beside the arrow.
     width_scale

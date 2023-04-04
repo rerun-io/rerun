@@ -81,7 +81,7 @@ def log_scalar(
         line will be named after the entity path. The plot itself is named after
         the space it's in.
     color:
-        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
 
         If left unspecified, a pseudo-random color will be used instead. That
         same color will apply to all points residing in the same entity path

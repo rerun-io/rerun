@@ -54,7 +54,7 @@ def log_obb(
     rotation_q:
         Optional array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
     color:
-        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     stroke_width:
         Optional width of the line edges.
     label:

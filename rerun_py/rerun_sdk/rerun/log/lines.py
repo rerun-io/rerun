@@ -65,7 +65,7 @@ def log_line_strip(
     stroke_width:
         Optional width of the line.
     color:
-        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -139,7 +139,7 @@ def log_line_segments(
     stroke_width:
         Optional width of the line.
     color:
-        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:

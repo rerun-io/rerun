@@ -66,7 +66,7 @@ def log_point(
     radius:
         Optional radius (make it a sphere).
     color:
-        Optional RGB or RGBA in either 0-1 float, or 0-255 integer sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     label:
         Optional text to show with the point.
     class_id:
@@ -169,6 +169,8 @@ def log_points(
         Unique numeric id that shows up when you hover or select the point.
     colors:
         Optional colors of the points.
+        The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+        as either 0-1 floats or 0-255 integers, with separate alpha.
     radii:
         Optional radii (make it a sphere).
     labels:
