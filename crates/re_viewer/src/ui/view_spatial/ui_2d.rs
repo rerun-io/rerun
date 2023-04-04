@@ -348,9 +348,9 @@ fn view_2d_scrollable(
     let mut depth_at_pointer = None;
     if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
         // Schedule GPU picking.
-        let pointer_in_pixel = ((pointer_pos_ui - response.rect.left_top())
-            * parent_ui.ctx().pixels_per_point())
-        .round();
+        // Don't round the cursor position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
+        let pointer_in_pixel =
+            (pointer_pos_ui - response.rect.left_top()) * parent_ui.ctx().pixels_per_point();
         let _ = view_builder.schedule_picking_rect(
             ctx.render_ctx,
             re_renderer::IntRect::from_middle_and_extent(
