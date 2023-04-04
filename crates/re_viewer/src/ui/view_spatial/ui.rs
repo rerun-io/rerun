@@ -354,6 +354,7 @@ impl ViewSpatialState {
             ctx.re_ui.grid_left_hand_label(ui, "Bounding box")
                 .on_hover_text("The bounding box encompassing all Entities in the view right now.");
             ui.vertical(|ui| {
+                ui.style_mut().wrap = Some(false);
                 let BoundingBox { min, max } = self.scene_bbox;
                 ui.label(format!(
                     "x [{} - {}]",
