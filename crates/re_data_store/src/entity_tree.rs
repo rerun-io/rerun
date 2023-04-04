@@ -40,7 +40,6 @@ impl TimeHistogramPerTimeline {
 // ----------------------------------------------------------------------------
 
 /// Number of messages per time per timeline
-#[derive(Default)]
 pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeSet<TimeInt>>);
 
 impl TimesPerTimeline {
@@ -76,6 +75,13 @@ impl TimesPerTimeline {
         &mut self,
     ) -> impl ExactSizeIterator<Item = (&Timeline, &mut BTreeSet<TimeInt>)> {
         self.0.iter_mut()
+    }
+}
+
+// Always ensure we have a default "log_time" timeline.
+impl Default for TimesPerTimeline {
+    fn default() -> Self {
+        Self(BTreeMap::from([(Timeline::log_time(), Default::default())]))
     }
 }
 
