@@ -59,7 +59,7 @@ def _normalize_colors(colors: Optional[Union[Color, Colors]] = None) -> npt.NDAr
         # Rust expects colors in 0-255 uint8
         if colors_array.dtype.type in [np.float32, np.float64]:
             # Assume gamma-space colors
-            return np.require(np.round(colors_array / 255.0), np.uint8)
+            return np.require(np.round(colors_array * 255.0), np.uint8)
 
         return np.require(colors_array, np.uint8)
 
