@@ -83,7 +83,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # # TODO(jleibs): Log the real map once [#1531](https://github.com/rerun-io/rerun/issues/1531) is merged
         rr.log_obb(
             "map/box",
-            half_size=[6, 6, 2],
+            half_size=[3, 3, 1],
             position=[0, 0, 1],
             color=[255, 255, 255, 255],
             timeless=True,

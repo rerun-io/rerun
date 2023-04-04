@@ -34,7 +34,7 @@ def log_clock(steps: int) -> None:
 
     rr.log_obb(
         "world/frame",
-        half_size=[2 * LENGTH_S, 2 * LENGTH_S, 1.0],
+        half_size=[LENGTH_S, LENGTH_S, 1.0],
         position=[0.0, 0.0, 0.0],
         rotation_q=[0.0, 0.0, 0.0, 0.0],
         timeless=True,

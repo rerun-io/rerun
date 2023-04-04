@@ -63,24 +63,23 @@ def log_annotated_bboxes(
         uid = label_info["uid"]
         label = label_info["label"]
 
-        # TODO(pablovela5620): half this value once #1701 is resolved
-        scale = np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
-        transform = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
+        half_size = 0.5 * np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
+        centroid = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
         rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
 
         rot = R.from_matrix(rotation).inv()
 
         rr.log_obb(
             f"world/annotations/box-{uid}-{label}",
-            half_size=scale,
-            position=transform,
+            half_size=half_size,
+            position=centroid,
             rotation_q=rot.as_quat(),
             label=label,
             color=color_list[i],
             timeless=True,
         )
 
-        box3d = compute_box_3d(scale, transform, rotation)
+        box3d = compute_box_3d(half_size, centroid, rotation)
         bbox_list.append(box3d)
         bbox_labels.append(label)
     bboxes_3d = np.array(bbox_list)
@@ -88,16 +87,14 @@ def log_annotated_bboxes(
 
 
 def compute_box_3d(
-    scale: npt.NDArray[np.float64], transform: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
+    half_size: npt.NDArray[np.float64], transform: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.float64]:
     """
     Given obb compute 3d keypoints of the box.
 
     TODO(pablovela5620): Once #1581 is resolved this can be removed
     """
-    scale = scale.tolist()
-    scales = [i / 2 for i in scale]
-    length, height, width = scales
+    length, height, width = half_size.tolist()
     center = np.reshape(transform, (-1, 3))
     center = center.reshape(3)
     x_corners = [length, length, -length, -length, length, length, -length, -length]

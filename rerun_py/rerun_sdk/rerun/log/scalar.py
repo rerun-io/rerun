@@ -21,6 +21,7 @@ __all__ = [
 def log_scalar(
     entity_path: str,
     scalar: float,
+    *,
     label: Optional[str] = None,
     color: Optional[Sequence[int]] = None,
     radius: Optional[float] = None,
