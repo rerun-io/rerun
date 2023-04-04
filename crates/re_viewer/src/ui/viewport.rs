@@ -13,9 +13,11 @@ use crate::{
 };
 
 use super::{
-    data_blueprint::DataBlueprintGroupHandle, space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
-    SpaceViewId,
+    data_blueprint::{DataBlueprintGroup, DataBlueprintGroupHandle},
+    space_view_entity_picker::SpaceViewEntityPicker,
+    space_view_heuristics::all_possible_space_views,
+    view_category::ViewCategory,
+    SpaceView, SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -120,8 +122,11 @@ impl Viewport {
             });
     }
 
-    // If a group or spaceview has a total of this number of elements or less, show its subtree by default.
-    const MAX_ELEM_FOR_DEFAULT_OPEN: usize = 3;
+    /// If a group or spaceview has a total of this number of elements, show its subtree by default?
+    fn default_open_for_group(group: &DataBlueprintGroup) -> bool {
+        let num_children = group.children.len() + group.entities.len();
+        2 <= num_children && num_children <= 3
+    }
 
     fn space_view_entry_ui(
         &mut self,
@@ -140,8 +145,7 @@ impl Viewport {
         let mut is_space_view_visible = self.visible.contains(space_view_id);
 
         let root_group = space_view.data_blueprint.root_group();
-        let default_open = root_group.children.len() + root_group.entities.len()
-            <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
+        let default_open = Self::default_open_for_group(root_group);
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -265,8 +269,7 @@ impl Viewport {
             };
 
             let mut remove_group = false;
-            let default_open = child_group.children.len() + child_group.entities.len()
-                <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
+            let default_open = Self::default_open_for_group(child_group);
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 ui.id().with(child_group_handle),
