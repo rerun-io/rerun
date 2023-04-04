@@ -347,6 +347,7 @@ impl ViewSpatialState {
                         });
                     });
                     ui.checkbox(&mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
+                    ui.checkbox(&mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
                 });
                 ui.end_row();
             }
