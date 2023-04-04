@@ -501,11 +501,11 @@ impl TimeControl {
 }
 
 fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().next().unwrap()
+    *values.iter().next().unwrap_or(&TimeInt::BEGINNING)
 }
 
 fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().rev().next().unwrap()
+    *values.iter().rev().next().unwrap_or(&TimeInt::BEGINNING)
 }
 
 fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
