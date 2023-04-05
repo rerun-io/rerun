@@ -71,6 +71,7 @@ re_log_types = { workspace = true, features = ["load"] }
 re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
+re_transport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true

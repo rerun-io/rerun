@@ -42,6 +42,7 @@ re_sdk_comms = { path = "crates/re_sdk_comms", version = "0.4.0" }
 re_smart_channel = { path = "crates/re_smart_channel", version = "0.4.0" }
 re_string_interner = { path = "crates/re_string_interner", version = "0.4.0" }
 re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.4.0" }
+re_transport = { path = "crates/re_transport", version = "0.4.0" }
 re_tuid = { path = "crates/re_tuid", version = "0.4.0" }
 re_ui = { path = "crates/re_ui", version = "0.4.0" }
 re_viewer = { path = "crates/re_viewer", version = "0.4.0" }

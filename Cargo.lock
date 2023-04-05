@@ -4095,6 +4095,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_transport"
+version = "0.4.0"
+dependencies = [
+ "ehttp",
+ "js-sys",
+ "re_log",
+ "re_log_types",
+ "re_smart_channel",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "re_tuid"
 version = "0.4.0"
 dependencies = [
@@ -4140,14 +4153,12 @@ dependencies = [
  "egui-wgpu",
  "egui_dock",
  "egui_extras",
- "ehttp",
  "enumset",
  "glam",
  "half 2.2.1",
  "image",
  "instant",
  "itertools",
- "js-sys",
  "lazy_static",
  "macaw",
  "ndarray",
@@ -4181,8 +4192,6 @@ dependencies = [
  "time 0.3.20",
  "uuid",
  "vec1",
- "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
  "winapi",
@@ -4302,6 +4311,7 @@ dependencies = [
  "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
+ "re_transport",
  "re_viewer",
  "re_web_viewer_server",
  "re_ws_comms",

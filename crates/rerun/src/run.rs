@@ -263,7 +263,7 @@ async fn run_impl(
     let rx = if let Some(url_or_path) = args.url_or_path.clone() {
         match categorize_argument(url_or_path) {
             ArgumentCategory::RrdHttpUrl(url) => {
-                re_viewer::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
+                re_transport::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
             }
             ArgumentCategory::RrdFilePath(path) => {
                 re_log::info!("Loading {path:?}…");

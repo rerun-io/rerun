@@ -76,7 +76,6 @@ egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_dock = { workspace = true, features = ["serde"] }
 egui_extras = { workspace = true, features = ["tracing"] }
 egui-wgpu.workspace = true
-ehttp = "0.2"
 enumset.workspace = true
 glam = { workspace = true, features = [
   "mint",
@@ -123,9 +122,6 @@ winapi = "0.3.9"
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-wasm-bindgen = "0.2"
 
 [dependencies.web-sys]
 version = "0.3.52"
