@@ -1,0 +1,7 @@
+numpy
+torchvision
+opencv-python
+rerun-sdk
+tqdm
+git+https://github.com/facebookresearch/segment-anything.git
+
