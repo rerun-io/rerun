@@ -159,7 +159,7 @@ impl std::fmt::Display for ApplicationId {
 
 /// The most general log message sent from the SDK to the server.
 #[must_use]
-#[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests
+#[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
