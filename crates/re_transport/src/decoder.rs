@@ -168,19 +168,22 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(all(feature = "load", feature = "save"))]
+#[cfg(all(feature = "decoder", feature = "encoder"))]
 #[test]
 fn test_encode_decode() {
-    use crate::{BeginRecordingMsg, LogMsg, MsgId, Time};
+    use re_log_types::{
+        ApplicationId, BeginRecordingMsg, LogMsg, MsgId, RecordingId, RecordingInfo,
+        RecordingSource, Time,
+    };
 
     let messages = vec![LogMsg::BeginRecordingMsg(BeginRecordingMsg {
         msg_id: MsgId::random(),
-        info: crate::RecordingInfo {
-            application_id: crate::ApplicationId("test".to_owned()),
-            recording_id: crate::RecordingId::random(),
+        info: RecordingInfo {
+            application_id: ApplicationId("test".to_owned()),
+            recording_id: RecordingId::random(),
             is_official_example: true,
             started: Time::now(),
-            recording_source: crate::RecordingSource::RustSdk {
+            recording_source: RecordingSource::RustSdk {
                 rustc_version: String::new(),
                 llvm_version: String::new(),
             },
@@ -188,7 +191,7 @@ fn test_encode_decode() {
     })];
 
     let mut file = vec![];
-    encode(messages.iter(), &mut file).unwrap();
+    crate::encoder::encode(messages.iter(), &mut file).unwrap();
 
     let decoded_messages = Decoder::new(&mut file.as_slice())
         .unwrap()

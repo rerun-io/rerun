@@ -30,6 +30,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_string_interner.workspace = true
+re_transport = { workspace = true, optional = true }
 
 ahash.workspace = true
 document-features = "0.2"
@@ -55,4 +56,4 @@ bench = false
 [[example]]
 name = "memory_usage"
 path = "examples/memory_usage.rs"
-required-features = ["re_log_types/load", "re_log_types/save"]
+required-features = ["re_transport/decoder", "re_transport/encoder"]
