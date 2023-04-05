@@ -49,10 +49,12 @@ zstd = { version = "0.11.0", optional = true } # native only
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 js-sys = "0.3"
-ruzstd = { version = "0.3.0", optional = true } # works on wasm, in contrast to zstd
+ruzstd = { version = "0.3.0", optional = true }            # works on wasm, in contrast to zstd
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3.52", features = ["Window"] }
 
 [dev-dependencies]
 criterion = "0.4"

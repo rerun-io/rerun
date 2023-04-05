@@ -60,6 +60,8 @@ fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
 
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
+    use re_log_types::LogMsg;
+
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
         wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }

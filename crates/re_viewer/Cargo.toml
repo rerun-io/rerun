@@ -117,10 +117,7 @@ winapi = "0.3.9"
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
-
-[dependencies.web-sys]
-version = "0.3.52"
-features = ["Window"]
+wasm-bindgen-futures = "0.4"
 
 
 [build-dependencies]

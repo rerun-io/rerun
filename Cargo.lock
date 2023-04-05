@@ -4096,6 +4096,7 @@ version = "0.4.0"
 dependencies = [
  "criterion",
  "ehttp",
+ "instant",
  "js-sys",
  "mimalloc",
  "parking_lot 0.12.1",
@@ -4110,6 +4111,7 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "zstd",
 ]
 
@@ -4199,7 +4201,7 @@ dependencies = [
  "time 0.3.20",
  "uuid",
  "vec1",
- "web-sys",
+ "wasm-bindgen-futures",
  "wgpu",
  "winapi",
 ]
