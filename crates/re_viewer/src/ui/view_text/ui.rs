@@ -188,7 +188,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
         .log_db
         .entity_db
         .data_store
-        .get_msg_metadata(&entry.msg_id)
+        .get_msg_metadata(&entry.msg_id?)
     {
         Some(time_point.clone())
     } else {

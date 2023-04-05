@@ -121,7 +121,7 @@ async fn handle_connection(
     tcp_stream: TcpStream,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tungstenite::Result<()> {
-    let ws_stream = accept_async(tcp_stream).await.expect("Failed to accept");
+    let ws_stream = accept_async(tcp_stream).await?;
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
     // Re-sending packet history - this is not water tight, but better than nothing.

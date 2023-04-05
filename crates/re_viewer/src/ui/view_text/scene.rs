@@ -15,7 +15,7 @@ use super::ui::ViewTextFilters;
 #[derive(Debug, Clone)]
 pub struct TextEntry {
     // props
-    pub msg_id: MsgId,
+    pub msg_id: Option<MsgId>,
 
     pub entity_path: EntityPath,
 
@@ -86,7 +86,7 @@ impl SceneText {
 
                         if is_visible {
                             self.text_entries.push(TextEntry {
-                                msg_id: msg_id.unwrap(), // always present
+                                msg_id,
                                 entity_path: entity_path.clone(),
                                 time: time.map(|time| time.as_i64()),
                                 color: color.map(|c| c.to_array()),
