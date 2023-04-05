@@ -17,7 +17,7 @@ all-features = true
 
 
 [features]
-default = ["arrow_datagen", "anyhow"]
+default = ["arrow_datagen"]
 
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.
@@ -31,12 +31,6 @@ glam = ["dep:glam", "dep:macaw"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["dep:image"]
-
-## Enable loading data from a file.
-load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
-
-## Enable saving data to a file.
-save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
 ## Enable (de)serialization using serde.
 serde = [
@@ -87,7 +81,6 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 
 # Optional dependencies:
-anyhow = { workspace = true, optional = true }
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false, features = [
@@ -95,32 +88,13 @@ image = { workspace = true, optional = true, default-features = false, features 
 ] }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
-rmp-serde = { version = "1", optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true
-zstd = { version = "0.11.0", optional = true } # native only
 
-# Web dependencies:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-ruzstd = { version = "0.3.0", optional = true } # works on wasm
 
 [dev-dependencies]
-criterion = "0.4"
-mimalloc.workspace = true
-serde_test = { version = "1" }
-arrow2 = { workspace = true, features = [
-  "io_ipc",
-  "io_print",
-  "compute_concatenate",
-] }
-
-[lib]
-bench = false
-
-[[bench]]
-name = "msg_encode_benchmark"
-harness = false
+rmp-serde = "1.1"

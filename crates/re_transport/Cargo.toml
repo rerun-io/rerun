@@ -17,12 +17,20 @@ all-features = true
 
 
 [features]
+default = []
+
+## Enable loading data from an .rrd file.
+decoder = ["dep:rmp-serde", "dep:zstd", "dep:ruzstd"]
+
+# Enable encoding of log messages to an .rrd file/stream:
+encoder = ["dep:rmp-serde", "dep:zstd"]
 
 
 [dependencies]
 
 # Rerun:
-re_log_types = { workspace = true, features = ["save"] }
+re_build_info.workspace = true
+re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
 re_smart_channel.workspace = true
 
@@ -31,9 +39,29 @@ ehttp = "0.2"
 parking_lot.workspace = true
 thiserror.workspace = true
 
+# Optional external dependencies:
+rmp-serde = { version = "1", optional = true }
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true
+zstd = { version = "0.11.0", optional = true } # native only
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3"
+ruzstd = { version = "0.3.0", optional = true } # works on wasm, in constrast to zstd
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
+
+[dev-dependencies]
+criterion = "0.4"
+mimalloc.workspace = true
+serde_test = { version = "1" }
+
+[lib]
+bench = false
+
+[[bench]]
+name = "msg_encode_benchmark"
+harness = false

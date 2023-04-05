@@ -453,7 +453,7 @@ fn native_viewer_connect_to_ws_url(
 fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMsg>> {
     use anyhow::Context as _;
     let file = std::fs::File::open(path).context("Failed to open file")?;
-    let decoder = re_log_types::encoding::Decoder::new(file)?;
+    let decoder = re_transport::decoder::Decoder::new(file)?;
 
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File {
         path: path.to_owned(),
@@ -495,7 +495,7 @@ fn stream_to_rrd(
 
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_types::encoding::Encoder::new(file)?;
+    let mut encoder = re_transport::encoder::Encoder::new(file)?;
 
     while !shutdown_bool.load(std::sync::atomic::Ordering::Relaxed) {
         // We wake up and poll shutdown_bool every now and then.

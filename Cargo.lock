@@ -3845,6 +3845,7 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "re_string_interner",
+ "re_transport",
  "serde",
  "thiserror",
 ]
@@ -3893,12 +3894,10 @@ name = "re_log_types"
 version = "0.4.0"
 dependencies = [
  "ahash 0.8.2",
- "anyhow",
  "array-init",
  "arrow2",
  "arrow2_convert",
  "bytemuck",
- "criterion",
  "document-features",
  "ecolor",
  "fixed",
@@ -3908,7 +3907,6 @@ dependencies = [
  "itertools",
  "lazy_static",
  "macaw",
- "mimalloc",
  "ndarray",
  "nohash-hasher",
  "num-derive",
@@ -3921,16 +3919,13 @@ dependencies = [
  "re_string_interner",
  "re_tuid",
  "rmp-serde",
- "ruzstd",
  "serde",
  "serde_bytes",
- "serde_test",
  "smallvec",
  "thiserror",
  "time 0.3.20",
  "typenum",
  "uuid",
- "zstd",
 ]
 
 [[package]]
@@ -4099,15 +4094,23 @@ dependencies = [
 name = "re_transport"
 version = "0.4.0"
 dependencies = [
+ "criterion",
  "ehttp",
  "js-sys",
+ "mimalloc",
  "parking_lot 0.12.1",
+ "puffin",
+ "re_build_info",
  "re_log",
  "re_log_types",
  "re_smart_channel",
+ "rmp-serde",
+ "ruzstd",
+ "serde_test",
  "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "zstd",
 ]
 
 [[package]]
@@ -4185,6 +4188,7 @@ dependencies = [
  "re_smart_channel",
  "re_string_interner",
  "re_tensor_ops",
+ "re_transport",
  "re_ui",
  "re_ws_comms",
  "rfd",

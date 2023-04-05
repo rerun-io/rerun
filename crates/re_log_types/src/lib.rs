@@ -4,9 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#[cfg(any(feature = "save", feature = "load"))]
-pub mod encoding;
-
 #[cfg(feature = "arrow_datagen")]
 pub mod datagen;
 

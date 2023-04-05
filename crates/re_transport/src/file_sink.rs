@@ -17,7 +17,7 @@ pub enum FileSinkError {
 
     /// Error encoding a log message.
     #[error("Failed to encode LogMsg: {0}")]
-    LogMsgEncode(#[from] re_log_types::encoding::EncodeError),
+    LogMsgEncode(#[from] crate::encoder::EncodeError),
 }
 
 /// Stream log messages to an `.rrd` file.
@@ -47,7 +47,7 @@ impl FileSink {
 
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-        let mut encoder = re_log_types::encoding::Encoder::new(file)?;
+        let mut encoder = crate::encoder::Encoder::new(file)?;
 
         let join_handle = std::thread::Builder::new()
             .name("file_writer".into())

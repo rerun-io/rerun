@@ -39,7 +39,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Box<dyn Fn(LogMsg) + Send>) {
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::needless_pass_by_value)] // must match wasm version
 fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
-    match re_log_types::encoding::Decoder::new(rrd_bytes.as_slice()) {
+    match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
         Ok(decoder) => {
             for msg in decoder {
                 match msg {
@@ -70,7 +70,7 @@ mod web_decode {
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
         let mut last_yield = instant::Instant::now();
 
-        match re_log_types::encoding::Decoder::new(rrd_bytes.as_slice()) {
+        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {
