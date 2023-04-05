@@ -281,6 +281,7 @@ async fn run_impl(
                     }
                     #[cfg(not(feature = "web_viewer"))]
                     {
+                        _ = (rerun_server_ws_url, shutdown_rx);
                         panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
                     }
                 } else {
@@ -295,7 +296,7 @@ async fn run_impl(
 
                     #[cfg(not(feature = "native_viewer"))]
                     {
-                        _ = call_source;
+                        _ = (call_source, rerun_server_ws_url);
                         anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
                     }
                 }
