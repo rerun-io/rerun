@@ -483,9 +483,9 @@ fn stream_to_rrd(
     rx: &re_smart_channel::Receiver<LogMsg>,
     path: &std::path::PathBuf,
     shutdown_bool: &Arc<AtomicBool>,
-) -> Result<(), re_sdk::sink::FileSinkError> {
-    use re_sdk::sink::FileSinkError;
+) -> Result<(), re_transport::FileSinkError> {
     use re_smart_channel::RecvTimeoutError;
+    use re_transport::FileSinkError;
 
     if path.exists() {
         re_log::warn!("Overwriting existing file at {path:?}");

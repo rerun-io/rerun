@@ -71,10 +71,8 @@ impl FileSink {
             join_handle: Some(join_handle),
         })
     }
-}
 
-impl crate::sink::LogSink for FileSink {
-    fn send(&self, msg: LogMsg) {
-        self.tx.lock().send(Some(msg)).ok();
+    pub fn send(&self, log_msg: LogMsg) {
+        self.tx.lock().send(Some(log_msg)).ok();
     }
 }

@@ -4046,6 +4046,7 @@ dependencies = [
  "re_memory",
  "re_sdk_comms",
  "re_smart_channel",
+ "re_transport",
  "thiserror",
 ]
 
@@ -4100,9 +4101,11 @@ version = "0.4.0"
 dependencies = [
  "ehttp",
  "js-sys",
+ "parking_lot 0.12.1",
  "re_log",
  "re_log_types",
  "re_smart_channel",
+ "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]

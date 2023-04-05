@@ -22,12 +22,14 @@ all-features = true
 [dependencies]
 
 # Rerun:
+re_log_types = { workspace = true, features = ["save"] }
 re_log.workspace = true
-re_log_types.workspace = true
 re_smart_channel.workspace = true
 
 # External:
 ehttp = "0.2"
+parking_lot.workspace = true
+thiserror.workspace = true
 
 
 # Web dependencies:
