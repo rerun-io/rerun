@@ -100,6 +100,15 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     masks_with_ids = list(enumerate(masks, start=1))
     masks_with_ids.sort(key=(lambda x: x[1]["area"]), reverse=True)  # type: ignore[no-any-return]
 
+    # Work-around for https://github.com/rerun-io/rerun/issues/1782
+    # Make sure we have an AnnotationInfo present for every class-id used in this image
+    # TODO(jleibs): Remove when fix is released
+    rr.log_annotation_context(
+        "image",
+        [rr.AnnotationInfo(id) for id, _ in masks_with_ids],
+        timeless=False,
+    )
+
     # Layer all of the masks together, using the id as class-id in the segmentation
     segmentation_img = np.zeros((image.shape[0], image.shape[1]))
     for id, m in masks_with_ids:
