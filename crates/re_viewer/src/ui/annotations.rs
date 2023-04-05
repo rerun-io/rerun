@@ -23,37 +23,41 @@ pub struct Annotations {
 impl Annotations {
     pub fn class_description(&self, class_id: Option<ClassId>) -> ResolvedClassDescription<'_> {
         ResolvedClassDescription(
+            class_id,
             class_id.and_then(|class_id| self.context.class_map.get(&class_id)),
         )
     }
 }
 
-pub struct ResolvedClassDescription<'a>(pub Option<&'a ClassDescription>);
+pub struct ResolvedClassDescription<'a>(pub Option<ClassId>, pub Option<&'a ClassDescription>);
 
 impl<'a> ResolvedClassDescription<'a> {
     pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
-        ResolvedAnnotationInfo(self.0.map(|desc| desc.info.clone()))
+        ResolvedAnnotationInfo(self.0, self.1.map(|desc| desc.info.clone()))
     }
 
     /// Merges class annotation info with keypoint annotation info (if existing respectively).
     pub fn annotation_info_with_keypoint(&self, keypoint_id: KeypointId) -> ResolvedAnnotationInfo {
-        if let Some(desc) = self.0 {
+        if let Some(desc) = self.1 {
             // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
             // is cheaper than doing it lazily (which would cause more branches down the line for callsites without keypoints)
             if let Some(keypoint_annotation_info) = desc.keypoint_map.get(&keypoint_id) {
-                ResolvedAnnotationInfo(Some(AnnotationInfo {
-                    id: keypoint_id.0,
-                    label: keypoint_annotation_info
-                        .label
-                        .clone()
-                        .or_else(|| desc.info.label.clone()),
-                    color: keypoint_annotation_info.color.or(desc.info.color),
-                }))
+                ResolvedAnnotationInfo(
+                    self.0,
+                    Some(AnnotationInfo {
+                        id: keypoint_id.0,
+                        label: keypoint_annotation_info
+                            .label
+                            .clone()
+                            .or_else(|| desc.info.label.clone()),
+                        color: keypoint_annotation_info.color.or(desc.info.color),
+                    }),
+                )
             } else {
                 self.annotation_info()
             }
         } else {
-            ResolvedAnnotationInfo(None)
+            ResolvedAnnotationInfo(self.0, None)
         }
     }
 }
@@ -66,7 +70,7 @@ pub enum DefaultColor<'a> {
 }
 
 #[derive(Clone)]
-pub struct ResolvedAnnotationInfo(pub Option<AnnotationInfo>);
+pub struct ResolvedAnnotationInfo(pub Option<ClassId>, pub Option<AnnotationInfo>);
 
 impl ResolvedAnnotationInfo {
     pub fn color(
@@ -76,17 +80,18 @@ impl ResolvedAnnotationInfo {
     ) -> re_renderer::Color32 {
         if let Some([r, g, b, a]) = color {
             re_renderer::Color32::from_rgba_premultiplied(*r, *g, *b, *a)
-        } else if let Some(color) = self.0.as_ref().and_then(|info| {
+        } else if let Some(color) = self.1.as_ref().and_then(|info| {
             info.color
                 .map(|c| c.into())
                 .or_else(|| Some(auto_color(info.id)))
         }) {
             color
         } else {
-            match default_color {
-                DefaultColor::TransparentBlack => re_renderer::Color32::TRANSPARENT,
-                DefaultColor::OpaqueWhite => re_renderer::Color32::WHITE,
-                DefaultColor::EntityPath(entity_path) => {
+            match (self.0, default_color) {
+                (Some(class_id), _) if class_id.0 != 0 => auto_color(class_id.0),
+                (_, DefaultColor::TransparentBlack) => re_renderer::Color32::TRANSPARENT,
+                (_, DefaultColor::OpaqueWhite) => re_renderer::Color32::WHITE,
+                (_, DefaultColor::EntityPath(entity_path)) => {
                     auto_color((entity_path.hash64() % std::u16::MAX as u64) as u16)
                 }
             }
@@ -97,7 +102,7 @@ impl ResolvedAnnotationInfo {
         if let Some(label) = label {
             Some(label.clone())
         } else {
-            self.0
+            self.1
                 .as_ref()
                 .and_then(|info| info.label.as_ref().map(|label| label.0.clone()))
         }
