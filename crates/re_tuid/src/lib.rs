@@ -6,10 +6,14 @@
 #![doc = document_features::document_features!()]
 //!
 
-use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-
-#[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ArrowField, ArrowSerialize, ArrowDeserialize,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(
+    feature = "arrow2_convert",
+    derive(
+        arrow2_convert::ArrowField,
+        arrow2_convert::ArrowSerialize,
+        arrow2_convert::ArrowDeserialize
+    )
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {

@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 ## Enable converting Tuid to arrow2
-arrow_convert = ["dep:arrow2", "dep:arrow2_convert"]
+arrow2_convert = ["dep:arrow2", "dep:arrow2_convert"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
