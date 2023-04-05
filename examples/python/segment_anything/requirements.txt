@@ -1,7 +1,9 @@
 numpy
+torch
 torchvision
 opencv-python
+requests
 rerun-sdk
 tqdm
-git+https://github.com/facebookresearch/segment-anything.git
+-e git+https://github.com/facebookresearch/segment-anything.git#egg=segment-anything
 
