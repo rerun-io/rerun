@@ -418,56 +418,6 @@ impl DataTable {
         })
     }
 
-    #[inline]
-    pub fn into_rows(self) -> impl Iterator<Item = DataRow> {
-        let Self {
-            table_id: _,
-            col_row_id,
-            col_timelines,
-            col_entity_path,
-            col_num_instances,
-            columns,
-        } = self;
-
-        use itertools::Itertools as _;
-
-        let mut columns = columns
-            .into_values()
-            .map(|column| column.0.into_iter())
-            .collect_vec();
-        let rows = std::iter::from_fn(move || {
-            let mut next = Vec::with_capacity(columns.len());
-            for column in &mut columns {
-                if let Some(cell) = column.next()? {
-                    next.push(cell);
-                }
-            }
-
-            Some(next)
-        });
-
-        let control = itertools::izip!(col_row_id, col_entity_path, col_num_instances, rows);
-
-        control.enumerate().map(
-            move |(row_nr, (row_id, entity_path, num_instances, cells))| {
-                DataRow::from_cells(
-                    row_id,
-                    TimePoint::from(
-                        col_timelines
-                            .iter()
-                            .filter_map(|(timeline, times)| {
-                                times[row_nr].map(|time| (*timeline, time.into()))
-                            })
-                            .collect::<BTreeMap<_, _>>(),
-                    ),
-                    entity_path,
-                    num_instances,
-                    cells,
-                )
-            },
-        )
-    }
-
     /// Computes the maximum value for each and every timeline present across this entire table,
     /// and returns the corresponding [`TimePoint`].
     #[inline]
