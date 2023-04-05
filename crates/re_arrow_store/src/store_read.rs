@@ -984,10 +984,9 @@ impl PersistentIndexedTable {
         );
 
         // find the secondary indices' rows, and the associated cells.
-        let mut secondary_row_nr = primary_row_nr as i64;
+        let mut secondary_row_nr = primary_row_nr;
         while column[secondary_row_nr as usize].is_none() {
-            secondary_row_nr -= 1;
-            if secondary_row_nr < 0 {
+            if secondary_row_nr == 0 {
                 trace!(
                     kind = "latest_at",
                     %primary,
@@ -998,6 +997,7 @@ impl PersistentIndexedTable {
                 );
                 return None;
             }
+            secondary_row_nr -= 1;
         }
 
         trace!(
