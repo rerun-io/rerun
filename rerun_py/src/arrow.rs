@@ -80,8 +80,7 @@ pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict>
     Ok(fields.into_py_dict(py))
 }
 
-/// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
-/// component arrays.
+/// Build a [`DataTable`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_chunk_from_components(
     entity_path: &EntityPath,
     components: &PyDict,
