@@ -305,6 +305,7 @@ impl std::borrow::Borrow<dyn LogSink> for Session {
     }
 }
 
+/// Trait to expose [`RecordingId`] from a session
 pub trait HasRecordingId {
     fn get_recording_id(&self) -> RecordingId;
 }
@@ -317,5 +318,7 @@ impl HasRecordingId for Session {
     }
 }
 
+/// Composite trait for accessing [`LogSink`] and [`RecordingId`] from session-like objects
 pub trait RecordingLogSink: std::borrow::Borrow<dyn LogSink> + HasRecordingId {}
+
 impl<T: std::borrow::Borrow<dyn LogSink> + HasRecordingId> RecordingLogSink for T {}
