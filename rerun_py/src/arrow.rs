@@ -81,7 +81,7 @@ pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict>
 }
 
 /// Build a [`DataTable`] given a '**kwargs'-style dictionary of component arrays.
-pub fn build_chunk_from_components(
+pub fn build_data_table_from_components(
     entity_path: &EntityPath,
     components: &PyDict,
     time_point: &TimePoint,

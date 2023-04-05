@@ -980,7 +980,7 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
     let data_table =
-        crate::arrow::build_chunk_from_components(&entity_path, components, &time(timeless))?;
+        crate::arrow::build_data_table_from_components(&entity_path, components, &time(timeless))?;
 
     let mut session = python_session();
 
