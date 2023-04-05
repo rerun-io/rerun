@@ -189,7 +189,7 @@ impl SessionBuilder {
 #[must_use]
 #[derive(Clone)]
 pub struct Session {
-    recording_info: Option<RecordingInfo>,
+    recording_info: RecordingInfo,
     sink: Arc<dyn LogSink>,
     // TODO(emilk): add convenience `TimePoint` here so that users can
     // do things like `session.set_time_sequence("frame", frame_idx);`
@@ -230,7 +230,7 @@ impl Session {
         }
 
         Self {
-            recording_info: Some(recording_info),
+            recording_info,
             sink: sink.into(),
         }
     }
@@ -240,7 +240,16 @@ impl Session {
     /// [`Self::is_enabled`] will return `false`.
     pub fn disabled() -> Self {
         Self {
-            recording_info: None,
+            recording_info: RecordingInfo {
+                application_id: ApplicationId::unknown(),
+                recording_id: Default::default(),
+                is_official_example: crate::called_from_official_rust_example(),
+                started: Time::now(),
+                recording_source: RecordingSource::RustSdk {
+                    rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                    llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+                },
+            },
             sink: crate::sink::disabled().into(),
         }
     }
@@ -312,9 +321,7 @@ pub trait HasRecordingId {
 
 impl HasRecordingId for Session {
     fn get_recording_id(&self) -> RecordingId {
-        self.recording_info
-            .as_ref()
-            .map_or(RecordingId::default(), |i| i.recording_id)
+        self.recording_info.recording_id
     }
 }
 
