@@ -193,6 +193,7 @@ impl DataStore {
 
     /// Auto-generates an appropriate cluster cell for the specified number of instances and
     /// transparently handles caching.
+    // TODO(#1777): shared slices for auto generated keys
     fn generate_cluster_cell(&mut self, num_instances: u32) -> DataCell {
         crate::profile_function!();
 
