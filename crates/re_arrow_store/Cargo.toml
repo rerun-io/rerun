@@ -27,7 +27,7 @@ polars = ["dep:polars-core", "dep:polars-ops"]
 
 ## When set, disables costly benchmark suites that measure the performance of third-party
 ## libraries.
-## Commonly set implictly by --all-features, e.g. on CI.
+## Commonly set implicitly by --all-features, e.g. on CI.
 dont_bench_third_party = []
 
 
