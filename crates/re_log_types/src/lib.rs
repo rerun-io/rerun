@@ -206,26 +206,7 @@ impl LogMsg {
     }
 }
 
-impl From<BeginRecordingMsg> for LogMsg {
-    #[inline]
-    fn from(value: BeginRecordingMsg) -> Self {
-        Self::BeginRecordingMsg(value)
-    }
-}
-
-impl From<(RecordingId, EntityPathOpMsg)> for LogMsg {
-    #[inline]
-    fn from(value: (RecordingId, EntityPathOpMsg)) -> Self {
-        Self::EntityPathOpMsg(value.0, value.1)
-    }
-}
-
-impl From<(RecordingId, ArrowMsg)> for LogMsg {
-    #[inline]
-    fn from(value: (RecordingId, ArrowMsg)) -> Self {
-        Self::ArrowMsg(value.0, value.1)
-    }
-}
+impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 
 // ----------------------------------------------------------------------------
 
