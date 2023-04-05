@@ -43,7 +43,7 @@ def run_segmentation() -> None:
         class_ids=np.array([42], dtype=np.uint8),
     )
 
-    rr.log_text_entry("logs/seg_demo_log", "no rects, default colored points, a single point has a label")
+    rr.log_text_entry("logs/seg_demo_log", "default colored rects, default colored points, a single point has a label")
 
     # Log an initial segmentation map with arbitrary colors
     rr.set_time_seconds("sim_time", 2)
