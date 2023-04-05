@@ -15,8 +15,6 @@ python main.py https://raw.githubusercontent.com/facebookresearch/segment-anythi
 # Use cuda and a different model on a local image
 python main.py --device cuda --model vit_h /path/to/my_image.jpg
 ```
-
-
 """
 
 
