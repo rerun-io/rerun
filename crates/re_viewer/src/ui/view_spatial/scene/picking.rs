@@ -207,14 +207,19 @@ pub fn picking(
     if state.closest_opaque_pick.instance_path_hash == InstancePathHash::NONE {
         if let Some(gpu_picking_result) = gpu_picking_result {
             // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
-            let rect = gpu_picking_result.rect;
-            let picked_id = gpu_picking_result.picking_data
-                [(rect.width() / 2 + (rect.height() / 2) * rect.width()) as usize];
+            let pos_on_picking_rect = gpu_picking_result.rect.extent / 2;
+            let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
             let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
 
-            // TODO(andreas): We're lacking depth information!
-            state.closest_opaque_pick.instance_path_hash = picked_object;
-            state.closest_opaque_pick.used_gpu_picking = true;
+            // It is old data, the object might be gone by now!
+            if picked_object.is_some() {
+                // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's entirely correct either!
+                state.closest_opaque_pick.ray_t = gpu_picking_result
+                    .picked_world_position(pos_on_picking_rect)
+                    .distance(context.ray_in_world.origin);
+                state.closest_opaque_pick.instance_path_hash = picked_object;
+                state.closest_opaque_pick.used_gpu_picking = true;
+            }
         } else {
             // It is possible that some frames we don't get a picking result and the frame after we get several.
             // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.

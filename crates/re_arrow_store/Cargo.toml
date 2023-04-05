@@ -83,7 +83,7 @@ polars-core = { workspace = true, features = [
   "sort_multiple",
 ] }
 rand = "0.8"
-
+tinyvec.workspace = true
 
 [lib]
 bench = false

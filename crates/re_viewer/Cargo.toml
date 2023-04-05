@@ -98,7 +98,7 @@ rfd = { version = "0.11.3", default_features = false, features = [
 ] }
 serde = { version = "1", features = ["derive"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
-smallvec.workspace = true
+smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 time = { workspace = true, default-features = false, features = ["formatting"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }

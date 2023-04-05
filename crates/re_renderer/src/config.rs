@@ -5,7 +5,7 @@
 #[derive(Clone, Copy, Debug)]
 pub enum HardwareTier {
     /// For WebGL and native OpenGL. Maintains strict WebGL capability.
-    Basic,
+    Web,
 
     /// Run natively with Vulkan/Metal but don't demand anything that isn't widely available.
     Native,
@@ -17,7 +17,15 @@ impl HardwareTier {
     /// Whether the current hardware tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self {
-            HardwareTier::Basic => false,
+            HardwareTier::Web => false,
+            HardwareTier::Native => true,
+        }
+    }
+
+    /// Whether the current hardware tier supports sampling from textures with a sample count higher than 1.
+    pub fn support_depth_readback(&self) -> bool {
+        match self {
+            HardwareTier::Web => false,
             HardwareTier::Native => true,
         }
     }
@@ -27,7 +35,7 @@ impl Default for HardwareTier {
     fn default() -> Self {
         // Use "Basic" tier for actual web but also if someone forces the GL backend!
         if supported_backends() == wgpu::Backends::GL {
-            HardwareTier::Basic
+            HardwareTier::Web
         } else {
             HardwareTier::Native
         }
@@ -63,7 +71,11 @@ impl HardwareTier {
     /// Downlevel features required by the given tier.
     pub fn required_downlevel_capabilities(self) -> wgpu::DownlevelCapabilities {
         wgpu::DownlevelCapabilities {
-            flags: wgpu::DownlevelFlags::empty(),
+            flags: match self {
+                HardwareTier::Web => wgpu::DownlevelFlags::empty(),
+                // Require fully WebGPU compliance for the native tier.
+                HardwareTier::Native => wgpu::DownlevelFlags::all(),
+            },
             limits: Default::default(), // unused so far both here and in wgpu
             shader_model: wgpu::ShaderModel::Sm4,
         }

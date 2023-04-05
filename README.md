@@ -60,9 +60,8 @@ _Expect breaking changes!_
 Some shortcomings:
 * Big points clouds (1M+) are slow ([#1136](https://github.com/rerun-io/rerun/issues/1136))
 * The data you want to visualize must fit in RAM.
-  - See <https://github.com/rerun-io/rerun/issues/1138> for how to bound memory use
+  - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use
   - We plan on having a disk-based data store some time in the future
-  - Additionally, Rerun is using more memory than it should at the moment ([#1242](https://github.com/rerun-io/rerun/pull/1242))
 * The Rust library takes a long time to compile
   - We have way too many big dependencies, and we are planning on improving the situation ([#1316](https://github.com/rerun-io/rerun/pull/1316))
 

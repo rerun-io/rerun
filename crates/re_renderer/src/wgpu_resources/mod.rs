@@ -169,7 +169,7 @@ impl Texture2DBufferInfo {
     pub fn remove_padding<'a>(&self, buffer: &'a [u8]) -> Cow<'a, [u8]> {
         crate::profile_function!();
 
-        assert!(buffer.len() as wgpu::BufferAddress == self.buffer_size_padded);
+        assert_eq!(buffer.len() as wgpu::BufferAddress, self.buffer_size_padded);
 
         if self.bytes_per_row_padded == self.bytes_per_row_unpadded {
             return Cow::Borrowed(buffer);
@@ -196,7 +196,7 @@ impl Texture2DBufferInfo {
     pub fn remove_padding_and_convert<T: bytemuck::Pod>(&self, buffer: &[u8]) -> Vec<T> {
         crate::profile_function!();
 
-        assert!(buffer.len() as wgpu::BufferAddress == self.buffer_size_padded);
+        assert_eq!(buffer.len() as wgpu::BufferAddress, self.buffer_size_padded);
         assert!(self.bytes_per_row_unpadded % std::mem::size_of::<T>() as u32 == 0);
 
         // Due to https://github.com/gfx-rs/wgpu/issues/3508 the data might be completely unaligned,

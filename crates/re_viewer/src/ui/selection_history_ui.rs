@@ -1,7 +1,7 @@
 use egui::RichText;
 use re_ui::Command;
 
-use super::{HistoricalSelection, SelectionHistory};
+use super::SelectionHistory;
 use crate::{misc::ItemCollection, ui::Blueprint, Item};
 
 // ---
@@ -14,7 +14,6 @@ impl SelectionHistory {
         blueprint: &Blueprint,
     ) -> Option<ItemCollection> {
         self.control_bar_ui(re_ui, ui, blueprint)
-            .map(|sel| sel.selection)
     }
 
     fn control_bar_ui(
@@ -22,7 +21,7 @@ impl SelectionHistory {
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<HistoricalSelection> {
+    ) -> Option<ItemCollection> {
         ui.horizontal_centered(|ui| {
             ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
 
@@ -38,27 +37,23 @@ impl SelectionHistory {
         }).inner
     }
 
-    // TODO(cmc): note that for now, we only check prev/next shortcuts in the UI code that
-    // shows the associated buttons... this means shortcuts only work when the selection panel
-    // is open!
-    // We might want to change this at some point, though the way things are currently designed,
-    // there isn't much point in selecting stuff while the selection panel is hidden anyway.
-
-    pub fn select_previous(&mut self) -> Option<HistoricalSelection> {
+    #[must_use]
+    pub fn select_previous(&mut self) -> Option<ItemCollection> {
         if let Some(previous) = self.previous() {
             if previous.index != self.current {
                 self.current = previous.index;
-                return self.current();
+                return self.current().map(|s| s.selection);
             }
         }
         None
     }
 
-    pub fn select_next(&mut self) -> Option<HistoricalSelection> {
+    #[must_use]
+    pub fn select_next(&mut self) -> Option<ItemCollection> {
         if let Some(next) = self.next() {
             if next.index != self.current {
                 self.current = next.index;
-                return self.current();
+                return self.current().map(|s| s.selection);
             }
         }
         None
@@ -69,7 +64,7 @@ impl SelectionHistory {
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<HistoricalSelection> {
+    ) -> Option<ItemCollection> {
         // undo selection
         if let Some(previous) = self.previous() {
             let response = re_ui
@@ -112,7 +107,7 @@ impl SelectionHistory {
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<HistoricalSelection> {
+    ) -> Option<ItemCollection> {
         // redo selection
         if let Some(next) = self.next() {
             let response = re_ui

@@ -86,7 +86,8 @@ impl GpuReadbackBuffer {
                 },
             );
 
-            self.range_in_chunk = start_offset..self.range_in_chunk.end;
+            self.range_in_chunk =
+                (start_offset + buffer_info.buffer_size_padded)..self.range_in_chunk.end;
         }
     }
 

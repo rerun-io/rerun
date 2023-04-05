@@ -181,9 +181,9 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
         rr.log_obb(
             f"world/annotations/box-{bbox.id}",
-            bbox.scale,
-            bbox.translation,
-            rot.as_quat(),
+            half_size=0.5 * np.array(bbox.scale),
+            position=bbox.translation,
+            rotation_q=rot.as_quat(),
             color=[160, 230, 130, 255],
             label=bbox.category,
             timeless=True,

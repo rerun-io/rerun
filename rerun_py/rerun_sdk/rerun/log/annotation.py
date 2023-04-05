@@ -90,7 +90,7 @@ def log_annotation_context(
 
     Each ClassDescription must include an annotation info with an id, which will
     be used for matching the class and may optionally include a label and color.
-    Colors should either be in 0-255 gamma space or in 0-1 linear space. Colors
+    Colors should either be in 0-255 gamma space or in 0-1 gamma space. Colors
     can be RGB or RGBA.
 
     These can either be specified verbosely as:

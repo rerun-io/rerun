@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,7 @@ from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
-from rerun.log import _normalize_colors, _normalize_radii
+from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 
@@ -26,7 +26,7 @@ def log_path(
     positions: Optional[npt.ArrayLike],
     *,
     stroke_width: Optional[float] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
@@ -39,7 +39,7 @@ def log_line_strip(
     positions: Optional[npt.ArrayLike],
     *,
     stroke_width: Optional[float] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
@@ -65,7 +65,7 @@ def log_line_strip(
     stroke_width:
         Optional width of the line.
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -114,7 +114,7 @@ def log_line_segments(
     positions: npt.ArrayLike,
     *,
     stroke_width: Optional[float] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
 ) -> None:
@@ -139,7 +139,7 @@ def log_line_segments(
     stroke_width:
         Optional width of the line.
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:

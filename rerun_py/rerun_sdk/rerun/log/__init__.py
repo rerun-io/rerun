@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.color_conversion import linear_to_gamma_u8_pixel
 
 __all__ = [
     "annotation",
@@ -36,14 +35,18 @@ OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
 def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
-    if isinstance(array, np.ndarray):
-        return np.require(array, float).tolist()  # type: ignore[no-any-return]
-
-    return array  # type: ignore[return-value]
+    return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
 
 def _normalize_colors(colors: Optional[Union[Color, Colors]] = None) -> npt.NDArray[np.uint8]:
-    """Normalize flexible colors arrays."""
+    """
+    Normalize flexible colors arrays.
+
+    Float colors are assumed to be in 0-1 gamma sRGB space.
+    All other colors are assumed to be in 0-255 gamma sRGB space.
+
+    If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
+    """
     if colors is None:
         # An empty array represents no colors.
         return np.array((), dtype=np.uint8)
@@ -52,7 +55,8 @@ def _normalize_colors(colors: Optional[Union[Color, Colors]] = None) -> npt.NDAr
 
         # Rust expects colors in 0-255 uint8
         if colors_array.dtype.type in [np.float32, np.float64]:
-            return linear_to_gamma_u8_pixel(linear=colors_array)
+            # Assume gamma-space colors
+            return np.require(np.round(colors_array * 255.0), np.uint8)
 
         return np.require(colors_array, np.uint8)
 
