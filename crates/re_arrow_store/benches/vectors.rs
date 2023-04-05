@@ -8,8 +8,16 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use smallvec::SmallVec;
 use tinyvec::TinyVec;
 
+// ---
+
 criterion_group!(benches, sort, split, swap, swap_opt);
+
+#[cfg(not(feature = "dont_bench_third_party"))]
 criterion_main!(benches);
+
+// Don't run these benchmarks on CI: they measure the performance of third-party libraries.
+#[cfg(feature = "dont_bench_third_party")]
+fn main() {}
 
 // ---
 
