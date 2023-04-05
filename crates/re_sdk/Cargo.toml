@@ -33,18 +33,13 @@ image = ["re_log_types/image"]
 
 
 [dependencies]
-re_build_info.workspace = true
-re_error.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
-re_smart_channel.workspace = true
 re_transport = { workspace = true, features = ["encoder"] }
 
-anyhow.workspace = true
 document-features = "0.2"
-nohash-hasher = "0.2"
 parking_lot.workspace = true
 thiserror.workspace = true
 
@@ -57,7 +52,3 @@ arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
-
-
-[build-dependencies]
-re_build_build_info.workspace = true
