@@ -50,7 +50,7 @@ pub async fn start(
                             url: url.clone(),
                         });
                     let egui_ctx = cc.egui_ctx.clone();
-                    crate::stream_rrd_from_http::stream_rrd_from_http(
+                    re_transport::stream_rrd_from_http::stream_rrd_from_http(
                         url,
                         Box::new(move |msg| {
                             egui_ctx.request_repaint(); // wake up ui thread
