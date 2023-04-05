@@ -4,7 +4,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use arrow2::{array::PrimitiveArray, datatypes::PhysicalType, types::PrimitiveType};
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, Criterion};
 use re_log_types::{
     component_types::InstanceKey, external::arrow2_convert::deserialize::TryIntoCollection,
     Component as _, DataCell,
@@ -15,7 +15,7 @@ use re_log_types::{
 criterion_group!(benches, serialize, deserialize);
 
 #[cfg(not(feature = "dont_bench_third_party"))]
-criterion_main!(benches);
+criterion::criterion_main!(benches);
 
 // Don't run these benchmarks on CI: they measure the performance of third-party libraries.
 #[cfg(feature = "dont_bench_third_party")]
