@@ -77,7 +77,7 @@ ndarray.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
-smallvec = { version = "1.10", features = ["union"] }
+smallvec.workspace = true
 thiserror.workspace = true
 time = { workspace = true, default-features = false, features = [
   "formatting",

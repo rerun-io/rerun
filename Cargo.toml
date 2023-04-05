@@ -79,8 +79,10 @@ polars-core = "0.27.1"
 polars-lazy = "0.27.1"
 polars-ops = "0.27.1"
 puffin = "0.14"
+smallvec = { version = "1.0", features = ["const_generics", "union"] }
 thiserror = "1.0"
 time = { version = "0.3", features = ["wasm-bindgen"] }
+tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = "1.24"
 wgpu = { version = "0.15.1", default-features = false }
 wgpu-core = { version = "0.15.1", default-features = false }

@@ -698,8 +698,7 @@ impl IndexedBucket {
         // find the secondary row number, and the associated cells.
         let mut secondary_row_nr = primary_row_nr;
         while column[secondary_row_nr as usize].is_none() {
-            secondary_row_nr -= 1;
-            if secondary_row_nr < 0 {
+            if secondary_row_nr == 0 {
                 trace!(
                     kind = "latest_at",
                     %primary,
@@ -711,6 +710,7 @@ impl IndexedBucket {
                 );
                 return None;
             }
+            secondary_row_nr -= 1;
         }
 
         trace!(
@@ -1047,19 +1047,11 @@ impl PersistentIndexedTable {
         // for building the returned iterator.
         crate::profile_function!();
 
-        // TODO(cmc): Cloning these is obviously not great and will need to be addressed at
-        // some point.
-        // But, really, it's not _that_ bad either: these are either integers or erased pointers,
-        // and e.g. with the default configuration there are only 1024 of them (times the number
-        // of components).
-        let row_id = self.col_row_id.clone();
-        let mut columns = self.columns.clone(); // shallow
-
         let cells = (0..self.total_rows()).filter_map(move |row_nr| {
             let mut cells = [(); N].map(|_| None);
             for (i, component) in components.iter().enumerate() {
-                if let Some(column) = columns.get_mut(component) {
-                    cells[i] = column[row_nr as usize].take();
+                if let Some(column) = self.columns.get(component) {
+                    cells[i] = column[row_nr as usize].clone();
                 }
             }
 
@@ -1069,7 +1061,7 @@ impl PersistentIndexedTable {
                 return None;
             }
 
-            let row_id = row_id[row_nr as usize];
+            let row_id = self.col_row_id[row_nr as usize];
 
             trace!(
                 kind = "range",
