@@ -3862,6 +3862,7 @@ version = "0.4.0"
 dependencies = [
  "arrow2",
  "comfy-table 6.1.4",
+ "parking_lot 0.12.1",
 ]
 
 [[package]]
