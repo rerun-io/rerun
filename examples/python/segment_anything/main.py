@@ -9,8 +9,13 @@ or remote urls.
 
 Exa:
 ```
-python main.py --device cuda https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/dog.jpg
+# Run on a remote image:
+python main.py https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/dog.jpg
+
+# Use cuda and a different model on a local image
+python main.py --device cuda --model vit_h /path/to/my_image.jpg
 ```
+
 
 """
 
@@ -141,7 +146,7 @@ def main() -> None:
         action="store",
         default="vit_b",
         choices=MODEL_URLS.keys(),
-        help="Which model to use.",
+        help="Which model to use." "(See: https://github.com/facebookresearch/segment-anything#model-checkpoints)",
     )
     parser.add_argument(
         "--device",
