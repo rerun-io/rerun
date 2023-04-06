@@ -92,7 +92,15 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
 
     logging.info("Found {} masks".format(len(masks)))
 
-    # Note: it is important to sort these masks by area from largest to smallest
+    # Log all the masks stacked together as a tensor
+    # TODO(jleibs): Tensors with class-ids and annotation-coloring would make this much slicker
+    mask_tensor = (
+        np.dstack([np.zeros((image.shape[0], image.shape[1]))] + [m["segmentation"] for m in masks]).astype("uint8")
+        * 128
+    )
+    rr.log_tensor("mask_tensor", mask_tensor)
+
+    # Note: for stacking, it is important to sort these masks by area from largest to smallest
     # this is because the masks are overlapping and we want smaller masks to
     # be drawn on top of larger masks.
     # TODO(jleibs): we could instead draw each mask as a separate image layer, but the current layer-stacking
@@ -113,6 +121,7 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     segmentation_img = np.zeros((image.shape[0], image.shape[1]))
     for id, m in masks_with_ids:
         segmentation_img[m["segmentation"]] = id
+
     rr.log_segmentation_image("image/masks", segmentation_img)
 
     mask_bbox = np.array([m["bbox"] for _, m in masks_with_ids])
