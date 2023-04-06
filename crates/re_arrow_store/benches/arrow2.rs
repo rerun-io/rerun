@@ -9,7 +9,7 @@ use arrow2::{
     array::{Array, PrimitiveArray, StructArray, UnionArray},
     compute::aggregate::estimated_bytes_size,
 };
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
 use re_log_types::{
     component_types::{InstanceKey, Point2D, Rect2D},
@@ -21,7 +21,13 @@ use re_log_types::{
 // ---
 
 criterion_group!(benches, erased_clone, estimated_size_bytes);
-criterion_main!(benches);
+
+#[cfg(not(feature = "dont_bench_third_party"))]
+criterion::criterion_main!(benches);
+
+// Don't run these benchmarks on CI: they measure the performance of third-party libraries.
+#[cfg(feature = "dont_bench_third_party")]
+fn main() {}
 
 // ---
 

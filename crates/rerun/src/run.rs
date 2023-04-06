@@ -533,7 +533,7 @@ pub fn setup_ctrl_c_handler() -> (tokio::sync::broadcast::Receiver<()>, Arc<Atom
     let shutdown = shutdown_return.clone();
     ctrlc::set_handler(move || {
         re_log::debug!("Ctrl-C detected, shutting down.");
-        sender.send(()).unwrap();
+        sender.send(()).ok();
         shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
     })
     .expect("Error setting Ctrl-C handler");
