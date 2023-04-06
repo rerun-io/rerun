@@ -366,7 +366,7 @@ pub fn show_zoomed_image_region(
                                         .class_description(Some(ClassId(u16_val)))
                                         .annotation_info()
                                         .label(None)
-                                        .unwrap_or_default(),
+                                        .unwrap_or_else(|| u16_val.to_string())
                                 );
                                 ui.end_row();
                             };
