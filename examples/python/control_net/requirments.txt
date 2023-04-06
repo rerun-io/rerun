@@ -9,5 +9,10 @@ requests==2.28.1
 rerun-sdk
 scipy
 torch>=1.13.0
+torchvision
+timm
 transformers>=4.26.0
 git+https://github.com/dbolya/tomesd
+# controlnet-aux==0.0.1 # doesn't include midas/
+# use this for now
+git+https://github.com/Stax124/controlnet_aux.git

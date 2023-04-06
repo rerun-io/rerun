@@ -22,6 +22,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import PIL.Image
+import rerun as rr
 import torch
 from diffusers.models import AutoencoderKL, ControlNetModel, UNet2DConditionModel
 from diffusers.models.controlnet import ControlNetOutput
@@ -37,7 +38,6 @@ from diffusers.utils import (
     logging,
     randn_tensor,
 )
-import rerun as rr
 from torch import nn
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 

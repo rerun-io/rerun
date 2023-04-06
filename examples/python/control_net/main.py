@@ -3,12 +3,11 @@ import os
 from pathlib import Path
 from typing import Final
 
-import cv2
-import numpy as np
 import requests
 import rerun as rr
 import tomesd
 import torch
+from controlnet_aux import CannyDetector, MidasDetector, HEDdetector, OpenposeDetector, MLSDdetector
 from diffusers import ControlNetModel, UniPCMultistepScheduler
 from huggingface_pipeline import StableDiffusionControlNetPipeline
 from PIL import Image
@@ -27,9 +26,7 @@ CONTROLNET_MODEL_IDS = {
     "canny": "lllyasviel/sd-controlnet-canny",
     "hough": "lllyasviel/sd-controlnet-mlsd",
     "hed": "lllyasviel/sd-controlnet-hed",
-    "scribble": "lllyasviel/sd-controlnet-scribble",
     "pose": "lllyasviel/sd-controlnet-openpose",
-    "seg": "lllyasviel/sd-controlnet-seg",
     "depth": "lllyasviel/sd-controlnet-depth",
     "normal": "lllyasviel/sd-controlnet-normal",
 }
@@ -52,17 +49,6 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
             for chunk in req.iter_content(chunk_size=8192):
                 f.write(chunk)
     return str(destination_path)
-
-
-def get_canny_filter(image):
-    if not isinstance(image, np.ndarray):
-        image = np.array(image)
-
-    image = cv2.Canny(image, 100, 200)
-    image = image[:, :, None]
-    image = np.concatenate([image, image, image], axis=2)
-    canny_image = Image.fromarray(image)
-    return canny_image
 
 
 def main() -> None:
@@ -132,12 +118,26 @@ expense of slower inference. This parameter will be modulated by `strength`.
 
     image = Image.open(image_path)
 
-    if args.control_type == "depth":
-        depth_model = torch.hub.load("isl-org/ZoeDepth", "ZoeD_N", pretrained=True).to(DEVICE).eval()
-        depth = depth_model.infer_pil(image)
-        controlnet_input = Image.fromarray(depth)
+    if args.control_type == "depth" or args.control_type == "normal":
+        midas = MidasDetector.from_pretrained("lllyasviel/ControlNet")
+        depth, normal = midas(image)
+        if args.control_type == "depth":
+            controlnet_input = depth
+        else:
+            controlnet_input = normal
     elif args.control_type == "canny":
-        controlnet_input = get_canny_filter(image)
+        detector = CannyDetector()
+        controlnet_input = detector(image, 100, 200)
+    elif args.control_type == "hed":
+        detector = HEDdetector.from_pretrained("lllyasviel/ControlNet")
+        controlnet_input = detector(image)
+    elif args.control_type == "hough":
+        mlsd = MLSDdetector.from_pretrained("lllyasviel/ControlNet")
+        controlnet_input = mlsd(image)
+    elif args.control_type == "pose":
+        pose = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
+        controlnet_input = pose(image)
+
     else:
         raise NotImplementedError
 
