@@ -80,7 +80,7 @@ impl DataStore {
     /// # Temporal semantics
     ///
     /// In addition to the temporal results, this also includes all [`ComponentName`]s present in
-    /// the timeless indices for this entity.
+    /// the timeless tables for this entity.
     pub fn all_components(
         &self,
         timeline: &Timeline,
@@ -140,7 +140,7 @@ impl DataStore {
     ///
     /// # Temporal semantics
     ///
-    /// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+    /// Temporal indices take precedence, then timeless tables are queried to fill the holes left
     /// by missing temporal data.
     ///
     /// ## Example
@@ -305,7 +305,7 @@ impl DataStore {
     ///
     /// Yields the contents of the temporal indices.
     /// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
-    /// timeless indices before anything else.
+    /// timeless tables before anything else.
     ///
     /// When yielding timeless entries, the associated time will be `None`.
     ///
@@ -442,7 +442,11 @@ impl DataStore {
 // --- Temporal ---
 
 impl IndexedTable {
-    /// Returns `None` iff no cell could be found for the `primary` component.
+    /// Queries the table for the cells of the specified `components`, as seen from the point
+    /// of view of the so-called `primary` component.
+    ///
+    /// Returns an array of [`DataCell`]s on success, or `None` iff no cell could be found for
+    /// the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
@@ -488,7 +492,16 @@ impl IndexedTable {
         None // primary component not found
     }
 
-    /// Returns an empty iterator if no data could be found for any reason.
+    /// Iterates the table in order to return the cells of the the specified `components`,
+    /// as seen from the point of view of the so-called `primary` component, for the given time
+    /// range.
+    ///
+    /// For each and every relevant row that is found, the returned iterator will yield an array
+    /// that is filled with the cells of each and every component in `components`, or `None` if
+    /// said component is not available in that row.
+    /// A row is considered iff it contains data for the `primary` component.
+    ///
+    /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
@@ -637,7 +650,11 @@ impl IndexedBucket {
         self.inner.write().sort();
     }
 
-    /// Returns `None` iff no cell could be found for the `primary` component.
+    /// Queries the bucket for the cells of the specified `components`, as seen from the point
+    /// of view of the so-called `primary` component.
+    ///
+    /// Returns an array of [`DataCell`]s on success, or `None` iff no cell could be found for
+    /// the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
@@ -745,7 +762,16 @@ impl IndexedBucket {
         Some(cells)
     }
 
-    /// Returns an empty iterator if no data could be found for any reason.
+    /// Iterates the bucket in order to return the cells of the the specified `components`,
+    /// as seen from the point of view of the so-called `primary` component, for the given time
+    /// range.
+    ///
+    /// For each and every relevant row that is found, the returned iterator will yield an array
+    /// that is filled with the cells of each and every component in `components`, or `None` if
+    /// said component is not available in that row.
+    /// A row is considered iff it contains data for the `primary` component.
+    ///
+    /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
@@ -948,7 +974,11 @@ impl IndexedBucketInner {
 // --- Timeless ---
 
 impl PersistentIndexedTable {
-    /// Returns `None` iff no cell could be found for the `primary` component.
+    /// Queries the table for the cells of the specified `components`, as seen from the point
+    /// of view of the so-called `primary` component.
+    ///
+    /// Returns an array of [`DataCell`]s on success, or `None` iff no cell could be found for
+    /// the `primary` component.
     fn latest_at<const N: usize>(
         &self,
         primary: ComponentName,
@@ -1030,7 +1060,16 @@ impl PersistentIndexedTable {
         Some(cells)
     }
 
-    /// Returns an empty iterator if no data could be found for any reason.
+    /// Iterates the table in order to return the cells of the the specified `components`,
+    /// as seen from the point of view of the so-called `primary` component, for the given time
+    /// range.
+    ///
+    /// For each and every relevant row that is found, the returned iterator will yield an array
+    /// that is filled with the cells of each and every component in `components`, or `None` if
+    /// said component is not available in that row.
+    /// A row is considered iff it contains data for the `primary` component.
+    ///
+    /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
         components: [ComponentName; N],

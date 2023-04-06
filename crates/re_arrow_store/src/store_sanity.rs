@@ -6,6 +6,9 @@ use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, Persiste
 
 // ---
 
+/// Returned by the `sanity_check` family of function when an invariant violation has been detected
+/// in the `DataStore`'s internal datastructures.
+/// These violations can only stem from a bug in the store's implementation itself.
 #[derive(thiserror::Error, Debug)]
 pub enum SanityError {
     #[error("Column '{component}' has too few/many rows: got {got} instead of {expected}")]
