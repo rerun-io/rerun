@@ -1,4 +1,4 @@
-//! Crate that handles transporting of rerun log types.
+//! Crate that handles encoding of rerun log types.
 
 #[cfg(feature = "decoder")]
 pub mod decoder;
