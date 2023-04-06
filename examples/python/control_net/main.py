@@ -20,7 +20,8 @@ CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 IMAGE_NAME_TO_URL: Final = {
     "vermeer": "https://hf.co/datasets/huggingface/documentation-images/resolve/main/diffusers/input_image_vermeer.png",  # noqa: E501 line too long
-    "house": "https://images.pexels.com/photos/259600/pexels-photo-259600.jpeg?cs=srgb&dl=architecture-facade-house-259600.jpg&fm=jpg", # noqa: E501 line too long
+    "house": "https://images.pexels.com/photos/259600/pexels-photo-259600.jpeg?cs=srgb&dl=architecture-facade-house-259600.jpg&fm=jpg",  # noqa: E501 line too long
+    "yoga": "http://womenpla.net/wp-content/uploads/2014/07/yoga-benefits-1024x682.jpg",  # noqa: E501 line too long
 }
 IMAGE_NAMES: Final = list(IMAGE_NAME_TO_URL.keys())
 CONTROLNET_MODEL_IDS = {
