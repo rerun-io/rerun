@@ -7,7 +7,7 @@ import requests
 import rerun as rr
 import tomesd
 import torch
-from controlnet_aux import CannyDetector, MidasDetector, HEDdetector, OpenposeDetector, MLSDdetector
+from controlnet_aux import CannyDetector, HEDdetector, MidasDetector, MLSDdetector, OpenposeDetector
 from diffusers import ControlNetModel, UniPCMultistepScheduler
 from huggingface_pipeline import StableDiffusionControlNetPipeline
 from PIL import Image
@@ -20,6 +20,7 @@ CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 IMAGE_NAME_TO_URL: Final = {
     "vermeer": "https://hf.co/datasets/huggingface/documentation-images/resolve/main/diffusers/input_image_vermeer.png",  # noqa: E501 line too long
+    "house": "https://images.pexels.com/photos/259600/pexels-photo-259600.jpeg?cs=srgb&dl=architecture-facade-house-259600.jpg&fm=jpg", # noqa: E501 line too long
 }
 IMAGE_NAMES: Final = list(IMAGE_NAME_TO_URL.keys())
 CONTROLNET_MODEL_IDS = {
@@ -103,11 +104,11 @@ expense of slower inference. This parameter will be modulated by `strength`.
     if not image_path:
         image_path = get_downloaded_path(args.dataset_dir, args.image)
 
-    # Models
+    # ControlNet Model and Stable Diffusion Model
     controlnet = ControlNetModel.from_pretrained(CONTROLNET_MODEL_IDS[args.control_type])
     pipe = StableDiffusionControlNetPipeline.from_pretrained(
         "runwayml/stable-diffusion-v1-5", controlnet=controlnet, safety_checker=None
-    )  # , torch_dtype=torch.float16
+    )
 
     pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
 
@@ -117,6 +118,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
     tomesd.apply_patch(pipe, ratio=0.5)
 
     image = Image.open(image_path)
+    image = image.resize((512, 512))
 
     if args.control_type == "depth" or args.control_type == "normal":
         midas = MidasDetector.from_pretrained("lllyasviel/ControlNet")
@@ -141,6 +143,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
     else:
         raise NotImplementedError
 
+    rr.set_time_sequence("timestep", 0)
     rr.log_image("original_image", image)
 
     output = pipe(
