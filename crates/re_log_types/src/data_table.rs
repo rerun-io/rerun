@@ -150,15 +150,15 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 ///
 /// The table above translates to the following, where each column is contiguous in memory:
 /// ```text
-/// ┌───────────────────────┬───────────────────────────────────┬────────────────────┬─────────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
-/// │ rerun.row_id          ┆ rerun.timepoint                   ┆ rerun.entity_path  ┆ rerun.num_instances ┆ rerun.label ┆ rerun.point2d                    ┆ rerun.colorrgba │
-/// ╞═══════════════════════╪═══════════════════════════════════╪════════════════════╪═════════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {clock, 1, 1}] ┆ a                  ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {clock, 1, 2}] ┆ b                  ┆ 0                   ┆ -           ┆ -                                ┆ []              │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 2}, {clock, 1, 1}] ┆ c                  ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
-/// └───────────────────────┴───────────────────────────────────┴────────────────────┴─────────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
+/// ┌──────────┬───────────────────────────────┬──────────────────────────────────┬───────────────────┬─────────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
+/// │ frame_nr ┆ log_time                      ┆ rerun.row_id                     ┆ rerun.entity_path ┆ rerun.num_instances ┆ rerun.label ┆ rerun.point2d                    ┆ rerun.colorrgba │
+/// ╞══════════╪═══════════════════════════════╪══════════════════════════════════╪═══════════════════╪═════════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
+/// │ 1        ┆ 2023-04-05 09:36:47.188796402 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ a                 ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
+/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 1        ┆ 2023-04-05 09:36:47.188852222 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ b                 ┆ 0                   ┆ -           ┆ -                                ┆ []              │
+/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 2        ┆ 2023-04-05 09:36:47.188855872 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ c                 ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
+/// └──────────┴───────────────────────────────┴──────────────────────────────────┴───────────────────┴─────────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
 /// ```
 ///
 /// ## Example
@@ -533,8 +533,6 @@ impl DataTable {
                 [(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into(),
             );
 
-            // TODO(cmc): why do we have to do this manually on the way out, but it's done
-            // automatically on our behalf on the way in...?
             if let DataType::Extension(name, _, _) = data.data_type() {
                 field
                     .metadata
@@ -627,15 +625,20 @@ impl DataTable {
                 .map(|cell| cell.as_arrow_ref())
                 .collect_vec();
 
+            let ext_name = cell_refs.first().and_then(|cell| match cell.data_type() {
+                DataType::Extension(name, _, _) => Some(name),
+                _ => None,
+            });
+
             // NOTE: Avoid paying for the cost of the concatenation machinery if there's a single
             // row in the column.
             let data = if cell_refs.len() == 1 {
-                data_to_lists(column, cell_refs[0].to_boxed())
+                data_to_lists(column, cell_refs[0].to_boxed(), ext_name.cloned())
             } else {
                 // NOTE: This is a column of cells, it shouldn't ever fail to concatenate since
                 // they share the same underlying type.
                 let data = arrow2::compute::concatenate::concatenate(cell_refs.as_slice())?;
-                data_to_lists(column, data)
+                data_to_lists(column, data, ext_name.cloned())
             };
 
             let field = Field::new(name, data.data_type().clone(), false)
@@ -648,10 +651,26 @@ impl DataTable {
         ///
         /// * Before: `[C, C, C, C, C, C, C, ...]`
         /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], ...] ]`
-        fn data_to_lists(column: &[Option<DataCell>], data: Box<dyn Array>) -> Box<dyn Array> {
+        fn data_to_lists(
+            column: &[Option<DataCell>],
+            data: Box<dyn Array>,
+            ext_name: Option<String>,
+        ) -> Box<dyn Array> {
             let datatype = data.data_type().clone();
 
-            let datatype = ListArray::<i32>::default_datatype(datatype);
+            let field = {
+                let mut field = Field::new("item", datatype, true);
+
+                if let Some(name) = ext_name {
+                    field
+                        .metadata
+                        .extend([("ARROW:extension:name".to_owned(), name)]);
+                }
+
+                field
+            };
+
+            let datatype = DataType::List(Box::new(field));
             let offsets = Offsets::try_from_lengths(column.iter().map(|cell| {
                 cell.as_ref()
                     .map_or(0, |cell| cell.num_instances() as usize)

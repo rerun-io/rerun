@@ -6,11 +6,10 @@
 #![doc = document_features::document_features!()]
 //!
 
-use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
+use arrow2::datatypes::DataType;
+use arrow2_convert::{ArrowDeserialize, ArrowSerialize};
 
-#[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ArrowField, ArrowSerialize, ArrowDeserialize,
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
@@ -19,6 +18,27 @@ pub struct Tuid {
     /// Initialized to something random on each thread,
     /// then incremented for each new [`Tuid`] being allocated.
     inc: u64,
+}
+
+arrow2_convert::arrow_enable_vec_for_type!(Tuid);
+
+// TODO(#1774): shouldn't have to write this manually
+impl arrow2_convert::field::ArrowField for Tuid {
+    type Type = Self;
+
+    fn data_type() -> arrow2::datatypes::DataType {
+        let datatype = arrow2::datatypes::DataType::Struct(<[_]>::into_vec(Box::new([
+            <u64 as arrow2_convert::field::ArrowField>::field("time_ns"),
+            <u64 as arrow2_convert::field::ArrowField>::field("inc"),
+        ])));
+        DataType::Extension("rerun.tuid".into(), Box::new(datatype), None)
+    }
+}
+
+impl std::fmt::Display for Tuid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:032X}", self.as_u128())
+    }
 }
 
 impl std::fmt::Debug for Tuid {
