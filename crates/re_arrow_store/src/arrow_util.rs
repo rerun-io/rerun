@@ -51,7 +51,14 @@ impl ArrayExt for dyn Array {
     ///
     /// Nested types are expanded and cleaned recursively
     fn clean_for_polars(&self) -> Box<dyn Array> {
-        match self.data_type() {
+        let datatype = self.data_type();
+        let datatype = if let DataType::Extension(_, inner, _) = datatype {
+            (**inner).clone()
+        } else {
+            datatype.clone()
+        };
+
+        match &datatype {
             DataType::List(field) => {
                 // Recursively clean the contents
                 let typed_arr = self.as_any().downcast_ref::<ListArray<i32>>().unwrap();

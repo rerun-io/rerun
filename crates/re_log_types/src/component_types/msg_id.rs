@@ -12,10 +12,10 @@ use crate::{Component, ComponentName};
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
 ///     MsgId::data_type(),
-///     DataType::Struct(vec![
+///     DataType::Extension("rerun.tuid".into(), Box::new(DataType::Struct(vec![
 ///         Field::new("time_ns", DataType::UInt64, false),
 ///         Field::new("inc", DataType::UInt64, false),
-///     ])
+///     ])), None),
 /// );
 /// ```
 #[derive(
