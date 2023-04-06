@@ -98,6 +98,7 @@ rand = { version = "0.8", optional = true }
 rmp-serde = { version = "1", optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
+chrono = "0.4.24"
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

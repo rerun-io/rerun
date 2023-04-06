@@ -1,3 +1,4 @@
+use chrono::{Local, TimeZone as _};
 use std::collections::{btree_map, BTreeMap};
 
 mod time_int;
@@ -129,6 +130,22 @@ impl TimeType {
             self.format(time_range.min),
             self.format(time_range.max)
         )
+    }
+
+    pub fn format_to_local_time(&self, time_int: TimeInt) -> String {
+        if time_int <= TimeInt::BEGINNING {
+            "-∞".into()
+        } else if time_int >= TimeInt::MAX {
+            "+∞".into()
+        } else {
+            match self {
+                Self::Time => Local
+                    .timestamp_nanos(time_int.0)
+                    .format("%H:%M:%S%.3f")
+                    .to_string(),
+                Self::Sequence => format!("#{}", time_int.0),
+            }
+        }
     }
 }
 

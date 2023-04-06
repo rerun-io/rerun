@@ -716,7 +716,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if is_time_safe_to_show(ctx.log_db, timeline, time_int.into()) {
             let time_type = ctx.rec_cfg.time_ctrl.time_type();
-            ui.monospace(time_type.format(time_int));
+            ui.monospace(time_type.format_to_local_time(time_int));
         }
     }
 }
