@@ -4,9 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#[cfg(any(feature = "save", feature = "load"))]
-pub mod encoding;
-
 #[cfg(feature = "arrow_datagen")]
 pub mod datagen;
 
@@ -162,9 +159,8 @@ impl std::fmt::Display for ApplicationId {
 
 /// The most general log message sent from the SDK to the server.
 #[must_use]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(test, derive(PartialEq))]
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
     /// A new recording has begun.

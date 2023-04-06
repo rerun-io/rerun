@@ -1,5 +1,5 @@
-#[cfg(not(all(feature = "save", feature = "load")))]
-compile_error!("msg_encode_benchmark requires 'save' and 'load' features.");
+#[cfg(not(all(feature = "decoder", feature = "encoder")))]
+compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features.");
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -28,13 +28,13 @@ criterion_main!(benches);
 
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
     let mut bytes = vec![];
-    re_log_types::encoding::encode(messages.iter(), &mut bytes).unwrap();
+    re_log_encoding::encoder::encode(messages.iter(), &mut bytes).unwrap();
     assert!(bytes.len() > messages.len());
     bytes
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let messages = re_log_types::encoding::Decoder::new(&mut bytes)
+    let messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
         .unwrap()
         .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();

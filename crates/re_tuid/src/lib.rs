@@ -6,10 +6,11 @@
 #![doc = document_features::document_features!()]
 //!
 
-use arrow2::datatypes::DataType;
-use arrow2_convert::{ArrowDeserialize, ArrowSerialize};
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(
+    feature = "arrow2_convert",
+    derive(arrow2_convert::ArrowSerialize, arrow2_convert::ArrowDeserialize)
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
@@ -20,9 +21,11 @@ pub struct Tuid {
     inc: u64,
 }
 
+#[cfg(feature = "arrow2_convert")]
 arrow2_convert::arrow_enable_vec_for_type!(Tuid);
 
 // TODO(#1774): shouldn't have to write this manually
+#[cfg(feature = "arrow2_convert")]
 impl arrow2_convert::field::ArrowField for Tuid {
     type Type = Self;
 
@@ -31,7 +34,7 @@ impl arrow2_convert::field::ArrowField for Tuid {
             <u64 as arrow2_convert::field::ArrowField>::field("time_ns"),
             <u64 as arrow2_convert::field::ArrowField>::field("inc"),
         ])));
-        DataType::Extension("rerun.tuid".into(), Box::new(datatype), None)
+        arrow2::datatypes::DataType::Extension("rerun.tuid".into(), Box::new(datatype), None)
     }
 }
 

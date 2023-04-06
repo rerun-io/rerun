@@ -33,6 +33,7 @@ re_error = { path = "crates/re_error", version = "0.4.0" }
 re_format = { path = "crates/re_format", version = "0.4.0" }
 re_int_histogram = { path = "crates/re_int_histogram", version = "0.4.0" }
 re_log = { path = "crates/re_log", version = "0.4.0" }
+re_log_encoding = { path = "crates/re_log_encoding", version = "0.4.0" }
 re_log_types = { path = "crates/re_log_types", version = "0.4.0" }
 re_memory = { path = "crates/re_memory", version = "0.4.0" }
 re_query = { path = "crates/re_query", version = "0.4.0" }

@@ -133,7 +133,7 @@ impl SessionBuilder {
     pub fn save(
         self,
         path: impl Into<std::path::PathBuf>,
-    ) -> Result<Session, crate::file_sink::FileSinkError> {
+    ) -> Result<Session, crate::sink::FileSinkError> {
         let (rerun_enabled, recording_info) = self.finalize();
         if rerun_enabled {
             Ok(Session::new(

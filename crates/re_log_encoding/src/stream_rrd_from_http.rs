@@ -1,6 +1,6 @@
-pub fn stream_rrd_from_http_to_channel(
-    url: String,
-) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
+use re_log_types::LogMsg;
+
+pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receiver<LogMsg> {
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::RrdHttpStream {
         url: url.clone(),
     });
@@ -13,7 +13,7 @@ pub fn stream_rrd_from_http_to_channel(
     rx
 }
 
-pub fn stream_rrd_from_http(url: String, on_msg: Box<dyn Fn(re_log_types::LogMsg) + Send>) {
+pub fn stream_rrd_from_http(url: String, on_msg: Box<dyn Fn(LogMsg) + Send>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     // TODO(emilk): stream the http request, progressively decoding the .rrd file.
@@ -38,8 +38,8 @@ pub fn stream_rrd_from_http(url: String, on_msg: Box<dyn Fn(re_log_types::LogMsg
 
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(re_log_types::LogMsg) + Send>) {
-    match re_log_types::encoding::Decoder::new(rrd_bytes.as_slice()) {
+fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
+    match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
         Ok(decoder) => {
             for msg in decoder {
                 match msg {
@@ -60,20 +60,19 @@ fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(re_log_types::LogMsg) + Sen
 
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
-    pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(re_log_types::LogMsg) + Send>) {
+    use re_log_types::LogMsg;
+
+    pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
         wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
     ///
     /// This is cooperative multi-tasking.
-    async fn decode_rrd_async(
-        rrd_bytes: Vec<u8>,
-        on_msg: Box<dyn Fn(re_log_types::LogMsg) + Send>,
-    ) {
+    async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
         let mut last_yield = instant::Instant::now();
 
-        match re_log_types::encoding::Decoder::new(rrd_bytes.as_slice()) {
+        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {

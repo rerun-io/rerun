@@ -263,7 +263,7 @@ async fn run_impl(
     let rx = if let Some(url_or_path) = args.url_or_path.clone() {
         match categorize_argument(url_or_path) {
             ArgumentCategory::RrdHttpUrl(url) => {
-                re_viewer::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
+                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
             }
             ArgumentCategory::RrdFilePath(path) => {
                 re_log::info!("Loading {path:?}…");
@@ -281,6 +281,7 @@ async fn run_impl(
                     }
                     #[cfg(not(feature = "web_viewer"))]
                     {
+                        _ = (rerun_server_ws_url, shutdown_rx);
                         panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
                     }
                 } else {
@@ -295,7 +296,7 @@ async fn run_impl(
 
                     #[cfg(not(feature = "native_viewer"))]
                     {
-                        _ = call_source;
+                        _ = (call_source, rerun_server_ws_url);
                         anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature");
                     }
                 }
@@ -452,7 +453,7 @@ fn native_viewer_connect_to_ws_url(
 fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMsg>> {
     use anyhow::Context as _;
     let file = std::fs::File::open(path).context("Failed to open file")?;
-    let decoder = re_log_types::encoding::Decoder::new(file)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(file)?;
 
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File {
         path: path.to_owned(),
@@ -482,8 +483,8 @@ fn stream_to_rrd(
     rx: &re_smart_channel::Receiver<LogMsg>,
     path: &std::path::PathBuf,
     shutdown_bool: &Arc<AtomicBool>,
-) -> Result<(), re_sdk::sink::FileSinkError> {
-    use re_sdk::sink::FileSinkError;
+) -> Result<(), re_log_encoding::FileSinkError> {
+    use re_log_encoding::FileSinkError;
     use re_smart_channel::RecvTimeoutError;
 
     if path.exists() {
@@ -494,7 +495,7 @@ fn stream_to_rrd(
 
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_types::encoding::Encoder::new(file)?;
+    let mut encoder = re_log_encoding::encoder::Encoder::new(file)?;
 
     while !shutdown_bool.load(std::sync::atomic::Ordering::Relaxed) {
         // We wake up and poll shutdown_bool every now and then.
