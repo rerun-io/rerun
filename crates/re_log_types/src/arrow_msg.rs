@@ -87,7 +87,14 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                     (table_id, timepoint_min, buf)
                 {
                     let mut cursor = std::io::Cursor::new(buf);
-                    let metadata = read_stream_metadata(&mut cursor).unwrap();
+                    let metadata = match read_stream_metadata(&mut cursor) {
+                        Ok(metadata) => metadata,
+                        Err(err) => {
+                            return Err(serde::de::Error::custom(format!(
+                                "Failed to read stream metadata: {err}"
+                            )))
+                        }
+                    };
                     let mut stream = StreamReader::new(cursor, metadata, None);
                     let chunk = stream
                         .find_map(|state| match state {

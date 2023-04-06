@@ -7,3 +7,4 @@ mkdocs-redirects
 mkdocstrings
 mkdocstrings-python
 mike
+typing_extensions # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)
