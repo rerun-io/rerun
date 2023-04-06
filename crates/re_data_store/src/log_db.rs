@@ -235,7 +235,7 @@ impl LogDb {
 
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::EntityPathOpMsg(msg) => {
+            LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
                     msg_id,
                     time_point,
@@ -243,7 +243,7 @@ impl LogDb {
                 } = msg;
                 self.entity_db.add_path_op(*msg_id, time_point, path_op);
             }
-            LogMsg::ArrowMsg(inner) => self.entity_db.try_add_arrow_msg(inner)?,
+            LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
             LogMsg::Goodbye(_) => {}
         }
 

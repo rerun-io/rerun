@@ -11,9 +11,9 @@ use pyo3::{
     types::PyDict,
 };
 
-use re_log_types::{DataRow, DataTableError};
+use re_log_types::{ArrowMsg, DataRow, DataTableError};
 use rerun::{
-    log::{LogMsg, MsgId, PathOp},
+    log::{MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
@@ -243,10 +243,13 @@ fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
 
 #[pyfunction]
 fn get_recording_id() -> PyResult<String> {
-    python_session()
-        .recording_id()
-        .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
-        .map(|recording_id| recording_id.to_string())
+    let recording_id = python_session().recording_id();
+
+    if recording_id == RecordingId::ZERO {
+        Err(PyTypeError::new_err("module has not been initialized"))
+    } else {
+        Ok(recording_id.to_string())
+    }
 }
 
 #[pyfunction]
@@ -485,7 +488,7 @@ fn log_transform(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -569,7 +572,7 @@ fn log_view_coordinates(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -703,7 +706,7 @@ fn log_meshes(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -784,7 +787,7 @@ fn log_mesh_file(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -876,7 +879,7 @@ fn log_image_file(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -955,7 +958,7 @@ fn log_annotation_context(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -979,10 +982,16 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
-    let msg = crate::arrow::build_chunk_from_components(&entity_path, components, &time(timeless))?;
+    let data_table =
+        crate::arrow::build_data_table_from_components(&entity_path, components, &time(timeless))?;
 
     let mut session = python_session();
-    session.send(msg);
+
+    let msg: ArrowMsg = (&data_table)
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
+
+    session.send_arrow_msg(msg);
 
     Ok(())
 }

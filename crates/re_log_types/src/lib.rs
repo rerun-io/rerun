@@ -173,10 +173,10 @@ pub enum LogMsg {
     BeginRecordingMsg(BeginRecordingMsg),
 
     /// Server-backed operation on an [`EntityPath`].
-    EntityPathOpMsg(EntityPathOpMsg),
+    EntityPathOpMsg(RecordingId, EntityPathOpMsg),
 
     /// Log an entity using an [`ArrowMsg`].
-    ArrowMsg(ArrowMsg),
+    ArrowMsg(RecordingId, ArrowMsg),
 
     /// Sent when the client shuts down the connection.
     Goodbye(MsgId),
@@ -186,19 +186,27 @@ impl LogMsg {
     pub fn id(&self) -> MsgId {
         match self {
             Self::BeginRecordingMsg(msg) => msg.msg_id,
-            Self::EntityPathOpMsg(msg) => msg.msg_id,
+            Self::EntityPathOpMsg(_, msg) => msg.msg_id,
             Self::Goodbye(msg_id) => *msg_id,
             // TODO(#1619): the following only makes sense because, while we support sending and
             // receiving batches, we don't actually do so yet.
             // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
-            Self::ArrowMsg(msg) => msg.table_id,
+            Self::ArrowMsg(_, msg) => msg.table_id,
+        }
+    }
+
+    pub fn recording_id(&self) -> Option<&RecordingId> {
+        match self {
+            Self::BeginRecordingMsg(msg) => Some(&msg.info.recording_id),
+            Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
+                Some(recording_id)
+            }
+            Self::Goodbye(_) => None,
         }
     }
 }
 
 impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
-impl_into_enum!(EntityPathOpMsg, LogMsg, EntityPathOpMsg);
-impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
 // ----------------------------------------------------------------------------
 

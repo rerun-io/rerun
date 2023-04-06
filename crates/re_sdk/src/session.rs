@@ -189,6 +189,7 @@ impl SessionBuilder {
 #[must_use]
 #[derive(Clone)]
 pub struct Session {
+    recording_info: RecordingInfo,
     sink: Arc<dyn LogSink>,
     // TODO(emilk): add convenience `TimePoint` here so that users can
     // do things like `session.set_time_sequence("frame", frame_idx);`
@@ -222,13 +223,16 @@ impl Session {
             sink.send(
                 re_log_types::BeginRecordingMsg {
                     msg_id: re_log_types::MsgId::random(),
-                    info: recording_info,
+                    info: recording_info.clone(),
                 }
                 .into(),
             );
         }
 
-        Self { sink: sink.into() }
+        Self {
+            recording_info,
+            sink: sink.into(),
+        }
     }
 
     /// Construct a new session with a disabled "dummy" sink that drops all logging messages.
@@ -236,6 +240,16 @@ impl Session {
     /// [`Self::is_enabled`] will return `false`.
     pub fn disabled() -> Self {
         Self {
+            recording_info: RecordingInfo {
+                application_id: ApplicationId::unknown(),
+                recording_id: Default::default(),
+                is_official_example: crate::called_from_official_rust_example(),
+                started: Time::now(),
+                recording_source: RecordingSource::RustSdk {
+                    rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
+                    llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
+                },
+            },
             sink: crate::sink::disabled().into(),
         }
     }
@@ -272,16 +286,24 @@ impl Session {
         time_point: &re_log_types::TimePoint,
         path_op: re_log_types::PathOp,
     ) {
-        self.send(LogMsg::EntityPathOpMsg(re_log_types::EntityPathOpMsg {
-            msg_id: re_log_types::MsgId::random(),
-            time_point: time_point.clone(),
-            path_op,
-        }));
+        self.send(LogMsg::EntityPathOpMsg(
+            self.recording_id(),
+            re_log_types::EntityPathOpMsg {
+                msg_id: re_log_types::MsgId::random(),
+                time_point: time_point.clone(),
+                path_op,
+            },
+        ));
     }
 
     /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_backlog(&self) -> Vec<LogMsg> {
         self.sink.drain_backlog()
+    }
+
+    /// The current [`RecordingId`].
+    pub fn recording_id(&self) -> RecordingId {
+        self.recording_info.recording_id
     }
 }
 
