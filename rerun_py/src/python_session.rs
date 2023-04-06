@@ -209,6 +209,12 @@ impl PythonSession {
         if !self.has_sent_begin_recording_msg {
             let info = self.recording_meta_data.to_recording_info();
 
+            // This shouldn't happen, but at least log an error if it does.
+            // See: https://github.com/rerun-io/rerun/issues/1792
+            if info.recording_id == RecordingId::ZERO {
+                re_log::error_once!("RecordingId was still ZERO when sent to server. This is a python initialization bug.");
+            }
+
             re_log::debug!(
                 "Beginning new recording with application_id {:?} and recording id {}",
                 info.application_id.0,
