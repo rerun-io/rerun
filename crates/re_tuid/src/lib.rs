@@ -35,6 +35,12 @@ impl arrow2_convert::field::ArrowField for Tuid {
     }
 }
 
+impl std::fmt::Display for Tuid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:032X}", self.as_u128())
+    }
+}
+
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())

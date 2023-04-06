@@ -3,10 +3,13 @@
 use std::fmt::Formatter;
 
 use arrow2::{
-    array::{get_display, Array, ListArray, PrimitiveArray, StructArray},
+    array::{get_display, Array, ListArray, StructArray},
     datatypes::{DataType, IntervalUnit, TimeUnit},
 };
+use arrow2_convert::deserialize::TryIntoCollection;
 use comfy_table::{presets, Cell, Table};
+
+use re_tuid::Tuid;
 
 // ---
 
@@ -37,9 +40,10 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
     if let Some(DataType::Extension(name, _, _)) = datatype {
         match name.as_str() {
             // TODO(#1775): This should be registered dynamically.
+            // NOTE: Can't call `Tuid::name()`, `Component` lives in `re_log_types`.
             "rerun.tuid" => Box::new(|w, index| {
                 if let Some(tuid) = parse_tuid(array, index) {
-                    w.write_fmt(format_args!("{tuid:032X}"))
+                    w.write_fmt(format_args!("{tuid}"))
                 } else {
                     w.write_str("<ERR>")
                 }
@@ -52,7 +56,7 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
 }
 
 // TODO(#1775): This should be defined and registered by the `re_tuid` crate.
-fn parse_tuid(array: &dyn Array, index: usize) -> Option<u128> {
+fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
     let (array, index) = match array.data_type().to_logical_type() {
         // Legacy MsgId lists: just grab the first value, they're all identical
         DataType::List(_) => (
@@ -67,22 +71,8 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<u128> {
     };
     let array = array.as_any().downcast_ref::<StructArray>()?;
 
-    let time_ns = array
-        .values()
-        .first()?
-        .as_any()
-        .downcast_ref::<PrimitiveArray<u64>>()?
-        .values()
-        .get(index)?;
-    let inc = array
-        .values()
-        .get(1)?
-        .as_any()
-        .downcast_ref::<PrimitiveArray<u64>>()?
-        .values()
-        .get(index)?;
-
-    Some(((*time_ns as u128) << 64) | (*inc as u128))
+    let tuids: Vec<Tuid> = TryIntoCollection::try_into_collection(array.to_boxed()).ok()?;
+    tuids.get(index).copied()
 }
 
 // ---
