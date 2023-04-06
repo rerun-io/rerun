@@ -1,12 +1,13 @@
+use std::borrow::Borrow;
+
 use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId};
 
 use crate::{
     components::Transform,
     log::{DataCell, LogMsg, MsgId},
-    session::RecordingLogSink,
     sink::LogSink,
     time::{Time, TimeInt, TimePoint, Timeline},
-    Component, EntityPath, SerializableComponent,
+    Component, EntityPath, SerializableComponent, Session,
 };
 
 // TODO(#1619): Rust SDK batching
@@ -230,8 +231,8 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send(self, sink: &impl RecordingLogSink) -> Result<(), DataTableError> {
-        self.send_to_sink(sink.get_recording_id(), sink.borrow())
+    pub fn send(self, session: &Session) -> Result<(), DataTableError> {
+        self.send_to_sink(session.recording_id(), session.borrow())
     }
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured

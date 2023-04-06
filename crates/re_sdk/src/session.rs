@@ -287,7 +287,7 @@ impl Session {
         path_op: re_log_types::PathOp,
     ) {
         self.send(LogMsg::EntityPathOpMsg(
-            self.get_recording_id(),
+            self.recording_id(),
             re_log_types::EntityPathOpMsg {
                 msg_id: re_log_types::MsgId::random(),
                 time_point: time_point.clone(),
@@ -299,6 +299,11 @@ impl Session {
     /// Drain all buffered [`LogMsg`]es and return them.
     pub fn drain_backlog(&self) -> Vec<LogMsg> {
         self.sink.drain_backlog()
+    }
+
+    /// The current [`RecordingId`].
+    pub fn recording_id(&self) -> RecordingId {
+        self.recording_info.recording_id
     }
 }
 
@@ -313,19 +318,3 @@ impl std::borrow::Borrow<dyn LogSink> for Session {
         self.sink.as_ref()
     }
 }
-
-/// Trait to expose [`RecordingId`] from a session
-pub trait HasRecordingId {
-    fn get_recording_id(&self) -> RecordingId;
-}
-
-impl HasRecordingId for Session {
-    fn get_recording_id(&self) -> RecordingId {
-        self.recording_info.recording_id
-    }
-}
-
-/// Composite trait for accessing [`LogSink`] and [`RecordingId`] from session-like objects
-pub trait RecordingLogSink: std::borrow::Borrow<dyn LogSink> + HasRecordingId {}
-
-impl<T: std::borrow::Borrow<dyn LogSink> + HasRecordingId> RecordingLogSink for T {}

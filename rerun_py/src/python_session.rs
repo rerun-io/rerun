@@ -118,7 +118,7 @@ impl PythonSession {
         }
     }
 
-    /// The current [`RecordingId`], if set.
+    /// The current [`RecordingId`].
     pub fn recording_id(&self) -> RecordingId {
         self.recording_meta_data.recording_id
     }
