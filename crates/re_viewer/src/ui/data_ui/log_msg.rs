@@ -16,8 +16,8 @@ impl DataUi for LogMsg {
     ) {
         match self {
             LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::EntityPathOpMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::EntityPathOpMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::Goodbye(_) => {
                 ui.label("Goodbye");
             }

@@ -677,34 +677,37 @@ impl App {
         let start = instant::Instant::now();
 
         while let Ok(msg) = self.rx.try_recv() {
-            let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                re_log::debug!("Opening a new recording: {:?}", msg.info);
-                self.state.selected_rec_id = msg.info.recording_id;
-                true
-            } else {
-                false
-            };
+            // All messages except [`LogMsg::GoodBye`] should have an associated recording id
+            if let Some(recording_id) = msg.recording_id() {
+                let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                    re_log::debug!("Opening a new recording: {:?}", msg.info);
+                    self.state.selected_rec_id = msg.info.recording_id;
+                    true
+                } else {
+                    false
+                };
 
-            let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+                let log_db = self.log_dbs.entry(*recording_id).or_default();
 
-            if log_db.data_source.is_none() {
-                log_db.data_source = Some(self.rx.source().clone());
-            }
+                if log_db.data_source.is_none() {
+                    log_db.data_source = Some(self.rx.source().clone());
+                }
 
-            if let Err(err) = log_db.add(msg) {
-                re_log::error!("Failed to add incoming msg: {err}");
-            };
+                if let Err(err) = log_db.add(msg) {
+                    re_log::error!("Failed to add incoming msg: {err}");
+                };
 
-            if is_new_recording {
-                // Do analytics after ingesting the new message,
-                // because thats when the `log_db.recording_info` is set,
-                // which we use in the analytics call.
-                self.analytics.on_open_recording(log_db);
-            }
+                if is_new_recording {
+                    // Do analytics after ingesting the new message,
+                    // because thats when the `log_db.recording_info` is set,
+                    // which we use in the analytics call.
+                    self.analytics.on_open_recording(log_db);
+                }
 
-            if start.elapsed() > instant::Duration::from_millis(10) {
-                egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                break; // don't block the main thread for too long
+                if start.elapsed() > instant::Duration::from_millis(10) {
+                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                    break; // don't block the main thread for too long
+                }
             }
         }
     }
@@ -1767,7 +1770,7 @@ fn save_database_to_file(
                         LogMsg::BeginRecordingMsg(_) | LogMsg::Goodbye(_) => {
                             true // timeless
                         }
-                        LogMsg::EntityPathOpMsg(EntityPathOpMsg { time_point, .. }) => {
+                        LogMsg::EntityPathOpMsg(_, EntityPathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
                                     .get(&timeline)
@@ -1775,7 +1778,7 @@ fn save_database_to_file(
                                 is_within_range
                             }
                         }
-                        LogMsg::ArrowMsg(_) => {
+                        LogMsg::ArrowMsg(_, _) => {
                             // TODO(john)
                             false
                         }
