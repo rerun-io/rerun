@@ -13,7 +13,7 @@ use rerun::sink::LogSink;
 struct RecordingMetaData {
     recording_source: RecordingSource,
     application_id: Option<ApplicationId>,
-    recording_id: Option<RecordingId>,
+    recording_id: RecordingId,
     is_official_example: Option<bool>,
 }
 
@@ -23,28 +23,30 @@ impl Default for RecordingMetaData {
             // Will be filled in when we initialize the `rerun` python module.
             recording_source: RecordingSource::Unknown,
             application_id: Default::default(),
-            recording_id: Default::default(),
+            // TODO(https://github.com/rerun-io/rerun/issues/1792): ZERO is not a great choice
+            // here. Ideally we would use `default_recording_id(py)` instead.
+            recording_id: RecordingId::ZERO,
             is_official_example: Default::default(),
         }
     }
 }
 
 impl RecordingMetaData {
-    pub fn to_recording_info(&self) -> Option<RecordingInfo> {
-        let recording_id = self.recording_id?;
+    pub fn to_recording_info(&self) -> RecordingInfo {
+        let recording_id = self.recording_id;
 
         let application_id = self
             .application_id
             .clone()
             .unwrap_or_else(ApplicationId::unknown);
 
-        Some(RecordingInfo {
+        RecordingInfo {
             application_id,
             recording_id,
             is_official_example: self.is_official_example.unwrap_or(false),
             started: Time::now(),
             recording_source: self.recording_source.clone(),
-        })
+        }
     }
 }
 
@@ -117,7 +119,7 @@ impl PythonSession {
     }
 
     /// The current [`RecordingId`], if set.
-    pub fn recording_id(&self) -> Option<RecordingId> {
+    pub fn recording_id(&self) -> RecordingId {
         self.recording_meta_data.recording_id
     }
 
@@ -130,8 +132,8 @@ impl PythonSession {
     /// Note that many recordings can share the same [`ApplicationId`], but
     /// they all have unique [`RecordingId`]s.
     pub fn set_recording_id(&mut self, recording_id: RecordingId) {
-        if self.recording_meta_data.recording_id != Some(recording_id) {
-            self.recording_meta_data.recording_id = Some(recording_id);
+        if self.recording_meta_data.recording_id != recording_id {
+            self.recording_meta_data.recording_id = recording_id;
             self.has_sent_begin_recording_msg = false;
         }
     }
@@ -205,36 +207,35 @@ impl PythonSession {
         }
 
         if !self.has_sent_begin_recording_msg {
-            if let Some(info) = self.recording_meta_data.to_recording_info() {
-                re_log::debug!(
-                    "Beginning new recording with application_id {:?} and recording id {}",
-                    info.application_id.0,
-                    info.recording_id
-                );
+            let info = self.recording_meta_data.to_recording_info();
 
-                self.sink.send(
-                    BeginRecordingMsg {
-                        msg_id: MsgId::random(),
-                        info,
-                    }
-                    .into(),
-                );
-                self.has_sent_begin_recording_msg = true;
-            }
+            re_log::debug!(
+                "Beginning new recording with application_id {:?} and recording id {}",
+                info.application_id.0,
+                info.recording_id
+            );
+
+            self.sink.send(
+                BeginRecordingMsg {
+                    msg_id: MsgId::random(),
+                    info,
+                }
+                .into(),
+            );
+            self.has_sent_begin_recording_msg = true;
         }
 
         self.sink.send(log_msg);
     }
 
     pub fn send_arrow_msg(&mut self, arrow_msg: ArrowMsg) {
-        let recording_id = self.recording_id().unwrap_or_default();
-        self.send(LogMsg::ArrowMsg(recording_id, arrow_msg));
+        self.send(LogMsg::ArrowMsg(self.recording_id(), arrow_msg));
     }
 
     /// Send a [`PathOp`].
     pub fn send_path_op(&mut self, time_point: &TimePoint, path_op: PathOp) {
         self.send(LogMsg::EntityPathOpMsg(
-            self.recording_id().unwrap_or_default(),
+            self.recording_id(),
             re_log_types::EntityPathOpMsg {
                 msg_id: MsgId::random(),
                 time_point: time_point.clone(),

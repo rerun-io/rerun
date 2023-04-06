@@ -243,10 +243,13 @@ fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
 
 #[pyfunction]
 fn get_recording_id() -> PyResult<String> {
-    python_session()
-        .recording_id()
-        .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
-        .map(|recording_id| recording_id.to_string())
+    let recording_id = python_session().recording_id();
+
+    if recording_id == RecordingId::ZERO {
+        Err(PyTypeError::new_err("module has not been initialized"))
+    } else {
+        Ok(recording_id.to_string())
+    }
 }
 
 #[pyfunction]
