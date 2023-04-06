@@ -32,10 +32,9 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
             .next()?
             .map(|array| array.data_type().clone()),
         _ => Some(array.data_type().clone()),
-    })()
-    .unwrap();
+    })();
 
-    if let DataType::Extension(name, _, _) = datatype {
+    if let Some(DataType::Extension(name, _, _)) = datatype {
         match name.as_str() {
             // TODO(#1775): This should be registered dynamically.
             "rerun.tuid" => Box::new(|w, index| {
