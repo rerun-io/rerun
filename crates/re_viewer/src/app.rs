@@ -1793,7 +1793,7 @@ fn save_database_to_file(
         let file = std::fs::File::create(path.as_path())
             .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-        re_transport::encoder::encode(msgs.iter(), file)
+        re_log_encoding::encoder::encode(msgs.iter(), file)
             .map(|_| path)
             .context("Message encode")
     }
@@ -1803,7 +1803,7 @@ fn save_database_to_file(
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
-    let decoder = re_transport::decoder::Decoder::new(read)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(read)?;
 
     let mut log_db = LogDb::default();
     for msg in decoder {

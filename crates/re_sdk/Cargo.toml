@@ -33,11 +33,11 @@ image = ["re_log_types/image"]
 
 
 [dependencies]
+re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
-re_transport = { workspace = true, features = ["encoder"] }
 
 document-features = "0.2"
 parking_lot.workspace = true

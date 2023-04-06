@@ -1,5 +1,5 @@
 [package]
-name = "re_transport"
+name = "re_log_encoding"
 authors.workspace = true
 description = "Helpers for encoding and transporting Rerun log messages"
 edition.workspace = true

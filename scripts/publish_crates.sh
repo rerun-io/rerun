@@ -102,7 +102,7 @@ cargo publish $FLAGS -p re_memory
 cargo publish $FLAGS -p re_tuid
 cargo publish $FLAGS -p re_log_types
 cargo publish $FLAGS -p re_smart_channel
-cargo publish $FLAGS -p re_transport
+cargo publish $FLAGS -p re_log_encoding
 cargo publish $FLAGS -p re_tensor_ops
 cargo publish $FLAGS -p re_ui
 cargo publish $FLAGS -p re_arrow_store

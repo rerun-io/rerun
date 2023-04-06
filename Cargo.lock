@@ -3840,9 +3840,9 @@ dependencies = [
  "re_arrow_store",
  "re_int_histogram",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_smart_channel",
- "re_transport",
  "serde",
  "thiserror",
 ]
@@ -3884,6 +3884,31 @@ dependencies = [
  "parking_lot 0.12.1",
  "tracing",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "re_log_encoding"
+version = "0.4.0"
+dependencies = [
+ "criterion",
+ "ehttp",
+ "instant",
+ "js-sys",
+ "mimalloc",
+ "parking_lot 0.12.1",
+ "puffin",
+ "re_build_info",
+ "re_log",
+ "re_log_types",
+ "re_smart_channel",
+ "rmp-serde",
+ "ruzstd",
+ "serde_test",
+ "thiserror",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "zstd",
 ]
 
 [[package]]
@@ -4028,10 +4053,10 @@ dependencies = [
  "rand",
  "re_build_build_info",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
- "re_transport",
  "thiserror",
 ]
 
@@ -4078,31 +4103,6 @@ dependencies = [
  "ndarray",
  "re_log_types",
  "serde",
-]
-
-[[package]]
-name = "re_transport"
-version = "0.4.0"
-dependencies = [
- "criterion",
- "ehttp",
- "instant",
- "js-sys",
- "mimalloc",
- "parking_lot 0.12.1",
- "puffin",
- "re_build_info",
- "re_log",
- "re_log_types",
- "re_smart_channel",
- "rmp-serde",
- "ruzstd",
- "serde_test",
- "thiserror",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "zstd",
 ]
 
 [[package]]
@@ -4173,13 +4173,13 @@ dependencies = [
  "re_error",
  "re_format",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_query",
  "re_renderer",
  "re_smart_channel",
  "re_tensor_ops",
- "re_transport",
  "re_ui",
  "re_ws_comms",
  "rfd",
@@ -4301,12 +4301,12 @@ dependencies = [
  "re_build_info",
  "re_format",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
- "re_transport",
  "re_viewer",
  "re_web_viewer_server",
  "re_ws_comms",

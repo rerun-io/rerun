@@ -65,12 +65,12 @@ fn log_messages() {
 
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
-        re_transport::encoder::encode(std::iter::once(log_msg), &mut bytes).unwrap();
+        re_log_encoding::encoder::encode(std::iter::once(log_msg), &mut bytes).unwrap();
         bytes
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let mut messages = re_transport::decoder::Decoder::new(&mut bytes)
+        let mut messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
             .unwrap()
             .collect::<Result<Vec<LogMsg>, _>>()
             .unwrap();

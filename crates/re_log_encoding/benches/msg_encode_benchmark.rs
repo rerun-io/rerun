@@ -28,13 +28,13 @@ criterion_main!(benches);
 
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
     let mut bytes = vec![];
-    re_transport::encoder::encode(messages.iter(), &mut bytes).unwrap();
+    re_log_encoding::encoder::encode(messages.iter(), &mut bytes).unwrap();
     assert!(bytes.len() > messages.len());
     bytes
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let messages = re_transport::decoder::Decoder::new(&mut bytes)
+    let messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
         .unwrap()
         .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();

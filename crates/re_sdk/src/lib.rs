@@ -32,9 +32,9 @@ pub use re_log_types::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-impl crate::sink::LogSink for re_transport::FileSink {
+impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn send(&self, msg: re_log_types::LogMsg) {
-        re_transport::FileSink::send(self, msg);
+        re_log_encoding::FileSink::send(self, msg);
     }
 }
 
@@ -52,7 +52,7 @@ pub mod sink {
     pub use crate::log_sink::{disabled, BufferedSink, LogSink, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub use re_transport::{FileSink, FileSinkError};
+    pub use re_log_encoding::{FileSink, FileSinkError};
 }
 
 /// Things directly related to logging.

@@ -65,11 +65,11 @@ web_viewer = [
 [dependencies]
 re_build_info.workspace = true
 re_format.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
-re_transport = { workspace = true, features = ["decoder", "encoder"] }
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
