@@ -41,7 +41,7 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
                 if let Some(tuid) = parse_tuid(array, index) {
                     w.write_fmt(format_args!("{tuid:032X}"))
                 } else {
-                    w.write_str("[]")
+                    w.write_str("<ERR>")
                 }
             }),
             _ => get_display(array, null),
