@@ -54,7 +54,7 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Logs ControlNet data using the Rerun SDK.")
     parser.add_argument(
         "--image",
         type=str,
@@ -92,14 +92,14 @@ def main() -> None:
         default=10,
         help="""
 The number of denoising steps. More denoising steps usually lead to a higher quality image at the
-expense of slower inference. This parameter will be modulated by `strength`.
+expense of slower inference.
 """,
     )
 
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "Canny Edge ControlNet")
+    rr.script_setup(args, "ControlNet")
 
     image_path = args.image_path  # type: str
     if not image_path:
