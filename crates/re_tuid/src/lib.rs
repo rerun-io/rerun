@@ -61,7 +61,6 @@ impl Tuid {
     };
 
     #[inline]
-    #[cfg(not(target_arch = "wasm32"))] // TODO(emilk): implement for wasm32 (needs ms since epoch).
     pub fn random() -> Self {
         use std::cell::RefCell;
 
@@ -106,35 +105,39 @@ impl Tuid {
 
 /// Returns a high-precision, monotonically increasing count that approximates nanoseconds since unix epoch.
 #[inline]
-#[cfg(not(target_arch = "wasm32"))]
 fn monotonic_nanos_since_epoch() -> u64 {
     // This can maybe be optimized
+    use instant::Instant;
     use once_cell::sync::Lazy;
-    use std::time::Instant;
 
-    fn epoch_offset_and_start() -> (u64, Instant) {
-        if let Ok(duration_since_epoch) = std::time::UNIX_EPOCH.elapsed() {
-            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
-            (nanos_since_epoch, Instant::now())
-        } else {
-            // system time is set before 1970. this should be quite rare.
-            (0, Instant::now())
-        }
-    }
-
-    static START_TIME: Lazy<(u64, Instant)> = Lazy::new(epoch_offset_and_start);
+    static START_TIME: Lazy<(u64, Instant)> = Lazy::new(|| (nanos_since_epoch(), Instant::now()));
     START_TIME.0 + START_TIME.1.elapsed().as_nanos() as u64
 }
 
+fn nanos_since_epoch() -> u64 {
+    if let Ok(duration_since_epoch) = instant::SystemTime::UNIX_EPOCH.elapsed() {
+        let mut nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
+
+        if cfg!(target_arch = "wasm32") {
+            // Web notriously round to the nearest millisecond (because of spectre/meltdown)
+            // so we add a bit of extra randomenss here to increase our entropy and reduce the chance of collisions:
+            nanos_since_epoch += random_u64() % 1_000_000;
+        }
+
+        nanos_since_epoch
+    } else {
+        // system time is set before 1970. this should be quite rare.
+        0
+    }
+}
+
 #[inline]
-#[cfg(not(target_arch = "wasm32"))]
 fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
     getrandom::getrandom(&mut bytes).expect("Couldn't get inc");
     u64::from_le_bytes(bytes)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn test_tuid() {
     use std::collections::{BTreeSet, HashSet};
