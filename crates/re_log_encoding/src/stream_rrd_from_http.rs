@@ -50,11 +50,17 @@ mod web_event_listener {
         {
             let window = web_sys::window().expect("no global `window` exists");
             let closure = Closure::wrap(Box::new(move |event: JsValue| {
-                let message_event = event.dyn_into::<MessageEvent>().unwrap();
-                let uint8_array = Uint8Array::new(&message_event.data());
-                let result: Vec<u8> = uint8_array.to_vec();
+                match event.dyn_into::<MessageEvent>() {
+                    Ok(message_event) => {
+                        let uint8_array = Uint8Array::new(&message_event.data());
+                        let result: Vec<u8> = uint8_array.to_vec();
 
-                crate::stream_rrd_from_http::decode_rrd(result, on_msg.clone());
+                        crate::stream_rrd_from_http::decode_rrd(result, on_msg.clone());
+                    }
+                    Err(err) => {
+                        re_log::error!("Incoming event was not a MessageEvent. {:?}", err);
+                    }
+                }
             }) as Box<dyn FnMut(_)>);
             window
                 .add_event_listener_with_callback("message", closure.as_ref().unchecked_ref())

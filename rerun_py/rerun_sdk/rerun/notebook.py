@@ -25,7 +25,7 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
 
     # TODO(jleibs): Resolve this URL dynamically.
     if app_location is None:
-        app_location = "https://app.rerun.io/commit/4797e6a/index.html?url=web_event://"
+        app_location = "https://app.rerun.io/commit/4797e6a/index.html"
 
     random_string = "".join(random.choice(string.ascii_letters) for i in range(6))
 
@@ -54,7 +54,7 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
             return buff;
         }}()));
     </script>
-    <iframe id="{random_string}" width="{width}" height="{height}" src="{app_location}"
+    <iframe id="{random_string}" width="{width}" height="{height}" src="{app_location}?url=web_event://"
         frameborder="0" allowfullscreen=""></iframe>
     """
     try:
