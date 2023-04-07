@@ -134,7 +134,7 @@ fn nanos_since_epoch() -> u64 {
 #[inline]
 fn random_u64() -> u64 {
     let mut bytes = [0_u8; 8];
-    getrandom::getrandom(&mut bytes).expect("Couldn't get inc");
+    getrandom::getrandom(&mut bytes).expect("Couldn't get random bytes");
     u64::from_le_bytes(bytes)
 }
 
