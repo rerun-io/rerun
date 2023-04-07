@@ -4194,6 +4194,7 @@ dependencies = [
  "uuid",
  "vec1",
  "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
  "winapi",
 ]

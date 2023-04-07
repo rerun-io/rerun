@@ -184,6 +184,7 @@ impl ViewerAnalytics {
             let data_source = match data_source {
                 re_smart_channel::Source::File { .. } => "file", // .rrd
                 re_smart_channel::Source::RrdHttpStream { .. } => "http",
+                re_smart_channel::Source::RrdWebEventListener { .. } => "web_event",
                 re_smart_channel::Source::Sdk => "sdk", // show()
                 re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
                 re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()

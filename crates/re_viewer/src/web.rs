@@ -1,4 +1,5 @@
 use eframe::wasm_bindgen::{self, prelude::*};
+use std::sync::Arc;
 
 use re_memory::AccountingAllocator;
 
@@ -52,7 +53,30 @@ pub async fn start(
                     let egui_ctx = cc.egui_ctx.clone();
                     re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
                         url,
-                        Box::new(move |msg| {
+                        Arc::new(move |msg| {
+                            egui_ctx.request_repaint(); // wake up ui thread
+                            tx.send(msg).ok();
+                        }),
+                    );
+
+                    Box::new(crate::App::from_receiver(
+                        build_info,
+                        &app_env,
+                        startup_options,
+                        re_ui,
+                        cc.storage,
+                        rx,
+                        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                    ))
+                }
+                EndpointCategory::WebEventListener => {
+                    // Download an .rrd file over http:
+                    let (tx, rx) = re_smart_channel::smart_channel(
+                        re_smart_channel::Source::RrdWebEventListener,
+                    );
+                    let egui_ctx = cc.egui_ctx.clone();
+                    re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
+                        Arc::new(move |msg| {
                             egui_ctx.request_repaint(); // wake up ui thread
                             tx.send(msg).ok();
                         }),
@@ -93,13 +117,18 @@ enum EndpointCategory {
 
     /// A remote Rerun server.
     WebSocket(String),
+
+    /// An eventListener for rrd posted from containing html
+    WebEventListener,
 }
 
 fn categorize_uri(mut uri: String) -> EndpointCategory {
     if uri.starts_with("http") || uri.ends_with(".rrd") {
         EndpointCategory::HttpRrd(uri)
-    } else if uri.starts_with("ws") {
+    } else if uri.starts_with("ws:") {
         EndpointCategory::WebSocket(uri)
+    } else if uri.starts_with("web_event:") {
+        EndpointCategory::WebEventListener
     } else {
         // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
         // We could/should connect and see what it is, but for now we just take a wild guess instead:

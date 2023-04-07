@@ -67,8 +67,6 @@ pub async fn host_web_viewer(
     re_log::info!("Web server is running - view it at {viewer_url}");
     if open_browser {
         webbrowser::open(&viewer_url).ok();
-    } else {
-        re_log::info!("Web server is running - view it at {viewer_url}");
     }
 
     web_server_handle.await?

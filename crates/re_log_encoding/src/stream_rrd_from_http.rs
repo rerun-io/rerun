@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_log_types::LogMsg;
 
 pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receiver<LogMsg> {
@@ -6,14 +8,14 @@ pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receive
     });
     stream_rrd_from_http(
         url,
-        Box::new(move |msg| {
+        Arc::new(move |msg| {
             tx.send(msg).ok();
         }),
     );
     rx
 }
 
-pub fn stream_rrd_from_http(url: String, on_msg: Box<dyn Fn(LogMsg) + Send>) {
+pub fn stream_rrd_from_http(url: String, on_msg: Arc<dyn Fn(LogMsg) + Send + Sync>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     // TODO(emilk): stream the http request, progressively decoding the .rrd file.
@@ -36,9 +38,38 @@ pub fn stream_rrd_from_http(url: String, on_msg: Box<dyn Fn(LogMsg) + Send>) {
     });
 }
 
+#[cfg(target_arch = "wasm32")]
+mod web_event_listener {
+    use js_sys::Uint8Array;
+    use re_log_types::LogMsg;
+    use std::sync::Arc;
+    use wasm_bindgen::{closure::Closure, JsCast, JsValue};
+    use web_sys::MessageEvent;
+
+    pub fn stream_rrd_from_event_listener(on_msg: Arc<dyn Fn(LogMsg) + Send>) {
+        {
+            let window = web_sys::window().expect("no global `window` exists");
+            let closure = Closure::wrap(Box::new(move |event: JsValue| {
+                let message_event = event.dyn_into::<MessageEvent>().unwrap();
+                let uint8_array = Uint8Array::new(&message_event.data());
+                let result: Vec<u8> = uint8_array.to_vec();
+
+                crate::stream_rrd_from_http::decode_rrd(result, on_msg.clone());
+            }) as Box<dyn FnMut(_)>);
+            window
+                .add_event_listener_with_callback("message", closure.as_ref().unchecked_ref())
+                .unwrap();
+            closure.forget();
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub use web_event_listener::stream_rrd_from_event_listener;
+
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
+fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
     match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
         Ok(decoder) => {
             for msg in decoder {
@@ -61,15 +92,16 @@ fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
     use re_log_types::LogMsg;
+    use std::sync::Arc;
 
-    pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
+    pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
         wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
     ///
     /// This is cooperative multi-tasking.
-    async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Box<dyn Fn(LogMsg) + Send>) {
+    async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
         let mut last_yield = instant::Instant::now();
 
         match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {

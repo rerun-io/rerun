@@ -18,6 +18,11 @@ pub enum Source {
     /// Streaming an `.rrd` file over http.
     RrdHttpStream { url: String },
 
+    /// Loading an `.rrd` file from a `postMessage` js event
+    ///
+    /// Only applicable to web browser iframes
+    RrdWebEventListener,
+
     /// The source is the logging sdk directly, same process.
     Sdk,
 
@@ -36,7 +41,7 @@ pub enum Source {
 impl Source {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File { .. } | Self::Sdk => false,
+            Self::File { .. } | Self::Sdk | Self::RrdWebEventListener => false,
             Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }
