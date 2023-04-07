@@ -1796,10 +1796,10 @@ fn save_database_to_file(
         crate::profile_scope!("save_to_file");
 
         use anyhow::Context as _;
-        let file = std::fs::File::create(path.as_path())
+        let mut file = std::fs::File::create(path.as_path())
             .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-        re_log_encoding::encoder::encode(msgs.iter(), file)
+        re_log_encoding::encoder::encode(msgs.iter(), &mut file)
             .map(|_| path)
             .context("Message encode")
     }

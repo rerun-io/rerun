@@ -42,6 +42,7 @@ web_viewer = ["rerun/web_viewer"]
 re_build_info.workspace = true
 re_error.workspace = true
 re_log.workspace = true
+re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
 rerun = { workspace = true, default-features = false, features = [

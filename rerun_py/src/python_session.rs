@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{io::Cursor, net::SocketAddr};
 
 use re_log_types::{
     ApplicationId, ArrowMsg, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
@@ -168,7 +168,7 @@ impl PythonSession {
         self.set_sink(Box::new(rerun::sink::TcpSink::new(addr)));
     }
 
-    /// Drains all pending log messages and saves them to disk into an rrd file.
+    /// Send all pending and future log messages to disk as an rrd file
     pub fn save(
         &mut self,
         path: impl Into<std::path::PathBuf>,
@@ -182,9 +182,20 @@ impl PythonSession {
         Ok(())
     }
 
+    /// Drains all pending log messages and return them as an in-memory rrd file
+    pub fn dump_rrd_as_bytes(&mut self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+        let backlog = self.sink.drain_backlog();
+        let mut buffer = Cursor::new(Vec::new());
+
+        re_log_encoding::encoder::encode(backlog.iter(), &mut buffer)?;
+
+        Ok(buffer.into_inner())
+    }
+
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
         self.set_sink(Box::new(rerun::sink::BufferedSink::new()));
+        self.has_sent_begin_recording_msg = false;
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).

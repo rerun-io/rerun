@@ -8,7 +8,7 @@ use itertools::izip;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
-    types::PyDict,
+    types::{PyBytes, PyDict},
 };
 
 use re_log_types::{ArrowMsg, DataRow, DataTableError};
@@ -140,6 +140,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(dump_rrd_as_bytes, m)?)?;
 
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
@@ -188,7 +189,6 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {
-    use pyo3::types::PyBytes;
     let locals = PyDict::new(py);
     py.run(
         r#"
@@ -369,6 +369,16 @@ fn save(path: &str) -> PyResult<()> {
     let mut session = python_session();
     session
         .save(path)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Drain all pending messages and return them as an in-memory rrd
+#[pyfunction]
+fn dump_rrd_as_bytes(py: Python<'_>) -> PyResult<&PyBytes> {
+    let mut session = python_session();
+    session
+        .dump_rrd_as_bytes()
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
