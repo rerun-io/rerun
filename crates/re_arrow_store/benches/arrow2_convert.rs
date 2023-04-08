@@ -14,11 +14,11 @@ use re_log_types::{
 
 criterion_group!(benches, serialize, deserialize);
 
-#[cfg(not(feature = "dont_bench_third_party"))]
+#[cfg(not(feature = "core_benchmarks_only"))]
 criterion::criterion_main!(benches);
 
 // Don't run these benchmarks on CI: they measure the performance of third-party libraries.
-#[cfg(feature = "dont_bench_third_party")]
+#[cfg(feature = "core_benchmarks_only")]
 fn main() {}
 
 // ---
