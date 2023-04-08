@@ -185,6 +185,9 @@ impl PythonSession {
     /// Drains all pending log messages and return them as an in-memory rrd file
     pub fn dump_rrd_as_bytes(&mut self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
         let backlog = self.sink.drain_backlog();
+        // Since all the messages have been drained we need to send the recording-msg again.
+        self.has_sent_begin_recording_msg = false;
+
         let mut buffer = Cursor::new(Vec::new());
 
         re_log_encoding::encoder::encode(backlog.iter(), &mut buffer)?;
