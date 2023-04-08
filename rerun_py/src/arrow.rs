@@ -9,9 +9,7 @@ use pyo3::{
     types::{IntoPyDict, PyString},
     PyAny, PyResult,
 };
-use re_log_types::{
-    component_types, DataCell, DataRow, DataTableError, EntityPath, LogMsg, MsgId, TimePoint,
-};
+use re_log_types::{component_types, DataCell, DataRow, DataTable, EntityPath, MsgId, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -82,13 +80,12 @@ pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict>
     Ok(fields.into_py_dict(py))
 }
 
-/// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
-/// component arrays.
-pub fn build_chunk_from_components(
+/// Build a [`DataTable`] given a '**kwargs'-style dictionary of component arrays.
+pub fn build_data_table_from_components(
     entity_path: &EntityPath,
     components: &PyDict,
     time_point: &TimePoint,
-) -> PyResult<LogMsg> {
+) -> PyResult<DataTable> {
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         components.iter().map(|(name, array)| {
             let name = name.downcast::<PyString>()?.to_str()?;
@@ -112,9 +109,7 @@ pub fn build_chunk_from_components(
         cells,
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
+    let data_table = row.into_table();
 
-    Ok(LogMsg::ArrowMsg(msg))
+    Ok(data_table)
 }

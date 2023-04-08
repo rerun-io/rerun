@@ -19,22 +19,23 @@ all-features = true
 [features]
 default = []
 
+## Enable converting Tuid to arrow2
+arrow2_convert = ["dep:arrow2", "dep:arrow2_convert"]
+
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
 
 
 [dependencies]
-arrow2_convert.workspace = true
-arrow2.workspace = true
 document-features = "0.2"
+getrandom = "0.2"
+instant = "0.1"
 once_cell = "1.16"
 
 # Optional dependencies:
+arrow2 = { workspace = true, optional = true }                    # used by arrow2_convert
+arrow2_convert = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
-
-# native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-getrandom = "0.2"
 
 [dev-dependencies]
 criterion = "0.4"

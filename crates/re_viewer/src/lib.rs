@@ -8,7 +8,6 @@ pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
-pub mod stream_rrd_from_http;
 mod ui;
 mod viewer_analytics;
 
