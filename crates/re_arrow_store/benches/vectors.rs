@@ -12,11 +12,11 @@ use tinyvec::TinyVec;
 
 criterion_group!(benches, sort, split, swap, swap_opt);
 
-#[cfg(not(feature = "dont_bench_third_party"))]
+#[cfg(not(feature = "core_benchmarks_only"))]
 criterion::criterion_main!(benches);
 
 // Don't run these benchmarks on CI: they measure the performance of third-party libraries.
-#[cfg(feature = "dont_bench_third_party")]
+#[cfg(feature = "core_benchmarks_only")]
 fn main() {}
 
 // ---
