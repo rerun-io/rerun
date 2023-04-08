@@ -4117,6 +4117,7 @@ dependencies = [
  "criterion",
  "document-features",
  "getrandom",
+ "instant",
  "once_cell",
  "serde",
 ]
