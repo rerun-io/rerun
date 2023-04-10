@@ -70,7 +70,7 @@ jobs:
             --all-features \
             -p re_arrow_store \
             -p re_data_store \
-            -p re_log_types \
+            -p re_log_encoding \
             -p re_query \
             -p re_tuid \
             -- --output-format=bencher | tee output.txt

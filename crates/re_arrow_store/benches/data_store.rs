@@ -28,10 +28,32 @@ const NUM_ROWS: i64 = 1;
 #[cfg(debug_assertions)]
 const NUM_INSTANCES: i64 = 1;
 
+fn packed() -> &'static [bool] {
+    #[cfg(feature = "core_benchmarks_only")]
+    {
+        &[false]
+    }
+    #[cfg(not(feature = "core_benchmarks_only"))]
+    {
+        &[false, true]
+    }
+}
+
+fn num_rows_per_bucket() -> &'static [u64] {
+    #[cfg(feature = "core_benchmarks_only")]
+    {
+        &[]
+    }
+    #[cfg(not(feature = "core_benchmarks_only"))]
+    {
+        &[0, 2, 32, 2048]
+    }
+}
+
 // --- Benchmarks ---
 
 fn insert(c: &mut Criterion) {
-    for packed in [false, true] {
+    for &packed in packed() {
         let mut group = c.benchmark_group(format!(
             "datastore/num_rows={NUM_ROWS}/num_instances={NUM_INSTANCES}/packed={packed}/insert"
         ));
@@ -46,9 +68,8 @@ fn insert(c: &mut Criterion) {
             b.iter(|| insert_table(Default::default(), InstanceKey::name(), &table));
         });
 
-        // Emulate more or less buckets
-        let num_rows_per_bucket = [0, 2, 32, 2048];
-        for num_rows_per_bucket in num_rows_per_bucket {
+        // Emulate more or less bucket
+        for &num_rows_per_bucket in num_rows_per_bucket() {
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
                     insert_table(
@@ -66,7 +87,7 @@ fn insert(c: &mut Criterion) {
 }
 
 fn latest_at(c: &mut Criterion) {
-    for packed in [false, true] {
+    for &packed in packed() {
         let mut group = c.benchmark_group(format!(
             "datastore/num_rows={NUM_ROWS}/num_instances={NUM_INSTANCES}/packed={packed}/latest_at"
         ));
@@ -91,8 +112,7 @@ fn latest_at(c: &mut Criterion) {
         });
 
         // Emulate more or less buckets
-        let num_rows_per_bucket = [0, 2, 32, 2048];
-        for num_rows_per_bucket in num_rows_per_bucket {
+        for &num_rows_per_bucket in num_rows_per_bucket() {
             let store = insert_table(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
@@ -119,7 +139,7 @@ fn latest_at(c: &mut Criterion) {
 }
 
 fn latest_at_missing(c: &mut Criterion) {
-    for packed in [false, true] {
+    for &packed in packed() {
         let mut group = c.benchmark_group(format!(
             "datastore/num_rows={NUM_ROWS}/num_instances={NUM_INSTANCES}/packed={packed}/latest_at_missing"
         ));
@@ -154,8 +174,7 @@ fn latest_at_missing(c: &mut Criterion) {
         });
 
         // Emulate more or less buckets
-        let num_rows_per_bucket = [0, 2, 32, 2048];
-        for num_rows_per_bucket in num_rows_per_bucket {
+        for &num_rows_per_bucket in num_rows_per_bucket() {
             let store = insert_table(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
@@ -192,7 +211,7 @@ fn latest_at_missing(c: &mut Criterion) {
 }
 
 fn range(c: &mut Criterion) {
-    for packed in [false, true] {
+    for &packed in packed() {
         let mut group = c.benchmark_group(format!(
             "datastore/num_rows={NUM_ROWS}/num_instances={NUM_INSTANCES}/packed={packed}/range"
         ));
@@ -208,8 +227,7 @@ fn range(c: &mut Criterion) {
         });
 
         // Emulate more or less buckets
-        let num_rows_per_bucket = [0, 2, 32, 2048];
-        for num_rows_per_bucket in num_rows_per_bucket {
+        for &num_rows_per_bucket in num_rows_per_bucket() {
             let store = insert_table(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
