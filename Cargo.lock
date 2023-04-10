@@ -2720,6 +2720,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
+name = "minimal_options"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "clap 4.1.4",
+ "glam",
+ "rerun",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
