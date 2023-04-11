@@ -137,26 +137,30 @@ impl PickingState {
     }
 }
 
+/// Radius in which cursor interactions may snap to the nearest object even if the cursor
+/// does not hover it directly. Given in ui points.
+const UI_INTERACTION_RADIUS: f32 = 5.0;
+
 #[allow(clippy::too_many_arguments)]
 pub fn picking(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
     previous_picking_result: &Option<PickingResult>,
     pointer_in_ui: glam::Vec2,
-    ui_rect: &egui::Rect,
+    pixels_from_points: f32,
+    ui_rect: egui::Rect,
     eye: &Eye,
     primitives: &SceneSpatialPrimitives,
     ui_data: &SceneSpatialUiData,
-    ui_interaction_radius: f32,
 ) -> PickingResult {
     crate::profile_function!();
 
-    let max_side_ui_dist_sq = ui_interaction_radius * ui_interaction_radius;
+    let max_side_ui_dist_sq = UI_INTERACTION_RADIUS * UI_INTERACTION_RADIUS;
 
     let context = PickingContext {
         pointer_in_ui,
-        ui_from_world: eye.ui_from_world(ui_rect),
-        ray_in_world: eye.picking_ray(ui_rect, pointer_in_ui),
+        ui_from_world: eye.ui_from_world(&ui_rect),
+        ray_in_world: eye.picking_ray(&ui_rect, pointer_in_ui),
         max_side_ui_dist_sq,
     };
     let mut state = PickingState {
@@ -197,6 +201,9 @@ pub fn picking(
         render_ctx,
         gpu_readback_identifier,
         &mut state,
+        pointer_in_ui,
+        ui_rect,
+        pixels_from_points,
         &context,
         previous_picking_result,
     );
@@ -218,6 +225,9 @@ fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
     state: &mut PickingState,
+    pointer_in_ui: glam::Vec2,
+    ui_rect: egui::Rect,
+    pixels_from_points: f32,
     context: &PickingContext,
     previous_picking_result: &Option<PickingResult>,
 ) {
@@ -232,20 +242,56 @@ fn picking_gpu(
     }
 
     if let Some(gpu_picking_result) = gpu_picking_result {
-        // TODO(andreas): Pick middle pixel for now. But we soon want to snap to the closest object using a bigger picking rect.
-        let pos_on_picking_rect = gpu_picking_result.rect.extent / 2;
-        let picked_id = gpu_picking_result.picked_id(pos_on_picking_rect);
-        let picked_object = instance_path_hash_from_picking_layer_id(picked_id);
+        // First, figure out where on the rect the cursor is by now.
+        // (for simplicity, we assume the screen hasn't been resized)
+        let pointer_in_pixel = glam::vec2(
+            pointer_in_ui.x - ui_rect.left(),
+            pointer_in_ui.y - ui_rect.top(),
+        ) * pixels_from_points;
+        let pointer_on_picking_rect = pointer_in_pixel - gpu_picking_result.rect.left_top.as_vec2();
+        // The cursor might have moved outside of the rect. Clamp it back in.
+        let pointer_on_picking_rect = pointer_on_picking_rect.clamp(
+            glam::Vec2::ZERO,
+            (gpu_picking_result.rect.extent - glam::UVec2::ONE).as_vec2(),
+        );
 
-        // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
+        // Find closest non-zero pixel to the cursor.
+        let mut picked_id = re_renderer::PickingLayerId::default();
+        let mut picked_on_picking_rect = glam::Vec2::ZERO;
+        let mut closest_rect_distance_sq = f32::INFINITY;
 
+        for (i, id) in gpu_picking_result.picking_id_data.iter().enumerate() {
+            if id.object.0 != 0 {
+                let current_pos_on_picking_rect = glam::uvec2(
+                    i as u32 % gpu_picking_result.rect.extent.x,
+                    i as u32 / gpu_picking_result.rect.extent.x,
+                )
+                .as_vec2()
+                    + glam::vec2(0.5, 0.5); // Use pixel center for distances.
+                let distance_sq =
+                    current_pos_on_picking_rect.distance_squared(pointer_on_picking_rect);
+                if distance_sq < closest_rect_distance_sq {
+                    picked_on_picking_rect = current_pos_on_picking_rect;
+                    closest_rect_distance_sq = distance_sq;
+                    picked_id = *id;
+                }
+            }
+        }
+        if picked_id == re_renderer::PickingLayerId::default() {
+            // Nothing found.
+            return;
+        }
+
+        let ui_distance_sq = picked_on_picking_rect.distance_squared(pointer_on_picking_rect)
+            / (pixels_from_points * pixels_from_points);
+        let picked_world_position =
+            gpu_picking_result.picked_world_position(picked_on_picking_rect.as_uvec2());
         state.check_hit(
-            0.0,
+            ui_distance_sq,
             PickingRayHit {
-                instance_path_hash: picked_object,
-                ray_t: gpu_picking_result
-                    .picked_world_position(pos_on_picking_rect)
-                    .distance(context.ray_in_world.origin),
+                instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
+                // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
+                ray_t: picked_world_position.distance(context.ray_in_world.origin),
                 depth_offset: 0,
                 info: AdditionalPickingInfo::GpuPickingResult,
             },

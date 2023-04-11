@@ -224,7 +224,7 @@ impl PickingLayerProcessor {
             DepthReadbackWorkaround::new(ctx, picking_rect.extent, picking_depth_target.handle)
         });
 
-        let rect_min = picking_rect.top_left_corner.as_vec2();
+        let rect_min = picking_rect.left_top.as_vec2();
         let rect_max = rect_min + picking_rect.extent.as_vec2();
         let screen_resolution = screen_resolution.as_vec2();
         // y axis is flipped in NDC, therefore we need to flip the y axis of the rect.

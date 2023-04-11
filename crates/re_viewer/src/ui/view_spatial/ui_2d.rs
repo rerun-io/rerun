@@ -363,15 +363,14 @@ fn view_2d_scrollable(
         );
 
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
-        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
             &state.previous_picking_result,
             glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
-            &scene_rect_accum,
+            parent_ui.ctx().pixels_per_point(),
+            scene_rect_accum,
             &eye,
-            hover_radius,
         );
         state.previous_picking_result = Some(picking_result.clone());
 

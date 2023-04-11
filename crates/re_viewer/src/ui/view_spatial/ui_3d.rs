@@ -380,9 +380,9 @@ pub fn view_3d(
             space_view_id.gpu_readback_id(),
             &state.previous_picking_result,
             glam::vec2(pointer_pos.x, pointer_pos.y),
-            &rect,
+            ui.ctx().pixels_per_point(),
+            rect,
             &eye,
-            5.0,
         );
         state.previous_picking_result = Some(picking_result.clone());
 

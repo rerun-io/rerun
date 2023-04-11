@@ -254,20 +254,26 @@ impl SceneSpatial {
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
         pointer_in_ui: glam::Vec2,
-        ui_rect: &egui::Rect,
+        pixels_from_points: f32,
+        ui_rect: egui::Rect,
+        // Equal to `ui_rect` unless panned & zoomed
+        // TODO: this is one way to go about it. Seems legit but the naming is a bit off - the previous rect is more like the "virtual ui rect" then :thinking:
+        //      Also it would make more sense to have the transform of the cursor coordinate into the virtual space not in the caller but in here.
+        //      Should maybe explain the concept of virutal space as a thing here?
+        //visible_ui_rect: egui::Rect,
         eye: &Eye,
-        ui_interaction_radius: f32,
     ) -> PickingResult {
         picking::picking(
             render_ctx,
             gpu_readback_identifier,
             previous_picking_result,
             pointer_in_ui,
+            pixels_from_points,
             ui_rect,
+            //visible_ui_rect,
             eye,
             &self.primitives,
             &self.ui,
-            ui_interaction_radius,
         )
     }
 }
