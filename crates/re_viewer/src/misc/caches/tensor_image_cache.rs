@@ -4,7 +4,7 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning, TensorTrait},
+    component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning},
     MsgId,
 };
 use re_renderer::{

@@ -9,18 +9,6 @@ use crate::{TensorDataType, TensorElement};
 
 use super::arrow_convert_shims::BinaryBuffer;
 
-pub trait TensorTrait {
-    fn id(&self) -> TensorId;
-    fn shape(&self) -> &[TensorDimension];
-    fn num_dim(&self) -> usize;
-    fn is_shaped_like_an_image(&self) -> bool;
-    fn is_vector(&self) -> bool;
-    fn meaning(&self) -> TensorDataMeaning;
-    fn get(&self, index: &[u64]) -> Option<TensorElement>;
-    fn dtype(&self) -> TensorDataType;
-    fn size_in_bytes(&self) -> usize;
-}
-
 // ----------------------------------------------------------------------------
 
 /// A unique id per [`Tensor`].
@@ -365,23 +353,23 @@ pub struct Tensor {
     pub meter: Option<f32>,
 }
 
-impl TensorTrait for Tensor {
+impl Tensor {
     #[inline]
-    fn id(&self) -> TensorId {
+    pub fn id(&self) -> TensorId {
         self.tensor_id
     }
 
     #[inline]
-    fn shape(&self) -> &[TensorDimension] {
+    pub fn shape(&self) -> &[TensorDimension] {
         self.shape.as_slice()
     }
 
     #[inline]
-    fn num_dim(&self) -> usize {
+    pub fn num_dim(&self) -> usize {
         self.shape.len()
     }
 
-    fn is_shaped_like_an_image(&self) -> bool {
+    pub fn is_shaped_like_an_image(&self) -> bool {
         self.num_dim() == 2
             || self.num_dim() == 3 && {
                 matches!(
@@ -393,17 +381,17 @@ impl TensorTrait for Tensor {
     }
 
     #[inline]
-    fn is_vector(&self) -> bool {
+    pub fn is_vector(&self) -> bool {
         let shape = &self.shape;
         shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
     }
 
     #[inline]
-    fn meaning(&self) -> TensorDataMeaning {
+    pub fn meaning(&self) -> TensorDataMeaning {
         self.meaning
     }
 
-    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+    pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
         for (TensorDimension { size, .. }, index) in self.shape.iter().zip(index).rev() {
@@ -429,11 +417,11 @@ impl TensorTrait for Tensor {
         }
     }
 
-    fn dtype(&self) -> TensorDataType {
+    pub fn dtype(&self) -> TensorDataType {
         self.data.dtype()
     }
 
-    fn size_in_bytes(&self) -> usize {
+    pub fn size_in_bytes(&self) -> usize {
         self.data.size_in_bytes()
     }
 }

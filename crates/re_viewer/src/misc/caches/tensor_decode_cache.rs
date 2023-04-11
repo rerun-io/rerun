@@ -1,4 +1,4 @@
-use re_log_types::component_types::{Tensor, TensorDimension, TensorId, TensorTrait};
+use re_log_types::component_types::{Tensor, TensorDimension, TensorId};
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum TensorDecodeError {
