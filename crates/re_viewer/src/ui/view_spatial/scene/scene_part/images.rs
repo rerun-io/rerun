@@ -41,27 +41,28 @@ fn push_tensor_texture(
 
     let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
 
-    if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
-        let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
-        scene
-            .primitives
-            .textured_rectangles
-            .push(re_renderer::renderer::TexturedRect {
-                top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
-                extent_u: world_from_obj.transform_vector3(glam::Vec3::X * w),
-                extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * h),
-                texture: texture_handle,
-                texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
-                texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-                multiplicative_tint: tint,
-                // Push to background. Mostly important for mouse picking order!
-                depth_offset: -1,
-                outline_mask,
-            });
-        scene
-            .primitives
-            .textured_rectangles_ids
-            .push(instance_path_hash);
+    if let Some([height, width, _depth]) = tensor.image_height_width_depth() {
+        if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
+            scene
+                .primitives
+                .textured_rectangles
+                .push(re_renderer::renderer::TexturedRect {
+                    top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
+                    extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
+                    extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
+                    texture: texture_handle,
+                    texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+                    texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                    multiplicative_tint: tint,
+                    // Push to background. Mostly important for mouse picking order!
+                    depth_offset: -1,
+                    outline_mask,
+                });
+            scene
+                .primitives
+                .textured_rectangles_ids
+                .push(instance_path_hash);
+        }
     }
 }
 
