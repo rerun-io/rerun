@@ -218,7 +218,6 @@ impl ViewSpatialState {
         if tensor.meaning == TensorDataMeaning::Depth {
             if properties.depth_from_world_scale.is_auto() {
                 let auto = tensor.meter.unwrap_or_else(|| {
-                    use re_log_types::component_types::TensorTrait as _;
                     if tensor.dtype().is_integer() {
                         1000.0
                     } else {

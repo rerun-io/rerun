@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::component_types::{self, InstanceKey, Tensor, TensorTrait as _};
+use re_log_types::component_types::{self, InstanceKey, Tensor};
 use re_query::query_entity_with_primary;
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};

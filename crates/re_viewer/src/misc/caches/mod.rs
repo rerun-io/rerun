@@ -2,7 +2,7 @@ mod mesh_cache;
 mod tensor_decode_cache;
 mod tensor_image_cache;
 
-use re_log_types::component_types::{self, TensorTrait};
+use re_log_types::component_types::{self};
 pub use tensor_image_cache::ColoredTensorView;
 
 /// Does memoization of different things for the immediate mode UI.

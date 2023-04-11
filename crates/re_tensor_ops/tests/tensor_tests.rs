@@ -1,5 +1,5 @@
 use re_log_types::component_types::{
-    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait,
+    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId,
 };
 
 #[test]
