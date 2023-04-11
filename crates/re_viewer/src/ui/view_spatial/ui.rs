@@ -63,8 +63,6 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-pub const PICKING_RECT_SIZE: u32 = 63; // TODO: adjust dynamically
-
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
@@ -682,6 +680,8 @@ pub fn picking(
     scene: &SceneSpatial,
     space: &EntityPath,
 ) -> egui::Response {
+    crate::profile_function!();
+
     let Some(pointer_pos_ui) = response.hover_pos() else  {
         state.previous_picking_result = None;
         return response;
@@ -696,11 +696,21 @@ pub fn picking(
         parent_ui.ctx().pixels_per_point(),
         &eye,
     );
+
+    let picking_rect_size =
+        super::scene::PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
+    // Make the picking rect bigger than necessary so we can use it to counter act delays.
+    // (by the time the picking rectangle read back, the cursor may have moved on).
+    let picking_rect_size = (picking_rect_size * 2.0)
+        .ceil()
+        .at_least(8.0)
+        .at_most(128.0) as u32;
+
     let _ = view_builder.schedule_picking_rect(
         ctx.render_ctx,
         re_renderer::IntRect::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
-            glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
+            glam::uvec2(picking_rect_size, picking_rect_size),
         ),
         space_view_id.gpu_readback_id(),
         (),

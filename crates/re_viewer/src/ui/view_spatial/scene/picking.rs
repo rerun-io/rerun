@@ -163,7 +163,7 @@ impl PickingContext {
     /// does not hover it directly.
     ///
     /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
-    const UI_INTERACTION_RADIUS: f32 = 5.0;
+    pub const UI_INTERACTION_RADIUS: f32 = 5.0;
 
     pub fn new(
         pointer_in_ui: egui::Pos2,
