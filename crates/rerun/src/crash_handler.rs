@@ -90,6 +90,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
         }
 
         // We compile with `panic = "abort"`, but we don't want to report the same problem twice, so just exit:
+        #[allow(clippy::exit)]
         std::process::exit(102);
     }));
 }
