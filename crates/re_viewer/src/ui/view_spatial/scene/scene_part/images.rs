@@ -34,7 +34,7 @@ fn push_tensor_texture(
     world_from_obj: glam::Mat4,
     instance_path_hash: InstancePathHash,
     tensor: &Tensor,
-    tint: egui::Rgba,
+    multiplicative_tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
 ) {
     crate::profile_function!();
@@ -53,7 +53,7 @@ fn push_tensor_texture(
                     texture: texture_handle,
                     texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                     texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-                    multiplicative_tint: tint,
+                    multiplicative_tint,
                     // Push to background. Mostly important for mouse picking order!
                     depth_offset: -1,
                     outline_mask,
