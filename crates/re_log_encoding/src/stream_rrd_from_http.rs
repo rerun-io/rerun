@@ -65,7 +65,7 @@ mod web_event_listener {
                         crate::stream_rrd_from_http::decode_rrd(result, on_msg.clone());
                     }
                     Err(err) => {
-                        re_log::error!("Incoming event was not a MessageEvent. {:?}", err);
+                        re_log::error!("Incoming event was not a MessageEvent. {}", err);
                     }
                 }
             }) as Box<dyn FnMut(_)>);
