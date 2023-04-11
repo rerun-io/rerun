@@ -23,7 +23,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
     std::panic::set_hook(Box::new(move |panic_info: &std::panic::PanicInfo<'_>| {
-        let callstack = callstack_from("panicking::panic_fmt\n");
+        let callstack = callstack_from(&["panicking::panic_fmt\n"]);
 
         let file_line = panic_info.location().map(|location| {
             let file = anonymize_source_file_path(&std::path::PathBuf::from(location.file()));
@@ -210,21 +210,38 @@ fn install_signal_handler(build_info: BuildInfo) {
     }
 
     fn callstack() -> String {
-        callstack_from("install_signal_handler::signal_handler\n")
+        callstack_from(&["install_signal_handler::signal_handler\n"])
     }
 }
 
-fn callstack_from(start_pattern: &str) -> String {
+/// Get a nicely formatted callstack.
+///
+/// You can give this function a list of substrings to look for, e.g. names of functions.
+/// If any of these substrings matches, anything before that is removed from the callstack.
+/// For example:
+///
+/// ```
+/// fn print_callstack() {
+///     eprintln!("{}", callstack_from(&["print_callstack"]));
+/// }
+/// ```
+pub fn callstack_from(start_patterns: &[&str]) -> String {
     let backtrace = backtrace::Backtrace::new();
     let stack = backtrace_to_string(&backtrace);
 
     // Trim it a bit:
     let mut stack = stack.as_str();
 
+    let start_patterns = start_patterns
+        .iter()
+        .chain(std::iter::once(&"callstack_from"));
+
     // Trim the top (closest to the panic handler) to cut out some noise:
-    if let Some(offset) = stack.find(start_pattern) {
-        let prev_newline = stack[..offset].rfind('\n').map_or(0, |newline| newline + 1);
-        stack = &stack[prev_newline..];
+    for start_pattern in start_patterns {
+        if let Some(offset) = stack.find(start_pattern) {
+            let prev_newline = stack[..offset].rfind('\n').map_or(0, |newline| newline + 1);
+            stack = &stack[prev_newline..];
+        }
     }
 
     // Trim the bottom to cut out code that sets up the callstack:
