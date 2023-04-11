@@ -220,7 +220,7 @@ fn install_signal_handler(build_info: BuildInfo) {
 /// If any of these substrings matches, anything before that is removed from the callstack.
 /// For example:
 ///
-/// ```
+/// ```ignore
 /// fn print_callstack() {
 ///     eprintln!("{}", callstack_from(&["print_callstack"]));
 /// }
