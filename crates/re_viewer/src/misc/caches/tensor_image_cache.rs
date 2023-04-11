@@ -50,7 +50,7 @@ impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
     /// Will return None if a valid [`ColorImage`] could not be derived from the [`Tensor`].
     pub fn texture_handle(&self, render_ctx: &mut RenderContext) -> Option<GpuTexture2DHandle> {
         crate::profile_function!();
-        self.colored_image.map(|i| {
+        self.colored_image.map(|image| {
             let texture_key = self.key.hash64();
 
             let debug_name = format!("tensor {:?}", self.tensor.shape());
@@ -58,12 +58,12 @@ impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
             render_ctx.texture_manager_2d.get_or_create(
                 texture_key,
                 &mut render_ctx.gpu_resources.textures,
-                &Texture2DCreationDesc {
+                Texture2DCreationDesc {
                     label: debug_name.into(),
-                    data: bytemuck::cast_slice(&i.pixels),
+                    data: bytemuck::cast_slice(&image.pixels).into(),
                     format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    width: i.width() as u32,
-                    height: i.height() as u32,
+                    width: image.width() as u32,
+                    height: image.height() as u32,
                 },
             )
         })

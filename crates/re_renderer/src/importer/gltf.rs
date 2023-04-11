@@ -62,7 +62,7 @@ pub fn load_gltf_from_buffer(
                 format!("gltf image used by {texture_names} in {mesh_name}")
             }
             .into(),
-            data: &data,
+            data: data.into(),
             format,
             width: image.width,
             height: image.height,

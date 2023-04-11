@@ -243,7 +243,7 @@ impl framework::Example for RenderDepthClouds {
             &mut re_ctx.gpu_resources.textures,
             &Texture2DCreationDesc {
                 label: "albedo".into(),
-                data: bytemuck::cast_slice(&albedo.rgba8),
+                data: bytemuck::cast_slice(&albedo.rgba8).into(),
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 width: albedo.dimensions.x,
                 height: albedo.dimensions.y,

@@ -32,7 +32,7 @@ pub struct Texture2DCreationDesc<'a> {
     /// Data for the highest mipmap level.
     /// Must be padded according to wgpu rules and ready for upload.
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
-    pub data: &'a [u8],
+    pub data: std::borrow::Cow<'a, [u8]>,
     pub format: wgpu::TextureFormat,
     pub width: u32,
     pub height: u32,
@@ -91,7 +91,7 @@ impl TextureManager2D {
             texture_pool,
             &Texture2DCreationDesc {
                 label: "white pixel - unorm".into(),
-                data: &[255, 255, 255, 255],
+                data: vec![255, 255, 255, 255].into(),
                 format: wgpu::TextureFormat::Rgba8Unorm,
                 width: 1,
                 height: 1,
@@ -158,13 +158,45 @@ impl TextureManager2D {
         &mut self,
         key: u64,
         texture_pool: &mut GpuTexturePool,
-        creation_desc: &Texture2DCreationDesc<'_>,
+        texture_desc: Texture2DCreationDesc<'_>,
     ) -> GpuTexture2DHandle {
-        let texture_handle = self.texture_cache.entry(key).or_insert_with(|| {
-            Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)
-        });
+        enum Never {}
+        match self.get_or_create_with(key, texture_pool, || -> Result<_, Never> {
+            Ok(texture_desc)
+        }) {
+            Ok(tex_handle) => tex_handle,
+            Err(never) => match never {},
+        }
+    }
+
+    /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
+    /// wasn't already created using the same key.
+    pub fn get_or_create_with<'a, Err>(
+        &mut self,
+        key: u64,
+        texture_pool: &mut GpuTexturePool,
+        try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
+    ) -> Result<GpuTexture2DHandle, Err> {
+        let texture_handle = match self.texture_cache.entry(key) {
+            std::collections::hash_map::Entry::Occupied(texture_handle) => {
+                texture_handle.get().clone() // already inserted
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                // Run potentially expensive texture creation code:
+                let tex_creation_desc = try_create_texture_desc()?;
+                entry
+                    .insert(Self::create_and_upload_texture(
+                        &self.device,
+                        &self.queue,
+                        texture_pool,
+                        &tex_creation_desc,
+                    ))
+                    .clone()
+            }
+        };
+
         self.accessed_textures.insert(key);
-        texture_handle.clone()
+        Ok(texture_handle)
     }
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
@@ -213,7 +245,7 @@ impl TextureManager2D {
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
-        let data = creation_desc.data;
+        let data: &[u8] = creation_desc.data.as_ref();
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
