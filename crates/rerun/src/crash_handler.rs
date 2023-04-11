@@ -30,8 +30,6 @@ fn install_panic_hook(_build_info: BuildInfo) {
             format!("{file}:{}", location.line())
         });
 
-        // `panic_info.message` is unstable, so this is the recommended way of getting
-        // the panic message out. We need both the `&str` and `String` variants.
         let msg = panic_info_message(panic_info);
 
         if let Some(msg) = &msg {
@@ -90,10 +88,16 @@ fn install_panic_hook(_build_info: BuildInfo) {
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
             }
         }
+
+        // We compile with `panic = "abort"`, but we don't want to report the same problem twice, so just exit:
+        std::process::exit(102);
     }));
 }
 
 fn panic_info_message(panic_info: &std::panic::PanicInfo<'_>) -> Option<String> {
+    // `panic_info.message` is unstable, so this is the recommended way of getting
+    // the panic message out. We need both the `&str` and `String` variants.
+
     #[allow(clippy::manual_map)]
     if let Some(msg) = panic_info.payload().downcast_ref::<&str>() {
         Some((*msg).to_owned())
