@@ -216,6 +216,9 @@ jobs:
       - name: Run tests
         run: cd rerun_py/tests && pytest
 
+      - name: Run e2e test
+        run: scripts/run_python_e2e_test.py
+
       - name: Unpack the wheel
         shell: bash
         run: |
