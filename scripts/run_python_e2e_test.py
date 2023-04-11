@@ -30,14 +30,6 @@ def main() -> None:
     print(f"rerun-sdk built in {elapsed:.1f} seconds")
     print("")
 
-    print("----------------------------------------------------------")
-    print("Building rerun…")
-    start_time = time.time()
-    subprocess.Popen(["cargo", "build", "-p", "rerun", "--quiet"], env=build_env).wait()
-    elapsed = time.time() - start_time
-    print(f"rerun built in {elapsed:.1f} seconds")
-    print("")
-
     examples = [
         "examples/python/api_demo/main.py",
         "examples/python/car/main.py",
@@ -61,15 +53,15 @@ def main() -> None:
 def run_example(example: str) -> None:
     port = 9752
 
-    rerun_process = subprocess.Popen(
-        ["cargo", "run", "-p", "rerun", "--", "--port", str(port), "--strict", "--test-receive"]
-    )
-    time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
-
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
     if python_executable is None:
         python_executable = "python3"
+
+    rerun_process = subprocess.Popen(
+        [python_executable, "-m", "rerun", "--port", str(port), "--strict", "--test-receive"]
+    )
+    time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
 
     python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{port}"])
 
