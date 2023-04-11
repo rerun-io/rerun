@@ -70,7 +70,7 @@ pub async fn start(
                     ))
                 }
                 EndpointCategory::WebEventListener => {
-                    // Download an .rrd file over http:
+                    // Process an rrd when it's posted via `window.postMessage`
                     let (tx, rx) = re_smart_channel::smart_channel(
                         re_smart_channel::Source::RrdWebEventListener,
                     );
