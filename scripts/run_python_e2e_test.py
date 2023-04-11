@@ -20,7 +20,7 @@ import time
 def main() -> None:
     build_env = os.environ.copy()
     if "RUST_LOG" in build_env:
-        del build_env["RUST_LOG"] # The user likely only meant it for the actual tests; not the setup
+        del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
 
     print("----------------------------------------------------------")
     print("Building rerun-sdk…")
@@ -31,6 +31,7 @@ def main() -> None:
     print("")
 
     examples = [
+        # Trivial examples that don't require weird dependencies, or downloading data
         "examples/python/api_demo/main.py",
         "examples/python/car/main.py",
         "examples/python/multithreading/main.py",
