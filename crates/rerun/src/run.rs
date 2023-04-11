@@ -75,6 +75,14 @@ struct Args {
     #[clap(long)]
     strict: bool,
 
+    /// Ingest data and then quit once the goodbye message has been received.
+    ///
+    /// Used for testing together with the `--strict` argument.
+    ///
+    /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
+    #[clap(long)]
+    test_receive: bool,
+
     /// Either a path to a `.rrd` file to load, an http url to an `.rrd` file,
     /// or a websocket url to a Rerun Server from which to read data
     ///
@@ -330,7 +338,9 @@ async fn run_impl(
 
     // Now what do we do with the data?
 
-    if let Some(rrd_path) = args.save {
+    if args.test_receive {
+        receive_into_log_db(&rx).map(|_db| ())
+    } else if let Some(rrd_path) = args.save {
         Ok(stream_to_rrd(&rx, &rrd_path.into(), &shutdown_bool)?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
@@ -401,6 +411,44 @@ async fn run_impl(
             anyhow::bail!(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );
+        }
+    }
+}
+
+fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::LogDb> {
+    use re_smart_channel::RecvTimeoutError;
+
+    re_log::info!("Receiving messages into a LogDb…");
+
+    let mut db = re_data_store::LogDb::default();
+
+    let mut num_messages = 0;
+
+    let timeout = std::time::Duration::from_secs(12);
+
+    loop {
+        match rx.recv_timeout(timeout) {
+            Ok(msg) => {
+                re_log::info_once!("Received first message.");
+                let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_));
+                db.add(msg)?;
+                num_messages += 1;
+                if is_goodbye {
+                    db.entity_db.data_store.sanity_check()?;
+                    anyhow::ensure!(0 < num_messages, "No messages received");
+                    re_log::info!("Successfully ingested {num_messages} messages.");
+                    return Ok(db);
+                }
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                anyhow::bail!(
+                    "Didn't receive any messages within {} seconds. Giving up.",
+                    timeout.as_secs()
+                );
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                anyhow::bail!("Channel disconnected without a Goodbye message.");
+            }
         }
     }
 }
