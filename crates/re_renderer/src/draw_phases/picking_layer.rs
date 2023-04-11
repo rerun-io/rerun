@@ -232,10 +232,10 @@ impl PickingLayerProcessor {
             pixel_coord_to_ndc(glam::vec2(rect_min.x, rect_max.y), screen_resolution);
         let rect_max_ndc =
             pixel_coord_to_ndc(glam::vec2(rect_max.x, rect_min.y), screen_resolution);
-        let rect_center_ndc = (rect_min_ndc + rect_max_ndc) * 0.5;
-        let cropped_projection_from_projection =
-            glam::Mat4::from_scale((2.0 / (rect_max_ndc - rect_min_ndc)).extend(1.0))
-                * glam::Mat4::from_translation(-rect_center_ndc.extend(0.0));
+        let scale = 2.0 / (rect_max_ndc - rect_min_ndc);
+        let translation = -0.5 * (rect_min_ndc + rect_max_ndc);
+        let cropped_projection_from_projection = glam::Mat4::from_scale(scale.extend(1.0))
+            * glam::Mat4::from_translation(translation.extend(0.0));
 
         // Setup frame uniform buffer
         let previous_projection_from_world: glam::Mat4 =
