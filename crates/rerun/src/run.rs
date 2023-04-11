@@ -36,45 +36,9 @@ use crate::web_viewer::host_web_viewer;
 #[derive(Debug, clap::Parser)]
 #[clap(author, about)]
 struct Args {
-    /// Print version and quit
-    #[clap(long)]
-    version: bool,
-
-    /// Either a path to a `.rrd` file to load, an http url to an `.rrd` file,
-    /// or a websocket url to a Rerun Server from which to read data
-    ///
-    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
-    url_or_path: Option<String>,
-
-    /// What TCP port do we listen to (for SDK:s to connect to)?
-    #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
-    port: u16,
-
-    /// Start the viewer in the browser (instead of locally).
-    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
-    #[clap(long)]
-    web_viewer: bool,
-
-    /// Stream incoming log events to an .rrd file at the given path.
-    #[clap(long)]
-    save: Option<String>,
-
-    /// Start with the puffin profiler running.
-    #[clap(long)]
-    profile: bool,
-
-    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
-    #[clap(long)]
-    strict: bool,
-
-    /// An upper limit on how much memory the Rerun Viewer should use.
-    ///
-    /// When this limit is used, Rerun will purge the oldest data.
-    ///
-    /// Example: `16GB`
-    #[clap(long)]
-    memory_limit: Option<String>,
+    // Note: arguments are sorted lexicographically for nicer `--help` message:
+    #[command(subcommand)]
+    commands: Option<Commands>,
 
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
@@ -86,8 +50,45 @@ struct Args {
     #[clap(long)]
     drop_at_latency: Option<String>,
 
-    #[command(subcommand)]
-    commands: Option<Commands>,
+    /// An upper limit on how much memory the Rerun Viewer should use.
+    ///
+    /// When this limit is used, Rerun will purge the oldest data.
+    ///
+    /// Example: `16GB`
+    #[clap(long)]
+    memory_limit: Option<String>,
+
+    /// What TCP port do we listen to (for SDK:s to connect to)?
+    #[cfg(feature = "server")]
+    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
+    port: u16,
+
+    /// Start with the puffin profiler running.
+    #[clap(long)]
+    profile: bool,
+
+    /// Stream incoming log events to an .rrd file at the given path.
+    #[clap(long)]
+    save: Option<String>,
+
+    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
+    #[clap(long)]
+    strict: bool,
+
+    /// Either a path to a `.rrd` file to load, an http url to an `.rrd` file,
+    /// or a websocket url to a Rerun Server from which to read data
+    ///
+    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
+    url_or_path: Option<String>,
+
+    /// Print version and quit
+    #[clap(long)]
+    version: bool,
+
+    /// Start the viewer in the browser (instead of locally).
+    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    #[clap(long)]
+    web_viewer: bool,
 }
 
 #[derive(Debug, Clone, Subcommand)]
