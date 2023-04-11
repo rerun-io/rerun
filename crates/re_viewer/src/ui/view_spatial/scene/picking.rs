@@ -81,6 +81,7 @@ impl PickingResult {
 const RAY_T_EPSILON: f32 = f32::EPSILON;
 
 struct PickingContext {
+    pointer_in_space2d: glam::Vec2,
     pointer_in_ui: glam::Vec2,
     ray_in_world: macaw::Ray3,
     ui_from_world: glam::Mat4,
@@ -138,7 +139,9 @@ impl PickingState {
 }
 
 /// Radius in which cursor interactions may snap to the nearest object even if the cursor
-/// does not hover it directly. Given in ui points.
+/// does not hover it directly.
+///
+/// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
 const UI_INTERACTION_RADIUS: f32 = 5.0;
 
 #[allow(clippy::too_many_arguments)]
@@ -146,9 +149,10 @@ pub fn picking(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
     previous_picking_result: &Option<PickingResult>,
-    pointer_in_ui: glam::Vec2,
+    pointer_in_ui: egui::Pos2,
+    space2d_from_ui: egui::emath::RectTransform,
+    ui_clip_rect: egui::Rect,
     pixels_from_points: f32,
-    ui_rect: egui::Rect,
     eye: &Eye,
     primitives: &SceneSpatialPrimitives,
     ui_data: &SceneSpatialUiData,
@@ -157,10 +161,13 @@ pub fn picking(
 
     let max_side_ui_dist_sq = UI_INTERACTION_RADIUS * UI_INTERACTION_RADIUS;
 
+    let pointer_in_space2d = space2d_from_ui.transform_pos(pointer_in_ui);
+    let pointer_in_space2d = glam::vec2(pointer_in_space2d.x, pointer_in_space2d.y);
     let context = PickingContext {
-        pointer_in_ui,
-        ui_from_world: eye.ui_from_world(&ui_rect),
-        ray_in_world: eye.picking_ray(&ui_rect, pointer_in_ui),
+        pointer_in_space2d,
+        pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
+        ui_from_world: eye.ui_from_world(*space2d_from_ui.to()),
+        ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
         max_side_ui_dist_sq,
     };
     let mut state = PickingState {
@@ -186,6 +193,17 @@ pub fn picking(
         any_outlines: _,
     } = primitives;
 
+    // GPU based picking.
+    picking_gpu(
+        render_ctx,
+        gpu_readback_identifier,
+        &mut state,
+        ui_clip_rect,
+        pixels_from_points,
+        &context,
+        previous_picking_result,
+    );
+
     picking_lines(&context, &mut state, line_strips);
     picking_meshes(&context, &mut state, meshes);
     picking_textured_rects(
@@ -195,18 +213,6 @@ pub fn picking(
         textured_rectangles_ids,
     );
     picking_ui_rects(&context, &mut state, ui_data);
-
-    // GPU based picking.
-    picking_gpu(
-        render_ctx,
-        gpu_readback_identifier,
-        &mut state,
-        pointer_in_ui,
-        ui_rect,
-        pixels_from_points,
-        &context,
-        previous_picking_result,
-    );
 
     state.sort_and_remove_hidden_transparent();
 
@@ -225,8 +231,7 @@ fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
     state: &mut PickingState,
-    pointer_in_ui: glam::Vec2,
-    ui_rect: egui::Rect,
+    ui_clip_rect: egui::Rect,
     pixels_from_points: f32,
     context: &PickingContext,
     previous_picking_result: &Option<PickingResult>,
@@ -245,8 +250,8 @@ fn picking_gpu(
         // First, figure out where on the rect the cursor is by now.
         // (for simplicity, we assume the screen hasn't been resized)
         let pointer_in_pixel = glam::vec2(
-            pointer_in_ui.x - ui_rect.left(),
-            pointer_in_ui.y - ui_rect.top(),
+            context.pointer_in_ui.x - ui_clip_rect.left(),
+            context.pointer_in_ui.y - ui_clip_rect.top(),
         ) * pixels_from_points;
         let pointer_on_picking_rect = pointer_in_pixel - gpu_picking_result.rect.left_top.as_vec2();
         // The cursor might have moved outside of the rect. Clamp it back in.
@@ -344,7 +349,7 @@ fn picking_lines(
             let b = ui_from_batch.project_point3(end.position);
             let side_ui_dist_sq = line_segment_distance_sq_to_point_2d(
                 [a.truncate(), b.truncate()],
-                context.pointer_in_ui,
+                context.pointer_in_space2d,
             );
 
             if side_ui_dist_sq < context.max_side_ui_dist_sq {
@@ -438,7 +443,7 @@ fn picking_ui_rects(
 ) {
     crate::profile_function!();
 
-    let egui_pos = egui::pos2(context.pointer_in_ui.x, context.pointer_in_ui.y);
+    let egui_pos = egui::pos2(context.pointer_in_space2d.x, context.pointer_in_space2d.y);
     for (bbox, instance_hash) in &ui_data.pickable_ui_rects {
         let side_ui_dist_sq = bbox.distance_sq_to_pos(egui_pos);
         state.check_hit(

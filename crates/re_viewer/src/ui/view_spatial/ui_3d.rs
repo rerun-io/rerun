@@ -363,6 +363,7 @@ pub fn view_3d(
     if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
         // Schedule GPU picking.
         // Don't round the cursor position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
+        let clip_rect = response.rect; // everything is visible.
         let pointer_in_pixel = (pointer_pos - rect.left_top()) * ui.ctx().pixels_per_point();
         let _ = view_builder.schedule_picking_rect(
             ctx.render_ctx,
@@ -379,9 +380,10 @@ pub fn view_3d(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
             &state.previous_picking_result,
-            glam::vec2(pointer_pos.x, pointer_pos.y),
+            pointer_pos,
+            RectTransform::from_to(rect, rect),
+            clip_rect,
             ui.ctx().pixels_per_point(),
-            rect,
             &eye,
         );
         state.previous_picking_result = Some(picking_result.clone());

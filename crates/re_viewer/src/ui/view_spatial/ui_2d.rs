@@ -348,9 +348,10 @@ fn view_2d_scrollable(
     let mut depth_at_pointer = None;
     if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
         // Schedule GPU picking.
-        // Don't round the cursor position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
+        // Don't round the cursor position: The entire range from 0 to excluding 1 should fall into pixel coordinate
+        let clip_rect = painter.clip_rect();
         let pointer_in_pixel =
-            (pointer_pos_ui - response.rect.left_top()) * parent_ui.ctx().pixels_per_point();
+            (pointer_pos_ui - clip_rect.left_top()) * parent_ui.ctx().pixels_per_point();
         let _ = view_builder.schedule_picking_rect(
             ctx.render_ctx,
             re_renderer::IntRect::from_middle_and_extent(
@@ -362,14 +363,14 @@ fn view_2d_scrollable(
             ctx.app_options.show_picking_debug_overlay,
         );
 
-        let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let picking_result = scene.picking(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
             &state.previous_picking_result,
-            glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
+            pointer_pos_ui,
+            space_from_ui,
+            painter.clip_rect(),
             parent_ui.ctx().pixels_per_point(),
-            scene_rect_accum,
             &eye,
         );
         state.previous_picking_result = Some(picking_result.clone());
@@ -391,6 +392,7 @@ fn view_2d_scrollable(
             };
             response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
+                let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
                 if let Some(meter) = image.meter {
                     if let Some(raw_value) = image.tensor.get(&[
                         pointer_pos_space.y.round() as _,

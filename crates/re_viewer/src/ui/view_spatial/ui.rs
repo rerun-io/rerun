@@ -59,7 +59,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-pub const PICKING_RECT_SIZE: u32 = 63;
+pub const PICKING_RECT_SIZE: u32 = 63; // TODO: adjust dynamically
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
@@ -533,7 +533,7 @@ pub fn create_labels(
 
     let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
 
-    let ui_from_world_3d = eye3d.ui_from_world(ui_from_space2d.to());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_space2d.to());
 
     for label in &scene_ui.labels {
         let (wrap_width, text_anchor_pos) = match label.target {

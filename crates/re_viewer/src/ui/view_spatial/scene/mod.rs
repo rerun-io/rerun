@@ -247,20 +247,18 @@ impl SceneSpatial {
         SpatialNavigationMode::ThreeD
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// Of the larger ui rect (`space2d_from_ui.from()`), only the `ui_clip_rect` is visible.
+    /// This means, the `ui_rect` may be way larger whereas the clip rect is panning & zooming within.
+    /// The "space2d" is pixels for 3d views and in scene units for 2d views.
     pub fn picking(
         &self,
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
-        pointer_in_ui: glam::Vec2,
+        pointer_in_ui: egui::Pos2,
+        space2d_from_ui: egui::emath::RectTransform,
+        ui_clip_rect: egui::Rect,
         pixels_from_points: f32,
-        ui_rect: egui::Rect,
-        // Equal to `ui_rect` unless panned & zoomed
-        // TODO: this is one way to go about it. Seems legit but the naming is a bit off - the previous rect is more like the "virtual ui rect" then :thinking:
-        //      Also it would make more sense to have the transform of the cursor coordinate into the virtual space not in the caller but in here.
-        //      Should maybe explain the concept of virutal space as a thing here?
-        //visible_ui_rect: egui::Rect,
         eye: &Eye,
     ) -> PickingResult {
         picking::picking(
@@ -268,9 +266,9 @@ impl SceneSpatial {
             gpu_readback_identifier,
             previous_picking_result,
             pointer_in_ui,
+            space2d_from_ui,
+            ui_clip_rect,
             pixels_from_points,
-            ui_rect,
-            //visible_ui_rect,
             eye,
             &self.primitives,
             &self.ui,
