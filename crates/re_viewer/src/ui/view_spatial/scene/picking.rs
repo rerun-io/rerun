@@ -60,18 +60,9 @@ pub struct PickingResult {
     /// Picking ray hits for transparent objects, sorted from far to near.
     /// If there is an opaque hit, all of them are in front of the opaque hit.
     pub transparent_hits: Vec<PickingRayHit>,
-
-    /// The picking ray used. Given in the coordinates of the space the picking is performed in.
-    picking_ray: macaw::Ray3,
 }
 
 impl PickingResult {
-    /// The space position of a given hit.
-    #[allow(dead_code)]
-    pub fn space_position(&self, hit: &PickingRayHit) -> glam::Vec3 {
-        self.picking_ray.origin + self.picking_ray.dir * hit.ray_t
-    }
-
     /// Iterates over all hits from far to close.
     pub fn iter_hits(&self) -> impl Iterator<Item = &PickingRayHit> {
         self.opaque_hit.iter().chain(self.transparent_hits.iter())
@@ -80,14 +71,7 @@ impl PickingResult {
 
 const RAY_T_EPSILON: f32 = f32::EPSILON;
 
-struct PickingContext {
-    pointer_in_space2d: glam::Vec2,
-    pointer_in_ui: glam::Vec2,
-    ray_in_world: macaw::Ray3,
-    ui_from_world: glam::Mat4,
-    max_side_ui_dist_sq: f32,
-}
-
+/// State used to build up picking results.
 struct PickingState {
     closest_opaque_side_ui_dist_sq: f32,
     closest_opaque_pick: PickingRayHit,
@@ -138,92 +122,126 @@ impl PickingState {
     }
 }
 
-/// Radius in which cursor interactions may snap to the nearest object even if the cursor
-/// does not hover it directly.
-///
-/// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
-const UI_INTERACTION_RADIUS: f32 = 5.0;
+/// Picking context in which picking is performed.
+pub struct PickingContext {
+    /// Cursor position in the UI coordinate system.
+    pub pointer_in_ui: glam::Vec2,
 
-#[allow(clippy::too_many_arguments)]
-pub fn picking(
-    render_ctx: &re_renderer::RenderContext,
-    gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
-    previous_picking_result: &Option<PickingResult>,
-    pointer_in_ui: egui::Pos2,
-    space2d_from_ui: egui::emath::RectTransform,
-    ui_clip_rect: egui::Rect,
+    /// Cursor position on the renderer canvas in pixels.
+    pub pointer_in_pixel: glam::Vec2,
+
+    /// Cursor position in the 2D space coordinate system.
+    ///
+    /// For 3D spaces this is equal to the cursor position in pixel coordinate system.
+    pub pointer_in_space2d: glam::Vec2,
+
+    /// The picking ray used. Given in the coordinates of the space the picking is performed in.
+    pub ray_in_world: macaw::Ray3,
+
+    /// Transformation from ui coordinates to world coordinates.
+    ui_from_world: glam::Mat4,
+
+    /// Multiply with this to convert to pixels from points.
     pixels_from_points: f32,
-    eye: &Eye,
-    primitives: &SceneSpatialPrimitives,
-    ui_data: &SceneSpatialUiData,
-) -> PickingResult {
-    crate::profile_function!();
+}
 
-    let max_side_ui_dist_sq = UI_INTERACTION_RADIUS * UI_INTERACTION_RADIUS;
+impl PickingContext {
+    /// Radius in which cursor interactions may snap to the nearest object even if the cursor
+    /// does not hover it directly.
+    ///
+    /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
+    const UI_INTERACTION_RADIUS: f32 = 5.0;
 
-    let pointer_in_space2d = space2d_from_ui.transform_pos(pointer_in_ui);
-    let pointer_in_space2d = glam::vec2(pointer_in_space2d.x, pointer_in_space2d.y);
-    let context = PickingContext {
-        pointer_in_space2d,
-        pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
-        ui_from_world: eye.ui_from_world(*space2d_from_ui.to()),
-        ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
-        max_side_ui_dist_sq,
-    };
-    let mut state = PickingState {
-        closest_opaque_side_ui_dist_sq: max_side_ui_dist_sq,
-        closest_opaque_pick: PickingRayHit {
-            instance_path_hash: InstancePathHash::NONE,
-            ray_t: f32::INFINITY,
-            info: AdditionalPickingInfo::None,
-            depth_offset: 0,
-        },
-        // Combined, sorted (and partially "hidden") by opaque results later.
-        transparent_hits: Vec::new(),
-    };
+    pub fn new(
+        pointer_in_ui: egui::Pos2,
+        space2d_from_ui: eframe::emath::RectTransform,
+        ui_clip_rect: egui::Rect,
+        pixels_from_points: f32,
+        eye: &Eye,
+    ) -> PickingContext {
+        let pointer_in_space2d = space2d_from_ui.transform_pos(pointer_in_ui);
+        let pointer_in_space2d = glam::vec2(pointer_in_space2d.x, pointer_in_space2d.y);
+        let pointer_in_pixel = (pointer_in_ui - ui_clip_rect.left_top()) * pixels_from_points;
 
-    let SceneSpatialPrimitives {
-        bounding_box: _,
-        textured_rectangles,
-        textured_rectangles_ids,
-        line_strips,
-        points: _,
-        meshes,
-        depth_clouds: _, // no picking for depth clouds yet
-        any_outlines: _,
-    } = primitives;
+        PickingContext {
+            pointer_in_space2d,
+            pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
+            pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
+            ui_from_world: eye.ui_from_world(*space2d_from_ui.to()),
+            ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
+            pixels_from_points,
+        }
+    }
 
-    // GPU based picking.
-    picking_gpu(
-        render_ctx,
-        gpu_readback_identifier,
-        &mut state,
-        ui_clip_rect,
-        pixels_from_points,
-        &context,
-        previous_picking_result,
-    );
+    /// The space position of a given hit.
+    pub fn space_position(&self, hit: &PickingRayHit) -> glam::Vec3 {
+        self.ray_in_world.origin + self.ray_in_world.dir * hit.ray_t
+    }
 
-    picking_lines(&context, &mut state, line_strips);
-    picking_meshes(&context, &mut state, meshes);
-    picking_textured_rects(
-        &context,
-        &mut state,
-        textured_rectangles,
-        textured_rectangles_ids,
-    );
-    picking_ui_rects(&context, &mut state, ui_data);
+    /// Performs picking for a given scene.
+    pub fn pick(
+        &self,
+        render_ctx: &re_renderer::RenderContext,
+        gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
+        previous_picking_result: &Option<PickingResult>,
+        primitives: &SceneSpatialPrimitives,
+        ui_data: &SceneSpatialUiData,
+    ) -> PickingResult {
+        crate::profile_function!();
 
-    state.sort_and_remove_hidden_transparent();
+        let max_side_ui_dist_sq = Self::UI_INTERACTION_RADIUS * Self::UI_INTERACTION_RADIUS;
 
-    PickingResult {
-        opaque_hit: state
-            .closest_opaque_pick
-            .instance_path_hash
-            .is_some()
-            .then_some(state.closest_opaque_pick),
-        transparent_hits: state.transparent_hits,
-        picking_ray: context.ray_in_world,
+        let mut state = PickingState {
+            closest_opaque_side_ui_dist_sq: max_side_ui_dist_sq,
+            closest_opaque_pick: PickingRayHit {
+                instance_path_hash: InstancePathHash::NONE,
+                ray_t: f32::INFINITY,
+                info: AdditionalPickingInfo::None,
+                depth_offset: 0,
+            },
+            // Combined, sorted (and partially "hidden") by opaque results later.
+            transparent_hits: Vec::new(),
+        };
+
+        let SceneSpatialPrimitives {
+            bounding_box: _,
+            textured_rectangles,
+            textured_rectangles_ids,
+            line_strips,
+            points: _,
+            meshes: _,
+            depth_clouds: _, // no picking for depth clouds yet
+            any_outlines: _,
+        } = primitives;
+
+        // GPU based picking.
+        picking_gpu(
+            render_ctx,
+            gpu_readback_identifier,
+            &mut state,
+            self,
+            previous_picking_result,
+        );
+
+        picking_lines(self, &mut state, line_strips);
+        picking_textured_rects(
+            self,
+            &mut state,
+            textured_rectangles,
+            textured_rectangles_ids,
+        );
+        picking_ui_rects(self, &mut state, ui_data);
+
+        state.sort_and_remove_hidden_transparent();
+
+        PickingResult {
+            opaque_hit: state
+                .closest_opaque_pick
+                .instance_path_hash
+                .is_some()
+                .then_some(state.closest_opaque_pick),
+            transparent_hits: state.transparent_hits,
+        }
     }
 }
 
@@ -231,8 +249,6 @@ fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
     state: &mut PickingState,
-    ui_clip_rect: egui::Rect,
-    pixels_from_points: f32,
     context: &PickingContext,
     previous_picking_result: &Option<PickingResult>,
 ) {
@@ -249,11 +265,8 @@ fn picking_gpu(
     if let Some(gpu_picking_result) = gpu_picking_result {
         // First, figure out where on the rect the cursor is by now.
         // (for simplicity, we assume the screen hasn't been resized)
-        let pointer_in_pixel = glam::vec2(
-            context.pointer_in_ui.x - ui_clip_rect.left(),
-            context.pointer_in_ui.y - ui_clip_rect.top(),
-        ) * pixels_from_points;
-        let pointer_on_picking_rect = pointer_in_pixel - gpu_picking_result.rect.left_top.as_vec2();
+        let pointer_on_picking_rect =
+            context.pointer_in_pixel - gpu_picking_result.rect.left_top.as_vec2();
         // The cursor might have moved outside of the rect. Clamp it back in.
         let pointer_on_picking_rect = pointer_on_picking_rect.clamp(
             glam::Vec2::ZERO,
@@ -288,7 +301,7 @@ fn picking_gpu(
         }
 
         let ui_distance_sq = picked_on_picking_rect.distance_squared(pointer_on_picking_rect)
-            / (pixels_from_points * pixels_from_points);
+            / (context.pixels_from_points * context.pixels_from_points);
         let picked_world_position =
             gpu_picking_result.picked_world_position(picked_on_picking_rect.as_uvec2());
         state.check_hit(
@@ -352,7 +365,7 @@ fn picking_lines(
                 context.pointer_in_space2d,
             );
 
-            if side_ui_dist_sq < context.max_side_ui_dist_sq {
+            if side_ui_dist_sq < state.closest_opaque_side_ui_dist_sq {
                 let start_world = batch.world_from_obj.transform_point3(start.position);
                 let end_world = batch.world_from_obj.transform_point3(end.position);
                 let t = ray_closest_t_line_segment(&context.ray_in_world, [start_world, end_world]);
@@ -363,31 +376,6 @@ fn picking_lines(
                     false,
                 );
             }
-        }
-    }
-}
-
-fn picking_meshes(
-    context: &PickingContext,
-    state: &mut PickingState,
-    meshes: &[super::MeshSource],
-) {
-    crate::profile_function!();
-
-    for mesh in meshes {
-        if !mesh.picking_instance_hash.is_some() {
-            continue;
-        }
-        let ray_in_mesh = (mesh.world_from_mesh.inverse() * context.ray_in_world).normalize();
-        let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.mesh.bbox());
-
-        if t < 0.0 {
-            let side_ui_dist_sq = 0.0;
-            state.check_hit(
-                side_ui_dist_sq,
-                PickingRayHit::from_instance_and_t(mesh.picking_instance_hash, t),
-                false,
-            );
         }
     }
 }

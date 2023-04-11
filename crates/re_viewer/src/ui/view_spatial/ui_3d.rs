@@ -15,7 +15,7 @@ use crate::{
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
-            scene::AdditionalPickingInfo,
+            scene::{AdditionalPickingInfo, PickingContext},
             ui::{create_labels, outline_config, screenshot_context_menu, PICKING_RECT_SIZE},
             ui_renderer_bridge::{
                 fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
@@ -361,30 +361,29 @@ pub fn view_3d(
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     // Check if we're hovering any hover primitive.
     if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
-        // Schedule GPU picking.
-        // Don't round the cursor position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
-        let clip_rect = response.rect; // everything is visible.
-        let pointer_in_pixel = (pointer_pos - rect.left_top()) * ui.ctx().pixels_per_point();
+        let picking_context = PickingContext::new(
+            pointer_pos,
+            RectTransform::from_to(rect, rect),
+            response.rect,
+            ui.ctx().pixels_per_point(),
+            &eye,
+        );
         let _ = view_builder.schedule_picking_rect(
             ctx.render_ctx,
             re_renderer::IntRect::from_middle_and_extent(
-                glam::ivec2(pointer_in_pixel.x as i32, pointer_in_pixel.y as i32),
+                picking_context.pointer_in_pixel.as_ivec2(),
                 glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
             ),
             space_view_id.gpu_readback_id(),
             (),
             ctx.app_options.show_picking_debug_overlay,
         );
-
-        let picking_result = scene.picking(
+        let picking_result = picking_context.pick(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
             &state.previous_picking_result,
-            pointer_pos,
-            RectTransform::from_to(rect, rect),
-            clip_rect,
-            ui.ctx().pixels_per_point(),
-            &eye,
+            &scene.primitives,
+            &scene.ui,
         );
         state.previous_picking_result = Some(picking_result.clone());
 
@@ -462,7 +461,7 @@ pub fn view_3d(
             .opaque_hit
             .as_ref()
             .or_else(|| picking_result.transparent_hits.last())
-            .map(|hit| picking_result.space_position(hit));
+            .map(|hit| picking_context.space_position(hit));
 
         ctx.selection_state_mut()
             .set_hovered_space(HoveredSpace::ThreeD {

@@ -9,7 +9,7 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use super::{
     eye::Eye,
-    scene::AdditionalPickingInfo,
+    scene::{AdditionalPickingInfo, PickingContext},
     ui::{create_labels, screenshot_context_menu, PICKING_RECT_SIZE},
     SpatialNavigationMode, ViewSpatialState,
 };
@@ -347,15 +347,17 @@ fn view_2d_scrollable(
     // Check if we're hovering any hover primitive.
     let mut depth_at_pointer = None;
     if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
-        // Schedule GPU picking.
-        // Don't round the cursor position: The entire range from 0 to excluding 1 should fall into pixel coordinate
-        let clip_rect = painter.clip_rect();
-        let pointer_in_pixel =
-            (pointer_pos_ui - clip_rect.left_top()) * parent_ui.ctx().pixels_per_point();
+        let picking_context = PickingContext::new(
+            pointer_pos_ui,
+            space_from_ui,
+            painter.clip_rect(),
+            parent_ui.ctx().pixels_per_point(),
+            &eye,
+        );
         let _ = view_builder.schedule_picking_rect(
             ctx.render_ctx,
             re_renderer::IntRect::from_middle_and_extent(
-                glam::ivec2(pointer_in_pixel.x as i32, pointer_in_pixel.y as i32),
+                picking_context.pointer_in_pixel.as_ivec2(),
                 glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
             ),
             space_view_id.gpu_readback_id(),
@@ -363,15 +365,12 @@ fn view_2d_scrollable(
             ctx.app_options.show_picking_debug_overlay,
         );
 
-        let picking_result = scene.picking(
+        let picking_result = picking_context.pick(
             ctx.render_ctx,
             space_view_id.gpu_readback_id(),
             &state.previous_picking_result,
-            pointer_pos_ui,
-            space_from_ui,
-            painter.clip_rect(),
-            parent_ui.ctx().pixels_per_point(),
-            &eye,
+            &scene.primitives,
+            &scene.ui,
         );
         state.previous_picking_result = Some(picking_result.clone());
 
@@ -392,11 +391,10 @@ fn view_2d_scrollable(
             };
             response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
-                let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
                 if let Some(meter) = image.meter {
                     if let Some(raw_value) = image.tensor.get(&[
-                        pointer_pos_space.y.round() as _,
-                        pointer_pos_space.x.round() as _,
+                        picking_context.pointer_in_space2d.y.round() as _,
+                        picking_context.pointer_in_space2d.x.round() as _,
                     ]) {
                         let raw_value = raw_value.as_f64();
                         let depth_in_meters = raw_value / meter as f64;

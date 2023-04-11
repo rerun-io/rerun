@@ -8,7 +8,7 @@ use re_log_types::{
 };
 use re_renderer::{Color32, OutlineMaskPreference, Size};
 
-use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
+use super::{SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
@@ -21,7 +21,7 @@ mod picking;
 mod primitives;
 mod scene_part;
 
-pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
+pub use self::picking::{AdditionalPickingInfo, PickingContext, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -245,33 +245,5 @@ impl SceneSpatial {
         }
 
         SpatialNavigationMode::ThreeD
-    }
-
-    /// Of the larger ui rect (`space2d_from_ui.from()`), only the `ui_clip_rect` is visible.
-    /// This means, the `ui_rect` may be way larger whereas the clip rect is panning & zooming within.
-    /// The "space2d" is pixels for 3d views and in scene units for 2d views.
-    pub fn picking(
-        &self,
-        render_ctx: &re_renderer::RenderContext,
-        gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
-        previous_picking_result: &Option<PickingResult>,
-        pointer_in_ui: egui::Pos2,
-        space2d_from_ui: egui::emath::RectTransform,
-        ui_clip_rect: egui::Rect,
-        pixels_from_points: f32,
-        eye: &Eye,
-    ) -> PickingResult {
-        picking::picking(
-            render_ctx,
-            gpu_readback_identifier,
-            previous_picking_result,
-            pointer_in_ui,
-            space2d_from_ui,
-            ui_clip_rect,
-            pixels_from_points,
-            eye,
-            &self.primitives,
-            &self.ui,
-        )
     }
 }
