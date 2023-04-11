@@ -1,3 +1,5 @@
+//! Handles picking in 2D & 3D spaces.
+
 use itertools::Itertools as _;
 
 use re_data_store::InstancePathHash;
@@ -50,6 +52,10 @@ impl PickingRayHit {
             depth_offset: 0,
         }
     }
+
+    pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> glam::Vec3 {
+        ray_in_world.origin + ray_in_world.dir * self.ray_t
+    }
 }
 
 #[derive(Clone)]
@@ -66,6 +72,13 @@ impl PickingResult {
     /// Iterates over all hits from far to close.
     pub fn iter_hits(&self) -> impl Iterator<Item = &PickingRayHit> {
         self.opaque_hit.iter().chain(self.transparent_hits.iter())
+    }
+
+    pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> Option<glam::Vec3> {
+        self.opaque_hit
+            .as_ref()
+            .or_else(|| self.transparent_hits.last())
+            .map(|hit| hit.space_position(ray_in_world))
     }
 }
 
@@ -171,11 +184,6 @@ impl PickingContext {
             ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
             pixels_from_points,
         }
-    }
-
-    /// The space position of a given hit.
-    pub fn space_position(&self, hit: &PickingRayHit) -> glam::Vec3 {
-        self.ray_in_world.origin + self.ray_in_world.dir * hit.ray_t
     }
 
     /// Performs picking for a given scene.

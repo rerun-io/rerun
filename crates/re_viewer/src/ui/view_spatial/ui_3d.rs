@@ -13,16 +13,14 @@ use re_renderer::{
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
-        data_ui::{self, DataUi},
         view_spatial::{
-            scene::{AdditionalPickingInfo, PickingContext},
-            ui::{create_labels, outline_config, screenshot_context_menu, PICKING_RECT_SIZE},
+            ui::{create_labels, outline_config, picking, screenshot_context_menu},
             ui_renderer_bridge::{
                 fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
             },
             SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
-        SpaceViewId, UiVerbosity,
+        SpaceViewId,
     },
     ViewerContext,
 };
@@ -41,7 +39,7 @@ pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
 
     /// Currently tracked camera.
-    tracked_camera: Option<InstancePath>,
+    pub tracked_camera: Option<InstancePath>,
 
     /// Camera pose just before we took over another camera via [Self::tracked_camera].
     camera_before_tracked_camera: Option<Eye>,
@@ -358,134 +356,21 @@ pub fn view_3d(
         SpatialNavigationMode::ThreeD,
     );
 
-    let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx());
-
-    // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
-    // Check if we're hovering any hover primitive.
-    if let (true, Some(pointer_pos)) = (should_do_hovering, response.hover_pos()) {
-        let picking_context = PickingContext::new(
-            pointer_pos,
+    if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
+        response = picking(
+            ctx,
+            response,
             RectTransform::from_to(rect, rect),
-            response.rect,
-            ui.ctx().pixels_per_point(),
-            &eye,
+            rect,
+            ui,
+            eye,
+            &mut view_builder,
+            space_view_id,
+            state,
+            &scene,
+            space,
         );
-        let _ = view_builder.schedule_picking_rect(
-            ctx.render_ctx,
-            re_renderer::IntRect::from_middle_and_extent(
-                picking_context.pointer_in_pixel.as_ivec2(),
-                glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
-            ),
-            space_view_id.gpu_readback_id(),
-            (),
-            ctx.app_options.show_picking_debug_overlay,
-        );
-        let picking_result = picking_context.pick(
-            ctx.render_ctx,
-            space_view_id.gpu_readback_id(),
-            &state.previous_picking_result,
-            &scene.primitives,
-            &scene.ui,
-        );
-        state.previous_picking_result = Some(picking_result.clone());
-
-        for hit in picking_result.iter_hits() {
-            let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
-            else { continue; };
-
-            // Special hover ui for images.
-            let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
-                scene
-                    .ui
-                    .images
-                    .iter()
-                    .find(|image| image.instance_path_hash == hit.instance_path_hash)
-                    .map(|image| (image, uv))
-            } else {
-                None
-            };
-            response = if let Some((image, uv)) = picked_image_with_uv {
-                response
-                    .on_hover_cursor(egui::CursorIcon::Crosshair)
-                    .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(320.0);
-
-                        ui.vertical(|ui| {
-                            ui.label(instance_path.to_string());
-                            instance_path.data_ui(
-                                ctx,
-                                ui,
-                                UiVerbosity::Small,
-                                &ctx.current_query(),
-                            );
-
-                            let tensor_view = ctx
-                                .cache
-                                .image
-                                .get_colormapped_view(&image.tensor, &image.annotations);
-
-                            if let [h, w, ..] = &image.tensor.shape[..] {
-                                ui.separator();
-                                ui.horizontal(|ui| {
-                                    let (w, h) = (w.size as f32, h.size as f32);
-                                    let center = [(uv.x * w) as isize, (uv.y * h) as isize];
-                                    data_ui::image::show_zoomed_image_region(
-                                        ui,
-                                        &tensor_view,
-                                        center,
-                                        image.meter,
-                                    );
-                                });
-                            }
-                        });
-                    })
-            } else {
-                // Hover ui for everything else
-                response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_path_button(ui, Some(space_view_id), &instance_path);
-                    instance_path.data_ui(
-                        ctx,
-                        ui,
-                        crate::ui::UiVerbosity::Reduced,
-                        &ctx.current_query(),
-                    );
-                })
-            };
-        }
-
-        ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
-            pick.instance_path_hash
-                .resolve(&ctx.log_db.entity_db)
-                .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
-        }));
-
-        let hovered_point = picking_result
-            .opaque_hit
-            .as_ref()
-            .or_else(|| picking_result.transparent_hits.last())
-            .map(|hit| picking_context.space_position(hit));
-
-        ctx.selection_state_mut()
-            .set_hovered_space(HoveredSpace::ThreeD {
-                space_3d: space.clone(),
-                pos: hovered_point,
-                tracked_space_camera: state.state_3d.tracked_camera.clone(),
-                point_in_space_cameras: scene
-                    .space_cameras
-                    .iter()
-                    .map(|cam| {
-                        (
-                            cam.instance_path_hash,
-                            hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
-                        )
-                    })
-                    .collect(),
-            });
-    } else {
-        state.previous_picking_result = None;
     }
-
-    ctx.select_hovered_on_click(&response);
 
     // Double click changes camera
     if response.double_clicked() {
