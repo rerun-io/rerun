@@ -9,7 +9,7 @@ from typing import Any, Optional
 from rerun import bindings
 
 
-def inline_show(width: int = 950, height: int = 712, app_location: Optional[str] = None) -> Any:
+def inline_show(width: int = 950, height: int = 712, app_location: Optional[str] = None, timeout_ms: int = 2000) -> Any:
     """
     Show the Rerun viewer in a Jupyter notebook.
 
@@ -21,6 +21,8 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
         The height of the viewer in pixels.
     app_location : str
         The location of the Rerun web viewer.
+    timeout_ms : int
+        The number of milliseconds to wait for the Rerun web viewer to load.
     """
 
     if app_location is None:
@@ -32,11 +34,20 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
 
     html_template = f"""
     <div id="{random_string}_rrd" style="display: none;">{base64_data}</div>
+    <div id="{random_string}_error" style="display: none;"><p>Timed out waiting for {app_location} to load.</p>
+    <p>Consider using <code>rr.self_host_assets()</code></p></div>
     <script>
+        timeout_{random_string} = setTimeout(() => {{
+            document.getElementById("{random_string}_error").style.display = 'block';
+        }}, {timeout_ms});
+
         window.addEventListener("message", function(rrd) {{
             return async function onIframeReady_{random_string}(event) {{
                 var iframe = document.getElementById("{random_string}");
                 if (event.source === iframe.contentWindow) {{
+                    clearTimeout(timeout_{random_string});
+                    document.getElementById("{random_string}_error").style.display = 'none';
+                    iframe.style.display = 'inline';
                     window.removeEventListener("message", onIframeReady_{random_string});
                     iframe.contentWindow.postMessage((await rrd), "*");
                 }}
@@ -48,13 +59,13 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
             var intermediate = atob(base64Data);
             var buff = new Uint8Array(intermediate.length);
             for (var i = 0; i < intermediate.length; i++) {{
-            buff[i] = intermediate.charCodeAt(i);
+                buff[i] = intermediate.charCodeAt(i);
             }}
             return buff;
         }}()));
     </script>
     <iframe id="{random_string}" width="{width}" height="{height}" src="{app_location}?url=web_event://"
-        frameborder="0" allowfullscreen=""></iframe>
+        frameborder="0" style="display: none;" allowfullscreen=""></iframe>
     """
     try:
         from IPython.core.display import HTML
