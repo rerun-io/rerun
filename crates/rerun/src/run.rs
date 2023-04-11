@@ -64,6 +64,10 @@ struct Args {
     #[clap(long)]
     profile: bool,
 
+    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
+    #[clap(long)]
+    strict: bool,
+
     /// An upper limit on how much memory the Rerun Viewer should use.
     ///
     /// When this limit is used, Rerun will purge the oldest data.
@@ -185,6 +189,11 @@ where
     if args.version {
         println!("{build_info}");
         return Ok(0);
+    }
+
+    if args.strict {
+        re_log::add_boxed_logger(Box::new(StrictLogger {})).expect("Failed to enter --strict mode");
+        re_log::info!("--strict mode: any warning or error will cause Rerun to panic.");
     }
 
     let res = if let Some(commands) = &args.commands {
@@ -538,4 +547,36 @@ pub fn setup_ctrl_c_handler() -> (tokio::sync::broadcast::Receiver<()>, Arc<Atom
     })
     .expect("Error setting Ctrl-C handler");
     (receiver, shutdown_return)
+}
+
+// ----------------------------------------------------------------------------
+
+use re_log::external::log;
+
+struct StrictLogger {}
+
+impl log::Log for StrictLogger {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        match metadata.level() {
+            log::Level::Error | log::Level::Warn => true,
+            log::Level::Info | log::Level::Debug | log::Level::Trace => false,
+        }
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        let level = match record.level() {
+            log::Level::Error => "error",
+            log::Level::Warn => "warning",
+            log::Level::Info | log::Level::Debug | log::Level::Trace => return,
+        };
+
+        eprintln!("{level} logged in --strict mode: {}", record.args());
+        eprintln!(
+            "{}",
+            crate::crash_handler::callstack_from(&["log::__private_api_log"])
+        );
+        std::process::exit(1);
+    }
+
+    fn flush(&self) {}
 }
