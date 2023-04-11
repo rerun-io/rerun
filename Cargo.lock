@@ -4340,9 +4340,11 @@ dependencies = [
  "re_build_info",
  "re_error",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "rerun",
+ "thiserror",
  "tokio",
  "uuid",
 ]

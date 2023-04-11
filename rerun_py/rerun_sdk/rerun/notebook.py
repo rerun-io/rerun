@@ -23,9 +23,8 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
         The location of the Rerun web viewer.
     """
 
-    # TODO(jleibs): Resolve this URL dynamically.
     if app_location is None:
-        app_location = "https://app.rerun.io/commit/4797e6a/index.html"
+        app_location = bindings.get_app_url()
 
     random_string = "".join(random.choice(string.ascii_letters) for i in range(6))
 

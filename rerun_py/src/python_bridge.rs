@@ -132,15 +132,17 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
-    m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
-    m.add_function(wrap_pyfunction!(serve, m)?)?;
-    m.add_function(wrap_pyfunction!(shutdown, m)?)?;
-    m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
-    m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
-    m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(dump_rrd_as_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
+    m.add_function(wrap_pyfunction!(init, m)?)?;
+    m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(self_host_assets, m)?)?;
+    m.add_function(wrap_pyfunction!(serve, m)?)?;
+    m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
@@ -296,6 +298,13 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     Ok(())
 }
 
+fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
+    use once_cell::sync::Lazy;
+    static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+        Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
+    TOKIO_RUNTIME.enter()
+}
+
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
@@ -309,10 +318,8 @@ fn serve(open_browser: bool) -> PyResult<()> {
             return Ok(());
         }
 
-        use once_cell::sync::Lazy;
-        static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
-            Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
-        let _guard = TOKIO_RUNTIME.enter();
+        let _guard = enter_tokio_runtime();
+
         session.set_sink(rerun::web_viewer::new_sink(open_browser));
 
         Ok(())
@@ -325,6 +332,21 @@ fn serve(open_browser: bool) -> PyResult<()> {
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
     }
+}
+
+#[pyfunction]
+fn self_host_assets(port: Option<u16>) -> PyResult<()> {
+    let mut session = python_session();
+    let _guard = enter_tokio_runtime();
+    session
+        .self_host_assets(port)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+#[pyfunction]
+fn get_app_url() -> String {
+    let session = python_session();
+    session.get_app_url()
 }
 
 #[pyfunction]

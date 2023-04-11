@@ -98,3 +98,43 @@ impl crate::sink::LogSink for RemoteViewerServer {
 pub fn new_sink(open_browser: bool) -> Box<dyn crate::sink::LogSink> {
     Box::new(RemoteViewerServer::new(open_browser))
 }
+
+/// Hosts the rerun web assets only
+pub struct HostAssets {
+    web_port: u16,
+    shutdown_tx: tokio::sync::broadcast::Sender<()>,
+}
+
+impl Drop for HostAssets {
+    fn drop(&mut self) {
+        re_log::info!("Shutting down web server.");
+        self.shutdown_tx.send(()).ok();
+    }
+}
+
+impl HostAssets {
+    /// Create new web server hosting rerun assets on `web_port`
+    ///
+    /// The caller needs to ensure that there is a `tokio` runtime running.
+    #[cfg(feature = "web_viewer")]
+    pub fn new(web_port: u16) -> Self {
+        let (shutdown_tx, shutdown_rx_web_server) = tokio::sync::broadcast::channel(1);
+
+        tokio::spawn(async move {
+            let web_server = re_web_viewer_server::WebViewerServer::new(web_port);
+            let web_server_handle = tokio::spawn(web_server.serve(shutdown_rx_web_server));
+
+            web_server_handle.await.unwrap().unwrap();
+        });
+
+        Self {
+            web_port,
+            shutdown_tx,
+        }
+    }
+
+    /// Get the port where the web assets are hosted
+    pub fn get_port(&self) -> u16 {
+        self.web_port
+    }
+}

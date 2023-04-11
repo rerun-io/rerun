@@ -9,6 +9,13 @@ use rerun::sink::LogSink;
 
 // ----------------------------------------------------------------------------
 
+#[derive(thiserror::Error, Debug)]
+pub enum PythonSessionError {
+    #[allow(dead_code)]
+    #[error("The Rerun SDK was not compiled with the '{0}' feature")]
+    FeatureNotEnabled(&'static str),
+}
+
 /// Used to construct a [`RecordingInfo`]:
 struct RecordingMetaData {
     recording_source: RecordingSource,
@@ -67,6 +74,13 @@ pub struct PythonSession {
 
     /// Where we put the log messages.
     sink: Box<dyn LogSink>,
+
+    build_info: re_build_info::BuildInfo,
+
+    /// Used to serve the web viewer assets.
+    /// TODO(jleibs): Potentially use this for serve as well
+    #[cfg(feature = "web_viewer")]
+    self_hosted_web_viewer: Option<rerun::web_viewer::HostAssets>,
 }
 
 impl Default for PythonSession {
@@ -77,6 +91,9 @@ impl Default for PythonSession {
             has_sent_begin_recording_msg: false,
             recording_meta_data: Default::default(),
             sink: Box::new(rerun::sink::BufferedSink::new()),
+            build_info: re_build_info::build_info!(),
+            #[cfg(feature = "web_viewer")]
+            self_hosted_web_viewer: None,
         }
     }
 }
@@ -262,5 +279,47 @@ impl PythonSession {
                 path_op,
             },
         ));
+    }
+
+    /// Get a url to an instance of the web-viewer
+    ///
+    /// This may point to app.rerun.io or localhost depending on
+    /// whether `host_assets` was called.
+    pub fn get_app_url(&self) -> String {
+        #[cfg(not(feature = "web_viewer"))]
+        {
+            format!(
+                "https://app.rerun.io/commit/{}/index.html",
+                &self.build_info.git_hash[..7]
+            )
+        }
+
+        #[cfg(feature = "web_viewer")]
+        if let Some(hosted_assets) = &self.self_hosted_web_viewer {
+            format!("http://localhost:{}", hosted_assets.get_port())
+        } else {
+            format!(
+                "https://app.rerun.io/commit/{}",
+                &self.build_info.git_hash[..7]
+            )
+        }
+    }
+
+    /// Start a web server to host the run web-asserts
+    ///
+    /// The caller needs to ensure that there is a `tokio` runtime running.
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn self_host_assets(&mut self, _web_port: Option<u16>) -> Result<(), PythonSessionError> {
+        #[cfg(feature = "web_viewer")]
+        {
+            self.self_hosted_web_viewer = _web_port.map(rerun::web_viewer::HostAssets::new);
+
+            Ok(())
+        }
+
+        #[cfg(not(feature = "web_viewer"))]
+        {
+            Err(PythonSessionError::FeatureNotEnabled("web_viewer"))
+        }
     }
 }
