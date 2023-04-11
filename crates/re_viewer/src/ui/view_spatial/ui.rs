@@ -347,6 +347,7 @@ impl ViewSpatialState {
                         });
                     });
                     ui.checkbox(&mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
+                    ui.checkbox(&mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
                 });
                 ui.end_row();
             }
@@ -354,6 +355,7 @@ impl ViewSpatialState {
             ctx.re_ui.grid_left_hand_label(ui, "Bounding box")
                 .on_hover_text("The bounding box encompassing all Entities in the view right now.");
             ui.vertical(|ui| {
+                ui.style_mut().wrap = Some(false);
                 let BoundingBox { min, max } = self.scene_bbox;
                 ui.label(format!(
                     "x [{} - {}]",

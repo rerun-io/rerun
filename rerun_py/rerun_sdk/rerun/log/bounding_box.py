@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,7 @@ from rerun.components.label import LabelArray
 from rerun.components.quaternion import QuaternionArray
 from rerun.components.radius import RadiusArray
 from rerun.components.vec import Vec3DArray
-from rerun.log import _normalize_colors, _normalize_ids, _normalize_radii
+from rerun.log import Color, _normalize_colors, _normalize_ids, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
 
@@ -24,10 +24,11 @@ __all__ = [
 @log_decorator
 def log_obb(
     entity_path: str,
+    *,
     half_size: Optional[npt.ArrayLike],
     position: Optional[npt.ArrayLike] = None,
     rotation_q: Optional[npt.ArrayLike] = None,
-    color: Optional[Sequence[int]] = None,
+    color: Optional[Color] = None,
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
@@ -54,7 +55,7 @@ def log_obb(
     rotation_q:
         Optional array with quaternion coordinates [x, y, z, w] for the rotation from model to world space.
     color:
-        Optional RGB or RGBA triplet in 0-255 sRGB.
+        Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
     stroke_width:
         Optional width of the line edges.
     label:
@@ -72,12 +73,12 @@ def log_obb(
     splats: Dict[str, Any] = {}
 
     if half_size is not None:
-        size = np.require(half_size, dtype="float32")
+        half_size = np.require(half_size, dtype="float32")
 
-        if size.shape[0] == 3:
-            instanced["rerun.box3d"] = Box3DArray.from_numpy(size.reshape(1, 3))
+        if half_size.shape[0] == 3:
+            instanced["rerun.box3d"] = Box3DArray.from_numpy(half_size.reshape(1, 3))
         else:
-            raise TypeError("Position should be 1x3")
+            raise TypeError("half_size should be 1x3")
 
     if position is not None:
         position = np.require(position, dtype="float32")
@@ -85,7 +86,7 @@ def log_obb(
         if position.shape[0] == 3:
             instanced["rerun.vec3d"] = Vec3DArray.from_numpy(position.reshape(1, 3))
         else:
-            raise TypeError("Position should be 1x3")
+            raise TypeError("position should be 1x3")
 
     if rotation_q is not None:
         rotation = np.require(rotation_q, dtype="float32")
@@ -93,7 +94,7 @@ def log_obb(
         if rotation.shape[0] == 4:
             instanced["rerun.quaternion"] = QuaternionArray.from_numpy(rotation.reshape(1, 4))
         else:
-            raise TypeError("Rotation should be 1x4")
+            raise TypeError("rotation should be 1x4")
 
     if color:
         colors = _normalize_colors([color])

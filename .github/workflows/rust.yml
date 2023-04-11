@@ -70,7 +70,7 @@ jobs:
             --all-features \
             -p re_arrow_store \
             -p re_data_store \
-            -p re_log_types \
+            -p re_log_encoding \
             -p re_query \
             -p re_tuid \
             -- --output-format=bencher | tee output.txt
@@ -137,18 +137,20 @@ jobs:
           command: cranky
           args: --all-targets --all-features -- --deny warnings
 
-      - name: Check no default features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --no-default-features --features __ci --lib
-
+      # --------------------------------------------------------------------------------
       # Check a few important permutations of the feature flags for our `rerun` library:
-      - name: Check rerun with --features sdk
+      - name: Check rerun with `--no-default-features``
         uses: actions-rs/cargo@v1
         with:
-          command: check
-          args: --locked --no-default-features --features sdk
+          command: cranky
+          args: --locked -p rerun --no-default-features
+
+      - name: Check rerun with `--features sdk`
+        uses: actions-rs/cargo@v1
+        with:
+          command: cranky
+          args: --locked -p rerun --no-default-features --features sdk
+      # --------------------------------------------------------------------------------
 
       - name: Test doc-tests
         uses: actions-rs/cargo@v1

@@ -41,19 +41,13 @@ re_build_info.workspace = true
 re_data_store = { workspace = true, features = ["serde"] }
 re_error.workspace = true
 re_format.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_log.workspace = true
-re_log_types = { workspace = true, features = [
-  "ecolor",
-  "glam",
-  "image",
-  "save",
-  "load",
-] }
 re_memory.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, features = ["arrow", "serde"] }
 re_smart_channel.workspace = true
-re_string_interner.workspace = true
 re_tensor_ops.workspace = true
 re_ui.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
@@ -76,7 +70,6 @@ egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_dock = { workspace = true, features = ["serde"] }
 egui_extras = { workspace = true, features = ["tracing"] }
 egui-wgpu.workspace = true
-ehttp = "0.2"
 enumset.workspace = true
 glam = { workspace = true, features = [
   "mint",
@@ -124,12 +117,6 @@ winapi = "0.3.9"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-wasm-bindgen = "0.2"
-
-[dependencies.web-sys]
-version = "0.3.52"
-features = ["Window"]
 
 
 [build-dependencies]

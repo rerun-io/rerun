@@ -37,43 +37,40 @@ impl ViewTextState {
             row_log_levels,
         } = &mut self.filters;
 
-        re_ui
-            .selection_grid(ui, "log_config")
-            .num_columns(2)
-            .show(ui, |ui| {
-                re_ui.grid_left_hand_label(ui, "Columns");
-                ui.vertical(|ui| {
-                    for (timeline, visible) in col_timelines {
-                        ui.checkbox(visible, timeline.name().to_string());
-                    }
-                    ui.checkbox(col_entity_path, "Entity path");
-                    ui.checkbox(col_log_level, "Log level");
-                });
-                ui.end_row();
-
-                re_ui.grid_left_hand_label(ui, "Entity Filter");
-                ui.vertical(|ui| {
-                    for (entity_path, visible) in row_entity_paths {
-                        ui.checkbox(visible, &entity_path.to_string());
-                    }
-                });
-                ui.end_row();
-
-                re_ui.grid_left_hand_label(ui, "Level Filter");
-                ui.vertical(|ui| {
-                    for (log_level, visible) in row_log_levels {
-                        ui.checkbox(visible, level_to_rich_text(ui, log_level));
-                    }
-                });
-                ui.end_row();
-
-                re_ui.grid_left_hand_label(ui, "Text style");
-                ui.vertical(|ui| {
-                    ui.radio_value(&mut self.monospace, false, "Proportional");
-                    ui.radio_value(&mut self.monospace, true, "Monospace");
-                });
-                ui.end_row();
+        re_ui.selection_grid(ui, "log_config").show(ui, |ui| {
+            re_ui.grid_left_hand_label(ui, "Columns");
+            ui.vertical(|ui| {
+                for (timeline, visible) in col_timelines {
+                    ui.checkbox(visible, timeline.name().to_string());
+                }
+                ui.checkbox(col_entity_path, "Entity path");
+                ui.checkbox(col_log_level, "Log level");
             });
+            ui.end_row();
+
+            re_ui.grid_left_hand_label(ui, "Entity Filter");
+            ui.vertical(|ui| {
+                for (entity_path, visible) in row_entity_paths {
+                    ui.checkbox(visible, &entity_path.to_string());
+                }
+            });
+            ui.end_row();
+
+            re_ui.grid_left_hand_label(ui, "Level Filter");
+            ui.vertical(|ui| {
+                for (log_level, visible) in row_log_levels {
+                    ui.checkbox(visible, level_to_rich_text(ui, log_level));
+                }
+            });
+            ui.end_row();
+
+            re_ui.grid_left_hand_label(ui, "Text style");
+            ui.vertical(|ui| {
+                ui.radio_value(&mut self.monospace, false, "Proportional");
+                ui.radio_value(&mut self.monospace, true, "Monospace");
+            });
+            ui.end_row();
+        });
     }
 }
 
@@ -191,7 +188,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
         .log_db
         .entity_db
         .data_store
-        .get_msg_metadata(&entry.msg_id)
+        .get_msg_metadata(&entry.msg_id?)
     {
         Some(time_point.clone())
     } else {

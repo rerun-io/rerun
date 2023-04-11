@@ -11,9 +11,9 @@ use pyo3::{
     types::PyDict,
 };
 
-use re_log_types::{DataRow, DataTableError};
+use re_log_types::{ArrowMsg, DataRow, DataTableError};
 use rerun::{
-    log::{LogMsg, MsgId, PathOp},
+    log::{MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
@@ -107,16 +107,27 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // called more than once.
     re_log::setup_native_logging();
 
+    // We always want main to be available
+    m.add_function(wrap_pyfunction!(main, m)?)?;
+
+    // These two components are necessary for imports to work
+    // TODO(jleibs): Refactor import logic so all we need is main
+    m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
+    m.add_class::<TensorDataMeaning>()?;
+
+    // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
+    // can bypass everything else, which keeps us from preparing an SDK session
+    // that never gets used.
+    if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
+        return Ok(());
+    }
+
     python_session().set_python_version(python_version(py));
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
     // See `default_recording_id` for extra information.
     python_session().set_recording_id(default_recording_id(py));
-
-    m.add_function(wrap_pyfunction!(main, m)?)?;
-
-    m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
 
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
@@ -149,8 +160,6 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-
-    m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
 }
@@ -234,10 +243,13 @@ fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
 
 #[pyfunction]
 fn get_recording_id() -> PyResult<String> {
-    python_session()
-        .recording_id()
-        .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
-        .map(|recording_id| recording_id.to_string())
+    let recording_id = python_session().recording_id();
+
+    if recording_id == RecordingId::ZERO {
+        Err(PyTypeError::new_err("module has not been initialized"))
+    } else {
+        Ok(recording_id.to_string())
+    }
 }
 
 #[pyfunction]
@@ -476,7 +488,7 @@ fn log_transform(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -560,7 +572,7 @@ fn log_view_coordinates(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -694,7 +706,7 @@ fn log_meshes(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -775,7 +787,7 @@ fn log_mesh_file(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -867,7 +879,7 @@ fn log_image_file(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -946,7 +958,7 @@ fn log_annotation_context(
         .try_into()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
-    session.send(LogMsg::ArrowMsg(msg));
+    session.send_arrow_msg(msg);
 
     Ok(())
 }
@@ -970,10 +982,16 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
-    let msg = crate::arrow::build_chunk_from_components(&entity_path, components, &time(timeless))?;
+    let data_table =
+        crate::arrow::build_data_table_from_components(&entity_path, components, &time(timeless))?;
 
     let mut session = python_session();
-    session.send(msg);
+
+    let msg: ArrowMsg = (&data_table)
+        .try_into()
+        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
+
+    session.send_arrow_msg(msg);
 
     Ok(())
 }

@@ -33,17 +33,13 @@ image = ["re_log_types/image"]
 
 
 [dependencies]
-re_build_info.workspace = true
-re_error.workspace = true
-re_log_types = { workspace = true, features = ["save"] }
+re_log_encoding = { workspace = true, features = ["encoder"] }
+re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
-re_smart_channel.workspace = true
 
-anyhow.workspace = true
 document-features = "0.2"
-nohash-hasher = "0.2"
 parking_lot.workspace = true
 thiserror.workspace = true
 

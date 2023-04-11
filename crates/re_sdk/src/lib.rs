@@ -9,9 +9,6 @@
 // ----------------
 // Private modules:
 
-#[cfg(not(target_arch = "wasm32"))]
-mod file_sink;
-
 #[cfg(feature = "global_session")]
 mod global;
 
@@ -34,6 +31,13 @@ pub use re_log_types::{
     ApplicationId, Component, ComponentName, EntityPath, RecordingId, SerializableComponent,
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+impl crate::sink::LogSink for re_log_encoding::FileSink {
+    fn send(&self, msg: re_log_types::LogMsg) {
+        re_log_encoding::FileSink::send(self, msg);
+    }
+}
+
 // ---------------
 // Public modules:
 
@@ -48,7 +52,7 @@ pub mod sink {
     pub use crate::log_sink::{disabled, BufferedSink, LogSink, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub use crate::file_sink::{FileSink, FileSinkError};
+    pub use re_log_encoding::{FileSink, FileSinkError};
 }
 
 /// Things directly related to logging.

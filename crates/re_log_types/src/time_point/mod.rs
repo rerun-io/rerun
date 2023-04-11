@@ -1,6 +1,5 @@
 use std::collections::{btree_map, BTreeMap};
 
-mod arrow;
 mod time_int;
 mod timeline;
 
@@ -20,6 +19,12 @@ pub use timeline::{Timeline, TimelineName};
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
+
+impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
+    fn from(timelines: BTreeMap<Timeline, TimeInt>) -> Self {
+        Self(timelines)
+    }
+}
 
 impl TimePoint {
     /// Logging to this time means the data will show upp in all timelines,

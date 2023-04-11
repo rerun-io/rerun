@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
@@ -5,7 +7,7 @@ use smallvec::SmallVec;
 
 use crate::{
     ArrowMsg, ComponentName, DataCell, DataCellError, DataRow, DataRowError, EntityPath, MsgId,
-    TimePoint,
+    TimePoint, Timeline,
 };
 
 // ---
@@ -14,6 +16,11 @@ use crate::{
 pub enum DataTableError {
     #[error("Trying to deserialize data that is missing a column present in the schema: {0:?}")]
     MissingColumn(String),
+
+    #[error(
+        "Trying to deserialize time column data with invalid datatype: {name:?} ({datatype:#?})"
+    )]
+    NotATimeColumn { name: String, datatype: DataType },
 
     #[error("Trying to deserialize column data that doesn't contain any ListArrays: {0:?}")]
     NotAColumn(String),
@@ -37,6 +44,7 @@ pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 // ---
 
 type RowIdVec = SmallVec<[MsgId; 4]>;
+type TimeOptVec = SmallVec<[Option<i64>; 4]>;
 type TimePointVec = SmallVec<[TimePoint; 4]>;
 type EntityPathVec = SmallVec<[EntityPath; 4]>;
 type NumInstancesVec = SmallVec<[u32; 4]>;
@@ -142,15 +150,15 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 ///
 /// The table above translates to the following, where each column is contiguous in memory:
 /// ```text
-/// ┌───────────────────────┬───────────────────────────────────┬────────────────────┬─────────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
-/// │ rerun.row_id          ┆ rerun.timepoint                   ┆ rerun.entity_path  ┆ rerun.num_instances ┆ rerun.label ┆ rerun.point2d                    ┆ rerun.colorrgba │
-/// ╞═══════════════════════╪═══════════════════════════════════╪════════════════════╪═════════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {clock, 1, 1}] ┆ a                  ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 1}, {clock, 1, 2}] ┆ b                  ┆ 0                   ┆ -           ┆ -                                ┆ []              │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ {167967218, 54449486} ┆ [{frame_nr, 1, 2}, {clock, 1, 1}] ┆ c                  ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
-/// └───────────────────────┴───────────────────────────────────┴────────────────────┴─────────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
+/// ┌──────────┬───────────────────────────────┬──────────────────────────────────┬───────────────────┬─────────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
+/// │ frame_nr ┆ log_time                      ┆ rerun.row_id                     ┆ rerun.entity_path ┆ rerun.num_instances ┆ rerun.label ┆ rerun.point2d                    ┆ rerun.colorrgba │
+/// ╞══════════╪═══════════════════════════════╪══════════════════════════════════╪═══════════════════╪═════════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
+/// │ 1        ┆ 2023-04-05 09:36:47.188796402 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ a                 ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
+/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 1        ┆ 2023-04-05 09:36:47.188852222 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ b                 ┆ 0                   ┆ -           ┆ -                                ┆ []              │
+/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 2        ┆ 2023-04-05 09:36:47.188855872 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ c                 ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
+/// └──────────┴───────────────────────────────┴──────────────────────────────────┴───────────────────┴─────────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
 /// ```
 ///
 /// ## Example
@@ -229,8 +237,11 @@ pub struct DataTable {
     /// The entire column of `RowId`s.
     pub row_id: RowIdVec,
 
-    /// The entire column of [`TimePoint`]s.
-    pub timepoint: TimePointVec,
+    /// All the rows for all the time columns.
+    ///
+    /// The times are optional since not all rows are guaranteed to have a timestamp for every
+    /// single timeline (though it is highly likely to be the case in practice).
+    pub col_timelines: BTreeMap<Timeline, TimeOptVec>,
 
     /// The entire column of [`EntityPath`]s.
     pub entity_path: EntityPathVec,
@@ -251,7 +262,7 @@ impl DataTable {
         Self {
             table_id,
             row_id: Default::default(),
-            timepoint: Default::default(),
+            col_timelines: Default::default(),
             entity_path: Default::default(),
             num_instances: Default::default(),
             columns: Default::default(),
@@ -287,6 +298,24 @@ impl DataTable {
             })
             .multiunzip();
 
+        // All time columns.
+        let mut col_timelines: BTreeMap<Timeline, TimeOptVec> = BTreeMap::default();
+        for (i, timepoint) in timepoint.iter().enumerate() {
+            for (timeline, time) in timepoint.iter() {
+                match col_timelines.entry(*timeline) {
+                    std::collections::btree_map::Entry::Vacant(entry) => {
+                        entry
+                            .insert(smallvec::smallvec![None; i])
+                            .push(Some(time.as_i64()));
+                    }
+                    std::collections::btree_map::Entry::Occupied(mut entry) => {
+                        let entry = entry.get_mut();
+                        entry.push(Some(time.as_i64()));
+                    }
+                }
+            }
+        }
+
         // Pre-allocate all columns (one per component).
         let mut columns = IntMap::default();
         for component in components {
@@ -314,7 +343,7 @@ impl DataTable {
         Self {
             table_id,
             row_id,
-            timepoint,
+            col_timelines,
             entity_path,
             num_instances,
             columns,
@@ -335,7 +364,7 @@ impl DataTable {
         let Self {
             table_id: _,
             row_id,
-            timepoint,
+            col_timelines,
             entity_path,
             num_instances,
             columns,
@@ -348,7 +377,14 @@ impl DataTable {
 
             DataRow::from_cells(
                 row_id[i],
-                timepoint[i].clone(),
+                TimePoint::from(
+                    col_timelines
+                        .iter()
+                        .filter_map(|(timeline, times)| {
+                            times[i].map(|time| (*timeline, time.into()))
+                        })
+                        .collect::<BTreeMap<_, _>>(),
+                ),
                 entity_path[i].clone(),
                 num_instances[i],
                 cells,
@@ -360,19 +396,23 @@ impl DataTable {
     /// and returns the corresponding [`TimePoint`].
     #[inline]
     pub fn timepoint_max(&self) -> TimePoint {
-        self.timepoint
-            .iter()
-            .fold(TimePoint::timeless(), |acc, tp| acc.union_max(tp))
+        let mut timepoint = TimePoint::timeless();
+        for (timeline, col_time) in &self.col_timelines {
+            if let Some(time) = col_time.iter().flatten().max().copied() {
+                timepoint.insert(*timeline, time.into());
+            }
+        }
+        timepoint
     }
 }
 
 // --- Serialization ---
 
 use arrow2::{
-    array::{Array, ListArray},
+    array::{Array, ListArray, PrimitiveArray},
     bitmap::Bitmap,
     chunk::Chunk,
-    datatypes::{DataType, Field, Schema},
+    datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
 };
 use arrow2_convert::{
@@ -383,13 +423,13 @@ use arrow2_convert::{
 // TODO(#1696): Those names should come from the datatypes themselves.
 
 pub const COLUMN_ROW_ID: &str = "rerun.row_id";
-pub const COLUMN_TIMEPOINT: &str = "rerun.timepoint";
 pub const COLUMN_ENTITY_PATH: &str = "rerun.entity_path";
 pub const COLUMN_NUM_INSTANCES: &str = "rerun.num_instances";
 
 pub const METADATA_KIND: &str = "rerun.kind";
 pub const METADATA_KIND_DATA: &str = "data";
 pub const METADATA_KIND_CONTROL: &str = "control";
+pub const METADATA_KIND_TIME: &str = "time";
 pub const METADATA_TABLE_ID: &str = "rerun.table_id";
 
 impl DataTable {
@@ -400,6 +440,9 @@ impl DataTable {
     /// * Control columns are those that drive the behavior of the storage systems.
     ///   They are always present, always dense, and always deserialized upon reception by the
     ///   server.
+    ///   Internally, time columns are (de)serialized separately from the rest of the control
+    ///   columns for efficiency/QOL concerns: that doesn't change the fact that they are control
+    ///   columns all the same!
     /// * Data columns are the one that hold component data.
     ///   They are optional, potentially sparse, and never deserialized on the server-side (not by
     ///   the storage systems, at least).
@@ -408,6 +451,13 @@ impl DataTable {
 
         let mut schema = Schema::default();
         let mut columns = Vec::new();
+
+        {
+            let (control_schema, control_columns) = self.serialize_time_columns();
+            schema.fields.extend(control_schema.fields);
+            schema.metadata.extend(control_schema.metadata);
+            columns.extend(control_columns.into_iter());
+        }
 
         {
             let (control_schema, control_columns) = self.serialize_control_columns()?;
@@ -424,6 +474,43 @@ impl DataTable {
         }
 
         Ok((schema, Chunk::new(columns)))
+    }
+
+    /// Serializes all time columns into an arrow payload and schema.
+    fn serialize_time_columns(&self) -> (Schema, Vec<Box<dyn Array>>) {
+        crate::profile_function!();
+
+        fn serialize_time_column(
+            timeline: Timeline,
+            times: &TimeOptVec,
+        ) -> (Field, Box<dyn Array>) {
+            let data = PrimitiveArray::from(times.as_slice()).to(timeline.datatype());
+
+            let field = Field::new(timeline.name().as_str(), data.data_type().clone(), false)
+                .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_TIME.to_owned())].into());
+
+            (field, data.boxed())
+        }
+
+        let Self {
+            table_id: _,
+            row_id: _,
+            col_timelines,
+            entity_path: _,
+            num_instances: _,
+            columns: _,
+        } = self;
+
+        let mut schema = Schema::default();
+        let mut columns = Vec::new();
+
+        for (timeline, col_time) in col_timelines {
+            let (time_field, time_column) = serialize_time_column(*timeline, col_time);
+            schema.fields.push(time_field);
+            columns.push(time_column);
+        }
+
+        (schema, columns)
     }
 
     /// Serializes all controls columns into an arrow payload and schema.
@@ -446,8 +533,6 @@ impl DataTable {
                 [(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into(),
             );
 
-            // TODO(cmc): why do we have to do this manually on the way out, but it's done
-            // automatically on our behalf on the way in...?
             if let DataType::Extension(name, _, _) = data.data_type() {
                 field
                     .metadata
@@ -476,7 +561,7 @@ impl DataTable {
         let Self {
             table_id,
             row_id,
-            timepoint,
+            col_timelines: _,
             entity_path,
             num_instances,
             columns: _,
@@ -488,11 +573,6 @@ impl DataTable {
         let (row_id_field, row_id_column) = serialize_dense_column(COLUMN_ROW_ID, row_id)?;
         schema.fields.push(row_id_field);
         columns.push(row_id_column);
-
-        let (timepoint_field, timepoint_column) =
-            serialize_dense_column(COLUMN_TIMEPOINT, timepoint)?;
-        schema.fields.push(timepoint_field);
-        columns.push(timepoint_column);
 
         let (entity_path_field, entity_path_column) =
             serialize_dense_column(COLUMN_ENTITY_PATH, entity_path)?;
@@ -520,7 +600,7 @@ impl DataTable {
         let Self {
             table_id: _,
             row_id: _,
-            timepoint: _,
+            col_timelines: _,
             entity_path: _,
             num_instances: _,
             columns: table,
@@ -545,15 +625,20 @@ impl DataTable {
                 .map(|cell| cell.as_arrow_ref())
                 .collect_vec();
 
+            let ext_name = cell_refs.first().and_then(|cell| match cell.data_type() {
+                DataType::Extension(name, _, _) => Some(name),
+                _ => None,
+            });
+
             // NOTE: Avoid paying for the cost of the concatenation machinery if there's a single
             // row in the column.
             let data = if cell_refs.len() == 1 {
-                data_to_lists(column, cell_refs[0].to_boxed())
+                data_to_lists(column, cell_refs[0].to_boxed(), ext_name.cloned())
             } else {
                 // NOTE: This is a column of cells, it shouldn't ever fail to concatenate since
                 // they share the same underlying type.
                 let data = arrow2::compute::concatenate::concatenate(cell_refs.as_slice())?;
-                data_to_lists(column, data)
+                data_to_lists(column, data, ext_name.cloned())
             };
 
             let field = Field::new(name, data.data_type().clone(), false)
@@ -566,10 +651,26 @@ impl DataTable {
         ///
         /// * Before: `[C, C, C, C, C, C, C, ...]`
         /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], ...] ]`
-        fn data_to_lists(column: &[Option<DataCell>], data: Box<dyn Array>) -> Box<dyn Array> {
+        fn data_to_lists(
+            column: &[Option<DataCell>],
+            data: Box<dyn Array>,
+            ext_name: Option<String>,
+        ) -> Box<dyn Array> {
             let datatype = data.data_type().clone();
 
-            let datatype = ListArray::<i32>::default_datatype(datatype);
+            let field = {
+                let mut field = Field::new("item", datatype, true);
+
+                if let Some(name) = ext_name {
+                    field
+                        .metadata
+                        .extend([("ARROW:extension:name".to_owned(), name)]);
+                }
+
+                field
+            };
+
+            let datatype = DataType::List(Box::new(field));
             let offsets = Offsets::try_from_lengths(column.iter().map(|cell| {
                 cell.as_ref()
                     .map_or(0, |cell| cell.num_instances() as usize)
@@ -603,6 +704,28 @@ impl DataTable {
     ) -> DataTableResult<Self> {
         crate::profile_function!();
 
+        // --- Time ---
+
+        let col_timelines: DataTableResult<_> = schema
+            .fields
+            .iter()
+            .enumerate()
+            .filter_map(|(i, field)| {
+                field.metadata.get(METADATA_KIND).and_then(|kind| {
+                    (kind == METADATA_KIND_TIME).then_some((field.name.as_str(), i))
+                })
+            })
+            .map(|(name, index)| {
+                chunk
+                    .get(index)
+                    .ok_or(DataTableError::MissingColumn(name.to_owned()))
+                    .and_then(|column| Self::deserialize_time_column(name, &**column))
+            })
+            .collect();
+        let col_timelines = col_timelines?;
+
+        // --- Control ---
+
         let control_indices: HashMap<&str, usize> = schema
             .fields
             .iter()
@@ -623,13 +746,13 @@ impl DataTable {
         // NOTE: the unwrappings cannot fail since control_index() makes sure the index is valid
         let row_id =
             (&**chunk.get(control_index(COLUMN_ROW_ID)?).unwrap()).try_into_collection()?;
-        let timepoint =
-            (&**chunk.get(control_index(COLUMN_TIMEPOINT)?).unwrap()).try_into_collection()?;
         let entity_path =
             (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
         // TODO(#1712): This is unnecessarily slow...
         let num_instances =
             (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
+
+        // --- Components ---
 
         let columns: DataTableResult<_> = schema
             .fields
@@ -656,11 +779,38 @@ impl DataTable {
         Ok(Self {
             table_id,
             row_id,
-            timepoint,
+            col_timelines,
             entity_path,
             num_instances,
             columns,
         })
+    }
+
+    /// Deserializes a sparse time column.
+    fn deserialize_time_column(
+        name: &str,
+        column: &dyn Array,
+    ) -> DataTableResult<(Timeline, TimeOptVec)> {
+        // See also [`Timeline::datatype`]
+        let timeline = match column.data_type().to_logical_type() {
+            DataType::Int64 => Timeline::new_sequence(name),
+            DataType::Timestamp(TimeUnit::Nanosecond, None) => Timeline::new_temporal(name),
+            _ => {
+                return Err(DataTableError::NotATimeColumn {
+                    name: name.into(),
+                    datatype: column.data_type().clone(),
+                })
+            }
+        };
+
+        let col_time = column
+            .as_any()
+            .downcast_ref::<PrimitiveArray<i64>>()
+            // NOTE: cannot fail, datatype checked above
+            .unwrap();
+        let col_time: TimeOptVec = col_time.into_iter().map(|time| time.copied()).collect();
+
+        Ok((timeline, col_time))
     }
 
     /// Deserializes a sparse data column.

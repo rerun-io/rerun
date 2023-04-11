@@ -56,6 +56,7 @@ pub struct View3DState {
     // options:
     pub spin: bool,
     pub show_axes: bool,
+    pub show_bbox: bool,
 
     #[serde(skip)]
     last_eye_interact_time: f64,
@@ -77,6 +78,7 @@ impl Default for View3DState {
             hovered_point: Default::default(),
             spin: false,
             show_axes: false,
+            show_bbox: false,
             last_eye_interact_time: f64::NEG_INFINITY,
             space_specs: Default::default(),
             space_camera: Default::default(),
@@ -548,6 +550,26 @@ pub fn view_3d(
             InstancePathHash::NONE,
             axis_length,
         );
+    }
+
+    if state.state_3d.show_bbox {
+        let bbox = scene.primitives.bounding_box();
+        if bbox.is_something() && bbox.is_finite() {
+            let scale = bbox.size();
+            let translation = bbox.center();
+            let bbox_from_unit_cube = glam::Affine3A::from_scale_rotation_translation(
+                scale,
+                Default::default(),
+                translation,
+            );
+            scene
+                .primitives
+                .line_strips
+                .batch("scene_bbox")
+                .add_box_outline(bbox_from_unit_cube)
+                .radius(Size::AUTO)
+                .color(egui::Color32::WHITE);
+        }
     }
 
     {

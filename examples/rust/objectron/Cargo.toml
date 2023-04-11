@@ -13,8 +13,6 @@ rerun = { workspace = true, features = ["web_viewer"] }
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 glam.workspace = true
-image = { workspace = true, default-features = false, features = ["jpeg"] }
-itertools = { workspace = true }
 prost = "0.11"
 
 

@@ -1,0 +1,8 @@
+-e git+https://github.com/facebookresearch/segment-anything.git#egg=segment-anything
+numpy
+opencv-python
+requests
+rerun-sdk
+torch
+torchvision
+tqdm

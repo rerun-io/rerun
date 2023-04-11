@@ -15,7 +15,9 @@ version.workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
 [dependencies]
 arrow2.workspace = true
+arrow2_convert.workspace = true
 comfy-table.workspace = true
+parking_lot.workspace = true
+re_tuid.workspace = true
