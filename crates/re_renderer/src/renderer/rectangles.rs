@@ -47,6 +47,20 @@ mod gpu_data {
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
+
+    impl UniformBuffer {
+        pub fn from_textured_rect(rectangle: &super::TexturedRect) -> Self {
+            Self {
+                top_left_corner_position: rectangle.top_left_corner_position.into(),
+                extent_u: rectangle.extent_u.into(),
+                extent_v: rectangle.extent_v.into(),
+                depth_offset: rectangle.depth_offset as f32,
+                multiplicative_tint: rectangle.multiplicative_tint,
+                outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
+                end_padding: Default::default(),
+            }
+        }
+    }
 }
 
 /// Texture filter setting for magnification (a texel covers several pixels).
@@ -145,15 +159,9 @@ impl RectangleDrawData {
         let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
             "rectangle uniform buffers".into(),
-            rectangles.iter().map(|rectangle| gpu_data::UniformBuffer {
-                top_left_corner_position: rectangle.top_left_corner_position.into(),
-                extent_u: rectangle.extent_u.into(),
-                extent_v: rectangle.extent_v.into(),
-                depth_offset: rectangle.depth_offset as f32,
-                multiplicative_tint: rectangle.multiplicative_tint,
-                outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
-                end_padding: Default::default(),
-            }),
+            rectangles
+                .iter()
+                .map(gpu_data::UniformBuffer::from_textured_rect),
         );
 
         let mut instances = Vec::with_capacity(rectangles.len());
