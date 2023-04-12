@@ -211,7 +211,8 @@ jobs:
 
       - name: Install built wheel
         run: |
-          pip install rerun-sdk --find-links pre-dist --force-reinstall
+          pip install pre-dist/*.whl --force-reinstall
+          python -m rerun --version
 
       - name: Run tests
         run: cd rerun_py/tests && pytest
