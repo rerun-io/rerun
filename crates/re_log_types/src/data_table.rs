@@ -555,7 +555,7 @@ impl DataTable {
     ///   Internally, time columns are (de)serialized separately from the rest of the control
     ///   columns for efficiency/QOL concerns: that doesn't change the fact that they are control
     ///   columns all the same!
-    /// * Data columns are the one that hold component data.
+    /// * Data columns are the ones that hold component data.
     ///   They are optional, potentially sparse, and never deserialized on the server-side (not by
     ///   the storage systems, at least).
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {

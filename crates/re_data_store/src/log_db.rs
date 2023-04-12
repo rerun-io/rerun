@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
@@ -159,33 +161,31 @@ impl EntityDb {
 /// A in-memory database built from a stream of [`LogMsg`]es.
 #[derive(Default)]
 pub struct LogDb {
-    /// Messages in the order they arrived
-    chronological_row_ids: Vec<RowId>,
-    log_messages: ahash::HashMap<RowId, LogMsg>,
-
-    /// Data that was logged with [`TimePoint::timeless`].
-    /// We need to re-insert those in any new timelines
-    /// that are created after they were logged.
-    timeless_row_ids: Vec<RowId>,
+    /// All [`EntityPathOpMsg`]s ever received.
+    entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
     /// Set by whomever created this [`LogDb`].
     pub data_source: Option<re_smart_channel::Source>,
 
     /// Comes in a special message, [`LogMsg::BeginRecordingMsg`].
-    recording_info: Option<RecordingInfo>,
+    recording_msg: Option<BeginRecordingMsg>,
 
     /// Where we store the entities.
     pub entity_db: EntityDb,
 }
 
 impl LogDb {
+    pub fn recording_msg(&self) -> Option<&BeginRecordingMsg> {
+        self.recording_msg.as_ref()
+    }
+
     pub fn recording_info(&self) -> Option<&RecordingInfo> {
-        self.recording_info.as_ref()
+        self.recording_msg().map(|msg| &msg.info)
     }
 
     pub fn recording_id(&self) -> RecordingId {
-        if let Some(info) = &self.recording_info {
-            info.recording_id
+        if let Some(msg) = &self.recording_msg {
+            msg.info.recording_id
         } else {
             RecordingId::ZERO
         }
@@ -203,11 +203,16 @@ impl LogDb {
         self.entity_db.tree.num_timeless_messages()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.log_messages.is_empty()
+    pub fn num_rows(&self) -> usize {
+        self.entity_db.data_store.total_timeless_rows() as usize
+            + self.entity_db.data_store.total_temporal_rows() as usize
     }
 
-    pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
+    pub fn is_empty(&self) -> bool {
+        self.num_rows() == 0
+    }
+
+    pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
         crate::profile_function!();
 
         match &msg {
@@ -218,38 +223,27 @@ impl LogDb {
                     time_point,
                     path_op,
                 } = msg;
+                self.entity_op_msgs.insert(*row_id, msg.clone());
                 self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
             LogMsg::Goodbye(_) => {}
         }
 
-        // TODO(#1619): the following only makes sense because, while we support sending and
-        // receiving batches, we don't actually do so yet.
-        // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
-        self.chronological_row_ids.push(msg.id());
-        self.log_messages.insert(msg.id(), msg);
-
         Ok(())
     }
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
-        self.recording_info = Some(msg.info.clone());
+        self.recording_msg = Some(msg.clone());
     }
 
-    pub fn len(&self) -> usize {
-        self.log_messages.len()
+    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `LogDb`.
+    pub fn iter_entity_op_msgs(&self) -> impl Iterator<Item = &EntityPathOpMsg> {
+        self.entity_op_msgs.values()
     }
 
-    /// In the order they arrived
-    pub fn chronological_log_messages(&self) -> impl Iterator<Item = &LogMsg> {
-        self.chronological_row_ids
-            .iter()
-            .filter_map(|id| self.get_log_msg(id))
-    }
-
-    pub fn get_log_msg(&self, row_id: &RowId) -> Option<&LogMsg> {
-        self.log_messages.get(row_id)
+    pub fn get_entity_op_msg(&self, row_id: &RowId) -> Option<&EntityPathOpMsg> {
+        self.entity_op_msgs.get(row_id)
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
@@ -263,26 +257,15 @@ impl LogDb {
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
-            chronological_row_ids,
-            log_messages,
-            timeless_row_ids,
+            entity_op_msgs,
             data_source: _,
-            recording_info: _,
+            recording_msg: _,
             entity_db,
         } = self;
 
         {
-            crate::profile_scope!("chronological_row_ids");
-            chronological_row_ids.retain(|row_id| !drop_row_ids.contains(row_id));
-        }
-
-        {
-            crate::profile_scope!("log_messages");
-            log_messages.retain(|row_id, _| !drop_row_ids.contains(row_id));
-        }
-        {
-            crate::profile_scope!("timeless_row_ids");
-            timeless_row_ids.retain(|row_id| !drop_row_ids.contains(row_id));
+            crate::profile_scope!("entity_op_msgs");
+            entity_op_msgs.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
 
         entity_db.purge(&cutoff_times, &drop_row_ids);
