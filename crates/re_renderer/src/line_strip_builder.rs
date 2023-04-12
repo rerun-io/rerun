@@ -101,29 +101,6 @@ impl LineStripSeriesBuilder {
         LineDrawData::new(ctx, self)
     }
 
-    /// Iterates over all line strips batches together with their strips and their respective vertices.
-    pub fn iter_strips_with_vertices(
-        &self,
-    ) -> impl Iterator<Item = (&LineStripInfo, impl Iterator<Item = &LineVertex>)> {
-        let mut cumulative_offset = 0;
-        self.strips
-            .iter()
-            .enumerate()
-            .map(move |(strip_index, strip)| {
-                (strip, {
-                    let offset = cumulative_offset;
-                    let strip_index = strip_index as u32;
-                    let vertex_iterator = self
-                        .vertices
-                        .iter()
-                        .skip(offset)
-                        .take_while(move |v| v.strip_index == strip_index);
-                    cumulative_offset += vertex_iterator.clone().count();
-                    vertex_iterator
-                })
-            })
-    }
-
     pub fn is_empty(&self) -> bool {
         self.strips.is_empty()
     }
