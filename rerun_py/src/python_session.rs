@@ -1,4 +1,4 @@
-use std::{io::Cursor, net::SocketAddr};
+use std::net::SocketAddr;
 
 use pyo3::{exceptions::PyValueError, PyResult};
 use re_log_types::{
@@ -200,17 +200,20 @@ impl PythonSession {
         Ok(())
     }
 
-    /// Drains all pending log messages and return them as an in-memory rrd file
-    pub fn dump_rrd_as_bytes(&mut self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
-        let backlog = self.sink.drain_backlog();
-        // Since all the messages have been drained we need to send the recording-msg again.
+    /// Send all pending and future log messages to an in-memory store
+    pub fn memory_recording(&mut self) -> rerun::sink::MemorySinkStorage {
+        let memory_sink = rerun::sink::MemorySink::default();
+        let buffer = memory_sink.buffer();
+
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to memory_recording() ignored");
+            return buffer;
+        }
+
+        self.set_sink(Box::new(memory_sink));
         self.has_sent_begin_recording_msg = false;
 
-        let mut buffer = Cursor::new(Vec::new());
-
-        re_log_encoding::encoder::encode(backlog.iter(), &mut buffer)?;
-
-        Ok(buffer.into_inner())
+        buffer
     }
 
     /// Disconnects any TCP connection, shuts down any server, and closes any file.

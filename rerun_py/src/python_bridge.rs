@@ -14,6 +14,7 @@ use pyo3::{
 use re_log_types::{ArrowMsg, DataRow, DataTableError};
 use rerun::{
     log::{PathOp, RowId},
+    sink::MemorySinkStorage,
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
@@ -134,10 +135,10 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
-    m.add_function(wrap_pyfunction!(dump_rrd_as_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(self_host_assets, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
@@ -394,14 +395,24 @@ fn save(path: &str) -> PyResult<()> {
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-/// Drain all pending messages and return them as an in-memory rrd
+#[pyclass]
+struct PyMemorySinkStorage(MemorySinkStorage);
+
+#[pymethods]
+impl PyMemorySinkStorage {
+    fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        self.0
+            .rrd_as_bytes()
+            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+/// Create an in-memory rrd file
 #[pyfunction]
-fn dump_rrd_as_bytes(py: Python<'_>) -> PyResult<&PyBytes> {
+fn memory_recording() -> PyMemorySinkStorage {
     let mut session = python_session();
-    session
-        .dump_rrd_as_bytes()
-        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    PyMemorySinkStorage(session.memory_recording())
 }
 
 // ----------------------------------------------------------------------------
