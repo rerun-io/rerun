@@ -20,22 +20,24 @@ use crate::QueryError;
 /// See: [`crate::get_component_with_instances`]
 #[derive(Clone, Debug)]
 pub struct ComponentWithInstances {
-    pub(crate) name: ComponentName,
     // TODO(jleibs): Remove optional once the store guarantees this will always exist
     pub(crate) instance_keys: Option<Box<dyn Array>>,
     pub(crate) values: DataCell,
 }
 
 impl ComponentWithInstances {
+    #[inline]
     pub fn name(&self) -> ComponentName {
-        self.name
+        self.values.component_name()
     }
 
     /// Number of values. 1 for splats.
+    #[inline]
     pub fn len(&self) -> usize {
         self.values.num_instances() as _
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
@@ -43,6 +45,7 @@ impl ComponentWithInstances {
     /// Iterate over the instance keys
     ///
     /// If the instance keys don't exist, generate them based on array-index position of the values
+    #[inline]
     pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
         if let Some(keys) = &self.instance_keys {
             let iter = arrow_array_deserialize_iterator::<InstanceKey>(keys.as_ref())?;
@@ -54,15 +57,16 @@ impl ComponentWithInstances {
     }
 
     /// Iterate over the values and convert them to a native `Component`
+    #[inline]
     pub fn iter_values<C: DeserializableComponent>(
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
         for<'a> &'a C::ArrayType: IntoIterator,
     {
-        if C::name() != self.name {
+        if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
-                actual: self.name,
+                actual: self.name(),
                 requested: C::name(),
             });
         }
@@ -77,9 +81,9 @@ impl ComponentWithInstances {
     where
         for<'a> &'a C::ArrayType: IntoIterator,
     {
-        if C::name() != self.name {
+        if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
-                actual: self.name,
+                actual: self.name(),
                 requested: C::name(),
             });
         }
@@ -143,7 +147,6 @@ impl ComponentWithInstances {
         let values = DataCell::from_native(values);
 
         Ok(ComponentWithInstances {
-            name: C::name(),
             instance_keys,
             values,
         })
@@ -267,7 +270,7 @@ impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
                 self.primary.instance_keys.as_ref().unwrap().as_ref(),
                 self.primary.values.as_arrow_ref(),
             ],
-            ["InstanceId", self.primary.name.as_str()],
+            ["InstanceId", self.primary.name().as_str()],
         );
 
         f.write_fmt(format_args!("EntityView:\n{primary_table}"))
@@ -294,16 +297,19 @@ where
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     /// Iterate over the instance keys
+    #[inline]
     pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
         self.primary.iter_instance_keys()
     }
 
     /// Iterate over the primary component values.
+    #[inline]
     pub fn iter_primary(&self) -> crate::Result<impl Iterator<Item = Option<Primary>> + '_> {
         self.primary.iter_values()
     }
 
     /// Iterate over the flattened list of primary component values if any.
+    #[inline]
     pub fn iter_primary_flattened(&self) -> impl Iterator<Item = Primary> + '_ {
         self.primary
             .iter_values()
@@ -314,6 +320,7 @@ where
     }
 
     /// Check if the entity has a component and its not empty
+    #[inline]
     pub fn has_component<C: Component>(&self) -> bool {
         self.components
             .get(&C::name())
@@ -355,6 +362,7 @@ where
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
+    #[inline]
     pub fn from_native(c0: (Option<&Vec<InstanceKey>>, &Vec<Primary>)) -> crate::Result<Self> {
         let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
 
@@ -367,6 +375,7 @@ where
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
+    #[inline]
     pub fn from_native2<C>(
         primary: (Option<&Vec<InstanceKey>>, &Vec<Primary>),
         component: (Option<&Vec<InstanceKey>>, &Vec<C>),
@@ -378,7 +387,7 @@ where
         let primary = ComponentWithInstances::from_native(primary.0, primary.1)?;
         let component_c1 = ComponentWithInstances::from_native(component.0, component.1)?;
 
-        let components = [(component_c1.name, component_c1)].into();
+        let components = [(component_c1.name(), component_c1)].into();
 
         Ok(Self {
             row_id: RowId::ZERO,

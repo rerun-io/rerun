@@ -58,7 +58,6 @@ pub fn get_component_with_instances(
     Ok((
         row_id,
         ComponentWithInstances {
-            name: component,
             instance_keys: cells[0].take().map(|cell| cell.to_arrow()),
             values: cells[1].take().ok_or(QueryError::PrimaryNotFound)?,
         },

@@ -135,9 +135,9 @@ impl ComponentWithInstances {
     where
         for<'a> &'a C0::ArrayType: IntoIterator,
     {
-        if C0::name() != self.name {
+        if C0::name() != self.name() {
             return Err(QueryError::TypeMismatch {
-                actual: self.name,
+                actual: self.name(),
                 requested: C0::name(),
             });
         }

@@ -98,13 +98,11 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                     let is_primary = cells[primary_col].is_some();
                     let cwis = cells
                         .into_iter()
-                        .enumerate()
-                        .map(|(i, cell)| {
+                        .map(|cell| {
                             cell.map(|cell| {
                                 (
                                     row_id,
                                     ComponentWithInstances {
-                                        name: components[i],
                                         instance_keys: instance_keys.clone(), /* shallow */
                                         values: cell,
                                     },
