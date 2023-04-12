@@ -40,6 +40,7 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         pub top_left_corner_position: wgpu_buffer_types::Vec3RowPadded,
+
         pub extent_u: wgpu_buffer_types::Vec3Unpadded,
         pub sample_type: u32, // 1=float, 2=depth, 3=sint, 4=uint
 
@@ -47,7 +48,11 @@ mod gpu_data {
         pub depth_offset: f32,
 
         pub multiplicative_tint: crate::Rgba,
-        pub outline_mask: wgpu_buffer_types::UVec2RowPadded,
+        pub outline_mask: wgpu_buffer_types::UVec2,
+
+        /// Range of the texture values.
+        /// Will be mapped to the [0, 1] range before we colormap.
+        pub range_min_max: wgpu_buffer_types::Vec2,
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
@@ -59,9 +64,10 @@ mod gpu_data {
         ) -> Self {
             let texture_info = texture_format.describe();
 
-            // Must match shader!
+            let super::ColormappedTexture { texture: _, range } = rectangle.colormapped_texture;
 
             let sample_type = match texture_info.sample_type {
+                // The number here must match the shader!
                 wgpu::TextureSampleType::Float { .. } => 1,
                 wgpu::TextureSampleType::Depth => 2,
                 wgpu::TextureSampleType::Sint => 3,
@@ -76,6 +82,7 @@ mod gpu_data {
                 depth_offset: rectangle.depth_offset as f32,
                 multiplicative_tint: rectangle.multiplicative_tint,
                 outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
+                range_min_max: range.into(),
                 end_padding: Default::default(),
             }
         }
@@ -101,19 +108,27 @@ pub enum TextureFilterMin {
 /// Describes a texture and how to map it to a color.
 pub struct ColormappedTexture {
     pub texture: GpuTexture2DHandle,
+
+    /// Min/max range of the values in the texture.
+    /// Used for colormapping (if any).
+    pub range: [f32; 2],
 }
 
 impl Default for ColormappedTexture {
     fn default() -> Self {
         Self {
             texture: GpuTexture2DHandle::invalid(),
+            range: [0.0, 1.0],
         }
     }
 }
 
 impl ColormappedTexture {
-    pub fn from_srgba(texture: GpuTexture2DHandle) -> Self {
-        Self { texture }
+    pub fn from_srgba_unorm(texture: GpuTexture2DHandle) -> Self {
+        Self {
+            texture,
+            range: [0.0, 1.0],
+        }
     }
 }
 
@@ -165,6 +180,11 @@ pub enum RectangleError {
 
     #[error("Texture required special features: {0:?}")]
     SpecialFeatures(wgpu::Features),
+
+    // There's really no need for users to be able to sample depth textures.
+    // We don't get filtering of depth textures any way.
+    #[error("Depth textures not supported - use float or integer textures instead.")]
+    DepthTexturesNotSupported,
 }
 
 #[derive(Clone)]
@@ -269,10 +289,10 @@ impl RectangleDrawData {
                     texture_float = texture.handle;
                 }
                 wgpu::TextureSampleType::Depth => {
-                    re_log::error_once!("Depth sampler not yet implemented.");
+                    return Err(RectangleError::DepthTexturesNotSupported);
                 }
                 wgpu::TextureSampleType::Sint => {
-                    re_log::error_once!("Sint sampler not yet implemented.");
+                    re_log::error_once!("Sint textures not yet implemented.");
                 }
                 wgpu::TextureSampleType::Uint => {
                     texture_uint = texture.handle;

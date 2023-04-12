@@ -60,6 +60,7 @@ pub struct TextureManager2D {
     // optimize for short lived textures as we do with buffer data.
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
     white_texture_unorm: GpuTexture2DHandle,
+    zeroed_texture_depth: GpuTexture2DHandle,
     zeroed_texture_uint: GpuTexture2DHandle,
 
     // For convenience to reduce amount of times we need to pass them around
@@ -99,6 +100,22 @@ impl TextureManager2D {
         );
 
         // Wgpu zeros out new textures automatically
+        let zeroed_texture_depth = GpuTexture2DHandle(Some(texture_pool.alloc(
+            &device,
+            &TextureDesc {
+                label: "zeroed pixel - depth".into(),
+                format: wgpu::TextureFormat::Depth16Unorm,
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            },
+        )));
         let zeroed_texture_uint = GpuTexture2DHandle(Some(texture_pool.alloc(
             &device,
             &TextureDesc {
@@ -118,6 +135,7 @@ impl TextureManager2D {
 
         Self {
             white_texture_unorm,
+            zeroed_texture_depth,
             zeroed_texture_uint,
             device,
             queue,
@@ -209,7 +227,12 @@ impl TextureManager2D {
         self.white_texture_unorm.0.as_ref().unwrap()
     }
 
-    /// Returns a single pixel white pixel with an rgba8unorm format.
+    /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
+    pub fn zeroed_texture_depth(&self) -> &GpuTexture {
+        self.zeroed_texture_depth.0.as_ref().unwrap()
+    }
+
+    /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
     pub fn zeroed_texture_uint(&self) -> &GpuTexture {
         self.zeroed_texture_uint.0.as_ref().unwrap()
     }
@@ -275,10 +298,7 @@ impl TextureManager2D {
 
     /// Retrieves gpu handle.
     #[allow(clippy::unused_self)]
-    pub(crate) fn get(
-        &self,
-        handle: &GpuTexture2DHandle,
-    ) -> Result<GpuTexture, ResourceManagerError> {
+    pub fn get(&self, handle: &GpuTexture2DHandle) -> Result<GpuTexture, ResourceManagerError> {
         handle
             .0
             .as_ref()

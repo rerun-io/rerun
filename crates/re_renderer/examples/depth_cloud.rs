@@ -329,7 +329,7 @@ impl framework::Example for RenderDepthClouds {
                     .transform_point3(glam::Vec3::new(1.0, 1.0, 0.0)),
                 extent_u: world_from_model.transform_vector3(-glam::Vec3::X),
                 extent_v: world_from_model.transform_vector3(-glam::Vec3::Y),
-                colormapped_texture: ColormappedTexture::from_srgba(albedo_handle.clone()),
+                colormapped_texture: ColormappedTexture::from_srgba_unorm(albedo_handle.clone()),
                 texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                 texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
                 multiplicative_tint: Rgba::from_white_alpha(0.5),

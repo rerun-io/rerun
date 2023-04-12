@@ -22,6 +22,10 @@ struct UniformBuffer {
     multiplicative_tint: Vec4,
 
     outline_mask: UVec2,
+
+    /// Range of the texture values.
+    /// Will be mapped to the [0, 1] range before we colormap.
+    range_min_max: Vec2,
 };
 
 @group(1) @binding(0)
@@ -57,20 +61,28 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    var texture_color = ERROR_COLOR;
+    let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
+
+    var sampled_value = ERROR_COLOR;
 
     if rect_info.sample_type == 1u {
         // float
-        texture_color = textureSample(texture_float, texture_sampler, in.texcoord);
+        sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
     } else if rect_info.sample_type == 2u {
         // depth - not implemented
     } else if rect_info.sample_type == 3u {
         // sint - not implemented
     } else if rect_info.sample_type == 4u {
-        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
-        let rgba_uint = textureLoad(texture_uint, icoords, 0);
-        // TODO: color-mapping
+        // uint
+        sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
+    } else {
+        // unknown sample type
     }
+
+    let range = rect_info.range_min_max;
+    let normalized_value = (sampled_value - range.x) / (range.y - range.x);
+    // TODO: color-mapping
+    let texture_color = normalized_value;
 
     return texture_color * rect_info.multiplicative_tint;
 }

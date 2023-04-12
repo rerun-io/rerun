@@ -45,10 +45,13 @@ fn push_tensor_texture(
     if experimental_gpu_colormapping {
         let debug_name = "tensor"; // TODO: entity path
 
+        let tensor_stats = ctx.cache.tensor_stats(tensor);
+
         match crate::misc::tensor_to_gpu::textured_rect_from_tensor(
             ctx.render_ctx,
             debug_name,
             tensor,
+            tensor_stats,
             annotations,
         ) {
             Ok(colormapped_texture) => {
@@ -79,7 +82,7 @@ fn push_tensor_texture(
     } else {
         let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
         if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
-            let colormapped_texture = ColormappedTexture::from_srgba(texture_handle);
+            let colormapped_texture = ColormappedTexture::from_srgba_unorm(texture_handle);
             scene
                 .primitives
                 .textured_rectangles
