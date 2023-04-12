@@ -135,21 +135,33 @@ impl Points3DPart {
                     .filter_map(|pt| pt.map(glam::Vec3::from))
             };
 
-            let mut point_range_builder = point_batch
-                .add_points(entity_view.num_instances(), point_positions)
-                .colors(colors)
-                .radii(radii);
-            if properties.interactive {
-                point_range_builder = point_range_builder.picking_instance_ids(
+            let mut point_range_builder = if properties.interactive {
+                let picking_instance_ids = {
+                    crate::profile_scope!("instance_ids");
                     entity_view.iter_instance_keys()?.map(|instance_key| {
                         instance_key_to_picking_id(
                             instance_key,
                             entity_view,
                             entity_highlight.any_selection_highlight,
                         )
-                    }),
-                );
-            }
+                    })
+                };
+                point_batch.add_points(
+                    entity_view.num_instances(),
+                    point_positions,
+                    radii,
+                    colors,
+                    picking_instance_ids,
+                )
+            } else {
+                point_batch.add_points(
+                    entity_view.num_instances(),
+                    point_positions,
+                    radii,
+                    colors,
+                    std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+                )
+            };
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
