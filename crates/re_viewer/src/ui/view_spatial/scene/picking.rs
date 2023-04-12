@@ -10,10 +10,7 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub enum AdditionalPickingInfo {
-    /// No additional picking information.
-    None,
-
+pub enum PickingHitType {
     /// The hit was a textured rect at the given uv coordinates (ranging from 0 to 1)
     TexturedRect(glam::Vec2),
 
@@ -31,95 +28,31 @@ pub struct PickingRayHit {
     /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
     pub instance_path_hash: InstancePathHash,
 
-    /// Where along the picking ray the hit occurred.
-    pub ray_t: f32,
+    /// Where the ray hit the entity.
+    pub space_position: glam::Vec3,
+
+    /// The squared distance to the eye.
+    pub distance_to_eye_sq: f32,
 
     pub depth_offset: re_renderer::DepthOffset,
 
     /// Any additional information about the picking hit.
-    pub info: AdditionalPickingInfo,
-}
-
-impl PickingRayHit {
-    pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> glam::Vec3 {
-        ray_in_world.origin + ray_in_world.dir * self.ray_t
-    }
+    pub hit_type: PickingHitType,
 }
 
 #[derive(Clone)]
 pub struct PickingResult {
-    /// Picking ray hit for an opaque object (if any).
-    pub opaque_hit: Option<PickingRayHit>,
-
-    /// Picking ray hits for transparent objects, sorted from far to near.
-    /// If there is an opaque hit, all of them are in front of the opaque hit.
-    pub transparent_hits: Vec<PickingRayHit>,
+    /// Picking ray hits sorted from far to near.
+    ///
+    /// Typically there is only one hit, but there might be several if there are transparent objects
+    /// or "aggressive" objects like 2D images which we always want to pick, even if they're in the background.
+    /// (This is very useful for 2D scenes and so far we keep this behavior in 3D for simplicity)
+    pub hits: Vec<PickingRayHit>,
 }
 
 impl PickingResult {
-    /// Iterates over all hits from far to close.
-    pub fn iter_hits(&self) -> impl Iterator<Item = &PickingRayHit> {
-        self.opaque_hit.iter().chain(self.transparent_hits.iter())
-    }
-
-    pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> Option<glam::Vec3> {
-        self.opaque_hit
-            .as_ref()
-            .or_else(|| self.transparent_hits.last())
-            .map(|hit| hit.space_position(ray_in_world))
-    }
-}
-
-const RAY_T_EPSILON: f32 = f32::EPSILON;
-
-/// State used to build up picking results.
-struct PickingState {
-    closest_opaque_side_ui_dist_sq: f32,
-    closest_opaque_pick: PickingRayHit,
-    transparent_hits: Vec<PickingRayHit>,
-}
-
-impl PickingState {
-    fn check_hit(&mut self, side_ui_dist_sq: f32, ray_hit: PickingRayHit, transparent: bool) {
-        let gap_to_closest_opaque = self.closest_opaque_pick.ray_t - ray_hit.ray_t;
-
-        // Use depth offset if very close to each other in relative distance.
-        if gap_to_closest_opaque.abs()
-            < self.closest_opaque_pick.ray_t.max(ray_hit.ray_t) * RAY_T_EPSILON
-        {
-            if ray_hit.depth_offset < self.closest_opaque_pick.depth_offset {
-                return;
-            }
-        } else if gap_to_closest_opaque < 0.0 {
-            return;
-        }
-
-        if side_ui_dist_sq <= self.closest_opaque_side_ui_dist_sq {
-            if transparent {
-                self.transparent_hits.push(ray_hit);
-            } else {
-                self.closest_opaque_pick = ray_hit;
-                self.closest_opaque_side_ui_dist_sq = side_ui_dist_sq;
-            }
-        }
-    }
-
-    fn sort_and_remove_hidden_transparent(&mut self) {
-        // Sort from far to close
-        self.transparent_hits
-            .sort_by(|a, b| b.ray_t.partial_cmp(&a.ray_t).unwrap());
-
-        // Delete subset that is behind opaque hit.
-        if self.closest_opaque_pick.ray_t.is_finite() {
-            let mut num_hidden = 0;
-            for (i, transparent_hit) in self.transparent_hits.iter().enumerate() {
-                if transparent_hit.ray_t <= self.closest_opaque_pick.ray_t {
-                    break;
-                }
-                num_hidden = i + 1;
-            }
-            self.transparent_hits.drain(0..num_hidden);
-        }
+    pub fn space_position(&self) -> Option<glam::Vec3> {
+        self.hits.last().map(|hit| hit.space_position)
     }
 }
 
@@ -138,9 +71,6 @@ pub struct PickingContext {
 
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
     pub ray_in_world: macaw::Ray3,
-
-    /// Multiply with this to convert to pixels from points.
-    pixels_from_points: f32,
 }
 
 impl PickingContext {
@@ -166,7 +96,6 @@ impl PickingContext {
             pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
             ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
-            pixels_from_points,
         }
     }
 
@@ -181,55 +110,43 @@ impl PickingContext {
     ) -> PickingResult {
         crate::profile_function!();
 
-        let max_side_ui_dist_sq = Self::UI_INTERACTION_RADIUS * Self::UI_INTERACTION_RADIUS;
+        let mut hits = Vec::new();
 
-        let mut state = PickingState {
-            closest_opaque_side_ui_dist_sq: max_side_ui_dist_sq,
-            closest_opaque_pick: PickingRayHit {
-                instance_path_hash: InstancePathHash::NONE,
-                ray_t: f32::INFINITY,
-                info: AdditionalPickingInfo::None,
-                depth_offset: 0,
-            },
-            // Combined, sorted (and partially "hidden") by opaque results later.
-            transparent_hits: Vec::new(),
-        };
-
-        picking_gpu(
+        // Start with gpu based picking as baseline. This is our prime source of picking information.
+        hits.extend(picking_gpu(
             render_ctx,
             gpu_readback_identifier,
-            &mut state,
             self,
             previous_picking_result,
-        );
-        picking_textured_rects(
+        ));
+
+        // We also never throw away any textured rects, even if they're behind other objects.
+        hits.extend(picking_textured_rects(
             self,
-            &mut state,
             &primitives.textured_rectangles,
             &primitives.textured_rectangles_ids,
-        );
-        picking_ui_rects(self, &mut state, ui_data);
+        ));
 
-        state.sort_and_remove_hidden_transparent();
+        // UI rects are overlayed on top, but we don't let them hide other picking results either.
+        hits.extend(picking_ui_rects(self, ui_data));
 
-        PickingResult {
-            opaque_hit: state
-                .closest_opaque_pick
-                .instance_path_hash
-                .is_some()
-                .then_some(state.closest_opaque_pick),
-            transparent_hits: state.transparent_hits,
-        }
+        // Sort hits from far to near.
+        hits.sort_by(|a, b| {
+            b.distance_to_eye_sq
+                .partial_cmp(&a.distance_to_eye_sq)
+                .unwrap()
+        });
+
+        PickingResult { hits }
     }
 }
 
 fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
-    state: &mut PickingState,
     context: &PickingContext,
     previous_picking_result: &Option<PickingResult>,
-) {
+) -> Option<PickingRayHit> {
     crate::profile_function!();
 
     // Only look at newest available result, discard everything else.
@@ -275,50 +192,45 @@ fn picking_gpu(
         }
         if picked_id == re_renderer::PickingLayerId::default() {
             // Nothing found.
-            return;
+            return None;
         }
 
-        let ui_distance_sq = picked_on_picking_rect.distance_squared(pointer_on_picking_rect)
-            / (context.pixels_from_points * context.pixels_from_points);
         let picked_world_position =
             gpu_picking_result.picked_world_position(picked_on_picking_rect.as_uvec2());
-        state.check_hit(
-            ui_distance_sq,
-            PickingRayHit {
-                instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
-                // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
-                ray_t: picked_world_position.distance(context.ray_in_world.origin),
-                depth_offset: 0,
-                info: AdditionalPickingInfo::GpuPickingResult,
-            },
-            false,
-        );
+
+        Some(PickingRayHit {
+            instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
+            space_position: picked_world_position,
+            distance_to_eye_sq: picked_world_position.distance_squared(context.ray_in_world.origin),
+            depth_offset: 1,
+            hit_type: PickingHitType::GpuPickingResult,
+        })
     } else {
         // It is possible that some frames we don't get a picking result and the frame after we get several.
         // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
-        if let Some(PickingResult {
-            opaque_hit: Some(previous_opaque_hit),
-            ..
-        }) = previous_picking_result
-        {
-            if matches!(
-                previous_opaque_hit.info,
-                AdditionalPickingInfo::GpuPickingResult
-            ) {
-                state.closest_opaque_pick = previous_opaque_hit.clone();
+        if let Some(PickingResult { hits }) = previous_picking_result {
+            for previous_opaque_hit in hits.iter() {
+                if matches!(
+                    previous_opaque_hit.hit_type,
+                    PickingHitType::GpuPickingResult
+                ) {
+                    return Some(previous_opaque_hit.clone());
+                }
             }
         }
+        None
     }
 }
 
 fn picking_textured_rects(
     context: &PickingContext,
-    state: &mut PickingState,
     textured_rectangles: &[re_renderer::renderer::TexturedRect],
     textured_rectangles_ids: &[InstancePathHash],
-) {
+) -> Vec<PickingRayHit> {
     crate::profile_function!();
+
+    let mut hits = Vec::new();
 
     for (rect, id) in textured_rectangles
         .iter()
@@ -345,36 +257,37 @@ fn picking_textured_rects(
         let v = dir_from_rect_top_left.dot(rect.extent_v) / rect.extent_v.length_squared();
 
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
-            let picking_hit = PickingRayHit {
+            hits.push(PickingRayHit {
                 instance_path_hash: *id,
-                ray_t: t,
-                info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
+                space_position: context.ray_in_world.origin + context.ray_in_world.dir * t,
+                distance_to_eye_sq: t * t,
+                hit_type: PickingHitType::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
-            };
-            state.check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
+            });
         }
     }
+
+    hits
 }
 
 fn picking_ui_rects(
     context: &PickingContext,
-    state: &mut PickingState,
     ui_data: &SceneSpatialUiData,
-) {
+) -> Option<PickingRayHit> {
     crate::profile_function!();
 
     let egui_pos = egui::pos2(context.pointer_in_space2d.x, context.pointer_in_space2d.y);
     for (bbox, instance_hash) in &ui_data.pickable_ui_rects {
-        let side_ui_dist_sq = bbox.distance_sq_to_pos(egui_pos);
-        state.check_hit(
-            side_ui_dist_sq,
-            PickingRayHit {
+        if bbox.contains(egui_pos) {
+            // Handle only a single ui rectangle (exit right away, ignore potential overlaps)
+            return Some(PickingRayHit {
                 instance_path_hash: *instance_hash,
-                ray_t: 0.0,
-                info: AdditionalPickingInfo::GuiOverlay,
+                space_position: context.ray_in_world.origin,
+                distance_to_eye_sq: 0.0,
+                hit_type: PickingHitType::GuiOverlay,
                 depth_offset: 0,
-            },
-            false,
-        );
+            });
+        }
     }
+    None
 }

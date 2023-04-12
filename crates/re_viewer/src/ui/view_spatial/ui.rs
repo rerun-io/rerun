@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     eye::Eye,
-    scene::{AdditionalPickingInfo, PickingResult, SceneSpatialUiData},
+    scene::{PickingHitType, PickingResult, SceneSpatialUiData},
     ui_2d::View2DState,
     ui_3d::View3DState,
     SceneSpatial, SpaceSpecs,
@@ -741,7 +741,7 @@ pub fn picking(
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
-    for hit in picking_result.iter_hits() {
+    for hit in &picking_result.hits {
         let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
         if !entity_properties
@@ -756,7 +756,7 @@ pub fn picking(
         ));
 
         // Special hover ui for images.
-        let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
+        let picked_image_with_uv = if let PickingHitType::TexturedRect(uv) = hit.hit_type {
             scene
                 .ui
                 .images
@@ -849,7 +849,7 @@ pub fn picking(
                 .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
         },
         SpatialNavigationMode::ThreeD => {
-            let hovered_point = picking_result.space_position(&picking_context.ray_in_world);
+            let hovered_point = picking_result.space_position();
             HoveredSpace::ThreeD {
                 space_3d: space.clone(),
                 pos: hovered_point,

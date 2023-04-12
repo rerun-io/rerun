@@ -21,7 +21,7 @@ mod picking;
 mod primitives;
 mod scene_part;
 
-pub use self::picking::{AdditionalPickingInfo, PickingContext, PickingRayHit, PickingResult};
+pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
