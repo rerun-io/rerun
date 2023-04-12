@@ -34,9 +34,9 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum TimeControlCommand {
     TogglePlayPause,
-    Restart,
     StepBack,
     StepForward,
+    Restart,
 }
 
 // ----------------------------------------------------------------------------
@@ -337,7 +337,9 @@ impl App {
             Command::PlaybackStepForward => {
                 self.run_time_control_command(TimeControlCommand::StepForward);
             }
-            Command::PlaybackRestart => self.run_time_control_command(TimeControlCommand::Restart),
+            Command::PlaybackRestart => {
+                self.run_time_control_command(TimeControlCommand::Restart);
+            }
         }
     }
 
@@ -353,14 +355,14 @@ impl App {
             TimeControlCommand::TogglePlayPause => {
                 time_ctrl.toggle_play_pause(times_per_timeline);
             }
-            TimeControlCommand::Restart => {
-                time_ctrl.restart(times_per_timeline);
-            }
             TimeControlCommand::StepBack => {
                 time_ctrl.step_time_back(times_per_timeline);
             }
             TimeControlCommand::StepForward => {
                 time_ctrl.step_time_fwd(times_per_timeline);
+            }
+            TimeControlCommand::Restart => {
+                time_ctrl.restart(times_per_timeline);
             }
         }
     }
