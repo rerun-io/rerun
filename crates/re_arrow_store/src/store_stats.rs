@@ -169,7 +169,7 @@ impl SizeBytes for DataTypeRegistry {
 impl SizeBytes for MetadataRegistry<TimePoint> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        self.heap_size_bytes
     }
 }
 

@@ -97,22 +97,37 @@ impl std::ops::DerefMut for DataTypeRegistry {
 }
 
 /// Keeps track of arbitrary per-row metadata.
-#[derive(Debug, Default, Clone)]
-pub struct MetadataRegistry<T: Clone>(pub BTreeMap<RowId, T>);
+#[derive(Debug, Clone)]
+pub struct MetadataRegistry<T: Clone> {
+    pub registry: BTreeMap<RowId, T>,
+    /// Cached heap size, because the registry gets very, very large.
+    pub heap_size_bytes: u64,
+}
+
+impl Default for MetadataRegistry<TimePoint> {
+    fn default() -> Self {
+        let mut this = Self {
+            registry: Default::default(),
+            heap_size_bytes: 0,
+        };
+        this.heap_size_bytes = this.heap_size_bytes();
+        this
+    }
+}
 
 impl<T: Clone> std::ops::Deref for MetadataRegistry<T> {
     type Target = BTreeMap<RowId, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.registry
     }
 }
 
 impl<T: Clone> std::ops::DerefMut for MetadataRegistry<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.registry
     }
 }
 
