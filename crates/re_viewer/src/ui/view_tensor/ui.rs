@@ -5,7 +5,7 @@ use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
 use ndarray::{Axis, Ix2};
 
 use re_log_types::{
-    component_types::{self, Tensor, TensorTrait},
+    component_types::{self, Tensor},
     TensorDataType,
 };
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};

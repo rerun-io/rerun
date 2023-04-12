@@ -216,6 +216,17 @@ jobs:
       - name: Run tests
         run: cd rerun_py/tests && pytest
 
+      - name: Install requriements for e2e test
+        run: |
+          pip install -r examples/python/api_demo/requirements.txt
+          pip install -r examples/python/car/requirements.txt
+          pip install -r examples/python/multithreading/requirements.txt
+          pip install -r examples/python/plots/requirements.txt
+          pip install -r examples/python/text_logging/requirements.txt
+
+      - name: Run e2e test
+        run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+
       - name: Unpack the wheel
         shell: bash
         run: |

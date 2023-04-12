@@ -2,7 +2,7 @@ use egui::{ColorImage, Vec2};
 use itertools::Itertools as _;
 
 use re_log_types::{
-    component_types::{ClassId, Tensor, TensorDataMeaning, TensorTrait},
+    component_types::{ClassId, Tensor, TensorDataMeaning},
     TensorElement,
 };
 

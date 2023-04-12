@@ -35,6 +35,11 @@ pub use {
     setup::*,
 };
 
+/// Re-exports of other crates.
+pub mod external {
+    pub use log;
+}
+
 /// Never log anything less serious than a `WARN` from these crates.
 const CRATES_AT_WARN_LEVEL: [&str; 3] = [
     // wgpu crates spam a lot on info level, which is really annoying

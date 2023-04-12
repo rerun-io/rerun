@@ -157,7 +157,7 @@ impl framework::Example for Picking {
             .schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
             .unwrap();
 
-        let mut point_builder = PointCloudBuilder::<()>::new(re_ctx);
+        let mut point_builder = PointCloudBuilder::new(re_ctx);
         for (i, point_set) in self.point_sets.iter().enumerate() {
             point_builder
                 .batch(format!("Random Points {i}"))

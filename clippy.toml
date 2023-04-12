@@ -27,6 +27,8 @@ disallowed-methods = [
   "std::thread::spawn", # Use `std::thread::Builder` and name the thread
 
   "sha1::Digest::new", # SHA1 is cryptographically broken
+
+  "std::panic::catch_unwind", # We compile with `panic = "abort"`
 ]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names

@@ -5,10 +5,7 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath};
-use re_log_types::{
-    component_types::{Tensor, TensorTrait},
-    Component,
-};
+use re_log_types::{component_types::Tensor, Component};
 
 use crate::{
     misc::{space_info::SpaceInfoCollection, ViewerContext},

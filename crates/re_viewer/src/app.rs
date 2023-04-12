@@ -44,6 +44,7 @@ enum TimeControlCommand {
 #[derive(Clone, Copy, Default)]
 pub struct StartupOptions {
     pub memory_limit: re_memory::MemoryLimit,
+    pub persist_state: bool,
 }
 
 // ----------------------------------------------------------------------------
@@ -118,9 +119,13 @@ impl App {
             );
         }
 
-        let state: AppState = storage
-            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
-            .unwrap_or_default();
+        let state: AppState = if startup_options.persist_state {
+            storage
+                .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
+                .unwrap_or_default()
+        } else {
+            AppState::default()
+        };
 
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
@@ -412,7 +417,9 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        if self.startup_options.persist_state {
+            eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        }
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {

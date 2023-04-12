@@ -1,125 +1,169 @@
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius},
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
+        annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
-        view_spatial::{scene::Keypoints, SceneSpatial, UiLabel, UiLabelTarget},
-        DefaultColor,
+        view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
     },
 };
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{
+    instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
+    process_colors, process_radii, ScenePart,
+};
 
-pub struct Points2DPart;
+pub struct Points2DPart {
+    /// If the number of points in the batch is > max_labels, don't render point labels.
+    pub(crate) max_labels: usize,
+}
 
 impl Points2DPart {
+    fn process_labels<'a>(
+        entity_view: &'a EntityView<Point2D>,
+        instance_path_hashes: &'a [InstancePathHash],
+        colors: &'a [egui::Color32],
+        annotation_infos: &'a [ResolvedAnnotationInfo],
+    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        let labels = itertools::izip!(
+            annotation_infos.iter(),
+            entity_view.iter_primary()?,
+            entity_view.iter_component::<Label>()?,
+            colors,
+            instance_path_hashes,
+        )
+        .filter_map(
+            move |(annotation_info, point, label, color, labeled_instance)| {
+                let label = annotation_info.label(label.map(|l| l.0).as_ref());
+                match (point, label) {
+                    (Some(point), Some(label)) => Some(UiLabel {
+                        text: label,
+                        color: *color,
+                        target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
+                        labeled_instance: *labeled_instance,
+                    }),
+                    _ => None,
+                }
+            },
+        );
+        Ok(labels)
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
+        &self,
         scene: &mut SceneSpatial,
-        _query: &SceneQuery<'_>,
-        props: &EntityProperties,
+        query: &SceneQuery<'_>,
+        properties: &EntityProperties,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
+        crate::profile_function!();
+
         scene.num_logged_2d_objects += 1;
 
-        let mut label_batch = Vec::new();
-        let max_num_labels = 10;
-
         let annotations = scene.annotation_map.find(ent_path);
-        let default_color = DefaultColor::EntityPath(ent_path);
-        // If keypoints ids show up we may need to connect them later!
-        // We include time in the key, so that the "Visible history" (time range queries) feature works.
-        let mut keypoints: Keypoints = Default::default();
 
-        let mut point_batch = scene
-            .primitives
-            .points
-            .batch("2d points")
-            .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
+        let (annotation_infos, keypoints) =
+            process_annotations_and_keypoints(query, entity_view, &annotations)?;
 
-        // TODO(andreas): This should follow the same batch processing as points3d.
-        let visitor = |instance_key: InstanceKey,
-                       pos: Point2D,
-                       color: Option<ColorRGBA>,
-                       radius: Option<Radius>,
-                       label: Option<Label>,
-                       class_id: Option<ClassId>,
-                       keypoint_id: Option<KeypointId>| {
-            let picking_instance_hash = instance_path_hash_for_picking(
-                ent_path,
-                instance_key,
+        let colors = process_colors(entity_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(ent_path, entity_view)?;
+
+        if entity_view.num_instances() <= self.max_labels {
+            // Max labels is small enough that we can afford iterating on the colors again.
+            let colors =
+                process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+
+            let instance_path_hashes_for_picking = {
+                crate::profile_scope!("instance_hashes");
+                entity_view
+                    .iter_instance_keys()?
+                    .map(|instance_key| {
+                        instance_path_hash_for_picking(
+                            ent_path,
+                            instance_key,
+                            entity_view,
+                            properties,
+                            entity_highlight.any_selection_highlight,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+
+            scene.ui.labels.extend(Self::process_labels(
                 entity_view,
-                props,
-                entity_highlight.any_selection_highlight,
-            );
-
-            let pos: glam::Vec2 = pos.into();
-
-            let class_description = annotations.class_description(class_id);
-
-            let annotation_info = keypoint_id.map_or_else(
-                || class_description.annotation_info(),
-                |keypoint_id| {
-                    if let Some(class_id) = class_id {
-                        keypoints
-                            .entry((class_id, 0))
-                            .or_insert_with(Default::default)
-                            .insert(keypoint_id, pos.extend(0.0));
-                    }
-                    class_description.annotation_info_with_keypoint(keypoint_id)
-                },
-            );
-
-            let color =
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-            let label = annotation_info.label(label.map(|l| l.0).as_ref());
-
-            let point_range_builder = point_batch
-                .add_point_2d(pos)
-                .color(color)
-                .radius(radius)
-                .user_data(picking_instance_hash);
-
-            // Check if this point is individually highlighted.
-            if let Some(instance_mask_ids) = entity_highlight.instances.get(&instance_key) {
-                point_range_builder.outline_mask_id(*instance_mask_ids);
-            }
-
-            if let Some(label) = label {
-                if label_batch.len() < max_num_labels {
-                    label_batch.push(UiLabel {
-                        text: label,
-                        color,
-                        target: UiLabelTarget::Point2D(egui::pos2(pos.x, pos.y)),
-                        labeled_instance: picking_instance_hash,
-                    });
-                }
-            }
-        };
-
-        entity_view.visit6(visitor)?;
-        drop(point_batch); // Drop batch so we have access to the scene again (batches need to be dropped before starting new ones).
-
-        if label_batch.len() < max_num_labels {
-            scene.ui.labels.extend(label_batch.into_iter());
+                &instance_path_hashes_for_picking,
+                &colors,
+                &annotation_infos,
+            )?);
         }
 
-        // Generate keypoint connections if any.
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations, props.interactive);
+        {
+            let mut point_batch = scene
+                .primitives
+                .points
+                .batch("2d points")
+                .world_from_obj(world_from_obj)
+                .outline_mask_ids(entity_highlight.overall);
+            if properties.interactive {
+                point_batch = point_batch
+                    .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            }
+
+            let point_positions = {
+                crate::profile_scope!("collect_points");
+                entity_view
+                    .iter_primary()?
+                    .filter_map(|pt| pt.map(glam::Vec2::from))
+            };
+
+            let mut point_range_builder = point_batch
+                .add_points_2d(entity_view.num_instances(), point_positions)
+                .colors(colors)
+                .radii(radii);
+            if properties.interactive {
+                point_range_builder = point_range_builder.picking_instance_ids(
+                    entity_view.iter_instance_keys()?.map(|instance_key| {
+                        instance_key_to_picking_id(
+                            instance_key,
+                            entity_view,
+                            entity_highlight.any_selection_highlight,
+                        )
+                    }),
+                );
+            }
+
+            // Determine if there's any sub-ranges that need extra highlighting.
+            {
+                crate::profile_scope!("marking additional highlight points");
+                for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
+                    // TODO(andreas/jeremy): We can do this much more efficiently
+                    let highlighted_point_index = entity_view
+                        .iter_instance_keys()?
+                        .position(|key| key == *highlighted_key);
+                    if let Some(highlighted_point_index) = highlighted_point_index {
+                        point_range_builder = point_range_builder
+                            .push_additional_outline_mask_ids_for_range(
+                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
+                                *instance_mask_ids,
+                            );
+                    }
+                }
+            }
+        }
+
+        scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
 
         Ok(())
     }
@@ -160,7 +204,7 @@ impl ScenePart for Points2DPart {
             )
             .and_then(|entities| {
                 for entity in entities {
-                    Self::process_entity_view(
+                    self.process_entity_view(
                         scene,
                         query,
                         &props,
