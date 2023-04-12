@@ -262,7 +262,7 @@ fn datastore_internal_repr() {
         },
     );
 
-    let timeless = DataTable::example(false);
+    let timeless = DataTable::example(true);
     eprintln!("{timeless}");
     store.insert_table(&timeless).unwrap();
 
@@ -317,37 +317,30 @@ pub struct IndexedTable {
     /// to free up space.
     pub all_components: IntSet<ComponentName>,
 
-    /// The total number of rows in this indexed table, accounting for all buckets.
-    pub total_rows: u64,
+    /// The number of rows stored in this table, across all of its buckets.
+    pub buckets_num_rows: u64,
 
-    /// The size of this table in bytes across all of its buckets, accounting for both data and
-    /// metadata.
+    /// The size of both the control & component data stored in this table, across all of its
+    /// buckets, in bytes.
     ///
-    /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we
-    /// cache this.
-    /// Also: there are many buckets.
-    pub total_size_bytes: u64,
+    /// This is a best-effort approximation, adequate for most purposes (stats,
+    /// triggering GCs, ...).
+    pub buckets_size_bytes: u64,
 }
 
 impl IndexedTable {
     pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
+        let bucket = IndexedBucket::new(cluster_key, timeline);
+        let buckets_size_bytes = bucket.size_bytes();
         Self {
             timeline,
             ent_path,
-            buckets: [(i64::MIN.into(), IndexedBucket::new(cluster_key, timeline))].into(),
+            buckets: [(i64::MIN.into(), bucket)].into(),
             cluster_key,
             all_components: Default::default(),
-            total_rows: 0,
-            total_size_bytes: 0, // TODO(#1619)
+            buckets_num_rows: 0,
+            buckets_size_bytes,
         }
-    }
-
-    /// Returns a read-only iterator over the raw buckets.
-    ///
-    /// Do _not_ use this to try and test the internal state of the datastore.
-    #[doc(hidden)]
-    pub fn iter_buckets(&self) -> impl ExactSizeIterator<Item = &IndexedBucket> {
-        self.buckets.values()
     }
 }
 
@@ -414,16 +407,18 @@ pub struct IndexedBucketInner {
     /// (i.e. the table is sparse).
     pub columns: IntMap<ComponentName, DataCellColumn>,
 
-    /// The size of this bucket in bytes, accounting for both data and metadata.
+    /// The size of both the control & component data stored in this bucket, in bytes.
     ///
-    /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we
-    /// cache this.
-    pub total_size_bytes: u64,
+    /// This is a best-effort approximation, adequate for most purposes (stats,
+    /// triggering GCs, ...).
+    ///
+    /// We cache this because there can be many, many buckets.
+    pub size_bytes: u64,
 }
 
 impl Default for IndexedBucketInner {
     fn default() -> Self {
-        Self {
+        let mut this = Self {
             is_sorted: true,
             time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
             col_time: Default::default(),
@@ -431,8 +426,10 @@ impl Default for IndexedBucketInner {
             col_row_id: Default::default(),
             col_num_instances: Default::default(),
             columns: Default::default(),
-            total_size_bytes: 0, // TODO(#1619)
-        }
+            size_bytes: 0, // NOTE: computed below
+        };
+        this.compute_size_bytes();
+        this
     }
 }
 
@@ -476,15 +473,20 @@ pub struct PersistentIndexedTable {
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
     pub columns: IntMap<ComponentName, DataCellColumn>,
-
-    /// The size of this indexed table in bytes, accounting for both data and metadata.
-    ///
-    /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we
-    /// cache this.
-    pub total_size_bytes: u64,
 }
 
 impl PersistentIndexedTable {
+    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
+        Self {
+            cluster_key,
+            ent_path,
+            col_insert_id: Default::default(),
+            col_row_id: Default::default(),
+            col_num_instances: Default::default(),
+            columns: Default::default(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.col_num_instances.is_empty()
     }

@@ -176,7 +176,6 @@ impl PersistentIndexedTable {
             col_row_id,
             col_num_instances,
             columns,
-            total_size_bytes: _,
         } = self;
 
         let num_rows = self.total_rows() as usize;
@@ -217,7 +216,7 @@ impl IndexedBucket {
             col_row_id,
             col_num_instances,
             columns,
-            total_size_bytes: _,
+            size_bytes: _,
         } = &*self.inner.read();
 
         let (_, times) = DataTable::serialize_primitive_column(

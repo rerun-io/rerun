@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 use re_log::{debug, trace};
 use re_log_types::{
     component_types::InstanceKey, ComponentName, DataCell, DataCellColumn, DataCellError, DataRow,
-    DataTable, EntityPath, TimeInt, TimeRange,
+    DataTable, TimeInt, TimeRange,
 };
 
 use crate::{
@@ -18,7 +18,6 @@ use crate::{
 // TODO(#1619):
 // - The store should insert column-per-column rather than row-per-row (purely a performance
 //   matter)
-// - Bring back size stats
 
 // --- Data store ---
 
@@ -59,7 +58,7 @@ impl DataStore {
     ///
     /// See [`Self::insert_row`].
     pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
-        for row in table.as_rows() {
+        for row in table.to_rows() {
             self.insert_row(&row)?;
         }
         Ok(())
@@ -246,10 +245,11 @@ impl IndexedTable {
 
         let (_, bucket) = self.find_bucket_mut(time);
 
-        let len = bucket.total_rows();
+        let len = bucket.num_rows();
         let len_overflow = len > config.indexed_bucket_num_rows;
 
         if len_overflow {
+            let bucket_size_before = bucket.size_bytes();
             if let Some((min, second_half)) = bucket.split() {
                 trace!(
                     kind = "insert",
@@ -262,7 +262,10 @@ impl IndexedTable {
                     "splitting off indexed bucket following overflow"
                 );
 
+                self.buckets_size_bytes += bucket.size_bytes() + second_half.size_bytes();
+                self.buckets_size_bytes -= bucket_size_before;
                 self.buckets.insert(min, second_half);
+
                 return self.insert_row(config, insert_id, time, generated_cluster_cell, row);
             }
 
@@ -307,17 +310,25 @@ impl IndexedTable {
                         new_time_bound = timeline.typ().format(new_time_bound.into()),
                         "creating brand new indexed bucket following overflow"
                     );
+
+                    let (inner, inner_size_bytes) = {
+                        let mut inner = IndexedBucketInner {
+                            time_range: TimeRange::new(time, time),
+                            ..Default::default()
+                        };
+                        let size_bytes = inner.compute_size_bytes();
+                        (inner, size_bytes)
+                    };
                     self.buckets.insert(
                         (new_time_bound).into(),
                         IndexedBucket {
                             timeline,
                             cluster_key: self.cluster_key,
-                            inner: RwLock::new(IndexedBucketInner {
-                                time_range: TimeRange::new(time, time),
-                                ..Default::default()
-                            }),
+                            inner: RwLock::new(inner),
                         },
                     );
+
+                    self.buckets_size_bytes += inner_size_bytes;
                     return self.insert_row(config, insert_id, time, generated_cluster_cell, row);
                 }
             }
@@ -342,7 +353,9 @@ impl IndexedTable {
             "inserted into indexed tables"
         );
 
-        bucket.insert_row(insert_id, time, generated_cluster_cell, row, &components);
+        self.buckets_size_bytes +=
+            bucket.insert_row(insert_id, time, generated_cluster_cell, row, &components);
+        self.buckets_num_rows += 1;
 
         // Insert components last, only if bucket-insert succeeded.
         self.all_components.extend(components);
@@ -350,6 +363,7 @@ impl IndexedTable {
 }
 
 impl IndexedBucket {
+    /// Returns the size in bytes of the inserted arrow data.
     fn insert_row(
         &mut self,
         insert_id: Option<u64>,
@@ -357,12 +371,13 @@ impl IndexedBucket {
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
         components: &IntSet<ComponentName>,
-    ) {
+    ) -> u64 {
         crate::profile_function!();
 
-        let num_rows = self.total_rows() as usize;
+        let mut size_bytes_added = 0u64;
+        let num_rows = self.num_rows() as usize;
 
-        let mut guard = self.inner.write();
+        let mut inner = self.inner.write();
         let IndexedBucketInner {
             is_sorted,
             time_range,
@@ -371,25 +386,32 @@ impl IndexedBucket {
             col_row_id,
             col_num_instances,
             columns,
-            total_size_bytes: _, // TODO(#1619)
-        } = &mut *guard;
+            size_bytes,
+        } = &mut *inner;
 
         // append time to primary column and update time range appropriately
         col_time.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
+        size_bytes_added += std::mem::size_of_val(&time.as_i64()) as u64;
 
         // update all control columns
         if let Some(insert_id) = insert_id {
             col_insert_id.push(insert_id);
+            size_bytes_added += std::mem::size_of_val(&insert_id) as u64;
         }
         col_row_id.push(row.row_id());
+        size_bytes_added += std::mem::size_of_val(&row.row_id()) as u64;
         col_num_instances.push(row.num_instances());
+        size_bytes_added += std::mem::size_of_val(&row.num_instances()) as u64;
 
         // insert auto-generated cluster cell if present
         if let Some(cluster_cell) = generated_cluster_cell {
-            let column = columns
-                .entry(cluster_cell.component_name())
-                .or_insert_with(|| DataCellColumn::empty(num_rows));
+            let component = cluster_cell.component_name();
+            let column = columns.entry(component).or_insert_with(|| {
+                size_bytes_added += std::mem::size_of_val(&component) as u64;
+                DataCellColumn::empty(num_rows)
+            });
+            size_bytes_added += cluster_cell.size_bytes();
             column.0.push(Some(cluster_cell));
         }
 
@@ -397,9 +419,12 @@ impl IndexedBucket {
 
         // 2-way merge, step 1: left-to-right
         for cell in row.cells().iter() {
-            let column = columns
-                .entry(cell.component_name())
-                .or_insert_with(|| DataCellColumn::empty(col_time.len().saturating_sub(1)));
+            let component = cell.component_name();
+            let column = columns.entry(component).or_insert_with(|| {
+                size_bytes_added += std::mem::size_of_val(&component) as u64;
+                DataCellColumn::empty(col_time.len().saturating_sub(1))
+            });
+            size_bytes_added += cell.size_bytes();
             column.0.push(Some(cell.clone() /* shallow */));
         }
 
@@ -420,11 +445,15 @@ impl IndexedBucket {
         // TODO(#433): re_datastore: properly handle already sorted data during insertion
         *is_sorted = false;
 
+        *size_bytes += size_bytes_added;
+
         #[cfg(debug_assertions)]
         {
-            drop(guard); // sanity checking will grab the lock!
+            drop(inner);
             self.sanity_check().unwrap();
         }
+
+        size_bytes_added
     }
 
     /// Splits the bucket into two, potentially uneven parts.
@@ -459,8 +488,8 @@ impl IndexedBucket {
             inner,
         } = self;
 
-        let mut inner = inner.write();
-        inner.sort();
+        let mut inner1 = inner.write();
+        inner1.sort();
 
         let IndexedBucketInner {
             is_sorted: _,
@@ -470,8 +499,8 @@ impl IndexedBucket {
             col_row_id: col_row_id1,
             col_num_instances: col_num_instances1,
             columns: columns1,
-            total_size_bytes: _, // NOTE: recomputed from scratch for both halves
-        } = &mut *inner;
+            size_bytes: _, // NOTE: recomputed below
+        } = &mut *inner1;
 
         if col_time1.len() < 2 {
             return None; // early exit: can't split the unsplittable
@@ -486,8 +515,9 @@ impl IndexedBucket {
         crate::profile_function!();
 
         let timeline = *timeline;
+
         // Used in debug builds to assert that we've left everything in a sane state.
-        let _total_rows = col_time1.len();
+        let _num_rows = col_time1.len();
 
         fn split_off_column<T: Copy, const N: usize>(
             column: &mut SmallVec<[T; N]>,
@@ -542,10 +572,8 @@ impl IndexedBucket {
                     .collect()
             };
 
-            let bucket2 = Self {
-                timeline,
-                cluster_key: self.cluster_key,
-                inner: RwLock::new(IndexedBucketInner {
+            let inner2 = {
+                let mut inner2 = IndexedBucketInner {
                     is_sorted: true,
                     time_range: time_range2,
                     col_time: col_time2,
@@ -553,36 +581,36 @@ impl IndexedBucket {
                     col_row_id: col_row_id2,
                     col_num_instances: col_num_instances2,
                     columns: columns2,
-                    total_size_bytes: 0, // TODO(#1619)
-                }),
+                    size_bytes: 0, // NOTE: computed below
+                };
+                inner2.compute_size_bytes();
+                inner2
             };
-            // TODO(#1619): bring back size stats
-            // bucket2.compute_total_size_bytes();
+            let bucket2 = Self {
+                timeline,
+                cluster_key: self.cluster_key,
+                inner: RwLock::new(inner2),
+            };
 
             (time_range2.min, bucket2)
         };
 
-        // TODO(#1619): bring back size stats
-        // inner.compute_total_size_bytes();
+        inner1.compute_size_bytes();
 
         // sanity checks
         #[cfg(debug_assertions)]
         {
-            drop(inner); // sanity checking will grab the lock!
+            drop(inner1); // sanity checking will grab the lock!
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
 
-            // TODO(#1619): check size_bytes sum too
-            let total_rows1 = self.total_rows() as i64;
-            let total_rows2 = bucket2.total_rows() as i64;
-            debug_assert!(
-                _total_rows as i64 == total_rows1 + total_rows2,
-                "expected both buckets to sum up to the length of the original bucket: \
-                    got bucket={} vs. bucket1+bucket2={}",
-                _total_rows,
+            let total_rows1 = self.num_rows() as i64;
+            let total_rows2 = bucket2.num_rows() as i64;
+            debug_assert_eq!(
+                _num_rows as i64,
                 total_rows1 + total_rows2,
+                "expected both buckets to sum up to the length of the original bucket"
             );
-            debug_assert_eq!(_total_rows as i64, total_rows1 + total_rows2);
         }
 
         Some((min2, bucket2))
@@ -710,18 +738,6 @@ fn split_time_range_off(
 // --- Timeless ---
 
 impl PersistentIndexedTable {
-    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
-        Self {
-            cluster_key,
-            ent_path,
-            col_insert_id: Default::default(),
-            col_row_id: Default::default(),
-            col_num_instances: Default::default(),
-            columns: Default::default(),
-            total_size_bytes: 0, // TODO(#1619)
-        }
-    }
-
     fn insert_row(
         &mut self,
         insert_id: Option<u64>,
@@ -739,19 +755,19 @@ impl PersistentIndexedTable {
             col_row_id,
             col_num_instances,
             columns,
-            total_size_bytes: _, // TODO(#1619)
         } = self;
 
         let components: IntSet<_> = row.component_names().collect();
 
-        // update all control columns
+        // --- update all control columns ---
+
         if let Some(insert_id) = insert_id {
             col_insert_id.push(insert_id);
         }
         col_row_id.push(row.row_id());
         col_num_instances.push(row.num_instances());
 
-        // append components to their respective columns (2-way merge)
+        // --- append components to their respective columns (2-way merge) ---
 
         // insert auto-generated cluster cell if present
         if let Some(cluster_cell) = generated_cluster_cell {
@@ -772,7 +788,7 @@ impl PersistentIndexedTable {
         // 2-way merge, step 2: right-to-left
         //
         // fill unimpacted secondary indices with null values
-        for (component, column) in columns {
+        for (component, column) in columns.iter_mut() {
             // The cluster key always gets added one way or another, don't try to force fill it!
             if *component == self.cluster_key {
                 continue;

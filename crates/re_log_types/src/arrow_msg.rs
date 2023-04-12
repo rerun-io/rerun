@@ -146,11 +146,19 @@ mod tests {
             (build_some_point2d(1), build_some_rects(1)),
         );
 
-        let table_in = row.into_table();
-        let msg_in: ArrowMsg = (&table_in).try_into().unwrap();
+        let table_in = {
+            let mut table = row.into_table();
+            table.compute_all_size_bytes();
+            table
+        };
+        let msg_in = table_in.to_arrow_msg().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
-        let table_out: DataTable = (&msg_out).try_into().unwrap();
+        let table_out = {
+            let mut table = DataTable::from_arrow_msg(&msg_out).unwrap();
+            table.compute_all_size_bytes();
+            table
+        };
 
         assert_eq!(msg_in, msg_out);
         assert_eq!(table_in, table_out);

@@ -484,13 +484,7 @@ fn log_transform(
         [transform].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 // ----------------------------------------------------------------------------
@@ -568,13 +562,7 @@ fn log_view_coordinates(
         [coordinates].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 // ----------------------------------------------------------------------------
@@ -702,13 +690,7 @@ fn log_meshes(
         meshes,
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[pyfunction]
@@ -783,13 +765,7 @@ fn log_mesh_file(
         [mesh3d].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 /// Log an image file given its contents or path on disk.
@@ -875,13 +851,7 @@ fn log_image_file(
         [tensor].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[derive(FromPyObject)]
@@ -954,13 +924,7 @@ fn log_annotation_context(
         [annotation_context].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[pyfunction]
@@ -987,8 +951,8 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
 
     let mut session = python_session();
 
-    let msg: ArrowMsg = (&data_table)
-        .try_into()
+    let msg: ArrowMsg = data_table
+        .to_arrow_msg()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send_arrow_msg(msg);

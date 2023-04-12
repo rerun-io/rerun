@@ -95,7 +95,7 @@ fn deserialize(c: &mut Criterion) {
     group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
     let cell = DataCell::from_component::<InstanceKey>(0..NUM_INSTANCES as u64);
-    let data = cell.as_arrow();
+    let data = cell.to_arrow();
 
     {
         group.bench_function("arrow2_convert", |b| {

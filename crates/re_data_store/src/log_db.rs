@@ -53,10 +53,14 @@ impl EntityDb {
     }
 
     fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        let table: DataTable = msg.try_into()?;
+        crate::profile_function!();
+
+        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
+        let mut table = DataTable::from_arrow_msg(msg)?;
+        table.compute_all_size_bytes();
 
         // TODO(#1619): batch all of this
-        for row in table.as_rows() {
+        for row in table.to_rows() {
             self.try_add_data_row(&row)?;
         }
 

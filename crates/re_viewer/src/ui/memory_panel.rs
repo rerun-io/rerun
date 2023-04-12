@@ -26,7 +26,7 @@ impl MemoryPanel {
                 (gpu_resource_stats.total_buffer_size_in_bytes
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
-            Some(store_stats.total_index_size_bytes as _),
+            Some(store_stats.total_size_bytes as _),
         );
     }
 
@@ -186,7 +186,6 @@ impl MemoryPanel {
 
                 ui.label(egui::RichText::new("Limits").italics());
                 ui.label("Row limit");
-                ui.label("Size limit");
                 ui.end_row();
 
                 let label_rows = |ui: &mut egui::Ui, num_rows| {
@@ -197,7 +196,11 @@ impl MemoryPanel {
                     }
                 };
 
-                ui.label("Indices:");
+                ui.label("Timeless:");
+                label_rows(ui, u64::MAX);
+                ui.end_row();
+
+                ui.label("Temporal:");
                 label_rows(ui, config.indexed_bucket_num_rows);
                 ui.end_row();
             });
@@ -208,13 +211,13 @@ impl MemoryPanel {
             .num_columns(3)
             .show(ui, |ui| {
                 let DataStoreStats {
-                    total_timeless_index_rows,
-                    total_timeless_index_size_bytes,
-                    total_temporal_index_rows,
-                    total_temporal_index_size_bytes,
-                    total_temporal_index_buckets,
-                    total_index_rows,
-                    total_index_size_bytes,
+                    total_timeless_rows,
+                    total_timeless_size_bytes,
+                    total_temporal_rows,
+                    total_temporal_size_bytes,
+                    total_temporal_buckets,
+                    total_rows,
+                    total_size_bytes,
                     config: _,
                 } = *store_stats;
 
@@ -232,22 +235,22 @@ impl MemoryPanel {
                 let label_size =
                     |ui: &mut egui::Ui, size| ui.label(re_format::format_bytes(size as _));
 
-                ui.label("Indices (timeless):");
+                ui.label("Timeless:");
                 ui.label("");
-                label_rows(ui, total_timeless_index_rows);
-                label_size(ui, total_timeless_index_size_bytes);
+                label_rows(ui, total_timeless_rows);
+                label_size(ui, total_timeless_size_bytes);
                 ui.end_row();
 
-                ui.label("Indices (temporal):");
-                label_buckets(ui, total_temporal_index_buckets);
-                label_rows(ui, total_temporal_index_rows);
-                label_size(ui, total_temporal_index_size_bytes);
+                ui.label("Temporal:");
+                label_buckets(ui, total_temporal_buckets);
+                label_rows(ui, total_temporal_rows);
+                label_size(ui, total_temporal_size_bytes);
                 ui.end_row();
 
-                ui.label("Indices (total):");
-                label_buckets(ui, total_temporal_index_buckets);
-                label_rows(ui, total_index_rows);
-                label_size(ui, total_index_size_bytes);
+                ui.label("Total");
+                label_buckets(ui, total_temporal_buckets);
+                label_rows(ui, total_rows);
+                label_size(ui, total_size_bytes);
                 ui.end_row();
             });
     }

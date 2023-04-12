@@ -176,9 +176,9 @@ fn table_row(
         // NOTE: This really only makes sense because we don't yet have batches with more than a
         // single row at the moment... and by the time we do, the event log view will have
         // disappeared entirely.
-        LogMsg::ArrowMsg(_, msg) => match DataTable::try_from(msg) {
+        LogMsg::ArrowMsg(_, msg) => match DataTable::from_arrow_msg(msg) {
             Ok(table) => {
-                for datarow in table.as_rows() {
+                for datarow in table.to_rows() {
                     row.col(|ui| {
                         ctx.msg_id_button(ui, datarow.row_id());
                     });

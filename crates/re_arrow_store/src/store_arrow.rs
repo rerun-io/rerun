@@ -38,7 +38,7 @@ impl IndexedBucket {
             col_row_id,
             col_num_instances,
             columns,
-            total_size_bytes: _,
+            size_bytes: _,
         } = &*inner.read();
 
         serialize(
@@ -72,7 +72,6 @@ impl PersistentIndexedTable {
             col_row_id,
             col_num_instances,
             columns,
-            total_size_bytes: _,
         } = self;
 
         serialize(

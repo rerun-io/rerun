@@ -106,6 +106,18 @@ impl DataCellColumn {
     pub fn empty(num_rows: usize) -> Self {
         Self(smallvec::smallvec![None; num_rows])
     }
+
+    /// Compute and cache the total (heap) allocated size of each individual underlying
+    /// [`DataCell`].
+    /// This does nothing for cells whose size has already been computed and cached before.
+    ///
+    /// Beware: this is _very_ costly!
+    #[inline]
+    pub fn compute_all_size_bytes(&mut self) {
+        for cell in &mut self.0 {
+            cell.as_mut().map(|cell| cell.compute_size_bytes());
+        }
+    }
 }
 
 // ---
@@ -382,7 +394,7 @@ impl DataTable {
     }
 
     #[inline]
-    pub fn as_rows(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
+    pub fn to_rows(&self) -> impl ExactSizeIterator<Item = DataRow> + '_ {
         let num_rows = self.num_rows() as usize;
 
         let Self {
@@ -427,6 +439,18 @@ impl DataTable {
             }
         }
         timepoint
+    }
+
+    /// Compute and cache the total (heap) allocated size of each individual underlying
+    /// [`DataCell`].
+    /// This does nothing for cells whose size has already been computed and cached before.
+    ///
+    /// Beware: this is _very_ costly!
+    #[inline]
+    pub fn compute_all_size_bytes(&mut self) {
+        for column in self.columns.values_mut() {
+            column.compute_all_size_bytes();
+        }
     }
 }
 
@@ -588,6 +612,8 @@ impl DataTable {
         name: &str,
         values: &[C],
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
+        crate::profile_function!();
+
         /// Transforms an array of unit values into a list of unit arrays.
         ///
         /// * Before: `[C, C, C, C, C, ...]`
@@ -627,6 +653,8 @@ impl DataTable {
         values: &[T],
         datatype: Option<DataType>,
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
+        crate::profile_function!();
+
         let data = PrimitiveArray::from_slice(values);
 
         let datatype = datatype.unwrap_or(data.data_type().clone());
@@ -679,6 +707,8 @@ impl DataTable {
         name: &str,
         column: &[Option<DataCell>],
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
+        crate::profile_function!();
+
         /// Create a list-array out of a flattened array of cell values.
         ///
         /// * Before: `[C, C, C, C, C, C, C, ...]`
@@ -852,6 +882,8 @@ impl DataTable {
         name: &str,
         column: &dyn Array,
     ) -> DataTableResult<(Timeline, TimeOptVec)> {
+        crate::profile_function!();
+
         // See also [`Timeline::datatype`]
         let timeline = match column.data_type().to_logical_type() {
             DataType::Int64 => Timeline::new_sequence(name),
@@ -879,6 +911,7 @@ impl DataTable {
         component: ComponentName,
         column: &dyn Array,
     ) -> DataTableResult<DataCellColumn> {
+        crate::profile_function!();
         Ok(DataCellColumn(
             column
                 .as_any()
@@ -893,11 +926,10 @@ impl DataTable {
 
 // ---
 
-impl TryFrom<&ArrowMsg> for DataTable {
-    type Error = DataTableError;
-
+impl DataTable {
+    /// Deserializes the contents of an [`ArrowMsg`] into a `DataTable`.
     #[inline]
-    fn try_from(msg: &ArrowMsg) -> DataTableResult<Self> {
+    pub fn from_arrow_msg(msg: &ArrowMsg) -> DataTableResult<Self> {
         let ArrowMsg {
             table_id,
             timepoint_max: _,
@@ -907,18 +939,17 @@ impl TryFrom<&ArrowMsg> for DataTable {
 
         Self::deserialize(*table_id, schema, chunk)
     }
-}
 
-impl TryFrom<&DataTable> for ArrowMsg {
-    type Error = DataTableError;
-
+    /// Serializes the contents of a `DataTable` into an [`ArrowMsg`].
+    //
+    // TODO(#1760): support serializing the cell size itself, so it can be computed on the clients.
     #[inline]
-    fn try_from(table: &DataTable) -> DataTableResult<Self> {
-        let timepoint_max = table.timepoint_max();
-        let (schema, chunk) = table.serialize()?;
+    pub fn to_arrow_msg(&self) -> DataTableResult<ArrowMsg> {
+        let timepoint_max = self.timepoint_max();
+        let (schema, chunk) = self.serialize()?;
 
         Ok(ArrowMsg {
-            table_id: table.table_id,
+            table_id: self.table_id,
             timepoint_max,
             schema,
             chunk,
@@ -1003,6 +1034,9 @@ impl DataTable {
             )
         };
 
-        DataTable::from_rows(table_id, [row0, row1, row2])
+        let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);
+        table.compute_all_size_bytes();
+
+        table
     }
 }
