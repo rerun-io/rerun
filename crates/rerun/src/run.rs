@@ -58,6 +58,10 @@ struct Args {
     #[clap(long)]
     memory_limit: Option<String>,
 
+    /// Whether the Rerun Viewer should persist the state of the viewer to local storage
+    #[clap(long, default_value_t = true)]
+    persist_state: bool,
+
     /// What TCP port do we listen to (for SDK:s to connect to)?
     #[cfg(feature = "server")]
     #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
@@ -273,6 +277,7 @@ async fn run_impl(
             re_memory::MemoryLimit::parse(l)
                 .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
         }),
+        persist_state: args.persist_state,
     };
 
     let (shutdown_rx, shutdown_bool) = setup_ctrl_c_handler();
