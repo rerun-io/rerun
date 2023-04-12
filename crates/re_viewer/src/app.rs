@@ -353,7 +353,9 @@ impl App {
             TimeControlCommand::TogglePlayPause => {
                 time_ctrl.toggle_play_pause(times_per_timeline);
             }
-            TimeControlCommand::Restart => time_ctrl.set_time(0),
+            TimeControlCommand::Restart => {
+                time_ctrl.restart(times_per_timeline);
+            }
             TimeControlCommand::StepBack => {
                 time_ctrl.step_time_back(times_per_timeline);
             }

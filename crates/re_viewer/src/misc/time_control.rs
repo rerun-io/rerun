@@ -293,6 +293,14 @@ impl TimeControl {
         }
     }
 
+    pub fn restart(&mut self, times_per_timeline: &TimesPerTimeline) {
+        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+            if let Some(state) = self.states.get_mut(&self.timeline) {
+                state.time = min(time_points).into();
+            }
+        }
+    }
+
     pub fn toggle_play_pause(&mut self, times_per_timeline: &TimesPerTimeline) {
         #[allow(clippy::collapsible_else_if)]
         if self.playing {
